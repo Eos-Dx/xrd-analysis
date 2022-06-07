@@ -16,8 +16,11 @@ dependencies:
   - beautifulsoup4=4.11.1=pyha770c72_0
   - bleach=5.0.0=pyhd8ed1ab_0
   - blosc=1.21.1=h83bc5f7_3
+  - boto3=1.24.3=pyhd8ed1ab_0
+  - botocore=1.27.4=pyhd8ed1ab_0
   - brotli=1.0.9=h166bdaf_7
   - brotli-bin=1.0.9=h166bdaf_7
+  - brotlipy=0.7.0=py310h5764c6d_1004
   - brunsli=0.1=h9c3ff4c_0
   - bzip2=1.0.8=h7f98852_4
   - c-ares=1.18.1=h7f98852_0
@@ -28,6 +31,7 @@ dependencies:
   - cfitsio=4.1.0=hd9d235c_0
   - charls=2.3.4=h9c3ff4c_0
   - cloudpickle=2.1.0=pyhd8ed1ab_0
+  - cryptography=37.0.2=py310h597c629_0
   - cycler=0.11.0=pyhd8ed1ab_0
   - cytoolz=0.11.2=py310h5764c6d_2
   - dask-core=2022.5.2=pyhd8ed1ab_0
@@ -55,6 +59,7 @@ dependencies:
   - gst-plugins-base=1.20.2=hcf0ee16_0
   - gstreamer=1.20.2=hd4edc92_1
   - icu=70.1=h27087fc_0
+  - idna=3.3=pyhd8ed1ab_0
   - imagecodecs=2022.2.22=py310h31a0021_5
   - imageio=2.19.3=pyhcf75d05_0
   - importlib-metadata=4.11.4=py310hff52083_0
@@ -66,6 +71,7 @@ dependencies:
   - jack=1.9.18=hfd4fe87_1001
   - jedi=0.18.1=py310hff52083_1
   - jinja2=3.1.2=pyhd8ed1ab_1
+  - jmespath=1.0.0=pyhd8ed1ab_0
   - joblib=1.1.0=pyhd8ed1ab_0
   - jpeg=9e=h166bdaf_1
   - jsonschema=4.6.0=pyhd8ed1ab_0
@@ -177,9 +183,11 @@ dependencies:
   - pure_eval=0.2.2=pyhd8ed1ab_0
   - pycparser=2.21=pyhd8ed1ab_0
   - pygments=2.12.0=pyhd8ed1ab_0
+  - pyopenssl=22.0.0=pyhd8ed1ab_0
   - pyparsing=3.0.9=pyhd8ed1ab_0
   - pyqt=5.15.4=py310h29803b5_1
   - pyrsistent=0.18.1=py310h5764c6d_1
+  - pysocks=1.7.1=py310hff52083_5
   - python=3.10.4=h9a8a25e_0_cpython
   - python-dateutil=2.8.2=pyhd8ed1ab_0
   - python-fastjsonschema=2.15.3=pyhd8ed1ab_0
@@ -193,6 +201,7 @@ dependencies:
   - qtconsole-base=5.3.1=pyha770c72_0
   - qtpy=2.1.0=pyhd8ed1ab_0
   - readline=8.1=h46c0cb4_0
+  - s3transfer=0.6.0=pyhd8ed1ab_0
   - scikit-image=0.19.2=py310hb5077e9_0
   - scikit-learn=1.1.1=py310hffb9edd_0
   - scipy=1.8.1=py310h7612f91_0
@@ -215,6 +224,7 @@ dependencies:
   - traitlets=5.2.2.post1=pyhd8ed1ab_0
   - tzdata=2022a=h191b570_0
   - unicodedata2=14.0.0=py310h5764c6d_1
+  - urllib3=1.26.9=pyhd8ed1ab_0
   - wcwidth=0.2.5=pyh9f0ad1d_2
   - webencodings=0.5.1=py_1
   - wheel=0.37.1=pyhd8ed1ab_0
