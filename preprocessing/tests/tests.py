@@ -1,0 +1,620 @@
+import os
+import unittest
+import numpy as np
+import pandas as pd
+
+from skimage.io import imsave, imread
+
+from preprocessing.image_processing import centerize
+from preprocessing.image_processing import pad_image
+from preprocessing.image_processing import rotate_image
+
+from preprocessing.center_finding import center_of_mass
+from preprocessing.center_finding import radial_mean
+from preprocessing.center_finding import find_center
+from preprocessing.center_finding import find_centroid
+
+from preprocessing.denoising import stray_filter
+from preprocessing.denoising import filter_strays
+
+from preprocessing.utils import count_intervals
+from preprocessing.utils import create_circular_mask
+from preprocessing.utils import gen_rotation_line
+
+from preprocessing.preprocess import PreprocessData
+
+TEST_IMAGE_DIR = "preprocessing/tests/test_images"
+
+
+def intensity_profile_function(coords,N=16):
+    max_intensity = 1000
+    amplitude = max_intensity//4
+    return amplitude*np.cos(np.pi*coords/N) + \
+            amplitude*np.sin(np.pi*3*coords/N) + \
+            amplitude*np.cos(np.pi*5*coords/N) + \
+            amplitude*np.sin(np.pi*7*coords/N) + \
+            max_intensity
+
+def gen_1d_intensity_profile(N=16):
+    """
+    Helper function to generate 1D intensity profile for testing
+    """
+    coords = np.arange(0,N)
+    return intensity_profile_function(coords,N)
+
+def gen_2d_intensity_profile(N=16):
+    """
+    Helper function to generate 1D intensity profile for testing
+    """
+    X,Y = np.meshgrid(np.arange(N),np.arange(N))
+    Z = np.sin(X)+np.cos(Y)
+    return intensity_profile_function(Z,N)
+
+class TestCreateCircularMask(unittest.TestCase):
+    """
+    Test create_circular_mask
+    """
+
+    def test_circular_mask_odd_square_output(self):
+        """
+        Test circular mask for shape (odd,odd)
+        """
+        # Specify 5x5 shape
+        nrows = 5
+        ncols = 5
+        shape = (nrows,ncols)
+
+        # Create (5,5) circular mask
+        mask_5x5 = create_circular_mask(shape[0], shape[1])
+
+        # Store expected result for circular mask of (5,5) array
+        # with default center, rmin, and rmax
+        test_5x5_mask = np.array([
+            [False, False,  True, False, False],
+            [False,  True,  True,  True, False],
+            [ True,  True,  True,  True,  True],
+            [False,  True,  True,  True, False],
+            [False, False,  True, False, False],
+        ])
+
+        # Test if the generated mask equals the expected mask
+        self.assertTrue(np.array_equal(mask_5x5, test_5x5_mask))
+
+    def test_circular_mask_even_square_output(self):
+        """
+        Test circular mask for shape (even,even)
+        """
+        # Specify 4x4 shape
+        nrows = 4
+        ncols = 4
+        shape = (nrows,ncols)
+
+        # Create (4,4) circular mask
+        mask_4x4 = create_circular_mask(shape[0], shape[1])
+
+        # Store expected result for circular mask of (4,4) array
+        # with default center, rmin, and rmax
+        test_4x4_mask = np.array([
+            [False, False, False, False],
+            [False,  True,  True, False],
+            [False,  True,  True, False],
+            [False, False, False, False],
+        ])
+
+        # Test if the generated mask equals the expected mask
+        self.assertTrue(np.array_equal(mask_4x4, test_4x4_mask))
+
+    def test_circular_mask_center_specified_even_square_output(self):
+        # Specify 4x4 shape
+        nrows = 4
+        ncols = 4
+        row_center = 1.5
+        col_center = 1.5
+        shape = (nrows,ncols)
+
+        # Create (4,4) circular mask
+        mask_4x4 = create_circular_mask(shape[0], shape[1], center=(row_center, col_center))
+
+        # Store expected result for circular mask of (4,4) array
+        # with default center, rmin, and rmax
+        test_4x4_mask = np.array([
+            [False, False, False, False],
+            [False,  True,  True, False],
+            [False,  True,  True, False],
+            [False, False, False, False],
+        ])
+
+        # Test if the generated mask equals the expected mask
+        self.assertTrue(np.array_equal(mask_4x4, test_4x4_mask))
+
+    def test_circular_mask_center_specified_odd_square_output(self):
+        # Specify 4x4 shape
+        nrows = 5
+        ncols = 5
+        row_center = 2
+        col_center = 2
+        shape = (nrows,ncols)
+
+        # Create (5,5) circular mask
+        mask_5x5 = create_circular_mask(shape[0], shape[1], center=(row_center, col_center))
+
+        # Store expected result for circular mask of (5,5) array
+        # with default center, rmin, and rmax
+        test_5x5_mask = np.array([
+            [False, False,  True, False, False],
+            [False,  True,  True,  True, False],
+            [ True,  True,  True,  True,  True],
+            [False,  True,  True,  True, False],
+            [False, False,  True, False, False],
+        ])
+
+        # Test if the generated mask equals the expected mask
+        self.assertTrue(np.array_equal(mask_5x5, test_5x5_mask))
+
+    def test_circular_mask_off_center_specified_even_square_output(self):
+        # Specify 4x4 shape
+        nrows = 4
+        ncols = 4
+        row_center = 2
+        col_center = 2
+        shape = (nrows,ncols)
+
+        # Create (4,4) circular mask
+        mask_4x4 = create_circular_mask(shape[0], shape[1], center=(row_center, col_center), mode="min")
+
+        # Store expected result for circular mask of (4,4) array
+        # with default center, rmin, and rmax
+        test_4x4_mask = np.array([
+            [False, False, False, False],
+            [False,  True,  True,  True],
+            [False,  True,  True,  True],
+            [False,  True,  True,  True],
+        ])
+
+        # Test if the generated mask equals the expected mask
+        self.assertTrue(np.array_equal(mask_4x4, test_4x4_mask))
+
+
+class TestPreprocessData(unittest.TestCase):
+
+    def setUp(self):
+        params = {
+            # Set parameters
+            # Image size
+            "h":256,
+            "w":256,
+            # Region of interest for beam center on raw images
+            # rmax_beam=50
+            "beam_rmax":25,
+            # Annulus region of interest for XRD pattern
+            # rmin=30
+            # rmax=120
+            "rmin":25,
+            "rmax":90,
+            # Annulus region of interest for 9A feature region
+            # reyes_min=40
+            # reyes_max=80
+            "eyes_rmin":30,
+            "eyes_rmax":45,
+            # Maximum distance from 9A feature maximum intensity location
+            # for blob analysis
+            # reyes_max_blob=30
+            "eyes_blob_rmax":20,
+            # Percentile used to analyze 9A features as blobs
+            "eyes_percentile":99,
+            # Local threshold block size
+            # local_threshold_block_size = 27
+            "local_thresh_block_size":21,
+        }
+        self.params = params
+
+    def test_preprocess_single_image_rotate_centerize(self):
+        # Load the test image
+        # Original filename: 20220330/A00041.txt
+        test_filename = "test_preprocess_center.txt"
+
+        cwd = os.getcwd()
+        test_dir = os.path.join(cwd, TEST_IMAGE_DIR)
+        test_img = os.path.join(test_dir, test_filename)
+
+        preprocessed_filename = "preprocessed_{}".format(test_filename)
+        preprocessed_filename_fullpath = os.path.join(test_dir,preprocessed_filename)
+
+        params = self.params
+        preprocessor = PreprocessData(filename=test_img,
+                input_dir=test_dir, output_dir=test_dir, params=params)
+
+        # Preprocess data, saving to a file
+        preprocessor.preprocess()
+
+        # Check center of saved file
+        preprocessed_image = np.loadtxt(preprocessed_filename_fullpath)
+        calculated_center = find_center(preprocessed_image)
+        # Proper centerized images would have center near here:
+        center = (128,128)
+
+        self.assertTrue(np.isclose(center, calculated_center, atol=1.0).all())
+
+
+class TestCenterFinding(unittest.TestCase):
+
+    def test_find_centroid_single_point(self):
+        """
+        Calculate the centroid of a single point
+        """
+        # Create (1,2) array
+        single_point = np.array([[4,5]])
+        centroid = find_centroid(single_point)
+
+        self.assertTrue(np.array_equal(single_point.flatten(), centroid))
+
+    def test_find_centroid_multiple_points(self):
+        """
+        Calculate the centroid of a series of points
+        """
+        points = np.array([[2,4],[4,2]])
+        known_centroid = (3,3)
+        calculated_centroid = find_centroid(points)
+
+        self.assertTrue(np.array_equal(known_centroid, calculated_centroid))
+
+    def test_find_center_max_centroid(self):
+        # Original filename: 20220330/A00041.txt
+        test_filename = "test_preprocess_center.txt"
+        # Set known center using centroid of max pixels in beam region of interest
+        known_center = (126.125, 132.375) # Using centroid of max pixels
+        test_dir = os.path.dirname(os.path.realpath(__file__))
+        test_img = np.loadtxt(os.path.join(test_dir, TEST_IMAGE_DIR, test_filename))
+        calculated_center = find_center(test_img, method="max_centroid")
+
+        self.assertTrue(np.array_equal(calculated_center, known_center))
+
+    def test_find_center_off_center(self):
+        # Create a 4x4 image with a single on pixel, rest are off
+        test_image = np.zeros((4,4))
+        test_image[2,2] = 1
+
+        known_center = (2,2)
+        calculated_center = find_center(test_image, method="max_centroid")
+        self.assertTrue(np.array_equal(calculated_center, known_center))
+
+    def test_find_trunc_limit(self):
+        intensities = gen_1d_intensity_profile()
+        self.assertEqual('foo'.upper(), 'FOO')
+
+    def test_center_of_mass_general(self):
+        intensities = gen_2d_intensity_profile()
+        center = np.round(center_of_mass(intensities))
+        self.assertIsNone(np.testing.assert_array_equal((7,8), center))
+
+    def test_center_of_mass_equal(self):
+        intensities = np.ones((3,3))
+        center = np.round(center_of_mass(intensities))
+        self.assertIsNone(np.testing.assert_array_equal((1,1), center))
+
+    def test_center_of_mass_nonequal(self):
+        intensities = np.array([[1,2,1],[5,0,5],[3,3,3]])
+        center = np.round(center_of_mass(intensities))
+        self.assertIsNone(np.testing.assert_array_equal((1,1), center))
+
+    def test_radial_mean(self):
+        intensities = np.array([[4,6,4,],[5,10,5],[4,6,4]])
+        center = (1,1)
+        rmean = radial_mean(intensities,center)
+        rmean_ref = np.array([0,1,2,3,4,5,6])
+        self.fail("Finish writing test")
+        self.assertIsNone(np.testing.assert_array_equal(rmean, rmean_ref))
+
+
+class TestUtils(unittest.TestCase):
+
+    def test_interval_count_multiple_intervals(self):
+        # Set up multiple interval example
+        num_array = np.array([0,1,2,3,6,7,9,12,14,15,16])
+        count = count_intervals(num_array)
+        self.assertEqual(count,5)
+
+    def test_empty_interval(self):
+        num_array = np.array([])
+        count = count_intervals(num_array)
+        self.assertEqual(count,0)
+
+    def test_single_element_interval(self):
+        num_array = np.array([3])
+        count = count_intervals(num_array)
+        self.assertEqual(count,1)
+
+
+class TestDenoising(unittest.TestCase):
+
+    def test_stray_detector_high_intensity(self):
+        # Create a test array where center value is much higher
+        # than neighborhood average
+        test_array = np.array([[1,2,3],[1,105,0],[2,25,2]])
+        center_value = test_array[1,1]
+        # Apply filter to center value
+        filtered_center = stray_filter(test_array, factor=5.0)
+
+        # Ensure filter changed value to mean of neighbors
+        self.assertFalse(center_value == filtered_center)
+
+    def test_stray_detector_low_intensity(self):
+        # Create a test array where center value is close to
+        # neighborhood average
+        test_array = np.array([[1,2,3],[1,20,0],[2,25,2]])
+        center_value = test_array[1,1]
+        # Apply filter to center value
+        filtered_center = stray_filter(test_array, factor=5.0)
+
+        # Ensure filter did not change center value
+        self.assertTrue(center_value == filtered_center)
+
+
+class TestImageProcessing(unittest.TestCase):
+
+    def test_centerize_photon_count(self):
+        """
+        Ensure that the centerized image has a photon intensity count
+        that is close to the original (some differences expected due
+        to rasterization).
+        """
+        # Generate random 10x10 image
+        rng = np.random.default_rng(seed=100)
+        original = rng.integers(low=0, high=100, size=(10,10))
+        # Pick center at random
+        center = rng.random((1,2))*10
+        center = tuple(center.flatten())
+
+        centerized, new_center = centerize(original, center)
+        original_count = np.sum(original)
+        centerized_count = np.sum(centerized)
+
+        self.assertTrue(np.isclose(original_count, centerized_count, atol=2))
+
+    def test_centerize_point_method_precentered(self):
+        """
+        Test centerize point method for precentered image
+        """
+        # Create an image
+        dim = 6
+        image = np.arange(dim**2).reshape((dim,dim))
+        # choose center 
+        center = ((dim-1)/2,(dim-1)/2)
+
+        centerized_image, new_center = centerize(image, center, method="point")
+
+        self.assertEqual(center, new_center)
+        self.assertEqual(image.shape, centerized_image.shape)
+        self.assertTrue(np.array_equal(image, centerized_image))
+
+    def test_centerize_point_method_slight_off_center(self):
+        """
+        Test centerize point method for slightly off-center image
+        Should give back original image
+        """
+        # Create an image
+        dim = 6
+        image = np.arange(dim**2).reshape((dim,dim))
+        # choose center 
+        center = (2.6,2.6)
+
+        centerized_image, new_center = centerize(image, center, method="point")
+
+        known_center = (2.5,2.5)
+        self.assertEqual(known_center, new_center)
+        self.assertEqual(image.shape, centerized_image.shape)
+        self.assertTrue(np.array_equal(image, centerized_image))
+
+    def test_centerize_point_method_rounding_edge_case(self):
+        """
+        Numpy rounds both 1.5 and 2.5 to 2.0, make sure
+        code gives correct results.
+        """
+        self.fail("Finish writing test")
+
+
+    def test_centerize_point_method_off_center(self):
+        """
+        Test centerize point method for significantly off-center image
+        """
+        # Create an image
+        dim = 4
+        image = np.arange(dim**2).reshape((dim,dim))
+        # choose center 
+        center = (2.1,1.6)
+        # This should be like center equivalent or mod_center
+        center_equiv = (2.0,1.5)
+
+        centerized_image, new_center = centerize(image, center, method="point")
+        centerized_image_equiv, new_center_equiv = centerize(image, center_equiv, method="point")
+
+        self.assertEqual(new_center, new_center_equiv)
+        self.assertEqual(centerized_image.shape, centerized_image_equiv.shape)
+        self.assertTrue(np.array_equal(centerized_image, centerized_image_equiv))
+
+    def test_centerize_point_method_center_3x3(self):
+        """
+        Test centerize point method for 3x3 images where center could be
+        any of the pixel centers (whole indices)
+        """
+        # Create an image
+        dim = 3
+        image = np.arange(1,dim**2+1).reshape((dim,dim))
+        """
+        Original image:
+
+            [[1, 2, 3]
+             [4, 5, 6]
+             [7, 8, 9]],
+        """
+
+        # Comments show matrix coordinates of center for original image
+        known_results = np.array([
+            # (0,0) the 1
+            np.array([[0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0],
+             [0, 0, 1, 2, 3],
+             [0, 0, 4, 5, 6],
+             [0, 0, 7, 8, 9]]),
+            # (0,1) the 2
+            np.array([[0, 0, 0],
+             [0, 0, 0],
+             [1, 2, 3],
+             [4, 5, 6],
+             [7, 8, 9]]),
+            # (0,2) the 3
+            np.array([[0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0],
+             [1, 2, 3, 0, 0],
+             [4, 5, 6, 0, 0],
+             [7, 8, 9, 0, 0]]),
+            # (1,0) the 4
+            np.array([[0, 0, 1, 2, 3],
+             [0, 0, 4, 5, 6],
+             [0, 0, 7, 8, 9]]),
+            # (1,1) the 5
+            np.array([[1, 2, 3],
+             [4, 5, 6],
+             [7, 8, 9],]),
+            # (1,2) the 6
+            np.array([[1, 2, 3, 0, 0],
+             [4, 5, 6, 0, 0],
+             [7, 8, 9, 0, 0],]),
+            # (2,0) the 7
+            np.array([[0, 0, 1, 2, 3],
+             [0, 0, 4, 5, 6],
+             [0, 0, 7, 8, 9],
+             [0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0],]),
+            # (2,1) the 8
+            np.array([[1, 2, 3],
+             [4, 5, 6],
+             [7, 8, 9],
+             [0, 0, 0],
+             [0, 0, 0],]),
+            # (2,2) the 9
+            np.array([[1, 2, 3, 0, 0],
+             [4, 5, 6, 0, 0],
+             [7, 8, 9, 0, 0],
+             [0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0],]),
+            ],dtype=object)
+
+        # Loop over possibilites for center
+        for center_row in np.arange(dim):
+            for center_col in np.arange(dim):
+                center = (center_row, center_col)
+
+                centerized_image, new_center = centerize(image, center, method="point")
+
+                # Ensure the number to be centered is now at new center
+                self.assertEqual(image[int(np.around(center[0])),int(np.around(center[1]))],
+                        centerized_image[int(np.around(new_center[0])),int(np.around(new_center[1]))])
+
+                # Ensure the entire image is still present
+                self.assertEqual(np.sum(centerized_image), np.sum(image))
+
+                # Test to make sure results are accurate using known results
+                self.assertTrue(np.array_equal(known_results[center_row*dim+center_col], centerized_image))
+
+    def test_pad_image_prerotation_method(self):
+        """
+        Test a few images with default prerotation method
+        """
+        dim = 1
+        image = np.arange(dim**2).reshape((dim,dim))
+
+        padded_image = pad_image(image, method="prerotation")
+
+        self.assertEqual(padded_image.shape, (1,1))
+
+        dim = 2
+        image = np.arange(dim**2).reshape((dim,dim))
+
+        padded_image = pad_image(image, method="prerotation")
+
+        self.assertEqual(padded_image.shape, (2,2))
+
+        dim = 3
+        image = np.arange(dim**2).reshape((dim,dim))
+
+        padded_image = pad_image(image, method="prerotation")
+
+        self.assertEqual(padded_image.shape, (3,3))
+
+        dim = 4
+        image = np.arange(dim**2).reshape((dim,dim))
+
+        padded_image = pad_image(image, method="prerotation")
+
+        self.assertEqual(padded_image.shape, (6,6))
+
+        dim = 10
+        image = np.arange(dim**2).reshape((dim,dim))
+
+        padded_image = pad_image(image, method="prerotation")
+
+        self.assertEqual(padded_image.shape, (14,14))
+
+    def test_rotate_image_nearest(self):
+        """
+        Test rotate_image function with nearest method
+        which uses cv2.INTER_NEAREST flag
+        """
+        # Create 4x4 array
+        dim=4
+        image = np.array([
+            [0,0,0,0],
+            [0,1,0,0],
+            [0,0,1,0],
+            [0,0,0,0],
+        ])
+
+        # Create known 90 degree rotation of 2x2 array
+        rot_image_known = np.array([
+            [0,0,0,0],
+            [0,0,1,0],
+            [0,1,0,0],
+            [0,0,0,0],
+        ])
+
+        angle = 90.0
+
+        rotated_image_nearest = rotate_image(image, angle=angle, method="nearest")
+        rotated_image_standard = rotate_image(image, angle=angle, method="standard")
+
+        self.assertTrue(np.array_equal(rot_image_known, rotated_image_nearest))
+
+    def test_rotate_image_elastic(self):
+        """
+        Test rotate_image function with nearest method
+        which uses cv2.INTER_NEAREST flag
+        """
+        # Create 4x4 array
+        dim=4
+        image = np.array([
+            [0,0,0,0],
+            [0,10,0,0],
+            [0,0,10,0],
+            [0,0,0,0],
+        ])
+
+        # Create known 90 degree rotation of 2x2 array
+        rot_image_known = np.array([
+            [0,0,0,0],
+            [0,0,10,0],
+            [0,10,0,0],
+            [0,0,0,0],
+        ])
+
+        angle = 45.0
+
+        rotated_image_elastic = rotate_image(image, angle=angle, method="elastic")
+        rotated_image_standard = rotate_image(image, angle=angle, method="standard")
+
+        print(rotated_image_elastic)
+
+        self.assertTrue(np.array_equal(rot_image_known, rotated_image_elastic))
+
+if __name__ == '__main__':
+    unittest.main()
