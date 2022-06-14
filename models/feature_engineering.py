@@ -75,8 +75,6 @@ def feature_5a_peak_location(image, rmin=70, roi_h=20, roi_w=10):
     Calculate the location of the 5A peak
     normalized by image radius
     """
-    # Known location of 5A peak
-    radius_5a = 65
     # Calculate center of image
     shape = image.shape
     row_isodd = shape[0]%2
@@ -109,9 +107,4 @@ def feature_5a_peak_location(image, rmin=70, roi_h=20, roi_w=10):
     # The row number of the peak in the roi
     peak_location = np.mean(peak_locations)
     
-    # Now we need to offset to get location in image
-    peak_location_radius = row_center - peak_location
-    
-    peak_location_feature = (peak_location_radius - radius_5a)/radius_5a
-    
-    return peak_location_feature, roi, roi_center, anchor
+    return peak_location, roi, roi_center, anchor
