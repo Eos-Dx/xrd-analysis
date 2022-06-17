@@ -140,10 +140,18 @@ class TestFeatureEngineering(unittest.TestCase):
                 128+start_radius-rect_w//2:128+start_radius+rect_w//2] = 2
 
         # Get the 9A peak ratio
-        test_ratio, _, _, _ = feature_9a_ratio(test_image)
+        test_ratio, test_rois, test_centers, test_anchors = feature_9a_ratio(test_image)
         known_ratio = 2 # 2/1 = 2
 
+        # Ensure the intensity is as expected
         self.assertEqual(test_ratio, known_ratio)
+
+        # Ensure the rois are as expected
+        roi_right = rois[0]
+        roi_top = rois[2]
+
+        self.assertEqual(np.mean(roi_top),1)
+        self.assertEqual(np.mean(roi_right),2)
 
 if __name__ == '__main__':
     unittest.main()
