@@ -148,8 +148,8 @@ class TestFeatureEngineering(unittest.TestCase):
         self.assertEqual(test_ratio, known_ratio)
 
         # Ensure the rois are as expected
-        roi_right = rois[0]
-        roi_top = rois[2]
+        roi_right = test_rois[0]
+        roi_top = test_rois[2]
 
         self.assertEqual(np.mean(roi_top),1)
         self.assertEqual(np.mean(roi_right),2)
