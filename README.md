@@ -12,3 +12,10 @@ The main modules are `preprocessing` and `models`.
 Use miniforge (https://github.com/conda-forge/miniforge) and create environment with environment.yml file from xrd-analysis repo:
 
 `conda env create --name env_name --file environment.yaml`
+
+# Contributing
+1. Create or refer to an existing issue (bug or feature).
+2. Create a branch to work on the issue with simple, descriptive name.
+3. Create tests for the issue.
+4. Commit each incremental change with a simple, descriptive commit message.
+5. Create a pull request when the issue is resolved.
