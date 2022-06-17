@@ -128,8 +128,8 @@ class TestFeatureEngineering(unittest.TestCase):
         # Create a test image
         test_image = np.zeros((256,256))
         # Create some blobs in the 9.8A region of interest
-        rect_w = 5
-        rect_l = 19
+        rect_w = 4
+        rect_l = 18
         start_radius = 25
         # Set the top area to 1
         test_image[128-start_radius-rect_w:128-start_radius,
@@ -140,7 +140,8 @@ class TestFeatureEngineering(unittest.TestCase):
                 128+start_radius-rect_w//2:128+start_radius+rect_w//2] = 2
 
         # Get the 9A peak ratio
-        test_ratio, test_rois, test_centers, test_anchors = feature_9a_ratio(test_image)
+        test_ratio, test_rois, test_centers, test_anchors = feature_9a_ratio(test_image,
+                start_radius=start_radius)
         known_ratio = 2 # 2/1 = 2
 
         # Ensure the intensity is as expected
@@ -152,6 +153,7 @@ class TestFeatureEngineering(unittest.TestCase):
 
         self.assertEqual(np.mean(roi_top),1)
         self.assertEqual(np.mean(roi_right),2)
+
 
 if __name__ == '__main__':
     unittest.main()
