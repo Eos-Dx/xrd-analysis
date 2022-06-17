@@ -61,11 +61,11 @@ def feature_9a_ratio(image, radius=25, roi_h=10, roi_w=10):
                           eye_south_roi_cols[0]:eye_south_roi_cols[1]]
     
     rois = np.array([eye_right_roi, eye_left_roi, eye_north_roi, eye_south_roi])
-    
+
     eye_intensity_horizontal = np.sum(eye_right_roi)+np.sum(eye_left_roi)
     eye_intensity_vertical = np.sum(eye_north_roi)+np.sum(eye_south_roi)
     
-    intensity_ratio = eye_intensity_vertical/eye_intensity_horizontal
+    intensity_ratio = eye_intensity_horizontal/eye_intensity_vertical
     
     return intensity_ratio, rois, centers, anchors
 
