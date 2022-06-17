@@ -4,10 +4,35 @@ import numpy as np
 Calculate features using preprocessing functions
 """
 
-def feature_9a_ratio(image, radius=25, roi_h=10, roi_w=10):
+def feature_9a_ratio(image, start_radius=25, roi_l=18, roi_w=4):
     """
-    Calulate the ratio of vertical window roi intensities over
-    horizontal window roi intensities in the 9A region
+    Calulate the ratio of vertical region of interest (roi) intensities
+    over horizontal window roi intensities in the 9A region
+
+    Define a rectangular region of interest as in the ascii graphic
+     _ <- roi_w
+    | | -
+    | | |
+    | | | <- roi_l
+    | | |
+    |_| -
+
+    The window shown is defined for the right 9.8A peak (eye).
+    It's height is roi_l.
+    It's width is roi_w.
+    The window is the same for the left 9.8A peak (eye).
+    The window is rotated +/-90 degrees about the image center
+    to calculate an intensity ratio.
+    See ascii diagram below:
+               ___
+              |___|
+
+         _             _
+        | |           | |
+        |_|           |_|
+
+               ___
+              |___|
     """
     # Calculate center of image
     shape = image.shape
@@ -15,58 +40,70 @@ def feature_9a_ratio(image, radius=25, roi_h=10, roi_w=10):
     col_isodd = shape[1]%2
     row_center = shape[0]/2+row_isodd
     col_center = shape[1]/2+col_isodd
-    
+
     # Calculate center of roi's
-    eye_right_center = (row_center + row_isodd, col_center + col_isodd + radius)
-    eye_left_center = (row_center - row_isodd, col_center - col_isodd - radius)
-    eye_north_center = (row_center + row_isodd - radius, col_center + col_isodd)
-    eye_south_center = (row_center - row_isodd + radius, col_center + col_isodd)
-    
-    centers = [
-        eye_right_center,
-        eye_left_center,
-        eye_north_center,
-        eye_south_center,
-    ]
+    roi_right_center = (int(row_center),
+                        int(col_center + start_radius + roi_w/2))
+    roi_left_center = (int(row_center),
+                        int(col_center - start_radius - roi_w/2))
+    roi_top_center = (int(row_center - start_radius - roi_w/2),
+                        int(col_center))
+    roi_bottom_center = (int(row_center + start_radius + roi_w/2),
+                        int(col_center))
+
+    centers = (
+            roi_right_center,
+            roi_left_center,
+            roi_top_center,
+            roi_bottom_center,
+            )
     
     # Calculate slice indices
-    eye_right_roi_rows = (int(eye_right_center[0]-roi_h/2),int(eye_right_center[0]+roi_h/2))
-    eye_right_roi_cols = (int(eye_right_center[1]-roi_w/2),int(eye_right_center[1]+roi_w/2))
+    roi_right_rows = (int(roi_right_center[0]-roi_l/2),
+                    int(roi_right_center[0]+roi_l/2))
+    roi_right_cols = (int(roi_right_center[1]-roi_w/2),
+                    int(roi_right_center[1]+roi_w/2))
     
-    eye_left_roi_rows = (int(eye_left_center[0]-roi_h/2),int(eye_left_center[0]+roi_h/2))
-    eye_left_roi_cols = (int(eye_left_center[1]-roi_w/2),int(eye_left_center[1]+roi_w/2))
+    roi_left_rows = (int(roi_left_center[0]-roi_l/2),
+                    int(roi_left_center[0]+roi_l/2))
+    roi_left_cols = (int(roi_left_center[1]-roi_w/2),
+                    int(roi_left_center[1]+roi_w/2))
 
-    eye_north_roi_rows = (int(eye_north_center[0]-roi_w/2),int(eye_north_center[0]+roi_w/2))
-    eye_north_roi_cols = (int(eye_north_center[1]-roi_h/2),int(eye_north_center[1]+roi_h/2))
+    roi_top_rows = (int(roi_top_center[0]-roi_w/2),
+                    int(roi_top_center[0]+roi_w/2))
+    roi_top_cols = (int(roi_top_center[1]-roi_l/2),
+                    int(roi_top_center[1]+roi_l/2))
     
-    eye_south_roi_rows = (int(eye_south_center[0]-roi_w/2),int(eye_south_center[0]+roi_w/2))
-    eye_south_roi_cols = (int(eye_south_center[1]-roi_h/2),int(eye_south_center[1]+roi_h/2))
+    roi_bottom_rows = (int(roi_bottom_center[0]-roi_w/2),
+                        int(roi_bottom_center[0]+roi_w/2))
+    roi_bottom_cols = (int(roi_bottom_center[1]-roi_l/2),
+                        int(roi_bottom_center[1]+roi_l/2))
     
     # Calculate anchors (upper-left corner of each roi)
     anchors = [
-        (eye_right_roi_rows[0], eye_right_roi_cols[0],roi_h,roi_w),
-        (eye_left_roi_rows[0], eye_left_roi_cols[0],roi_h,roi_w),
-        (eye_north_roi_rows[0], eye_north_roi_cols[0],roi_w,roi_h),
-        (eye_south_roi_rows[0], eye_south_roi_cols[0],roi_w,roi_h),
+        (roi_right_rows[0], roi_right_cols[0],roi_l,roi_w),
+        (roi_left_rows[0], roi_left_cols[0],roi_l,roi_w),
+        (roi_top_rows[0], roi_top_cols[0],roi_w,roi_l),
+        (roi_bottom_rows[0], roi_bottom_cols[0],roi_w,roi_l),
               ]
     
     # Calculate windows
-    eye_right_roi = image[eye_right_roi_rows[0]:eye_right_roi_rows[1],
-                          eye_right_roi_cols[0]:eye_right_roi_cols[1]]
-    eye_left_roi = image[eye_left_roi_rows[0]:eye_left_roi_rows[1],
-                          eye_left_roi_cols[0]:eye_left_roi_cols[1]]
-    eye_north_roi = image[eye_north_roi_rows[0]:eye_north_roi_rows[1],
-                          eye_north_roi_cols[0]:eye_north_roi_cols[1]]
-    eye_south_roi = image[eye_south_roi_rows[0]:eye_south_roi_rows[1],
-                          eye_south_roi_cols[0]:eye_south_roi_cols[1]]
+    roi_right = image[roi_right_rows[0]:roi_right_rows[1],
+                          roi_right_cols[0]:roi_right_cols[1]]
+    roi_left = image[roi_left_rows[0]:roi_left_rows[1],
+                          roi_left_cols[0]:roi_left_cols[1]]
+    roi_top = image[roi_top_rows[0]:roi_top_rows[1],
+                          roi_top_cols[0]:roi_top_cols[1]]
+    roi_bottom = image[roi_bottom_rows[0]:roi_bottom_rows[1],
+                          roi_bottom_cols[0]:roi_bottom_cols[1]]
     
-    rois = np.array([eye_right_roi, eye_left_roi, eye_north_roi, eye_south_roi])
+    rois = (roi_right, roi_left, roi_top, roi_bottom)
 
-    eye_intensity_horizontal = np.sum(eye_right_roi)+np.sum(eye_left_roi)
-    eye_intensity_vertical = np.sum(eye_north_roi)+np.sum(eye_south_roi)
+    roi_intensity_horizontal = np.sum(roi_right)+np.sum(roi_left)
+    roi_intensity_vertical = np.sum(roi_top)+np.sum(roi_bottom)
     
-    intensity_ratio = eye_intensity_horizontal/eye_intensity_vertical
-    
+    intensity_ratio = roi_intensity_horizontal/roi_intensity_vertical
+
     return intensity_ratio, rois, centers, anchors
 
 
