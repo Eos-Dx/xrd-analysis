@@ -12,6 +12,7 @@ from sklearn.linear_model import LinearRegression
 from models.curve_fitting import PolynomialFit
 from models.utils import gen_zeromatrix
 from models.feature_engineering import feature_5a_peak_location
+from models.feature_engineering import feature_9a_ratio
 
 
 class TestPolynomialFit(unittest.TestCase):
@@ -122,6 +123,27 @@ class TestFeatureEngineering(unittest.TestCase):
         abs_peak_location = roi_peak_location
 
         self.assertEqual(abs_peak_location, peak_row)
+
+    def test_9a_ratio(self):
+        # Create a test image
+        test_image = np.zeros((256,256))
+        # Create some blobs in the 9.8A region of interest
+        rect_w = 5
+        rect_l = 19
+        start_radius = 25
+        # Set the top area to 1
+        test_image[128-start_radius-rect_w//2:128-start_radius+rect_w//2,
+                128-rect_l//2:128+rect_l//2] = 1
+
+        # Set the right area to 2
+        test_image[128+start_radius-rect_l//2:128+start_radius+rect_l//2,
+                128-rect_w//2:128+rect_w//2] = 2
+
+        # Get the 9A peak ratio
+        test_ratio, _, _, _ = feature_9a_ratio(test_image)
+        known_ratio = 2 # 2/1 = 2
+
+        self.assertEqual(test_ratio, known_ratio)
 
 if __name__ == '__main__':
     unittest.main()
