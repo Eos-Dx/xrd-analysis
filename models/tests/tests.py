@@ -11,6 +11,8 @@ from sklearn.linear_model import LinearRegression
 
 from models.curve_fitting import PolynomialFit
 from models.utils import gen_zeromatrix
+from models.feature_engineering import feature_5a_peak_location
+from models.feature_engineering import feature_9a_ratio
 
 
 class TestPolynomialFit(unittest.TestCase):
@@ -105,6 +107,52 @@ class TestUtils(unittest.TestCase):
             ])
         rtol=1e-3
         self.assertTrue(True == np.isclose(zeromatrix, known_zeros.T,rtol=rtol).all())
+
+
+class TestFeatureEngineering(unittest.TestCase):
+
+    def test_5a_peak_location(self):
+        # Create a test image
+        test_image = np.zeros((256,256))
+        # set a peak in the 5A region of interest
+        peak_row = 60
+        center_col = 128
+        test_image[peak_row,center_col] = 1
+
+        roi_peak_location, _, _, _ = feature_5a_peak_location(test_image)
+        abs_peak_location = roi_peak_location
+
+        self.assertEqual(abs_peak_location, peak_row)
+
+    def test_9a_ratio(self):
+        # Create a test image
+        test_image = np.zeros((256,256))
+        # Create some blobs in the 9.8A region of interest
+        rect_w = 4
+        rect_l = 18
+        start_radius = 25
+        # Set the top area to 1
+        test_image[128-start_radius-rect_w:128-start_radius,
+                128-rect_l//2:128+rect_l//2] = 1
+
+        # Set the right area to 2
+        test_image[128-rect_l//2:128+rect_l//2,
+                128+start_radius:128+start_radius+rect_w] = 2
+
+        # Get the 9A peak ratio
+        test_ratio, test_rois, test_centers, test_anchors = feature_9a_ratio(test_image,
+                start_radius=start_radius)
+        known_ratio = 2 # 2/1 = 2
+
+        # Ensure the intensity is as expected
+        self.assertEqual(test_ratio, known_ratio)
+
+        # Ensure the rois are as expected
+        roi_right = test_rois[0]
+        roi_top = test_rois[2]
+
+        self.assertEqual(np.mean(roi_top),1)
+        self.assertEqual(np.mean(roi_right),2)
 
 
 if __name__ == '__main__':
