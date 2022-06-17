@@ -11,6 +11,7 @@ from sklearn.linear_model import LinearRegression
 
 from models.curve_fitting import PolynomialFit
 from models.utils import gen_zeromatrix
+from models.feature_engineering import feature_5a_peak_location
 
 
 class TestPolynomialFit(unittest.TestCase):
@@ -106,6 +107,21 @@ class TestUtils(unittest.TestCase):
         rtol=1e-3
         self.assertTrue(True == np.isclose(zeromatrix, known_zeros.T,rtol=rtol).all())
 
+
+class TestFeatureEngineering(unittest.TestCase):
+
+    def test_5a_peak_location(self):
+        # Create a test image
+        test_image = np.zeros((256,256))
+        # set a peak in the 5A region of interest
+        peak_row = 60
+        center_col = 128
+        test_image[peak_row,center_col] = 1
+
+        roi_peak_location, _, _, _ = feature_5a_peak_location(test_image)
+        abs_peak_location = roi_peak_location
+
+        self.assertEqual(abs_peak_location, peak_row)
 
 if __name__ == '__main__':
     unittest.main()
