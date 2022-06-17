@@ -132,12 +132,12 @@ class TestFeatureEngineering(unittest.TestCase):
         rect_l = 19
         start_radius = 25
         # Set the top area to 1
-        test_image[128-start_radius-rect_w//2:128-start_radius+rect_w//2,
+        test_image[128-start_radius-rect_w:128-start_radius,
                 128-rect_l//2:128+rect_l//2] = 1
 
         # Set the right area to 2
-        test_image[128+start_radius-rect_l//2:128+start_radius+rect_l//2,
-                128-rect_w//2:128+rect_w//2] = 2
+        test_image[128-rect_l//2:128+rect_l//2,
+                128+start_radius-rect_w//2:128+start_radius+rect_w//2] = 2
 
         # Get the 9A peak ratio
         test_ratio, _, _, _ = feature_9a_ratio(test_image)
