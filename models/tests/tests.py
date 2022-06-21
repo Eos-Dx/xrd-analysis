@@ -11,6 +11,7 @@ from sklearn.linear_model import LinearRegression
 
 from models.curve_fitting import PolynomialFit
 from models.utils import gen_zeromatrix
+from models.utils import l1_norm
 from models.feature_engineering import feature_5a_peak_location
 from models.feature_engineering import feature_9a_ratio
 
@@ -154,6 +155,24 @@ class TestFeatureEngineering(unittest.TestCase):
         self.assertEqual(np.mean(roi_top),1)
         self.assertEqual(np.mean(roi_right),2)
 
+
+class TestL1Norm(unittest.TestCase):
+
+    def test_l1_norm(self):
+        # Create test matrices
+        A = np.array([
+            [1,0],
+            [0,1],
+            ])
+        B = np.array([
+            [0,1,],
+            [1,0,],
+            ])
+        distance = 4/A.size
+
+        l1 = l1_norm(A,B)
+
+        self.assertEqual(distance, l1)
 
 if __name__ == '__main__':
     unittest.main()
