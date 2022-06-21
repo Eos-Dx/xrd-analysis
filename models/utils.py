@@ -33,3 +33,11 @@ def gen_zeromatrix(shape, save_mat=False, save_numpy=False, outdir=""):
         np.save(full_savepath, zeromatrix)
 
     return zeromatrix
+
+def l1_norm(A, B):
+    """
+    Calculates the L1-norm (distance) of two matrices.
+    """
+    if A.size != B.size:
+        raise ValueError("Matrix sizes must agree!")
+    return 1/A.size*np.sum(abs(A.ravel()-B.ravel()))
