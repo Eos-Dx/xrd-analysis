@@ -13,9 +13,9 @@ from models.utils import l1_metric
 from models.utils import l1_metric_normalized
 import matplotlib.pyplot as plt
 
-def sort_fileslist(fileslist, samplecsv_path, samplecsv):
+def sort_data(fileslist, samplecsv_path, samplecsv):
     """
-    Use pandas DataFrame to sort files by class
+    Use pandas DataFrame to sort data by class and patient
     """
     # Import csv as dataframe
     csv_file = os.path.join(samplecsv_path, samplecsv)
@@ -27,22 +27,19 @@ def sort_fileslist(fileslist, samplecsv_path, samplecsv):
     barcodes = [re.search("A[0-9]+",fname)[0] for fname in fnames]
     # Labels
     labels = df1["Cancer"].values.tolist()
+    # Patients
+    patients = df1["Patient"].values.tolist()
 
     # Create an array of the barcodes to match with fileslist
-    dataframe2_arr = list(zip(barcodes, fileslist, labels))
+    dataframe2_arr = list(zip(barcodes, fileslist, patients, labels))
 
     df2 = pd.DataFrame(data=dataframe2_arr,
-                       columns=["Barcode","Filename","Label"])
+                       columns=["Barcode","Filename", "Patient", "Label"])
 
-    # Sort by Label, then Barcode
-    df2_sorted = df2.sort_values(by=["Label", "Barcode"])
+    # Sort by Label, then Patient, then Barcode, and reset index
+    df2_sorted = df2.sort_values(by=["Label", "Patient", "Barcode"]).reset_index()
 
-    # Print the index of the first cancer sample
-    print("Index of first cancer sample:",
-            df2_sorted.index[df2_sorted["Label"] == 0].tolist()[0])
-
-    fileslist_sorted = df2_sorted["Filename"].values.tolist()
-    return fileslist_sorted
+    return df2_sorted
 
 def read_data(input_dir, samplecsv_path, samplecsv, size=256*256):
     """
@@ -51,8 +48,10 @@ def read_data(input_dir, samplecsv_path, samplecsv, size=256*256):
 
     # Get list of files from input directory
     fileslist = glob.glob(os.path.join(input_dir,"*.txt"))
-    # Sort files list
-    fileslist = sort_fileslist(fileslist, samplecsv_path, samplecsv)
+    fileslist.sort()
+    # Sort data
+    # df = sort_data(fileslist, samplecsv_path, samplecsv)
+    # fileslist = df["Filename"].values.tolist()
 
     # Get number of files
     file_num = len(fileslist)
