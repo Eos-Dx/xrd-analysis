@@ -64,7 +64,7 @@ def read_data(input_dir, samplecsv_path, samplecsv, size=256*256):
     for idx in range(file_num):
         data_array[idx,...] = np.loadtxt(fileslist[idx]).ravel()
 
-    return data_array, fileslist
+    return data_array
 
 def generate_l1_matrix(data_array):
     """
@@ -112,7 +112,7 @@ if __name__ == '__main__':
 
     # Read the data
     print("Reading input data...")
-    data_array, fileslist = read_data(filesdir, samplecsv_path, samplecsv)
+    data_array = read_data(filesdir, samplecsv_path, samplecsv)
     # Generate the L1 matrix
     print("Generating L1 heatmap...")
     l1_matrix = generate_l1_matrix(data_array)
