@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from models.utils import l1_metric
+from models.utils import l1_metric_normalized
 import matplotlib.pyplot as plt
 
 def sort_fileslist(fileslist, samplecsv_path, samplecsv):
@@ -75,7 +76,7 @@ def generate_l1_matrix(data_array):
     # (only need to compute half since it is symmetric)
     for idx in range(data_array.shape[0]):
         for jdx in range(data_array.shape[0]):
-            l1_matrix[idx,jdx] = l1_metric(data_array[idx], data_array[jdx])
+            l1_matrix[idx,jdx] = l1_metric_normalized(data_array[idx], data_array[jdx])
 
     return l1_matrix
 
