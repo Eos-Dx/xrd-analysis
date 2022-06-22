@@ -50,8 +50,6 @@ def l1_metric_normalized(A, B):
     """
     if A.size != B.size:
         raise ValueError("Matrix sizes must agree!")
-    A_vec = A.ravel()
-    B_vec = B.ravel()
-    A_vec = A_vec/np.sum(A_vec)
-    B_vec = B_vec/np.sum(B_vec)
-    return 1/A.size*np.sum(abs(A_vec-B_vec))
+    A_vec = A.ravel()/np.sum(A)
+    B_vec = B.ravel()/np.sum(B)
+    return 1*np.sum(abs(A_vec-B_vec))
