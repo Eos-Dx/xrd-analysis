@@ -34,9 +34,10 @@ def gen_zeromatrix(shape, save_mat=False, save_numpy=False, outdir=""):
 
     return zeromatrix
 
-def l1_norm(A, B):
+def l1_metric(A, B):
     """
-    Calculates the L1-norm (distance) of two matrices.
+    Calculates the L1 metric (distance) of two matrices
+    based on the L1 norm as defined below.
     """
     if A.size != B.size:
         raise ValueError("Matrix sizes must agree!")
