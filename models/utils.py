@@ -42,3 +42,16 @@ def l1_metric(A, B):
     if A.size != B.size:
         raise ValueError("Matrix sizes must agree!")
     return 1/A.size*np.sum(abs(A.ravel()-B.ravel()))
+
+def l1_metric_normalized(A, B):
+    """
+    Calculates the L1 metric (distance) of two matrices
+    based on the L1 norm as defined below, with normalization.
+    """
+    if A.size != B.size:
+        raise ValueError("Matrix sizes must agree!")
+    A_vec = A.ravel()
+    B_vec = B.ravel()
+    A_vec = A_vec/np.sum(A_vec)
+    B_vec = B_vec/np.sum(B_vec)
+    return 1/A.size*np.sum(abs(A_vec-B_vec))
