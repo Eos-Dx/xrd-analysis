@@ -19,35 +19,6 @@ from visualization.utils import heatmap
 from visualization.utils import annotate_heatmap
 
 
-def sort_data(fileslist, samplecsv_path, samplecsv):
-    """
-    Use pandas DataFrame to sort data by class and patient
-    """
-    # Import csv as dataframe
-    csv_file = os.path.join(samplecsv_path, samplecsv)
-    df1 = pd.read_csv(csv_file, sep=",")
-
-    # Get the basename of each file
-    fnames = [os.path.basename(fname) for fname in fileslist]
-    # Get the barcode from each file
-    barcodes = [re.search("A[0-9]+",fname)[0] for fname in fnames]
-    # Filter by barcode
-    # Labels
-    cancer_labels = df1["Cancer"].values.tolist()
-    # Patients
-    patients = df1["Patient"].values.tolist()
-
-    # Create an array of the barcodes to match with fileslist
-    dataframe2_arr = list(zip(barcodes, fileslist, patients, cancer_labels))
-
-    df2 = pd.DataFrame(data=dataframe2_arr,
-                       columns=["Barcode","Filename", "Patient", "Cancer"])
-
-    # Sort by Cancer, then Patient, then Barcode, and reset index
-    df2_sorted = df2.sort_values(by=["Cancer", "Patient", "Barcode"]).reset_index()
-
-    return df2_sorted
-
 def read_data(input_dir, samplecsv_path, samplecsv, size=256*256):
     """
     Reads data into numpy array
@@ -55,10 +26,9 @@ def read_data(input_dir, samplecsv_path, samplecsv, size=256*256):
 
     # Get list of files from input directory
     fileslist = glob.glob(os.path.join(input_dir,"*.txt"))
+    # Sort files list
     fileslist.sort()
-    # Sort data
-    df = sort_data(fileslist, samplecsv_path, samplecsv)
-    fileslist = df["Filename"].values.tolist()
+    barcodes = [re.search("A[0-9]+",fname)[0] for fname in fileslist]
 
     # Get number of files
     file_num = len(fileslist)
@@ -66,14 +36,21 @@ def read_data(input_dir, samplecsv_path, samplecsv, size=256*256):
     # First index is the file, second is the size of raw data
     data_array = np.zeros((file_num,size))
 
-
-    # Read files into array
+    # Read preprocessed measurments data from files into array
     for idx in range(file_num):
         data_array[idx,...] = np.loadtxt(fileslist[idx]).ravel()
 
-    df["PreprocessedData"] = pd.Series(list(data_array))
+    # Read cancer class labels from csv
+    df = pd.read_csv(os.path.join(samplecsv_path, samplecsv), sep=",")
 
-    return df
+    # Now take subset of data from csv file
+    df_subset = df[df["Barcode"].isin(barcodes)].copy().reset_index()
+    del df_subset["index"]
+
+    # Now add data
+    df_subset["PreprocessedData"] = list(data_array)
+
+    return df_subset
 
 def generate_l1_matrix(df):
     """
@@ -98,7 +75,7 @@ def plot_matrix(matrix_df, log_df, plotdir, plotname):
     fig.set_facecolor("white")
     ax1 = fig.add_subplot(111)
 
-    plt.title("Heatmap of L1 metric")
+    plt.title("Heatmap of L1 metric (inverse) correlation matrix")
 
     matrix = matrix_df.to_numpy(dtype=np.float64)
     # matrix = matrix_df
@@ -119,8 +96,10 @@ def plot_matrix(matrix_df, log_df, plotdir, plotname):
             0: 'b',
             1: 'r',
             }
-    for xtick, cancer_label in zip(ax1.get_xticklabels(), cancer_labels):
+    for xtick, ytick, cancer_label in zip(
+                        ax1.get_xticklabels(), ax1.get_yticklabels(), cancer_labels):
         xtick.set_color(color_dict[cancer_label])
+        ytick.set_color(color_dict[cancer_label])
 
     fig.tight_layout()
     fig.savefig(os.path.join(plotdir, plotname))
