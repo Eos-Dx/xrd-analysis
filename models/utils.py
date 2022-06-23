@@ -54,7 +54,7 @@ def l1_metric_normalized(A, B):
         raise ValueError("Matrix sizes must agree!")
     A_vec = A.ravel()/np.sum(A)
     B_vec = B.ravel()/np.sum(B)
-    return 1*np.sum(abs(A_vec-B_vec))
+    return np.sum(abs(A_vec-B_vec))
 
 def cluster_corr(corr_array, inplace=False):
     # via: https://wil.yegelwel.com/cluster-correlation-matrix/
