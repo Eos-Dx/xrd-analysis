@@ -9,9 +9,15 @@ import glob
 import numpy as np
 import pandas as pd
 
+import matplotlib.pyplot as plt
+
 from models.utils import l1_metric
 from models.utils import l1_metric_normalized
-import matplotlib.pyplot as plt
+from models.utils import cluster_corr
+
+from visualization.utils import heatmap
+from visualization.utils import annotate_heatmap
+
 
 def sort_data(fileslist, samplecsv_path, samplecsv):
     """
@@ -25,19 +31,20 @@ def sort_data(fileslist, samplecsv_path, samplecsv):
     fnames = [os.path.basename(fname) for fname in fileslist]
     # Get the barcode from each file
     barcodes = [re.search("A[0-9]+",fname)[0] for fname in fnames]
+    # Filter by barcode
     # Labels
-    labels = df1["Cancer"].values.tolist()
+    cancer_labels = df1["Cancer"].values.tolist()
     # Patients
     patients = df1["Patient"].values.tolist()
 
     # Create an array of the barcodes to match with fileslist
-    dataframe2_arr = list(zip(barcodes, fileslist, patients, labels))
+    dataframe2_arr = list(zip(barcodes, fileslist, patients, cancer_labels))
 
     df2 = pd.DataFrame(data=dataframe2_arr,
-                       columns=["Barcode","Filename", "Patient", "Label"])
+                       columns=["Barcode","Filename", "Patient", "Cancer"])
 
-    # Sort by Label, then Patient, then Barcode, and reset index
-    df2_sorted = df2.sort_values(by=["Label", "Patient", "Barcode"]).reset_index()
+    # Sort by Cancer, then Patient, then Barcode, and reset index
+    df2_sorted = df2.sort_values(by=["Cancer", "Patient", "Barcode"]).reset_index()
 
     return df2_sorted
 
@@ -50,8 +57,8 @@ def read_data(input_dir, samplecsv_path, samplecsv, size=256*256):
     fileslist = glob.glob(os.path.join(input_dir,"*.txt"))
     fileslist.sort()
     # Sort data
-    # df = sort_data(fileslist, samplecsv_path, samplecsv)
-    # fileslist = df["Filename"].values.tolist()
+    df = sort_data(fileslist, samplecsv_path, samplecsv)
+    fileslist = df["Filename"].values.tolist()
 
     # Get number of files
     file_num = len(fileslist)
@@ -59,32 +66,63 @@ def read_data(input_dir, samplecsv_path, samplecsv, size=256*256):
     # First index is the file, second is the size of raw data
     data_array = np.zeros((file_num,size))
 
+
     # Read files into array
     for idx in range(file_num):
         data_array[idx,...] = np.loadtxt(fileslist[idx]).ravel()
 
-    return data_array
+    df["PreprocessedData"] = pd.Series(list(data_array))
 
-def generate_l1_matrix(data_array):
+    return df
+
+def generate_l1_matrix(df):
     """
     Generates a matrix of L1 distance of size data_array.shape[0] square
     """
     # Create an array to store the L1 distances
-    l1_matrix = np.zeros((data_array.shape[0], data_array.shape[0]))
+    data_array = df["PreprocessedData"].values
+    barcodes = df["Barcode"].values.tolist()
+    matrix_df = pd.DataFrame([], barcodes, barcodes)
+
     # Calculate the L1 distance for each pair
     # (only need to compute half since it is symmetric)
     for idx in range(data_array.shape[0]):
         for jdx in range(data_array.shape[0]):
-            l1_matrix[idx,jdx] = l1_metric_normalized(data_array[idx], data_array[jdx])
+            matrix_df[barcodes[idx]][barcodes[jdx]] = \
+                    l1_metric_normalized(data_array[idx], data_array[jdx])
 
-    return l1_matrix
+    return matrix_df
 
-def plot_matrix(matrix, plotdir, plotname):
+def plot_matrix(matrix_df, log_df, plotdir, plotname):
     fig = plt.figure(figsize=(8,8))
     fig.set_facecolor("white")
     ax1 = fig.add_subplot(111)
+
     plt.title("Heatmap of L1 metric")
-    ax1.imshow(matrix, cmap='magma')
+
+    matrix = matrix_df.to_numpy(dtype=np.float64)
+    # matrix = matrix_df
+    # ax1.imshow(matrix,cmap='magma')
+
+    # Get barcodes
+    barcodes = matrix_df.head()
+
+    im, cbar = heatmap(matrix, barcodes, barcodes, ax=ax1,
+                       cmap="magma", cbarlabel="L1 Distance")
+    # texts = annotate_heatmap(im, valfmt="{x:.1f} t")
+
+    # Color the axis labels according to cancer label
+    # Get cancer labels
+    cancer_labels = log_df["Cancer"]
+
+    color_dict = {
+            0: 'b',
+            1: 'r',
+            }
+    for xtick, cancer_label in zip(ax1.get_xticklabels(), cancer_labels):
+        xtick.set_color(color_dict[cancer_label])
+
+    fig.tight_layout()
     fig.savefig(os.path.join(plotdir, plotname))
 
 
@@ -111,11 +149,16 @@ if __name__ == '__main__':
 
     # Read the data
     print("Reading input data...")
-    data_array = read_data(filesdir, samplecsv_path, samplecsv)
+    df1 = read_data(filesdir, samplecsv_path, samplecsv)
     # Generate the L1 matrix
     print("Generating L1 heatmap...")
-    l1_matrix = generate_l1_matrix(data_array)
+    l1_df = generate_l1_matrix(df1)
+    # print("Clustering...")
+    # l1_df_clustered_np = cluster_corr(l1_df.to_numpy(dtype=np.float64))
     # Plot the L1 matrix
     print("Plotting the L1 matrix...")
-    plot_matrix(l1_matrix, plotdir, plotname)
+    plot_matrix(l1_df, df1, plotdir, plotname)
+    print("Saving data to file...")
+    l1_df.to_csv(os.path.join(plotdir, "l1_heatmap.csv"))
+    # l1_df_clustered.to_csv(os.path.join(plotdir, "l1_heatmap_clustered.csv"))
     print("Done.")
