@@ -352,6 +352,12 @@ class TestDenoising(unittest.TestCase):
 
 class TestImageProcessing(unittest.TestCase):
 
+    def test_sensible_intensity_ranges(self):
+        self.fail("Finish writing test")
+
+    def test_local_threshold_determinism_separate_measurements(self):
+        self.fail("Finish writing test")
+
     def test_centerize_photon_count(self):
         """
         Ensure that the centerized image has a photon intensity count
