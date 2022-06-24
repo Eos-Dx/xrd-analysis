@@ -12,17 +12,17 @@ from scipy import ndimage
 from skimage.filters import threshold_local
 import imageio
 
-from preprocessing.center_finding import find_center
-from preprocessing.center_finding import find_centroid
-from preprocessing.utils import create_circular_mask
-from preprocessing.utils import gen_rotation_line
-from preprocessing.utils import get_angle
-from preprocessing.denoising import filter_strays
-from preprocessing.image_processing import centerize
-from preprocessing.image_processing import rotate_image
-from preprocessing.image_processing import convert_to_cv2_img
-from preprocessing.image_processing import crop_image
-from preprocessing.image_processing import quadrant_fold
+from eosdxanalysis.preprocessing.center_finding import find_center
+from eosdxanalysis.preprocessing.center_finding import find_centroid
+from eosdxanalysis.preprocessing.utils import create_circular_mask
+from eosdxanalysis.preprocessing.utils import gen_rotation_line
+from eosdxanalysis.preprocessing.utils import get_angle
+from eosdxanalysis.preprocessing.denoising import filter_strays
+from eosdxanalysis.preprocessing.image_processing import centerize
+from eosdxanalysis.preprocessing.image_processing import rotate_image
+from eosdxanalysis.preprocessing.image_processing import convert_to_cv2_img
+from eosdxanalysis.preprocessing.image_processing import crop_image
+from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 
 
 """
