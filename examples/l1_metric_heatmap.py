@@ -12,11 +12,25 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from models.utils import l1_metric
-from models.utils import l1_metric_normalized
+from models.utils import l1_metric_optimized
 from models.utils import cluster_corr
 
 from visualization.utils import heatmap
 from visualization.utils import annotate_heatmap
+
+params = {
+    "h": 256,
+    "w": 256,
+    "beam_rmax": 25,
+    "rmin": 25,
+    "rmax": 90,
+    "eyes_rmin": 30,
+    "eyes_rmax": 45,
+    "eyes_blob_rmax": 20,
+    "eyes_percentile": 99,
+    "local_thresh_block_size": 21,
+    "crop_style": "both"
+}
 
 
 def read_data(input_dir, samplecsv_path, samplecsv, size=256*256):
@@ -65,9 +79,15 @@ def generate_l1_matrix(df):
     # (only need to compute half since it is symmetric)
     for idx in range(data_array.shape[0]):
         for jdx in range(data_array.shape[0]):
-            matrix_df[barcodes[idx]][barcodes[jdx]] = \
-                    l1_metric_normalized(data_array[idx], data_array[jdx])
-
+            # Get the barcode and image data
+            barcode1 = barcodes[idx]
+            barcode2 = barcodes[jdx]
+            image1 = data_array[idx].reshape((256,256)).astype(np.uint16)
+            image2 = data_array[jdx].reshape((256,256)).astype(np.uint16)
+            # Calculate the L1 distance (minimization optimization algorithm)
+            # between the images
+            distance = l1_metric_optimized(image1, image2, params)
+            matrix_df[barcode1][barcode2] = distance
     return matrix_df
 
 def plot_matrix(matrix_df, log_df, plotdir, plotname):
