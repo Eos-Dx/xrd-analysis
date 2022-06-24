@@ -1,5 +1,5 @@
 import numpy as np
-from preprocessing.utils import create_circular_mask
+from eosdxanalysis.preprocessing.utils import create_circular_mask
 
 RMIN_BEAM=0
 RMAX_BEAM=50
