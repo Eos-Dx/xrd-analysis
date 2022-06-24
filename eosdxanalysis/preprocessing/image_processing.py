@@ -169,10 +169,10 @@ def crop_image(img,height,width,center=None):
     """
     if center == None:
         center_row = height//2
-        center_col = widith//2
+        center_col = width//2
     else:
-        center_row = center[0]
-        center_col = center[1]
+        center_row = int(center[0])
+        center_col = int(center[1])
 
     row_start = center_row-height//2
     row_end = center_row+height//2
