@@ -157,3 +157,59 @@ def feature_5a_peak_location(image, row_min=6, row_max=78, roi_w=5):
     peak_location = roi_peak_location + row_min
     
     return peak_location, roi, roi_center, anchor
+
+def feature_5a_9a_peak_location_ratio(image,
+                                    row_min_5a=6, row_max_5a=78, roi_w_5a=4,
+                                    start_radius_9a=25, roi_l_9a=18, roi_w_9a=4):
+    """
+    Calculate the locations (radii) of the 5.1A and 9.8A peaks.
+    Then take the ratio of their locations (radii).
+    """
+
+    ######################################
+    # Calculate the 5.1A location radius #
+    ######################################
+    peak_5a_location, _, roi_5a_center, _ = feature_5a_peak_location(image,
+                    row_min=row_min_5a, row_max=row_max_5a, roi_w=roi_w_5a)
+    peak_5a_radius = image.shape[0]//2 - peak_5a_location + 0.5
+
+    ########################
+    # Define the 9.8A roi #
+    ########################
+    # Calculate center of horizontal/equitorial roi's
+    roi_9a_right_center = (int(image.shape[0]/2),
+                        int(image.shape[1]/2 + start_radius_9a + roi_w_9a/2))
+    roi_9a_left_center = (int(image.shape[0]/2),
+                        int(image.shape[1]/2 - start_radius_9a - roi_w_9a/2))
+    # Calculate slice indices
+    roi_9a_right_rows = (int(roi_9a_right_center[0]-roi_l_9a/2),
+                    int(roi_9a_right_center[0]+roi_l_9a/2))
+    roi_9a_right_cols = (int(roi_9a_right_center[1]-roi_w_9a/2),
+                    int(roi_9a_right_center[1]+roi_w_9a/2))
+
+    roi_9a_left_rows = (int(roi_9a_left_center[0]-roi_l_9a/2),
+                    int(roi_9a_left_center[0]+roi_l_9a/2))
+    roi_9a_left_cols = (int(roi_9a_left_center[1]-roi_w_9a/2),
+                    int(roi_9a_left_center[1]+roi_w_9a/2))
+
+    # Calculate windows
+    roi_9a_right = image[roi_9a_right_rows[0]:roi_9a_right_rows[1],
+                          roi_9a_right_cols[0]:roi_9a_right_cols[1]]
+    roi_9a_left = image[roi_9a_left_rows[0]:roi_9a_left_rows[1],
+                          roi_9a_left_cols[0]:roi_9a_left_cols[1]]
+    # Combine the windows
+    roi_9a = roi_9a_right + roi_9a_left[:,::-1]
+    # Calculate the peak location (radius)
+    roi_9a_peak_location_list = np.where(roi_9a == np.max(roi_9a))
+    roi_9a_peak_location = np.mean(roi_9a_peak_location_list, axis=1)
+
+    # Convert from roi coordinates to radius in image
+    peak_9a_radius = np.sqrt(np.square(start_radius_9a + roi_9a_peak_location[0] + 0.5) + \
+            np.square(roi_l_9a/2 - roi_9a_peak_location[1] + 0.5))
+
+    #############################################################################
+    # Calculate the ratio of the 5.1A peak location over the 9.8A peak location #
+    #############################################################################
+
+    ratio = peak_5a_radius/peak_9a_radius
+    return ratio
