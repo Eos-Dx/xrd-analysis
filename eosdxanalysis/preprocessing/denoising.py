@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.ndimage import generic_filter
-from preprocessing.utils import create_circular_mask
+from eosdxanalysis.preprocessing.utils import create_circular_mask
 
 """
 Methods for denoising the diffraction pattern

@@ -11,9 +11,9 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 
-from models.utils import l1_metric
-from models.utils import l1_metric_optimized
-from models.utils import cluster_corr
+from eosdxanalysis.models.utils import l1_metric
+from eosdxanalysis.models.utils import l1_metric_optimized
+from eosdxanalysis.models.utils import cluster_corr
 
 from visualization.utils import heatmap
 from visualization.utils import annotate_heatmap

@@ -9,11 +9,11 @@ import numpy.ma as ma
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
-from models.curve_fitting import PolynomialFit
-from models.utils import gen_zeromatrix
-from models.utils import l1_metric
-from models.feature_engineering import feature_5a_peak_location
-from models.feature_engineering import feature_9a_ratio
+from eosdxanalysis.models.curve_fitting import PolynomialFit
+from eosdxanalysis.models.utils import gen_zeromatrix
+from eosdxanalysis.models.utils import l1_metric
+from eosdxanalysis.models.feature_engineering import feature_5a_peak_location
+from eosdxanalysis.models.feature_engineering import feature_9a_ratio
 
 
 class TestPolynomialFit(unittest.TestCase):
