@@ -24,7 +24,10 @@ def read_data(input_dir, samplecsv_path, samplecsv, size=256*256, average=False)
     fileslist = glob.glob(os.path.join(input_dir,"*.txt"))
     # Sort files list
     fileslist.sort()
-    barcodes = [re.search("A[0-9]+",fname)[0] for fname in fileslist]
+    basenames = [os.path.splitext(os.path.basename(fname))[0] \
+                    for fname in fileslist]
+    # Remove preprocessed_ prefix if present
+    barcodes = [re.sub(r"preprocessed_","", bname) for bname in basenames]
 
     # Get number of files
     file_num = len(fileslist)
