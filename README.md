@@ -26,8 +26,9 @@ Install the `eosdxanalysis` python package as follows:
 ## GitHub Workflow
 Use the GitHub commandline interface to speed up development. Make sure to follow best practices.
 1. Create an issue, and optionally add a label: `gh issue create`
-2. Create a branch named according to the issue type, description, and issue number: `git checkout -b feature/brilliant-new-feature/42`
+2. Create a branch named according to the issue type, description, and issue number:
+`git checkout -b feature/brilliant-new-feature/42`
 3. Solve the issue and include tests and documentation if appropriate.
-4. some commits: `git add name_of_file_changed; git commit -m "adds new brilliant feature"`
+4. Make some commits: `git add name_of_file_changed; git commit -m "adds new brilliant feature"`
 5. Create a pull request and note its number: `gh pr create`
 6. Merge the pull request and reference the issue: `gh pr merge 43 --body "Solves #42"`
