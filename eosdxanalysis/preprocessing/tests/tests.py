@@ -5,23 +5,25 @@ import pandas as pd
 
 from skimage.io import imsave, imread
 
-from preprocessing.image_processing import centerize
-from preprocessing.image_processing import pad_image
-from preprocessing.image_processing import rotate_image
+from eosdxanalysis.preprocessing.image_processing import centerize
+from eosdxanalysis.preprocessing.image_processing import pad_image
+from eosdxanalysis.preprocessing.image_processing import rotate_image
 
-from preprocessing.center_finding import center_of_mass
-from preprocessing.center_finding import radial_mean
-from preprocessing.center_finding import find_center
-from preprocessing.center_finding import find_centroid
+from eosdxanalysis.preprocessing.center_finding import center_of_mass
+from eosdxanalysis.preprocessing.center_finding import radial_mean
+from eosdxanalysis.preprocessing.center_finding import find_center
+from eosdxanalysis.preprocessing.center_finding import find_centroid
 
-from preprocessing.denoising import stray_filter
-from preprocessing.denoising import filter_strays
+from eosdxanalysis.preprocessing.denoising import stray_filter
+from eosdxanalysis.preprocessing.denoising import filter_strays
 
-from preprocessing.utils import count_intervals
-from preprocessing.utils import create_circular_mask
-from preprocessing.utils import gen_rotation_line
+from eosdxanalysis.preprocessing.utils import count_intervals
+from eosdxanalysis.preprocessing.utils import create_circular_mask
+from eosdxanalysis.preprocessing.utils import gen_rotation_line
 
-from preprocessing.preprocess import PreprocessData
+from eosdxanalysis.preprocessing.preprocess import PreprocessData
+
+from eosdxanalysis.preprocessing.peak_finding import find_peak
 
 TEST_IMAGE_DIR = "preprocessing/tests/test_images"
 
@@ -621,6 +623,64 @@ class TestImageProcessing(unittest.TestCase):
         print(rotated_image_elastic)
 
         self.assertTrue(np.array_equal(rot_image_known, rotated_image_elastic))
+
+
+class TestPeakFinding(unittest.TestCase):
+
+    def test_gaussian_peak_finding_single_max_value(self):
+        """
+        Test gaussian peak finding for a matrix with 1 at the center, rest 0
+        """
+        # Set up the test image
+        image_shape = (5,5)
+        test_image = np.zeros(image_shape)
+        known_peak_location = (image_shape[0]//2, image_shape[0]//2)
+        test_image[known_peak_location[0], known_peak_location[1]] = 1
+
+        # Find the peak location
+        window_size = 3
+        test_peak_location = find_peak(test_image, window_size=window_size)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
+
+    def test_gaussian_peak_finding_double_max_value(self):
+        """
+        Test gaussian peak finding for a matrix with two 1s
+        """
+        # Set up the test image
+        image_shape = (5,5)
+        test_image = np.zeros(image_shape)
+        known_peak_location_1 = (1,1)
+        known_peak_location_2 = (3,3)
+        known_peak_location = (2,2)
+        test_image[known_peak_location_1[0], known_peak_location_1[1]] = 1
+        test_image[known_peak_location_2[0], known_peak_location_2[1]] = 1
+
+        # Find the peak location
+        window_size = 3
+        test_peak_location = find_peak(test_image, window_size=window_size)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
+
+    def test_gaussian_peak_finding_noisy_example(self):
+        # Set up the test image with a noisy peak at the center
+        test_image = np.array([
+            [0,0,0,0,0,],
+            [1,1,0,1,0,],
+            [1,9,6,7,0,],
+            [0,1,1,1,0,],
+            [0,0,0,0,0,],
+            ])
+
+        # Find the peak location
+        window_size = 3
+        known_peak_location = (2,2)
+        test_peak_location = find_peak(test_image, window_size=window_size)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
 if __name__ == '__main__':
     unittest.main()
