@@ -15,8 +15,8 @@ from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.utils import l1_metric_optimized
 from eosdxanalysis.models.utils import cluster_corr
 
-from visualization.utils import heatmap
-from visualization.utils import annotate_heatmap
+from eosdxanalysis.visualization.utils import heatmap
+from eosdxanalysis.visualization.utils import annotate_heatmap
 
 params = {
     "h": 256,
