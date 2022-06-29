@@ -6,6 +6,10 @@ import numpy as np
 from scipy.stats import multivariate_normal
 
 def find_peak(image, roi=None, window_size=3):
+    # Check that window size is not smaller than the image size
+    if window_size > image.shape[0] or window_size > image.shape[1]:
+        raise ValueError("Window size must be less than image size.")
+
     # Create a Gaussian window
     x = np.linspace(-1, 1, window_size)
     y = np.linspace(-1, 1, window_size)
@@ -18,17 +22,15 @@ def find_peak(image, roi=None, window_size=3):
     # within the roi, and find the maximum location
     peak_location_list = []
     dot_product_max = 0
-    for idx in image.shape[0]-window_size:
-        for jdx in image.shape[1]-window_size:
+    for idx in range(image.shape[0]-window_size):
+        for jdx in range(image.shape[0]-window_size):
             dot_product = image[idx:idx+window_size,
-                                jdx:jdx+window_size] @ gaussian
+                                jdx:jdx+window_size].ravel() @ gaussian.ravel()
             if dot_product > dot_product_max:
-                # Delete the previous maximum
-                peak_location_list.pop()
                 # Store the new peak location
                 new_peak_location = np.array([idx+window_size//2,
                                             jdx+window_size//2])
-                peak_location_list.append(new_peak_location)
+                peak_location_list = [new_peak_location]
             if dot_product == dot_product_max:
                 # Add the new peak location
                 new_peak_location = np.array([idx+window_size//2,
