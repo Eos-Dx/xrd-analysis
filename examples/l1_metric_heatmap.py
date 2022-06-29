@@ -3,7 +3,6 @@ Code for creating a heatmap of samples collection using L1 distance
 """
 import os
 import argparse
-import re
 import glob
 
 import numpy as np
@@ -11,8 +10,7 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 
-from eosdxanalysis.models.utils import l1_metric
-from eosdxanalysis.models.utils import l1_metric_optimized
+from eosdxanalysis.models.utils import l1_metric_normalized
 from eosdxanalysis.models.utils import cluster_corr
 
 from eosdxanalysis.visualization.utils import heatmap
@@ -74,7 +72,8 @@ def generate_l1_matrix(df):
     # Create an array to store the L1 distances
     data_array = df["PreprocessedData"].values
     barcodes = df["Barcode"].values.tolist()
-    matrix_df = pd.DataFrame([], barcodes, barcodes)
+    corr_matrix = np.empty((data_array.shape[0], data_array.shape[0]))
+    corr_df = pd.DataFrame(corr_matrix, barcodes, barcodes)
 
     # Calculate the L1 distance for each pair
     # (only need to compute half since it is symmetric)
@@ -87,9 +86,13 @@ def generate_l1_matrix(df):
             image2 = data_array[jdx].reshape((256,256)).astype(np.uint16)
             # Calculate the L1 distance (minimization optimization algorithm)
             # between the images
-            distance = l1_metric_optimized(image1, image2, params)
-            matrix_df[barcode1][barcode2] = distance
-    return matrix_df
+            distance = l1_metric_normalized(image1, image2)
+            corr_df[barcode1][barcode2] = distance
+
+    # Cluster the correlation matrix
+    corr_df_clustered = cluster_corr(corr_df)
+
+    return corr_df_clustered
 
 def plot_matrix(matrix_df, log_df, plotdir, plotname):
     fig = plt.figure(figsize=(8,8))
