@@ -1,16 +1,14 @@
+function TwoDFastFourierTransform(dataFilePath)
 %% Code to import raw data and take 2D FFT
-clear
-
 % Start timer
 tStart = tic;
 
 %%% ________________________________________________________________________________________________________________________________ %%%
 %%% File paths setup
 % Set files directory
-pathToFileList = "C:\Custom\data\ArionData\ARION 04212022\";
 % Read in all data files (fullfile returns OS-agnostic full path)
 filenameFormat = "A*.txt";
-fullFilePath = fullfile(pathToFileList, filenameFormat);
+fullFilePath = fullfile(dataFilePath, filenameFormat);
 filesStruct = dir(fullFilePath);
 
 %%% ________________________________________________________________________________________________________________________________ %%%
@@ -23,7 +21,7 @@ fftStore = zeros(size(sampleStore));
 for sampleIndex = 1 : numel(filesStruct)
     % Read sample matrix %
 
-    pathToFile = fullfile(pathToFileList, filesStruct(sampleIndex).name);
+    pathToFile = fullfile(dataFilePath, filesStruct(sampleIndex).name);
     sampleMatrix = readmatrix(pathToFile);
     sampleStore(sampleIndex,:,:) = sampleMatrix;
 
@@ -73,3 +71,4 @@ title("2D FFT Magnitude [dB+1]");
 % Set the figure proportions according to tiledlayout size
 fig.Position(3) = tileColumns*fig.Position(3);
 fig.Position(4) = tileRows*fig.Position(4);
+end
