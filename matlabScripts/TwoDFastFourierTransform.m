@@ -5,7 +5,7 @@ function TwoDFastFourierTransform(dataFilePath)
     %%% File paths setup
     % Set files directory
     % Read in all data files (fullfile returns OS-agnostic full path)
-    filenameFormat = "A*.txt";
+    filenameFormat = "*A*.txt";
     fullFilePath = fullfile(dataFilePath, filenameFormat);
     filesStruct = dir(fullFilePath);
     
