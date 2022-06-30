@@ -4,6 +4,9 @@ Visualization helper functions
 `heatmap` and `annotated_heatmap` via:
 https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
 """
+import os
+import glob
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -121,3 +124,31 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
             texts.append(text)
 
     return texts
+
+def plot_data_dir(input_directory, output_directory, filename_format="*.txt"):
+    """
+    Plots raw text data as png files and saves to file.
+    """
+    input_filenames = glob.glob(os.path.join(input_directory, filename_format))
+    input_filenames.sort()
+
+    print("Found " + str(len(input_filenames)) + " files.")
+
+    basenames = [os.path.basename(fname) for fname in input_filenames]
+    barcodes = [os.path.splitext(bname)[0] for bname in basenames]
+
+    for idx in range(len(input_filenames)):
+        # Set up figure properties and title
+        fig = plt.figure(dpi=100)
+        fig.set_facecolor("white")
+        fig.suptitle(basenames[idx] + " [dB+1]")
+
+        # Load image and convert to [dB+1]
+        image = np.loadtxt(input_filenames[idx], dtype=np.uint32)
+        image_dB1 = 20*np.log10(image+1)
+
+        # Plot image
+        plt.imshow(image_dB1, cmap="gray")
+
+        # Save figure to file
+        plt.savefig(os.path.join(output_directory, basenames[idx]) + ".png")
