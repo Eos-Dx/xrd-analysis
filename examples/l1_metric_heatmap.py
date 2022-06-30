@@ -4,6 +4,7 @@ Code for creating a heatmap of samples collection using L1 distance
 import os
 import argparse
 import glob
+import re
 
 import numpy as np
 import pandas as pd
