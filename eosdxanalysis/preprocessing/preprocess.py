@@ -1,5 +1,7 @@
 import os
 import glob
+import argparse
+import json
 
 import numpy as np
 import pandas as pd
@@ -336,6 +338,9 @@ class PreprocessData(object):
         eyes_percentile = params.get("eyes_percentile")
         local_thresh_block_size = params.get("local_thresh_block_size")
 
+        # Set mask style from params if crop_style is set
+        mask_style = params.get("crop_style", mask_style)
+
         # Get filename info
         filenames_fullpaths = self.filenames_fullpaths
 
@@ -609,8 +614,8 @@ class PreprocessData(object):
         # Store output directory info
         self.output_dir = output_dir
 
-        # Create output directory only if it does not exist
-        os.makedirs(output_dir)
+        # Create output directory if it does not exist
+        os.makedirs(output_dir, exist_ok=True)
 
         for idx, filename_fullpath in enumerate(filenames_fullpaths):
             filename = os.path.basename(filename_fullpath)
@@ -643,3 +648,34 @@ class PreprocessData(object):
                 save_filename = "preprocessed_{}.png".format(filename)
                 save_filename_fullpath = os.path.join(output_dir, save_filename)
                 imageio.imwrite(save_filename_fullpath, output.astype(np.uint16))
+
+
+if __name__ == "__main__":
+    """
+    Commandline interface
+    """
+    print("Current directory: " + os.getcwd())
+
+    # Set up argument parser
+    parser = argparse.ArgumentParser()
+    # Set up parser arguments
+    parser.add_argument("--input_dir", help="The files directory to analyze")
+    parser.add_argument("--output_dir", help="The directory to preprocessing results")
+    parser.add_argument("--params", help="The parameters for preprocessing")
+    parser.add_argument("--plans", help="The plans for preprocessing")
+
+    args = parser.parse_args()
+
+    # Set variables based on input arguments
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    params = dict(json.loads(args.params))
+    plans = dict(json.loads(args.plans))["plans"]
+
+    # Instantiate PreprocessData class
+    preprocessor = PreprocessData(input_dir=input_dir, params=params)
+    # Run preprocessing
+    preprocessor.preprocess(plans)
+    preprocessor.save(output_dir)
+
+    print("Done.")
