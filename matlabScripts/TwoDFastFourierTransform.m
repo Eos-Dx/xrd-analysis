@@ -11,19 +11,19 @@ pathToFileList = "C:\Custom\data\ArionData\ARION 04212022\";
 % Read in all data files (fullfile returns OS-agnostic full path)
 filenameFormat = "A*.txt";
 fullFilePath = fullfile(pathToFileList, filenameFormat);
-directoriesList = dir(fullFilePath);
+filesStruct = dir(fullFilePath);
 
 %%% ________________________________________________________________________________________________________________________________ %%%
 
 % Create an object to store the data and the fft
-sampleStore = zeros(numel(directoriesList),256,256);
+sampleStore = zeros(numel(filesStruct),256,256);
 fftStore = zeros(size(sampleStore));
 
 % Extract the matrix
-for sampleIndex = 1 : numel(directoriesList)
+for sampleIndex = 1 : numel(filesStruct)
     % Read sample matrix %
 
-    pathToFile = fullfile(pathToFileList, directoriesList(sampleIndex).name);
+    pathToFile = fullfile(pathToFileList, filesStruct(sampleIndex).name);
     sampleMatrix = readmatrix(pathToFile);
     sampleStore(sampleIndex,:,:) = sampleMatrix;
 
