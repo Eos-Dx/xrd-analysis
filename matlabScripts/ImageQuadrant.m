@@ -147,6 +147,23 @@ for sampleFileIndex = 3 : numel( fileList )
     %%% ________________________________________________________________________________________________________________________________ %%%
 end
 
+%%% ________________________________________________________________________________________________________________________________ %%%
+
+% Distance calculations
+for matrixIndex = 1 : 1 : size(quadrantMatrixList, 1)
+    for matrixIndexToCompareWith = 1 : 1 : size(quadrantMatrixList, 1)
+        
+        A = quadrantMatrixList(matrixIndex, :, :);
+        A = reshape(A, size(A, 2), size(A, 3) );
+        B = quadrantMatrixList(matrixIndexToCompareWith, :, :);
+        B = reshape(B, size(B, 2), size(B, 3) );
+        
+        % Doc: https://www.mathworks.com/help/stats/pdist2.html
+        Distance = pdist2(A, B, 'euclidean');
+        distance( matrixIndexToCompareWith, :, :) = Distance;
+    end
+    distanceList( matrixIndex, :, :, : ) = distance;
+end
 
 
 
