@@ -1,7 +1,5 @@
 function TwoDFastFourierTransform(dataFilePath)
     %% Code to import raw data and take 2D FFT
-    % Start timer
-    tStart = tic;
     
     %%% ________________________________________________________________________________________________________________________________ %%%
     %%% File paths setup
@@ -41,10 +39,6 @@ function TwoDFastFourierTransform(dataFilePath)
     % More about fftshift here: https://www.mathworks.com/help/matlab/ref/fftshift.html
     % We can consider this like a centering. Without this centering, our transform will unreadable on the image.
     % I use log2 to enhance regions with small amplitude.
-    
-    % Stop timer and display elapsed time
-    tEnd = toc(tStart);
-    disp("Time elapsed: " + tEnd + " seconds.");
     
     % Display the image and its 2D FFT
     % Use 20*log10+1 (denoted as [dB+1]) where dB is decibels
