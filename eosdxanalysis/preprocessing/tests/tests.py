@@ -186,64 +186,18 @@ class TestPreprocessingCLI(unittest.TestCase):
     Test to ensure preprocessing can be done from commandline
     """
 
-    def setUp(self):
-        params = {
-            # Set parameters
-            # Image size
-            "h":256,
-            "w":256,
-            # Region of interest for beam center on raw images
-            "beam_rmax":25,
-            # Annulus region of interest for XRD pattern
-            "rmin":25,
-            "rmax":90,
-            # Annulus region of interest for 9A feature region
-            "eyes_rmin":30,
-            "eyes_rmax":45,
-            # Maximum distance from 9A feature maximum intensity location
-            "eyes_blob_rmax":20,
-            # Percentile used to analyze 9A features as blobs
-            "eyes_percentile":99,
-            "local_thresh_block_size":21,
-            # Crop "beam", "outer" corners, or "both"
-            "crop_style": "both",
-        }
-        self.params = params
-
     def test_preprocess_cli(self):
         """
         Run preprocessing using commandline, providing input data directory
         and output directory.
         """
-        params = {
-            # Set parameters
-            # Image size
-            "h":256,
-            "w":256,
-            # Region of interest for beam center on raw images
-            "beam_rmax":25,
-            # Annulus region of interest for XRD pattern
-            "rmin":25,
-            "rmax":90,
-            # Annulus region of interest for 9A feature region
-            "eyes_rmin":30,
-            "eyes_rmax":45,
-            # Maximum distance from 9A feature maximum intensity location
-            "eyes_blob_rmax":20,
-            # Percentile used to analyze 9A features as blobs
-            "eyes_percentile":99,
-            "local_thresh_block_size":21,
-            # Crop "beam", "outer" corners, or "both"
-            "crop_style": "both",
-        }
+        # Specify parameters file
+        params_file = os.path.join(TEST_IMAGE_DIR, "test_cli_images", "params.txt")
+        with open(params_file, "r") as param_fp:
+            params = param_fp.read()
 
-        # Construct plans dictionary to be able to pass info as json
-        plans_dict = {
-                "plans":
-                    [
-                    "quad_fold",
-                    ]
-                }
+        # Construct plans list
+        plans = "quad_fold"
 
         # Set the input and output directories
         test_input_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images", "input")
@@ -253,8 +207,8 @@ class TestPreprocessingCLI(unittest.TestCase):
         command = ["python", "eosdxanalysis/preprocessing/preprocess.py",
                     "--input_dir", test_input_dir,
                     "--output_dir", test_output_dir,
-                    "--params", json.dumps(params),
-                    "--plans", json.dumps(plans_dict),
+                    "--params_file", params_file,
+                    "--plans", plans,
                     ]
 
         # Run the command
