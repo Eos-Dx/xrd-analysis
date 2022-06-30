@@ -271,30 +271,21 @@ class TestPreprocessingCLI(unittest.TestCase):
         # Check that number of input and output files is the same
         self.assertEqual(num_files, len(output_files_fullpaths))
 
-        # Set up arrays to store data
-        input_data = np.zeros((num_files,256,256))
-        output_data = input_data.copy()
-        input_means = np.zeros((num_files))
-        output_means = input_means.copy()
-
         for idx in range(num_files):
             # Load data
             input_image = np.loadtxt(input_files_fullpaths[idx])
-            input_data[idx,...] = input_image
             output_image = np.loadtxt(output_files_fullpaths[idx])
-            output_data[idx,...] = output_image
-            # Calculate means
-            input_mean = np.mean(input_image)
-            input_means[idx] = input_mean
-            output_mean = np.mean(output_image)
-            output_means[idx] = output_mean
 
-            # Check that means are positive
-            self.assertTrue(input_mean > 0)
-            self.assertTrue(output_mean > 0)
+            # Check that data are positive
+            self.assertTrue(input_image[input_image > 0].all())
+            self.assertTrue(output_image[output_image > 0].all())
+
+            # Check that the maximum value of the output is less than the
+            # maximum value of the input
+            self.assertTrue(np.max(output_image) < np.max(input_image))
 
             # Check that output means are smaller than input means
-            self.assertTrue(output_mean < input_mean)
+            self.assertTrue(np.mean(output_image) < np.mean(input_image))
 
 
 class TestPreprocessData(unittest.TestCase):
