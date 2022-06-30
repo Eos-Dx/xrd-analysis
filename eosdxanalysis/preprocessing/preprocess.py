@@ -1,5 +1,7 @@
 import os
 import glob
+import argparse
+import json
 
 import numpy as np
 import pandas as pd
@@ -10,6 +12,7 @@ import matplotlib.colors as colors
 
 from scipy import ndimage
 from skimage.filters import threshold_local
+from skimage.transform import rotate
 import imageio
 
 from eosdxanalysis.preprocessing.center_finding import find_center
@@ -19,7 +22,6 @@ from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.denoising import filter_strays
 from eosdxanalysis.preprocessing.image_processing import centerize
-from eosdxanalysis.preprocessing.image_processing import rotate_image
 from eosdxanalysis.preprocessing.image_processing import convert_to_cv2_img
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
@@ -151,10 +153,14 @@ class PreprocessDataArray(object):
         center = find_center(image,method="max_centroid",rmax=beam_rmax)
         # Find eye rotation using original image
         angle = self.find_eye_rotation_angle(image, center)
-        # Centerize image producing a large image
+        # Centerize the image
         centered_image_large, new_center = centerize(image, center)
-        # Rotate the centered enlarged image
-        centered_rotated_image_large = rotate_image(centered_image_large, new_center, angle)
+        # Rotate the image
+        # Note temporary center notation switch to col, row
+        # in skimage.transform.rotate
+        centered_rotated_image_large = rotate(centered_image_large, -angle,
+                                        resize=False,
+                                        center=(new_center[1], new_center[0]))
         # Crop to original size
         centered_rotated_image = crop_image(centered_rotated_image_large, h, w, new_center)
         return centered_rotated_image, center, new_center, angle
@@ -335,6 +341,9 @@ class PreprocessData(object):
         eyes_blob_rmax = params.get("eyes_blob_rmax")
         eyes_percentile = params.get("eyes_percentile")
         local_thresh_block_size = params.get("local_thresh_block_size")
+
+        # Set mask style from params if crop_style is set
+        mask_style = params.get("crop_style", mask_style)
 
         # Get filename info
         filenames_fullpaths = self.filenames_fullpaths
@@ -550,10 +559,14 @@ class PreprocessData(object):
         center = find_center(image,method="max_centroid",rmax=beam_rmax)
         # Find eye rotation using original image
         angle = self.find_eye_rotation_angle(image, center)
-        # Centerize image producing a large image
+        # Centerize the image
         centered_image_large, new_center = centerize(image, center)
-        # Rotate the centered enlarged image
-        centered_rotated_image_large = rotate_image(centered_image_large, new_center, angle)
+        # Rotate the image
+        # Note temporary center notation switch to col, row
+        # in skimage.transform.rotate
+        centered_rotated_image_large = rotate(centered_image_large, -angle,
+                                        resize=False,
+                                        center=(new_center[1], new_center[0]))
         # Crop to original size
         centered_rotated_image = crop_image(centered_rotated_image_large, h, w, new_center)
         return centered_rotated_image, center, new_center, angle
@@ -587,7 +600,7 @@ class PreprocessData(object):
 
         return image
 
-    def save(self, output_dir=None, output_format="txt", output_style="centered_rotated", rescale=False):
+    def save(self, output_dir=None, output_format="txt", rescale=False):
         """
         Save preprocessed image to file
         Inputs:
@@ -599,47 +612,76 @@ class PreprocessData(object):
         if self.cache == {}:
             raise ValueError("Image cache is empty, please call preprocess method first.")
 
-        # Check if output style is in list of plans
-        plans = self.plans
-        if OUTPUT_MAP.get("{}".format(output_style)) not in plans:
-            raise ValueError("You did not preprocess with the {} plan.".format(output_style))
-
         # Get filename info
         filenames_fullpaths = self.filenames_fullpaths
         # Store output directory info
         self.output_dir = output_dir
 
-        # Create output directory only if it does not exist
-        os.makedirs(output_dir)
+        # Create output directory if it does not exist
+        os.makedirs(output_dir, exist_ok=True)
 
-        for idx, filename_fullpath in enumerate(filenames_fullpaths):
-            filename = os.path.basename(filename_fullpath)
+        for plan in self.plans:
+            output_style = INVERSE_OUTPUT_MAP.get(plan)
+            for idx, filename_fullpath in enumerate(filenames_fullpaths):
+                filename = os.path.basename(filename_fullpath)
 
-            # Set the output based on output specifications
-            try:
-                cache = self.cache["{}".format(output_style)]
-            except KeyError as err:
-                print("Could not find image cache for style {}.".format(output_style))
-                raise err
+                # Set the output based on output specifications
+                try:
+                    cache = self.cache["{}".format(output_style)]
+                except KeyError as err:
+                    print("Could not find image cache for style {}.".format(output_style))
+                    raise err
 
-            # Get the image from the cache
-            try:
-                output = cache[idx]
-            except IndexError as err:
-                print("Error accessing image cache.")
-                raise err
+                # Get the image from the cache
+                try:
+                    output = cache[idx]
+                except IndexError as err:
+                    print("Error accessing image cache.")
+                    raise err
 
-            if rescale:
-                output = convert_to_cv2_img(output)[:,:,0]
+                if rescale:
+                    output = convert_to_cv2_img(output)[:,:,0]
 
-            # Save output as text
-            if output_format == "txt":
-                save_filename = "preprocessed_{}".format(filename)
-                save_filename_fullpath = os.path.join(output_dir, save_filename)
-                np.savetxt(save_filename_fullpath,output.astype(np.uint16),fmt='%i')
+                # Save output as text
+                if output_format == "txt":
+                    save_filename = "preprocessed_{}".format(filename)
+                    save_filename_fullpath = os.path.join(output_dir, save_filename)
+                    np.savetxt(save_filename_fullpath,output.astype(np.uint16),fmt='%i')
 
-            # Save output as image
-            if output_format == "png":
-                save_filename = "preprocessed_{}.png".format(filename)
-                save_filename_fullpath = os.path.join(output_dir, save_filename)
-                imageio.imwrite(save_filename_fullpath, output.astype(np.uint16))
+                # Save output as image
+                if output_format == "png":
+                    save_filename = "preprocessed_{}.png".format(filename)
+                    save_filename_fullpath = os.path.join(output_dir, save_filename)
+                    imageio.imwrite(save_filename_fullpath, output.astype(np.uint16))
+
+
+if __name__ == "__main__":
+    """
+    Commandline interface
+    """
+    print("Start preprocessing...")
+    print("Current directory: " + os.getcwd())
+
+    # Set up argument parser
+    parser = argparse.ArgumentParser()
+    # Set up parser arguments
+    parser.add_argument("--input_dir", help="The files directory to analyze")
+    parser.add_argument("--output_dir", help="The directory to preprocessing results")
+    parser.add_argument("--params", help="The parameters for preprocessing")
+    parser.add_argument("--plans", help="The plans for preprocessing")
+
+    args = parser.parse_args()
+
+    # Set variables based on input arguments
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    params = dict(json.loads(args.params))
+    plans = dict(json.loads(args.plans))["plans"]
+
+    # Instantiate PreprocessData class
+    preprocessor = PreprocessData(input_dir=input_dir, params=params)
+    # Run preprocessing
+    preprocessor.preprocess(visualize=False, plans=plans,
+                        mask_style=params.get("crop_style"))
+    preprocessor.save(output_dir=output_dir, output_format="txt", rescale=False)
+    print("Done preprocessing.")
