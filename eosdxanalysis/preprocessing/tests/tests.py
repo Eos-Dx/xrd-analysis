@@ -3,6 +3,10 @@ import unittest
 import numpy as np
 import pandas as pd
 
+import subprocess
+import json
+import glob
+
 from skimage.io import imsave, imread
 
 from eosdxanalysis.preprocessing.image_processing import centerize
@@ -25,7 +29,7 @@ from eosdxanalysis.preprocessing.preprocess import PreprocessData
 
 from eosdxanalysis.preprocessing.peak_finding import find_peak
 
-TEST_IMAGE_DIR = "preprocessing/tests/test_images"
+TEST_IMAGE_DIR = os.path.join("eosdxanalysis","preprocessing","tests","test_images")
 
 
 def intensity_profile_function(coords,N=16):
@@ -175,6 +179,113 @@ class TestCreateCircularMask(unittest.TestCase):
 
         # Test if the generated mask equals the expected mask
         self.assertTrue(np.array_equal(mask_4x4, test_4x4_mask))
+
+
+class TestPreprocessingCLI(unittest.TestCase):
+    """
+    Test to ensure preprocessing can be done from commandline
+    """
+
+    def setUp(self):
+        params = {
+            # Set parameters
+            # Image size
+            "h":256,
+            "w":256,
+            # Region of interest for beam center on raw images
+            "beam_rmax":25,
+            # Annulus region of interest for XRD pattern
+            "rmin":25,
+            "rmax":90,
+            # Annulus region of interest for 9A feature region
+            "eyes_rmin":30,
+            "eyes_rmax":45,
+            # Maximum distance from 9A feature maximum intensity location
+            "eyes_blob_rmax":20,
+            # Percentile used to analyze 9A features as blobs
+            "eyes_percentile":99,
+            "local_thresh_block_size":21,
+            # Crop "beam", "outer" corners, or "both"
+            "crop_style": "both",
+        }
+        self.params = params
+
+    def test_preprocess_cli(self):
+        """
+        Run preprocessing using commandline, providing input data directory
+        and output directory.
+        """
+        params = {
+            # Set parameters
+            # Image size
+            "h":256,
+            "w":256,
+            # Region of interest for beam center on raw images
+            "beam_rmax":25,
+            # Annulus region of interest for XRD pattern
+            "rmin":25,
+            "rmax":90,
+            # Annulus region of interest for 9A feature region
+            "eyes_rmin":30,
+            "eyes_rmax":45,
+            # Maximum distance from 9A feature maximum intensity location
+            "eyes_blob_rmax":20,
+            # Percentile used to analyze 9A features as blobs
+            "eyes_percentile":99,
+            "local_thresh_block_size":21,
+            # Crop "beam", "outer" corners, or "both"
+            "crop_style": "both",
+        }
+
+        # Construct plans dictionary to be able to pass info as json
+        plans_dict = {
+                "plans":
+                    [
+                    "quad_fold",
+                    ]
+                }
+
+        # Set the input and output directories
+        test_input_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images", "input")
+        test_output_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images", "output")
+
+        # Set up the command
+        command = ["python", "eosdxanalysis/preprocessing/preprocess.py",
+                    "--input_dir", test_input_dir,
+                    "--output_dir", test_output_dir,
+                    "--params", json.dumps(params),
+                    "--plans", json.dumps(plans_dict),
+                    ]
+
+        # Run the command
+        subprocess.run(command)
+
+        # Check that output files exist
+        # First get list of files
+        input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
+        output_files_fullpaths = glob.glob(os.path.join(test_output_dir, "*.txt"))
+        num_files = len(input_files_fullpaths)
+
+        # Check that number of files is > 0
+        self.assertTrue(num_files > 0)
+        # Check that number of input and output files is the same
+        self.assertEqual(num_files, len(output_files_fullpaths))
+
+        for idx in range(num_files):
+            # Load data
+            input_image = np.loadtxt(input_files_fullpaths[idx])
+            output_image = np.loadtxt(output_files_fullpaths[idx])
+
+            # Check that data are positive
+            self.assertTrue(input_image[input_image > 0].all())
+            self.assertTrue(output_image[output_image > 0].all())
+
+            # Check that the maximum value of the output is less than the
+            # maximum value of the input
+            self.assertTrue(np.max(output_image) < np.max(input_image))
+
+            # Check that output means are smaller than input means
+            self.assertTrue(np.mean(output_image) < np.mean(input_image))
 
 
 class TestPreprocessData(unittest.TestCase):
