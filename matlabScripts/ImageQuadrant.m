@@ -39,111 +39,113 @@ for sampleFileIndex = 3 : numel( fileList )
     % Path to the file
     path = fullfile( fileList( sampleFileIndex ).folder, fileList( sampleFileIndex ).name );
     % Get the matrix
-    sampleMatrix = readmatrix( path );
+    matrix = readmatrix( path );
 
     %%% ________________________________________________________________________________________________________________________________ %%%
 
     % Here we will do calculations for the quadratic average
     % For instance and for this task, the center is geometrically defined
-    for indexRow = centerCoord(1):1:254 % We fix the row...
-        counterCol = 128;
-        for indexCol = centerCoord(2):1:254 % ...and for each column...
+    % for indexRow = centerCoord(1):1:254 % We fix the row...
+    %     counterCol = 128;
+    %     for indexCol = centerCoord(2):1:254 % ...and for each column...
 
-            if ( sampleMatrix( indexRow, indexCol ) == 0 )
+    %         if ( matrix( indexRow, indexCol ) == 0 )
 
-                quadrantPoints = [
+    %             quadrantPoints = [
 
-                    sampleMatrix( indexRow, counterCol );
-                    sampleMatrix( counterRow, indexCol );
-                    sampleMatrix( counterRow, counterCol )
-                ];
+    %                 matrix( indexRow, counterCol );
+    %                 matrix( counterRow, indexCol );
+    %                 matrix( counterRow, counterCol )
+    %             ];
 
-                % Apply the average values to our matrix
-                avg = mean(quadrantPoints);
+    %             % Apply the average values to our matrix
+    %             avg = mean(quadrantPoints);
                 
-                sampleMatrix( indexRow, counterCol ) = avg;
-                sampleMatrix( counterRow, indexCol ) = avg;
-                sampleMatrix( counterRow, counterCol ) = avg;
+    %             matrix( indexRow, counterCol ) = avg;
+    %             matrix( counterRow, indexCol ) = avg;
+    %             matrix( counterRow, counterCol ) = avg;
 
-            elseif ( sampleMatrix( counterCol, indexRow ) == 0 )
+    %         elseif ( matrix( counterCol, indexRow ) == 0 )
 
-                quadrantPoints = [
-                    sampleMatrix( indexRow, indexCol );
+    %             quadrantPoints = [
+    %                 matrix( indexRow, indexCol );
 
-                    sampleMatrix( counterRow, indexCol);
-                    sampleMatrix( counterRow, counterCol )
-                ];
+    %                 matrix( counterRow, indexCol);
+    %                 matrix( counterRow, counterCol )
+    %             ];
 
-                % Apply the average values to our matrix
-                avg = mean(quadrantPoints);
-                sampleMatrix( indexRow, indexCol ) = avg;
+    %             % Apply the average values to our matrix
+    %             avg = mean(quadrantPoints);
+    %             matrix( indexRow, indexCol ) = avg;
 
-                sampleMatrix( counterRow, indexCol ) = avg;
-                sampleMatrix( counterRow, counterCol ) = avg;
+    %             matrix( counterRow, indexCol ) = avg;
+    %             matrix( counterRow, counterCol ) = avg;
 
-            elseif ( sampleMatrix( indexCol, counterRow ) == 0 )
+    %         elseif ( matrix( indexCol, counterRow ) == 0 )
 
-                quadrantPoints = [
-                    sampleMatrix( indexRow, indexCol );
-                    sampleMatrix( indexRow, counterCol);
+    %             quadrantPoints = [
+    %                 matrix( indexRow, indexCol );
+    %                 matrix( indexRow, counterCol);
 
-                    sampleMatrix( counterRow, counterCol )
-                ];
+    %                 matrix( counterRow, counterCol )
+    %             ];
 
-                % Apply the average values to our matrix
-                avg = mean(quadrantPoints);
-                sampleMatrix( indexRow, indexCol ) = avg;
-                sampleMatrix( indexRow, counterCol ) = avg;
+    %             % Apply the average values to our matrix
+    %             avg = mean(quadrantPoints);
+    %             matrix( indexRow, indexCol ) = avg;
+    %             matrix( indexRow, counterCol ) = avg;
                 
-                sampleMatrix( counterRow, counterCol ) = avg;
+    %             matrix( counterRow, counterCol ) = avg;
                 
-            elseif ( sampleMatrix( counterCol, counterRow ) == 0 )
-                quadrantPoints = [
-                    sampleMatrix( indexRow, indexCol );
-                    sampleMatrix( indexRow, counterCol );
-                    sampleMatrix( counterRow, indexCol );
+    %         elseif ( matrix( counterCol, counterRow ) == 0 )
+    %             quadrantPoints = [
+    %                 matrix( indexRow, indexCol );
+    %                 matrix( indexRow, counterCol );
+    %                 matrix( counterRow, indexCol );
 
-                ];
+    %             ];
 
-                % Apply the average values to our matrix
-                avg = mean(quadrantPoints);
-                sampleMatrix( indexRow, indexCol ) = avg;
-                sampleMatrix( indexRow, counterCol ) = avg;
-                sampleMatrix( counterRow, indexCol ) = avg;
+    %             % Apply the average values to our matrix
+    %             avg = mean(quadrantPoints);
+    %             matrix( indexRow, indexCol ) = avg;
+    %             matrix( indexRow, counterCol ) = avg;
+    %             matrix( counterRow, indexCol ) = avg;
                 
-            else
-                quadrantPoints = [
-                    sampleMatrix( indexRow,                 indexCol );
-                    sampleMatrix( indexRow, counterCol );
-                    sampleMatrix( counterRow, indexCol );
-                    sampleMatrix( counterRow, counterCol )
-                ];
+    %         else
+    %             quadrantPoints = [
+    %                 matrix( indexRow,                 indexCol );
+    %                 matrix( indexRow, counterCol );
+    %                 matrix( counterRow, indexCol );
+    %                 matrix( counterRow, counterCol )
+    %             ];
 
-                % Apply the average values to our matrix
-                avg = mean(quadrantPoints);
-                sampleMatrix( indexRow, indexCol ) = avg;
-                sampleMatrix( indexRow, counterCol ) = avg;
-                sampleMatrix( counterRow, indexCol ) = avg;
-                sampleMatrix( counterRow, counterCol ) = avg;
-            end
-            counterCol = counterCol - 1;
-            if ( counterCol == 0 )
-                counterCol = 1;
-            end
-        end
-        counterRow = counterRow - 1;
-        if ( counterRow == 0 )
-            counterRow = 1;
-        end
+    %             % Apply the average values to our matrix
+    %             avg = mean(quadrantPoints);
+    %             matrix( indexRow, indexCol ) = avg;
+    %             matrix( indexRow, counterCol ) = avg;
+    %             matrix( counterRow, indexCol ) = avg;
+    %             matrix( counterRow, counterCol ) = avg;
+    %         end
+    %         counterCol = counterCol - 1;
+    %         if ( counterCol == 0 )
+    %             counterCol = 1;
+    %         end
+    %     end
+    %     counterRow = counterRow - 1;
+    %     if ( counterRow == 0 )
+    %         counterRow = 1;
+    %     end
             
-    end
+    % end
+
+    matrixQuadrantAverage = ( matrix + flip(matrix) + flip(matrix, 2) + flip( flip(matrix), 2 ) ) / 4;
 
     %%% ________________________________________________________________________________________________________________________________ %%%
 
     % Extract the quadrant
-    sampleMatrixQuadrant = sampleMatrix( 128:256, 128:256 );
+    matrixQuadrant = matrixQuadrantAverage( 128:256, 128:256 );
 
-    quadrantMatrixList(sampleFileIndex, :, :) = sampleMatrixQuadrant;
+    quadrantMatrixList(sampleFileIndex, :, :) = matrixQuadrant;
     %%% ________________________________________________________________________________________________________________________________ %%%
 end
 
