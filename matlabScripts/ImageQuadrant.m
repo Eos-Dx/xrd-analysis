@@ -41,103 +41,6 @@ for sampleFileIndex = 3 : numel( fileList )
     % Get the matrix
     matrix = readmatrix( path );
 
-    %%% ________________________________________________________________________________________________________________________________ %%%
-
-    % Here we will do calculations for the quadratic average
-    % For instance and for this task, the center is geometrically defined
-    % for indexRow = centerCoord(1):1:254 % We fix the row...
-    %     counterCol = 128;
-    %     for indexCol = centerCoord(2):1:254 % ...and for each column...
-
-    %         if ( matrix( indexRow, indexCol ) == 0 )
-
-    %             quadrantPoints = [
-
-    %                 matrix( indexRow, counterCol );
-    %                 matrix( counterRow, indexCol );
-    %                 matrix( counterRow, counterCol )
-    %             ];
-
-    %             % Apply the average values to our matrix
-    %             avg = mean(quadrantPoints);
-                
-    %             matrix( indexRow, counterCol ) = avg;
-    %             matrix( counterRow, indexCol ) = avg;
-    %             matrix( counterRow, counterCol ) = avg;
-
-    %         elseif ( matrix( counterCol, indexRow ) == 0 )
-
-    %             quadrantPoints = [
-    %                 matrix( indexRow, indexCol );
-
-    %                 matrix( counterRow, indexCol);
-    %                 matrix( counterRow, counterCol )
-    %             ];
-
-    %             % Apply the average values to our matrix
-    %             avg = mean(quadrantPoints);
-    %             matrix( indexRow, indexCol ) = avg;
-
-    %             matrix( counterRow, indexCol ) = avg;
-    %             matrix( counterRow, counterCol ) = avg;
-
-    %         elseif ( matrix( indexCol, counterRow ) == 0 )
-
-    %             quadrantPoints = [
-    %                 matrix( indexRow, indexCol );
-    %                 matrix( indexRow, counterCol);
-
-    %                 matrix( counterRow, counterCol )
-    %             ];
-
-    %             % Apply the average values to our matrix
-    %             avg = mean(quadrantPoints);
-    %             matrix( indexRow, indexCol ) = avg;
-    %             matrix( indexRow, counterCol ) = avg;
-                
-    %             matrix( counterRow, counterCol ) = avg;
-                
-    %         elseif ( matrix( counterCol, counterRow ) == 0 )
-    %             quadrantPoints = [
-    %                 matrix( indexRow, indexCol );
-    %                 matrix( indexRow, counterCol );
-    %                 matrix( counterRow, indexCol );
-
-    %             ];
-
-    %             % Apply the average values to our matrix
-    %             avg = mean(quadrantPoints);
-    %             matrix( indexRow, indexCol ) = avg;
-    %             matrix( indexRow, counterCol ) = avg;
-    %             matrix( counterRow, indexCol ) = avg;
-                
-    %         else
-    %             quadrantPoints = [
-    %                 matrix( indexRow,                 indexCol );
-    %                 matrix( indexRow, counterCol );
-    %                 matrix( counterRow, indexCol );
-    %                 matrix( counterRow, counterCol )
-    %             ];
-
-    %             % Apply the average values to our matrix
-    %             avg = mean(quadrantPoints);
-    %             matrix( indexRow, indexCol ) = avg;
-    %             matrix( indexRow, counterCol ) = avg;
-    %             matrix( counterRow, indexCol ) = avg;
-    %             matrix( counterRow, counterCol ) = avg;
-    %         end
-    %         counterCol = counterCol - 1;
-    %         if ( counterCol == 0 )
-    %             counterCol = 1;
-    %         end
-    %     end
-    %     counterRow = counterRow - 1;
-    %     if ( counterRow == 0 )
-    %         counterRow = 1;
-    %     end
-            
-    % end
-
     matrixQuadrantAverage = ( matrix + flip(matrix) + flip(matrix, 2) + flip( flip(matrix), 2 ) ) / 4;
 
     %%% ________________________________________________________________________________________________________________________________ %%%
@@ -157,6 +60,7 @@ for matrixIndex = 1 : 1 : size(quadrantMatrixList, 1)
         
         A = quadrantMatrixList(matrixIndex, :, :);
         A = reshape(A, size(A, 2), size(A, 3) );
+
         B = quadrantMatrixList(matrixIndexToCompareWith, :, :);
         B = reshape(B, size(B, 2), size(B, 3) );
         
