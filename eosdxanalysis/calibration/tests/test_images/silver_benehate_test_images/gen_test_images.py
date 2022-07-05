@@ -17,14 +17,12 @@ import matplotlib.pyplot as plt
 from skimage.transform import warp_polar
 from scipy.ndimage import map_coordinates
 
+from eosdxanalysis.preprocessing.image_processing import unwarp_polar
+from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
 """
 Set up parameters
 """
-
-# Import q-peaks reference
-from eosdxanalysis.calibration.materials import q_peaks_ref_dict
-
 
 # Set the material
 material = "silver_behenate"
@@ -164,26 +162,7 @@ plt.savefig(os.path.join(INPUT_DIR, "polar_intensity_2d.png"))
 Create 2D Cartesian image
 """
 
-# linear_polar and polar_linear via:
-# https://forum.image.sc/t/polar-transform-and-inverse-transform/40547/2
-
-def polar_linear(img, o=None, r=None, output=None, order=1):
-    if r is None: r = img.shape[0]
-    if output is None:
-        output = np.zeros((r*2, r*2), dtype=img.dtype)
-    elif isinstance(output, tuple):
-        output = np.zeros(output, dtype=img.dtype)
-    if o is None: o = np.array(output.shape)/2 - 0.5
-    out_h, out_w = output.shape
-    ys, xs = np.mgrid[:out_h, :out_w] - o[:,None,None]
-    rs = (ys**2+xs**2)**0.5
-    ts = np.arccos(xs/rs)
-    ts[ys<0] = np.pi*2 - ts[ys<0]
-    ts *= (img.shape[1]-1)/(np.pi*2)
-    map_coordinates(img, (rs, ts), order=order, output=output)
-    return output
-
-image = polar_linear(polar_intensities.T)
+image = unwarp_polar(polar_intensities.T, output_shape=(h,w), rmax=R_MAX)
 
 # Crop the image to (h,w) size
 row_start, row_end = (int(image.shape[0]/2-h/2), int(image.shape[0]/2+h/2))
