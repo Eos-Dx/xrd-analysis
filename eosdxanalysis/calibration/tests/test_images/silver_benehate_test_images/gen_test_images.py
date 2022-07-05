@@ -26,8 +26,6 @@ Set up parameters
 
 # Set the material
 material = "silver_behenate"
-INNER_RINGS_COUNT = 11
-DOUBLET_COUNT = 2
 
 # Set input and output directories
 INPUT_DIR="input"
