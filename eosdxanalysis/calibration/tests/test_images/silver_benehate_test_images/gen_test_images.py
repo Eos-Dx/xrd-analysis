@@ -181,5 +181,6 @@ fig = plt.figure(dpi=100)
 fig.set_facecolor("white")
 fig.suptitle("Synthetic AgBH Calibration Image")
 plt.imshow(image, cmap="gray")
+plt.title("2D X-Ray Diffraction Image")
 # Save the figure
 plt.savefig(os.path.join(INPUT_DIR, "synthetic_calibration_silver_behenate.png"))
