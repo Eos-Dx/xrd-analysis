@@ -17,6 +17,11 @@ import matplotlib.pyplot as plt
 from skimage.transform import warp_polar
 from scipy.ndimage import map_coordinates
 
+
+"""
+Set up parameters
+"""
+
 # Import q-peaks reference
 from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
@@ -45,54 +50,55 @@ PIXEL_WIDTH = 55e-6 # 55 um pixel width
 
 # Set up q-space and initialize intensity array
 Q_COUNT = 256
-intensities = np.zeros((Q_COUNT, 1))
+intensities_unscaled = np.zeros((Q_COUNT, 1))
 q_space = np.linspace(q_min, q_max, Q_COUNT).reshape(-1,1)
+
+
+"""
+Create 1D radial intensity
+"""
 
 # Extract q-peaks reference
 q_peaks_ref = q_peaks_ref_dict[material]
 
-# All but last two peaks, create 1/q intensity fall
-# Last two are a doublet, intensity should be
-inner_rings = q_peaks_ref[:-2]
-doublet = q_peaks_ref[-2:]
-
-# Ensure inner rings and doublet count are good
-try:
-    assert(len(inner_rings) == INNER_RINGS_COUNT)
-    assert(len(doublet) == DOUBLET_COUNT)
-except ValueError as err:
-    print("Peak counts are incorrect, check against reference!")
-    raise err
-
-
-# Set inner ring values according to q-peaks reference as sum of Gaussians
-# with a 1/q_peak amplitude scaling
-# and a width scaling of the first peak location/4
+# Set ring values according to q-peaks reference as sum of Gaussians
+# with a 1/q_peak_location amplitude scaling
+# and a width scaling of q_peak location/4
 GAUSS_SCALE = q_peaks_ref[0]/4
 for q_peak_location in q_peaks_ref:
     gaussian_peak = norm.pdf(q_space, q_peak_location,
                                         GAUSS_SCALE)/q_peak_location
-    intensities = intensities + gaussian_peak
+    intensities_unscaled = intensities_unscaled + gaussian_peak
 
 # Rescale intensities
-intensities_rescaled = max_val*intensities/np.max(intensities)
-intensities_rescaled = intensities_rescaled.astype(np.uint32)
+intensities = max_val*intensities_unscaled/np.max(intensities_unscaled)
+intensities = intensities.astype(np.uint32)
 
 # Save the intensity vs. q data
-np.savetxt(os.path.join(INPUT_DIR, "intensity_vs_q.txt"),
-                            intensities_rescaled, fmt="%d")
+np.savetxt(os.path.join(INPUT_DIR, "radial_intensity_vs_q.txt"),
+                            intensities, fmt="%d")
+
+
+"""
+Plot 1D radial intensity vs. q
+"""
 
 # Save the intensity vs. q scatter plot
 # Set up figure properties and title
 fig = plt.figure(dpi=100)
 fig.set_facecolor("white")
 fig.suptitle("Synthetic AgBH Calibration Image")
-plt.scatter(q_space, intensities_rescaled)
+plt.scatter(q_space, intensities)
 plt.title("Intensity vs. q")
+plt.xlabel("q")
+plt.ylabel("Intensity (photon count)")
 # Save the figure
-plt.savefig(os.path.join(INPUT_DIR, "intensity_vs_q.png"))
+plt.savefig(os.path.join(INPUT_DIR, "radial_intensity_vs_q.png"))
 
 
+"""
+Plot 1D radial intenstiy vs. two*theta
+"""
 
 # Convert from q-space to 2*theta space (degrees)
 two_theta_space = 2*np.arcsin(q_space*WAVELEN_ANG/4/np.pi)*180/np.pi
@@ -102,22 +108,45 @@ two_theta_space = 2*np.arcsin(q_space*WAVELEN_ANG/4/np.pi)*180/np.pi
 fig = plt.figure(dpi=100)
 fig.set_facecolor("white")
 fig.suptitle("Synthetic AgBH Calibration Image")
-plt.scatter(two_theta_space, intensities_rescaled)
+plt.scatter(two_theta_space, intensities)
 plt.title("Intensity vs. two*theta")
+plt.xlabel("two*theta")
+plt.ylabel("Intensity (photon count)")
 # Save the figure
-plt.savefig(os.path.join(INPUT_DIR, "intensity_vs_two_theta.png"))
+plt.savefig(os.path.join(INPUT_DIR, "radial_intensity_vs_two_theta.png"))
 
 
-# Create a 2D polar image
+"""
+Plot 1D radial intensity vs. pixel radius
+"""
+
 R_COUNT=Q_COUNT
 R_MIN=0
 # R_MAX is based on the maximum two*theta value
 # Convert two_theta to radians, and get R_MAX in pixel units
 R_MAX=int(DETECTOR_DISTANCE*np.tan(np.pi/180*np.max(two_theta_space))/PIXEL_WIDTH)
-polar_intensities = np.repeat(intensities_rescaled.T, R_COUNT, axis=0)
+r_space = np.linspace(R_MIN, R_MAX, R_COUNT).reshape(-1,1)
+
+# Save the intensity vs. pixel radius scatter plot
+# Set up figure properties and title
+fig = plt.figure(dpi=100)
+fig.set_facecolor("white")
+fig.suptitle("Synthetic AgBH Calibration Image")
+plt.scatter(r_space, intensities)
+plt.title("Intensity vs. pixel radius")
+plt.xlabel("radius (pixels)")
+plt.ylabel("Intensity (photon count)")
+# Save the figure
+plt.savefig(os.path.join(INPUT_DIR, "radial_intensity_vs_pixel_radius.png"))
+
+
+"""
+Create 2D polar intensity image
+"""
+polar_intensities = np.repeat(intensities.T, R_COUNT, axis=0)
 
 # Save the data
-np.savetxt(os.path.join(INPUT_DIR, "polar_intensities.txt"),
+np.savetxt(os.path.join(INPUT_DIR, "polar_intensity_2d.txt"),
                             polar_intensities, fmt="%d")
 
 # Plot and save
@@ -128,9 +157,12 @@ fig.suptitle("Synthetic AgBH Calibration Image")
 plt.imshow(polar_intensities, cmap="gray")
 plt.title("2D Polar Intensity: 2*Theta vs. R")
 # Save the figure
-plt.savefig(os.path.join(INPUT_DIR, "polar_intensities.png"))
+plt.savefig(os.path.join(INPUT_DIR, "polar_intensity_2d.png"))
 
-# Convert 2D polar image into 2D Cartesian image
+
+"""
+Create 2D Cartesian image
+"""
 
 # linear_polar and polar_linear via:
 # https://forum.image.sc/t/polar-transform-and-inverse-transform/40547/2
