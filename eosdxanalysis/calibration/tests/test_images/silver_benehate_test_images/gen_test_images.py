@@ -35,6 +35,7 @@ min_val=0
 max_val=255
 q_min=0
 q_max = 1.5
+wavelen_ang = 1.5418 # 1.5418 Angstrom
 
 # Set up q-space and initialize intensity array
 Q_COUNT = 256
@@ -91,4 +92,15 @@ plt.title("Intensity vs. q")
 # Save the figure
 plt.savefig(os.path.join(INPUT_DIR, "intensity_vs_q.png"))
 
-# Convert q-scale to 2D intensity image
+# Convert from q-space to 2*theta space (degrees)
+two_theta_space = 2*np.arcsin(q_space*wavelen_ang/4/np.pi)*180/np.pi
+
+# Save the intensity vs. two*theta scatter plot
+# Set up figure properties and title
+fig = plt.figure(dpi=100)
+fig.set_facecolor("white")
+fig.suptitle("Synthetic AgBH Calibration Image")
+plt.scatter(two_theta_space, intensities_rescaled)
+plt.title("Intensity vs. two*theta")
+# Save the figure
+plt.savefig(os.path.join(INPUT_DIR, "intensity_vs_two_theta.png"))
