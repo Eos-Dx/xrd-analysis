@@ -124,7 +124,7 @@ R_COUNT=Q_COUNT
 R_MIN=0
 # R_MAX is based on the maximum two*theta value
 # Convert two_theta to radians, and get R_MAX in pixel units
-R_MAX=int(DETECTOR_DISTANCE*np.tan(np.pi/180*np.max(two_theta_space))/PIXEL_WIDTH)
+R_MAX=DETECTOR_DISTANCE*np.tan(np.pi/180*np.max(two_theta_space))/PIXEL_WIDTH
 r_space = np.linspace(R_MIN, R_MAX, R_COUNT).reshape(-1,1)
 
 # Save the intensity vs. pixel radius scatter plot
@@ -167,24 +167,7 @@ Create 2D Cartesian image
 # linear_polar and polar_linear via:
 # https://forum.image.sc/t/polar-transform-and-inverse-transform/40547/2
 
-def linear_polar(img, o=None, r=None, output=None, order=1, cont=0):
-    if o is None: o = np.array(img.shape[:2])/2 - 0.5
-    if r is None: r = (np.array(img.shape[:2])**2).sum()**0.5/2
-    if output is None:
-        shp = int(round(r)), int(round(r*2*np.pi))
-        output = np.zeros(shp, dtype=img.dtype)
-    elif isinstance(output, tuple):
-        output = np.zeros(output, dtype=img.dtype)
-    out_h, out_w = output.shape
-    out_img = np.zeros((out_h, out_w), dtype=img.dtype)
-    rs = np.linspace(0, r, out_h)
-    ts = np.linspace(0, np.pi*2, out_w)
-    xs = rs[:,None] * np.cos(ts) + o[1]
-    ys = rs[:,None] * np.sin(ts) + o[0]
-    map_coordinates(img, (ys, xs), order=order, output=output)
-    return output
-
-def polar_linear(img, o=None, r=None, output=None, order=1, cont=0):
+def polar_linear(img, o=None, r=None, output=None, order=1):
     if r is None: r = img.shape[0]
     if output is None:
         output = np.zeros((r*2, r*2), dtype=img.dtype)
