@@ -717,6 +717,29 @@ class TestImageProcessing(unittest.TestCase):
         self.assertTrue(np.all(max_indices_start_image == 9))
         self.assertTrue(np.all(max_indices_final_image == 9))
 
+    def test_unwarp_polar_scaled(self):
+        """
+        Test unwarp_polar function for scaling r by 2
+        """
+        # Create test polar image
+        test_intensity_1d = np.zeros((1,100))
+        test_intensity_1d[0,9] = 10
+        test_image_polar = np.repeat(test_intensity_1d, 100, axis=0)
+
+        output_shape=(256,256)
+
+        test_image = unwarp_polar(test_image_polar.T, output_shape=output_shape, rmax=200)
+
+        test_image_warp_polar = warp_polar(test_image)
+
+        # Test that maximum is at index 9
+        # First, get the indices of the maximum locations along the columns
+        max_indices_start_image = np.argmax(test_image_polar, axis=1)
+        max_indices_final_image = np.argmax(test_image_warp_polar, axis=1)
+
+        self.assertTrue(np.all(max_indices_start_image == 9))
+        self.assertTrue(np.all(max_indices_final_image == 18))
+
 
 class TestPeakFinding(unittest.TestCase):
 
