@@ -714,8 +714,6 @@ class TestImageProcessing(unittest.TestCase):
         np.array_equal(max_indices_start_image, 9)
         np.array_equal(max_indices_final_image, 9)
 
-        self.fail("Finish writing test.")
-
 
 class TestPeakFinding(unittest.TestCase):
 
