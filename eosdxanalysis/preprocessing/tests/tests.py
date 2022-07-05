@@ -704,6 +704,9 @@ class TestImageProcessing(unittest.TestCase):
 
         test_image = unwarp_polar(test_image_polar.T, output_shape=output_shape)
 
+        # Check that the test image is not all zeros
+        self.assertTrue(np.any(test_image))
+
         test_image_warp_polar = warp_polar(test_image)
 
         # Test that maximum is at index 9
@@ -711,8 +714,8 @@ class TestImageProcessing(unittest.TestCase):
         max_indices_start_image = np.argmax(test_image_polar, axis=1)
         max_indices_final_image = np.argmax(test_image_warp_polar, axis=1)
 
-        np.array_equal(max_indices_start_image, 9)
-        np.array_equal(max_indices_final_image, 9)
+        self.assertTrue(np.all(max_indices_start_image == 9))
+        self.assertTrue(np.all(max_indices_final_image == 9))
 
 
 class TestPeakFinding(unittest.TestCase):
