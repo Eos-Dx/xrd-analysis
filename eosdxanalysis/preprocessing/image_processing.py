@@ -199,7 +199,7 @@ def quadrant_fold(image):
 
     return quad_folded
 
-def unwarp_polar(img, origin=None, output_shape=None, order=1):
+def unwarp_polar(img, origin=None, output_shape=None, rmax=None, order=1):
     """
     Note that notation here is different from `warp_polar`:
     Here we use the standard Cartesian grid.
@@ -220,5 +220,7 @@ def unwarp_polar(img, origin=None, output_shape=None, order=1):
     thetas = np.arccos(xs/rs)
     thetas[ys<0] = np.pi*2 - thetas[ys<0]
     thetas *= (img.shape[1]-1)/(np.pi*2)
+    if rmax is not None:
+        rs *= (img.shape[0]-1)/(rmax)
     map_coordinates(img, (rs, thetas), order=order, output=output)
     return output
