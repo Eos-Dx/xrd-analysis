@@ -8,10 +8,12 @@ import json
 import glob
 
 from skimage.io import imsave, imread
+from skimage.transform import warp_polar
 
 from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.image_processing import rotate_image
+from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 
 from eosdxanalysis.preprocessing.center_finding import center_of_mass
 from eosdxanalysis.preprocessing.center_finding import radial_mean
@@ -688,6 +690,31 @@ class TestImageProcessing(unittest.TestCase):
         print(rotated_image_elastic)
 
         self.assertTrue(np.array_equal(rot_image_known, rotated_image_elastic))
+
+    def test_unwarp_polar(self):
+        """
+        Test unwarp_polar function
+        """
+        # Create test polar image
+        test_intensity_1d = np.zeros((1,100))
+        test_intensity_1d[0,9] = 10
+        test_image_polar = np.repeat(test_intensity_1d, 100, axis=0)
+
+        output_shape=(256,256)
+
+        test_image = unwarp_polar(test_image_polar.T, output_shape=output_shape)
+
+        test_image_warp_polar = warp_polar(test_image)
+
+        # Test that maximum is at index 9
+        # First, get the indices of the maximum locations along the columns
+        max_indices_start_image = np.argmax(test_image_polar, axis=1)
+        max_indices_final_image = np.argmax(test_image_warp_polar, axis=1)
+
+        np.array_equal(max_indices_start_image, 9)
+        np.array_equal(max_indices_final_image, 9)
+
+        self.fail("Finish writing test.")
 
 
 class TestPeakFinding(unittest.TestCase):
