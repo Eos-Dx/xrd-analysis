@@ -113,8 +113,7 @@ R_COUNT=Q_COUNT
 R_MIN=0
 # R_MAX is based on the maximum two*theta value
 # Convert two_theta to radians, and get R_MAX in pixel units
-R_MAX=DETECTOR_DISTANCE*np.tan(np.pi/180*np.max(two_theta_space))/PIXEL_WIDTH
-r_space = np.linspace(R_MIN, R_MAX, R_COUNT).reshape(-1,1)
+R_MAX=int(DETECTOR_DISTANCE*np.tan(np.pi/180*np.max(two_theta_space))/PIXEL_WIDTH)
 polar_intensities = np.repeat(intensities_rescaled.T, R_COUNT, axis=0)
 
 # Save the data
