@@ -2,6 +2,7 @@ import os
 import glob
 import argparse
 import json
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -276,10 +277,13 @@ class PreprocessData(object):
     Class to run processing pipeline on data set.
     """
 
-    def __init__(self, filename=None, input_dir=None,
-            params={}):
+    def __init__(self, filename=None, parent_dir=None, samples_dir=None,
+            input_dir=None, output_dir=None, params={}):
         # Store input and output directories
+        self.parent_dir = parent_dir
+        self.samples_dir = samples_dir
         self.input_dir = input_dir
+        self.output_dir = output_dir
 
         # If we are provided with a single image, set its full path
         if filename != None and input_dir != None:
@@ -313,7 +317,8 @@ class PreprocessData(object):
 
         return super().__init__()
 
-    def preprocess(self, denoise=False, visualize=False, plans=["centerize_rotate"], mask_style="both"):
+    def preprocess(self, denoise=False, visualize=False, plans=["centerize_rotate"],
+                        mask_style="both"):
         """
         Run all preprocessing steps
 
@@ -347,6 +352,11 @@ class PreprocessData(object):
 
         # Get filename info
         filenames_fullpaths = self.filenames_fullpaths
+
+        # Set timestamp
+        timestr = "%Y%m%dT%H%M%S.%f"
+        timestamp = datetime.utcnow().strftime(timestr)
+        self.timestamp = timestamp
 
         # sample_count
         for filename_fullpath in filenames_fullpaths:
@@ -600,7 +610,8 @@ class PreprocessData(object):
 
         return image
 
-    def save(self, output_dir=None, output_format="txt", rescale=False):
+    def save(self, parent_dir=None, samples_dir=None, output_dir=None,
+            output_format="txt", rescale=False):
         """
         Save preprocessed image to file
         Inputs:
@@ -608,6 +619,11 @@ class PreprocessData(object):
         - output_format: Output formats are "txt" or "png"
         - output_style: according to preprocessing plan type
         """
+        if not samples_dir:
+            samples_dir = self.samples_dir
+        if not parent_dir:
+            parent_dir = self.parent_dir
+        timestamp = self.timestamp
         # Make sure cache is not empty
         if self.cache == {}:
             raise ValueError("Image cache is empty, please call preprocess method first.")
@@ -615,13 +631,34 @@ class PreprocessData(object):
         # Get filename info
         filenames_fullpaths = self.filenames_fullpaths
         # Store output directory info
-        self.output_dir = output_dir
+        if not output_dir:
+            if not self.output_dir:
+                # Create output directory if it does not exist
+                if samples_dir:
+                    output_dir_name = "preprocessed_{}_{}".format(
+                                            samples_dir, timestamp)
+                else:
+                    output_dir_name = "preprocessed_{}".format(timestamp)
+                output_dir = os.path.join(parent_dir, output_dir_name)
+                os.makedirs(output_dir, exist_ok=True)
+            else:
+                output_dir = self.output_dir
+                os.makedirs(output_dir, exist_ok=True)
+        print("Saving to", output_dir, "...")
 
-        # Create output directory if it does not exist
-        os.makedirs(output_dir, exist_ok=True)
+        # Write params to file
+        params_dir = os.path.join(output_dir,"params")
+        os.makedirs(params_dir)
+        with open(os.path.join(params_dir,"params.txt"),"w") as paramsfile:
+            paramsfile.write(json.dumps(params,indent=4))
 
         for plan in self.plans:
             output_style = INVERSE_OUTPUT_MAP.get(plan)
+
+            # Create output directory for plan
+            plan_output_dir = os.path.join(output_dir, output_style)
+            os.makedirs(plan_output_dir, exist_ok=True)
+
             for idx, filename_fullpath in enumerate(filenames_fullpaths):
                 filename = os.path.basename(filename_fullpath)
 
@@ -645,45 +682,110 @@ class PreprocessData(object):
                 # Save output as text
                 if output_format == "txt":
                     save_filename = "preprocessed_{}".format(filename)
-                    save_filename_fullpath = os.path.join(output_dir, save_filename)
+                    save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
                     np.savetxt(save_filename_fullpath,output.astype(np.uint16),fmt='%i')
 
                 # Save output as image
                 if output_format == "png":
                     save_filename = "preprocessed_{}.png".format(filename)
-                    save_filename_fullpath = os.path.join(output_dir, save_filename)
+                    save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
                     imageio.imwrite(save_filename_fullpath, output.astype(np.uint16))
 
 
 if __name__ == "__main__":
     """
     Commandline interface
+
+    Directory specifications:
+    - Specify the full input_dir and output_dir, or
+    - specify the parent_dir, the samples_dir,
+      and the program will create a timestamped output directory.
+
+    Parameters specifications:
+    - Provide the full path to the params file, or
+    - provide a JSON-encoded string of parameters.
+
+    Plans specifications:
+    - Provide the plans as a csv (e.g. "plan1,plan2"), or
+    - provide the plans in the params (e.g. {... "plans": ["plan1", "plan2"]})
+
+
     """
     print("Start preprocessing...")
-    print("Current directory: " + os.getcwd())
 
     # Set up argument parser
     parser = argparse.ArgumentParser()
     # Set up parser arguments
-    parser.add_argument("--input_dir", help="The files directory to analyze")
-    parser.add_argument("--output_dir", help="The directory to preprocessing results")
-    parser.add_argument("--params_file", help="The parameters for preprocessing")
-    parser.add_argument("--plans", help="The plans for preprocessing")
+    parser.add_argument(
+            "--parent_dir", default=None,
+            help="The parent directory to analyze")
+    parser.add_argument(
+            "--samples_dir", default=None,
+            help="The subdirectory name of samples to analyze")
+    parser.add_argument(
+            "--input_dir", default=None,
+            help="The files directory to analyze")
+    parser.add_argument(
+            "--output_dir", default=None,
+            help="The directory to preprocessing results")
+    parser.add_argument(
+            "--params_file", default=None,
+            help="The filename with parameters for preprocessing")
+    parser.add_argument(
+            "--params", default=None,
+            help="A JSON-encoded string of parameters for preprocessing")
+    parser.add_argument(
+            "--plans", default=None,
+            help="The plans for preprocessing")
 
     args = parser.parse_args()
 
     # Set variables based on input arguments
+    # Set directory info
+    parent_dir = args.parent_dir
+    samples_dir = args.samples_dir
     input_dir = args.input_dir
     output_dir = args.output_dir
+
+    # If parent_dir and samples_dir are set, and input_dir and output_dir
+    # are empty, then set input_dir and output_dir appropriately
+    if parent_dir and samples_dir and not input_dir and not output_dir:
+        input_dir = os.path.join(parent_dir, samples_dir)
+    # If parent_dir and samples_dir are not set, but input_dir and output_dir
+    # are set, then just use those
+    elif input_dir and output_dir:
+        pass
+    else:
+        raise ValueError("Must specify parent_dir and samples_dir or input_dir")
+
+    # Get parameters from file or from JSON string commandline argument
     params_file = args.params_file
-    with open(params_file,"r") as params_fp:
-        params = json.loads(params_fp.read())
-    plans = args.plans.split(",")
+    params_json = args.params
+    if params_file:
+        with open(params_file,"r") as params_fp:
+            params = json.loads(params_fp.read())
+    elif args.params:
+        params = json.loads(params_json)
+    else:
+        raise ValueError("Parameters file or JSON string required.")
+
+    # Get plans from comma-separated values or from parameters
+    plans_csv = args.plans
+    if plans_csv:
+        plans = args.plans.split(",")
+    else:
+        plans = params.get("plans")
+    if not plans:
+        raise ValueError("Plans required.")
 
     # Instantiate PreprocessData class
-    preprocessor = PreprocessData(input_dir=input_dir, params=params)
+    preprocessor = PreprocessData(input_dir=input_dir, output_dir=output_dir,
+            parent_dir=parent_dir, samples_dir=samples_dir, params=params)
+
     # Run preprocessing
     preprocessor.preprocess(visualize=False, plans=plans,
-                        mask_style=params.get("crop_style"))
-    preprocessor.save(output_dir=output_dir, output_format="txt", rescale=False)
+            mask_style=params.get("crop_style"))
+
+    # Save
+    preprocessor.save(output_format="txt", rescale=False)
     print("Done preprocessing.")
