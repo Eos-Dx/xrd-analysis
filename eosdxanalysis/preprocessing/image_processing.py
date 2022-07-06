@@ -223,4 +223,6 @@ def unwarp_polar(img, origin=None, output_shape=None, rmax=None, order=1):
     if rmax is not None:
         rs *= (img.shape[0]-1)/(rmax)
     map_coordinates(img, (rs, thetas), order=order, output=output)
+    # Rescale image
+    output *= np.sum(img)/np.sum(output)
     return output
