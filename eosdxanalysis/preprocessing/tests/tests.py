@@ -728,9 +728,12 @@ class TestImageProcessing(unittest.TestCase):
 
         output_shape=(256,256)
 
-        test_image = unwarp_polar(test_image_polar.T, output_shape=output_shape, rmax=200)
+        test_image = unwarp_polar(test_image_polar.T,
+                output_shape=output_shape, rmax=200)
 
         test_image_warp_polar = warp_polar(test_image)
+        # Rescale
+        test_image_warp_polar *= np.sum(test_image)/np.sum(test_image_warp_polar)
 
         # Test that maximum is at index 9
         # First, get the indices of the maximum locations along the columns
@@ -739,6 +742,11 @@ class TestImageProcessing(unittest.TestCase):
 
         self.assertTrue(np.all(max_indices_start_image == 9))
         self.assertTrue(np.all(max_indices_final_image == 18))
+
+        # Assert that we end up with the same intensity
+        start_intensity = np.sum(test_image_polar)
+        final_intensity = np.sum(test_image_warp_polar)
+        self.assertTrue(np.isclose(start_intensity, final_intensity))
 
 
 class TestPeakFinding(unittest.TestCase):
