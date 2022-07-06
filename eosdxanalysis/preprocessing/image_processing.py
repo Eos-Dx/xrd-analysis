@@ -200,7 +200,7 @@ def quadrant_fold(image):
     return quad_folded
 
 def unwarp_polar(img, origin=None, output_shape=None, rmax=None, order=1,
-        rescale=True):
+        rescale=False):
     """
     Note that notation here is different from `warp_polar`:
     Here we use the standard Cartesian grid.
