@@ -729,7 +729,7 @@ class TestImageProcessing(unittest.TestCase):
         output_shape=(256,256)
 
         test_image = unwarp_polar(test_image_polar.T,
-                output_shape=output_shape, rmax=200)
+                output_shape=output_shape, rmax=200, rescale=True)
 
         test_image_warp_polar = warp_polar(test_image)
         # Rescale
