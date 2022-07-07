@@ -17,10 +17,13 @@ class Calibration(object):
     Calibration class to perform calibration for a set of calibration images
     """
 
-    def __init__(self, calibration_material):
+    def __init__(self, calibration_material, wavelen=1.5418):
         """
         Initialize Calibration class
         """
+        # Store source wavelength
+        self.wavelen = wavelen
+
         # Store calibration material name
         self.calibration_material = calibration_material
 
@@ -50,18 +53,46 @@ class Calibration(object):
         centered_image, new_center = centerize(image, center)
 
         # Warp to polar
-        polar_image = warp_polar(centered_image)
-
-        # Convert to 1D intensity vs. radius (pixel)
+        # Set a maximum radius which we are interested in
         final_r = int(r_max) if r_max else None
-        radial_intensity = np.sum(polar_image, axis=0)[:final_r]
+        # Double the size of the output image for better interpolation
+        output_shape = (2*centered_image.shape[0], 2*centered_image.shape[1])
+        polar_image = warp_polar(centered_image, radius=final_r,
+                                output_shape=output_shape, preserve_range=True)
+
+        # Convert to 1D intensity vs. radius (pixel) and rescale by shape
+        radial_intensity = np.sum(polar_image, axis=0)/output_shape[0]
+        # Set up radius linspace, where r is in pixels
+        r_space = np.linspace(0, final_r, len(radial_intensity))
+
+        # Perform Gaussian peak-finding on the radial intensity profile
+        gauss_peaks = find_all_peaks(radial_intensity, window_size=3)
+
+        # For each q-peak reference value, calculate the sample-to-detector
+        # distance
+        q_peaks_ref = self.q_peaks_ref
+
 
         import matplotlib.pyplot as plt
-        plt.scatter(range(len(radial_intensity)), radial_intensity)
+        fig1 = plt.figure()
+        # Plot original image
+        plt.imshow(image)
+
+        # Plot centerized image
+        fig2 = plt.figure()
+        plt.imshow(centered_image)
+
+        # Plot polar image
+        fig3 = plt.figure()
+        plt.imshow(polar_image)
+
+        # Plot intensity vs. pixel radius
+        fig4 = plt.figure()
+        plt.scatter(r_space, radial_intensity)
+
         plt.show()
 
-        # For each q-peak reference value, calculate
-        # the sample-to-detector distance
+        return distance
 
 
     def sample_set_detector_distance(self):
