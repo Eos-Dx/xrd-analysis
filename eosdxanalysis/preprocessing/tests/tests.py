@@ -753,10 +753,15 @@ class TestPeakFinding(unittest.TestCase):
         Test gaussian peak finding for a matrix with 1 at the center, rest 0
         """
         # Set up the test image
-        image_shape = (5,5)
-        test_image = np.zeros(image_shape)
-        known_peak_location = (image_shape[0]//2, image_shape[0]//2)
-        test_image[known_peak_location[0], known_peak_location[1]] = 1
+        test_image = np.array([
+            [0,0,0,0,0,],
+            [0,0,0,0,0,],
+            [0,0,1,0,0,],
+            [0,0,0,0,0,],
+            [0,0,0,0,0,],
+            ])
+
+        known_peak_location = (np.array(test_image.shape)[:2]/2) - 0.5
 
         # Find the peak location
         window_size = 3
@@ -770,13 +775,15 @@ class TestPeakFinding(unittest.TestCase):
         Test gaussian peak finding for a matrix with two 1s
         """
         # Set up the test image
-        image_shape = (5,5)
-        test_image = np.zeros(image_shape)
-        known_peak_location_1 = (1,1)
-        known_peak_location_2 = (3,3)
-        known_peak_location = (2,2)
-        test_image[known_peak_location_1[0], known_peak_location_1[1]] = 1
-        test_image[known_peak_location_2[0], known_peak_location_2[1]] = 1
+        test_image = np.array([
+            [0,0,0,0,0,],
+            [0,1,0,0,0,],
+            [0,0,0,0,0,],
+            [0,0,0,1,0,],
+            [0,0,0,0,0,],
+            ])
+
+        known_peak_location = (np.array(test_image.shape)[:2]/2) - 0.5
 
         # Find the peak location
         window_size = 3
@@ -795,9 +802,10 @@ class TestPeakFinding(unittest.TestCase):
             [0,0,0,0,0,],
             ])
 
+        known_peak_location = (np.array(test_image.shape)[:2]/2) - 0.5
+
         # Find the peak location
         window_size = 3
-        known_peak_location = (2,2)
         test_peak_location = find_2d_peak(test_image, window_size=window_size)
 
         # Check if peak location is correct
@@ -808,10 +816,10 @@ class TestPeakFinding(unittest.TestCase):
         Test gaussian peak finding for an array with 1 at the center, rest 0
         """
         # Set up the test array
-        array_len = 5
-        test_array = np.zeros((array_len,1))
-        known_peak_location = len(test_array)/2
-        test_array[array_len//2] = 1
+        test_array = np.array([
+            0,0,1,0,0,],)
+
+        known_peak_location = (test_array.size/2) - 0.5
 
         # Find the peak location
         window_size = 3
