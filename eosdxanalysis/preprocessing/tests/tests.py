@@ -822,7 +822,7 @@ class TestPeakFinding(unittest.TestCase):
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_1d_peaks(test_array, window_size=window_size)
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
 
         # Check that only one peak location is found
         self.assertEqual(test_peak_location.size, 1)
@@ -842,7 +842,7 @@ class TestPeakFinding(unittest.TestCase):
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_1d_peaks(test_array, window_size=window_size)
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
 
         # Check that only one peak location is found
         self.assertEqual(test_peak_location.size, 1)
@@ -859,13 +859,33 @@ class TestPeakFinding(unittest.TestCase):
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_1d_peaks(test_array, window_size=window_size)
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
 
         # Check that only one peak location is found
         self.assertEqual(test_peak_location.size, 1)
 
         # Check if peak location is correct
         self.assertTrue(np.array(known_peak_location == test_peak_location).all())
+
+    def test_gaussian_1d_peak_finding_two_peaks(self):
+        """
+        Test gaussian peak finding for an array with two 1s
+        """
+        # Set up the test array
+        test_array = np.zeros((10,1))
+        test_array[1] = 1
+        test_array[8] = 1
+        known_peak_locations = [1,8]
+
+        # Find the peak location
+        window_size = 3
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that two peak locations are found
+        self.assertEqual(test_peak_locations.size, 2)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array(known_peak_locations == test_peak_locations).all())
 
 if __name__ == '__main__':
     unittest.main()
