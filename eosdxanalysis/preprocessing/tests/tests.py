@@ -803,7 +803,7 @@ class TestPeakFinding(unittest.TestCase):
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
-    def test_gaussian_peak_finding_1d_single_max_value(self):
+    def test_gaussian_1d_peak_finding_single_max_value(self):
         """
         Test gaussian peak finding for an array with 1 at the center, rest 0
         """
@@ -819,7 +819,7 @@ class TestPeakFinding(unittest.TestCase):
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
-    def test_gaussian_peak_finding_1d_double_max_value(self):
+    def test_gaussian_1d_peak_finding_double_max_value(self):
         """
         Test gaussian peak finding for a matrix with two 1s
         """
@@ -839,7 +839,7 @@ class TestPeakFinding(unittest.TestCase):
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
-    def test_gaussian_peak_finding_1d_noisy_example(self):
+    def test_gaussian_1d_peak_finding_noisy_example(self):
         # Set up the test image with a noisy peak at the center
         test_image = np.array([
             [0,0,0,0,0,],
