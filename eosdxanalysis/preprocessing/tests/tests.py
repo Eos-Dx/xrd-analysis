@@ -832,36 +832,29 @@ class TestPeakFinding(unittest.TestCase):
         """
         Test gaussian peak finding for an array with two 1s
         """
-        # Set up the test image
-        image_shape = (5,5)
-        test_image = np.zeros(image_shape)
-        known_peak_location_1 = (1,1)
-        known_peak_location_2 = (3,3)
-        known_peak_location = (2,2)
-        test_image[known_peak_location_1[0], known_peak_location_1[1]] = 1
-        test_image[known_peak_location_2[0], known_peak_location_2[1]] = 1
+        # Set up the test array
+        test_array = np.array([
+            0,1,0,1,0,],)
+
+        known_peak_location = (test_array.size/2) - 0.5
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_all_1d_peaks(test_image, window_size=window_size)
+        test_peak_location = find_1d_peak(test_array, window_size=window_size)
 
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
     def test_gaussian_1d_peak_finding_noisy_example(self):
-        # Set up the test image with a noisy peak at the center
-        test_image = np.array([
-            [0,0,0,0,0,],
-            [1,1,0,1,0,],
-            [1,9,6,7,0,],
-            [0,1,1,1,0,],
-            [0,0,0,0,0,],
-            ])
+        # Set up the test array with a noisy peak at the center
+        test_array = np.array([
+            1,9,6,7,0,],)
+
+        known_peak_location = (test_array.size/2) - 0.5
 
         # Find the peak location
         window_size = 3
-        known_peak_location = (2,2)
-        test_peak_location = find_all_1d_peaks(test_image, window_size=window_size)
+        test_peak_location = find_1d_peak(test_array, window_size=window_size)
 
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
