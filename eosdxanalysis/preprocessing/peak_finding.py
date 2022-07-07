@@ -23,20 +23,24 @@ def find_2d_peak(image, roi=None, window_size=3):
     # within the roi, and find the maximum location
     peak_location_list = []
     dot_product_max = 0
-    for idx in range(image.shape[0]-window_size):
-        for jdx in range(image.shape[0]-window_size):
-            dot_product = image[idx:idx+window_size,
-                                jdx:jdx+window_size].ravel() @ gaussian.ravel()
-            if dot_product > dot_product_max:
+    for idx in range(image.shape[0]-window_size+1):
+        for jdx in range(image.shape[0]-window_size+1):
+            window = image[idx:idx+window_size, jdx:jdx+window_size]
+            dot_product = window.ravel() @ gaussian.ravel()
+
+            # Check if dot product is new maximum
+            if np.greater(dot_product, dot_product_max):
                 dot_product_max = dot_product
                 # Store the new peak location
-                new_peak_location = np.array([idx+window_size/2,
-                                            jdx+window_size/2])
+                new_peak_location = np.array([idx+window_size/2-0.5,
+                                            jdx+window_size/2-0.5])
+                # Start a new list
                 peak_location_list = [new_peak_location]
-            if dot_product == dot_product_max:
+            # Check if dot product is close to the maximum
+            elif np.isclose(dot_product, dot_product_max):
                 # Add the new peak location
-                new_peak_location = np.array([idx+window_size/2,
-                                            jdx+window_size/2])
+                new_peak_location = np.array([idx+window_size/2-0.5,
+                                            jdx+window_size/2-0.5])
                 peak_location_list.append(new_peak_location)
 
     # If we have multiple peak locations, return the centroid
@@ -48,8 +52,11 @@ def find_2d_peak(image, roi=None, window_size=3):
 def find_1d_peak(radial_profile, window_size=3):
     """
     Find a single peak in a 1D array
-    This assumes physical pixel space, so
-    radial_profile[0] is located 0.5 units from the edge
+    This uses index notation.
+
+    Examples:
+    - [0, 1, 0] has peak location at index 1
+    - [1, 1] has peak location at index 0.5 (between 0 and 1)
     """
     peak_location_list = []
     dot_product_max = 0
@@ -58,17 +65,20 @@ def find_1d_peak(radial_profile, window_size=3):
     gaussian = norm.pdf(x)
     radial_profile = np.squeeze(radial_profile)
 
-    for idx in range(len(radial_profile)-window_size):
-        dot_product = np.dot(radial_profile[idx:idx+window_size], gaussian)
+    for idx in range(len(radial_profile)-window_size+1):
+        window = radial_profile[idx:idx+window_size]
+        dot_product = np.dot(window, gaussian)
 
-        if dot_product > dot_product_max:
+        # Check if dot product is new maximum
+        if np.greater(dot_product, dot_product_max):
             dot_product_max = dot_product
             # Store the new peak location
-            new_peak_location = idx+window_size/2
+            new_peak_location = idx+window_size/2-0.5
             peak_location_list = [new_peak_location]
-        if dot_product == dot_product_max:
+        # Check if dot product is close to the maximum
+        elif np.isclose(dot_product, dot_product_max):
             # Add the new peak location
-            new_peak_location = idx+window_size/2
+            new_peak_location = idx+window_size/2-0.5
             peak_location_list.append(new_peak_location)
 
     # If we have multiple peak locations, return the centroid
