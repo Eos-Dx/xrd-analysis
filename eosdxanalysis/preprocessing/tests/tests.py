@@ -29,7 +29,9 @@ from eosdxanalysis.preprocessing.utils import gen_rotation_line
 
 from eosdxanalysis.preprocessing.preprocess import PreprocessData
 
-from eosdxanalysis.preprocessing.peak_finding import find_peak
+from eosdxanalysis.preprocessing.peak_finding import find_2d_peak
+from eosdxanalysis.preprocessing.peak_finding import find_1d_peak
+from eosdxanalysis.preprocessing.peak_finding import find_all_1d_peaks
 
 TEST_IMAGE_DIR = os.path.join("eosdxanalysis","preprocessing","tests","test_images")
 
@@ -758,7 +760,7 @@ class TestPeakFinding(unittest.TestCase):
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_peak(test_image, window_size=window_size)
+        test_peak_location = find_2d_peak(test_image, window_size=window_size)
 
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
@@ -778,7 +780,7 @@ class TestPeakFinding(unittest.TestCase):
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_peak(test_image, window_size=window_size)
+        test_peak_location = find_2d_peak(test_image, window_size=window_size)
 
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
@@ -796,7 +798,61 @@ class TestPeakFinding(unittest.TestCase):
         # Find the peak location
         window_size = 3
         known_peak_location = (2,2)
-        test_peak_location = find_peak(test_image, window_size=window_size)
+        test_peak_location = find_2d_peak(test_image, window_size=window_size)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
+
+    def test_gaussian_peak_finding_1d_single_max_value(self):
+        """
+        Test gaussian peak finding for an array with 1 at the center, rest 0
+        """
+        # Set up the test array
+        test_array = np.zeros((5,1))
+        known_peak_location = len(test_array)//2
+        test_array[known_peak_location] = 1
+
+        # Find the peak location
+        window_size = 3
+        test_peak_location = find_all_1d_peaks(test_array, window_size=window_size)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
+
+    def test_gaussian_peak_finding_1d_double_max_value(self):
+        """
+        Test gaussian peak finding for a matrix with two 1s
+        """
+        # Set up the test image
+        image_shape = (5,5)
+        test_image = np.zeros(image_shape)
+        known_peak_location_1 = (1,1)
+        known_peak_location_2 = (3,3)
+        known_peak_location = (2,2)
+        test_image[known_peak_location_1[0], known_peak_location_1[1]] = 1
+        test_image[known_peak_location_2[0], known_peak_location_2[1]] = 1
+
+        # Find the peak location
+        window_size = 3
+        test_peak_location = find_all_1d_peaks(test_image, window_size=window_size)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
+
+    def test_gaussian_peak_finding_1d_noisy_example(self):
+        # Set up the test image with a noisy peak at the center
+        test_image = np.array([
+            [0,0,0,0,0,],
+            [1,1,0,1,0,],
+            [1,9,6,7,0,],
+            [0,1,1,1,0,],
+            [0,0,0,0,0,],
+            ])
+
+        # Find the peak location
+        window_size = 3
+        known_peak_location = (2,2)
+        test_peak_location = find_all_1d_peaks(test_image, window_size=window_size)
 
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
