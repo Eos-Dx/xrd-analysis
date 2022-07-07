@@ -4,6 +4,7 @@ Code to find a peak by taking a dot-product with a Gaussian
 
 import numpy as np
 from scipy.stats import multivariate_normal
+from scipy.stats import norm
 
 def find_2d_peak(image, roi=None, window_size=3):
     # Check that window size is not smaller than the image size
@@ -27,14 +28,15 @@ def find_2d_peak(image, roi=None, window_size=3):
             dot_product = image[idx:idx+window_size,
                                 jdx:jdx+window_size].ravel() @ gaussian.ravel()
             if dot_product > dot_product_max:
+                dot_product_max = dot_product
                 # Store the new peak location
-                new_peak_location = np.array([idx+window_size//2,
-                                            jdx+window_size//2])
+                new_peak_location = np.array([idx+window_size/2,
+                                            jdx+window_size/2])
                 peak_location_list = [new_peak_location]
             if dot_product == dot_product_max:
                 # Add the new peak location
-                new_peak_location = np.array([idx+window_size//2,
-                                            jdx+window_size//2])
+                new_peak_location = np.array([idx+window_size/2,
+                                            jdx+window_size/2])
                 peak_location_list.append(new_peak_location)
 
     # If we have multiple peak locations, return the centroid
@@ -44,7 +46,37 @@ def find_2d_peak(image, roi=None, window_size=3):
     return peak_location
 
 def find_1d_peak(radial_profile, window_size=3):
-    pass
+    """
+    Find a single peak in a 1D array
+    This assumes physical pixel space, so
+    radial_profile[0] is located 0.5 units from the edge
+    """
+    peak_location_list = []
+    dot_product_max = 0
+
+    x = np.linspace(-1, 1, window_size)
+    gaussian = norm.pdf(x)
+    radial_profile = np.squeeze(radial_profile)
+
+    for idx in range(len(radial_profile)-window_size):
+        dot_product = np.dot(radial_profile[idx:idx+window_size], gaussian)
+
+        if dot_product > dot_product_max:
+            dot_product_max = dot_product
+            # Store the new peak location
+            new_peak_location = idx+window_size/2
+            peak_location_list = [new_peak_location]
+        if dot_product == dot_product_max:
+            # Add the new peak location
+            new_peak_location = idx+window_size/2
+            peak_location_list.append(new_peak_location)
+
+    # If we have multiple peak locations, return the centroid
+    peak_location_array = np.array(peak_location_list)
+    peak_location = np.mean(peak_location_array, axis=0)
+
+    return peak_location
+
 
 def find_all_1d_peaks(radial_profile, window_size=3):
     # Ensure the window size is not smaller than the input size
