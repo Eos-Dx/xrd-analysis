@@ -5,7 +5,7 @@ Code to find a peak by taking a dot-product with a Gaussian
 import numpy as np
 from scipy.stats import multivariate_normal
 
-def find_peak(image, roi=None, window_size=3):
+def find_2d_peak(image, roi=None, window_size=3):
     # Check that window size is not smaller than the image size
     if window_size > image.shape[0] or window_size > image.shape[1]:
         raise ValueError("Window size must be less than image size.")
@@ -42,6 +42,16 @@ def find_peak(image, roi=None, window_size=3):
     peak_location = np.mean(peak_location_array, axis=0)
 
     return peak_location
+
+def find_1d_peak(radial_profile, window_size=3):
+    pass
+
+def find_all_1d_peaks(radial_profile, window_size=3):
+    # Ensure the window size is not smaller than the input size
+    if window_size > len(radial_profile):
+        raise ValueError("Window size must be less than input size.")
+
+    # Create a 1D Gaussian window
 
 
 if __name__ == "__main__":
