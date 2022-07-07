@@ -3,7 +3,11 @@ Code to calibrate X-ray diffraction setup using calibration samples data
 """
 import numpy as np
 
+from sklearn.linear_model import LinearRegression
+
 from skimage.transform import warp_polar
+
+from scipy.signal import argrelextrema
 
 from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
@@ -48,6 +52,9 @@ class Calibration(object):
         - Return the mean, standard deviation, and values
 
         """
+        wavelen = self.wavelen
+        peaks_ref = self.q_peaks_ref
+
         # Centerize the image
         center = find_center(image)
         centered_image, new_center = centerize(image, center)
@@ -65,32 +72,32 @@ class Calibration(object):
         # Set up radius linspace, where r is in pixels
         r_space = np.linspace(0, final_r, len(radial_intensity))
 
-        # Perform Gaussian peak-finding on the radial intensity profile
-        gauss_peaks = find_all_peaks(radial_intensity, window_size=3)
+        # Find the peaks
+        peak_indices = argrelextrema(radial_intensity, np.greater)[0]
 
-        # For each q-peak reference value, calculate the sample-to-detector
-        # distance
-        q_peaks_ref = self.q_peaks_ref
+        # Average the doublets
+        doublets = np.array(peaks_ref.get("doublets"))
+        if doublets.size > 0:
+            doublets_avg = np.array(np.mean(doublets)).flatten()
+        singlets = np.array(peaks_ref.get("singlets")).flatten()
+        # Join the singlets and doublets averages into a single array
 
+        peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
 
-        import matplotlib.pyplot as plt
-        fig1 = plt.figure()
-        # Plot original image
-        plt.imshow(image)
+        # Set Y value based on derviations
+        Y = np.tan(2*np.arcsin(peaks_avg*wavelen/(4*np.pi)))
+        # TODO: Rescale peak_indices to final_r radius
+        # as these are the rn values
+        X = peak_indices
 
-        # Plot centerized image
-        fig2 = plt.figure()
-        plt.imshow(centered_image)
+        # Now perform linear regression
+        linreg = LinearRegression().fit(X, Y)
+        linreg.score(X, y)
 
-        # Plot polar image
-        fig3 = plt.figure()
-        plt.imshow(polar_image)
+        coeff = linreg._coeff
 
-        # Plot intensity vs. pixel radius
-        fig4 = plt.figure()
-        plt.scatter(r_space, radial_intensity)
-
-        plt.show()
+        slope = coeff[0]
+        distance = slope
 
         return distance
 
