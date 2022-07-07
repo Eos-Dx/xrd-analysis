@@ -49,20 +49,23 @@ def find_2d_peak(image, roi=None, window_size=3):
 
     return peak_location
 
-def find_1d_peak(radial_profile, window_size=3):
+def find_1d_peaks(radial_profile, window_size=3, peak_width=1):
     """
     Find a single peak in a 1D array
     This uses index notation.
 
-    Examples:
+    Examples
+    --------
     - [0, 1, 0] has peak location at index 1
     - [1, 1] has peak location at index 0.5 (between 0 and 1)
+
+    peak_width is the standard deviation
     """
     peak_location_list = []
     dot_product_max = 0
 
     x = np.linspace(-1, 1, window_size)
-    gaussian = norm.pdf(x)
+    gaussian = norm.pdf(x, scale=peak_width)
     radial_profile = np.squeeze(radial_profile)
 
     for idx in range(len(radial_profile)-window_size+1):
@@ -81,19 +84,9 @@ def find_1d_peak(radial_profile, window_size=3):
             new_peak_location = idx+window_size/2-0.5
             peak_location_list.append(new_peak_location)
 
-    # If we have multiple peak locations, return the centroid
     peak_location_array = np.array(peak_location_list)
-    peak_location = np.mean(peak_location_array, axis=0)
 
-    return peak_location
-
-
-def find_all_1d_peaks(radial_profile, window_size=3):
-    # Ensure the window size is not smaller than the input size
-    if window_size > len(radial_profile):
-        raise ValueError("Window size must be less than input size.")
-
-    # Create a 1D Gaussian window
+    return peak_location_array
 
 
 if __name__ == "__main__":

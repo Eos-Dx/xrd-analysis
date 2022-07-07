@@ -30,8 +30,7 @@ from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.preprocess import PreprocessData
 
 from eosdxanalysis.preprocessing.peak_finding import find_2d_peak
-from eosdxanalysis.preprocessing.peak_finding import find_1d_peak
-from eosdxanalysis.preprocessing.peak_finding import find_all_1d_peaks
+from eosdxanalysis.preprocessing.peak_finding import find_1d_peaks
 
 TEST_IMAGE_DIR = os.path.join("eosdxanalysis","preprocessing","tests","test_images")
 
@@ -823,10 +822,13 @@ class TestPeakFinding(unittest.TestCase):
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_1d_peak(test_array, window_size=window_size)
+        test_peak_location = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that only one peak location is found
+        self.assertEqual(test_peak_location.size, 1)
 
         # Check if peak location is correct
-        self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
+        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
 
     def test_gaussian_1d_peak_finding_double_max_value(self):
         """
@@ -840,10 +842,13 @@ class TestPeakFinding(unittest.TestCase):
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_1d_peak(test_array, window_size=window_size)
+        test_peak_location = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that only one peak location is found
+        self.assertEqual(test_peak_location.size, 1)
 
         # Check if peak location is correct
-        self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
+        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
 
     def test_gaussian_1d_peak_finding_noisy_example(self):
         # Set up the test array with a noisy peak at the center
@@ -854,10 +859,13 @@ class TestPeakFinding(unittest.TestCase):
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_1d_peak(test_array, window_size=window_size)
+        test_peak_location = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that only one peak location is found
+        self.assertEqual(test_peak_location.size, 1)
 
         # Check if peak location is correct
-        self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
+        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
 
 if __name__ == '__main__':
     unittest.main()
