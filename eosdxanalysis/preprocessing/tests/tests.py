@@ -808,20 +808,21 @@ class TestPeakFinding(unittest.TestCase):
         Test gaussian peak finding for an array with 1 at the center, rest 0
         """
         # Set up the test array
-        test_array = np.zeros((5,1))
-        known_peak_location = len(test_array)//2
-        test_array[known_peak_location] = 1
+        array_len = 5
+        test_array = np.zeros((array_len,1))
+        known_peak_location = len(test_array)/2
+        test_array[array_len//2] = 1
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_all_1d_peaks(test_array, window_size=window_size)
+        test_peak_location = find_1d_peak(test_array, window_size=window_size)
 
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
     def test_gaussian_1d_peak_finding_double_max_value(self):
         """
-        Test gaussian peak finding for a matrix with two 1s
+        Test gaussian peak finding for an array with two 1s
         """
         # Set up the test image
         image_shape = (5,5)
