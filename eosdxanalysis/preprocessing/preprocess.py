@@ -32,244 +32,29 @@ from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 Performs preprocessing pipeline
 """
 
+ABBREVIATIONS = {
+        # output style: output style abbreviation
+        "centered_rotated": "CR",
+        "centered_rotated_quad_folded": "CRQF",
+        "local_thresh_centered_rotated": "LTCR",
+        "local_thresh_centered_rotated_quad_folded": "LTCRQF",
+        }
+
 OUTPUT_MAP = {
         # Maps output style to input plan
         "centered_rotated":"centerize_rotate",
-        "quad_folded":"quad_fold",
+        "centered_rotated_quad_folded":"centerize_rotate_quad_fold",
         "local_thresh_centered_rotated":"local_thresh_centerize_rotate",
-        "local_thresh_quad_folded":"local_thresh_quad_fold",
+        "local_thresh_centered_rotated_quad_folded":"local_thresh_centerize_rotate_quad_fold",
         }
 
 INVERSE_OUTPUT_MAP = {
         # Maps preprocessing plan to output style
         "centerize_rotate":"centered_rotated",
-        "quad_fold":"quad_folded",
+        "centerize_rotate_quad_fold":"centered_rotated_quad_folded",
         "local_thresh_centerize_rotate":"local_thresh_centered_rotated",
-        "local_thresh_quad_fold":"local_thresh_quad_folded",
+        "local_thresh_centerize_rotate_quad_fold":"local_thresh_centered_rotated_quad_folded",
         }
-
-class PreprocessDataArray(object):
-    """
-    Class to run preprocessing on individual image data arrays
-    """
-
-    def __init__(self, image, params={}):
-        # Store parameters
-        self.params = params
-
-        self.cache = {}
-        self.cache["original"] = image
-
-        return super().__init__()
-
-    def preprocess(self, plans, mask_style=None):
-        """
-        Run all preprocessing steps
-
-        Plan options include:
-        - centerize_rotate
-        - quad_fold
-        - local_thresh_centerize_rotate
-        - local_thresh_quad_fold
-
-        Mask options include:
-        - beam
-        - corners
-        - both
-        """
-        # Get and set parameters
-        self.plans = plans
-        params = self.params
-        h = params.get("h")
-        w = params.get("w")
-        beam_rmax = params.get("beam_rmax")
-        rmin = params.get("rmin")
-        rmax = params.get("rmax")
-        eyes_rmin = params.get("eyes_rmin")
-        eyes_rmax = params.get("eyes_rmax")
-        eyes_blob_rmax = params.get("eyes_blob_rmax")
-        eyes_percentile = params.get("eyes_percentile")
-        local_thresh_block_size = params.get("local_thresh_block_size")
-
-        if mask_style is None:
-            mask_style = params.get("crop_style")
-
-        sample = self.cache.get("original")
-
-        for plan in plans:
-
-            if plan == "centerize_rotate":
-                # Centerize and rotate
-                centered_rotated_image, center, new_center, angle = self.centerize_and_rotate(sample)
-                # Set output
-                output = centered_rotated_image
-
-            if plan == "quad_fold":
-                # Centerize and rotate
-                centered_rotated_image, center, new_center, angle = self.centerize_and_rotate(sample)
-                # Quad fold
-                quad_folded_image = quadrant_fold(centered_rotated_image)
-                # Set output
-                output = quad_folded_image
-
-            if plan == "local_thresh_centerize_rotate":
-                # Take local threshold
-                local_thresh_image = threshold_local(sample, local_thresh_block_size)
-                # Centerize and rotate
-                local_thresh_centered_rotated_image, center, new_center, angle = self.centerize_and_rotate(local_thresh_image)
-                # Set output
-                output = local_thresh_centered_rotated_image
-
-            if plan == "local_thresh_quad_fold":
-                # Take local threshold
-                local_thresh_image = threshold_local(sample, local_thresh_block_size)
-                # Centerize and rotate
-                local_thresh_centered_rotated_image, center, new_center, angle = self.centerize_and_rotate(local_thresh_image)
-                # Quad fold
-                local_thresh_quad_folded_image = quadrant_fold(local_thresh_centered_rotated_image)
-                # Set output
-                output = local_thresh_quad_folded_image
-
-            if mask_style:
-                output = self.mask(output, style=mask_style)
-
-            self.cache[INVERSE_OUTPUT_MAP[plan]] = output
-
-    def centerize_and_rotate(self, image):
-        """
-        Given an input image, perform the following steps:
-        1. determine its center
-        2. centerize
-        3. find rotation angle
-        4. rotate
-        """
-        params = self.params
-        h = params.get("h")
-        w = params.get("w")
-        beam_rmax = params.get("beam_rmax")
-        rmin = params.get("rmin")
-        rmax = params.get("rmax")
-
-        # Find center using original image
-        center = find_center(image,method="max_centroid",rmax=beam_rmax)
-        # Find eye rotation using original image
-        angle = self.find_eye_rotation_angle(image, center)
-        # Centerize the image
-        centered_image_large, new_center = centerize(image, center)
-        # Rotate the image
-        # Note temporary center notation switch to col, row
-        # in skimage.transform.rotate
-        centered_rotated_image_large = rotate(centered_image_large, -angle,
-                                        resize=False,
-                                        center=(new_center[1], new_center[0]))
-        # Crop to original size
-        centered_rotated_image = crop_image(centered_rotated_image_large, h, w, new_center)
-        return centered_rotated_image, center, new_center, angle
-
-    def find_eye_rotation_angle(self, image, center):
-        """
-        Find the rotation angle of the original XRD pattern using the following steps:
-        1. Find centroid maximum intensities in 9A "eye" feature region
-        2. Convert 9A features to binary blobs and find centroid
-        3. Calculate rotation angle from image center to blob centroid
-
-        We work on the original image here to find the rotation angle,
-        not on the centered and rotated image.
-
-        Inputs:
-        - image
-        - center of image
-        """
-        params = self.params
-        h = params.get("h")
-        w = params.get("w")
-        beam_rmax = params.get("beam_rmax")
-        rmin = params.get("rmin")
-        rmax = params.get("rmax")
-        eyes_rmin = params.get("eyes_rmin")
-        eyes_rmax = params.get("eyes_rmax")
-        eyes_blob_rmax = params.get("eyes_blob_rmax")
-        eyes_percentile = params.get("eyes_percentile")
-        local_thresh_block_size = params.get("local_thresh_block_size")
-
-        # 1. Find the 9A arc maxima features
-
-        # Perform local thresholding on original
-        local_thresh_image = threshold_local(image, local_thresh_block_size)
-
-        # Add local threshold image to cache
-        self.cache["local_thresh"] = local_thresh_image
-
-        # Apply circular mask as a digital beamstop to center
-        beam_mask = create_circular_mask(h,w,center=center,rmin=rmin,rmax=rmax)
-        # masked_image = np.copy(local_thresh_image)
-        masked_image = np.copy(image)
-        masked_image[~beam_mask] = 0
-
-        # Get the max_centroid as a starting guess
-        initial_max_centroid = find_center(masked_image,mask_center=center,
-                method="max_centroid",rmin=eyes_rmin,rmax=eyes_rmax)
-
-        # 2. Use percentile thresholding to convert 9A arc maxima features to blobs
-
-        # Create mask for eye region
-        eye_mask = create_circular_mask(h,w,center=center,rmin=eyes_rmin,rmax=eyes_rmax)
-        # Use local threshold results
-        eye_roi = np.copy(local_thresh_image)
-        eye_roi[~eye_mask] = 0
-        eye_roi_binary = np.copy(eye_roi)
-        # Calculate percentile
-        percentile = np.percentile(eye_roi_binary,eyes_percentile)
-        # Binary threshold based on percentile
-        eye_roi_binary[eye_roi_binary < percentile] = 0
-        eye_roi_binary[eye_roi_binary >= percentile] = 1
-
-        # Now calculate centroid of max blob
-
-        # Now set region of interest for maximum
-        eye_max_roi_mask = create_circular_mask(h,w,center=initial_max_centroid,rmax=eyes_blob_rmax)
-        # Mask out areas outside of eye max roi
-        eye_max_roi = np.copy(eye_roi_binary)
-        eye_max_roi[~eye_max_roi_mask] = 0
-        # Take centroid of this
-        eye_max_roi_coordinates = np.array(np.where(eye_max_roi == 1)).T
-        eye_max_blob_centroid = find_centroid(eye_max_roi_coordinates)
-
-        # 3. Calculate the rotation angle of the XRD pattern using result from 9A feature analysis
-
-        # Calculate angle between two points
-        angle = get_angle(center, eye_max_blob_centroid)
-        return angle
-
-    def mask(self, image, style="both"):
-        """
-        Mask an image according to style:
-        - "beam" means beam mask only
-        - "outer" means outer ring mask only
-        - "both" means annulus
-        """
-        params = self.params
-        h = params.get("h")
-        w = params.get("w")
-        rmin = params.get("rmin")
-        rmax = params.get("rmax")
-
-        # Mask
-        if style == "both":
-            # Mask out beam and area outside outer ring
-            roi_mask = create_circular_mask(h,w,rmin=rmin,rmax=rmax)
-            image[~roi_mask] = 0
-        if style == "beam":
-            # Mask out beam
-            roi_mask = create_circular_mask(h,w,rmin=rmin, rmax=h)
-            image[~roi_mask] = 0
-        if style == "outside":
-            # Mask area outside outer ring
-            inv_roi_mask = create_circular_mask(h,w,rmin=rmax)
-            image[inv_roi_mask] = 0
-
-        return image
-
 
 
 class PreprocessData(object):
@@ -310,10 +95,8 @@ class PreprocessData(object):
         self.cache = {}
         self.cache["original"] = []
         self.cache["local_thresh"] = []
-        self.cache["centered_rotated"] = []
-        self.cache["quad_folded"] = []
-        self.cache["local_thresh_centered_rotated"] = []
-        self.cache["local_thresh_quad_folded"] = []
+        for plan in OUTPUT_MAP.keys():
+            self.cache[plan] = []
 
         return super().__init__()
 
@@ -378,18 +161,18 @@ class PreprocessData(object):
 
                     self.cache["centered_rotated"].append(output)
 
-                if plan == "quad_fold":
+                if plan == "centerize_rotate_quad_fold":
                     # Centerize and rotate
                     centered_rotated_image, center, new_center, angle = self.centerize_and_rotate(sample)
                     # Quad fold
-                    quad_folded_image = quadrant_fold(centered_rotated_image)
+                    centered_rotated_quad_folded_image = quadrant_fold(centered_rotated_image)
                     # Set output
-                    output = quad_folded_image
+                    output = centered_rotated_quad_folded_image
 
                     if mask_style:
-                        output = self.mask(quad_folded_image, style=mask_style)
+                        output = self.mask(centered_rotated_quad_folded_image, style=mask_style)
 
-                    self.cache["quad_folded"].append(output)
+                    self.cache["centered_rotated_quad_folded"].append(output)
 
                 if plan == "local_thresh_centerize_rotate":
                     # Take local threshold
@@ -404,20 +187,20 @@ class PreprocessData(object):
 
                     self.cache["local_thresh_centered_rotated"].append(output)
 
-                if plan == "local_thresh_quad_fold":
+                if plan == "local_thresh_centerize_rotate_quad_fold":
                     # Take local threshold
                     local_thresh_image = threshold_local(sample, local_thresh_block_size)
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, new_center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Quad fold
-                    local_thresh_quad_folded_image = quadrant_fold(local_thresh_centered_rotated_image)
+                    local_thresh_centered_rotated_quad_folded_image = quadrant_fold(local_thresh_centered_rotated_image)
                     # Set output
-                    output = local_thresh_quad_folded_image
+                    output = local_thresh_centered_rotated_quad_folded_image
 
                     if mask_style:
                         output = self.mask(local_thresh_quad_folded_image, style=mask_style)
 
-                    self.cache["local_thresh_quad_folded"].append(output)
+                    self.cache["local_thresh_centered_rotated_quad_folded"].append(output)
 
             if visualize:
                 # Recenter image
@@ -648,12 +431,13 @@ class PreprocessData(object):
 
         # Write params to file
         params_dir = os.path.join(output_dir,"params")
-        os.makedirs(params_dir)
+        os.makedirs(params_dir, exist_ok=True)
         with open(os.path.join(params_dir,"params.txt"),"w") as paramsfile:
             paramsfile.write(json.dumps(params,indent=4))
 
         for plan in self.plans:
             output_style = INVERSE_OUTPUT_MAP.get(plan)
+            output_style_abbreviation = ABBREVIATIONS.get(output_style)
 
             # Create output directory for plan
             plan_output_dir = os.path.join(output_dir, output_style)
@@ -682,14 +466,14 @@ class PreprocessData(object):
                 # Save output as text
                 if output_format == "txt":
                     save_filename = "preprocessed_{}".format(filename)
-                    save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
-                    np.savetxt(save_filename_fullpath,output.astype(np.uint16),fmt='%i')
+                    save_filename_fullpath = os.path.join(output_dir, save_filename)
+                    np.savetxt(save_filename_fullpath,output.astype(np.uint32),fmt='%i')
 
                 # Save output as image
                 if output_format == "png":
                     save_filename = "preprocessed_{}.png".format(filename)
-                    save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
-                    imageio.imwrite(save_filename_fullpath, output.astype(np.uint16))
+                    save_filename_fullpath = os.path.join(output_dir, save_filename)
+                    imageio.imwrite(save_filename_fullpath, output.astype(np.uint32))
 
 
 if __name__ == "__main__":
