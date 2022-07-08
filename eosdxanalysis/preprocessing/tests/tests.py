@@ -858,10 +858,10 @@ class TestPeakFinding(unittest.TestCase):
         test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
 
         # Check that only one peak location is found
-        self.assertEqual(test_peak_location.size, 1)
+        self.assertEqual(test_peak_locations.size, 1)
 
         # Check if peak location is correct
-        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
+        self.assertTrue(np.array(known_peak_location == test_peak_locations).all())
 
     def test_gaussian_1d_peak_finding_double_max_value(self):
         """
@@ -878,10 +878,10 @@ class TestPeakFinding(unittest.TestCase):
         test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
 
         # Check that only one peak location is found
-        self.assertEqual(test_peak_location.size, 1)
+        self.assertEqual(test_peak_locations.size, 1)
 
         # Check if peak location is correct
-        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
+        self.assertTrue(np.array(known_peak_location == test_peak_locations).all())
 
     def test_gaussian_1d_peak_finding_noisy_example(self):
         # Set up the test array with a noisy peak at the center
@@ -895,10 +895,10 @@ class TestPeakFinding(unittest.TestCase):
         test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
 
         # Check that only one peak location is found
-        self.assertEqual(test_peak_location.size, 1)
+        self.assertEqual(test_peak_locations.size, 1)
 
         # Check if peak location is correct
-        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
+        self.assertTrue(np.array(known_peak_location == test_peak_locations).all())
 
     def test_gaussian_1d_peak_finding_two_peaks(self):
         """
@@ -919,6 +919,153 @@ class TestPeakFinding(unittest.TestCase):
 
         # Check if peak location is correct
         self.assertTrue(np.array(known_peak_locations == test_peak_locations).all())
+
+
+class TestOutputSaturationBugFix(unittest.TestCase):
+    """
+    Issue #64:
+    Preprocessing sometimes outputs images with values all 0 or 2147483648
+    """
+
+    def setUp(self):
+        """
+        Set up some paths
+        """
+        test_dirname = "test_output_saturation_images"
+        test_parent_path = os.path.join(TEST_IMAGE_DIR, test_dirname)
+
+        samples_dir = "samples"
+        samples_path = os.path.join(test_parent_path, samples_dir)
+
+        output_dir = "output"
+        output_path = os.path.join(test_parent_path, output_dir)
+
+        saturated_dir = "preprocessed_samples"
+        saturated_path = os.path.join(test_parent_path, saturated_dir)
+
+        control_dir = "controls"
+        control_path = os.path.join(test_parent_path, control_dir)
+
+        saturation_value = 2147483648
+
+        self.test_parent_path = test_parent_path
+        self.samples_path = samples_path
+        self.output_path = output_path
+        self.saturated_path = saturated_path
+        self.control_path = control_path
+        self.saturation_value = saturation_value
+
+    def test_output_saturation_occurs_with_known_problem_samples(self):
+        """
+        Ensure preprocessed images do not saturate
+        """
+        samples_path = self.samples_path
+        saturated_path = self.saturated_path
+        output_path = self.output_path
+        saturation_value = self.saturation_value
+
+        # Check that saturation indeed occured previously
+        saturated_filepath_list = glob.glob(
+                                    os.path.join(saturated_path, "*.txt"))
+
+        # Check that files list is not empty
+        self.assertTrue(saturated_filepath_list)
+
+        for saturated_filepath in saturated_filepath_list:
+            data = np.loadtxt(saturated_filepath)
+            unique = np.unique(data)
+            # Ensure that we get only two values
+            self.assertEqual(unique.size, 2)
+            # Ensure that the first ordered value is 0
+            self.assertEqual(unique[0], 0)
+            # Ensure that the second ordered value is saturation_value
+            self.assertEqual(unique[1], saturation_value)
+
+    def test_no_output_saturation_control_samples(self):
+        """
+        Test that output saturation does not occur for known control samples
+        """
+        test_parent_path = self.test_parent_path
+        control_path = self.control_path
+        output_path = self.output_path
+        saturation_value = self.saturation_value
+
+        # Control
+        control_name = "A00001.txt"
+
+        # Set up parameters and plans
+        params_file = "params.txt"
+        params_path = os.path.join(test_parent_path, params_file)
+        with open(params_path, "r") as params_fp:
+            params = json.loads(params_fp.read())
+
+        plans = ["centerize_rotate_quad_fold"]
+        output_style = INVERSE_OUTPUT_MAP[plans[0]]
+        plan_output_path = os.path.join(output_path, output_style)
+
+        # Run preprocessing
+        preprocessor = PreprocessData(
+                        input_dir=control_path, output_dir=output_path, params=params)
+        preprocessor.preprocess(plans=plans)
+        preprocessor.save()
+
+        # Now ensure that preprocessed output file is not saturated
+        output_style_abbreviation = ABBREVIATIONS.get(output_style)
+        output_filepath = os.path.join(
+                plan_output_path, "{}_{}".format(output_style_abbreviation, control_name))
+        data = np.loadtxt(output_filepath)
+        unique = np.unique(data)
+        # Ensure that we get only two values
+        self.assertGreater(unique.size, 2)
+        # Ensure that the saturation_value is not in the file
+        self.assertNotIn(saturation_value, unique)
+
+
+    def test_output_saturation_bugfix(self):
+        """
+        Run preprocessing on output_dir and ensure saturation does not occur
+        """
+        # Set to allow RuntimeWarning to raise an error
+        np.seterr(all='raise')
+
+        # Set up variables
+        test_parent_path = self.test_parent_path
+        input_path = self.samples_path
+        output_path = self.output_path
+        saturation_value = self.saturation_value
+
+
+        # Set up parameters and plans
+        params_file = "params.txt"
+        params_path = os.path.join(test_parent_path, params_file)
+        with open(params_path, "r") as params_fp:
+            params = json.loads(params_fp.read())
+
+        plans = ["centerize_rotate_quad_fold"]
+        output_style = INVERSE_OUTPUT_MAP[plans[0]]
+        plan_output_path = os.path.join(output_path, output_style)
+
+        # Run preprocessing
+        preprocessor = PreprocessData(
+                        input_dir=input_path, output_dir=plan_output_path, params=params)
+        preprocessor.preprocess(plans=plans)
+        preprocessor.save()
+
+        # Now ensure that preprocessed files are not saturated
+        output_filepath_list = glob.glob(
+                                    os.path.join(plan_output_path, "*.txt"))
+
+        # Ensure that output_filepath_list is not empty
+        self.assertTrue(output_filepath_list)
+
+        for output_filepath in output_filepath_list:
+            data = np.loadtxt(output_filepath)
+            unique = np.unique(data)
+            # Ensure that we get only two values
+            self.assertGreater(unique.size, 2)
+            # Ensure that the saturation_value is not in the file
+            self.assertNotIn(saturation_value, unique)
+
 
 if __name__ == '__main__':
     unittest.main()
