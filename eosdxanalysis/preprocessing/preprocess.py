@@ -431,7 +431,7 @@ class PreprocessData(object):
 
         # Write params to file
         with open(os.path.join(output_dir,"params.txt"),"w") as paramsfile:
-            paramsfile.write(json.dumps(params,indent=4))
+            paramsfile.write(json.dumps(self.params,indent=4))
 
         for plan in self.plans:
             output_style = INVERSE_OUTPUT_MAP.get(plan)
