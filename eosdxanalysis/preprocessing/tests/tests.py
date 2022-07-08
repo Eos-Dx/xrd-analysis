@@ -985,13 +985,35 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         """
         Test that output saturation does not occur for known control samples
         """
+        test_parent_path = self.test_parent_path
         control_path = self.control_path
+        output_path = self.output_path
         saturation_value = self.saturation_value
 
         # Control
         control_name = "A00001.txt"
-        control = np.loadtxt(os.path.join(control_path, control_name))
-        unique = np.unique(control)
+
+        # Set up parameters and plans
+        params_file = "params.txt"
+        params_path = os.path.join(test_parent_path, params_file)
+        with open(params_path, "r") as params_fp:
+            params = json.loads(params_fp.read())
+
+        plans = ["centerize_rotate_quad_fold"]
+        output_style = INVERSE_OUTPUT_MAP[plans[0]]
+        plan_output_path = os.path.join(output_path, output_style)
+
+        # Run preprocessing
+        preprocessor = PreprocessData(
+                        input_dir=control_path, output_dir=plan_output_path, params=params)
+        preprocessor.preprocess(plans=plans)
+        preprocessor.save()
+
+        # Now ensure that preprocessed output file is not saturated
+        output_fielpath = os.path.join(
+                plan_output_path, "{}_{}".format(ABBREVIATIONS[plans[0]], control_name))
+        data = np.loadtxt(output_filepath)
+        unique = np.unique(data)
         # Ensure that we get only two values
         self.assertGreater(unique.size, 2)
         # Ensure that the saturation_value is not in the file
@@ -1002,6 +1024,9 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         """
         Run preprocessing on output_dir and ensure saturation does not occur
         """
+        # Set to allow RuntimeWarning to raise an error
+        np.seterr(all='raise')
+
         # Set up variables
         test_parent_path = self.test_parent_path
         input_path = self.samples_path
@@ -1021,7 +1046,7 @@ class TestOutputSaturationBugFix(unittest.TestCase):
 
         # Run preprocessing
         preprocessor = PreprocessData(
-                        input_dir=input_path, output_dir=output_path, params=params)
+                        input_dir=input_path, output_dir=plan_output_path, params=params)
         preprocessor.preprocess(plans=plans)
         preprocessor.save()
 
