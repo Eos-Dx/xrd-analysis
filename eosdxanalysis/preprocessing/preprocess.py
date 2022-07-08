@@ -437,8 +437,7 @@ class PreprocessData(object):
         print("Saving to", output_dir, "...")
 
         # Write params to file
-        params_dir = output_dir
-        with open(os.path.join(params_dir,"params.txt"),"w") as paramsfile:
+        with open(os.path.join(output_dir,"params.txt"),"w") as paramsfile:
             paramsfile.write(json.dumps(self.params,indent=4))
 
         for plan in self.plans:
