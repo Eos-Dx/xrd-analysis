@@ -1,9 +1,12 @@
 """
 Store calibration materials data
+
+q units are per Angstrom
 """
 
 # AgBH q-peaks via:
 # http://gisaxs.com/index.php/Material:Silver_behenate 
+
 q_peaks_ref_dict = {
         "silver_behenate": {
             "singlets": [
