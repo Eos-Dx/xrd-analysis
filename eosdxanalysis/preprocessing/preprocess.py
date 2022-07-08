@@ -328,7 +328,7 @@ class PreprocessData(object):
         eye_max_roi_coordinates = np.array(np.where(eye_max_roi == 1)).T
 
         centroid = None
-        if eye_max_roi_coordinates:
+        if np.any(eye_max_roi_coordinates):
             centroid = find_centroid(eye_max_roi_coordinates)
 
         if not centroid:
