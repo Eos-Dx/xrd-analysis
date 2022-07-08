@@ -775,6 +775,7 @@ class TestOutputSaturationBugFix(unittest.TestCase):
 
         saturation_value = 2147483648
 
+        self.test_parent_path = test_parent_path
         self.samples_path = samples_path
         self.output_path = output_path
         self.saturated_path = saturated_path
@@ -793,6 +794,9 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         # Check that saturation indeed occured previously
         saturated_filepath_list = glob.glob(
                                     os.path.join(saturated_path, "*.txt"))
+
+        # Check that files list is not empty
+        self.assertTrue(saturated_filepath_list)
 
         for saturated_filepath in saturated_filepath_list:
             data = np.loadtxt(saturated_filepath)
@@ -820,6 +824,45 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         # Ensure that the saturation_value is not in the file
         self.assertNotIn(saturation_value, unique)
 
+
+    def test_output_saturation_bugfix(self):
+        """
+        Run preprocessing on output_dir and ensure saturation does not occur
+        """
+        # Set up variables
+        test_parent_path = self.test_parent_path
+        input_path = self.samples_path
+        output_path = self.output_path
+        saturation_value = self.saturation_value
+
+        # Set up parameters and plans
+        params_file = "params.txt"
+        params_path = os.path.join(test_parent_path, params_file)
+        with open(params_path, "r") as params_fp:
+            params = json.loads(params_fp.read())
+
+        plans = ["centerize_rotate_quad_fold"]
+
+        # Run preprocessing
+        preprocessor = PreprocessData(
+                        input_dir=input_path, output_dir=output_path, params=params)
+        preprocessor.preprocess(plans=plans)
+        preprocessor.save()
+
+        # Now ensure that preprocessed files are not saturated
+        output_filepath_list = glob.glob(
+                                    os.path.join(output_path, "*.txt"))
+
+        # Ensure that output_filepath_list is not empty
+        self.assertTrue(output_filepath_list)
+
+        for output_filepath in output_filepath_list:
+            data = np.loadtxt(output_filepath)
+            unique = np.unique(data)
+            # Ensure that we get only two values
+            self.assertGreater(unique.size, 2)
+            # Ensure that the saturation_value is not in the file
+            self.assertNotIn(saturation_value, unique)
 
 if __name__ == '__main__':
     unittest.main()
