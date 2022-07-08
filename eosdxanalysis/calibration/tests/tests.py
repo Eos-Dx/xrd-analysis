@@ -38,6 +38,7 @@ class TestCalibration(unittest.TestCase):
                 self.silver_behenate_test_input_dir,
                 self.silver_behenate_test_image)
         test_image = np.loadtxt(image_fullpath)
+        known_distance_mm = 10 # mm
 
         # Set up the calibrator class
         calibrator = Calibration(calibration_material="silver_behenate")
@@ -48,7 +49,7 @@ class TestCalibration(unittest.TestCase):
 
         detector_distance_mm = detector_distance_angstrom / 1e10 * 1e3
 
-        self.assertTrue(np.isclose(detector_distance_mm, 10e-3))
+        self.assertTrue(np.isclose(detector_distance_mm, known_distance_mm))
 
 if __name__ == '__main__':
     unittest.main()
