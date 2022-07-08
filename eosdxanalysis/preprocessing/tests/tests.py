@@ -8,10 +8,12 @@ import json
 import glob
 
 from skimage.io import imsave, imread
+from skimage.transform import warp_polar
 
 from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.image_processing import rotate_image
+from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 
 from eosdxanalysis.preprocessing.center_finding import center_of_mass
 from eosdxanalysis.preprocessing.center_finding import radial_mean
@@ -26,8 +28,12 @@ from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import gen_rotation_line
 
 from eosdxanalysis.preprocessing.preprocess import PreprocessData
+from eosdxanalysis.preprocessing.preprocess import ABBREVIATIONS
+from eosdxanalysis.preprocessing.preprocess import OUTPUT_MAP
+from eosdxanalysis.preprocessing.preprocess import INVERSE_OUTPUT_MAP
 
-from eosdxanalysis.preprocessing.peak_finding import find_peak
+from eosdxanalysis.preprocessing.peak_finding import find_2d_peak
+from eosdxanalysis.preprocessing.peak_finding import find_1d_peaks
 
 TEST_IMAGE_DIR = os.path.join("eosdxanalysis","preprocessing","tests","test_images")
 
@@ -186,29 +192,51 @@ class TestPreprocessingCLI(unittest.TestCase):
     Test to ensure preprocessing can be done from commandline
     """
 
+    def setUp(self):
+        test_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images")
+        self.test_dir = test_dir
+
+        # Specify parameters file
+
+        params_file = os.path.join(test_dir, "params.txt")
+        self.params_file = params_file
+        with open(params_file, "r") as param_fp:
+            params = param_fp.read()
+        self.params = params
+
+        # Set the input and output directories
+        test_input_dir = os.path.join(test_dir, "input")
+        test_output_dir = os.path.join(test_dir, "output")
+
+        self.test_input_dir = test_input_dir
+        self.test_output_dir = test_output_dir
+
+        input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
+
+        self.input_files_fullpaths = input_files_fullpaths
+
     def test_preprocess_cli(self):
         """
         Run preprocessing using commandline, providing input data directory
         and output directory.
         """
-        # Specify parameters file
-        params_file = os.path.join(TEST_IMAGE_DIR, "test_cli_images", "params.txt")
-        with open(params_file, "r") as param_fp:
-            params = param_fp.read()
+        params = self.params
+        params_file = self.params_file
+        test_input_dir = self.test_input_dir
+        test_output_dir = self.test_output_dir
+        input_files_fullpaths = self.input_files_fullpaths
 
         # Construct plans list
-        plans = "quad_fold"
-
-        # Set the input and output directories
-        test_input_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images", "input")
-        test_output_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images", "output")
+        plan = "centerize_rotate_quad_fold"
+        plan_abbr = ABBREVIATIONS.get(plan)
+        output_style = INVERSE_OUTPUT_MAP.get(plan)
 
         # Set up the command
         command = ["python", "eosdxanalysis/preprocessing/preprocess.py",
                     "--input_dir", test_input_dir,
                     "--output_dir", test_output_dir,
                     "--params_file", params_file,
-                    "--plans", plans,
+                    "--plans", plan,
                     ]
 
         # Run the command
@@ -216,19 +244,20 @@ class TestPreprocessingCLI(unittest.TestCase):
 
         # Check that output files exist
         # First get list of files
-        input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
-        output_files_fullpaths = glob.glob(os.path.join(test_output_dir, "*.txt"))
         num_files = len(input_files_fullpaths)
 
         # Check that number of files is > 0
         self.assertTrue(num_files > 0)
         # Check that number of input and output files is the same
-        self.assertEqual(num_files, len(output_files_fullpaths))
+        plan_output_dir = os.path.join(test_output_dir, output_style)
+        plan_output_files_fullpaths = glob.glob(os.path.join(plan_output_dir, "*.txt"))
+
+        self.assertEqual(num_files, len(plan_output_files_fullpaths))
 
         for idx in range(num_files):
             # Load data
             input_image = np.loadtxt(input_files_fullpaths[idx])
-            output_image = np.loadtxt(output_files_fullpaths[idx])
+            output_image = np.loadtxt(plan_output_files_fullpaths[idx])
 
             # Check that data are positive
             self.assertTrue(input_image[input_image > 0].all())
@@ -240,6 +269,13 @@ class TestPreprocessingCLI(unittest.TestCase):
 
             # Check that output means are smaller than input means
             self.assertTrue(np.mean(output_image) < np.mean(input_image))
+
+    def tearDown(self):
+        """
+        Remove any output files
+        """
+        test_output_dir = self.test_output_dir
+        # os.remove(os.path.join(test_output_dir, "*"))
 
 
 class TestPreprocessData(unittest.TestCase):
@@ -689,47 +725,106 @@ class TestImageProcessing(unittest.TestCase):
 
         self.assertTrue(np.array_equal(rot_image_known, rotated_image_elastic))
 
+    def test_unwarp_polar(self):
+        """
+        Test unwarp_polar function
+        """
+        # Create test polar image
+        test_intensity_1d = np.zeros((1,100))
+        test_intensity_1d[0,9] = 10
+        test_image_polar = np.repeat(test_intensity_1d, 100, axis=0)
+
+        output_shape=(256,256)
+
+        test_image = unwarp_polar(test_image_polar.T, output_shape=output_shape)
+
+        # Check that the test image is not all zeros
+        self.assertTrue(np.any(test_image))
+
+        test_image_warp_polar = warp_polar(test_image)
+
+        # Test that maximum is at index 9
+        # First, get the indices of the maximum locations along the columns
+        max_indices_start_image = np.argmax(test_image_polar, axis=1)
+        max_indices_final_image = np.argmax(test_image_warp_polar, axis=1)
+
+        self.assertTrue(np.all(max_indices_start_image == 9))
+        self.assertTrue(np.all(max_indices_final_image == 9))
+
+    def test_unwarp_polar_scaled(self):
+        """
+        Test unwarp_polar function for scaling r by 2
+        """
+        # Create test polar image
+        test_intensity_1d = np.zeros((1,100))
+        test_intensity_1d[0,9] = 10
+        test_image_polar = np.repeat(test_intensity_1d, 100, axis=0)
+
+        output_shape=(256,256)
+
+        test_image = unwarp_polar(test_image_polar.T,
+                            output_shape=output_shape, rmax=200)
+        test_image_warp_polar = warp_polar(test_image)
+
+        # Test that maximum is at index 9
+        # First, get the indices of the maximum locations along the columns
+        max_indices_start_image = np.argmax(test_image_polar, axis=1)
+        max_indices_final_image = np.argmax(test_image_warp_polar, axis=1)
+
+        # The 10th value is the max in the start image
+        self.assertTrue(np.all(max_indices_start_image == 9))
+        # The 18th and 19th values in the final image should be near the max,
+        # that is location 18.5, which rounds down to 18
+        self.assertTrue(np.all(max_indices_final_image == np.round(18.5)))
+
 
 class TestPeakFinding(unittest.TestCase):
 
-    def test_gaussian_peak_finding_single_max_value(self):
+    def test_gaussian_2d_peak_finding_single_max_value(self):
         """
         Test gaussian peak finding for a matrix with 1 at the center, rest 0
         """
         # Set up the test image
-        image_shape = (5,5)
-        test_image = np.zeros(image_shape)
-        known_peak_location = (image_shape[0]//2, image_shape[0]//2)
-        test_image[known_peak_location[0], known_peak_location[1]] = 1
+        test_image = np.array([
+            [0,0,0,0,0,],
+            [0,0,0,0,0,],
+            [0,0,1,0,0,],
+            [0,0,0,0,0,],
+            [0,0,0,0,0,],
+            ])
+
+        known_peak_location = (np.array(test_image.shape)[:2]/2) - 0.5
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_peak(test_image, window_size=window_size)
+        test_peak_location = find_2d_peak(test_image, window_size=window_size)
 
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
-    def test_gaussian_peak_finding_double_max_value(self):
+    def test_gaussian_2d_peak_finding_double_max_value(self):
         """
         Test gaussian peak finding for a matrix with two 1s
         """
         # Set up the test image
-        image_shape = (5,5)
-        test_image = np.zeros(image_shape)
-        known_peak_location_1 = (1,1)
-        known_peak_location_2 = (3,3)
-        known_peak_location = (2,2)
-        test_image[known_peak_location_1[0], known_peak_location_1[1]] = 1
-        test_image[known_peak_location_2[0], known_peak_location_2[1]] = 1
+        test_image = np.array([
+            [0,0,0,0,0,],
+            [0,1,0,0,0,],
+            [0,0,0,0,0,],
+            [0,0,0,1,0,],
+            [0,0,0,0,0,],
+            ])
+
+        known_peak_location = (np.array(test_image.shape)[:2]/2) - 0.5
 
         # Find the peak location
         window_size = 3
-        test_peak_location = find_peak(test_image, window_size=window_size)
+        test_peak_location = find_2d_peak(test_image, window_size=window_size)
 
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
-    def test_gaussian_peak_finding_noisy_example(self):
+    def test_gaussian_2d_peak_finding_noisy_example(self):
         # Set up the test image with a noisy peak at the center
         test_image = np.array([
             [0,0,0,0,0,],
@@ -739,14 +834,14 @@ class TestPeakFinding(unittest.TestCase):
             [0,0,0,0,0,],
             ])
 
+        known_peak_location = (np.array(test_image.shape)[:2]/2) - 0.5
+
         # Find the peak location
         window_size = 3
-        known_peak_location = (2,2)
-        test_peak_location = find_peak(test_image, window_size=window_size)
+        test_peak_location = find_2d_peak(test_image, window_size=window_size)
 
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
-
 
 class TestOutputSaturationBugFix(unittest.TestCase):
     """
@@ -863,6 +958,84 @@ class TestOutputSaturationBugFix(unittest.TestCase):
             self.assertGreater(unique.size, 2)
             # Ensure that the saturation_value is not in the file
             self.assertNotIn(saturation_value, unique)
+=======
+    def test_gaussian_1d_peak_finding_single_max_value(self):
+        """
+        Test gaussian peak finding for an array with 1 at the center, rest 0
+        """
+        # Set up the test array
+        test_array = np.array([
+            0,0,1,0,0,],)
+
+        known_peak_location = (test_array.size/2) - 0.5
+
+        # Find the peak location
+        window_size = 3
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that only one peak location is found
+        self.assertEqual(test_peak_location.size, 1)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
+
+    def test_gaussian_1d_peak_finding_double_max_value(self):
+        """
+        Test gaussian peak finding for an array with two 1s
+        """
+        # Set up the test array
+        test_array = np.array([
+            0,1,0,1,0,],)
+
+        known_peak_location = (test_array.size/2) - 0.5
+
+        # Find the peak location
+        window_size = 3
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that only one peak location is found
+        self.assertEqual(test_peak_location.size, 1)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
+
+    def test_gaussian_1d_peak_finding_noisy_example(self):
+        # Set up the test array with a noisy peak at the center
+        test_array = np.array([
+            1,9,6,7,0,],)
+
+        known_peak_location = (test_array.size/2) - 0.5
+
+        # Find the peak location
+        window_size = 3
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that only one peak location is found
+        self.assertEqual(test_peak_location.size, 1)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
+
+    def test_gaussian_1d_peak_finding_two_peaks(self):
+        """
+        Test gaussian peak finding for an array with two 1s
+        """
+        # Set up the test array
+        test_array = np.zeros((10,1))
+        test_array[1] = 1
+        test_array[8] = 1
+        known_peak_locations = [1,8]
+
+        # Find the peak location
+        window_size = 3
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that two peak locations are found
+        self.assertEqual(test_peak_locations.size, 2)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array(known_peak_locations == test_peak_locations).all())
+
 
 if __name__ == '__main__':
     unittest.main()
