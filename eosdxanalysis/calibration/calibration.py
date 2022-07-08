@@ -19,6 +19,8 @@ from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 class Calibration(object):
     """
     Calibration class to perform calibration for a set of calibration images
+
+    q units are per Angstrom
     """
 
     def __init__(self, calibration_material, wavelen=1.5418):
@@ -84,22 +86,25 @@ class Calibration(object):
 
         peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
 
-        # Set Y value based on derviations
-        Y = np.tan(2*np.arcsin(peaks_avg*wavelen/(4*np.pi)))
-        # TODO: Rescale peak_indices to final_r radius
-        # as these are the rn values
-        X = peak_indices
+        # Set up linear regression inputs
+        # Set y values based on derviations
+        theta_n = np.arcsin(peaks_avg*wavelen/(4*np.pi))
+        Y = np.tan(2*theta_n).reshape(-1,1)
+        # Set x values as the measured r peaks
+        X = r_space[peak_indices].reshape(-1,1)
 
-        # Now perform linear regression
-        linreg = LinearRegression().fit(X, Y)
-        linreg.score(X, y)
+        # Now perform linear regression, line goes through the origin
+        # so intercept = 0
+        linreg = LinearRegression(fit_intercept=False)
+        linreg.fit(X, Y)
 
-        coeff = linreg._coeff
+        # Get the slope
+        coef = linreg.coef_
+        slope = coef[0][0]
+        # The slope is the inverse of the sample-to-detector distance
+        distance = 1/slope
 
-        slope = coeff[0]
-        distance = slope
-
-        return distance
+        return distance, linreg
 
 
     def sample_set_detector_distance(self):
