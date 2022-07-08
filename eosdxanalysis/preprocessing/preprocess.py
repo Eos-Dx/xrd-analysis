@@ -312,6 +312,7 @@ class PreprocessData(object):
         eye_roi_binary = np.copy(eye_roi)
         # Calculate percentile
         percentile = np.percentile(eye_roi_binary,eyes_percentile)
+
         # Binary threshold based on percentile
         eye_roi_binary[eye_roi_binary < percentile] = 0
         eye_roi_binary[eye_roi_binary >= percentile] = 1
@@ -325,12 +326,18 @@ class PreprocessData(object):
         eye_max_roi[~eye_max_roi_mask] = 0
         # Take centroid of this
         eye_max_roi_coordinates = np.array(np.where(eye_max_roi == 1)).T
-        eye_max_blob_centroid = find_centroid(eye_max_roi_coordinates)
+
+        centroid = None
+        if eye_max_roi_coordinates:
+            centroid = find_centroid(eye_max_roi_coordinates)
+
+        if not centroid:
+            centroid = initial_max_centroid
 
         # 3. Calculate the rotation angle of the XRD pattern using result from 9A feature analysis
 
         # Calculate angle between two points
-        angle = get_angle(center, eye_max_blob_centroid)
+        angle = get_angle(center, centroid)
         return angle
 
     def centerize_and_rotate(self, image):
