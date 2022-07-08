@@ -1,3 +1,8 @@
+"""
+Calibration module tests
+
+q units are per Angstrom
+"""
 import os
 
 import unittest
@@ -15,6 +20,8 @@ TEST_IMAGE_DIR = os.path.join("eosdxanalysis","calibration","tests","test_images
 class TestCalibration(unittest.TestCase):
     """
     Test Calibration class
+
+    q units are per Angstrom
     """
 
     def setUp(self):
@@ -34,11 +41,14 @@ class TestCalibration(unittest.TestCase):
 
         # Set up the calibrator class
         calibrator = Calibration(calibration_material="silver_behenate")
-        # Calculate the detector distance
-        detector_distance = \
+
+        # Calculate the detector distance (units in meters)
+        detector_distance_angstrom, linreg = \
                 calibrator.single_sample_detector_distance(test_image, r_max=80)
 
-        self.assertTrue(detector_distance, 10e-3)
+        detector_distance_mm = detector_distance_angstrom / 1e10 * 1e3
+
+        self.assertTrue(np.isclose(detector_distance_mm, 10e-3))
 
 if __name__ == '__main__':
     unittest.main()
