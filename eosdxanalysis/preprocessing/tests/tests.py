@@ -843,6 +843,84 @@ class TestPeakFinding(unittest.TestCase):
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
+    def test_gaussian_1d_peak_finding_single_max_value(self):
+        """
+        Test gaussian peak finding for an array with 1 at the center, rest 0
+        """
+        # Set up the test array
+        test_array = np.array([
+            0,0,1,0,0,],)
+
+        known_peak_location = (test_array.size/2) - 0.5
+
+        # Find the peak location
+        window_size = 3
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that only one peak location is found
+        self.assertEqual(test_peak_locations.size, 1)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array(known_peak_location == test_peak_locations).all())
+
+    def test_gaussian_1d_peak_finding_double_max_value(self):
+        """
+        Test gaussian peak finding for an array with two 1s
+        """
+        # Set up the test array
+        test_array = np.array([
+            0,1,0,1,0,],)
+
+        known_peak_location = (test_array.size/2) - 0.5
+
+        # Find the peak location
+        window_size = 3
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that only one peak location is found
+        self.assertEqual(test_peak_locations.size, 1)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array(known_peak_location == test_peak_locations).all())
+
+    def test_gaussian_1d_peak_finding_noisy_example(self):
+        # Set up the test array with a noisy peak at the center
+        test_array = np.array([
+            1,9,6,7,0,],)
+
+        known_peak_location = (test_array.size/2) - 0.5
+
+        # Find the peak location
+        window_size = 3
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that only one peak location is found
+        self.assertEqual(test_peak_locations.size, 1)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array(known_peak_location == test_peak_locations).all())
+
+    def test_gaussian_1d_peak_finding_two_peaks(self):
+        """
+        Test gaussian peak finding for an array with two 1s
+        """
+        # Set up the test array
+        test_array = np.zeros((10,1))
+        test_array[1] = 1
+        test_array[8] = 1
+        known_peak_locations = [1,8]
+
+        # Find the peak location
+        window_size = 3
+        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
+
+        # Check that two peak locations are found
+        self.assertEqual(test_peak_locations.size, 2)
+
+        # Check if peak location is correct
+        self.assertTrue(np.array(known_peak_locations == test_peak_locations).all())
+
+
 class TestOutputSaturationBugFix(unittest.TestCase):
     """
     Issue #64:
@@ -958,83 +1036,6 @@ class TestOutputSaturationBugFix(unittest.TestCase):
             self.assertGreater(unique.size, 2)
             # Ensure that the saturation_value is not in the file
             self.assertNotIn(saturation_value, unique)
-
-    def test_gaussian_1d_peak_finding_single_max_value(self):
-        """
-        Test gaussian peak finding for an array with 1 at the center, rest 0
-        """
-        # Set up the test array
-        test_array = np.array([
-            0,0,1,0,0,],)
-
-        known_peak_location = (test_array.size/2) - 0.5
-
-        # Find the peak location
-        window_size = 3
-        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
-
-        # Check that only one peak location is found
-        self.assertEqual(test_peak_location.size, 1)
-
-        # Check if peak location is correct
-        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
-
-    def test_gaussian_1d_peak_finding_double_max_value(self):
-        """
-        Test gaussian peak finding for an array with two 1s
-        """
-        # Set up the test array
-        test_array = np.array([
-            0,1,0,1,0,],)
-
-        known_peak_location = (test_array.size/2) - 0.5
-
-        # Find the peak location
-        window_size = 3
-        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
-
-        # Check that only one peak location is found
-        self.assertEqual(test_peak_location.size, 1)
-
-        # Check if peak location is correct
-        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
-
-    def test_gaussian_1d_peak_finding_noisy_example(self):
-        # Set up the test array with a noisy peak at the center
-        test_array = np.array([
-            1,9,6,7,0,],)
-
-        known_peak_location = (test_array.size/2) - 0.5
-
-        # Find the peak location
-        window_size = 3
-        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
-
-        # Check that only one peak location is found
-        self.assertEqual(test_peak_location.size, 1)
-
-        # Check if peak location is correct
-        self.assertTrue(np.array(known_peak_location == test_peak_location).all())
-
-    def test_gaussian_1d_peak_finding_two_peaks(self):
-        """
-        Test gaussian peak finding for an array with two 1s
-        """
-        # Set up the test array
-        test_array = np.zeros((10,1))
-        test_array[1] = 1
-        test_array[8] = 1
-        known_peak_locations = [1,8]
-
-        # Find the peak location
-        window_size = 3
-        test_peak_locations = find_1d_peaks(test_array, window_size=window_size)
-
-        # Check that two peak locations are found
-        self.assertEqual(test_peak_locations.size, 2)
-
-        # Check if peak location is correct
-        self.assertTrue(np.array(known_peak_locations == test_peak_locations).all())
 
 
 if __name__ == '__main__':
