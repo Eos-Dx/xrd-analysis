@@ -958,7 +958,7 @@ class TestOutputSaturationBugFix(unittest.TestCase):
             self.assertGreater(unique.size, 2)
             # Ensure that the saturation_value is not in the file
             self.assertNotIn(saturation_value, unique)
-=======
+
     def test_gaussian_1d_peak_finding_single_max_value(self):
         """
         Test gaussian peak finding for an array with 1 at the center, rest 0
