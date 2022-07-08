@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import skimage
+from scipy.ndimage import map_coordinates
 
 """
 Functions for image processing
@@ -197,3 +198,29 @@ def quadrant_fold(image):
     quad_folded = (image + flip_horizontal + flip_vertical + flip_both)/4
 
     return quad_folded
+
+def unwarp_polar(img, origin=None, output_shape=None, rmax=None, order=1):
+    """
+    Note that notation here is different from `warp_polar`:
+    Here we use the standard Cartesian grid.
+
+    Adapted from:
+    https://forum.image.sc/t/polar-transform-and-inverse-transform/40547/3
+    """
+    if output_shape is None:
+        output_shape = img.shape
+    output = np.zeros(output_shape, dtype=img.dtype)
+    if origin is None:
+        origin = np.array(output.shape)/2 - 0.5
+    out_h, out_w = output.shape
+    # Create a grid of x and y coordinates
+    ys, xs = np.mgrid[:out_h, :out_w] - origin[:,None,None]
+    # Create a grid of r and theta coordinates
+    rs = np.sqrt(ys**2+xs**2)
+    thetas = np.arccos(xs/rs)
+    thetas[ys<0] = np.pi*2 - thetas[ys<0]
+    thetas *= (img.shape[1]-1)/(np.pi*2)
+    if rmax is not None:
+        rs *= (img.shape[0]-1)/(rmax)
+    map_coordinates(img, (rs, thetas), order=order, output=output)
+    return output
