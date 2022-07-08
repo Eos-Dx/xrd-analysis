@@ -748,17 +748,17 @@ class TestPeakFinding(unittest.TestCase):
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
 
-class TestSaturationBugFix(unittest.TestCase):
+class TestOutputSaturationBugFix(unittest.TestCase):
     """
     Issue #64:
-    Preprocessing sometimes creates images with values all 0 or 2147483648
+    Preprocessing sometimes outputs images with values all 0 or 2147483648
     """
 
     def setUp(self):
         """
         Set up some paths
         """
-        test_dirname = "test_saturation_bug_images"
+        test_dirname = "test_output_saturation_images"
         test_parent_path = os.path.join(TEST_IMAGE_DIR, test_dirname)
 
         samples_dir = "samples"
@@ -773,24 +773,26 @@ class TestSaturationBugFix(unittest.TestCase):
         control_dir = "controls"
         control_path = os.path.join(test_parent_path, control_dir)
 
+        saturation_value = 2147483648
+
         self.samples_path = samples_path
         self.output_path = output_path
         self.saturated_path = saturated_path
         self.control_path = control_path
+        self.saturation_value = saturation_value
 
-    def test_no_saturation_occurs(self):
+    def test_output_saturation_occurs_with_known_problem_samples(self):
         """
         Ensure preprocessed images do not saturate
         """
         samples_path = self.samples_path
         saturated_path = self.saturated_path
         output_path = self.output_path
-        control_path = self.control_path
+        saturation_value = self.saturation_value
 
         # Check that saturation indeed occured previously
         saturated_filepath_list = glob.glob(
                                     os.path.join(saturated_path, "*.txt"))
-        saturation_value = 2147483648
 
         for saturated_filepath in saturated_filepath_list:
             data = np.loadtxt(saturated_filepath)
@@ -801,6 +803,13 @@ class TestSaturationBugFix(unittest.TestCase):
             self.assertEqual(unique[0], 0)
             # Ensure that the second ordered value is saturation_value
             self.assertEqual(unique[1], saturation_value)
+
+    def test_no_output_saturation_control_samples(self):
+        """
+        Test that output saturation does not occur for known control samples
+        """
+        control_path = self.control_path
+        saturation_value = self.saturation_value
 
         # Control
         control_name = "A00001.txt"
