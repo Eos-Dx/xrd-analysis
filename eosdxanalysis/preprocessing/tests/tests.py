@@ -28,6 +28,9 @@ from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import gen_rotation_line
 
 from eosdxanalysis.preprocessing.preprocess import PreprocessData
+from eosdxanalysis.preprocessing.preprocess import ABBREVIATIONS
+from eosdxanalysis.preprocessing.preprocess import OUTPUT_MAP
+from eosdxanalysis.preprocessing.preprocess import INVERSE_OUTPUT_MAP
 
 from eosdxanalysis.preprocessing.peak_finding import find_2d_peak
 from eosdxanalysis.preprocessing.peak_finding import find_1d_peaks
@@ -189,29 +192,51 @@ class TestPreprocessingCLI(unittest.TestCase):
     Test to ensure preprocessing can be done from commandline
     """
 
+    def setUp(self):
+        test_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images")
+        self.test_dir = test_dir
+
+        # Specify parameters file
+
+        params_file = os.path.join(test_dir, "params.txt")
+        self.params_file = params_file
+        with open(params_file, "r") as param_fp:
+            params = param_fp.read()
+        self.params = params
+
+        # Set the input and output directories
+        test_input_dir = os.path.join(test_dir, "input")
+        test_output_dir = os.path.join(test_dir, "output")
+
+        self.test_input_dir = test_input_dir
+        self.test_output_dir = test_output_dir
+
+        input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
+
+        self.input_files_fullpaths = input_files_fullpaths
+
     def test_preprocess_cli(self):
         """
         Run preprocessing using commandline, providing input data directory
         and output directory.
         """
-        # Specify parameters file
-        params_file = os.path.join(TEST_IMAGE_DIR, "test_cli_images", "params.txt")
-        with open(params_file, "r") as param_fp:
-            params = param_fp.read()
+        params = self.params
+        params_file = self.params_file
+        test_input_dir = self.test_input_dir
+        test_output_dir = self.test_output_dir
+        input_files_fullpaths = self.input_files_fullpaths
 
         # Construct plans list
-        plans = "quad_fold"
-
-        # Set the input and output directories
-        test_input_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images", "input")
-        test_output_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images", "output")
+        plan = "centerize_rotate_quad_fold"
+        plan_abbr = ABBREVIATIONS.get(plan)
+        output_style = INVERSE_OUTPUT_MAP.get(plan)
 
         # Set up the command
         command = ["python", "eosdxanalysis/preprocessing/preprocess.py",
                     "--input_dir", test_input_dir,
                     "--output_dir", test_output_dir,
                     "--params_file", params_file,
-                    "--plans", plans,
+                    "--plans", plan,
                     ]
 
         # Run the command
@@ -219,19 +244,20 @@ class TestPreprocessingCLI(unittest.TestCase):
 
         # Check that output files exist
         # First get list of files
-        input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
-        output_files_fullpaths = glob.glob(os.path.join(test_output_dir, "*.txt"))
         num_files = len(input_files_fullpaths)
 
         # Check that number of files is > 0
         self.assertTrue(num_files > 0)
         # Check that number of input and output files is the same
-        self.assertEqual(num_files, len(output_files_fullpaths))
+        plan_output_dir = os.path.join(test_output_dir, output_style)
+        plan_output_files_fullpaths = glob.glob(os.path.join(plan_output_dir, "*.txt"))
+
+        self.assertEqual(num_files, len(plan_output_files_fullpaths))
 
         for idx in range(num_files):
             # Load data
             input_image = np.loadtxt(input_files_fullpaths[idx])
-            output_image = np.loadtxt(output_files_fullpaths[idx])
+            output_image = np.loadtxt(plan_output_files_fullpaths[idx])
 
             # Check that data are positive
             self.assertTrue(input_image[input_image > 0].all())
@@ -243,6 +269,13 @@ class TestPreprocessingCLI(unittest.TestCase):
 
             # Check that output means are smaller than input means
             self.assertTrue(np.mean(output_image) < np.mean(input_image))
+
+    def tearDown(self):
+        """
+        Remove any output files
+        """
+        test_output_dir = self.test_output_dir
+        # os.remove(os.path.join(test_output_dir, "*"))
 
 
 class TestPreprocessData(unittest.TestCase):
