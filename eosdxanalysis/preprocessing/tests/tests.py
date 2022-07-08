@@ -747,5 +747,70 @@ class TestPeakFinding(unittest.TestCase):
         # Check if peak location is correct
         self.assertTrue(np.array_equal(known_peak_location, test_peak_location))
 
+
+class TestSaturationBugFix(unittest.TestCase):
+    """
+    Issue #64:
+    Preprocessing sometimes creates images with values all 0 or 2147483648
+    """
+
+    def setUp(self):
+        """
+        Set up some paths
+        """
+        test_dirname = "test_saturation_bug_images"
+        test_parent_path = os.path.join(TEST_IMAGE_DIR, test_dirname)
+
+        samples_dir = "samples"
+        samples_path = os.path.join(test_parent_path, samples_dir)
+
+        output_dir = "output"
+        output_path = os.path.join(test_parent_path, output_dir)
+
+        saturated_dir = "preprocessed_samples"
+        saturated_path = os.path.join(test_parent_path, saturated_dir)
+
+        control_dir = "controls"
+        control_path = os.path.join(test_parent_path, control_dir)
+
+        self.samples_path = samples_path
+        self.output_path = output_path
+        self.saturated_path = saturated_path
+        self.control_path = control_path
+
+    def test_no_saturation_occurs(self):
+        """
+        Ensure preprocessed images do not saturate
+        """
+        samples_path = self.samples_path
+        saturated_path = self.saturated_path
+        output_path = self.output_path
+        control_path = self.control_path
+
+        # Check that saturation indeed occured previously
+        saturated_filepath_list = glob.glob(
+                                    os.path.join(saturated_path, "*.txt"))
+        saturation_value = 2147483648
+
+        for saturated_filepath in saturated_filepath_list:
+            data = np.loadtxt(saturated_filepath)
+            unique = np.unique(data)
+            # Ensure that we get only two values
+            self.assertEqual(unique.size, 2)
+            # Ensure that the first ordered value is 0
+            self.assertEqual(unique[0], 0)
+            # Ensure that the second ordered value is saturation_value
+            self.assertEqual(unique[1], saturation_value)
+
+        # Control
+        control_name = "A00001.txt"
+        control = np.loadtxt(os.path.join(control_path, control_name))
+        unique = np.unique(control)
+        # Ensure that we get only two values
+        self.assertGreater(unique.size, 2)
+        # Ensure that the saturation_value is not in the file
+        self.assertNotIn(saturation_value, unique)
+
+
 if __name__ == '__main__':
     unittest.main()
