@@ -1008,6 +1008,7 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         output_path = self.output_path
         saturation_value = self.saturation_value
 
+
         # Set up parameters and plans
         params_file = "params.txt"
         params_path = os.path.join(test_parent_path, params_file)
@@ -1015,6 +1016,8 @@ class TestOutputSaturationBugFix(unittest.TestCase):
             params = json.loads(params_fp.read())
 
         plans = ["centerize_rotate_quad_fold"]
+        output_style = INVERSE_OUTPUT_MAP[plans[0]]
+        plan_output_path = os.path.join(output_path, output_style)
 
         # Run preprocessing
         preprocessor = PreprocessData(
@@ -1024,7 +1027,7 @@ class TestOutputSaturationBugFix(unittest.TestCase):
 
         # Now ensure that preprocessed files are not saturated
         output_filepath_list = glob.glob(
-                                    os.path.join(output_path, "*.txt"))
+                                    os.path.join(plan_output_path, "*.txt"))
 
         # Ensure that output_filepath_list is not empty
         self.assertTrue(output_filepath_list)
