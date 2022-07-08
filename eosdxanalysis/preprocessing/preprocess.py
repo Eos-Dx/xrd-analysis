@@ -465,15 +465,15 @@ class PreprocessData(object):
 
                 # Save output as text
                 if output_format == "txt":
-                    save_filename = "{}_{}".format(output_style_abbreviation, filename)
-                    save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
-                    np.savetxt(save_filename_fullpath,output.astype(np.uint16),fmt='%i')
+                    save_filename = "preprocessed_{}".format(filename)
+                    save_filename_fullpath = os.path.join(output_dir, save_filename)
+                    np.savetxt(save_filename_fullpath,output.astype(np.uint32),fmt='%i')
 
                 # Save output as image
                 if output_format == "png":
-                    save_filename = "{}_{}.png".format(output_style_abbreviation, filename)
-                    save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
-                    imageio.imwrite(save_filename_fullpath, output.astype(np.uint16))
+                    save_filename = "preprocessed_{}.png".format(filename)
+                    save_filename_fullpath = os.path.join(output_dir, save_filename)
+                    imageio.imwrite(save_filename_fullpath, output.astype(np.uint32))
 
 
 if __name__ == "__main__":
