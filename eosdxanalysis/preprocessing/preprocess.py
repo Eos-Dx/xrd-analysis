@@ -21,6 +21,7 @@ from eosdxanalysis.preprocessing.center_finding import find_centroid
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
+from eosdxanalysis.preprocessing.utils import find_maxima
 from eosdxanalysis.preprocessing.denoising import filter_strays
 from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import convert_to_cv2_img
@@ -299,8 +300,11 @@ class PreprocessData(object):
         masked_image[~beam_mask] = 0
 
         # Get the max_centroid as a starting guess
-        initial_max_centroid = find_center(masked_image,mask_center=center,
-                method="max_centroid",rmin=eyes_rmin,rmax=eyes_rmax)
+        maxima = find_maxima(masked_image,mask_center=center,
+                rmin=eyes_rmin,rmax=eyes_rmax)
+
+        # Take the first maximum
+        initial_max_centroid = maxima[0]
 
         # 2. Use percentile thresholding to convert 9A arc maxima features to blobs
 
@@ -327,18 +331,20 @@ class PreprocessData(object):
         # Take centroid of this
         eye_max_roi_coordinates = np.array(np.where(eye_max_roi == 1)).T
 
-        centroid = None
+        blob_centroid = None
         if np.any(eye_max_roi_coordinates):
-            centroid = find_centroid(eye_max_roi_coordinates)
+            blob_centroid = find_centroid(eye_max_roi_coordinates)
+            centroid = blob_centroid
 
         # If we do not get a result, use the initial eye max centroid
-        if not centroid:
+        if not blob_centroid:
             centroid = initial_max_centroid
 
         # 3. Calculate the rotation angle of the XRD pattern using result from 9A feature analysis
 
         # Calculate angle between two points
         angle = get_angle(center, centroid)
+
         return angle
 
     def centerize_and_rotate(self, image):
