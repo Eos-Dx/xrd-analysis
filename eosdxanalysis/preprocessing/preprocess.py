@@ -331,6 +331,7 @@ class PreprocessData(object):
         if np.any(eye_max_roi_coordinates):
             centroid = find_centroid(eye_max_roi_coordinates)
 
+        # If we do not get a result, use the initial eye max centroid
         if not centroid:
             centroid = initial_max_centroid
 
@@ -401,12 +402,12 @@ class PreprocessData(object):
         return image
 
     def save(self, parent_dir=None, samples_dir=None, output_dir=None,
-            output_format="txt", rescale=False):
+            output_formats="txt", rescale=False):
         """
         Save preprocessed image to file
         Inputs:
         - output_dir: Output directory
-        - output_format: Output formats are "txt" or "png"
+        - output_formats: Output formats are "txt" or "png", can input a csv
         - output_style: according to preprocessing plan type
         """
         if not samples_dir:
@@ -444,9 +445,17 @@ class PreprocessData(object):
             output_style = INVERSE_OUTPUT_MAP.get(plan)
             output_style_abbreviation = ABBREVIATIONS.get(output_style)
 
-            # Create output directory for plan
-            plan_output_dir = os.path.join(output_dir, output_style)
-            os.makedirs(plan_output_dir, exist_ok=True)
+            # Set up directories for output formats (text or image)
+            output_format_list = output_formats.split(",")
+
+            if "txt" in output_format_list:
+                # Create output directory for plan and output format
+                plan_output_dir = os.path.join(output_dir, output_style)
+                os.makedirs(plan_output_dir, exist_ok=True)
+
+            if "png" in output_format_list:
+                plan_output_images_dir = os.path.join(output_dir, output_style + "_images")
+                os.makedirs(plan_output_images_dir, exist_ok=True)
 
             for idx, filename_fullpath in enumerate(filenames_fullpaths):
                 filename = os.path.basename(filename_fullpath)
@@ -469,15 +478,15 @@ class PreprocessData(object):
                     output = convert_to_cv2_img(output)[:,:,0]
 
                 # Save output as text
-                if output_format == "txt":
+                if "txt" in output_format_list:
                     save_filename = "{}_{}".format(output_style_abbreviation, filename)
                     save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
                     np.savetxt(save_filename_fullpath,output.astype(np.uint16),fmt='%i')
 
                 # Save output as image
-                if output_format == "png":
+                if "png" in output_format_list:
                     save_filename = "{}_{}.png".format(output_style_abbreviation, filename)
-                    save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
+                    save_filename_fullpath = os.path.join(plan_output_images_dir, save_filename)
                     imageio.imwrite(save_filename_fullpath, output.astype(np.uint16))
 
 
@@ -544,6 +553,8 @@ if __name__ == "__main__":
     # are set, then just use those
     elif input_dir and output_dir:
         pass
+    elif parent_dir and samples_dir and output_dir:
+        input_dir = os.path.join(parent_dir, samples_dir)
     else:
         raise ValueError("Must specify parent_dir and samples_dir or input_dir")
 
@@ -576,5 +587,5 @@ if __name__ == "__main__":
             mask_style=params.get("crop_style"))
 
     # Save
-    preprocessor.save(output_format="txt", rescale=False)
+    preprocessor.save(output_formats="txt", rescale=False)
     print("Done preprocessing.")
