@@ -15,6 +15,8 @@ from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 
+PIXEL_WIDTH_M = 55e-6 # Pixel width in meters (it is 55 um)
+
 
 class Calibration(object):
     """
@@ -63,16 +65,16 @@ class Calibration(object):
 
         # Warp to polar
         # Set a maximum radius which we are interested in
-        final_r = int(r_max) if r_max else None
+        final_r_pixel = int(r_max) if r_max else None
         # Double the size of the output image for better interpolation
         output_shape = (2*centered_image.shape[0], 2*centered_image.shape[1])
-        polar_image = warp_polar(centered_image, radius=final_r,
+        polar_image = warp_polar(centered_image, radius=final_r_pixel,
                                 output_shape=output_shape, preserve_range=True)
 
         # Convert to 1D intensity vs. radius (pixel) and rescale by shape
         radial_intensity = np.sum(polar_image, axis=0)/output_shape[0]
         # Set up radius linspace, where r is in pixels
-        r_space = np.linspace(0, final_r, len(radial_intensity))
+        r_space_pixel = np.linspace(0, final_r_pixel, len(radial_intensity))
 
         # Find the peaks
         peak_indices = argrelextrema(radial_intensity, np.greater)[0]
@@ -91,7 +93,7 @@ class Calibration(object):
         theta_n = np.arcsin(peaks_avg*wavelen/(4*np.pi))
         Y = np.tan(2*theta_n).reshape(-1,1)
         # Set x values as the measured r peaks
-        X = r_space[peak_indices].reshape(-1,1)
+        X = r_space_pixel[peak_indices].reshape(-1,1)
 
         # Now perform linear regression, line goes through the origin
         # so intercept = 0
@@ -102,9 +104,11 @@ class Calibration(object):
         coef = linreg.coef_
         slope = coef[0][0]
         # The slope is the inverse of the sample-to-detector distance
-        distance = 1/slope
+        distance_pixel = 1/slope
 
-        return distance, linreg
+        distance_m = distance_pixel * PIXEL_WIDTH_M
+
+        return distance_m, linreg
 
 
     def sample_set_detector_distance(self):
