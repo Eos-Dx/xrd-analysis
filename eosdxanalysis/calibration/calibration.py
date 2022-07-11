@@ -57,7 +57,7 @@ class Calibration(object):
 
         """
         wavelen = self.wavelen
-        peaks_ref = self.q_peaks_ref
+        q_peaks_ref = self.q_peaks_ref
 
         # Centerize the image
         center = find_center(image)
@@ -77,23 +77,23 @@ class Calibration(object):
         r_space_pixel = np.linspace(0, final_r_pixel, len(radial_intensity))
 
         # Find the peaks
-        peak_indices = argrelextrema(radial_intensity, np.greater)[0]
+        radial_peak_indices = argrelextrema(radial_intensity, np.greater)[0]
 
         # Average the doublets
-        doublets = np.array(peaks_ref.get("doublets"))
+        doublets = np.array(q_peaks_ref.get("doublets"))
         if doublets.size > 0:
             doublets_avg = np.array(np.mean(doublets)).flatten()
-        singlets = np.array(peaks_ref.get("singlets")).flatten()
+        singlets = np.array(q_peaks_ref.get("singlets")).flatten()
         # Join the singlets and doublets averages into a single array
 
-        peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
+        q_peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
 
         # Set up linear regression inputs
         # Set y values based on derviations
-        theta_n = np.arcsin(peaks_avg*wavelen/(4*np.pi))
+        theta_n = np.arcsin(q_peaks_avg*wavelen/(4*np.pi))
         Y = np.tan(2*theta_n).reshape(-1,1)
         # Set x values as the measured r peaks
-        X = r_space_pixel[peak_indices].reshape(-1,1)
+        X = r_space_pixel[radial_peak_indices].reshape(-1,1)
 
         # Now perform linear regression, line goes through the origin
         # so intercept = 0
