@@ -111,3 +111,17 @@ def count_intervals(num_array, count=0):
         # The next element is consecutive
         # so we do not add to the count
         return count_intervals(num_array[1:], count)
+
+def find_maxima(img, mask_center, rmin=0, rmax=None):
+    # Create create circular mask for beam region of interest (roi)
+    roi_mask = create_circular_mask(img.shape[0], img.shape[1],
+            center=mask_center, rmin=rmin, rmax=rmax)
+
+    img_roi = np.copy(img)
+    img_roi[~roi_mask]=0
+
+    # Find pixels with maximum intensity within beam of interest (roi)
+    # Take tranpose so each rows is coordinates for each point
+    max_indices = np.array(np.where(img_roi == np.max(img_roi))).T
+
+    return max_indices
