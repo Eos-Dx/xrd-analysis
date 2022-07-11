@@ -76,7 +76,7 @@ class Calibration(object):
         # Set up radius linspace, where r is in pixels
         r_space_pixel = np.linspace(0, final_r_pixel, len(radial_intensity))
 
-        # Find the peaks
+        # Find the radial peaks
         radial_peak_indices = argrelextrema(radial_intensity, np.greater)[0]
 
         # Average the doublets
