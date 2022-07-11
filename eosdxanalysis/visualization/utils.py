@@ -125,7 +125,8 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
     return texts
 
-def plot_data_dir(input_directory, output_directory, filename_format="*.txt"):
+def plot_data_dir(input_directory, output_directory, scaling="dB1",
+        filename_format="*.txt"):
     """
     Plots raw text data as png files and saves to file.
     """
@@ -143,12 +144,17 @@ def plot_data_dir(input_directory, output_directory, filename_format="*.txt"):
         fig.set_facecolor("white")
         fig.suptitle(basenames[idx] + " [dB+1]")
 
-        # Load image and convert to [dB+1]
         image = np.loadtxt(input_filenames[idx], dtype=np.uint32)
-        image_dB1 = 20*np.log10(image+1)
+
+        if scaling == "linear":
+            output_image = image
+        if scaling == "dB1":
+            # Load image and convert to [dB+1]
+            image_dB1 = 20*np.log10(image+1)
+            output_image = image_dB1
 
         # Plot image
-        plt.imshow(image_dB1, cmap="gray")
+        plt.imshow(output_image, cmap="gray")
 
         # Save figure to file
         plt.savefig(os.path.join(output_directory, basenames[idx]) + ".png")
