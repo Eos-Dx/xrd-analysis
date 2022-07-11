@@ -21,6 +21,7 @@ from eosdxanalysis.preprocessing.center_finding import find_centroid
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
+from eosdxanalysis.preprocessing.utils import find_maxima
 from eosdxanalysis.preprocessing.denoising import filter_strays
 from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import convert_to_cv2_img
@@ -198,7 +199,7 @@ class PreprocessData(object):
                     output = local_thresh_centered_rotated_quad_folded_image
 
                     if mask_style:
-                        output = self.mask(local_thresh_quad_folded_image, style=mask_style)
+                        output = self.mask(local_thresh_centered_rotated_quad_folded_image, style=mask_style)
 
                     self.cache["local_thresh_centered_rotated_quad_folded"].append(output)
 
@@ -299,8 +300,11 @@ class PreprocessData(object):
         masked_image[~beam_mask] = 0
 
         # Get the max_centroid as a starting guess
-        initial_max_centroid = find_center(masked_image,mask_center=center,
-                method="max_centroid",rmin=eyes_rmin,rmax=eyes_rmax)
+        maxima = find_maxima(masked_image,mask_center=center,
+                rmin=eyes_rmin,rmax=eyes_rmax)
+
+        # Take the first maximum
+        initial_max_centroid = maxima[0]
 
         # 2. Use percentile thresholding to convert 9A arc maxima features to blobs
 
@@ -327,17 +331,20 @@ class PreprocessData(object):
         # Take centroid of this
         eye_max_roi_coordinates = np.array(np.where(eye_max_roi == 1)).T
 
-        centroid = None
+        blob_centroid = None
         if np.any(eye_max_roi_coordinates):
-            centroid = find_centroid(eye_max_roi_coordinates)
+            blob_centroid = find_centroid(eye_max_roi_coordinates)
+            centroid = blob_centroid
 
-        if not centroid:
+        # If we do not get a result, use the initial eye max centroid
+        if not blob_centroid:
             centroid = initial_max_centroid
 
         # 3. Calculate the rotation angle of the XRD pattern using result from 9A feature analysis
 
         # Calculate angle between two points
         angle = get_angle(center, centroid)
+
         return angle
 
     def centerize_and_rotate(self, image):
@@ -400,13 +407,12 @@ class PreprocessData(object):
 
         return image
 
-    def save(self, parent_dir=None, samples_dir=None, output_dir=None,
-            output_format="txt", rescale=False):
+    def save(self, parent_dir=None, samples_dir=None, output_dir=None):
         """
         Save preprocessed image to file
         Inputs:
         - output_dir: Output directory
-        - output_format: Output formats are "txt" or "png"
+        - output_formats: Output formats are "txt" or "png", can input a csv
         - output_style: according to preprocessing plan type
         """
         if not samples_dir:
@@ -444,7 +450,7 @@ class PreprocessData(object):
             output_style = INVERSE_OUTPUT_MAP.get(plan)
             output_style_abbreviation = ABBREVIATIONS.get(output_style)
 
-            # Create output directory for plan
+            # Create output directory for plan and output format
             plan_output_dir = os.path.join(output_dir, output_style)
             os.makedirs(plan_output_dir, exist_ok=True)
 
@@ -465,20 +471,12 @@ class PreprocessData(object):
                     print("Error accessing image cache.")
                     raise err
 
-                if rescale:
-                    output = convert_to_cv2_img(output)[:,:,0]
-
-                # Save output as text
-                if output_format == "txt":
-                    save_filename = "{}_{}".format(output_style_abbreviation, filename)
-                    save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
-                    np.savetxt(save_filename_fullpath,output.astype(np.uint32),fmt='%i')
-
-                # Save output as image
-                if output_format == "png":
-                    save_filename = "{}_{}.png".format(output_style_abbreviation, filename)
-                    save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
-                    imageio.imwrite(save_filename_fullpath, output.astype(np.uint32))
+                save_filename = "{}_{}".format(output_style_abbreviation,
+                                            filename)
+                save_filename_fullpath = os.path.join(plan_output_dir,
+                                            save_filename)
+                np.savetxt(save_filename_fullpath,
+                                np.round(output).astype(np.uint16), fmt='%i')
 
 
 if __name__ == "__main__":
@@ -544,6 +542,8 @@ if __name__ == "__main__":
     # are set, then just use those
     elif input_dir and output_dir:
         pass
+    elif parent_dir and samples_dir and output_dir:
+        input_dir = os.path.join(parent_dir, samples_dir)
     else:
         raise ValueError("Must specify parent_dir and samples_dir or input_dir")
 
@@ -576,5 +576,5 @@ if __name__ == "__main__":
             mask_style=params.get("crop_style"))
 
     # Save
-    preprocessor.save(output_format="txt", rescale=False)
+    preprocessor.save()
     print("Done preprocessing.")
