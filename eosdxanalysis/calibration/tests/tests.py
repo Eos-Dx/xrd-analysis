@@ -57,7 +57,10 @@ class TestCalibration(unittest.TestCase):
 
         detector_distance_mm = detector_distance_m * 1e3
 
-        self.assertTrue(np.isclose(detector_distance_mm, known_distance_mm))
+        self.assertTrue(np.isclose(detector_distance_mm, known_distance_mm),
+                msg=f"Calibration distance incorrect! "
+                    f"Calculated distance {np.round(detector_distance_mm, decimals=2)} mm "
+                        f"!= {known_distance_mm} mm")
 
 if __name__ == '__main__':
     unittest.main()
