@@ -199,7 +199,7 @@ class PreprocessData(object):
                     output = local_thresh_centered_rotated_quad_folded_image
 
                     if mask_style:
-                        output = self.mask(local_thresh_quad_folded_image, style=mask_style)
+                        output = self.mask(local_thresh_centered_rotated_quad_folded_image, style=mask_style)
 
                     self.cache["local_thresh_centered_rotated_quad_folded"].append(output)
 
