@@ -142,16 +142,17 @@ def plot_data_dir(input_directory, output_directory, scaling="dB1",
         # Set up figure properties and title
         fig = plt.figure(dpi=100)
         fig.set_facecolor("white")
-        fig.suptitle(basenames[idx] + " [dB+1]")
 
         image = np.loadtxt(input_filenames[idx], dtype=np.uint32)
 
         if scaling == "linear":
             output_image = image
+            fig.suptitle(basenames[idx] + " Original")
         if scaling == "dB1":
             # Load image and convert to [dB+1]
             image_dB1 = 20*np.log10(image+1)
             output_image = image_dB1
+            fig.suptitle(basenames[idx] + " [dB+1]")
 
         # Plot image
         plt.imshow(output_image, cmap="gray")
