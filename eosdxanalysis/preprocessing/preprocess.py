@@ -401,8 +401,7 @@ class PreprocessData(object):
 
         return image
 
-    def save(self, parent_dir=None, samples_dir=None, output_dir=None,
-            output_formats="txt", rescale=False):
+    def save(self, parent_dir=None, samples_dir=None, output_dir=None):
         """
         Save preprocessed image to file
         Inputs:
@@ -445,17 +444,9 @@ class PreprocessData(object):
             output_style = INVERSE_OUTPUT_MAP.get(plan)
             output_style_abbreviation = ABBREVIATIONS.get(output_style)
 
-            # Set up directories for output formats (text or image)
-            output_format_list = output_formats.split(",")
-
-            if "txt" in output_format_list:
-                # Create output directory for plan and output format
-                plan_output_dir = os.path.join(output_dir, output_style)
-                os.makedirs(plan_output_dir, exist_ok=True)
-
-            if "png" in output_format_list:
-                plan_output_images_dir = os.path.join(output_dir, output_style + "_images")
-                os.makedirs(plan_output_images_dir, exist_ok=True)
+            # Create output directory for plan and output format
+            plan_output_dir = os.path.join(output_dir, output_style)
+            os.makedirs(plan_output_dir, exist_ok=True)
 
             for idx, filename_fullpath in enumerate(filenames_fullpaths):
                 filename = os.path.basename(filename_fullpath)
@@ -474,20 +465,12 @@ class PreprocessData(object):
                     print("Error accessing image cache.")
                     raise err
 
-                if rescale:
-                    output = convert_to_cv2_img(output)[:,:,0]
-
-                # Save output as text
-                if "txt" in output_format_list:
-                    save_filename = "{}_{}".format(output_style_abbreviation, filename)
-                    save_filename_fullpath = os.path.join(plan_output_dir, save_filename)
-                    np.savetxt(save_filename_fullpath,output.astype(np.uint16),fmt='%i')
-
-                # Save output as image
-                if "png" in output_format_list:
-                    save_filename = "{}_{}.png".format(output_style_abbreviation, filename)
-                    save_filename_fullpath = os.path.join(plan_output_images_dir, save_filename)
-                    imageio.imwrite(save_filename_fullpath, output.astype(np.uint16))
+                save_filename = "{}_{}".format(output_style_abbreviation,
+                                            filename)
+                save_filename_fullpath = os.path.join(plan_output_dir,
+                                            save_filename)
+                np.savetxt(save_filename_fullpath,
+                                np.round(output).astype(np.uint16), fmt='%i')
 
 
 if __name__ == "__main__":
@@ -587,5 +570,5 @@ if __name__ == "__main__":
             mask_style=params.get("crop_style"))
 
     # Save
-    preprocessor.save(output_formats="txt", rescale=False)
+    preprocessor.save()
     print("Done preprocessing.")
