@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 
 from skimage.transform import warp_polar
 
-from scipy.signal import argrelextrema
+from scipy.signal import find_peaks
 
 from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
@@ -77,7 +77,7 @@ class Calibration(object):
         r_space_pixel = np.linspace(0, final_r_pixel, len(radial_intensity))
 
         # Find the radial peaks
-        radial_peak_indices = argrelextrema(radial_intensity, np.greater)[0]
+        radial_peak_indices, _ = find_peaks(radial_intensity)
 
         # Average the doublets
         doublets = np.array(q_peaks_ref.get("doublets"))
