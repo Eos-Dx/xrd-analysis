@@ -7,13 +7,15 @@ from sklearn.linear_model import LinearRegression
 
 from skimage.transform import warp_polar
 
-from scipy.signal import argrelextrema
+from scipy.signal import find_peaks
 
-from eosdxanalysis.calibration.materials import q_peaks_ref_dict
+from eosdxanalysis.calibration.materials import q_peaks_ref_dict_m
 
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
+
+PIXEL_WIDTH_M = 55e-6 # Pixel width in meters (it is 55 um)
 
 
 class Calibration(object):
@@ -23,25 +25,25 @@ class Calibration(object):
     q units are per Angstrom
     """
 
-    def __init__(self, calibration_material, wavelen=1.5418):
+    def __init__(self, calibration_material, wavelen_m=1.5418e-10):
         """
         Initialize Calibration class
         """
         # Store source wavelength
-        self.wavelen = wavelen
+        self.wavelen_m = wavelen_m
 
         # Store calibration material name
         self.calibration_material = calibration_material
 
         # Look up calibration material q-peaks reference data
         try:
-            self.q_peaks_ref = q_peaks_ref_dict[calibration_material]
+            self.q_peaks_ref_m = q_peaks_ref_dict_m[calibration_material]
         except KeyError as err:
             print("Calibration material {} not found!".format(
                                             calibration_material))
         return super().__init__()
 
-    def single_sample_detector_distance(self, image, r_max=None):
+    def single_sample_detector_distance(self, image, r_max=None, oversample=2):
         """
         Calculate the sample-to-detector distance for a single sample
 
@@ -54,8 +56,8 @@ class Calibration(object):
         - Return the mean, standard deviation, and values
 
         """
-        wavelen = self.wavelen
-        peaks_ref = self.q_peaks_ref
+        wavelen_m = self.wavelen_m
+        q_peaks_ref_m = self.q_peaks_ref_m
 
         # Centerize the image
         center = find_center(image)
@@ -63,35 +65,35 @@ class Calibration(object):
 
         # Warp to polar
         # Set a maximum radius which we are interested in
-        final_r = int(r_max) if r_max else None
+        final_r_pixel = int(r_max) if r_max else None
         # Double the size of the output image for better interpolation
-        output_shape = (2*centered_image.shape[0], 2*centered_image.shape[1])
-        polar_image = warp_polar(centered_image, radius=final_r,
+        output_shape = (oversample*centered_image.shape[0], oversample*centered_image.shape[1])
+        polar_image = warp_polar(centered_image, radius=final_r_pixel,
                                 output_shape=output_shape, preserve_range=True)
 
         # Convert to 1D intensity vs. radius (pixel) and rescale by shape
         radial_intensity = np.sum(polar_image, axis=0)/output_shape[0]
         # Set up radius linspace, where r is in pixels
-        r_space = np.linspace(0, final_r, len(radial_intensity))
+        r_space_pixel = np.linspace(0, final_r_pixel, len(radial_intensity))
 
-        # Find the peaks
-        peak_indices = argrelextrema(radial_intensity, np.greater)[0]
+        # Find the radial peaks
+        radial_peak_indices, _ = find_peaks(radial_intensity)
 
         # Average the doublets
-        doublets = np.array(peaks_ref.get("doublets"))
-        if doublets.size > 0:
-            doublets_avg = np.array(np.mean(doublets)).flatten()
-        singlets = np.array(peaks_ref.get("singlets")).flatten()
+        doublets_m = np.array(q_peaks_ref_m.get("doublets"))
+        if doublets_m.size > 0:
+            doublets_avg_m = np.array(np.mean(doublets_m)).flatten()
+        singlets_m = np.array(q_peaks_ref_m.get("singlets")).flatten()
         # Join the singlets and doublets averages into a single array
 
-        peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
+        q_peaks_avg_m = np.sort(np.concatenate([singlets_m, doublets_avg_m]))
 
         # Set up linear regression inputs
         # Set y values based on derviations
-        theta_n = np.arcsin(peaks_avg*wavelen/(4*np.pi))
+        theta_n = np.arcsin(q_peaks_avg_m*wavelen_m/(4*np.pi))
         Y = np.tan(2*theta_n).reshape(-1,1)
         # Set x values as the measured r peaks
-        X = r_space[peak_indices].reshape(-1,1)
+        X = r_space_pixel[radial_peak_indices].reshape(-1,1)
 
         # Now perform linear regression, line goes through the origin
         # so intercept = 0
@@ -102,9 +104,11 @@ class Calibration(object):
         coef = linreg.coef_
         slope = coef[0][0]
         # The slope is the inverse of the sample-to-detector distance
-        distance = 1/slope
+        distance_pixel = 1/slope
 
-        return distance, linreg
+        distance_m = distance_pixel * PIXEL_WIDTH_M
+
+        return distance_m, linreg
 
 
     def sample_set_detector_distance(self):
