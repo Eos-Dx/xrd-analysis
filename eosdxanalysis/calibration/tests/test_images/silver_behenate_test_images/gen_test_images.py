@@ -41,7 +41,7 @@ OUTPUT_DIR="output"
 h=256
 w=h
 min_val=0
-max_val=255
+max_val=2**16-1
 q_min_inv_ang=0
 q_max_inv_ang=1.5
 
@@ -67,15 +67,16 @@ q_peaks_ref_combined = q_peaks_ref['singlets'] + q_peaks_ref['doublets']
 # Set ring values according to q-peaks reference as sum of Gaussians
 # with a 1/q_peak_location amplitude scaling
 # and a width scaling of q_peak location/4
-GAUSS_SCALE = q_peaks_ref_combined[0]/4
+GAUSS_SCALE = q_peaks_ref_combined[0]/5
 for q_peak_location_inv_ang in q_peaks_ref_combined:
-    gaussian_peak = norm.pdf(q_space_inv_ang, q_peak_location_inv_ang,
-                                        GAUSS_SCALE)/q_peak_location_inv_ang
+    gaussian_peak = np.power(q_peak_location_inv_ang, -2) * \
+            norm.pdf(q_space_inv_ang, q_peak_location_inv_ang,
+                                        GAUSS_SCALE)
     intensities_unscaled = intensities_unscaled + gaussian_peak
 
 # Rescale intensities
 intensities = max_val*intensities_unscaled/np.max(intensities_unscaled)
-intensities = np.round(intensities).astype(np.uint32)
+intensities = np.round(intensities).astype(np.uint16)
 
 # Save the intensity vs. q data
 np.savetxt(os.path.join(INPUT_DIR, "radial_intensity_vs_q.txt"),
@@ -91,10 +92,10 @@ Plot 1D radial intensity vs. q
 fig = plt.figure(dpi=100)
 fig.set_facecolor("white")
 fig.suptitle("Synthetic AgBH Calibration Image")
-plt.scatter(q_space_inv_ang, intensities)
+plt.scatter(q_space_inv_ang, 20*np.log10(intensities.astype(np.float32)+1))
 plt.title("Intensity vs. q")
 plt.xlabel(r"q [$/\r{A}]$")
-plt.ylabel("Intensity [photon count]")
+plt.ylabel("Intensity [photon count dB+1]")
 # Save the figure
 plt.savefig(os.path.join(INPUT_DIR, "radial_intensity_vs_q.png"))
 
@@ -111,10 +112,10 @@ two_theta_space = 2*np.arcsin(q_space_inv_ang*WAVELEN_ANG/4/np.pi)*180/np.pi
 fig = plt.figure(dpi=100)
 fig.set_facecolor("white")
 fig.suptitle("Synthetic AgBH Calibration Image")
-plt.scatter(two_theta_space, intensities)
+plt.scatter(two_theta_space, 20*np.log10(intensities.astype(np.float32)+1))
 plt.title(r"Intensity vs. $2\theta$")
 plt.xlabel(r"$2\theta$ [$^\circ$]")
-plt.ylabel("Intensity [photon count]")
+plt.ylabel("Intensity [photon count dB+1]")
 # Save the figure
 plt.savefig(os.path.join(INPUT_DIR, "radial_intensity_vs_two_theta.png"))
 
@@ -135,7 +136,7 @@ r_space = np.linspace(R_MIN, R_MAX, R_COUNT).reshape(-1,1)
 fig = plt.figure(dpi=100)
 fig.set_facecolor("white")
 fig.suptitle("Synthetic AgBH Calibration Image")
-plt.scatter(r_space, intensities)
+plt.scatter(r_space, 20*np.log10(intensities.astype(np.float32)+1))
 plt.title("Intensity vs. pixel radius")
 plt.xlabel("Radius [pixels]")
 plt.ylabel("Intensity [photon count]")
@@ -157,8 +158,8 @@ np.savetxt(os.path.join(INPUT_DIR, "polar_intensity_2d.txt"),
 fig = plt.figure(dpi=100)
 fig.set_facecolor("white")
 fig.suptitle("Synthetic AgBH Calibration Image")
-plt.imshow(polar_intensities, cmap="gray")
-plt.title(r"2D Polar Intensity: $2\theta$ vs. 2*R")
+plt.imshow(20*np.log10(polar_intensities.astype(np.float32)+1), cmap="gray")
+plt.title(r"2D Polar Intensity [dB+1]: $2\theta$ vs. 2*R")
 plt.xlabel("2*Radius [pixels]")
 plt.ylabel(r"$2\theta$ [$^\circ$]")
 # Save the figure
@@ -187,8 +188,8 @@ np.savetxt(os.path.join(INPUT_DIR, "synthetic_calibration_silver_behenate.txt"),
 fig = plt.figure(dpi=100)
 fig.set_facecolor("white")
 fig.suptitle("Synthetic AgBH Calibration Image")
-plt.imshow(image, cmap="gray")
-plt.title("2D Cartesian X-Ray Diffraction Image")
+plt.imshow(20*np.log10(image.astype(np.float32)+1), cmap="gray")
+plt.title("2D Cartesian X-Ray Diffraction Image [dB+1]")
 plt.xlabel("x-pixel")
 plt.ylabel("y-pixel")
 # Save the figure
