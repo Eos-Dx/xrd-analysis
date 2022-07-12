@@ -43,7 +43,7 @@ class Calibration(object):
                                             calibration_material))
         return super().__init__()
 
-    def single_sample_detector_distance(self, image, r_max=None):
+    def single_sample_detector_distance(self, image, r_max=None, oversample=2):
         """
         Calculate the sample-to-detector distance for a single sample
 
@@ -67,7 +67,7 @@ class Calibration(object):
         # Set a maximum radius which we are interested in
         final_r_pixel = int(r_max) if r_max else None
         # Double the size of the output image for better interpolation
-        output_shape = (2*centered_image.shape[0], 2*centered_image.shape[1])
+        output_shape = (oversample*centered_image.shape[0], oversample*centered_image.shape[1])
         polar_image = warp_polar(centered_image, radius=final_r_pixel,
                                 output_shape=output_shape, preserve_range=True)
 
