@@ -57,7 +57,11 @@ class TestCalibration(unittest.TestCase):
 
         detector_distance_mm = detector_distance_m * 1e3
 
-        self.assertTrue(np.isclose(detector_distance_mm, known_distance_mm),
+        # Set the tolerance
+        # See: eosdxanalysis.simulation.diffraction for 1-pixel shift at 10 mm
+        tol_mm = 0.36
+
+        self.assertTrue(np.isclose(detector_distance_mm, known_distance_mm, atol=tol_mm),
                 msg=f"Calibration distance incorrect! "
                     f"Calculated distance {np.round(detector_distance_mm, decimals=2)} mm "
                         f"!= {known_distance_mm} mm")
