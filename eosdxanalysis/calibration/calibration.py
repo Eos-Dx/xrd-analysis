@@ -9,11 +9,12 @@ from skimage.transform import warp_polar
 
 from scipy.signal import find_peaks
 
-from eosdxanalysis.calibration.materials import q_peaks_ref_dict_m
+from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
+from eosdxanalysis.preprocessing.image_processing import crop_image
 
 PIXEL_WIDTH_M = 55e-6 # Pixel width in meters (it is 55 um)
 
@@ -37,13 +38,14 @@ class Calibration(object):
 
         # Look up calibration material q-peaks reference data
         try:
-            self.q_peaks_ref_m = q_peaks_ref_dict_m[calibration_material]
+            self.q_peaks_ref = q_peaks_ref_dict[calibration_material]
         except KeyError as err:
             print("Calibration material {} not found!".format(
                                             calibration_material))
         return super().__init__()
 
-    def single_sample_detector_distance(self, image, r_max=None, oversample=2):
+    def single_sample_detector_distance(self, image, r_min=0, r_max=None,
+                                        distance_approx=10e-3, oversample=2):
         """
         Calculate the sample-to-detector distance for a single sample
 
@@ -57,36 +59,57 @@ class Calibration(object):
 
         """
         wavelen_m = self.wavelen_m
-        q_peaks_ref_m = self.q_peaks_ref_m
+        q_peaks_ref = self.q_peaks_ref
 
         # Centerize the image
         center = find_center(image)
-        centered_image, new_center = centerize(image, center)
+        centered_image_enlarged, new_center = centerize(image, center)
+        # Crop the image
+        centered_image = crop_image(centered_image_enlarged,
+                    image.shape[1], image.shape[0], center=new_center)
 
         # Warp to polar
         # Set a maximum radius which we are interested in
-        final_r_pixel = int(r_max) if r_max else None
-        # Double the size of the output image for better interpolation
+        if r_max is None:
+            raise ValueError("Must specify maximum radius.")
+        final_r_pixel = int(r_max)
+
+        # Set a minimum radius which we are interested in
+        start_r_pixel = int(r_min) if r_min else 0
+
+        # Oversample output image for better interpolation
         output_shape = (oversample*centered_image.shape[0], oversample*centered_image.shape[1])
+        # Convert to 2D polar image
         polar_image = warp_polar(centered_image, radius=final_r_pixel,
                                 output_shape=output_shape, preserve_range=True)
 
+        # Crop image based on start_r_pixel (rows is theta, cols is radius)
+        polar_image_cropped = polar_image[:, oversample*start_r_pixel:]
+
         # Convert to 1D intensity vs. radius (pixel) and rescale by shape
-        radial_intensity = np.sum(polar_image, axis=0)/output_shape[0]
+        radial_intensity = np.sum(polar_image_cropped, axis=0)/output_shape[0]
         # Set up radius linspace, where r is in pixels
-        r_space_pixel = np.linspace(0, final_r_pixel, len(radial_intensity))
+        r_space_pixel = np.linspace(start_r_pixel, final_r_pixel,
+                                                len(radial_intensity))
 
         # Find the radial peaks
-        radial_peak_indices, _ = find_peaks(radial_intensity)
+        radial_peak_indices, _ = find_peaks(radial_intensity, width=4)
 
         # Average the doublets
-        doublets_m = np.array(q_peaks_ref_m.get("doublets"))
+        doublets_m = np.array(q_peaks_ref.get("doublets"))*1e10
         if doublets_m.size > 0:
             doublets_avg_m = np.array(np.mean(doublets_m)).flatten()
-        singlets_m = np.array(q_peaks_ref_m.get("singlets")).flatten()
+        singlets_m = np.array(q_peaks_ref.get("singlets")).flatten()*1e10
         # Join the singlets and doublets averages into a single array
 
         q_peaks_avg_m = np.sort(np.concatenate([singlets_m, doublets_avg_m]))
+
+        # TODO: Use the provided approximate distance to match found peaks
+        # to reference peaks
+
+        if len(q_peaks_avg_m) != len(radial_peak_indices):
+            raise ValueError("Number of peaks found does not match number "
+                                "of reference peaks!")
 
         # Set up linear regression inputs
         # Set y values based on derviations
