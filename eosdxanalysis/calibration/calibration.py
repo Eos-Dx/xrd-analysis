@@ -9,7 +9,7 @@ from skimage.transform import warp_polar
 
 from scipy.signal import find_peaks
 
-from eosdxanalysis.calibration.materials import q_peaks_ref_dict
+from eosdxanalysis.calibration.materials import q_peaks_ref_dict_m
 
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.image_processing import centerize
@@ -25,19 +25,19 @@ class Calibration(object):
     q units are per Angstrom
     """
 
-    def __init__(self, calibration_material, wavelen=1.5418):
+    def __init__(self, calibration_material, wavelen_m=1.5418e-10):
         """
         Initialize Calibration class
         """
         # Store source wavelength
-        self.wavelen = wavelen
+        self.wavelen_m = wavelen_m
 
         # Store calibration material name
         self.calibration_material = calibration_material
 
         # Look up calibration material q-peaks reference data
         try:
-            self.q_peaks_ref = q_peaks_ref_dict[calibration_material]
+            self.q_peaks_ref_m = q_peaks_ref_dict_m[calibration_material]
         except KeyError as err:
             print("Calibration material {} not found!".format(
                                             calibration_material))
@@ -56,8 +56,8 @@ class Calibration(object):
         - Return the mean, standard deviation, and values
 
         """
-        wavelen = self.wavelen
-        q_peaks_ref = self.q_peaks_ref
+        wavelen_m = self.wavelen_m
+        q_peaks_ref_m = self.q_peaks_ref_m
 
         # Centerize the image
         center = find_center(image)
@@ -80,17 +80,17 @@ class Calibration(object):
         radial_peak_indices, _ = find_peaks(radial_intensity)
 
         # Average the doublets
-        doublets = np.array(q_peaks_ref.get("doublets"))
-        if doublets.size > 0:
-            doublets_avg = np.array(np.mean(doublets)).flatten()
-        singlets = np.array(q_peaks_ref.get("singlets")).flatten()
+        doublets_m = np.array(q_peaks_ref_m.get("doublets"))
+        if doublets_m.size > 0:
+            doublets_avg_m = np.array(np.mean(doublets_m)).flatten()
+        singlets_m = np.array(q_peaks_ref_m.get("singlets")).flatten()
         # Join the singlets and doublets averages into a single array
 
-        q_peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
+        q_peaks_avg_m = np.sort(np.concatenate([singlets_m, doublets_avg_m]))
 
         # Set up linear regression inputs
         # Set y values based on derviations
-        theta_n = np.arcsin(q_peaks_avg*wavelen/(4*np.pi))
+        theta_n = np.arcsin(q_peaks_avg_m*wavelen_m/(4*np.pi))
         Y = np.tan(2*theta_n).reshape(-1,1)
         # Set x values as the measured r peaks
         X = r_space_pixel[radial_peak_indices].reshape(-1,1)
