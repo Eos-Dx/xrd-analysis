@@ -168,17 +168,20 @@ def crop_image(img,height,width,center=None):
     Crops an image to a given height and width about a center
     # TODO: check for overruns
     """
+    # Check that height and width are not larger than original image size
+    if height > img.shape[0] or width > img.shape[1]:
+        raise ValueError("Height and width cannot be greater than input image!")
     if center == None:
-        center_row = height//2
-        center_col = width//2
+        center_row = height/2-0.5
+        center_col = width/2-0.5
     else:
         center_row = int(center[0])
         center_col = int(center[1])
 
-    row_start = center_row-height//2
-    row_end = center_row+height//2
-    col_start = center_col-width//2
-    col_end = center_col+width//2
+    row_start = int(center_row-height/2+0.5)
+    row_end = int(center_row+height/2+0.5)
+    col_start = int(center_col-width/2+0.5)
+    col_end = int(center_col+width/2+0.5)
 
     try:
         cropped_img = img[row_start:row_end,col_start:col_end] 
