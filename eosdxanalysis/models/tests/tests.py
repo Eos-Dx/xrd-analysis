@@ -6,6 +6,8 @@ import unittest
 import numpy as np
 import numpy.ma as ma
 
+import scipy.special as sc
+
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
@@ -93,12 +95,10 @@ class TestPolynomialFit(unittest.TestCase):
 
 class TestUtils(unittest.TestCase):
 
-    def test_bessel_zeros(self):
-        # Test if values are close to table values with relative tolerance
-        nthorder = 6
-        kzeros = 5
-        zeromatrix = gen_zeromatrix((nthorder,kzeros))
+    def setUp(self):
         # Table values taken from: https://mathworld.wolfram.com/BesselFunctionZeros.html
+        # Rows are the kth zeros (start from k=1)
+        # Columns are J_n, start from (n=0)
         known_zeros = np.array(
             [[2.4048, 3.8317, 5.1356, 6.3802, 7.5883, 8.7715],
             [5.5201, 7.0156, 8.4172, 9.7610, 11.0647, 12.3386],
@@ -106,8 +106,42 @@ class TestUtils(unittest.TestCase):
             [11.7915, 13.3237, 14.7960, 16.2235, 17.6160, 18.9801],
             [14.9309, 16.4706, 17.9598, 19.4094, 20.8269, 22.2178],
             ])
+        self.known_zeros = known_zeros
+
+    def test_bessel_zeros(self):
+        # Test if values are close to table values with relative tolerance
+        known_zeros = self.known_zeros
+        nthorder = 6
+        kzeros = 5
+        zeromatrix = gen_zeromatrix((nthorder,kzeros))
         rtol=1e-3
         self.assertTrue(True == np.isclose(zeromatrix, known_zeros.T,rtol=rtol).all())
+
+    def test_bessel_zeros_excluding_origin(self):
+        """
+        In `scipy.special.jn_zeros`, we are excluding zeros at x = 0.
+        In the 2D Polar Discrete Fourier Transform Matlab code,
+        we are also exluding zeros at x = 0.
+        Make sure we are using consistent scheme.
+        """
+        known_zeros = self.known_zeros
+        # J_0: J_n for n = 0
+        # Get the first 3 zeros
+        n0 = 0
+        J_0_zeros_calc = sc.jn_zeros(n0, 3)
+        # Check that jn_zeros generates the correct zeros
+        # starting after x = 0
+        J_0_zeros_ref = known_zeros[:3, n0]
+        self.assertTrue(np.isclose(J_0_zeros_calc, J_0_zeros_ref, atol=1e-3).all())
+
+        # J_1: J_n for n = 1
+        # Get the first 3 zeros
+        n1 = 1
+        J_1_zeros_calc = sc.jn_zeros(n1, 3)
+        # Check that jn_zeros generates the correct zeros
+        # starting after x = 0
+        J_1_zeros_ref = known_zeros[:3, n1]
+        self.assertTrue(np.isclose(J_1_zeros_calc, J_1_zeros_ref, atol=1e-3).all())
 
 
 class TestFeatureEngineering(unittest.TestCase):
