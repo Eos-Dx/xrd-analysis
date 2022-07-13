@@ -12,7 +12,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
 from eosdxanalysis.models.curve_fitting import PolynomialFit
-from eosdxanalysis.models.utils import gen_zeromatrix
+from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.feature_engineering import feature_5a_peak_location
 from eosdxanalysis.models.feature_engineering import feature_9a_ratio
@@ -108,12 +108,12 @@ class TestUtils(unittest.TestCase):
             ])
         self.known_zeros = known_zeros
 
-    def test_bessel_zeros(self):
+    def test_gen_jn_zerosmatrix(self):
         # Test if values are close to table values with relative tolerance
         known_zeros = self.known_zeros
         nthorder = 6
         kzeros = 5
-        zeromatrix = gen_zeromatrix((nthorder,kzeros))
+        zeromatrix = gen_jn_zerosmatrix((nthorder,kzeros))
         rtol=1e-3
         self.assertTrue(True == np.isclose(zeromatrix, known_zeros.T,rtol=rtol).all())
 
