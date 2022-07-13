@@ -63,12 +63,20 @@ for matrixIndex = 1 : 1 : size(quadrantMatrixList, 1)
 
         B = quadrantMatrixList(matrixIndexToCompareWith, :, :);
         B = reshape(B, size(B, 2), size(B, 3) );
+
+        distanceMatrixSum = sqrt(sum(sum((A - B).^2)));
+        % distanceMatrix = ((A / sum(A)) - (B / sum(B))).^2;
         
-        % Doc: https://www.mathworks.com/help/stats/pdist2.html
-        Distance = pdist2(A, B, 'euclidean');
-        distance( matrixIndexToCompareWith, :, :) = Distance;
+        % Data of a chosed sample compared to all other samples
+        % Here we can see difference for each pixel
+        % distanceMatrixList( matrixIndexToCompareWith, :, :) = distanceMatrix;
+        % % Here it is the sum of the difference
+        % distanceMatrixSumList( matrixIndexToCompareWith ) = distanceMatrixSum;
     end
-    distanceList( matrixIndex, :, :, : ) = distance;
+    % Data of all samples compared to all samples
+    % For all samples regarding each sample
+    % distanceMatrixListAllSamples( matrixIndex, :, :, : ) = distanceMatrixList;
+    % distanceMatrixSumList( matrixIndexToCompareWith, :, : ) = distanceMatrixSumList;
 end
 
 
