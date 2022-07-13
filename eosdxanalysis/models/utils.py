@@ -12,16 +12,17 @@ import scipy.cluster.hierarchy as sch
 
 from skimage.transform import rescale
 
-from eosdxanalysis.preprocessing.preprocess import PreprocessDataArray
+# from eosdxanalysis.preprocessing.preprocess import PreprocessDataArray
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 
-def gen_zeromatrix(shape, save_mat=False, save_numpy=False, outdir=""):
+def gen_jn_zerosmatrix(shape, save_mat=False, save_numpy=False, outdir=""):
     """
     Pre-calculate Bessel zeros
     Can save matlab and/or numpy format
+    Used for 2D Polar Discrete Fourier Transform
     """
     nthorder, kzeros = shape
     zeromatrix = np.zeros((nthorder,kzeros))
@@ -154,49 +155,49 @@ def calculate_min_distance(image1_post, image2_post_unmasked, mask, scale=1.0,
                 image1_post, image2_largescale_unmasked, mask,
                 scale=new_scale, tol=tol, iterations=iterations)
 
-def l1_metric_optimized(image1, image2, params, plan=None):
-    """
-    Function which computes the L1 distance between two images
-    that may include a sample-to-detector distance shift.
-    The algorithm performs a binary search to minimize the distance
-    between one image and resized version of the other image.
-    """
-    # Set the tolerance for convergence criterion
-    TOL=1e-6
-
-    if plan is None:
-        plan = [
-                "local_thresh_quad_fold",
-                ]
-        output_style = [
-                "local_thresh_quad_folded",
-                ]
-
-    params1 = params.copy()
-    params2 = params.copy()
-    del params2["crop_style"]
-
-    # Preprocess both images according to parameters, not cropping image2
-    image1_preprocessor = PreprocessDataArray(image1, params=params1)
-    image2_preprocessor = PreprocessDataArray(image2, params=params2)
-
-    # Preprocess images
-    image1_preprocessor.preprocess(plan, mask_style="both")
-    image2_preprocessor.preprocess(plan, mask_style=None)
-    image1_post = image1_preprocessor.cache.get(output_style[0])
-    image2_post_unmasked = image2_preprocessor.cache.get(output_style[0])
-
-    # Crop image2
-    image2_preprocessor.preprocess(plan, mask_style="both")
-    image2_post = image2_preprocessor.cache.get(output_style[0])
-
-    # Create mask
-    h, w = image1.shape
-    rmin = params.get("rmin")
-    rmax = params.get("rmax")
-    mask = create_circular_mask(h, w, rmin=rmin, rmax=rmax)
-
-    distance = calculate_min_distance(
-                    image1_post, image2_post_unmasked, mask, tol=TOL)
-
-    return distance
+#def l1_metric_optimized(image1, image2, params, plan=None):
+#    """
+#    Function which computes the L1 distance between two images
+#    that may include a sample-to-detector distance shift.
+#    The algorithm performs a binary search to minimize the distance
+#    between one image and resized version of the other image.
+#    """
+#    # Set the tolerance for convergence criterion
+#    TOL=1e-6
+#
+#    if plan is None:
+#        plan = [
+#                "local_thresh_quad_fold",
+#                ]
+#        output_style = [
+#                "local_thresh_quad_folded",
+#                ]
+#
+#    params1 = params.copy()
+#    params2 = params.copy()
+#    del params2["crop_style"]
+#
+#    # Preprocess both images according to parameters, not cropping image2
+#    image1_preprocessor = PreprocessDataArray(image1, params=params1)
+#    image2_preprocessor = PreprocessDataArray(image2, params=params2)
+#
+#    # Preprocess images
+#    image1_preprocessor.preprocess(plan, mask_style="both")
+#    image2_preprocessor.preprocess(plan, mask_style=None)
+#    image1_post = image1_preprocessor.cache.get(output_style[0])
+#    image2_post_unmasked = image2_preprocessor.cache.get(output_style[0])
+#
+#    # Crop image2
+#    image2_preprocessor.preprocess(plan, mask_style="both")
+#    image2_post = image2_preprocessor.cache.get(output_style[0])
+#
+#    # Create mask
+#    h, w = image1.shape
+#    rmin = params.get("rmin")
+#    rmax = params.get("rmax")
+#    mask = create_circular_mask(h, w, rmin=rmin, rmax=rmax)
+#
+#    distance = calculate_min_distance(
+#                    image1_post, image2_post_unmasked, mask, tol=TOL)
+#
+#    return distance
