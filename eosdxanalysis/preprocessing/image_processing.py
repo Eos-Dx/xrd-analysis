@@ -166,25 +166,33 @@ def rotate_image(img, center=None, angle=None, method="standard"):
 def crop_image(img,height,width,center=None):
     """
     Crops an image to a given height and width about a center
-    # TODO: check for overruns
     """
     # Check that height and width are not larger than original image size
     if height > img.shape[0] or width > img.shape[1]:
         raise ValueError("Height and width cannot be greater than input image!")
-    if center == None:
-        center_row = height/2-0.5
-        center_col = width/2-0.5
-    else:
-        center_row = int(center[0])
-        center_col = int(center[1])
 
-    row_start = int(center_row-height/2+0.5)
-    row_end = int(center_row+height/2+0.5)
-    col_start = int(center_col-width/2+0.5)
-    col_end = int(center_col+width/2+0.5)
+    # Check if image and crop sizes are even
+    if any([img.shape[0] % 2 != 0, img.shape[1] % 2 != 0,
+            height % 2 != 0, width % 2 != 0]):
+        raise NotImplementedError("Only even sized input and output images allowed!")
+
+    # Ensure that specified center is half-integer
+    if center:
+        center_row, center_col = center
+        if any([center_row*2 % 2 != 1, center_col*2 % 2 != 1]):
+            raise ValueError("Specified center must be half-integer values!")
+    elif center == None:
+        center_row = img.shape[0]/2-0.5
+        center_col = img.shape[1]/2-0.5
+        center = (center_row, center_col)
+
+    row_slice = slice(int(center[0] - height/2 + 0.5),
+                        int(center[0] + height/2 + 0.5))
+    col_slice = slice(int(center[1] - width/2 + 0.5),
+                        int(center[1] + width/2 + 0.5))
 
     try:
-        cropped_img = img[row_start:row_end,col_start:col_end] 
+        cropped_img = img[row_slice, col_slice]
     except IndexError as err:
         print("Error cropping image! Check that your inputs make sense.")
         raise err
