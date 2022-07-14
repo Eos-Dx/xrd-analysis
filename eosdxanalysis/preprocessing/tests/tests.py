@@ -810,6 +810,26 @@ class TestImageProcessing(unittest.TestCase):
         known_first_value = even_image[side//4, side//4]
         self.assertEqual(extracted_first_value, known_first_value)
 
+    def test_crop_image_smaller_size_off_center(self):
+        """
+        Test to ensure cropped image output size is as intended
+        """
+        # Create even-shaped image
+        side = 8
+        even_image = np.arange(side**2).reshape(side,side)
+        # Crop image
+        center = (2.5,2.5)
+        cropped_even_image = crop_image(even_image, side//2, side//2, center=center)
+
+        # Check the output shape of the image
+        self.assertTrue(np.array_equal(cropped_even_image.shape, (side//2, side//2)))
+
+        # Check the first value is correct
+        extracted_first_value = cropped_even_image[0,0]
+        known_first_value = even_image[int(side//4-center[0]/2+0.5),
+                                        int(side//4-center[1]/2+0.5)]
+        self.assertEqual(extracted_first_value, known_first_value)
+
     def test_crop_image_odd_size(self):
         # Create odd-shaped image
         side = 9
