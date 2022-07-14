@@ -16,6 +16,11 @@ from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.feature_engineering import feature_5a_peak_location
 from eosdxanalysis.models.feature_engineering import feature_9a_ratio
+from eosdxanalysis.models.polar_sampling_grid import rmatrix_SpaceLimited
+
+TEST_PATH = os.path.join("eosdxanalysis", "models", "tests")
+JN_ZEROSMATRIX_TEST_DIR = "test_jn_zerosmatrix"
+JN_ZEROSMATRIX_FILENAME = "jn_zerosmatrix.npy"
 
 
 class TestPolynomialFit(unittest.TestCase):
@@ -207,6 +212,66 @@ class TestL1Metric(unittest.TestCase):
         l1 = l1_metric(A,B)
 
         self.assertEqual(distance, l1)
+
+
+class TestPolarSamplingGrid(unittest.TestCase):
+    """
+    Test Python port of functions to create polar grid for
+    2D Polar Discrete Fourier Transform
+    """
+
+    def setUp(self):
+        """
+        Load Jn zeros from file
+        """
+        jn_zerosmatrix_fullpath = os.path.join(
+                TEST_PATH,
+                JN_ZEROSMATRIX_TEST_DIR,
+                JN_ZEROSMATRIX_FILENAME)
+        jn_zerosmatrix = np.load(jn_zerosmatrix_fullpath)
+        self.jn_zerosmatrix = jn_zerosmatrix
+
+    def test_rmatrix_generation_space_limited(self):
+        """
+        Ensure the correct rmatrix is generated
+        """
+        jn_zerosmatrix = self.jn_zerosmatrix
+        # Set up test sampling parameters for space-limited function
+        N1 = 16
+        N2 = 15
+        R = 1
+
+        # Generate the rmatrix
+        rmatrix = rmatrix_SpaceLimited(N2, N1, R)
+
+        # Check some values manually
+        p = -7
+        k = 1
+        rpk_manual = jn_zerosmatrix[abs(p), k-1]/jn_zerosmatrix[abs(p), N1-1]*R
+
+        known_value = 0.18455912342241768
+        self.assertEqual(rmatrix[0, 0], rpk_manual)
+        self.assertTrue(np.isclose(rmatrix[0,0], known_value))
+        self.assertTrue(np.isclose(rpk_manual, known_value))
+
+        p = -6
+        k = 1
+        rpk_manual = jn_zerosmatrix[abs(p), k-1]/jn_zerosmatrix[abs(p), N1-1]*R
+
+        known_value = 0.16955932
+        self.assertEqual(rmatrix[1, 0], rpk_manual)
+        self.assertTrue(np.isclose(rmatrix[1,0], known_value))
+        self.assertTrue(np.isclose(rpk_manual, known_value))
+
+        p = 0
+        k = 5
+        rpk_manual = jn_zerosmatrix[abs(p), k-1]/jn_zerosmatrix[abs(p), N1-1]*R
+
+        known_value = 0.30174070727973007
+        self.assertEqual(rmatrix[7, 4], rpk_manual)
+        self.assertTrue(np.isclose(rmatrix[7,4], known_value))
+        self.assertTrue(np.isclose(rpk_manual, known_value))
+
 
 if __name__ == '__main__':
     unittest.main()
