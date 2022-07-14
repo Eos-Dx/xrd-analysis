@@ -17,6 +17,7 @@ from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.feature_engineering import feature_5a_peak_location
 from eosdxanalysis.models.feature_engineering import feature_9a_ratio
 from eosdxanalysis.models.polar_sampling_grid import rmatrix_SpaceLimited
+from eosdxanalysis.models.polar_sampling_grid import thetamatrix_SpaceLimited
 
 TEST_PATH = os.path.join("eosdxanalysis", "models", "tests")
 JN_ZEROSMATRIX_TEST_DIR = "test_jn_zerosmatrix"
@@ -271,6 +272,55 @@ class TestPolarSamplingGrid(unittest.TestCase):
         self.assertEqual(rmatrix[7, 4], rpk_manual)
         self.assertTrue(np.isclose(rmatrix[7,4], known_value))
         self.assertTrue(np.isclose(rpk_manual, known_value))
+
+    @unittest.skipIf(os.environ["VISUAL_TESTING"] != "True",
+        "Skip unless testing visuals")
+    def test_polar_sampling_grid_plot(self):
+        """
+        Visualize the sampling grid
+        """
+        jn_zerosmatrix = self.jn_zerosmatrix
+        # Set up test sampling parameters for space-limited function
+        N1 = 16
+        N2 = 15
+        R = 1
+
+        # Generate the radial matrix
+        rmatrix = rmatrix_SpaceLimited(N2, N1, R)
+
+        # Generate the angular matrix
+        thetamatrix_1d = thetamatrix_SpaceLimited(N2, N1)
+        thetamatrix = np.repeat(thetamatrix_1d.T, N2, axis=1)
+
+        # Plot polar
+        import matplotlib.pyplot as plt
+
+        fig1, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+        ax.scatter(thetamatrix, rmatrix)
+        ax.set_rlabel_position(-22.5)
+
+        plt.show()
+
+    def test_polar_sampling_grid_different_size(self):
+        """
+        Ensure that we can generate a polar sampling grid
+        for N1 and N2 values that are significantly different.
+
+        There was a bug where only N1 = N2 + 1 worked.
+        """
+
+        jn_zerosmatrix = self.jn_zerosmatrix
+        # Set up test sampling parameters for space-limited function
+        N1 = 20
+        N2 = 15
+        R = 1
+
+        # Generate the radial matrix
+        rmatrix = rmatrix_SpaceLimited(N2, N1, R)
+
+        # Generate the angular matrix
+        thetamatrix_1d = thetamatrix_SpaceLimited(N2, N1)
+        thetamatrix = np.repeat(thetamatrix_1d.T, N2, axis=1)
 
 
 if __name__ == '__main__':
