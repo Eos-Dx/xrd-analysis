@@ -14,6 +14,7 @@ from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.image_processing import rotate_image
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
+from eosdxanalysis.preprocessing.image_processing import crop_image
 
 from eosdxanalysis.preprocessing.center_finding import center_of_mass
 from eosdxanalysis.preprocessing.center_finding import radial_mean
@@ -776,6 +777,47 @@ class TestImageProcessing(unittest.TestCase):
         # The 18th and 19th values in the final image should be near the max,
         # that is location 18.5, which rounds down to 18
         self.assertTrue(np.all(max_indices_final_image == np.round(18.5)))
+
+    def test_crop_image_original_size(self):
+        """
+        Trivial test to ensure crop to original shape outputs
+        the original image.
+        """
+        # Create even-shaped image
+        side = 256
+        even_image = np.arange(side**2).reshape(side,side)
+        # Crop image
+        cropped_even_image = crop_image(even_image, side, side, center=(side/2-0.5,side/2-0.5))
+
+        # Check that original image and cropped image are identical
+        self.assertTrue(np.array_equal(even_image, cropped_even_image))
+
+    def test_crop_image_smaller_size(self):
+        """
+        Test to ensure cropped image output size is as intended
+        """
+        # Create even-shaped image
+        side = 8
+        even_image = np.arange(side**2).reshape(side,side)
+        # Crop image
+        cropped_even_image = crop_image(even_image, side//2, side//2)
+
+        # Check the output shape of the image
+        self.assertTrue(np.array_equal(cropped_even_image.shape, (side//2, side//2)))
+
+        # Check the first value is correct
+        extracted_first_value = cropped_even_image[0,0]
+        known_first_value = even_image[side//4, side//4]
+        self.assertEqual(extracted_first_value, known_first_value)
+
+    def test_crop_image_odd_size(self):
+        # Create odd-shaped image
+        side = 9
+        odd_image = np.arange(side**2).reshape(side,side)
+
+        with self.assertRaises(NotImplementedError):
+            # Crop image
+            cropped_odd_image = crop_image(odd_image, side//2, side//2)
 
 
 class TestPeakFinding(unittest.TestCase):
