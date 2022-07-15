@@ -67,6 +67,7 @@ def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
         jpN1 = zero2[N1-1]
         jpk = zero2[:N1-1]
         rmatrix[pprime, :N1-1] = (jpk[:N1-1]/jpN1)*R
+
     return rmatrix
 
 def sampling_grid(R, N1, N2):
