@@ -45,6 +45,7 @@ def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
     rpk = jpk/jpN1 * R
     where -M <= p <=M
     and 1 <= k <= N1-1
+    Note that N2 = 2*M+1
 
     - R is the space limit, size of domain
     - rpk is the kth zero of the pth Bessel function of the first kind
@@ -59,14 +60,13 @@ def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
 
     M = (N2-1)//2;
 
-    rmatrix = np.zeros((N2,N1-1))
-
-    for pprime in range(N2):
-        p = pprime - M
-        zero2 = jn_zerosmatrix[abs(p), :N1]
-        jpN1 = zero2[N1-1]
-        jpk = zero2[:N1-1]
-        rmatrix[pprime, :N1-1] = (jpk[:N1-1]/jpN1)*R
+    # Get jpk by slicing jn_zerosmatrix
+    # Size of rmatrix = size of jpk
+    jpk = jn_zerosmatrix[abs(np.arange(N2)-M), :N1-1]
+    # Get jpN1
+    jpN1 = jpk[:,-1].reshape(-1,1)
+    # Now get rmatrix
+    rmatrix = jpk/jpN1*R
 
     return rmatrix
 
