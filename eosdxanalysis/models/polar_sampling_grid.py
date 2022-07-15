@@ -21,11 +21,21 @@ def thetamatrix_SpaceLimited(N2, N1):
     """
     Generates the angular meshgrid
     thetamatrix shape is (N2, N1-1)
+
+    theta_p = p*2*pi/N2
+    where -M <= p <= M
     """
-    b2 = 2*np.pi/N2;
-    progr2 = np.linspace(-np.pi + b2/2, np.pi - b2/2, N2).reshape(-1,1)
-    theta = progr2 * np.ones((1,N1-1))
-    return theta
+    # Set up a symmetric theta range based on prescription from paper
+    # (symmetric about theta = 0)
+    # Set up theta start, stop and step values
+    theta_step = 2*np.pi/N2
+    theta_min = -np.pi + theta_step/2
+    theta_max = np.pi + theta_step/2
+    # Set up the theta range
+    theta_range = np.arange(theta_min, theta_max, theta_step).reshape(-1,1)
+    # Create a meshgrid
+    thetamatrix = theta_range * np.ones((1,N1-1))
+    return thetamatrix
 
 def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
     """
