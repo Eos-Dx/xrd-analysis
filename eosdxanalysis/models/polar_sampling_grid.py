@@ -41,6 +41,13 @@ def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
     """
     Generates the radial meshgrid
     rmatrix shape is (N2, N1-1)
+
+    rpk = jpk/jpN1 * R
+    where -M <= p <=M
+    and 1 <= k <= N1-1
+
+    - R is the space limit, size of domain
+    - rpk is the kth zero of the pth Bessel function of the first kind
     """
     # If the jn_zerosmatrix is not given, read from file
     if jn_zerosmatrix is None:
@@ -50,17 +57,17 @@ def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
                 JN_ZEROSMATRIX_FILENAME)
         jn_zerosmatrix = np.load(jn_zerosmatrix_path)
 
-    M=(N2-1)//2;
+    M = (N2-1)//2;
 
     rmatrix = np.zeros((N2,N1-1))
 
     for pprime in range(N2):
         p = pprime - M
         for k in range(N1-1):
-            zero2 = jn_zerosmatrix[abs(p),:N1]
+            zero2 = jn_zerosmatrix[abs(p), :N1]
             jpk = zero2[k]
             jpN1 = zero2[N1-1]
-            rmatrix[pprime,k] = (jpk/jpN1)*R
+            rmatrix[pprime, k] = (jpk/jpN1)*R
     return rmatrix
 
 def sampling_grid(R, N1, N2):
