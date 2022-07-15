@@ -289,8 +289,7 @@ class TestPolarSamplingGrid(unittest.TestCase):
         rmatrix = rmatrix_SpaceLimited(N2, N1, R)
 
         # Generate the angular matrix
-        thetamatrix_1d = thetamatrix_SpaceLimited(N2, N1)
-        thetamatrix = np.repeat(thetamatrix_1d.T, N2, axis=1)
+        thetamatrix = thetamatrix_SpaceLimited(N2, N1)
 
         # Plot polar
         import matplotlib.pyplot as plt
@@ -318,9 +317,14 @@ class TestPolarSamplingGrid(unittest.TestCase):
         # Generate the radial matrix
         rmatrix = rmatrix_SpaceLimited(N2, N1, R)
 
+        # Check that the radial matrix shape is (N2, N1-1)
+        self.assertTrue(np.array_equal(rmatrix.shape, (N2, N1-1)))
+
         # Generate the angular matrix
-        thetamatrix_1d = thetamatrix_SpaceLimited(N2, N1)
-        thetamatrix = np.repeat(thetamatrix_1d.T, N2, axis=1)
+        thetamatrix = thetamatrix_SpaceLimited(N2, N1)
+
+        # Check that the angular matrix shape is (N2, N1-1)
+        self.assertTrue(np.array_equal(thetamatrix.shape, (N2, N1-1)))
 
 
 if __name__ == '__main__':
