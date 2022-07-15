@@ -2,6 +2,11 @@
 Generate a polar sampling grid according to the
 2D Polar Discrete Fourier Transform described in
 https://peerj.com/articles/cs-257/#fig-1
+
+N1 is the radial sampling count
+N2 is the angular sampling count
+
+The grid size is (N2, N1-1)
 """
 import os
 import numpy as np
@@ -15,15 +20,17 @@ JN_ZEROSMATRIX_FILENAME = "jn_zerosmatrix.npy"
 def thetamatrix_SpaceLimited(N2, N1):
     """
     Generates the angular meshgrid
+    thetamatrix shape is (N2, N1-1)
     """
     b2 = 2*np.pi/N2;
-    progr2 = np.linspace(-np.pi + b2/2, np.pi - b2/2, N2)
-    theta = progr2*np.ones((1,N1-1))
+    progr2 = np.linspace(-np.pi + b2/2, np.pi - b2/2, N2).reshape(-1,1)
+    theta = progr2 * np.ones((1,N1-1))
     return theta
 
 def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
     """
     Generates the radial meshgrid
+    rmatrix shape is (N2, N1-1)
     """
     # If the jn_zerosmatrix is not given, read from file
     if jn_zerosmatrix is None:
