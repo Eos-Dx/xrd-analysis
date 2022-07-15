@@ -9,7 +9,7 @@ function rho=rhomatrix_SpaceLimited(N2,N1,R,zeromatrix)
 		q=ii-1-M;
 		for l=1:N1-1;
 			% zero2=zeromatrix(5001-abs(q),:);
-			zero2=zeromatrix(201-abs(q),:);
+			zero2=zeromatrix(end-abs(q),:);
 			jql=zero2(l);
 			rho(ii,l)=jql/R;
 		end
