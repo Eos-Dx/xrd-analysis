@@ -64,9 +64,9 @@ def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
     for pprime in range(N2):
         p = pprime - M
         zero2 = jn_zerosmatrix[abs(p), :N1]
+        jpN1 = zero2[N1-1]
         for k in range(N1-1):
             jpk = zero2[k]
-            jpN1 = zero2[N1-1]
             rmatrix[pprime, k] = (jpk/jpN1)*R
     return rmatrix
 
