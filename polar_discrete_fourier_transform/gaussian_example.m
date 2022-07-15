@@ -25,7 +25,7 @@ fnk=circshift(fft(circshift(f,M+1,1),N2,1),-(M+1),1);
 for n=-M:M
 	ii=n+M+1;
 	% zero2=zeromatrix(5001-abs(n),:);
-	zero2=zeromatrix(201-abs(n),:);
+	zero2=zeromatrix(abs(n)+1,:);
 	jnN1=zero2(N1);
 	if n<0
 		Y=((-1)^abs(n))*YmatrixAssembly(abs(n),N1,zero2);
@@ -46,14 +46,16 @@ trueFunc=gau2(rho);
 error= 20*log10(abs(trueFunc- TwoDFT)/max(max(abs(TwoDFT))));
 
 figure(1)
-subplot(2,1,1)
+% subplot(2,1,1)
 surf(x1,y1,abs(trueFunc))
 title('\fontsize{24}Sampled Continuous Forward Transform')
-subplot(2,1,2)
+
+figure(2)
+% subplot(2,1,2)
 surf(x1,y1,abs(TwoDFT))
 title('\fontsize{24}Discrete Forward Transform')
 
-figure(2)
+figure(3)
 
 surf(x1,y1,error)
 xlabel('x');
@@ -68,24 +70,24 @@ mean1=mean(mean(error)); % Average dynamic error
 max1=max(max(error)); % Maximum dynamic error
 
 %%A-6. Inverse transform of Gaussian function
-N2=15 ; %number of sample points in angular direction
+% N2=15 ; %number of sample points in angular direction
 % N1=383; %number of sample points in radial direction
-N1=30; %number of sample points in radial direction
-M=(N2-1)/2; %highest order of bessel function
-R=40;% space limit
-Wp=30; % band limit
-a=0.1;
-load('zeromatrix.mat')
-theta=thetamatrix_SpaceLimited(N2,N1);%Sample point in angular direction in space domain.
-r=rmatrix_SpaceLimited(N2,N1,R,zeromatrix);%Sample point in radial direction in space domain.
-psi=psimatrix_SpaceLimited(N2,N1);%Sample point in angular direction in frequency domain.
-rho=rhomatrix_SpaceLimited(N2,N1,R,zeromatrix);%Sample point in radial direction in frequency domain.
-[x,y]=pol2cart(theta,r); %sample points in Cartesian coordinates in space domain
-[x1,y1]=pol2cart(psi,rho); %sample points in Cartesian coordinates in frequency domain
+% N1=30; %number of sample points in radial direction
+% M=(N2-1)/2; %highest order of bessel function
+% R=40;% space limit
+% Wp=30; % band limit
+% a=0.1;
+% load('zeromatrix.mat')
+% theta=thetamatrix_SpaceLimited(N2,N1);%Sample point in angular direction in space domain.
+% r=rmatrix_SpaceLimited(N2,N1,R,zeromatrix);%Sample point in radial direction in space domain.
+% psi=psimatrix_SpaceLimited(N2,N1);%Sample point in angular direction in frequency domain.
+% rho=rhomatrix_SpaceLimited(N2,N1,R,zeromatrix);%Sample point in radial direction in frequency domain.
+% [x,y]=pol2cart(theta,r); %sample points in Cartesian coordinates in space domain
+% [x1,y1]=pol2cart(psi,rho); %sample points in Cartesian coordinates in frequency domain
 
 %creating a discrete true function
-gau2 = @(x) pi*exp((-x.^2)/4); 
-trueFunc=gau2(rho);
+% gau2 = @(x) pi*exp((-x.^2)/4); 
+% trueFunc=gau2(rho);
 
 % DFT
 FNL=circshift(fft(circshift(trueFunc,M+1,1),N2,1),-(M+1),1);
@@ -93,7 +95,7 @@ FNL=circshift(fft(circshift(trueFunc,M+1,1),N2,1),-(M+1),1);
 for n=-M:M
 	ii=n+M+1;
 	% zero2=zeromatrix(5001-abs(n),:);
-	zero2=zeromatrix(201-abs(n),:);
+	zero2=zeromatrix(abs(n)+1,:);
 	jnN1=zero2(N1);
 	if n<0
 		Y=((-1)^abs(n))*YmatrixAssembly(abs(n),N1,zero2);
@@ -116,15 +118,16 @@ f=gau(r);
 %calculating the dynamic error from transform and origal function
 error= 20*log10(abs(f- TwoDIFT)/max(max(abs(TwoDIFT))));
 
-figure(3)
-subplot(2,1,1)
+figure(4)
+% subplot(2,1,1)
 surf(x,y,abs(f))
 title('\fontsize{24}Continuous Inverse Transform')
-subplot(2,1,2)
+figure(5)
+% subplot(2,1,2)
 surf(x,y,abs(TwoDIFT))
 title('\fontsize{24}Discrete inverse Transform')
 
-figure(4)
+figure(6)
 surf(x,y,error)
 xlabel('x');
 ylabel('y');
