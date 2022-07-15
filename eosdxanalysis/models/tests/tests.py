@@ -18,6 +18,7 @@ from eosdxanalysis.models.feature_engineering import feature_5a_peak_location
 from eosdxanalysis.models.feature_engineering import feature_9a_ratio
 from eosdxanalysis.models.polar_sampling_grid import rmatrix_SpaceLimited
 from eosdxanalysis.models.polar_sampling_grid import thetamatrix_SpaceLimited
+from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 
 TEST_PATH = os.path.join("eosdxanalysis", "models", "tests")
 JN_ZEROSMATRIX_TEST_DIR = "test_jn_zerosmatrix"
@@ -325,6 +326,35 @@ class TestPolarSamplingGrid(unittest.TestCase):
 
         # Check that the angular matrix shape is (N2, N1-1)
         self.assertTrue(np.array_equal(thetamatrix.shape, (N2, N1-1)))
+
+
+class TestFourierAnalysis(unittest.TestCase):
+
+    def setUp(self):
+        """
+        Load Jn zeros from file
+        """
+        jn_zerosmatrix_fullpath = os.path.join(
+                TEST_PATH,
+                JN_ZEROSMATRIX_TEST_DIR,
+                JN_ZEROSMATRIX_FILENAME)
+        jn_zerosmatrix = np.load(jn_zerosmatrix_fullpath)
+        self.jn_zerosmatrix = jn_zerosmatrix
+
+    def test_Ymatrix_Assembly_non_empty(self):
+        """
+        Check that Ymatrix is not empty for non-trivial input values
+        """
+        n = 0
+        N1 = 4
+        known_shape = (N1-1, N1-1)
+        jn_zerosmatrix = self.jn_zerosmatrix
+        jn_zerosarray = jn_zerosmatrix[n, :]
+        ymatrix = YmatrixAssembly(n, N1, jn_zerosarray)
+        
+        # Check that the matrix size is correct
+        self.assertTrue(np.array_equal(ymatrix.shape, known_shape))
+
 
 
 if __name__ == '__main__':
