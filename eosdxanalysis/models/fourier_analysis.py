@@ -56,17 +56,20 @@ def YmatrixAssembly(n, N1, jn_zerosarray):
     - N1 is the size of the transformation matrix
     - jn_zerosarray are the bessel zeros of Jn only,
       with size (N+1,1)
+
+    Output:
+    - Ymatrix of shape (N1-1, N1-1) with indices m, k
     """
-    Ymatrix = np.zeros((N1-1,N1-1))
 
+    # jnN1 is the last element
     jnN1 = jn_zerosarray[N1]
+    # jnk is all but the last element, row vector
+    jnk = jn_zerosarray[:N1-1].reshape(1,-1)
+    # jnm is a column vector (m is a row index)
+    jnm = jnk.T
 
-    for m in range(N1-1):
-        jnm = jn_zerosarray[m]
-        for k in range(N1-1):
-            jnk = jn_zerosarray[k]
-            denominator = jnN1*(jv(n+1, jnk)**2)
-            Jn_arg = jnm*jnk/jnN1
-            Ymatrix[m,k] = 2/denominator*jv(n, Jn_arg)
+    denominator = jnN1*(jv(n+1, jnk)**2)
+    Jn_arg = jnm*jnk/jnN1
+    Ymatrix = 2/denominator*jv(n, Jn_arg)
 
     return Ymatrix
