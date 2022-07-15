@@ -351,10 +351,9 @@ class TestFourierAnalysis(unittest.TestCase):
         jn_zerosmatrix = self.jn_zerosmatrix
         jn_zerosarray = jn_zerosmatrix[n, :]
         ymatrix = YmatrixAssembly(n, N1, jn_zerosarray)
-        
+
         # Check that the matrix size is correct
         self.assertTrue(np.array_equal(ymatrix.shape, known_shape))
-
 
 
 if __name__ == '__main__':
