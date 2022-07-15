@@ -60,12 +60,18 @@ def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
 
     M = (N2-1)//2;
 
-    # Get jpk by slicing jn_zerosmatrix
-    # Size of rmatrix = size of jpk
-    jpk = jn_zerosmatrix[abs(np.arange(N2)-M), :N1-1]
-    # Get jpN1
-    jpN1 = jpk[:,-1].reshape(-1,1)
-    # Now get rmatrix
+    # Get jpk and jpN1 from jn_zerosmatrix
+    p_range = abs(np.arange(N2)-M)
+    # Get all Jn zeros we interested in
+    # Note that k goes from 1 to N1-1
+    # So we are getting 1 to N1 and then splitting
+    # the results into jpk and jpN1
+    jpk_jpN1_combined = jn_zerosmatrix[p_range, :N1]
+    # Get jpk by slicing
+    jpk = jpk_jpN1_combined[:,:N1-1]
+    # Get jpN1 by slicing (last column)
+    jpN1 = jpk_jpN1_combined[:,-1].reshape(-1,1)
+    # Now get rmatrix. Size of rmatrix = size of jpk.
     rmatrix = jpk/jpN1*R
 
     return rmatrix
