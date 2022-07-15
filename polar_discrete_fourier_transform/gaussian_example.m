@@ -25,7 +25,7 @@ fnk=circshift(fft(circshift(f,M+1,1),N2,1),-(M+1),1);
 for n=-M:M
 	ii=n+M+1;
 	% zero2=zeromatrix(5001-abs(n),:);
-	zero2=zeromatrix(abs(n)+1,:);
+	zero2=zeromatrix(201-abs(n),:);
 	jnN1=zero2(N1);
 	if n<0
 		Y=((-1)^abs(n))*YmatrixAssembly(abs(n),N1,zero2);
@@ -95,7 +95,7 @@ FNL=circshift(fft(circshift(trueFunc,M+1,1),N2,1),-(M+1),1);
 for n=-M:M
 	ii=n+M+1;
 	% zero2=zeromatrix(5001-abs(n),:);
-	zero2=zeromatrix(abs(n)+1,:);
+	zero2=zeromatrix(201-abs(n),:);
 	jnN1=zero2(N1);
 	if n<0
 		Y=((-1)^abs(n))*YmatrixAssembly(abs(n),N1,zero2);
