@@ -4,8 +4,8 @@ N2=15; %number of sample points in angular direction
 N1=17; %number of sample points in radial direction
 M=(N2-1)/2; %highest order of bessel function
 R=5;% space limit
-Wp=30; % band limit
-a=0.1;
+Wp=10; % band limit
+a=1;
 load('zeromatrix.mat')
 theta=thetamatrix_SpaceLimited(N2,N1); %Sample point in angular direction in space domain.
 r=rmatrix_SpaceLimited(N2,N1,R,zeromatrix);%Sample point in radial direction in space domain.
