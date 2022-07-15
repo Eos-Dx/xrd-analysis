@@ -1,9 +1,9 @@
 %%A-5. Forward transform of Gaussian function
 N2=15; %number of sample points in angular direction
 % N1=383; %number of sample points in radial direction
-N1=30; %number of sample points in radial direction
+N1=17; %number of sample points in radial direction
 M=(N2-1)/2; %highest order of bessel function
-R=40;% space limit
+R=5;% space limit
 Wp=30; % band limit
 a=0.1;
 load('zeromatrix.mat')
@@ -16,7 +16,7 @@ rho=rhomatrix_SpaceLimited(N2,N1,R,zeromatrix);%Sample point in radial direction
 
 
 %Discretizing the function
-gau = @(x) exp(-(x).^2); 
+gau = @(x) exp(-(a*x).^2); 
 f=gau(r);
 
 % DFT
@@ -25,7 +25,7 @@ fnk=circshift(fft(circshift(f,M+1,1),N2,1),-(M+1),1);
 for n=-M:M
 	ii=n+M+1;
 	% zero2=zeromatrix(5001-abs(n),:);
-	zero2=zeromatrix(201-abs(n),:);
+	zero2=zeromatrix(end-abs(n),:);
 	jnN1=zero2(N1);
 	if n<0
 		Y=((-1)^abs(n))*YmatrixAssembly(abs(n),N1,zero2);
@@ -49,6 +49,9 @@ figure(1)
 % subplot(2,1,1)
 surf(x1,y1,abs(trueFunc))
 title('\fontsize{24}Sampled Continuous Forward Transform')
+xlim([-15 15])
+ylim([-15 15])
+zlim([0 5])
 
 figure(2)
 % subplot(2,1,2)
@@ -95,7 +98,7 @@ FNL=circshift(fft(circshift(trueFunc,M+1,1),N2,1),-(M+1),1);
 for n=-M:M
 	ii=n+M+1;
 	% zero2=zeromatrix(5001-abs(n),:);
-	zero2=zeromatrix(201-abs(n),:);
+	zero2=zeromatrix(end-abs(n),:);
 	jnN1=zero2(N1);
 	if n<0
 		Y=((-1)^abs(n))*YmatrixAssembly(abs(n),N1,zero2);
@@ -111,8 +114,8 @@ end
 TwoDIFT=circshift(ifft(circshift(fnk,M+1,1),N2,1),-(M+1),1);
 
 %%discretizing the function in space domain
-gau = @(x) exp(-(x).^2);
-f=gau(r);
+% gau = @(x) exp(-(a*x).^2);
+% f=gau(r);
 
 
 %calculating the dynamic error from transform and origal function
@@ -122,6 +125,7 @@ figure(4)
 % subplot(2,1,1)
 surf(x,y,abs(f))
 title('\fontsize{24}Continuous Inverse Transform')
+
 figure(5)
 % subplot(2,1,2)
 surf(x,y,abs(TwoDIFT))
