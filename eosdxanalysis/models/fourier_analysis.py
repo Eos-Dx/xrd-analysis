@@ -1,6 +1,8 @@
 """
 Implements various Fourier Transform techniques
 """
+import numpy as np
+from scipy.special import jv
 
 from eosdxanalysis.models.polar_sampling_grid import rmatrix_SpaceLimited
 from eosdxanalysis.models.polar_sampling_grid import thetamatrix_SpaceLimited
@@ -43,7 +45,7 @@ class PolarDiscreteFourierTransform2D(object):
         # Now perform the 1D DHT
 
 
-def YmatrixAssembly(n, N, jn_zerosarray):
+def YmatrixAssembly(n, N1, jn_zerosarray):
     """
     Assemble the Y-matrix for performing the 1D DHT step
     of the 2D Polar Discrete Fourier Transform
@@ -51,18 +53,20 @@ def YmatrixAssembly(n, N, jn_zerosarray):
     Inputs:
     - Y is the N-1 x N-1 transformation matrix to be assembled
     - n is the order of the bessel function
-    - N is the size of the transformation matrix
+    - N1 is the size of the transformation matrix
     - jn_zerosarray are the bessel zeros of Jn only,
       with size (N+1,1)
     """
+    Ymatrix = np.zeros((N1-1,N1-1))
 
-    for l in range(N):
-        jnN=jn_zerosmatrix[:,N]
-        jnl=jn_zerosmatrix[:,l]
+    jnN1 = jn_zerosarray[N1]
 
-        for k in range(N):
-            jnk=jn_zerosmatrix[:,k]
-            jnplus1=besselj(n+1, jnk);
+    for m in range(N1-1):
+        jnm = jn_zerosarray[m]
+        for k in range(N1-1):
+            jnk = jn_zerosarray[k]
+            denominator = jnN1*(jv(n+1, jnk)**2)
+            Jn_arg = jnm*jnk/jnN1
+            Ymatrix[m,k] = 2/denominator*jv(n, Jn_arg)
 
-            Y(l,k)=(2*besselj(n,(jnk*jnl/jnN)))/(jnN*jnplus1^2);
-
+    return Ymatrix
