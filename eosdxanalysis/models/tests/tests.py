@@ -6,7 +6,9 @@ import unittest
 import numpy as np
 import numpy.ma as ma
 
-import scipy.special as sc
+from scipy.special import jn_zeros
+from scipy.special import jv
+from scipy.io import loadmat
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
@@ -135,7 +137,7 @@ class TestUtils(unittest.TestCase):
         # J_0: J_n for n = 0
         # Get the first 3 zeros
         n0 = 0
-        J_0_zeros_calc = sc.jn_zeros(n0, 3)
+        J_0_zeros_calc = jn_zeros(n0, 3)
         # Check that jn_zeros generates the correct zeros
         # starting after x = 0
         J_0_zeros_ref = known_zeros[:3, n0]
@@ -144,7 +146,7 @@ class TestUtils(unittest.TestCase):
         # J_1: J_n for n = 1
         # Get the first 3 zeros
         n1 = 1
-        J_1_zeros_calc = sc.jn_zeros(n1, 3)
+        J_1_zeros_calc = jn_zeros(n1, 3)
         # Check that jn_zeros generates the correct zeros
         # starting after x = 0
         J_1_zeros_ref = known_zeros[:3, n1]
@@ -274,7 +276,7 @@ class TestPolarSamplingGrid(unittest.TestCase):
         self.assertTrue(np.isclose(rmatrix[7,4], known_value))
         self.assertTrue(np.isclose(rpk_manual, known_value))
 
-    @unittest.skipIf(os.environ["VISUAL_TESTING"] != "True",
+    @unittest.skipIf(os.environ.get("VISUAL_TESTING") != "True",
         "Skip unless testing visuals")
     def test_polar_sampling_grid_plot(self):
         """
@@ -334,26 +336,60 @@ class TestFourierAnalysis(unittest.TestCase):
         """
         Load Jn zeros from file
         """
-        jn_zerosmatrix_fullpath = os.path.join(
+        testdata_path = os.path.join(
                 TEST_PATH,
-                JN_ZEROSMATRIX_TEST_DIR,
+                JN_ZEROSMATRIX_TEST_DIR)
+        jn_zerosmatrix_fullpath = os.path.join(testdata_path,
                 JN_ZEROSMATRIX_FILENAME)
         jn_zerosmatrix = np.load(jn_zerosmatrix_fullpath)
         self.jn_zerosmatrix = jn_zerosmatrix
+        self.testdata_path = testdata_path
 
-    def test_Ymatrix_Assembly_non_empty(self):
+    def test_Ymatrix_Assembly_size(self):
         """
-        Check that Ymatrix is not empty for non-trivial input values
+        Check that Ymatrix size is correct for non-trivial input values
         """
+        jn_zerosmatrix = self.jn_zerosmatrix
+
+        # Set parameters
+        count = 5
+        N1 = 4
+        known_shape = (N1-1, N1-1)
+
+        for n in range(count):
+            # Extract jn zeros array
+            jn_zerosarray = jn_zerosmatrix[n, :]
+
+            # Generate the Ymatrix
+            ymatrix = YmatrixAssembly(n, N1, jn_zerosarray)
+
+            # Check that the matrix size is correct
+            self.assertTrue(np.array_equal(ymatrix.shape, known_shape))
+
+    def test_Ymatrix_Assembly_manual_values(self):
+        """
+        Test the Ymatrix against manual calculations
+        """
+        jn_zerosmatrix = self.jn_zerosmatrix
+
+        # Set parameters
         n = 0
         N1 = 4
         known_shape = (N1-1, N1-1)
-        jn_zerosmatrix = self.jn_zerosmatrix
-        jn_zerosarray = jn_zerosmatrix[n, :]
+
+        # Extract jn zeros array
+        jn_zerosarray = jn_zerosmatrix[n, :N1]
+
+        # Generate the Ymatrix
         ymatrix = YmatrixAssembly(n, N1, jn_zerosarray)
 
-        # Check that the matrix size is correct
-        self.assertTrue(np.array_equal(ymatrix.shape, known_shape))
+        # Load the known ymatrix
+        ymatrix_fullpath = os.path.join(self.testdata_path,
+                "ymatrix_0_4.mat")
+        known_ymatrix = loadmat(ymatrix_fullpath).get("ymatrix")
+
+        # Check that they're equal
+        self.assertTrue(np.isclose(ymatrix, known_ymatrix).all())
 
 
 if __name__ == '__main__':
