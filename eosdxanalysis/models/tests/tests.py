@@ -21,6 +21,7 @@ from eosdxanalysis.models.feature_engineering import feature_9a_ratio
 from eosdxanalysis.models.polar_sampling_grid import rmatrix_SpaceLimited
 from eosdxanalysis.models.polar_sampling_grid import thetamatrix_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
+from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 
 TEST_PATH = os.path.join("eosdxanalysis", "models", "tests")
 JN_ZEROSMATRIX_TEST_DIR = "test_jn_zerosmatrix"
@@ -390,6 +391,33 @@ class TestFourierAnalysis(unittest.TestCase):
 
         # Check that they're equal
         self.assertTrue(np.isclose(ymatrix, known_ymatrix).all())
+
+    def test_pfft2_SpaceLimited(self):
+        """
+        Test 2D Discrete Polar Fourier Transform
+        for a space-limited function
+        """
+        # Set image size
+        size = 256
+        # Use complex image size to specify number of grid points
+        csize = 256j
+        test_shape = (size, size)
+        # Create an ogrid
+        YY, XX = np.ogrid[-5:5:csize, -5:5:csize]
+        RR = np.sqrt(XX**2 + YY**2)
+        # Create a test image
+        a = 1
+        test_image = np.exp(-(a*RR)**2)
+
+        # Set sampling rates
+        N1 = 4 # Radial sampling rate
+        N2 = 5 # Angular sampling rate
+        # Space limit
+        R = 40
+
+        pfft2 = pfft2_SpaceLimited(test_image, N1, N2, R)
+
+        self.fail("Finish writing test")
 
 
 if __name__ == '__main__':
