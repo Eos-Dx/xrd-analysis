@@ -76,9 +76,11 @@ def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
 
     return rmatrix
 
-def sampling_grid(R, N1, N2):
+def sampling_grid(N1, N2, R):
     """
     Returns polar sampling grid according to
     2D Polar Discrete Fourier Transform
     """
-    pass
+    rmatrix = rmatrix_SpaceLimited(N2, N1, R)
+    thetamatrix = thetamatrix_SpaceLimited(N2, N1)
+    return rmatrix, thetamatrix
