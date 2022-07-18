@@ -62,7 +62,7 @@ def YmatrixAssembly(n, N1, jn_zerosarray):
     """
 
     # jnN1 is the last element
-    jnN1 = jn_zerosarray[N1]
+    jnN1 = jn_zerosarray[N1-1]
     # jnk is all but the last element, row vector
     jnk = jn_zerosarray[:N1-1].reshape(1,-1)
     # jnm is a column vector (m is a row index)
