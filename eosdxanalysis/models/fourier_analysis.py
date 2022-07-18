@@ -1,49 +1,116 @@
 """
 Implements various Fourier Transform techniques
 """
+import os
+
 import numpy as np
 from scipy.special import jv
+from scipy.ndimage import map_coordinates
+from skimage.transform import warp_polar
 
-from eosdxanalysis.models.polar_sampling_grid import rmatrix_SpaceLimited
-from eosdxanalysis.models.polar_sampling_grid import thetamatrix_SpaceLimited
+from eosdxanalysis.models.polar_sampling_grid import sampling_grid
+from eosdxanalysis.models.utils import pol2cart
+from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 
-class PolarDiscreteFourierTransform2D(object):
+MODULE_PATH = os.path.dirname(__file__)
+DATA_DIR = "data"
+JN_ZEROSMATRIX_FILENAME = "jn_zerosmatrix.npy"
+
+
+def pfft2_SpaceLimited(cartesian_image, N1, N2, R):
     """
-    Class to perform all steps of the
-    2D Polar Discrete Fourier Transform
+    Function to perform the 2D Polar Discrete Fast Fourier Transform
+
+    Input is a cartesian image, maximum radius R, and sampling grid
+    parameters N1 and N2.
+
+    N1 is the radial sampling rate.
+    N2 is the angular sampling rate.
+
+    The sampling grid has size (N2, N1-1)
     """
+    if N2 % 2 == 0:
+        raise ValueError("N2 must be odd!")
 
-    def __init__(self, N2=None, N1=None, R=None):
-        """
-        Initialize class
-        """
-        self.N2 = N2
-        self.N1 = N1
-        self.R = R
-        self.M = int((N2-1)//2)
-        return super().__init__()
+    M = int((N2-1)//2)
 
-    def pdfft2_SpaceLimited(self, cartesian_image,
-            N1=None, N2=None, R=None):
-        """
-        Given a polar function that is space limited, compute the
-        2D Polar Discrete Fast Fourier Transform.
-        """
-        N1 = N1 if N1 else self.N1
-        N2 = N2 if N2 else self.N2
-        R = R if R else self.R
+    rmatrix, thetamatrix = sampling_grid(N1, N2, R)
 
-        rmatrix = rmatrix_SpaceLimited(N2, N1, R)
-        thetamatrix = thetamatrix_SpaceLimited(N2, N1, R)
+    # Convert to equispaced polar coordinates
+    grid_shape = (N2, N1-1)
 
-        # fpprimek = cartesian_image sampled according to polar_sampling_grid
+    # Sample according to polar sampling grid
+    # Convert rmatrix and thetamatrix to (row, col) indices
+    # rindices = rmatrix / (R) * (N1-1)
+    # thetaindices = (thetamatrix + np.pi) / (2*np.pi) * N2
+    # polarindices = [thetaindices, rindices]
 
-        # Shift along columns (i.e. move last half of rows to the front),
-        # perform 1D FFT, then shift back
-        # fnk = np.roll( np.fft( np.roll(fpprimek, M+1, axis=1), N2, axis=1), -(M+1), axis=1)
+    # Now convert the sampling grid to cartesian coordinates
+    X, Y = pol2cart(rmatrix, thetamatrix)
 
-        # Now perform the 1D DHT
+    # Convert cartesian coordinates to array notation
+    center = (cartesian_image.shape[0]/2-0.5, cartesian_image.shape[1]/2-0.5)
+    row_indices = X + center[0]
+    col_indices = center[1] - Y
 
+    cart_indices = [row_indices, col_indices]
+
+    # Sample our image on the Baddour polar grid
+    fpprimek = map_coordinates(cartesian_image, cart_indices, cval=0, order=1, mode='grid-wrap')
+
+    """
+    1D Fast Fourier Transform (FFT)
+    """
+    # Shift rows (i.e. move last half of rows to the front),
+    # perform 1D FFT, then shift back
+    fnk = np.roll( np.fft.fft( np.roll(fpprimek, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
+
+    """
+    1D Discrete Hankel Transform (DHT)
+    """
+    # Perform the 1D DHT
+    Fnl = dht(fnk, N2, N1, R)
+
+    """
+    1D Inverse Fast Fourier Transform (IFFT)
+    """
+    TwoDFT = np.roll( np.fft.ifft( np.roll(Fnl, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
+
+    return TwoDFT
+
+def dht(fnk, N2, N1, R, jn_zerosmatrix=None):
+    """
+    Performs the 1D Discrete Hankel Transform (DHT)
+    """
+    # If the jn_zerosmatrix is not given, read from file
+    if jn_zerosmatrix is None:
+        jn_zerosmatrix_path = os.path.join(
+                MODULE_PATH,
+                DATA_DIR,
+                JN_ZEROSMATRIX_FILENAME)
+        jn_zerosmatrix = np.load(jn_zerosmatrix_path)
+
+    M = int((N2-1)//2)
+
+    fnl = np.zeros(fnk.shape, dtype=np.complex64)
+    Fnl = np.zeros(fnk.shape, dtype=np.complex64)
+
+    # n ranges from -M to M inclusive
+    for n in np.arange(-M, M+1):
+        # Use index notation, so that n = -M corresponds to index 0
+        ii=n+M
+        zero2=jn_zerosmatrix[abs(n),:]
+        jnN1=zero2[N1-1];
+
+        if n < 0:
+            Y = ((-1)^abs(n))*YmatrixAssembly(abs(n),N1,zero2);
+        else:
+            Y = YmatrixAssembly(abs(n),N1,zero2);
+
+        fnl[ii,:] = ( Y @ fnk[ii,:].T ).T;
+        Fnl[ii,:] = fnl[ii,:] * (2*np.pi*(np.power(1j, -n)))*(R**2/jnN1);
+
+    return Fnl
 
 def YmatrixAssembly(n, N1, jn_zerosarray):
     """
