@@ -45,6 +45,24 @@ def gen_jn_zerosmatrix(shape, save_mat=False, save_numpy=False, outdir=""):
 
     return zeromatrix
 
+def pol2cart(r, theta):
+    """
+    Function to convert polar to cartesian coordinates
+    Similar to Matlab pol2cart
+    """
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    return x, y
+
+def cart2pol(x, y):
+    """
+    Function to convert cartesian to polar coordinates
+    Similar to Matlab cart2pol
+    """
+    r = np.sqrt(x**2 + y**2)
+    theta = np.arctan2(y, x)
+    return r, theta
+
 def l1_metric(A, B):
     """
     Calculates the L1 metric (distance) of two matrices
