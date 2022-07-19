@@ -9,6 +9,7 @@ import glob
 
 from skimage.io import imsave, imread
 from skimage.transform import warp_polar
+from scipy.ndimage import center_of_mass
 
 from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import pad_image
@@ -16,7 +17,6 @@ from eosdxanalysis.preprocessing.image_processing import rotate_image
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
 
-from eosdxanalysis.preprocessing.center_finding import center_of_mass
 from eosdxanalysis.preprocessing.center_finding import radial_mean
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
@@ -385,21 +385,6 @@ class TestCenterFinding(unittest.TestCase):
     def test_find_trunc_limit(self):
         intensities = gen_1d_intensity_profile()
         self.assertEqual('foo'.upper(), 'FOO')
-
-    def test_center_of_mass_general(self):
-        intensities = gen_2d_intensity_profile()
-        center = np.round(center_of_mass(intensities))
-        self.assertIsNone(np.testing.assert_array_equal((7,8), center))
-
-    def test_center_of_mass_equal(self):
-        intensities = np.ones((3,3))
-        center = np.round(center_of_mass(intensities))
-        self.assertIsNone(np.testing.assert_array_equal((1,1), center))
-
-    def test_center_of_mass_nonequal(self):
-        intensities = np.array([[1,2,1],[5,0,5],[3,3,3]])
-        center = np.round(center_of_mass(intensities))
-        self.assertIsNone(np.testing.assert_array_equal((1,1), center))
 
     def test_radial_mean(self):
         intensities = np.array([[4,6,4,],[5,10,5],[4,6,4]])
@@ -777,6 +762,68 @@ class TestImageProcessing(unittest.TestCase):
         # The 18th and 19th values in the final image should be near the max,
         # that is location 18.5, which rounds down to 18
         self.assertTrue(np.all(max_indices_final_image == np.round(18.5)))
+
+    def test_unwarp_polar_small_even_example(self):
+        """
+        Test for a small even example
+        """
+        # Create test polar image
+        test_intensity_1d = np.zeros((1,10))
+        test_intensity_1d[0,3] = 10
+        test_image_polar = np.repeat(test_intensity_1d, 10, axis=0)
+
+        output_shape=(10,10)
+
+        test_image = unwarp_polar(test_image_polar.T,
+                            output_shape=output_shape, rmax=None)
+        test_image_warp_polar = warp_polar(test_image, output_shape=output_shape)
+
+        # Ensure that the cartesian center of mass is the center
+        center = (output_shape[0]/2 - 0.5, output_shape[1]/2 - 0.5)
+        calculated_center_of_mass = center_of_mass(test_image)
+        self.assertTrue(np.array_equal(center, calculated_center_of_mass))
+
+        # Ensure maximum cartesian values are close to 5 at the horizontal strip
+        strip = test_image[test_image.shape[0]//2,:]
+        max_value = np.max(strip)
+        self.assertTrue(np.isclose(max_value, 5, atol=1))
+
+        # Ensure that warping back to polar gives the maximum near r=3
+        radial = np.sum(test_image_warp_polar, axis=0)
+        radial_max = np.max(radial)
+        radial_max_index = np.where(radial == radial_max)
+        self.assertTrue(np.isclose(radial_max_index, 3, atol=1))
+
+    def test_unwarp_polar_small_odd_example(self):
+        """
+        Test for a small odd example
+        """
+        # Create test polar image
+        test_intensity_1d = np.zeros((1,9))
+        test_intensity_1d[0,3] = 10
+        test_image_polar = np.repeat(test_intensity_1d, 9, axis=0)
+
+        output_shape=(9,9)
+
+        test_image = unwarp_polar(test_image_polar.T,
+                            output_shape=output_shape, rmax=None)
+        test_image_warp_polar = warp_polar(test_image, output_shape=output_shape)
+
+        # Ensure that the cartesian center of mass is the center
+        center = (output_shape[0]/2 - 0.5, output_shape[1]/2 - 0.5)
+        calculated_center_of_mass = center_of_mass(test_image)
+        self.assertTrue(np.array_equal(center, calculated_center_of_mass))
+
+        # Ensure maximum cartesian values are close to 5 at the horizontal strip
+        strip = test_image[test_image.shape[0]//2,:]
+        max_value = np.max(strip)
+        self.assertTrue(np.isclose(max_value, 10, atol=1))
+
+        # Ensure that warping back to polar gives the maximum near r=3
+        radial = np.sum(test_image_warp_polar, axis=0)
+        radial_max = np.max(radial)
+        radial_max_index = np.where(radial == radial_max)
+        self.assertTrue(np.isclose(radial_max_index, 3, atol=1))
 
     def test_crop_image_original_size(self):
         """
