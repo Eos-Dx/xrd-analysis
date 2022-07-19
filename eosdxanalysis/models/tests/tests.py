@@ -9,6 +9,7 @@ import numpy.ma as ma
 from scipy.special import jn_zeros
 from scipy.special import jv
 from scipy.io import loadmat
+from scipy.ndimage import map_coordinates
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
@@ -18,6 +19,7 @@ from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.feature_engineering import feature_5a_peak_location
 from eosdxanalysis.models.feature_engineering import feature_9a_ratio
+from eosdxanalysis.models.polar_sampling_grid import sampling_grid
 from eosdxanalysis.models.polar_sampling_grid import rmatrix_SpaceLimited
 from eosdxanalysis.models.polar_sampling_grid import thetamatrix_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
@@ -479,7 +481,51 @@ class TestFourierAnalysis(unittest.TestCase):
         a = 0.1
         gau = lambda x, a : np.exp(-(a*x)**2)
 
-        self.fail("Finish writing test")
+        # Let's create a real measurement of our Gaussian
+        # Set up our resolution
+        dx = 0.1
+        dy = 0.1
+
+        # Let's create a meshgrid,
+        # note that x and y have even length
+        x = np.arange(-R+dx/2, R+dx/2, dx)
+        y = np.arange(-R+dx/2, R+dx/2, dy)
+        XX, YY = np.meshgrid(x, y)
+
+        RR = np.sqrt(XX**2 + YY**2)
+
+        discrete_image = np.exp(-(a*RR)**2)
+
+        origin = (discrete_image.shape[0]/2-0.5, discrete_image.shape[1]/2-0.5)
+
+        # Now sample the discrete image according to the Baddour polar grid
+        # First get rmatrix and thetamatrix
+        rmatrix, thetamatrix = sampling_grid(N1, N2, R)
+        # Now convert rmatrix to Cartesian coordinates
+        Xcart = rmatrix*np.cos(thetamatrix)/dx
+        Ycart = rmatrix*np.sin(thetamatrix)/dy
+        # Now convert Cartesian coordinates to the array notation
+        # by shifting according to the origin
+        Xindices = Xcart + origin[0]
+        Yindices = origin[1] - Ycart
+
+        cart_sampling_indices = [Yindices, Xindices]
+
+        fdiscrete = map_coordinates(discrete_image, cart_sampling_indices)
+        fcontinuous = gau(rmatrix, a)
+
+        # Check that these two are close
+        self.assertTrue(np.isclose(fdiscrete, fcontinuous).all())
+
+        dft = pfft2_SpaceLimited(fdiscrete, N1, N2, R)
+
+        # Check against known result
+        # Load the known DFT matrix
+        dft_fullpath = os.path.join(self.testdata_path,
+                "dft_gaussian.mat")
+        known_dft = loadmat(dft_fullpath).get("dft_gaussian")
+
+        self.assertTrue(np.isclose(dft, known_dft).all())
 
 
 if __name__ == '__main__':
