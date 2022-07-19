@@ -483,8 +483,8 @@ class TestFourierAnalysis(unittest.TestCase):
 
         # Let's create a real measurement of our Gaussian
         # Set up our resolution
-        dx = 0.1
-        dy = 0.1
+        dx = 0.2
+        dy = 0.2
 
         # Let's create a meshgrid,
         # note that x and y have even length
