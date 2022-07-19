@@ -116,7 +116,7 @@ def dht(fnk, N2, N1, R, jn_zerosmatrix=None):
 
     return Fnl
 
-def YmatrixAssembly(n, N1, jn_zerosarray):
+def YmatrixAssembly(n, N1, jn_zeros):
     """
     Assemble the Y-matrix for performing the 1D DHT step
     of the 2D Polar Discrete Fourier Transform
@@ -131,11 +131,17 @@ def YmatrixAssembly(n, N1, jn_zerosarray):
     Output:
     - Ymatrix of shape (N1-1, N1-1) with indices m, k
     """
+    if type(n) == np.array:
+        if len(n.shape) == 1:
+            jn_zeros = jn_zeros.T
+            shape = (n,size, N1-1, N1-1)
+    elif type(n) == int:
+        shape = (1, N1-1)
 
     # jnN1 is the last element
-    jnN1 = jn_zerosarray[N1-1]
+    jnN1 = jn_zeros[N1-1,...]
     # jnk is all but the last element, row vector
-    jnk = jn_zerosarray[:N1-1].reshape(1,-1)
+    jnk = jn_zeros[:N1-1,...].reshape(shape)
     # jnm is a column vector (m is a row index)
     jnm = jnk.T
 
