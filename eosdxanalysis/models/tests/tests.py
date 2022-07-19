@@ -409,19 +409,22 @@ class TestFourierAnalysis(unittest.TestCase):
         # Generate the Ymatrix
         ymatrix = YmatrixAssembly(n, N1, jn_zeros)
 
+        # Check the shape
+        self.assertEqual(ymatrix.shape, (N1-1, N1-1, n.size))
+
         # Load the known ymatrices
         # n = -1, N1 = 4
         ymatrix_neg1_4_fullpath = os.path.join(self.testdata_path,
                 "ymatrix_neg1_4.mat")
-        known_ymatrix_neg1_4 = loadmat(ymatrix_fullpath).get("ymatrix")
+        known_ymatrix_neg1_4 = loadmat(ymatrix_neg1_4_fullpath ).get("ymatrix")
         # n = 0, N1 = 4
-        ymatrix_neg1_4_fullpath = os.path.join(self.testdata_path,
+        ymatrix_0_4_fullpath = os.path.join(self.testdata_path,
                 "ymatrix_0_4.mat")
-        known_ymatrix_0_4 = loadmat(ymatrix_fullpath).get("ymatrix")
+        known_ymatrix_0_4 = loadmat(ymatrix_0_4_fullpath ).get("ymatrix")
         # n = +1, N1 = 4
-        ymatrix_neg1_4_fullpath = os.path.join(self.testdata_path,
+        ymatrix_1_4_fullpath = os.path.join(self.testdata_path,
                 "ymatrix_1_4.mat")
-        known_ymatrix_p1_4 = loadmat(ymatrix_fullpath).get("ymatrix")
+        known_ymatrix_p1_4 = loadmat(ymatrix_1_4_fullpath ).get("ymatrix")
 
         # Check that they're equal
         self.assertTrue(np.isclose(ymatrix[...,0],
