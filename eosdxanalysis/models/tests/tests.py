@@ -408,14 +408,19 @@ class TestFourierAnalysis(unittest.TestCase):
         a = 0.1
         gau = lambda x, a : np.exp(-(a*x)**2)
 
-        # thetamatrix = thetamatrix_SpaceLimited(N2, N1)
         rmatrix = rmatrix_SpaceLimited(N2, N1, R)
 
         f = gau(rmatrix, a)
 
-        pfft2 = pfft2_SpaceLimited(f, N1, N2, R)
+        dft = pfft2_SpaceLimited(f, N1, N2, R)
 
-        self.fail("Finish writing test")
+        # Check against known result
+        # Load the known DFT matrix
+        dft_fullpath = os.path.join(self.testdata_path,
+                "dft_gaussian.mat")
+        known_dft = loadmat(dft_fullpath).get("dft_gaussian")
+
+        self.assertTrue(np.isclose(dft, known_dft).all())
 
     def test_pfft2_SpaceLimited_discrete_input(self):
         """
