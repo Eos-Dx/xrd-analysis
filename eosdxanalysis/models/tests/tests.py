@@ -397,23 +397,29 @@ class TestFourierAnalysis(unittest.TestCase):
         Test 2D Discrete Polar Fourier Transform
         for a space-limited function
         """
-        # Set image size
-        size = 256
-        # Use complex image size to specify number of grid points
-        csize = 256j
-        test_shape = (size, size)
-        # Create an ogrid
-        YY, XX = np.ogrid[-5:5:csize, -5:5:csize]
-        RR = np.sqrt(XX**2 + YY**2)
-        # Create a test image
-        a = 1
-        test_image = np.exp(-(a*RR)**2)
-
         # Set sampling rates
         N1 = 4 # Radial sampling rate
         N2 = 5 # Angular sampling rate
         # Space limit
         R = 40
+
+        # Set image size
+        size = 256
+        # Use complex image size to specify number of grid points
+        csize = 256j
+
+        test_shape = (size, size)
+
+        # Set cartesian coordinates
+        xmin, xmax = (-R,R)
+        ymin, ymax = (-R,R)
+
+        # Create an ogrid
+        YY, XX = np.ogrid[xmin:xmax:csize, ymin:ymax:csize]
+        RR = np.sqrt(XX**2 + YY**2)
+        # Create a test image
+        a = 1
+        test_image = np.exp(-(a*RR)**2)
 
         pfft2 = pfft2_SpaceLimited(test_image, N1, N2, R)
 
