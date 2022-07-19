@@ -54,7 +54,7 @@ def pfft2_SpaceLimited(cartesian_image, N1, N2, R):
     cart_indices = [row_indices, col_indices]
 
     # Sample our image on the Baddour polar grid
-    fpprimek = map_coordinates(cartesian_image, cart_indices, cval=0, order=1, mode='grid-wrap')
+    fpprimek = map_coordinates(cartesian_image, cart_indices, cval=0, order=1)
 
     """
     1D Fast Fourier Transform (FFT)
