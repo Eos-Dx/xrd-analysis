@@ -15,7 +15,7 @@ DATA_DIR = "data"
 JN_ZEROSMATRIX_FILENAME = "jn_zerosmatrix.npy"
 
 
-def pfft2_SpaceLimited(cartesian_image, N1, N2, R):
+def pfft2_SpaceLimited(discrete_sampled_function, N1, N2, R):
     """
     Function to perform the 2D Polar Discrete Fast Fourier Transform
 
@@ -43,25 +43,26 @@ def pfft2_SpaceLimited(cartesian_image, N1, N2, R):
     # thetaindices = (thetamatrix + np.pi) / (2*np.pi) * N2
     # polarindices = [thetaindices, rindices]
 
-    # Now convert the sampling grid to cartesian coordinates
-    X, Y = pol2cart(rmatrix, thetamatrix)
-
-    # Convert cartesian coordinates to array notation
-    center = (cartesian_image.shape[0]/2-0.5, cartesian_image.shape[1]/2-0.5)
-    row_indices = X + center[0]
-    col_indices = center[1] - Y
-
-    cart_indices = [row_indices, col_indices]
-
-    # Sample our image on the Baddour polar grid
-    fpprimek = map_coordinates(cartesian_image, cart_indices, cval=0, order=1)
+#    # Now convert the polar sampling grid to cartesian coordinates
+#    X, Y = pol2cart(rmatrix, thetamatrix)
+#
+#    # Convert cartesian coordinates to array notation
+#    center = (cartesian_image.shape[0]/2-0.5, cartesian_image.shape[1]/2-0.5)
+#    row_indices = X + center[0]
+#    col_indices = center[1] - Y
+#
+#    cart_indices = [row_indices, col_indices]
+#
+#    # Sample our image on the Baddour polar grid
+#    fpprimek = map_coordinates(cartesian_image, cart_indices, cval=0, order=1)
 
     """
     1D Fast Fourier Transform (FFT)
-    """
+   """
     # Shift rows (i.e. move last half of rows to the front),
     # perform 1D FFT, then shift back
-    fnk = np.roll( np.fft.fft( np.roll(fpprimek, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
+    # fnk = np.roll( np.fft.fft( np.roll(fpprimek, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
+    fnk = np.roll( np.fft.fft( np.roll(discrete_sampled_function, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
 
     """
     1D Discrete Hankel Transform (DHT)
@@ -94,19 +95,21 @@ def dht(fnk, N2, N1, R, jn_zerosmatrix=None):
     Fnl = np.zeros(fnk.shape, dtype=np.complex64)
 
     # n ranges from -M to M inclusive
-    for n in np.arange(-M, M+1):
+    # Set up sign array
+    sign = np.ones(N2)
+    nrange = np.arange(-M, M+1)
+    sign[nrange < 0] = (-1)**abs(nrange[nrange < 0])
+
+    for n in nrange:
         # Use index notation, so that n = -M corresponds to index 0
         ii=n+M
         zero2=jn_zerosmatrix[abs(n),:]
-        jnN1=zero2[N1-1];
+        jnN1=zero2[N1-1]
 
-        if n < 0:
-            Y = ((-1)^abs(n))*YmatrixAssembly(abs(n),N1,zero2);
-        else:
-            Y = YmatrixAssembly(abs(n),N1,zero2);
+        Y = sign[ii]*YmatrixAssembly(abs(n),N1,zero2)
 
-        fnl[ii,:] = ( Y @ fnk[ii,:].T ).T;
-        Fnl[ii,:] = fnl[ii,:] * (2*np.pi*(np.power(1j, -n)))*(R**2/jnN1);
+        fnl[ii,:] = ( Y @ fnk[ii,:].T ).T
+        Fnl[ii,:] = fnl[ii,:] * (2*np.pi*(np.power(1j, -n)))*(R**2/jnN1)
 
     return Fnl
 
