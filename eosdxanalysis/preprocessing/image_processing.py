@@ -212,7 +212,7 @@ def quadrant_fold(image):
 
 def unwarp_polar(img, origin=None, output_shape=None, rmax=None, order=1):
     """
-    Convert image polar to cartesian.
+    Convert image from polar to cartesian.
     Reverse of `skimage.transform.warp_polar`
 
     Cartesian origin is upper-left corner.
