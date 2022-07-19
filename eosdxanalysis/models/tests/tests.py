@@ -392,36 +392,45 @@ class TestFourierAnalysis(unittest.TestCase):
         # Check that they're equal
         self.assertTrue(np.isclose(ymatrix, known_ymatrix).all())
 
-    def test_pfft2_SpaceLimited(self):
+    def test_pfft2_SpaceLimited_continuous_input(self):
         """
         Test 2D Discrete Polar Fourier Transform
-        for a space-limited function
+        for a space-limited continuous function
+        follows `test_gaussian.m` example
         """
         # Set sampling rates
         N1 = 4 # Radial sampling rate
         N2 = 5 # Angular sampling rate
         # Space limit
-        R = 40
+        R = 10
 
-        # Set image size
-        size = 256
-        # Use complex image size to specify number of grid points
-        csize = 256j
+        # Gaussian
+        a = 0.1
+        gau = lambda x, a : np.exp(-(a*x)**2)
 
-        test_shape = (size, size)
+        # thetamatrix = thetamatrix_SpaceLimited(N2, N1)
+        rmatrix = rmatrix_SpaceLimited(N2, N1, R)
 
-        # Set cartesian coordinates
-        xmin, xmax = (-R,R)
-        ymin, ymax = (-R,R)
+        f = gau(rmatrix, a)
 
-        # Create an ogrid
-        YY, XX = np.ogrid[xmin:xmax:csize, ymin:ymax:csize]
-        RR = np.sqrt(XX**2 + YY**2)
-        # Create a test image
-        a = 1
-        test_image = np.exp(-(a*RR)**2)
+        pfft2 = pfft2_SpaceLimited(f, N1, N2, R)
 
-        pfft2 = pfft2_SpaceLimited(test_image, N1, N2, R)
+        self.fail("Finish writing test")
+
+    def test_pfft2_SpaceLimited_discrete_input(self):
+        """
+        Test 2D Discrete Polar Fourier Transform
+        for a space-limited discrete function
+        """
+        # Set sampling rates
+        N1 = 4 # Radial sampling rate
+        N2 = 5 # Angular sampling rate
+        # Space limit
+        R = 10
+
+        # Gaussian
+        a = 0.1
+        gau = lambda x, a : np.exp(-(a*x)**2)
 
         self.fail("Finish writing test")
 
