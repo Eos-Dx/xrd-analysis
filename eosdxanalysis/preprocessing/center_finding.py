@@ -60,58 +60,6 @@ def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None)
     else:
         raise NotImplementedError("Please choose another method.")
 
-def center_of_mass(intensities, visualize=False):
-    """
-    Given a 2D array of intensities, find the center of mass according to:
-    https://en.wikipedia.org/wiki/Center_of_mass#A_system_of_particles
-    https://en.wikipedia.org/w/index.php?title=Special:MathWikibase&qid=Q2945123
-
-    Compare to:
-    scipy center_of_mass
-    https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.center_of_mass.html
-
-    and numpy average (accepts weights parameter):
-    https://numpy.org/doc/stable/reference/generated/numpy.average.html
-
-    and opencv moments:
-    https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html#ga556a180f43cab22649c23ada36a8a139
-    """
-    total_mass = np.sum(intensities)
-
-    R = np.array([0,0])
-
-    for idx in range(intensities.shape[0]):
-        # Vectorized code
-         A = idx*np.ones((intensities.shape[1],1))
-         B = np.arange(intensities.shape[1]).reshape(intensities.shape[1],1)
-         r = np.hstack((A, B))
-         intensities_row = intensities[idx].reshape(1,intensities.shape[1])
-         R = R + np.matmul(intensities_row, r)
-
-    # Normalize by total mass
-    R = R.flatten()/total_mass
-
-    # Make x the horizontal and y the vertical index
-    xcenter = np.round(R)[1]
-    ycenter = np.round(R)[0]
-
-    if visualize:
-        # Plot a circle around this point
-        fig = plt.figure(dpi=100)
-        fig.set_size_inches(4, 4)
-        fig.set_facecolor("white")
-
-        plt.imshow(intensities_trunc)
-
-        # Plot circle around center of mass
-        # plt.plot(xcenter, ycenter, 'or')
-        cir = plt.Circle((xcenter, ycenter), 3, color='r',fill=False)
-        plt.gca().add_artist(cir)
-
-        plt.show()
-
-    return R
-
 def radial_mean(intensities,center):
     """
     Given a 2D array of intensities, return the radial mean
