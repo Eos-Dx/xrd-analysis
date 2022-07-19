@@ -778,6 +778,18 @@ class TestImageProcessing(unittest.TestCase):
         # that is location 18.5, which rounds down to 18
         self.assertTrue(np.all(max_indices_final_image == np.round(18.5)))
 
+    def test_unwarp_polar_small_even_example(self):
+        """
+        Test for a small even example
+        """
+        self.fail("Finish writing test.")
+
+    def test_unwarp_polar_small_odd_example(self):
+        """
+        Test for a small odd example
+        """
+        self.fail("Finish writing test.")
+
     def test_crop_image_original_size(self):
         """
         Trivial test to ensure crop to original shape outputs
