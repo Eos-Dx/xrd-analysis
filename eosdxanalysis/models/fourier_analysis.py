@@ -107,7 +107,7 @@ def dht(fnk, N2, N1, R, jn_zerosmatrix=None):
         ii=n+M
         zero2 = jn_zerosmatrix_sub[ii, :]
 
-        jnN1=zero2[N1-1]
+        jnN1 = jn_zerosmatrix_sub[ii, N1-1]
 
         Y = sign[ii]*YmatrixAssembly(abs(n),N1,zero2)
 
