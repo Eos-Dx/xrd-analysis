@@ -100,10 +100,13 @@ def dht(fnk, N2, N1, R, jn_zerosmatrix=None):
     nrange = np.arange(-M, M+1)
     sign[nrange < 0] = (-1)**abs(nrange[nrange < 0])
 
+    jn_zerosmatrix_sub = jn_zerosmatrix[abs(nrange),:]
+
     for n in nrange:
         # Use index notation, so that n = -M corresponds to index 0
         ii=n+M
-        zero2=jn_zerosmatrix[abs(n),:]
+        zero2 = jn_zerosmatrix_sub[ii, :]
+
         jnN1=zero2[N1-1]
 
         Y = sign[ii]*YmatrixAssembly(abs(n),N1,zero2)
