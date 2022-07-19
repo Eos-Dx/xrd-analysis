@@ -392,6 +392,45 @@ class TestFourierAnalysis(unittest.TestCase):
         # Check that they're equal
         self.assertTrue(np.isclose(ymatrix, known_ymatrix).all())
 
+    def test_Ymatrix_Assembly_vectorized_manual_values(self):
+        """
+        Test the Ymatrix against manual calculations
+        """
+        jn_zerosmatrix = self.jn_zerosmatrix
+
+        # Set parameters
+        n = np.array([-1,0,1])
+        N1 = 4
+        known_shape = (N1-1, N1-1)
+
+        # Extract jn zeros array
+        jn_zeros = jn_zerosmatrix[n, :N1]
+
+        # Generate the Ymatrix
+        ymatrix = YmatrixAssembly(n, N1, jn_zeros)
+
+        # Load the known ymatrices
+        # n = -1, N1 = 4
+        ymatrix_neg1_4_fullpath = os.path.join(self.testdata_path,
+                "ymatrix_neg1_4.mat")
+        known_ymatrix_neg1_4 = loadmat(ymatrix_fullpath).get("ymatrix")
+        # n = 0, N1 = 4
+        ymatrix_neg1_4_fullpath = os.path.join(self.testdata_path,
+                "ymatrix_0_4.mat")
+        known_ymatrix_0_4 = loadmat(ymatrix_fullpath).get("ymatrix")
+        # n = +1, N1 = 4
+        ymatrix_neg1_4_fullpath = os.path.join(self.testdata_path,
+                "ymatrix_1_4.mat")
+        known_ymatrix_p1_4 = loadmat(ymatrix_fullpath).get("ymatrix")
+
+        # Check that they're equal
+        self.assertTrue(np.isclose(ymatrix[...,0],
+                                    known_ymatrix_neg1_4).all())
+        self.assertTrue(np.isclose(ymatrix[...,1],
+                                    known_ymatrix_0_4).all())
+        self.assertTrue(np.isclose(ymatrix[...,2],
+                                    known_ymatrix_1_4).all())
+
     def test_pfft2_SpaceLimited_continuous_input(self):
         """
         Test 2D Discrete Polar Fourier Transform
