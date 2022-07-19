@@ -131,12 +131,11 @@ def YmatrixAssembly(n, N1, jn_zeros):
     Output:
     - Ymatrix of shape (N1-1, N1-1) with indices m, k
     """
-    if type(n) == np.array:
+    shape = (1, N1-1)
+    if type(n) == np.ndarray:
         if len(n.shape) == 1:
             jn_zeros = jn_zeros.T
-            shape = (n,size, N1-1, N1-1)
-    elif type(n) == int:
-        shape = (1, N1-1)
+            shape = (n.size, N1-1, N1-1)
 
     # jnN1 is the last element
     jnN1 = jn_zeros[N1-1,...]
