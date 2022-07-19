@@ -6,11 +6,9 @@ import os
 import numpy as np
 from scipy.special import jv
 from scipy.ndimage import map_coordinates
-from skimage.transform import warp_polar
 
 from eosdxanalysis.models.polar_sampling_grid import sampling_grid
 from eosdxanalysis.models.utils import pol2cart
-from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 
 MODULE_PATH = os.path.dirname(__file__)
 DATA_DIR = "data"
