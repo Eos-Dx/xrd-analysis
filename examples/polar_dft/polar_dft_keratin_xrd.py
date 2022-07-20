@@ -2,16 +2,20 @@
 Sample calculation of the 2D Polar Discrete Fourier Transform
 """
 import os
+import time
 
 import numpy as np
 
 from scipy.ndimage import map_coordinates
 from skimage.transform import warp_polar
+from scipy.special import jv
 
 import matplotlib.pyplot as plt
 
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.polar_sampling import sampling_grid
+
+t0 = time.time()
 
 MODULE_PATH = os.path.dirname(__file__)
 DATA_DIR = "data"
@@ -53,9 +57,18 @@ cart_sampling_indices = [Yindices, Xindices]
 
 fdiscrete = map_coordinates(image, cart_sampling_indices)
 
+t1 = time.time()
+
+print("Start-up time to sample Baddour polar grid:",np.round(t1-t0, decimals=2), "s")
 
 # Calculate the polar dft
 pdft = pfft2_SpaceLimited(fdiscrete, N1, N2, R)
+
+t2 = time.time()
+
+print("Time to calculate the polar transform:", np.round(t2-t1, decimals=2), "s")
+
+
 
 # Original image
 fig = plt.figure()
