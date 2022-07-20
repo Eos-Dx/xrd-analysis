@@ -7,7 +7,7 @@ import numpy as np
 from scipy.special import jv
 from scipy.ndimage import map_coordinates
 
-from eosdxanalysis.models.polar_sampling_grid import sampling_grid
+from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.utils import pol2cart
 
 MODULE_PATH = os.path.dirname(__file__)

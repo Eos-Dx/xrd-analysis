@@ -19,9 +19,9 @@ from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.feature_engineering import feature_5a_peak_location
 from eosdxanalysis.models.feature_engineering import feature_9a_ratio
-from eosdxanalysis.models.polar_sampling_grid import sampling_grid
-from eosdxanalysis.models.polar_sampling_grid import rmatrix_SpaceLimited
-from eosdxanalysis.models.polar_sampling_grid import thetamatrix_SpaceLimited
+from eosdxanalysis.models.polar_sampling import sampling_grid
+from eosdxanalysis.models.polar_sampling import rmatrix_SpaceLimited
+from eosdxanalysis.models.polar_sampling import thetamatrix_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 
@@ -281,7 +281,7 @@ class TestPolarSamplingGrid(unittest.TestCase):
 
     @unittest.skipIf(os.environ.get("VISUAL_TESTING") != "True",
         "Skip unless testing visuals")
-    def test_polar_sampling_grid_plot(self):
+    def test_polar_sampling_plot(self):
         """
         Visualize the sampling grid
         """
@@ -306,7 +306,7 @@ class TestPolarSamplingGrid(unittest.TestCase):
 
         plt.show()
 
-    def test_polar_sampling_grid_different_size(self):
+    def test_polar_sampling_different_size(self):
         """
         Ensure that we can generate a polar sampling grid
         for N1 and N2 values that are significantly different.
