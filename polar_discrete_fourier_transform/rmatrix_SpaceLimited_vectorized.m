@@ -3,7 +3,7 @@
 % N2 sample size in angular direction
 % R effective space limit
 % zeromatrix is precalculated Bessel zeros
-function r=rmatrix_SpaceLimited(N2,N1,R,zeromatrix)
+function r=rmatrix_SpaceLimited_vectorized(N2,N1,R,zeromatrix)
 	M=(N2-1)/2;
 	iirange = 1:N2;
 	p=iirange-1-M;
