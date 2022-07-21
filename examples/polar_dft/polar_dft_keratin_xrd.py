@@ -10,6 +10,8 @@ from scipy.ndimage import map_coordinates
 from skimage.transform import warp_polar
 from scipy.special import jv
 
+from scipy.signal import wiener
+
 import matplotlib.pyplot as plt
 
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
@@ -27,6 +29,23 @@ R = 90
 
 image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
 image = np.loadtxt(image_path, dtype=np.uint32)
+
+# Original image
+fig = plt.figure()
+plt.imshow(image)
+plt.title("Original Cartesian sampling of {}".format(DATA_FILENAME))
+
+# Wiener filtered image
+filtered_img = wiener(image, 5)
+fig = plt.figure()
+plt.imshow(filtered_img)
+plt.title("Wiener Filtered of Original Cartesian sampling of {}".format(DATA_FILENAME))
+
+# Now take 2D FFT to compare filtering
+
+plt.show()
+
+exit(0)
 
 # Sample our image according on the Baddour grid
 dx = 0.2
@@ -68,12 +87,6 @@ t2 = time.time()
 
 print("Time to calculate the polar transform:", np.round(t2-t1, decimals=2), "s")
 
-
-
-# Original image
-fig = plt.figure()
-plt.imshow(image)
-plt.title("Original Cartesian sampling of {}".format(DATA_FILENAME))
 
 # Warped
 polar_image = warp_polar(image)
