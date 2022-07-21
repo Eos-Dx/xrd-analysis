@@ -6,13 +6,13 @@
 function r=rmatrix_SpaceLimited_vectorized(N2,N1,R,zeromatrix)
 	M=(N2-1)/2;
 	iirange = 1:N2;
-	p=iirange-1-M;
-	k=1:N1-1;
+	prange=iirange-1-M;
+	krange=1:N1-1;
 
-	zero2_combined = zeromatrix(end-abs(p),1:N1);
+	zero2_combined = zeromatrix(end-abs(prange),1:N1);
 
-	jpk=zero2_combined(:, k);
+	jpk=zero2_combined(:, krange);
 	jpN1=zero2_combined(:, end);
 
-	r(iirange,k)=(jpk./jpN1)*R;
+	r(iirange,krange)=(jpk./jpN1)*R;
 end
