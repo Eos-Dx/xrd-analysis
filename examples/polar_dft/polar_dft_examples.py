@@ -11,6 +11,8 @@ from scipy.ndimage import map_coordinates
 from skimage.transform import warp_polar
 from scipy.special import jv
 
+from scipy.signal import wiener
+
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -36,21 +38,24 @@ spacing = L/dim
 xspace = np.arange(-L/2 + spacing/2, L/2 + spacing/2, spacing)
 func1d = np.cos(2*np.pi*xspace)
 
-fig = plt.figure()
-plt.scatter(xspace, func1d)
-
 func1d_dft = np.fft.fftshift(np.real_if_close(np.fft.fft(func1d), tol=1e18))
 power1d = np.square(np.abs(func1d_dft))/dim
 freq1d = np.fft.fftshift(np.fft.fftfreq(func1d_dft.shape[0], spacing))
 
-fig = plt.figure()
-plt.scatter(freq1d, power1d)
-plt.show()
+if False:
+    fig = plt.figure()
+    plt.scatter(xspace, func1d)
+
+    fig = plt.figure()
+    plt.scatter(freq1d, power1d)
+    plt.show()
 
 """
 Do some regular 2D DFT to gain intuition
 """
 # 2D
+
+function_description = DATA_FILENAME
 
 Lx = 2
 Ly = Lx
@@ -66,8 +71,6 @@ YY, XX = np.mgrid[-Lx/2+xspacing/2:Lx/2-xspacing/2:cstepx, -Ly/2+yspacing/2:Ly/2
 
 func2d = np.cos(2*np.pi*XX)
 
-fig = plt.figure()
-plt.imshow(func2d)
 
 # Take 2D DFT
 
@@ -76,27 +79,86 @@ power2d = np.square(np.abs(func2d_dft))/(dimx*dimy)
 freq2dx = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[1], xspacing))
 freq2dy = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[0], yspacing))
 
-# Plot 2D DFT magnitude
-fig = plt.figure()
+if False:
+    # Plot 2D DFT magnitude
+    left = freq2dx[0]
+    right = freq2dx[-1]
+    bottom = freq2dy[0]
+    top = freq2dy[-1]
+    extent = [left, right, bottom, top]
 
-left = freq2dx[0]
-right = freq2dx[-1]
-bottom = freq2dy[0]
-top = freq2dy[-1]
+    fig = plt.figure()
+    plt.imshow(func2d)
+
+    fig = plt.figure()
+    plt.imshow(np.abs(func2d_dft), origin='lower', extent=extent)
+    plt.xlim(freq2dx[1], freq2dx[-1])
+    plt.ylim(freq2dy[1], freq2dy[-1])
+
+
+"""
+Keratin 2D Cartesian FFT with and without filtering
+"""
+
+# Load keratin xrd image
+image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
+image = np.loadtxt(image_path, dtype=np.uint32)
+
+# Original image
+fig = plt.figure()
+plt.imshow(image)
+plt.title("Original Cartesian sampling of {}".format(function_description))
+
+# Wiener filtered image
+filtered_img = wiener(image, 5)
+fig = plt.figure()
+plt.imshow(filtered_img)
+plt.title("Wiener Filtered of Original Cartesian sampling of {}".format(function_description))
+
+# FFT of original image
+image_fft = np.fft.fftshift(np.real_if_close(np.fft.fft2(image), tol=1e18))
+dimx, dimy = image.shape
+xspacing, yspacing = (1, 1)
+image_fft_power2d = np.square(np.abs(image_fft))/(dimx*dimy)
+image_freq2dx = np.fft.fftshift(np.fft.fftfreq(image_fft.shape[1], xspacing))
+image_freq2dy = np.fft.fftshift(np.fft.fftfreq(image_fft.shape[0], yspacing))
+
+# Plot 2D FFT magnitude of original image
+left = image_freq2dx[0]
+right = image_freq2dx[-1]
+bottom = image_freq2dy[0]
+top = image_freq2dy[-1]
 extent = [left, right, bottom, top]
 
-plt.imshow(np.abs(func2d_dft), origin='lower', extent=extent)
+fig = plt.figure()
+plt.imshow(20*np.log10(np.abs(image_fft)), origin='lower', extent=extent)
+plt.title("FFT of Original Cartesian sampling of {} [dB]".format(function_description))
+plt.xlim(image_freq2dx[1], image_freq2dx[-1])
+plt.ylim(image_freq2dy[1], image_freq2dy[-1])
 
-plt.xlim(freq2dx[1], freq2dx[-1])
-plt.ylim(freq2dy[1], freq2dy[-1])
+
+# 2D FFT of filtered image
+filtered_img_fft = np.fft.fftshift(np.real_if_close(np.fft.fft2(filtered_img), tol=1e18))
+dimx, dimy = filtered_img.shape
+xspacing, yspacing = (1, 1)
+filtered_img_fft_power2d = np.square(np.abs(filtered_img_fft))/(dimx*dimy)
+filtered_img_freq2dx = np.fft.fftshift(np.fft.fftfreq(filtered_img_fft.shape[1], xspacing))
+filtered_img_freq2dy = np.fft.fftshift(np.fft.fftfreq(filtered_img_fft.shape[0], yspacing))
+
+# Plot 2D FFT magnitude of filtered image
+left = filtered_img_freq2dx[0]
+right = filtered_img_freq2dx[-1]
+bottom = filtered_img_freq2dy[0]
+top = filtered_img_freq2dy[-1]
+extent = [left, right, bottom, top]
+
+fig = plt.figure()
+plt.imshow(20*np.log10(np.abs(filtered_img_fft)), origin='lower', extent=extent)
+plt.title("FFT of Original Cartesian sampling of {} [dB]".format(function_description))
+plt.xlim(filtered_img_freq2dx[1], filtered_img_freq2dx[-1])
+plt.ylim(filtered_img_freq2dy[1], filtered_img_freq2dy[-1])
 
 plt.show()
-
-import ipdb
-ipdb.set_trace()
-
-sys.exit(0)
-
 
 """
 2D Polar DFT
@@ -105,9 +167,6 @@ sys.exit(0)
 N1 = 100
 N2 = 101
 R = 90
-
-# image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
-# image = np.loadtxt(image_path, dtype=np.uint32)
 
 function_description = "angular sinusoid"
 
