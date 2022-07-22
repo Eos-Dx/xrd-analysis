@@ -111,8 +111,25 @@ def rhomatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
 
     return rhomatrix
 
-def phimatrix_SpaceLimited():
-    pass
+def psimatrix_SpaceLimited(N2, N1):
+    """
+    Generates the angular meshgrid
+    psimatrix shape is (N2, N1-1)
+
+    psi_q = q*2*pi/N2
+    where -M <= q <= M
+    """
+    # Set up a symmetric psi range based on prescription from paper
+    # (symmetric about psi = 0)
+    # Set up psi start, stop and step values
+    psi_step = 2*np.pi/N2
+    psi_min = -np.pi + psi_step/2
+    psi_max = np.pi + psi_step/2
+    # Set up the psi range
+    psi_range = np.arange(psi_min, psi_max, psi_step).reshape(-1,1)
+    # Create a meshgrid
+    psimatrix = psi_range * np.ones((1,N1-1))
+    return psimatrix
 
 def sampling_grid(N1, N2, R):
     """
@@ -129,5 +146,5 @@ def freq_sampling_grid(N1, N2, R):
     according to the 2D Polar Discrete Fourier Transform
     """
     rhomatrix = rhomatrix_SpaceLimited()
-    phimatrix = phimatrix_SpaceLimited()
-    return rhomatrix, phimatrix
+    psimatrix = psimatrix_SpaceLimited()
+    return rhomatrix, psimatrix
