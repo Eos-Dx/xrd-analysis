@@ -38,8 +38,9 @@ y = np.arange(-R+dx/2, R+dx/2, dy)
 XX, YY = np.meshgrid(x, y)
 
 RR = np.sqrt(XX**2 + YY**2)
+TT = np.arctan2(YY, XX)
 
-image = jv(1, RR)
+image = jv(1, RR)*np.cos(TT)
 
 origin = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
 
