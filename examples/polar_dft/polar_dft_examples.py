@@ -42,7 +42,7 @@ func1d_dft = np.fft.fftshift(np.real_if_close(np.fft.fft(func1d), tol=1e18))
 power1d = np.square(np.abs(func1d_dft))/dim
 freq1d = np.fft.fftshift(np.fft.fftfreq(func1d_dft.shape[0], spacing))
 
-if False:
+if True:
     fig = plt.figure()
     plt.scatter(xspace, func1d)
 
@@ -79,7 +79,7 @@ power2d = np.square(np.abs(func2d_dft))/(dimx*dimy)
 freq2dx = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[1], xspacing))
 freq2dy = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[0], yspacing))
 
-if False:
+if True:
     # Plot 2D DFT magnitude
     left = freq2dx[0]
     right = freq2dx[-1]
@@ -95,6 +95,9 @@ if False:
     plt.xlim(freq2dx[1], freq2dx[-1])
     plt.ylim(freq2dy[1], freq2dy[-1])
 
+plt.show()
+
+exit(0)
 
 """
 Keratin 2D Cartesian FFT with and without filtering
