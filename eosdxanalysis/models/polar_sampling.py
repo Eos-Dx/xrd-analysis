@@ -145,6 +145,6 @@ def freq_sampling_grid(N1, N2, R):
     Returns polar sampling grid in the frequency domain
     according to the 2D Polar Discrete Fourier Transform
     """
-    rhomatrix = rhomatrix_SpaceLimited()
-    psimatrix = psimatrix_SpaceLimited()
+    rhomatrix = rhomatrix_SpaceLimited(N2, N1, R)
+    psimatrix = psimatrix_SpaceLimited(N2, N1)
     return rhomatrix, psimatrix
