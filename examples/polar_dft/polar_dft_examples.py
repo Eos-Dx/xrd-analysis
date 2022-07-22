@@ -51,85 +51,237 @@ if False:
     plt.show()
 
 """
+2D Sinusoid
+"""
+
+if False:
+    Lx = 2
+    Ly = Lx
+    dimx = 2**6
+    dimy = dimx
+    cstepx = dimx*1j
+    cstepy = cstepx
+
+    xspacing = Lx/dimx
+    yspacing = xspacing
+
+    YY, XX = np.mgrid[-Lx/2+xspacing/2:Lx/2-xspacing/2:cstepx, -Ly/2+yspacing/2:Ly/2-yspacing/2:cstepy]
+
+    func2d = np.cos(4*2*np.pi*XX)*np.cos(4*2*np.pi*YY)
+
+    # Take 2D DFT
+
+    func2d_dft = np.fft.fftshift(np.real_if_close(np.fft.fft2(func2d), tol=1e18))
+    power2d = np.square(np.abs(func2d_dft))/(dimx*dimy)
+    freq2dx = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[1], xspacing))/dimx
+    freq2dy = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[0], yspacing))/dimy
+
+
+    ## Plots
+
+    # Plot original data
+    fig = plt.figure()
+    plt.imshow(func2d, origin='lower', cmap="gray")
+    plt.title("2D Sinusoid")
+    plt.xlabel("Horizontal Position [pixels]")
+    plt.ylabel("Vertical Position [pixels]")
+    plt.colorbar()
+    plt.clim(-1,1)
+
+    # Plot 2D DFT magnitude
+    left = freq2dx[0]
+    right = freq2dx[-1]
+    bottom = freq2dy[0]
+    top = freq2dy[-1]
+    extent = [left, right, bottom, top]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plt.imshow(np.abs(func2d_dft), origin='lower', extent=extent, cmap="gray")
+    plt.xlim(freq2dx[1], freq2dx[-1])
+    plt.ylim(freq2dy[1], freq2dy[-1])
+    plt.title("Fourier Transform of 2D Sinusoid [dB]")
+    plt.xlabel("Horizontal Frequency [cycles per pixel]")
+    plt.ylabel("Vertical Frequency [cycles per pixel]")
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel("Magnitude [dB]", rotation=270, va="baseline")
+
+    # Show 3D surface maps
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    Y, X = np.mgrid[:dimy, :dimx]
+    surf = ax.plot_surface(X, Y, func2d, linewidth=0, cmap="gray")
+    cbar = fig.colorbar(surf)
+    cbar.mappable.set_clim(-1,1)
+    ax.view_init(30, +60+180)
+    ax.set_title("2D Sinusoid - 3D Surface Plot")
+    ax.set_xlabel("Horizontal Position [pixels]")
+    ax.set_ylabel("Vertical Position [pixels]")
+    ax.set_zlabel("Intensity")
+    ax.set_zlim([-1, 1])
+
+    # fig.colorbar(func2d)
+    # fig.clim(0,1)
+
+
+    plt.show()
+
+    exit(0)
+
+
+"""
+Airy function - DFT of unit circle
+"""
+if False:
+    Lx = 2
+    Ly = Lx
+    dimx = 2**8
+    dimy = dimx
+    cstepx = dimx*1j
+    cstepy = cstepx
+
+    xspacing = Lx/dimx
+    yspacing = xspacing
+
+    YY, XX = np.mgrid[-Lx/2+xspacing/2:Lx/2-xspacing/2:cstepx, -Ly/2+yspacing/2:Ly/2-yspacing/2:cstepy]
+
+    RR = np.sqrt(XX**2 + YY**2)
+
+    func2d = np.zeros(RR.shape)
+    func2d[RR < 0.1] = 1
+
+    # Take 2D DFT
+
+    func2d_dft = np.fft.fftshift(np.real_if_close(np.fft.fft2(func2d), tol=1e18))
+    power2d = np.square(np.abs(func2d_dft))/(dimx*dimy)
+    freq2dx = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[1], xspacing))/dimx
+    freq2dy = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[0], yspacing))/dimy
+
+    ## Plots
+
+    # Plot original data
+    fig = plt.figure()
+    plt.imshow(func2d, origin='lower', cmap="gray")
+    plt.title("Disc")
+    plt.xlabel("Horizontal Position [pixels]")
+    plt.ylabel("Vertical Position [pixels]")
+    plt.colorbar()
+    plt.clim(0,1)
+
+    # Plot 2D DFT magnitude
+    left = freq2dx[0]
+    right = freq2dx[-1]
+    bottom = freq2dy[0]
+    top = freq2dy[-1]
+    extent = [left, right, bottom, top]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plt.imshow(np.abs(func2d_dft), origin='lower', extent=extent, cmap="gray")
+    plt.xlim(freq2dx[1], freq2dx[-1])
+    plt.ylim(freq2dy[1], freq2dy[-1])
+    plt.title("Fourier Transform of Disc [dB]")
+    plt.xlabel("Horizontal Frequency [cycles per pixel]")
+    plt.ylabel("Vertical Frequency [cycles per pixel]")
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel("Magnitude [dB]", rotation=270, va="baseline")
+
+    # Show 3D surface map of original image
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    Y, X = np.mgrid[:dimy, :dimx]
+    surf = ax.plot_surface(X, Y, func2d, linewidth=0, cmap="gray")
+    cbar = fig.colorbar(surf)
+    cbar.mappable.set_clim(-1,1)
+    ax.view_init(30, +60+180)
+    ax.set_title("Disc - 3D Surface Plot")
+    ax.set_xlabel("Horizontal Position [pixels]")
+    ax.set_ylabel("Vertical Position [pixels]")
+    ax.set_zlabel("Intensity")
+    ax.set_zlim([0, 1])
+
+    plt.show()
+
+    exit(0)
+
+"""
 Do some regular 2D DFT to gain intuition
 """
-# 2D
 
-function_description = DATA_FILENAME
+if False:
+    # 2D
 
-Lx = 2
-Ly = Lx
-dimx = 32
-dimy = dimx
-cstepx = dimx*1j
-cstepy = cstepx
+    function_description = DATA_FILENAME
 
-xspacing = Lx/dimx
-yspacing = xspacing
+    Lx = 2
+    Ly = Lx
+    dimx = 32
+    dimy = dimx
+    cstepx = dimx*1j
+    cstepy = cstepx
 
-YY, XX = np.mgrid[-Lx/2+xspacing/2:Lx/2-xspacing/2:cstepx, -Ly/2+yspacing/2:Ly/2-yspacing/2:cstepy]
+    xspacing = Lx/dimx
+    yspacing = xspacing
 
-func2d = np.cos(2*np.pi*XX)
+    YY, XX = np.mgrid[-Lx/2+xspacing/2:Lx/2-xspacing/2:cstepx, -Ly/2+yspacing/2:Ly/2-yspacing/2:cstepy]
 
+    func2d = np.cos(2*np.pi*XX)
 
-# Take 2D DFT
+    # Take 2D DFT
 
-func2d_dft = np.fft.fftshift(np.real_if_close(np.fft.fft2(func2d), tol=1e18))
-power2d = np.square(np.abs(func2d_dft))/(dimx*dimy)
-freq2dx = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[1], xspacing))/dimx
-freq2dy = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[0], yspacing))/dimy
-
-"""
-Plots
-"""
-
-# Plot original data
-fig = plt.figure()
-plt.imshow(func2d, origin='lower', cmap="gray")
-plt.title("Horizontal Sinusoid")
-plt.xlabel("Horizontal Position [pixels]")
-plt.ylabel("Vertical Position [pixels]")
-plt.colorbar()
-plt.clim(-1,1)
-
-# Plot 2D DFT magnitude
-left = freq2dx[0]
-right = freq2dx[-1]
-bottom = freq2dy[0]
-top = freq2dy[-1]
-extent = [left, right, bottom, top]
-
-fig = plt.figure()
-ax = fig.add_subplot(111)
-plt.imshow(np.abs(func2d_dft), origin='lower', extent=extent, cmap="gray")
-plt.xlim(freq2dx[1], freq2dx[-1])
-plt.ylim(freq2dy[1], freq2dy[-1])
-plt.title("Fourier Transform of Horizontal Sinusoid [dB]")
-plt.xlabel("Horizontal Frequency [cycles per pixel]")
-plt.ylabel("Vertical Frequency [cycles per pixel]")
-cbar = plt.colorbar()
-cbar.ax.set_ylabel("Magnitude [dB]", rotation=270, va="baseline")
-
-# Show 3D surface maps
-fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-Y, X = np.mgrid[:dimy, :dimx]
-surf = ax.plot_surface(X, Y, func2d, linewidth=0, cmap="gray")
-cbar = fig.colorbar(surf)
-cbar.mappable.set_clim(-1,1)
-ax.view_init(30, +60+180)
-ax.set_title("Horizontal Sinusoid - 3D Surface Plot")
-ax.set_xlabel("Horizontal Position [pixels]")
-ax.set_ylabel("Vertical Position [pixels]")
-ax.set_zlabel("Intensity")
-ax.set_zlim([-1, 1])
-
-# fig.colorbar(func2d)
-# fig.clim(0,1)
+    func2d_dft = np.fft.fftshift(np.real_if_close(np.fft.fft2(func2d), tol=1e18))
+    power2d = np.square(np.abs(func2d_dft))/(dimx*dimy)
+    freq2dx = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[1], xspacing))/dimx
+    freq2dy = np.fft.fftshift(np.fft.fftfreq(func2d_dft.shape[0], yspacing))/dimy
 
 
-plt.show()
+    ## Plots
 
-exit(0)
+    # Plot original data
+    fig = plt.figure()
+    plt.imshow(func2d, origin='lower', cmap="gray")
+    plt.title("Horizontal Sinusoid")
+    plt.xlabel("Horizontal Position [pixels]")
+    plt.ylabel("Vertical Position [pixels]")
+    plt.colorbar()
+    plt.clim(-1,1)
+
+    # Plot 2D DFT magnitude
+    left = freq2dx[0]
+    right = freq2dx[-1]
+    bottom = freq2dy[0]
+    top = freq2dy[-1]
+    extent = [left, right, bottom, top]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plt.imshow(np.abs(func2d_dft), origin='lower', extent=extent, cmap="gray")
+    plt.xlim(freq2dx[1], freq2dx[-1])
+    plt.ylim(freq2dy[1], freq2dy[-1])
+    plt.title("Fourier Transform of Horizontal Sinusoid [dB]")
+    plt.xlabel("Horizontal Frequency [cycles per pixel]")
+    plt.ylabel("Vertical Frequency [cycles per pixel]")
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel("Magnitude [dB]", rotation=270, va="baseline")
+
+    # Show 3D surface maps
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    Y, X = np.mgrid[:dimy, :dimx]
+    surf = ax.plot_surface(X, Y, func2d, linewidth=0, cmap="gray")
+    cbar = fig.colorbar(surf)
+    cbar.mappable.set_clim(-1,1)
+    ax.view_init(30, +60+180)
+    ax.set_title("Horizontal Sinusoid - 3D Surface Plot")
+    ax.set_xlabel("Horizontal Position [pixels]")
+    ax.set_ylabel("Vertical Position [pixels]")
+    ax.set_zlabel("Intensity")
+    ax.set_zlim([-1, 1])
+
+    # fig.colorbar(func2d)
+    # fig.clim(0,1)
+
+
+    plt.show()
+
+    exit(0)
 
 """
 Keratin 2D Cartesian FFT with and without filtering
