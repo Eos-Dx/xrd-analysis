@@ -22,6 +22,7 @@ from eosdxanalysis.models.feature_engineering import feature_9a_ratio
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import rmatrix_SpaceLimited
 from eosdxanalysis.models.polar_sampling import thetamatrix_SpaceLimited
+from eosdxanalysis.models.polar_sampling import rhomatrix_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 
@@ -231,12 +232,14 @@ class TestPolarSamplingGrid(unittest.TestCase):
         """
         Load Jn zeros from file
         """
-        jn_zerosmatrix_fullpath = os.path.join(
+        testdata_path = os.path.join(
                 TEST_PATH,
-                JN_ZEROSMATRIX_TEST_DIR,
+                JN_ZEROSMATRIX_TEST_DIR)
+        jn_zerosmatrix_fullpath = os.path.join(testdata_path,
                 JN_ZEROSMATRIX_FILENAME)
         jn_zerosmatrix = np.load(jn_zerosmatrix_fullpath)
         self.jn_zerosmatrix = jn_zerosmatrix
+        self.testdata_path = testdata_path
 
     def test_rmatrix_generation_space_limited(self):
         """
@@ -331,6 +334,27 @@ class TestPolarSamplingGrid(unittest.TestCase):
 
         # Check that the angular matrix shape is (N2, N1-1)
         self.assertTrue(np.array_equal(thetamatrix.shape, (N2, N1-1)))
+
+    def test_rhomatrix_SpaceLimited(self):
+        """
+        Ensure the correct rmatrix is generated
+        """
+        jn_zerosmatrix = self.jn_zerosmatrix
+        # Set up test sampling parameters for space-limited function
+        N1 = 100
+        N2 = 101
+        R = 1
+
+        # Generate the rhomatrix
+        rhomatrix = rhomatrix_SpaceLimited(N2, N1, R)
+
+        # Load the known rhomatrix
+        rhomatrix_fullpath = os.path.join(self.testdata_path,
+                "rhomatrix_101_100.mat")
+        known_rhomatrix = loadmat(rhomatrix_fullpath).get("rhomatrix")
+
+        # Check that they're equal
+        self.assertTrue(np.isclose(rhomatrix, known_rhomatrix).all())
 
 
 class TestFourierAnalysis(unittest.TestCase):
