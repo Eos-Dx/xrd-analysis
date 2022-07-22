@@ -48,7 +48,7 @@ def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
     Note that N2 = 2*M+1
 
     - R is the space limit, size of domain
-    - rpk is the kth zero of the pth Bessel function of the first kind
+    - jpk is the kth zero of the pth Bessel function of the first kind
     """
     # If the jn_zerosmatrix is not given, read from file
     if jn_zerosmatrix is None:
@@ -76,6 +76,44 @@ def rmatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
 
     return rmatrix
 
+def rhomatrix_SpaceLimited(N2, N1, R, jn_zerosmatrix=None):
+    """
+    Generates the radial meshgrid
+    rmatrix shape is (N2, N1-1)
+
+    rhoqm = jqm/R
+    where -M <= q <=M
+    and 1 <= m <= N1-1
+    Note that N2 = 2*M+1
+
+    - R is the space limit, size of domain
+    - jqm is the kth zero of the pth Bessel function of the first kind
+    """
+    # If the jn_zerosmatrix is not given, read from file
+    if jn_zerosmatrix is None:
+        jn_zerosmatrix_path = os.path.join(
+                MODULE_PATH,
+                DATA_DIR,
+                JN_ZEROSMATRIX_FILENAME)
+        jn_zerosmatrix = np.load(jn_zerosmatrix_path)
+
+    M = (N2-1)//2;
+
+    # Get jpk and jpN1 from jn_zerosmatrix
+    p_range = abs(np.arange(N2)-M)
+    # Get all Jn zeros we interested in
+    # Note that k goes from 1 to N1-1
+    # So we are getting 1 to N1 and then splitting
+    # the results into jpk and jpN1
+    jqm = jn_zerosmatrix[p_range, :N1-1]
+    # Now get rmatrix. Size of rmatrix = size of jpk.
+    rhomatrix = jqm/R
+
+    return rhomatrix
+
+def phimatrix_SpaceLimited():
+    pass
+
 def sampling_grid(N1, N2, R):
     """
     Returns polar sampling grid according to
@@ -84,3 +122,12 @@ def sampling_grid(N1, N2, R):
     rmatrix = rmatrix_SpaceLimited(N2, N1, R)
     thetamatrix = thetamatrix_SpaceLimited(N2, N1)
     return rmatrix, thetamatrix
+
+def freq_sampling_grid(N1, N2, R):
+    """
+    Returns polar sampling grid in the frequency domain
+    according to the 2D Polar Discrete Fourier Transform
+    """
+    rhomatrix = rhomatrix_SpaceLimited()
+    phimatrix = phimatrix_SpaceLimited()
+    return rhomatrix, phimatrix
