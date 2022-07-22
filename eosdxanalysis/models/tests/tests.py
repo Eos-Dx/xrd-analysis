@@ -23,6 +23,7 @@ from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import rmatrix_SpaceLimited
 from eosdxanalysis.models.polar_sampling import thetamatrix_SpaceLimited
 from eosdxanalysis.models.polar_sampling import rhomatrix_SpaceLimited
+from eosdxanalysis.models.polar_sampling import psimatrix_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 
@@ -337,7 +338,7 @@ class TestPolarSamplingGrid(unittest.TestCase):
 
     def test_rhomatrix_SpaceLimited(self):
         """
-        Ensure the correct rmatrix is generated
+        Ensure the correct rhomatrix is generated
         """
         jn_zerosmatrix = self.jn_zerosmatrix
         # Set up test sampling parameters for space-limited function
@@ -355,6 +356,27 @@ class TestPolarSamplingGrid(unittest.TestCase):
 
         # Check that they're equal
         self.assertTrue(np.isclose(rhomatrix, known_rhomatrix).all())
+
+    def test_psimatrix_SpaceLimited(self):
+        """
+        Ensure the correct psimatrix is generated
+        """
+        jn_zerosmatrix = self.jn_zerosmatrix
+        # Set up test sampling parameters for space-limited function
+        N1 = 100
+        N2 = 101
+        R = 1
+
+        # Generate the psimatrix
+        psimatrix = psimatrix_SpaceLimited(N2, N1)
+
+        # Load the known psimatrix
+        psimatrix_fullpath = os.path.join(self.testdata_path,
+                "psimatrix_101_100.mat")
+        known_psimatrix = loadmat(psimatrix_fullpath).get("psimatrix")
+
+        # Check that they're equal
+        self.assertTrue(np.isclose(psimatrix, known_psimatrix).all())
 
 
 class TestFourierAnalysis(unittest.TestCase):
