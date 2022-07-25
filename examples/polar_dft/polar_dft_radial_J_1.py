@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import freq_sampling_grid
+from eosdxanalysis.models.utils import pol2cart
+from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 
 t0 = time.time()
@@ -40,8 +42,7 @@ x = np.arange(-R+dx/2, R+dx/2, dx)
 y = np.arange(-R+dx/2, R+dx/2, dy)
 XX, YY = np.meshgrid(x, y)
 
-RR = np.sqrt(XX**2 + YY**2)
-TT = np.arctan2(YY, XX)
+RR, TT = cart2pol(XX, YY)
 
 n=20
 # image = jv(n, RR)*np.cos(TT)
@@ -61,12 +62,11 @@ Baddour polar grid sampling
 # First get rmatrix and thetamatrix
 rmatrix, thetamatrix = sampling_grid(N1, N2, R)
 # Now convert rmatrix to Cartesian coordinates
-Xcart = rmatrix*np.cos(thetamatrix)/dx
-Ycart = rmatrix*np.sin(thetamatrix)/dy
+Xcart, Ycart = pol2cart(rmatrix, thetamatrix)
 # Now convert Cartesian coordinates to the array notation
 # by shifting according to the origin
-Xindices = Xcart + origin[0]
-Yindices = origin[1] - Ycart
+Xindices = Xcart/dx + origin[0]
+Yindices = origin[1] - Ycart/dy
 
 cart_sampling_indices = [Yindices, Xindices]
 
@@ -103,8 +103,7 @@ Fdx = R_fraction
 Fdy = R_fraction
 
 # Convert to frequeny domain Cartesian coordinates with scaling
-FXX = rhomatrix*np.cos(psimatrix)
-FYY = rhomatrix*np.sin(psimatrix)
+FXX, FYY = pol2cart(rhomatrix, psimatrix)
 
 # Create a meshgrid for interpolation
 FYnew, FXnew = np.mgrid[-Rho:Rho:pdft.shape[0]*1j, -Rho:Rho:pdft.shape[1]*1j]
@@ -112,7 +111,7 @@ FYnew, FXnew = np.mgrid[-Rho:Rho:pdft.shape[0]*1j, -Rho:Rho:pdft.shape[1]*1j]
 # Interpolate
 polar_points = np.vstack([FXX.ravel(), FYY.ravel()]).T
 polar_values = pdft.ravel()
-pdft_cart = griddata(polar_points, polar_values, (FXnew, FYnew), method='nearest')
+pdft_cart = griddata(polar_points, polar_values, (FXnew, FYnew), method='cubic')
 
 """
 Plots
