@@ -131,9 +131,16 @@ def YmatrixAssembly(n, N1, jn_zeros):
     # jnm is a column vector (m is a row index)
     jnm = jnk
 
-    denominator = jnN1*(jv(n+1, jnk)**2)
-    Jn_arg = (jnk/jnN1).T @ jnm
-    Ymatrix = 2/denominator * (jv(n, Jn_arg.flatten().reshape(shape)))
+    denominator = np.reshape(jnN1*(jv(n+1, jnk)**2), (shape[0], shape[1], 1))
+    # We have n',k,m indices now, use Einstein notation to get 3D array
+    Jn_arg = np.einsum('nk,nm->nkm', jnk/jnN1, jnm).reshape(shape)
+    Jn_term = (jv(n, Jn_arg.reshape(shape[0], shape[1]*shape[2]))).reshape(shape)
+    # Multiply again using Einstein notation
+
+    Ymatrix = np.einsum('ijk,ijk->ikj', Jn_term, 2/denominator)
+
+    if Ymatrix.shape[0] == 1:
+        Ymatrix.squeeze()
 
     return Ymatrix
 
