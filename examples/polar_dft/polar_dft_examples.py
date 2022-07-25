@@ -286,6 +286,7 @@ if False:
 """
 Keratin 2D Cartesian FFT with and without filtering
 """
+function_description = DATA_FILENAME
 
 # Load keratin xrd image
 image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
