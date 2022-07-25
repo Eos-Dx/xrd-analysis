@@ -120,6 +120,7 @@ def YmatrixAssembly(n, N1, jn_zeros):
     elif np.issubdtype(type(n), np.integer):
         shape = (1, N1-1, N1-1)
         jn_zeros = jn_zeros.reshape(1,N1)
+        n = np.array([[n]])
     else:
         raise ValueError("Input `n` must be an int or array of int, not {}.".format(type(n)))
 
@@ -128,11 +129,11 @@ def YmatrixAssembly(n, N1, jn_zeros):
     # jnk is all but the last element, row vector
     jnk = jn_zeros[:, :N1-1,...].reshape((shape[0], shape[1]))
     # jnm is a column vector (m is a row index)
-    jnm = jnk.T
+    jnm = jnk
 
     denominator = jnN1*(jv(n+1, jnk)**2)
-    Jn_arg = ((jnk/jnN1).T @ jnm.T)
-    Ymatrix = 2/denominator*jv(n, Jn_arg)
+    Jn_arg = (jnk/jnN1).T @ jnm
+    Ymatrix = 2/denominator * (jv(n, Jn_arg.flatten().reshape(shape)))
 
     return Ymatrix
 
