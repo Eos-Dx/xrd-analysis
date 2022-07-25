@@ -436,9 +436,6 @@ class TestFourierAnalysis(unittest.TestCase):
         # Generate the Ymatrix
         ymatrix = YmatrixAssembly(n, N1, jn_zerosarray)
 
-        # Get rid of extra dimensions
-        ymatrix = ymatrix.squeeze()
-
         # Load the known ymatrix
         ymatrix_fullpath = os.path.join(self.testdata_path,
                 "ymatrix_0_4.mat")
@@ -475,12 +472,12 @@ class TestFourierAnalysis(unittest.TestCase):
         # n = +1, N1 = 4
         ymatrix_1_4_fullpath = os.path.join(self.testdata_path,
                 "ymatrix_1_4.mat")
-        known_ymatrix_p1_4 = loadmat(ymatrix_1_4_fullpath ).get("ymatrix")
+        known_ymatrix_1_4 = loadmat(ymatrix_1_4_fullpath ).get("ymatrix")
 
         # Check that they're equal
-        self.assertTrue(np.isclose(ymatrix[...,0],
+        self.assertTrue(np.isclose(ymatrix[0,...],
                                     known_ymatrix_0_4).all())
-        self.assertTrue(np.isclose(ymatrix[...,1],
+        self.assertTrue(np.isclose(ymatrix[1,...],
                                     known_ymatrix_1_4).all())
 
     def test_pfft2_SpaceLimited_continuous_input(self):
