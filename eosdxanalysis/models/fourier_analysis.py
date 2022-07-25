@@ -140,7 +140,7 @@ def YmatrixAssembly(n, N1, jn_zeros):
     Ymatrix = np.einsum('ijk,ijk->ikj', Jn_term, 2/denominator)
 
     if Ymatrix.shape[0] == 1:
-        Ymatrix.squeeze()
+        Ymatrix = Ymatrix.squeeze()
 
     return Ymatrix
 
