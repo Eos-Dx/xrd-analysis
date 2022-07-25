@@ -23,7 +23,7 @@ MODULE_PATH = os.path.dirname(__file__)
 DATA_DIR = "data"
 DATA_FILENAME = "CRQF_A00823.txt"
 
-N1 = 100
+N1 = 102
 N2 = 101
 R = 90
 
@@ -43,7 +43,8 @@ RR = np.sqrt(XX**2 + YY**2)
 TT = np.arctan2(YY, XX)
 
 n=20
-image = jv(n, RR)*np.cos(TT)
+# image = jv(n, RR)*np.cos(TT)
+image = jv(n, RR)
 
 # Sample our image according on the Baddour grid
 dx = 0.2
@@ -90,15 +91,19 @@ print("Time to calculate the polar transform:", np.round(t2-t1, decimals=2), "s"
 # Get rhomatrix and psimatrix
 rhomatrix, psimatrix = freq_sampling_grid(N1, N2, R)
 
-FXX = rhomatrix*np.cos(psimatrix)/dx
-FYY = rhomatrix*np.sin(psimatrix)/dy
+# Set output size
+output_shape = image.shape
+output_origin = (output_shape[0]/2-0.5, output_shape[1]/2-0.5)
 
-FXXindices = FXX + origin[0]/R
-FYYindices = origin[1]/R - FYY
+# Set the maximum Rho of the output plot, same R as original image
+R_fraction = R/image.shape[0]/2/dx
+Rho = np.max(rhomatrix)
+Fdx = R_fraction
+Fdy = R_fraction
 
-F_sampling_indices = [FYYindices, FXXindices]
-
-pdft_cart = map_coordinates(pdft, F_sampling_indices)
+# Convert to frequeny domain Cartesian coordinates with scaling
+FXX = rhomatrix*np.cos(psimatrix)
+FYY = rhomatrix*np.sin(psimatrix)
 
 
 """
@@ -124,10 +129,14 @@ fig = plt.figure()
 plt.imshow(np.abs(pdft))
 plt.title("Magnitude DFT of radial J_1\n in polar frequency domain using Baddour coordinates")
 
-# Polar DFT in cartesian frequency domain
+# Frequency domain DFT cartesian grid
 fig = plt.figure()
-plt.imshow(np.abs(pdft_cart))
-plt.title("Magnitude DFT of radial J_1\n in cartesian frequency domain using Baddour coordinates")
+ax = fig.gca(projection='3d')
+# plt.imshow(20*np.log10(np.abs(pdft_cart)), cmap="gray")
+surf = ax.plot_surface(FXX, FYY, 20*np.log10(np.abs(pdft)), rstride=1, cstride=1,
+    linewidth=0, antialiased=False)
+# clb = plt.colorbar()
+plt.title("Polar DFT in frequency domain cartesian grid [dB]")
 
 # Polar DFT using unwarp_polar
 fig = plt.figure()
