@@ -8,7 +8,6 @@ from scipy.special import jv
 from scipy.ndimage import map_coordinates
 
 from eosdxanalysis.models.polar_sampling import sampling_grid
-from eosdxanalysis.models.utils import pol2cart
 
 MODULE_PATH = os.path.dirname(__file__)
 DATA_DIR = "data"
@@ -37,28 +36,9 @@ def pfft2_SpaceLimited(discrete_sampled_function, N1, N2, R):
     # Convert to equispaced polar coordinates
     grid_shape = (N2, N1-1)
 
-    # Sample according to polar sampling grid
-    # Convert rmatrix and thetamatrix to (row, col) indices
-    # rindices = rmatrix / (R) * (N1-1)
-    # thetaindices = (thetamatrix + np.pi) / (2*np.pi) * N2
-    # polarindices = [thetaindices, rindices]
-
-#    # Now convert the polar sampling grid to cartesian coordinates
-#    X, Y = pol2cart(rmatrix, thetamatrix)
-#
-#    # Convert cartesian coordinates to array notation
-#    center = (cartesian_image.shape[0]/2-0.5, cartesian_image.shape[1]/2-0.5)
-#    row_indices = X + center[0]
-#    col_indices = center[1] - Y
-#
-#    cart_indices = [row_indices, col_indices]
-#
-#    # Sample our image on the Baddour polar grid
-#    fpprimek = map_coordinates(cartesian_image, cart_indices, cval=0, order=1)
-
     """
     1D Fast Fourier Transform (FFT)
-   """
+    """
     # Shift rows (i.e. move last half of rows to the front),
     # perform 1D FFT, then shift back
     # fnk = np.roll( np.fft.fft( np.roll(fpprimek, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
@@ -129,23 +109,112 @@ def YmatrixAssembly(n, N1, jn_zeros):
       with size (N+1,1)
 
     Output:
-    - Ymatrix of shape (N1-1, N1-1) with indices m, k
+    - Ymatrix of shape (n', N1-1, N1-1) with indices n', m, k
     """
-    shape = (1, N1-1)
-    if type(n) == np.ndarray:
+    if np.issubdtype(type(n), np.ndarray):
         if len(n.shape) == 1:
-            jn_zeros = jn_zeros.T
             shape = (n.size, N1-1, N1-1)
+            n = n.reshape(-1,1)
+        else:
+            raise NotImplementedError("Input array n with more than 1 dimension {} is not implemented.".format(n.shape))
+    elif np.issubdtype(type(n), np.integer):
+        shape = (1, N1-1, N1-1)
+        jn_zeros = jn_zeros.reshape(1,N1)
+    else:
+        raise ValueError("Input `n` must be an int or array of int, not {}.".format(type(n)))
 
     # jnN1 is the last element
-    jnN1 = jn_zeros[N1-1,...]
+    jnN1 = jn_zeros[:, N1-1,...].reshape(shape[0],1)
     # jnk is all but the last element, row vector
-    jnk = jn_zeros[:N1-1,...].reshape(shape)
+    jnk = jn_zeros[:, :N1-1,...].reshape((shape[0], shape[1]))
     # jnm is a column vector (m is a row index)
     jnm = jnk.T
 
     denominator = jnN1*(jv(n+1, jnk)**2)
-    Jn_arg = jnm*jnk/jnN1
+    Jn_arg = ((jnk/jnN1).T @ jnm.T)
     Ymatrix = 2/denominator*jv(n, Jn_arg)
 
     return Ymatrix
+
+def ipfft2_SpaceLimited(discrete_sampled_function, N1, N2, R):
+    """
+    Inverse Polar Fourier Transform
+
+    Input is a cartesian image, maximum radius R, and sampling grid
+    parameters N1 and N2.
+
+    N1 is the radial sampling rate.
+    N2 is the angular sampling rate.
+
+    The sampling grid has size (N2, N1-1)
+    Input is a cartesian image, maximum radius R, and sampling grid
+    """
+    if N2 % 2 == 0:
+        raise ValueError("N2 must be odd!")
+
+    M = int((N2-1)//2)
+
+    rhomatrix, psimatrix = freq_sampling_grid(N1, N2, R)
+
+    # Convert to equispaced polar coordinates
+    grid_shape = (N2, N1-1)
+
+    """
+    1D Fast Fourier Transform (FFT)
+    """
+    # Shift rows (i.e. move last half of rows to the front),
+    # perform 1D FFT, then shift back
+    # fnk = np.roll( np.fft.fft( np.roll(fpprimek, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
+    FNL = np.roll( np.fft.fft( np.roll(discrete_sampled_function, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
+
+    """
+    1D Discrete Hankel Transform (DHT)
+    """
+    # Perform the 1D DHT
+    fnk = idht(FNL, N2, N1, R)
+
+    """
+    1D Inverse Fast Fourier Transform (IFFT)
+    """
+    IDFT = np.roll( np.fft.ifft( np.roll(fnk, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
+
+    return IDFT
+
+def idht(FNL, N2, N1, R, jn_zerosmatrix=None):
+    """
+    Performs the 1D Discrete Hankel Transform (DHT)
+    """
+    # If the jn_zerosmatrix is not given, read from file
+    if jn_zerosmatrix is None:
+        jn_zerosmatrix_path = os.path.join(
+                MODULE_PATH,
+                DATA_DIR,
+                JN_ZEROSMATRIX_FILENAME)
+        jn_zerosmatrix = np.load(jn_zerosmatrix_path)
+
+    M = int((N2-1)//2)
+
+    Fnk = np.zeros(FNL.shape, dtype=np.complex64)
+    fnk = np.zeros(FNL.shape, dtype=np.complex64)
+
+    # n ranges from -M to M inclusive
+    # Set up sign array
+    sign = np.ones(N2)
+    nrange = np.arange(-M, M+1)
+    sign[nrange < 0] = (-1)**abs(nrange[nrange < 0])
+
+    jn_zerosmatrix_sub = jn_zerosmatrix[abs(nrange),:]
+
+    for n in nrange:
+        # Use index notation, so that n = -M corresponds to index 0
+        ii=n+M
+        zero2 = jn_zerosmatrix_sub[ii, :]
+
+        jnN1 = jn_zerosmatrix_sub[ii, N1-1]
+
+        Y = sign[ii]*YmatrixAssembly(abs(n),N1,zero2)
+
+        Fnk[ii,:] = ( Y.T @ FNL[ii,:] ).T
+        fnk[ii,:] = Fnk[ii,:] * ((jnN1)*np.power(1j,n))/(2*pi*R^2)
+
+    return Fnl
