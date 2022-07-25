@@ -411,7 +411,7 @@ class TestFourierAnalysis(unittest.TestCase):
 
         for n in range(count):
             # Extract jn zeros array
-            jn_zerosarray = jn_zerosmatrix[n, :]
+            jn_zerosarray = jn_zerosmatrix[n, :N1]
 
             # Generate the Ymatrix
             ymatrix = YmatrixAssembly(n, N1, jn_zerosarray)
