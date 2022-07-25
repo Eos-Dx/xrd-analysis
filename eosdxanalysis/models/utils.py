@@ -45,13 +45,13 @@ def gen_jn_zerosmatrix(shape, save_mat=False, save_numpy=False, outdir=""):
 
     return zeromatrix
 
-def pol2cart(r, theta):
+def pol2cart(theta, rho):
     """
     Function to convert polar to cartesian coordinates
     Similar to Matlab pol2cart
     """
-    x = r * np.cos(theta)
-    y = r * np.sin(theta)
+    x = rho * np.cos(theta)
+    y = rho * np.sin(theta)
     return x, y
 
 def cart2pol(x, y):
