@@ -62,7 +62,7 @@ Baddour polar grid sampling
 # First get rmatrix and thetamatrix
 rmatrix, thetamatrix = sampling_grid(N1, N2, R)
 # Now convert rmatrix to Cartesian coordinates
-Xcart, Ycart = pol2cart(rmatrix, thetamatrix)
+Xcart, Ycart = pol2cart(thetamatrix, rmatrix)
 # Now convert Cartesian coordinates to the array notation
 # by shifting according to the origin
 Xindices = Xcart/dx + origin[0]
@@ -103,7 +103,7 @@ Fdx = R_fraction
 Fdy = R_fraction
 
 # Convert to frequeny domain Cartesian coordinates with scaling
-FXX, FYY = pol2cart(rhomatrix, psimatrix)
+FXX, FYY = pol2cart(psimatrix, rhomatrix)
 
 # Create a meshgrid for interpolation
 FYnew, FXnew = np.mgrid[-Rho:Rho:pdft.shape[0]*1j, -Rho:Rho:pdft.shape[1]*1j]
