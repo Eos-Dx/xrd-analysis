@@ -17,15 +17,19 @@ from sklearn.linear_model import LinearRegression
 from eosdxanalysis.models.curve_fitting import PolynomialFit
 from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
+from eosdxanalysis.models.utils import pol2cart
+from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.feature_engineering import feature_5a_peak_location
 from eosdxanalysis.models.feature_engineering import feature_9a_ratio
 from eosdxanalysis.models.polar_sampling import sampling_grid
+from eosdxanalysis.models.polar_sampling import freq_sampling_grid
 from eosdxanalysis.models.polar_sampling import rmatrix_SpaceLimited
 from eosdxanalysis.models.polar_sampling import thetamatrix_SpaceLimited
 from eosdxanalysis.models.polar_sampling import rhomatrix_SpaceLimited
 from eosdxanalysis.models.polar_sampling import psimatrix_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
+from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 
 TEST_PATH = os.path.join("eosdxanalysis", "models", "tests")
 JN_ZEROSMATRIX_TEST_DIR = "test_jn_zerosmatrix"
@@ -432,6 +436,9 @@ class TestFourierAnalysis(unittest.TestCase):
         # Generate the Ymatrix
         ymatrix = YmatrixAssembly(n, N1, jn_zerosarray)
 
+        # Get rid of extra dimensions
+        ymatrix = ymatrix.squeeze()
+
         # Load the known ymatrix
         ymatrix_fullpath = os.path.join(self.testdata_path,
                 "ymatrix_0_4.mat")
@@ -447,9 +454,9 @@ class TestFourierAnalysis(unittest.TestCase):
         jn_zerosmatrix = self.jn_zerosmatrix
 
         # Set parameters
-        n = np.array([-1,0,1])
+        n = np.array([0,1])
         N1 = 4
-        known_shape = (N1-1, N1-1)
+        known_shape = (n.size, N1-1, N1-1)
 
         # Extract jn zeros array
         jn_zeros = jn_zerosmatrix[n, :N1]
@@ -458,13 +465,9 @@ class TestFourierAnalysis(unittest.TestCase):
         ymatrix = YmatrixAssembly(n, N1, jn_zeros)
 
         # Check the shape
-        self.assertEqual(ymatrix.shape, (N1-1, N1-1, n.size))
+        self.assertEqual(ymatrix.shape, known_shape)
 
         # Load the known ymatrices
-        # n = -1, N1 = 4
-        ymatrix_neg1_4_fullpath = os.path.join(self.testdata_path,
-                "ymatrix_neg1_4.mat")
-        known_ymatrix_neg1_4 = loadmat(ymatrix_neg1_4_fullpath ).get("ymatrix")
         # n = 0, N1 = 4
         ymatrix_0_4_fullpath = os.path.join(self.testdata_path,
                 "ymatrix_0_4.mat")
@@ -476,10 +479,8 @@ class TestFourierAnalysis(unittest.TestCase):
 
         # Check that they're equal
         self.assertTrue(np.isclose(ymatrix[...,0],
-                                    known_ymatrix_neg1_4).all())
-        self.assertTrue(np.isclose(ymatrix[...,1],
                                     known_ymatrix_0_4).all())
-        self.assertTrue(np.isclose(ymatrix[...,2],
+        self.assertTrue(np.isclose(ymatrix[...,1],
                                     known_ymatrix_1_4).all())
 
     def test_pfft2_SpaceLimited_continuous_input(self):
@@ -573,6 +574,68 @@ class TestFourierAnalysis(unittest.TestCase):
 
         self.assertTrue(np.isclose(dft, known_dft).all())
 
+    def test_ipfft2_SpaceLimited_discrete_input(self):
+        """
+        Test 2D Discrete Inverse Polar Fourier Transform
+        for a space-limited discrete function
+        """
+        # Set sampling rates
+        N1 = 4 # Radial sampling rate
+        N2 = 5 # Angular sampling rate
+        # Space limit
+        R = 10
 
+        # Gaussian
+        a = 0.1
+        gau2 = lambda x, a : np.exp(-((a*x)**2)/4)
+
+        # Let's create a real measurement of our Gaussian
+        # Set up our resolution
+        dfx = 0.2
+        dfy = 0.2
+
+        # Let's create a meshgrid,
+        # note that x and y have even length
+        fx = np.arange(-R+dfx/2, R+dfx/2, dfx)
+        fy = np.arange(-R+dfx/2, R+dfx/2, dfy)
+        FXX, FYY = np.meshgrid(fx, fy)
+
+        rhomatrix, psimatrix = freq_sampling_grid(N1, N2, R)
+
+        fx, fy1 = pol2cart(psimatrix, rhomatrix);
+
+        discrete_image = gau2(rhomatrix, a)
+
+        origin = (discrete_image.shape[0]/2-0.5, discrete_image.shape[1]/2-0.5)
+
+        # Now sample the discrete image according to the Baddour polar grid
+        # First get rmatrix and thetamatrix
+        rhomatrix, thetamatrix = freq_sampling_grid(N1, N2, R)
+        # Now convert rmatrix to Cartesian coordinates
+        FYcart, FXcart = pol2cart(thetamatrix, rhomatrix)
+        FYcart = FYcart/dfy
+        FXcart = FXcart/dfx
+        # Now convert Cartesian coordinates to the array notation
+        # by shifting according to the origin
+        FXindices = FXcart + origin[0]
+        FYindices = origin[1] - FYcart
+
+        cart_sampling_indices = [FYindices, FXindices]
+
+        fdiscrete = map_coordinates(discrete_image, cart_sampling_indices)
+        fcontinuous = gau2(rhomatrix, a)
+
+        # Check that these two are close
+        self.assertTrue(np.isclose(fdiscrete, fcontinuous).all())
+
+        dft = pfft2_SpaceLimited(fdiscrete, N1, N2, R)
+
+        # Check against known result
+        # Load the known DFT matrix
+        dft_fullpath = os.path.join(self.testdata_path,
+                "dft_gaussian.mat")
+        known_dft = loadmat(dft_fullpath).get("dft_gaussian")
+
+        self.assertTrue(np.isclose(dft, known_dft).all())
 if __name__ == '__main__':
     unittest.main()
