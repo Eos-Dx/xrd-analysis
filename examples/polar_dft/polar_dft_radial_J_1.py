@@ -9,6 +9,7 @@ import numpy as np
 from scipy.ndimage import map_coordinates
 from skimage.transform import warp_polar
 from scipy.special import jv
+from scipy.interpolate import griddata
 
 import matplotlib.pyplot as plt
 
@@ -105,6 +106,13 @@ Fdy = R_fraction
 FXX = rhomatrix*np.cos(psimatrix)
 FYY = rhomatrix*np.sin(psimatrix)
 
+# Create a meshgrid for interpolation
+FYnew, FXnew = np.mgrid[-Rho:Rho:pdft.shape[0]*1j, -Rho:Rho:pdft.shape[1]*1j]
+
+# Interpolate
+polar_points = np.vstack([FXX.ravel(), FYY.ravel()]).T
+polar_values = pdft.ravel()
+pdft_cart = griddata(polar_points, polar_values, (FXnew, FYnew), method='nearest')
 
 """
 Plots
@@ -124,24 +132,14 @@ plt.title("Polar warped sampling of radial J_1")
 
 # Polar DFT
 fig = plt.figure()
-#plt.imshow(20*np.log10(np.abs(pdft)))
-#plt.title("Magnitude DFT of {} [dB]\n in polar frequency domain using Baddour coordinates".format(DATA_FILENAME))
-plt.imshow(np.abs(pdft))
+plt.imshow(np.abs(pdft), cmap="gray")
 plt.title("Magnitude DFT of radial J_1\n in polar frequency domain using Baddour coordinates")
 
 # Frequency domain DFT cartesian grid
 fig = plt.figure()
-ax = fig.gca(projection='3d')
-# plt.imshow(20*np.log10(np.abs(pdft_cart)), cmap="gray")
-surf = ax.plot_surface(FXX, FYY, 20*np.log10(np.abs(pdft)), rstride=1, cstride=1,
-    linewidth=0, antialiased=False)
-# clb = plt.colorbar()
+plt.imshow(20*np.log10(np.abs(pdft_cart)), cmap="gray")
+clb = plt.colorbar()
 plt.title("Polar DFT in frequency domain cartesian grid [dB]")
-
-# Polar DFT using unwarp_polar
-fig = plt.figure()
-plt.imshow(unwarp_polar(np.abs(pdft).T))
-plt.title("Magnitude DFT of radial J_1\n in cartesian frequency domain using unwarp_polar")
 
 # Compare to 2D FFT
 fft = np.fft.fftshift(np.fft.fft2(image))
@@ -149,6 +147,5 @@ fft = np.fft.fftshift(np.fft.fft2(image))
 fig = plt.figure()
 plt.imshow(20*np.log10(np.abs(fft)))
 plt.title("Magnitude FFT of {}\n [dB] in frequency domain".format(DATA_FILENAME))
-
 
 plt.show()
