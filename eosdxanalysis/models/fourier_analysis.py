@@ -119,7 +119,7 @@ def YmatrixAssembly(n, N1, jn_zeros):
             raise NotImplementedError("Input array n with more than 1 dimension {} is not implemented.".format(n.shape))
     elif np.issubdtype(type(n), np.integer):
         shape = (1, N1-1, N1-1)
-        jn_zeros = jn_zeros.reshape(1,N1)
+        jn_zeros = jn_zeros[:N1].reshape(1,N1)
         n = np.array([[n]])
     else:
         raise ValueError("Input `n` must be an int or array of int, not {}.".format(type(n)))
