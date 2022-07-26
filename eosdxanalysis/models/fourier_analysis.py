@@ -159,8 +159,6 @@ def ipfft2_SpaceLimited(discrete_sampled_function, N1, N2, R):
 
     M = int((N2-1)//2)
 
-    rhomatrix, psimatrix = freq_sampling_grid(N1, N2, R)
-
     # Convert to equispaced polar coordinates
     grid_shape = (N2, N1-1)
 
@@ -169,7 +167,6 @@ def ipfft2_SpaceLimited(discrete_sampled_function, N1, N2, R):
     """
     # Shift rows (i.e. move last half of rows to the front),
     # perform 1D FFT, then shift back
-    # fnk = np.roll( np.fft.fft( np.roll(fpprimek, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
     FNL = np.roll( np.fft.fft( np.roll(discrete_sampled_function, M+1, axis=0), N2, axis=0), -(M+1), axis=0)
 
     """
@@ -206,17 +203,20 @@ def idht(FNL, N2, N1, R, jn_zerosmatrix=None):
     # Set up sign array
     sign = np.ones(N2)
     nrange = np.arange(-M, M+1)
-    # Use index notation, so that n = -M corresponds to index 0
-    iirange=nrange+M
     sign[nrange < 0] = (-1)**abs(nrange[nrange < 0])
 
     jn_zerosmatrix_sub = jn_zerosmatrix[abs(nrange),:]
 
-    jnN1 = jn_zerosmatrix_sub[:, N1-1]
+    for n in nrange:
+        # Use index notation, so that n = -M corresponds to index 0
+        ii=n+M
+        zero2 = jn_zerosmatrix_sub[ii, :]
 
-    Y = np.einsum('i,ijk->ijk', sign, YmatrixAssembly(abs(nrange), N1, jn_zerosmatrix_sub))
+        jnN1 = jn_zerosmatrix_sub[ii, N1-1]
 
-    Fnk = np.einsum('nl,nkl->nk', FNL, Y)
-    fnk = np.einsum('nk,n->nk', Fnk, np.power(1j, nrange)*jnN1/(2*np.pi*R**2))
+        Y = sign[ii]*YmatrixAssembly(abs(n),N1,zero2)
+
+        Fnk[ii,:] = FNL[ii,:] @ Y.T
+        fnk[ii,:] = Fnk[ii,:] * ((jnN1)*np.power(1j,n))/(2*np.pi*(R**2))
 
     return fnk
