@@ -584,55 +584,55 @@ class TestFourierAnalysis(unittest.TestCase):
 
         # Gaussian
         a = 0.1
+        gau = lambda x, a : np.exp(-(a*x)**2)
         gau2 = lambda x, a : np.exp(-((a*x)**2)/4)
 
         # Let's create a real measurement of our Gaussian
         # Set up our resolution
-        dfx = 0.2
-        dfy = 0.2
+        dx = 0.2
+        dy = 0.2
 
         # Let's create a meshgrid,
         # note that x and y have even length
-        fx = np.arange(-R+dfx/2, R+dfx/2, dfx)
-        fy = np.arange(-R+dfx/2, R+dfx/2, dfy)
-        FXX, FYY = np.meshgrid(fx, fy)
+        x = np.arange(-R+dx/2, R+dx/2, dx)
+        y = np.arange(-R+dx/2, R+dx/2, dy)
+        XX, YY = np.meshgrid(x, y)
 
-        rhomatrix, psimatrix = freq_sampling_grid(N1, N2, R)
+        RR = np.sqrt(XX**2 + YY**2)
 
-        fx, fy1 = pol2cart(psimatrix, rhomatrix);
-
-        discrete_image = gau2(rhomatrix, a)
+        discrete_image = np.exp(-(a*RR)**2)
 
         origin = (discrete_image.shape[0]/2-0.5, discrete_image.shape[1]/2-0.5)
 
         # Now sample the discrete image according to the Baddour polar grid
         # First get rmatrix and thetamatrix
-        rhomatrix, thetamatrix = freq_sampling_grid(N1, N2, R)
+        rmatrix, thetamatrix = sampling_grid(N1, N2, R)
         # Now convert rmatrix to Cartesian coordinates
-        FYcart, FXcart = pol2cart(thetamatrix, rhomatrix)
-        FYcart = FYcart/dfy
-        FXcart = FXcart/dfx
+        Xcart = rmatrix*np.cos(thetamatrix)/dx
+        Ycart = rmatrix*np.sin(thetamatrix)/dy
         # Now convert Cartesian coordinates to the array notation
         # by shifting according to the origin
-        FXindices = FXcart + origin[0]
-        FYindices = origin[1] - FYcart
+        Xindices = Xcart + origin[0]
+        Yindices = origin[1] - Ycart
 
-        cart_sampling_indices = [FYindices, FXindices]
+        cart_sampling_indices = [Yindices, Xindices]
 
         fdiscrete = map_coordinates(discrete_image, cart_sampling_indices)
-        fcontinuous = gau2(rhomatrix, a)
+        fcontinuous = gau(rmatrix, a)
 
         # Check that these two are close
         self.assertTrue(np.isclose(fdiscrete, fcontinuous).all())
 
-        dft = pfft2_SpaceLimited(fdiscrete, N1, N2, R)
+        idft = ipfft2_SpaceLimited(fdiscrete, N1, N2, R)
 
         # Check against known result
         # Load the known DFT matrix
         dft_fullpath = os.path.join(self.testdata_path,
-                "dft_gaussian.mat")
-        known_dft = loadmat(dft_fullpath).get("dft_gaussian")
+                "idft_gaussian.mat")
+        known_idft = loadmat(dft_fullpath).get("idft_gaussian")
 
-        self.assertTrue(np.isclose(dft, known_dft).all())
+        self.assertTrue(np.isclose(idft, known_idft).all())
+
+
 if __name__ == '__main__':
     unittest.main()
