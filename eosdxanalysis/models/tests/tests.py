@@ -571,10 +571,10 @@ class TestFourierAnalysis(unittest.TestCase):
 
         self.assertTrue(np.isclose(dft, known_dft).all())
 
-    def test_ipfft2_SpaceLimited_discrete_input(self):
+    def test_ipfft2_SpaceLimited_continuous_input(self):
         """
         Test 2D Discrete Inverse Polar Fourier Transform
-        for a space-limited discrete function
+        for a space-limited continuous function
         """
         # Set sampling rates
         N1 = 4 # Radial sampling rate
@@ -584,54 +584,24 @@ class TestFourierAnalysis(unittest.TestCase):
 
         # Gaussian
         a = 0.1
-        gau = lambda x, a : np.exp(-(a*x)**2)
-        gau2 = lambda x, a : np.exp(-((a*x)**2)/4)
+        # Frequency domain
+        gau2 = lambda x, a : np.pi/(a**2)*np.exp(-((x/a)**2)/4)
 
-        # Let's create a real measurement of our Gaussian
-        # Set up our resolution
-        dx = 0.2
-        dy = 0.2
+        rmatrix = rmatrix_SpaceLimited(N2, N1, R)
+        rhomatrix = rhomatrix_SpaceLimited(N2, N1, R)
+        
+        # Frequency domain
+        freq_gaussian = gau2(rhomatrix, 1.0)
 
-        # Let's create a meshgrid,
-        # note that x and y have even length
-        x = np.arange(-R+dx/2, R+dx/2, dx)
-        y = np.arange(-R+dx/2, R+dx/2, dy)
-        XX, YY = np.meshgrid(x, y)
+        # Take inverse DFT of frequency domain Gaussian
+        idft = ipfft2_SpaceLimited(freq_gaussian, N1, N2, R)
 
-        RR = np.sqrt(XX**2 + YY**2)
-
-        discrete_image = np.exp(-(a*RR)**2)
-
-        origin = (discrete_image.shape[0]/2-0.5, discrete_image.shape[1]/2-0.5)
-
-        # Now sample the discrete image according to the Baddour polar grid
-        # First get rmatrix and thetamatrix
-        rmatrix, thetamatrix = sampling_grid(N1, N2, R)
-        # Now convert rmatrix to Cartesian coordinates
-        Xcart = rmatrix*np.cos(thetamatrix)/dx
-        Ycart = rmatrix*np.sin(thetamatrix)/dy
-        # Now convert Cartesian coordinates to the array notation
-        # by shifting according to the origin
-        Xindices = Xcart + origin[0]
-        Yindices = origin[1] - Ycart
-
-        cart_sampling_indices = [Yindices, Xindices]
-
-        fdiscrete = map_coordinates(discrete_image, cart_sampling_indices)
-        fcontinuous = gau(rmatrix, a)
-
-        # Check that these two are close
-        self.assertTrue(np.isclose(fdiscrete, fcontinuous).all())
-
-        idft = ipfft2_SpaceLimited(fdiscrete, N1, N2, R)
-
-        # Check against known result
-        # Load the known DFT matrix
-        dft_fullpath = os.path.join(self.testdata_path,
+        # Compare to results from Matlab code
+        idft_gaussian_fullpath = os.path.join(self.testdata_path,
                 "idft_gaussian.mat")
-        known_idft = loadmat(dft_fullpath).get("idft_gaussian")
+        idft_gaussian = loadmat(idft_gaussian_fullpath).get("idft_gaussian")
 
-        self.assertTrue(np.isclose(idft, known_idft).all())
+        self.assertTrue(np.isclose(idft, idft_gaussian).all())
 
 
 if __name__ == '__main__':
