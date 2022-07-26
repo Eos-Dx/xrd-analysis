@@ -8,6 +8,7 @@ from scipy.special import jv
 from scipy.ndimage import map_coordinates
 
 from eosdxanalysis.models.polar_sampling import sampling_grid
+from eosdxanalysis.models.polar_sampling import freq_sampling_grid
 
 MODULE_PATH = os.path.dirname(__file__)
 DATA_DIR = "data"
@@ -205,20 +206,17 @@ def idht(FNL, N2, N1, R, jn_zerosmatrix=None):
     # Set up sign array
     sign = np.ones(N2)
     nrange = np.arange(-M, M+1)
+    # Use index notation, so that n = -M corresponds to index 0
+    iirange=nrange+M
     sign[nrange < 0] = (-1)**abs(nrange[nrange < 0])
 
     jn_zerosmatrix_sub = jn_zerosmatrix[abs(nrange),:]
 
-    for n in nrange:
-        # Use index notation, so that n = -M corresponds to index 0
-        ii=n+M
-        zero2 = jn_zerosmatrix_sub[ii, :]
+    jnN1 = jn_zerosmatrix_sub[:, N1-1]
 
-        jnN1 = jn_zerosmatrix_sub[ii, N1-1]
+    Y = np.einsum('i,ijk->ijk', sign, YmatrixAssembly(abs(nrange), N1, jn_zerosmatrix_sub))
 
-        Y = sign[ii]*YmatrixAssembly(abs(n),N1,zero2)
+    Fnk = np.einsum('nl,nkl->nk', FNL, Y)
+    fnk = np.einsum('nk,n->nk', Fnk, np.power(1j, nrange)*jnN1/(2*np.pi*R**2))
 
-        Fnk[ii,:] = ( Y.T @ FNL[ii,:] ).T
-        fnk[ii,:] = Fnk[ii,:] * ((jnN1)*np.power(1j,n))/(2*pi*R^2)
-
-    return Fnl
+    return fnk
