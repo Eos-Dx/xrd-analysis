@@ -78,21 +78,17 @@ def dht(fnk, N2, N1, R, jn_zerosmatrix=None):
     # Set up sign array
     sign = np.ones(N2)
     nrange = np.arange(-M, M+1)
+    iirange=nrange+M
     sign[nrange < 0] = (-1)**abs(nrange[nrange < 0])
 
     jn_zerosmatrix_sub = jn_zerosmatrix[abs(nrange),:]
 
-    for n in nrange:
-        # Use index notation, so that n = -M corresponds to index 0
-        ii=n+M
-        zero2 = jn_zerosmatrix_sub[ii, :]
+    jnN1 = jn_zerosmatrix_sub[iirange, N1-1]
 
-        jnN1 = jn_zerosmatrix_sub[ii, N1-1]
+    Y = np.einsum('i,ijk->ijk', sign, YmatrixAssembly(abs(nrange), N1, jn_zerosmatrix_sub))
 
-        Y = sign[ii]*YmatrixAssembly(abs(n),N1,zero2)
-
-        fnl[ii,:] = ( Y @ fnk[ii,:].T ).T
-        Fnl[ii,:] = fnl[ii,:] * (2*np.pi*(np.power(1j, -n)))*(R**2/jnN1)
+    fnl = np.einsum('nk,nlk->nl', fnk, Y)
+    Fnl = np.einsum('nl,n->nl', fnl, (2*np.pi*(np.power(1j, -nrange)))*(R**2/jnN1))
 
     return Fnl
 
