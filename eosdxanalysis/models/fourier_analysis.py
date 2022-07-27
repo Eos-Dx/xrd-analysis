@@ -203,20 +203,16 @@ def idht(FNL, N2, N1, R, jn_zerosmatrix=None):
     # Set up sign array
     sign = np.ones(N2)
     nrange = np.arange(-M, M+1)
+    # Use index notation, so that n = -M corresponds to index 0
+    iirange=nrange+M
     sign[nrange < 0] = (-1)**abs(nrange[nrange < 0])
 
     jn_zerosmatrix_sub = jn_zerosmatrix[abs(nrange),:]
 
-    for n in nrange:
-        # Use index notation, so that n = -M corresponds to index 0
-        ii=n+M
-        zero2 = jn_zerosmatrix_sub[ii, :]
+    jnN1 = jn_zerosmatrix_sub[iirange, N1-1]
 
-        jnN1 = jn_zerosmatrix_sub[ii, N1-1]
-
-        Y = sign[ii]*YmatrixAssembly(abs(n),N1,zero2)
-
-        Fnk[ii,:] = FNL[ii,:] @ Y.T
-        fnk[ii,:] = Fnk[ii,:] * ((jnN1)*np.power(1j,n))/(2*np.pi*(R**2))
+    Y = np.einsum('i,ijk->ijk', sign, YmatrixAssembly(abs(nrange), N1, jn_zerosmatrix_sub))
+    Fnk = np.einsum('nk,nlk->nl', FNL, Y)
+    fnk = np.einsum('nl,n->nl', Fnk, (jnN1)*np.power(1j,nrange))/(2*np.pi*(R**2))
 
     return fnk
