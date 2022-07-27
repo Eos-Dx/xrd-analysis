@@ -12,7 +12,7 @@ from eosdxanalysis.models.polar_sampling import freq_sampling_grid
 
 MODULE_PATH = os.path.dirname(__file__)
 DATA_DIR = "data"
-JN_ZEROSMATRIX_FILENAME = "jn_zerosmatrix.npy"
+JN_ZEROSMATRIX_FILENAME = "jn_zeros_501_501.npy"
 
 
 def pfft2_SpaceLimited(discrete_sampled_function, N1, N2, R, jn_zerosmatrix=None):

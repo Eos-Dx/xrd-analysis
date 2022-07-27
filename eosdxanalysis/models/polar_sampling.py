@@ -13,7 +13,7 @@ import numpy as np
 
 MODULE_PATH = os.path.dirname(__file__)
 DATA_DIR = "data"
-JN_ZEROSMATRIX_FILENAME = "jn_zerosmatrix.npy"
+JN_ZEROSMATRIX_FILENAME = "jn_zeros_501_501.npy"
 
 # R = 1, N1 = 16 and N2 = 15
 
