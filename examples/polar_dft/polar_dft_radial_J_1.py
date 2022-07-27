@@ -42,7 +42,7 @@ x = np.arange(-R+dx/2, R+dx/2, dx)
 y = np.arange(-R+dx/2, R+dx/2, dy)
 XX, YY = np.meshgrid(x, y)
 
-RR, TT = cart2pol(XX, YY)
+TT, RR = cart2pol(XX, YY)
 
 n=20
 # image = jv(n, RR)*np.cos(TT)
