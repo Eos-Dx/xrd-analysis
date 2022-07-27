@@ -15,7 +15,7 @@ DATA_DIR = "data"
 JN_ZEROSMATRIX_FILENAME = "jn_zerosmatrix.npy"
 
 
-def pfft2_SpaceLimited(discrete_sampled_function, N1, N2, R):
+def pfft2_SpaceLimited(discrete_sampled_function, N1, N2, R, jn_zerosmatrix=None):
     """
     Function to perform the 2D Polar Discrete Fast Fourier Transform
 
@@ -27,6 +27,14 @@ def pfft2_SpaceLimited(discrete_sampled_function, N1, N2, R):
 
     The sampling grid has size (N2, N1-1)
     """
+    # If the jn_zerosmatrix is not given, read from file
+    if jn_zerosmatrix is None:
+        jn_zerosmatrix_path = os.path.join(
+                MODULE_PATH,
+                DATA_DIR,
+                JN_ZEROSMATRIX_FILENAME)
+        jn_zerosmatrix = np.load(jn_zerosmatrix_path)
+
     if N2 % 2 == 0:
         raise ValueError("N2 must be odd!")
 
@@ -49,7 +57,7 @@ def pfft2_SpaceLimited(discrete_sampled_function, N1, N2, R):
     1D Discrete Hankel Transform (DHT)
     """
     # Perform the 1D DHT
-    Fnl = dht(fnk, N2, N1, R)
+    Fnl = dht(fnk, N2, N1, R, jn_zerosmatrix=jn_zerosmatrix)
 
     """
     1D Inverse Fast Fourier Transform (IFFT)
@@ -141,7 +149,7 @@ def YmatrixAssembly(n, N1, jn_zeros):
 
     return Ymatrix
 
-def ipfft2_SpaceLimited(discrete_sampled_function, N1, N2, R):
+def ipfft2_SpaceLimited(discrete_sampled_function, N1, N2, R, jn_zerosmatrix=None):
     """
     Inverse Polar Fourier Transform
 
@@ -154,6 +162,14 @@ def ipfft2_SpaceLimited(discrete_sampled_function, N1, N2, R):
     The sampling grid has size (N2, N1-1)
     Input is a cartesian image, maximum radius R, and sampling grid
     """
+    # If the jn_zerosmatrix is not given, read from file
+    if jn_zerosmatrix is None:
+        jn_zerosmatrix_path = os.path.join(
+                MODULE_PATH,
+                DATA_DIR,
+                JN_ZEROSMATRIX_FILENAME)
+        jn_zerosmatrix = np.load(jn_zerosmatrix_path)
+
     if N2 % 2 == 0:
         raise ValueError("N2 must be odd!")
 
