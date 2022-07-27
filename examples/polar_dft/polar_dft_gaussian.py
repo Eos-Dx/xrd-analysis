@@ -14,6 +14,7 @@ from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
+from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import freq_sampling_grid
 from eosdxanalysis.models.utils import pol2cart
@@ -82,6 +83,11 @@ polar_points = np.vstack([FXX.ravel(), FYY.ravel()]).T
 polar_values = pdft.ravel()
 pdft_inter = griddata(polar_points, polar_values, (FXnew, FYnew), method='linear')
 
+"""
+Take Inverse DFT
+"""
+
+ipdft = ipfft2_SpaceLimited(pdft, N1, N2, R)
 
 """
 Plots
@@ -113,5 +119,10 @@ plt.title("DFT Matrix")
 fig = plt.figure("DFT Matrix Interpolated")
 plt.imshow(np.abs(pdft_inter), cmap="gray")
 plt.title("DFT Matrix Interpolated")
+
+# Plot the Inverse DFT
+fig = plt.figure("Inverse DFT")
+plt.imshow(np.abs(ipdft), cmap="gray")
+plt.title("Inverse DFT")
 
 plt.show()
