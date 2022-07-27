@@ -51,6 +51,8 @@ FXX, FYY = pol2cart(psimatrix, rhomatrix)
 
 # Create the image
 fdiscrete = gau(rmatrix, 1.0)
+XX, YY = np.mgrid[-R:R:N1*1j, -R:R:N1*1j]
+TT, RR = cart2pol(XX, YY)
 
 t1 = time.time()
 
@@ -59,6 +61,7 @@ print("Start-up time to sample Baddour polar grid:",np.round(t1-t0, decimals=2),
 """
 Polar DFT
 """
+TrueFunc = gau2(rhomatrix, 1.0)
 
 # Calculate the polar dft
 pdft = pfft2_SpaceLimited(fdiscrete, N1, N2, R)
@@ -67,8 +70,11 @@ t2 = time.time()
 
 print("Time to calculate the polar transform:", np.round(t2-t1, decimals=2), "s")
 
-# Plot the polar DFT on the sample grid in Cartesian frequency space
-
+"""
+Classic DFT
+"""
+fcart = gau(RR, 1.0)
+dft = np.fft.fftshift(np.fft.fft2(fcart))
 
 """
 Interpolate DFT
@@ -102,7 +108,6 @@ clb = fig.colorbar(surf)
 plt.title("DFT surface in frequency domain")
 
 # Polar DFT
-TrueFunc = gau2(rhomatrix, 1.0)
 fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 fig.canvas.manager.set_window_title("Continuous FT")
 surf = ax.plot_surface(FXX, FYY, np.abs(TrueFunc), cmap="gray",
@@ -124,5 +129,10 @@ plt.title("DFT Matrix Interpolated")
 fig = plt.figure("Inverse DFT")
 plt.imshow(np.abs(ipdft), cmap="gray")
 plt.title("Inverse DFT")
+
+# Plot the classic DFT
+fig = plt.figure("Classic DFT")
+plt.imshow(np.abs(dft), cmap="gray")
+plt.title("Classic DFT")
 
 plt.show()
