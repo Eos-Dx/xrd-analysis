@@ -23,9 +23,9 @@ from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 
 t0 = time.time()
 
-N1 = 17
+N1 = 383
 N2 = 15
-R = 5
+R = 40
 a = 0.1
 
 # Gaussian input function and it's polar DFT
@@ -90,7 +90,7 @@ polar_values = pdft.ravel()
 pdft_inter = griddata(polar_points, polar_values, (FXnew, FYnew), method='linear')
 
 """
-Take Inverse DFT
+Take Inverse DFT of DFT to get back original function
 """
 
 ipdft = ipfft2_SpaceLimited(pdft, N1, N2, R)
@@ -105,6 +105,7 @@ fig.canvas.manager.set_window_title("DFT")
 surf = ax.plot_surface(FXX, FYY, np.abs(pdft), cmap="gray",
                                linewidth=0, antialiased=False)
 clb = fig.colorbar(surf)
+ax.set_zlim(0, 1.5)
 plt.title("DFT surface in frequency domain")
 
 # Polar DFT
@@ -113,6 +114,7 @@ fig.canvas.manager.set_window_title("Continuous FT")
 surf = ax.plot_surface(FXX, FYY, np.abs(TrueFunc), cmap="gray",
                                linewidth=0, antialiased=False)
 clb = fig.colorbar(surf)
+ax.set_zlim(0, 1.5)
 plt.title("Continuous FT surface in frequency domain")
 
 # Plot the DFT matrix
@@ -129,6 +131,15 @@ plt.title("DFT Matrix Interpolated")
 fig = plt.figure("Inverse DFT")
 plt.imshow(np.abs(ipdft), cmap="gray")
 plt.title("Inverse DFT")
+
+# 3D Plot of Inverse DFT of DFT
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+fig.canvas.manager.set_window_title("Inverse DFT")
+surf = ax.plot_surface(Xcart, Ycart, np.abs(ipdft), cmap="gray",
+                               linewidth=0, antialiased=False)
+clb = fig.colorbar(surf)
+ax.set_zlim(0, 1.5)
+plt.title("Inverse DFT of DFT")
 
 # Plot the classic DFT
 fig = plt.figure("Classic DFT")
