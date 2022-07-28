@@ -18,24 +18,22 @@ int main()
 
     int max_n = 2; // Maximum Jn order
     unsigned zero_count = 10; // The 1-indexed zeros to compute
-    std::vector<double> jn_zeros; // Vector to store Jn zeros
 
+    // Set up outputfile and precision
+    std::ofstream outfile(OUTFILEPATH, std::ofstream::binary);
+    int precision = std::numeric_limits<double>::digits10+2;
+    outfile.precision(precision);
 
     try {
-		// Loop over Jn orders and number of zeros we are interested in
+        // Loop over Jn orders and number of zeros we are interested in
         for (int n = 0; n < max_n; n++) {
             for (int z = 0; z < zero_count; z++) {
-				// Use boost library function to calculate Jn zero
+                // Use boost library function to calculate Jn zero
                 double root = boost::math::cyl_bessel_j_zero(n*1.0, z+1);
-				// Store results in the vector
-                jn_zeros.push_back(root);
+                // Write results to file
+                outfile << root << std::endl;
             }
         }
-
-        // Save the vector to file
-        std::ofstream outfile(OUTFILEPATH, std::ofstream::binary);
-        std::ostream_iterator<double> output_iterator(outfile, "\n");
-        std::copy(jn_zeros.begin(), jn_zeros.end(), output_iterator);
 
     }
     catch (std::exception& ex)
