@@ -58,7 +58,7 @@ origin = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
 
 # Now sample the discrete image according to the Baddour polar grid
 # First get rmatrix and thetamatrix
-rmatrix, thetamatrix = sampling_grid(N1, N2, R)
+thetamatrix, rmatrix = sampling_grid(N1, N2, R)
 # Now convert rmatrix to Cartesian coordinates
 Xcart = rmatrix*np.cos(thetamatrix)
 Ycart = rmatrix*np.sin(thetamatrix)
