@@ -40,7 +40,7 @@ def pfft2_SpaceLimited(discrete_sampled_function, N1, N2, R, jn_zerosmatrix=None
 
     M = int((N2-1)//2)
 
-    rmatrix, thetamatrix = sampling_grid(N1, N2, R)
+    thetamatrix, rmatrix = sampling_grid(N1, N2, R)
 
     # Convert to equispaced polar coordinates
     grid_shape = (N2, N1-1)
