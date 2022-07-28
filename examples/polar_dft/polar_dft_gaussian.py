@@ -39,9 +39,9 @@ Baddour polar grid sampling
 
 # Now sample the discrete image according to the Baddour polar grid
 # First get rmatrix and thetamatrix
-rmatrix, thetamatrix = sampling_grid(N1, N2, R)
+thetamatrix, rmatrix = sampling_grid(N1, N2, R)
 # Get rhomatrix and psimatrix
-rhomatrix, psimatrix = freq_sampling_grid(N1, N2, R)
+psimatrix, rhomatrix = freq_sampling_grid(N1, N2, R)
 
 # Now convert rmatrix to Cartesian coordinates
 Xcart, Ycart = pol2cart(thetamatrix, rmatrix)

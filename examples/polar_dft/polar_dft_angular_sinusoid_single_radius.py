@@ -53,7 +53,7 @@ plt.show()
 
 # Now sample the discrete image according to the Baddour polar grid
 # First get rmatrix and thetamatrix
-rmatrix, thetamatrix = sampling_grid(N1, N2, R)
+thetamatrix, rmatrix = sampling_grid(N1, N2, R)
 # Now convert rmatrix to Cartesian coordinates
 Xcart = rmatrix*np.cos(thetamatrix)/dx
 Ycart = rmatrix*np.sin(thetamatrix)/dy

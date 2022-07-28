@@ -138,7 +138,7 @@ def sampling_grid(N1, N2, R):
     """
     rmatrix = rmatrix_SpaceLimited(N2, N1, R)
     thetamatrix = thetamatrix_SpaceLimited(N2, N1)
-    return rmatrix, thetamatrix
+    return thetamatrix, rmatrix
 
 def freq_sampling_grid(N1, N2, R):
     """
@@ -147,4 +147,4 @@ def freq_sampling_grid(N1, N2, R):
     """
     rhomatrix = rhomatrix_SpaceLimited(N2, N1, R)
     psimatrix = psimatrix_SpaceLimited(N2, N1)
-    return rhomatrix, psimatrix
+    return psimatrix, rhomatrix
