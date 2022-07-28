@@ -27,20 +27,25 @@ t0 = time.time()
 Take Inverse DFT of DFT to get back original function
 """
 
-N1 = 383
-N2 = 15
-R = 40
-a = 0.1
+N1 = 51
+N2 = 51
+R = 5
 
 fsignal = np.zeros((N2, N1-1))
 M = (N1-1)/2
-fsignal[N2//2, N
+fsignal[0, 0] = 10
 
 ipdft = ipfft2_SpaceLimited(fsignal, N1, N2, R)
 
 thetamatrix, rmatrix = sampling_grid(N1, N2, R)
 
 Xcart, Ycart = pol2cart(thetamatrix, rmatrix)
+
+# Take DFT of frequency signal
+pdft = pfft2_SpaceLimited(ipdft, N1, N2, R)
+psimatrix, rhomatrix = freq_sampling_grid(N1, N2, R)
+
+FX, FY = pol2cart(psimatrix, rhomatrix)
 
 """
 Plots
@@ -54,5 +59,14 @@ surf = ax.plot_surface(Xcart, Ycart, np.abs(ipdft), cmap="gray",
 clb = fig.colorbar(surf)
 ax.set_zlim(0, 1.5)
 plt.title("Inverse DFT of frequency signal")
+
+# 2D Plot
+fig = plt.figure("2D Plot")
+plt.scatter(Xcart, Ycart, c=ipdft, s=0.1)
+plt.title("Inverse DFT of frequency signal")
+
+# DFT
+fig = plt.figure("DFT")
+plt.imshow(np.abs(pdft), cmap="gray")
 
 plt.show()
