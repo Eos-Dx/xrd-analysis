@@ -33,7 +33,7 @@ from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 
 TEST_PATH = os.path.join("eosdxanalysis", "models", "tests")
 JN_ZEROSMATRIX_TEST_DIR = "test_jn_zerosmatrix"
-JN_ZEROSMATRIX_FILENAME = "jn_zerosmatrix.npy"
+JN_ZEROSMATRIX_FILENAME = "jn_zeros_501_501.npy"
 
 
 class TestPolynomialFit(unittest.TestCase):
@@ -544,7 +544,7 @@ class TestFourierAnalysis(unittest.TestCase):
 
         # Now sample the discrete image according to the Baddour polar grid
         # First get rmatrix and thetamatrix
-        rmatrix, thetamatrix = sampling_grid(N1, N2, R)
+        thetamatrix, rmatrix = sampling_grid(N1, N2, R)
         # Now convert rmatrix to Cartesian coordinates
         Xcart = rmatrix*np.cos(thetamatrix)/dx
         Ycart = rmatrix*np.sin(thetamatrix)/dy
