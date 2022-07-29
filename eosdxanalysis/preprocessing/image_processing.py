@@ -77,7 +77,7 @@ def centerize(img, center, method="standard"):
         new_cols = int(np.around(col_radius*2))+1
 
         # Calculate the position of the old image in the new image
-        row_start = int(np.around(mod_center[1] - row_radius + trans_row))
+        row_start = int(np.around(mod_center[0] - row_radius + trans_row))
         row_end = row_start + nrows
         col_start = int(np.around(mod_center[1] - col_radius + trans_col))
         col_end = col_start + ncols
