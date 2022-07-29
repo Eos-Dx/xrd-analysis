@@ -14,6 +14,9 @@ def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min
     If dimension is even, center is in between pixels, location is a half-index.
     If dimension is odd, take middle of center pixel, location is a whole index.
 
+    `rmax` for `min` mode is the distance from the center to the nearest edge
+    with a 0.5 distance buffer.
+
     Compare to opencv circle:
     https://docs.opencv.org/4.x/d6/d6e/group__imgproc__draw.html#gaf10604b069374903dbd0f0488cb43670
     """
@@ -21,9 +24,9 @@ def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min
         center = (nrows/2-0.5, ncols/2-0.5)
     if rmax is None: # use the smallest distance between the center and image walls
         if mode == "min":
-            rmax = np.min([center[0]+0.5, center[1]+0.5, ncols-1-center[0]+0.5, nrows-1-center[1]+0.5])
+            rmax = np.min([center[0], center[1], ncols-1-center[0], nrows-1-center[1]])
         else:
-            rmax = np.max([center[0]+0.5, center[1]+0.5, ncols-1-center[0]+0.5, nrows-1-center[1]+0.5])
+            rmax = np.max([center[0], center[1], ncols-1-center[0], nrows-1-center[1]])
 
     # Create a grid of coordinates
     Rows, Cols = np.ogrid[:nrows, :ncols]
