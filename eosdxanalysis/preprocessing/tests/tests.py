@@ -63,6 +63,7 @@ def gen_2d_intensity_profile(N=16):
     Z = np.sin(X)+np.cos(Y)
     return intensity_profile_function(Z,N)
 
+
 class TestCreateCircularMask(unittest.TestCase):
     """
     Test create_circular_mask
@@ -83,11 +84,11 @@ class TestCreateCircularMask(unittest.TestCase):
         # Store expected result for circular mask of (5,5) array
         # with default center, rmin, and rmax
         test_5x5_mask = np.array([
-            [False, False,  True, False, False],
-            [False,  True,  True,  True, False],
-            [ True,  True,  True,  True,  True],
-            [False,  True,  True,  True, False],
-            [False, False,  True, False, False],
+            [False,  False, True, False, False],
+            [False,  True,  True, True,  False],
+            [True,   True,  True, True,  True],
+            [False,  True,  True, True,  False],
+            [False,  False, True, False, False],
         ])
 
         # Test if the generated mask equals the expected mask
@@ -141,7 +142,7 @@ class TestCreateCircularMask(unittest.TestCase):
         self.assertTrue(np.array_equal(mask_4x4, test_4x4_mask))
 
     def test_circular_mask_center_specified_odd_square_output(self):
-        # Specify 4x4 shape
+        # Specify 5x5 shape
         nrows = 5
         ncols = 5
         row_center = 2
@@ -179,9 +180,9 @@ class TestCreateCircularMask(unittest.TestCase):
         # with default center, rmin, and rmax
         test_4x4_mask = np.array([
             [False, False, False, False],
-            [False,  True,  True,  True],
-            [False,  True,  True,  True],
-            [False,  True,  True,  True],
+            [False, False, True, False],
+            [False,  True, True,  True],
+            [False, False, True, False],
         ])
 
         # Test if the generated mask equals the expected mask
