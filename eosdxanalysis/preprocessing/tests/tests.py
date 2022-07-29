@@ -198,13 +198,19 @@ class TestPreprocessingCLI(unittest.TestCase):
         test_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images")
         self.test_dir = test_dir
 
-        # Specify parameters file
-
+        # Specify parameters file without plans
         params_file = os.path.join(test_dir, "params.txt")
         self.params_file = params_file
         with open(params_file, "r") as param_fp:
             params = param_fp.read()
         self.params = params
+
+        # Specify parameters file with plans
+        params_with_plans_file = os.path.join(test_dir, "params_with_plans.txt")
+        self.params_with_plans_file = params_with_plans_file
+        with open(params_with_plans_file, "r") as param_fp:
+            params_with_plans = param_fp.read()
+        self.params_with_plans = params_with_plans
 
         # Set the input and output directories
         test_input_dir = os.path.join(test_dir, "input")
@@ -217,13 +223,12 @@ class TestPreprocessingCLI(unittest.TestCase):
 
         self.input_files_fullpaths = input_files_fullpaths
 
-    def test_preprocess_cli(self):
+    def test_preprocess_cli_input_dir_output_dir_params_file_plans_in_params_file(self):
         """
         Run preprocessing using commandline, providing input data directory
         and output directory.
         """
-        params = self.params
-        params_file = self.params_file
+        params_with_plans_file = self.params_with_plans_file
         test_input_dir = self.test_input_dir
         test_output_dir = self.test_output_dir
         input_files_fullpaths = self.input_files_fullpaths
@@ -237,8 +242,62 @@ class TestPreprocessingCLI(unittest.TestCase):
         command = ["python", "eosdxanalysis/preprocessing/preprocess.py",
                     "--input_dir", test_input_dir,
                     "--output_dir", test_output_dir,
+                    "--params_file", params_with_plans_file,
+                    ]
+
+        # Run the command
+        subprocess.run(command)
+
+        # Check that output files exist
+        # First get list of files
+        num_files = len(input_files_fullpaths)
+
+        # Check that number of files is > 0
+        self.assertTrue(num_files > 0)
+        # Check that number of input and output files is the same
+        plan_output_dir = os.path.join(test_output_dir, output_style)
+        plan_output_files_fullpaths = glob.glob(os.path.join(plan_output_dir, "*.txt"))
+
+        self.assertEqual(num_files, len(plan_output_files_fullpaths))
+
+        for idx in range(num_files):
+            # Load data
+            input_image = np.loadtxt(input_files_fullpaths[idx])
+            output_image = np.loadtxt(plan_output_files_fullpaths[idx])
+
+            # Check that data are positive
+            self.assertTrue(input_image[input_image > 0].all())
+            self.assertTrue(output_image[output_image > 0].all())
+
+            # Check that the maximum value of the output is less than the
+            # maximum value of the input
+            self.assertTrue(np.max(output_image) < np.max(input_image))
+
+            # Check that output means are smaller than input means
+            self.assertTrue(np.mean(output_image) < np.mean(input_image))
+
+    def test_preprocess_cli_input_dir_output_dir_params_file_params_csv_string(self):
+        """
+        Run preprocessing using commandline, providing input data directory
+        and output directory.
+        """
+        params_file = self.params_file
+        test_input_dir = self.test_input_dir
+        test_output_dir = self.test_output_dir
+        input_files_fullpaths = self.input_files_fullpaths
+
+        # Construct plans list
+        plan = "centerize_rotate_quad_fold"
+        plans = [plan,]
+        plan_abbr = ABBREVIATIONS.get(plan)
+        output_style = INVERSE_OUTPUT_MAP.get(plan)
+
+        # Set up the command
+        command = ["python", "eosdxanalysis/preprocessing/preprocess.py",
+                    "--input_dir", test_input_dir,
+                    "--output_dir", test_output_dir,
                     "--params_file", params_file,
-                    "--plans", plan,
+                    "--plans", ",".join(plans),
                     ]
 
         # Run the command
