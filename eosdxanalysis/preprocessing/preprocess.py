@@ -375,7 +375,7 @@ class PreprocessData(object):
                                         resize=False,
                                         center=(new_center[1], new_center[0]))
         # Crop to original size
-        centered_rotated_image = crop_image(centered_rotated_image_large, h, w, new_center)
+        centered_rotated_image = crop_image(centered_rotated_image_large, h, w)
         return centered_rotated_image, center, new_center, angle
 
     def mask(self, image, style="both"):
