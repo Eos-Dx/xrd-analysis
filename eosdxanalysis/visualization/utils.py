@@ -135,6 +135,9 @@ def plot_data_dir(input_directory, output_directory, scaling="dB1",
 
     print("Found " + str(len(input_filenames)) + " files.")
 
+    # Create output directory if it doesn't exist
+    os.makedirs(output_directory, exist_ok=True)
+
     basenames = [os.path.basename(fname) for fname in input_filenames]
     barcodes = [os.path.splitext(bname)[0] for bname in basenames]
 
@@ -155,7 +158,11 @@ def plot_data_dir(input_directory, output_directory, scaling="dB1",
             fig.suptitle(basenames[idx] + " [dB+1]")
 
         # Plot image
+        fig = plt.figure(1)
         plt.imshow(output_image, cmap="gray")
 
         # Save figure to file
         plt.savefig(os.path.join(output_directory, basenames[idx]) + ".png")
+
+        # Close figure
+        plt.close(fig)

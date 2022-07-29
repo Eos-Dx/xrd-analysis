@@ -8,6 +8,8 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 from skimage.transform import warp_polar
+from skimage.transform import warp
+from skimage.transform import EuclideanTransform
 
 from scipy.signal import find_peaks
 
@@ -15,7 +17,6 @@ from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.center_finding import find_center
-from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
@@ -68,10 +69,13 @@ class Calibration(object):
 
         # Centerize the image
         center = find_center(image)
-        centered_image_enlarged, new_center = centerize(image, center)
-        # Crop the image
-        centered_image = crop_image(centered_image_enlarged,
-                    image.shape[1], image.shape[0], center=new_center)
+        array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+        # Find eye rotation using original image
+        translation = (array_center[0] - center[0], array_center[1] - center[1])
+
+        # Center the image
+        translation_tform = EuclideanTransform(translation=translation)
+        centered_image = warp(image, translation_tform.inverse)
 
         # Warp to polar
         # Set a maximum radius which we are interested in
