@@ -433,13 +433,16 @@ class TestPreprocessData(unittest.TestCase):
         input_image = np.loadtxt(input_filename_fullpath)
         output_image = np.loadtxt(output_filename_fullpath)
 
-        # Check center of saved file
         preprocessed_image = np.loadtxt(output_filename_fullpath)
-        calculated_center = find_center(preprocessed_image)
-        # Proper centerized images would have center near here:
-        center = (128,128)
 
-        self.assertTrue(np.isclose(center, calculated_center, atol=1.0).all())
+        # Check if image is non-zero
+        self.assertFalse(np.array_equal(preprocessed_image, np.zeros(preprocessed_image.shape)))
+
+        # Check center of saved file
+        calculated_center = find_center(preprocessed_image)
+        center = (127.5,127.5)
+
+        self.assertTrue(np.isclose(center, calculated_center, atol=0.75).all())
 
 
 class TestCenterFinding(unittest.TestCase):
