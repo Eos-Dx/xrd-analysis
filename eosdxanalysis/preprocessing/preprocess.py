@@ -370,12 +370,18 @@ class PreprocessData(object):
         angle_degrees = self.find_eye_rotation_angle(image, center)
         translation = (center[0] - array_center[0], center[1] - array_center[1])
 
-        # Center the image
-        translation_tform = EuclideanTransform(translation=translation)
-        centered_image = warp(image, translation_tform.inverse)
+        # Center the image if need be
+        if np.array_equal(center, array_center):
+            centered_image = image
+        else:
+            translation_tform = EuclideanTransform(translation=translation)
+            centered_image = warp(image, translation_tform.inverse)
 
         # Rotate the image
-        centered_rotated_image = rotate(centered_image, -angle_degrees)
+        if np.isclose(angle_degrees, 0):
+            centered_rotated_image = centered_image
+        else:
+            centered_rotated_image = rotate(centered_image, -angle_degrees, preserve_range=True)
 
         # Centerize the image
         return centered_rotated_image, center, angle_degrees
