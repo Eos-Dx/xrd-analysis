@@ -385,8 +385,8 @@ class TestPreprocessData(unittest.TestCase):
         test_image = np.zeros((256,256), dtype=np.uint16)
         center = (test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5)
         test_image[127:129, 127:129] = 9
-        test_image[(127-50):(129-50), (127-50+2):(129-50+2)] = 5
-        test_image[(127+50):(129+50), (127+50-2):(129+50-2)] = 5
+        test_image[92, 163] = 5
+        test_image[163, 92] = 5
 
         self.test_image = test_image
 
@@ -441,8 +441,11 @@ class TestPreprocessData(unittest.TestCase):
         # Check center of saved file
         calculated_center = find_center(preprocessed_image)
         center = (127.5,127.5)
-
         self.assertTrue(np.isclose(center, calculated_center, atol=0.75).all())
+
+        # Check the rotation angle
+        angle = preprocessor.find_eye_rotation_angle(preprocessed_image, center)
+        self.assertTrue(np.isclose(angle,135))
 
 
 class TestCenterFinding(unittest.TestCase):
