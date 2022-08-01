@@ -211,6 +211,23 @@ class TestPreprocessingCLI(unittest.TestCase):
             params_with_plans = param_fp.read()
         self.params_with_plans = params_with_plans
 
+        # Create test images
+        INPUT_DIR="input"
+
+        # Set up test image
+        test_image = np.zeros((256,256), dtype=np.uint16)
+        center = (test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5)
+        test_image[127:129, 127:129] = 9
+        test_image[(127-50):(129-50), (127-50+2):(129-50+2)] = 5
+        test_image[(127+50):(129+50), (127+50-2):(129+50-2)] = 5
+
+        # Set the filename
+        filename = "test_cli.txt"
+        # Set the full output path
+        fullpath = os.path.join(test_dir, INPUT_DIR, filename)
+        # Save the image to file
+        np.savetxt(fullpath, test_image, fmt="%d")
+
         # Set the input and output directories
         test_input_dir = os.path.join(test_dir, "input")
         test_output_dir = os.path.join(test_dir, "output")
@@ -219,6 +236,7 @@ class TestPreprocessingCLI(unittest.TestCase):
         self.test_output_dir = test_output_dir
 
         input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
+        input_files_fullpaths.sort()
 
         self.input_files_fullpaths = input_files_fullpaths
 
@@ -256,6 +274,7 @@ class TestPreprocessingCLI(unittest.TestCase):
         # Check that number of input and output files is the same
         plan_output_dir = os.path.join(test_output_dir, output_style)
         plan_output_files_fullpaths = glob.glob(os.path.join(plan_output_dir, "*.txt"))
+        plan_output_files_fullpaths.sort()
 
         self.assertEqual(num_files, len(plan_output_files_fullpaths))
 
@@ -311,6 +330,7 @@ class TestPreprocessingCLI(unittest.TestCase):
         # Check that number of input and output files is the same
         plan_output_dir = os.path.join(test_output_dir, output_style)
         plan_output_files_fullpaths = glob.glob(os.path.join(plan_output_dir, "*.txt"))
+        plan_output_files_fullpaths.sort()
 
         self.assertEqual(num_files, len(plan_output_files_fullpaths))
 
@@ -341,57 +361,80 @@ class TestPreprocessingCLI(unittest.TestCase):
 class TestPreprocessData(unittest.TestCase):
 
     def setUp(self):
-        params = {
-            # Set parameters
-            # Image size
-            "h":256,
-            "w":256,
-            # Region of interest for beam center on raw images
-            # rmax_beam=50
-            "beam_rmax":25,
-            # Annulus region of interest for XRD pattern
-            # rmin=30
-            # rmax=120
-            "rmin":25,
-            "rmax":90,
-            # Annulus region of interest for 9A feature region
-            # reyes_min=40
-            # reyes_max=80
-            "eyes_rmin":30,
-            "eyes_rmax":45,
-            # Maximum distance from 9A feature maximum intensity location
-            # for blob analysis
-            # reyes_max_blob=30
-            "eyes_blob_rmax":20,
-            # Percentile used to analyze 9A features as blobs
-            "eyes_percentile":99,
-            # Local threshold block size
-            # local_threshold_block_size = 27
-            "local_thresh_block_size":21,
-        }
+        test_dir = os.path.join(TEST_IMAGE_DIR, "test_preprocessing_images")
+        self.test_dir = test_dir
+
+        # Specify parameters file without plans
+        params_file = os.path.join(test_dir, "params.txt")
+        self.params_file = params_file
+        with open(params_file, "r") as param_fp:
+            params = param_fp.read()
         self.params = params
 
+        # Specify parameters file with plans
+        params_with_plans_file = os.path.join(test_dir, "params_with_plans.txt")
+        self.params_with_plans_file = params_with_plans_file
+        with open(params_with_plans_file, "r") as param_fp:
+            params_with_plans = param_fp.read()
+        self.params_with_plans = params_with_plans
+
+        # Create test images
+        INPUT_DIR="input"
+
+        # Set up test image
+        test_image = np.zeros((256,256), dtype=np.uint16)
+        center = (test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5)
+        test_image[127:129, 127:129] = 9
+        test_image[(127-50):(129-50), (127-50+2):(129-50+2)] = 5
+        test_image[(127+50):(129+50), (127+50-2):(129+50-2)] = 5
+
+        self.test_image = test_image
+
+        # Set the filename
+        filename = "test_cli.txt"
+        # Set the full output path
+        fullpath = os.path.join(test_dir, INPUT_DIR, filename)
+        # Save the image to file
+        np.savetxt(fullpath, test_image, fmt="%d")
+
+        # Set the input and output directories
+        test_input_dir = os.path.join(test_dir, "input")
+        test_output_dir = os.path.join(test_dir, "output")
+
+        self.test_input_dir = test_input_dir
+        self.test_output_dir = test_output_dir
+
+        input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
+        input_files_fullpaths.sort()
+
+        self.input_files_fullpaths = input_files_fullpaths
+
     def test_preprocess_single_image_rotate_centerize(self):
-        # Load the test image
-        # Original filename: 20220330/A00041.txt
-        test_filename = "test_preprocess_center.txt"
+        params_with_plans_file = self.params_with_plans_file
+        test_input_dir = self.test_input_dir
+        test_output_dir = self.test_output_dir
+        input_files_fullpaths = self.input_files_fullpaths
 
-        cwd = os.getcwd()
-        test_dir = os.path.join(cwd, TEST_IMAGE_DIR)
-        test_img = os.path.join(test_dir, test_filename)
+        input_filename = "synthetic_sparse_image.txt"
+        input_filename_fullpath = os.path.join(test_input_dir, input_filename)
+        output_filename_fullpath = os.path.join(test_output_dir, "centered_rotated", "CR_" + input_filename)
 
-        preprocessed_filename = "preprocessed_{}".format(test_filename)
-        preprocessed_filename_fullpath = os.path.join(test_dir,preprocessed_filename)
+        with open(params_with_plans_file, "r") as params_fp:
+            params = json.loads(params_fp.read())
 
-        params = self.params
-        preprocessor = PreprocessData(filename=test_img,
-                input_dir=test_dir, output_dir=test_dir, params=params)
+        preprocessor = PreprocessData(input_filename,
+                input_dir=test_input_dir, output_dir=test_output_dir, params=params)
 
         # Preprocess data, saving to a file
         preprocessor.preprocess()
+        preprocessor.save()
+
+        # Load data
+        input_image = np.loadtxt(input_filename_fullpath)
+        output_image = np.loadtxt(output_filename_fullpath)
 
         # Check center of saved file
-        preprocessed_image = np.loadtxt(preprocessed_filename_fullpath)
+        preprocessed_image = np.loadtxt(output_filename_fullpath)
         calculated_center = find_center(preprocessed_image)
         # Proper centerized images would have center near here:
         center = (128,128)
