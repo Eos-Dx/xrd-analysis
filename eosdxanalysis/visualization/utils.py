@@ -142,24 +142,31 @@ def plot_data_dir(input_directory, output_directory, scaling="dB1",
     barcodes = [os.path.splitext(bname)[0] for bname in basenames]
 
     for idx in range(len(input_filenames)):
-        # Set up figure properties and title
-        fig = plt.figure(dpi=100)
-        fig.set_facecolor("white")
 
         image = np.loadtxt(input_filenames[idx], dtype=np.uint32)
 
         if scaling == "linear":
             output_image = image
-            fig.suptitle(basenames[idx] + " Original")
+            fig_suptitle_end = " Original"
         if scaling == "dB1":
             # Load image and convert to [dB+1]
             image_dB1 = 20*np.log10(image+1)
             output_image = image_dB1
-            fig.suptitle(basenames[idx] + " [dB+1]")
+            fig_suptitle_end = " [dB+1]"
 
         # Plot image
-        fig = plt.figure(1)
-        plt.imshow(output_image, cmap="gray")
+        # Set up figure properties and title
+        width_px, height_px = output_image.shape
+        dpi = 96
+
+        figsize = (width_px / dpi, height_px / dpi) # inches
+        rect = [0, 0, 1, 1] # [left, bottom, width, height] as fraction of figsize
+
+        fig = plt.figure(1, figsize=figsize, dpi=dpi) # in inches
+        # fig.suptitle(basenames[idx] + fig_suptitle_end)
+        # fig.set_facecolor("white")
+        axes = fig.add_axes(rect=rect)
+        axi = axes.imshow(output_image, aspect='auto', cmap="gray")
 
         # Save figure to file
         plt.savefig(os.path.join(output_directory, basenames[idx]) + ".png")
