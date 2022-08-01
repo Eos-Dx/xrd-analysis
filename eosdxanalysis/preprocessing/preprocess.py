@@ -368,7 +368,7 @@ class PreprocessData(object):
         array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
         # Find eye rotation using original image
         angle_degrees = self.find_eye_rotation_angle(image, center)
-        translation = (center[0] - array_center[0], center[1] - array_center[1])
+        translation = (array_center[1] - center[1], array_center[0] - center[0])
 
         # Center the image if need be
         if np.array_equal(center, array_center):
