@@ -12,9 +12,7 @@ import scipy.cluster.hierarchy as sch
 
 from skimage.transform import rescale
 
-# from eosdxanalysis.preprocessing.preprocess import PreprocessDataArray
 from eosdxanalysis.preprocessing.image_processing import crop_image
-from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 
