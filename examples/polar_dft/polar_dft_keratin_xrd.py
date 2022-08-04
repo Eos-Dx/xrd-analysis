@@ -118,3 +118,5 @@ surf = ax.plot_surface(Fcolindices, Frowindices, 20*np.log10(np.fft.fftshift(np.
 clb = fig.colorbar(surf)
 # ax.set_zlim(0, 1.5)
 plt.title("3D Classic DFT (Frequency Domain, Cartesian Grid)")
+
+plt.show()
