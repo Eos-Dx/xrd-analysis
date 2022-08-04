@@ -13,6 +13,8 @@ import matplotlib.colors as colors
 
 from scipy import ndimage
 from skimage.filters import threshold_local
+from skimage.transform import EuclideanTransform
+from skimage.transform import warp
 from skimage.transform import rotate
 import imageio
 
@@ -23,7 +25,6 @@ from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import find_maxima
 from eosdxanalysis.preprocessing.denoising import filter_strays
-from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import convert_to_cv2_img
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
@@ -153,7 +154,7 @@ class PreprocessData(object):
 
                 if plan == "centerize_rotate":
                     # Centerize and rotate
-                    centered_rotated_image, center, new_center, angle = self.centerize_and_rotate(sample)
+                    centered_rotated_image, center, angle = self.centerize_and_rotate(sample)
                     # Set output
                     output = centered_rotated_image
 
@@ -164,7 +165,7 @@ class PreprocessData(object):
 
                 if plan == "centerize_rotate_quad_fold":
                     # Centerize and rotate
-                    centered_rotated_image, center, new_center, angle = self.centerize_and_rotate(sample)
+                    centered_rotated_image, center, angle = self.centerize_and_rotate(sample)
                     # Quad fold
                     centered_rotated_quad_folded_image = quadrant_fold(centered_rotated_image)
                     # Set output
@@ -179,7 +180,7 @@ class PreprocessData(object):
                     # Take local threshold
                     local_thresh_image = threshold_local(sample, local_thresh_block_size)
                     # Centerize and rotate
-                    local_thresh_centered_rotated_image, center, new_center, angle = self.centerize_and_rotate(local_thresh_image)
+                    local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Set output
                     output = local_thresh_centered_rotated_image
 
@@ -192,7 +193,7 @@ class PreprocessData(object):
                     # Take local threshold
                     local_thresh_image = threshold_local(sample, local_thresh_block_size)
                     # Centerize and rotate
-                    local_thresh_centered_rotated_image, center, new_center, angle = self.centerize_and_rotate(local_thresh_image)
+                    local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Quad fold
                     local_thresh_centered_rotated_quad_folded_image = quadrant_fold(local_thresh_centered_rotated_image)
                     # Set output
@@ -364,19 +365,26 @@ class PreprocessData(object):
 
         # Find center using original image
         center = find_center(image,method="max_centroid",rmax=beam_rmax)
+        array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
         # Find eye rotation using original image
-        angle = self.find_eye_rotation_angle(image, center)
-        # Centerize the image
-        centered_image_large, new_center = centerize(image, center)
+        angle_degrees = self.find_eye_rotation_angle(image, center)
+        translation = (array_center[1] - center[1], array_center[0] - center[0])
+
+        # Center the image if need be
+        if np.array_equal(center, array_center):
+            centered_image = image
+        else:
+            translation_tform = EuclideanTransform(translation=translation)
+            centered_image = warp(image, translation_tform.inverse)
+
         # Rotate the image
-        # Note temporary center notation switch to col, row
-        # in skimage.transform.rotate
-        centered_rotated_image_large = rotate(centered_image_large, -angle,
-                                        resize=False,
-                                        center=(new_center[1], new_center[0]))
-        # Crop to original size
-        centered_rotated_image = crop_image(centered_rotated_image_large, h, w, new_center)
-        return centered_rotated_image, center, new_center, angle
+        if np.isclose(angle_degrees, 0):
+            centered_rotated_image = centered_image
+        else:
+            centered_rotated_image = rotate(centered_image, -angle_degrees, preserve_range=True)
+
+        # Centerize the image
+        return centered_rotated_image, center, angle_degrees
 
     def mask(self, image, style="both"):
         """

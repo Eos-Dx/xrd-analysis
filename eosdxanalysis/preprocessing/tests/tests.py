@@ -11,7 +11,6 @@ from skimage.io import imsave, imread
 from skimage.transform import warp_polar
 from scipy.ndimage import center_of_mass
 
-from eosdxanalysis.preprocessing.image_processing import centerize
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.image_processing import rotate_image
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
@@ -63,6 +62,7 @@ def gen_2d_intensity_profile(N=16):
     Z = np.sin(X)+np.cos(Y)
     return intensity_profile_function(Z,N)
 
+
 class TestCreateCircularMask(unittest.TestCase):
     """
     Test create_circular_mask
@@ -83,11 +83,11 @@ class TestCreateCircularMask(unittest.TestCase):
         # Store expected result for circular mask of (5,5) array
         # with default center, rmin, and rmax
         test_5x5_mask = np.array([
-            [False, False,  True, False, False],
-            [False,  True,  True,  True, False],
-            [ True,  True,  True,  True,  True],
-            [False,  True,  True,  True, False],
-            [False, False,  True, False, False],
+            [False,  False, True, False, False],
+            [False,  True,  True, True,  False],
+            [True,   True,  True, True,  True],
+            [False,  True,  True, True,  False],
+            [False,  False, True, False, False],
         ])
 
         # Test if the generated mask equals the expected mask
@@ -141,7 +141,7 @@ class TestCreateCircularMask(unittest.TestCase):
         self.assertTrue(np.array_equal(mask_4x4, test_4x4_mask))
 
     def test_circular_mask_center_specified_odd_square_output(self):
-        # Specify 4x4 shape
+        # Specify 5x5 shape
         nrows = 5
         ncols = 5
         row_center = 2
@@ -179,9 +179,9 @@ class TestCreateCircularMask(unittest.TestCase):
         # with default center, rmin, and rmax
         test_4x4_mask = np.array([
             [False, False, False, False],
-            [False,  True,  True,  True],
-            [False,  True,  True,  True],
-            [False,  True,  True,  True],
+            [False, False, True, False],
+            [False,  True, True,  True],
+            [False, False, True, False],
         ])
 
         # Test if the generated mask equals the expected mask
@@ -197,13 +197,36 @@ class TestPreprocessingCLI(unittest.TestCase):
         test_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images")
         self.test_dir = test_dir
 
-        # Specify parameters file
-
+        # Specify parameters file without plans
         params_file = os.path.join(test_dir, "params.txt")
         self.params_file = params_file
         with open(params_file, "r") as param_fp:
             params = param_fp.read()
         self.params = params
+
+        # Specify parameters file with plans
+        params_with_plans_file = os.path.join(test_dir, "params_with_plans.txt")
+        self.params_with_plans_file = params_with_plans_file
+        with open(params_with_plans_file, "r") as param_fp:
+            params_with_plans = param_fp.read()
+        self.params_with_plans = params_with_plans
+
+        # Create test images
+        INPUT_DIR="input"
+
+        # Set up test image
+        test_image = np.zeros((256,256), dtype=np.uint16)
+        center = (test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5)
+        test_image[127:129, 127:129] = 9
+        test_image[(127-50):(129-50), (127-50+2):(129-50+2)] = 5
+        test_image[(127+50):(129+50), (127+50-2):(129+50-2)] = 5
+
+        # Set the filename
+        filename = "test_cli.txt"
+        # Set the full output path
+        fullpath = os.path.join(test_dir, INPUT_DIR, filename)
+        # Save the image to file
+        np.savetxt(fullpath, test_image, fmt="%d")
 
         # Set the input and output directories
         test_input_dir = os.path.join(test_dir, "input")
@@ -213,16 +236,16 @@ class TestPreprocessingCLI(unittest.TestCase):
         self.test_output_dir = test_output_dir
 
         input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
+        input_files_fullpaths.sort()
 
         self.input_files_fullpaths = input_files_fullpaths
 
-    def test_preprocess_cli(self):
+    def test_preprocess_cli_input_dir_output_dir_params_file_plans_in_params_file(self):
         """
         Run preprocessing using commandline, providing input data directory
         and output directory.
         """
-        params = self.params
-        params_file = self.params_file
+        params_with_plans_file = self.params_with_plans_file
         test_input_dir = self.test_input_dir
         test_output_dir = self.test_output_dir
         input_files_fullpaths = self.input_files_fullpaths
@@ -236,8 +259,7 @@ class TestPreprocessingCLI(unittest.TestCase):
         command = ["python", "eosdxanalysis/preprocessing/preprocess.py",
                     "--input_dir", test_input_dir,
                     "--output_dir", test_output_dir,
-                    "--params_file", params_file,
-                    "--plans", plan,
+                    "--params_file", params_with_plans_file,
                     ]
 
         # Run the command
@@ -252,6 +274,63 @@ class TestPreprocessingCLI(unittest.TestCase):
         # Check that number of input and output files is the same
         plan_output_dir = os.path.join(test_output_dir, output_style)
         plan_output_files_fullpaths = glob.glob(os.path.join(plan_output_dir, "*.txt"))
+        plan_output_files_fullpaths.sort()
+
+        self.assertEqual(num_files, len(plan_output_files_fullpaths))
+
+        for idx in range(num_files):
+            # Load data
+            input_image = np.loadtxt(input_files_fullpaths[idx])
+            output_image = np.loadtxt(plan_output_files_fullpaths[idx])
+
+            # Check that data are positive
+            self.assertTrue(input_image[input_image > 0].all())
+            self.assertTrue(output_image[output_image > 0].all())
+
+            # Check that the maximum value of the output is less than the
+            # maximum value of the input
+            self.assertTrue(np.max(output_image) < np.max(input_image))
+
+            # Check that output means are smaller than input means
+            self.assertTrue(np.mean(output_image) < np.mean(input_image))
+
+    def test_preprocess_cli_input_dir_output_dir_params_file_params_csv_string(self):
+        """
+        Run preprocessing using commandline, providing input data directory
+        and output directory.
+        """
+        params_file = self.params_file
+        test_input_dir = self.test_input_dir
+        test_output_dir = self.test_output_dir
+        input_files_fullpaths = self.input_files_fullpaths
+
+        # Construct plans list
+        plan = "centerize_rotate_quad_fold"
+        plans = [plan,]
+        plan_abbr = ABBREVIATIONS.get(plan)
+        output_style = INVERSE_OUTPUT_MAP.get(plan)
+
+        # Set up the command
+        command = ["python", "eosdxanalysis/preprocessing/preprocess.py",
+                    "--input_dir", test_input_dir,
+                    "--output_dir", test_output_dir,
+                    "--params_file", params_file,
+                    "--plans", ",".join(plans),
+                    ]
+
+        # Run the command
+        subprocess.run(command)
+
+        # Check that output files exist
+        # First get list of files
+        num_files = len(input_files_fullpaths)
+
+        # Check that number of files is > 0
+        self.assertTrue(num_files > 0)
+        # Check that number of input and output files is the same
+        plan_output_dir = os.path.join(test_output_dir, output_style)
+        plan_output_files_fullpaths = glob.glob(os.path.join(plan_output_dir, "*.txt"))
+        plan_output_files_fullpaths.sort()
 
         self.assertEqual(num_files, len(plan_output_files_fullpaths))
 
@@ -282,62 +361,91 @@ class TestPreprocessingCLI(unittest.TestCase):
 class TestPreprocessData(unittest.TestCase):
 
     def setUp(self):
-        params = {
-            # Set parameters
-            # Image size
-            "h":256,
-            "w":256,
-            # Region of interest for beam center on raw images
-            # rmax_beam=50
-            "beam_rmax":25,
-            # Annulus region of interest for XRD pattern
-            # rmin=30
-            # rmax=120
-            "rmin":25,
-            "rmax":90,
-            # Annulus region of interest for 9A feature region
-            # reyes_min=40
-            # reyes_max=80
-            "eyes_rmin":30,
-            "eyes_rmax":45,
-            # Maximum distance from 9A feature maximum intensity location
-            # for blob analysis
-            # reyes_max_blob=30
-            "eyes_blob_rmax":20,
-            # Percentile used to analyze 9A features as blobs
-            "eyes_percentile":99,
-            # Local threshold block size
-            # local_threshold_block_size = 27
-            "local_thresh_block_size":21,
-        }
+        test_dir = os.path.join(TEST_IMAGE_DIR, "test_preprocessing_images")
+        self.test_dir = test_dir
+
+        # Specify parameters file without plans
+        params_file = os.path.join(test_dir, "params.txt")
+        self.params_file = params_file
+        with open(params_file, "r") as param_fp:
+            params = param_fp.read()
         self.params = params
 
+        # Specify parameters file with plans
+        params_with_plans_file = os.path.join(test_dir, "params_with_plans.txt")
+        self.params_with_plans_file = params_with_plans_file
+        with open(params_with_plans_file, "r") as param_fp:
+            params_with_plans = param_fp.read()
+        self.params_with_plans = params_with_plans
+
+        # Create test images
+        INPUT_DIR="input"
+
+        # Set up test image
+        test_image = np.zeros((256,256), dtype=np.uint16)
+        center = (test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5)
+        test_image[127:129, 127:129] = 9
+        test_image[92, 163] = 5
+        test_image[163, 92] = 5
+
+        self.test_image = test_image
+
+        # Set the filename
+        filename = "test_cli.txt"
+        # Set the full output path
+        fullpath = os.path.join(test_dir, INPUT_DIR, filename)
+        # Save the image to file
+        np.savetxt(fullpath, test_image, fmt="%d")
+
+        # Set the input and output directories
+        test_input_dir = os.path.join(test_dir, "input")
+        test_output_dir = os.path.join(test_dir, "output")
+
+        self.test_input_dir = test_input_dir
+        self.test_output_dir = test_output_dir
+
+        input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
+        input_files_fullpaths.sort()
+
+        self.input_files_fullpaths = input_files_fullpaths
+
     def test_preprocess_single_image_rotate_centerize(self):
-        # Load the test image
-        # Original filename: 20220330/A00041.txt
-        test_filename = "test_preprocess_center.txt"
+        params_with_plans_file = self.params_with_plans_file
+        test_input_dir = self.test_input_dir
+        test_output_dir = self.test_output_dir
+        input_files_fullpaths = self.input_files_fullpaths
 
-        cwd = os.getcwd()
-        test_dir = os.path.join(cwd, TEST_IMAGE_DIR)
-        test_img = os.path.join(test_dir, test_filename)
+        input_filename = "synthetic_sparse_image.txt"
+        input_filename_fullpath = os.path.join(test_input_dir, input_filename)
+        output_filename_fullpath = os.path.join(test_output_dir, "centered_rotated", "CR_" + input_filename)
 
-        preprocessed_filename = "preprocessed_{}".format(test_filename)
-        preprocessed_filename_fullpath = os.path.join(test_dir,preprocessed_filename)
+        with open(params_with_plans_file, "r") as params_fp:
+            params = json.loads(params_fp.read())
 
-        params = self.params
-        preprocessor = PreprocessData(filename=test_img,
-                input_dir=test_dir, output_dir=test_dir, params=params)
+        preprocessor = PreprocessData(input_filename,
+                input_dir=test_input_dir, output_dir=test_output_dir, params=params)
 
         # Preprocess data, saving to a file
         preprocessor.preprocess()
+        preprocessor.save()
+
+        # Load data
+        input_image = np.loadtxt(input_filename_fullpath)
+        output_image = np.loadtxt(output_filename_fullpath)
+
+        preprocessed_image = np.loadtxt(output_filename_fullpath)
+
+        # Check if image is non-zero
+        self.assertFalse(np.array_equal(preprocessed_image, np.zeros(preprocessed_image.shape)))
 
         # Check center of saved file
-        preprocessed_image = np.loadtxt(preprocessed_filename_fullpath)
         calculated_center = find_center(preprocessed_image)
-        # Proper centerized images would have center near here:
-        center = (128,128)
+        center = (127.5,127.5)
+        self.assertTrue(np.isclose(center, calculated_center, atol=0.75).all())
 
-        self.assertTrue(np.isclose(center, calculated_center, atol=1.0).all())
+        # Check the rotation angle
+        angle = preprocessor.find_eye_rotation_angle(preprocessed_image, center)
+        self.assertTrue(np.isclose(angle,135))
 
 
 class TestCenterFinding(unittest.TestCase):
@@ -368,7 +476,7 @@ class TestCenterFinding(unittest.TestCase):
         # Set known center using centroid of max pixels in beam region of interest
         known_center = (126.125, 132.375) # Using centroid of max pixels
         test_dir = os.path.dirname(os.path.realpath(__file__))
-        test_img = np.loadtxt(os.path.join(test_dir, TEST_IMAGE_DIR, test_filename))
+        test_img = np.loadtxt(os.path.join(TEST_IMAGE_DIR, test_filename))
         calculated_center = find_center(test_img, method="max_centroid")
 
         self.assertTrue(np.array_equal(calculated_center, known_center))
@@ -446,171 +554,6 @@ class TestImageProcessing(unittest.TestCase):
 
     def test_local_threshold_determinism_separate_measurements(self):
         self.fail("Finish writing test")
-
-    def test_centerize_photon_count(self):
-        """
-        Ensure that the centerized image has a photon intensity count
-        that is close to the original (some differences expected due
-        to rasterization).
-        """
-        # Generate random 10x10 image
-        rng = np.random.default_rng(seed=100)
-        original = rng.integers(low=0, high=100, size=(10,10))
-        # Pick center at random
-        center = rng.random((1,2))*10
-        center = tuple(center.flatten())
-
-        centerized, new_center = centerize(original, center)
-        original_count = np.sum(original)
-        centerized_count = np.sum(centerized)
-
-        self.assertTrue(np.isclose(original_count, centerized_count, atol=2))
-
-    def test_centerize_point_method_precentered(self):
-        """
-        Test centerize point method for precentered image
-        """
-        # Create an image
-        dim = 6
-        image = np.arange(dim**2).reshape((dim,dim))
-        # choose center 
-        center = ((dim-1)/2,(dim-1)/2)
-
-        centerized_image, new_center = centerize(image, center, method="point")
-
-        self.assertEqual(center, new_center)
-        self.assertEqual(image.shape, centerized_image.shape)
-        self.assertTrue(np.array_equal(image, centerized_image))
-
-    def test_centerize_point_method_slight_off_center(self):
-        """
-        Test centerize point method for slightly off-center image
-        Should give back original image
-        """
-        # Create an image
-        dim = 6
-        image = np.arange(dim**2).reshape((dim,dim))
-        # choose center 
-        center = (2.6,2.6)
-
-        centerized_image, new_center = centerize(image, center, method="point")
-
-        known_center = (2.5,2.5)
-        self.assertEqual(known_center, new_center)
-        self.assertEqual(image.shape, centerized_image.shape)
-        self.assertTrue(np.array_equal(image, centerized_image))
-
-    def test_centerize_point_method_rounding_edge_case(self):
-        """
-        Numpy rounds both 1.5 and 2.5 to 2.0, make sure
-        code gives correct results.
-        """
-        self.fail("Finish writing test")
-
-
-    def test_centerize_point_method_off_center(self):
-        """
-        Test centerize point method for significantly off-center image
-        """
-        # Create an image
-        dim = 4
-        image = np.arange(dim**2).reshape((dim,dim))
-        # choose center 
-        center = (2.1,1.6)
-        # This should be like center equivalent or mod_center
-        center_equiv = (2.0,1.5)
-
-        centerized_image, new_center = centerize(image, center, method="point")
-        centerized_image_equiv, new_center_equiv = centerize(image, center_equiv, method="point")
-
-        self.assertEqual(new_center, new_center_equiv)
-        self.assertEqual(centerized_image.shape, centerized_image_equiv.shape)
-        self.assertTrue(np.array_equal(centerized_image, centerized_image_equiv))
-
-    def test_centerize_point_method_center_3x3(self):
-        """
-        Test centerize point method for 3x3 images where center could be
-        any of the pixel centers (whole indices)
-        """
-        # Create an image
-        dim = 3
-        image = np.arange(1,dim**2+1).reshape((dim,dim))
-        """
-        Original image:
-
-            [[1, 2, 3]
-             [4, 5, 6]
-             [7, 8, 9]],
-        """
-
-        # Comments show matrix coordinates of center for original image
-        known_results = np.array([
-            # (0,0) the 1
-            np.array([[0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0],
-             [0, 0, 1, 2, 3],
-             [0, 0, 4, 5, 6],
-             [0, 0, 7, 8, 9]]),
-            # (0,1) the 2
-            np.array([[0, 0, 0],
-             [0, 0, 0],
-             [1, 2, 3],
-             [4, 5, 6],
-             [7, 8, 9]]),
-            # (0,2) the 3
-            np.array([[0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0],
-             [1, 2, 3, 0, 0],
-             [4, 5, 6, 0, 0],
-             [7, 8, 9, 0, 0]]),
-            # (1,0) the 4
-            np.array([[0, 0, 1, 2, 3],
-             [0, 0, 4, 5, 6],
-             [0, 0, 7, 8, 9]]),
-            # (1,1) the 5
-            np.array([[1, 2, 3],
-             [4, 5, 6],
-             [7, 8, 9],]),
-            # (1,2) the 6
-            np.array([[1, 2, 3, 0, 0],
-             [4, 5, 6, 0, 0],
-             [7, 8, 9, 0, 0],]),
-            # (2,0) the 7
-            np.array([[0, 0, 1, 2, 3],
-             [0, 0, 4, 5, 6],
-             [0, 0, 7, 8, 9],
-             [0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0],]),
-            # (2,1) the 8
-            np.array([[1, 2, 3],
-             [4, 5, 6],
-             [7, 8, 9],
-             [0, 0, 0],
-             [0, 0, 0],]),
-            # (2,2) the 9
-            np.array([[1, 2, 3, 0, 0],
-             [4, 5, 6, 0, 0],
-             [7, 8, 9, 0, 0],
-             [0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0],]),
-            ],dtype=object)
-
-        # Loop over possibilites for center
-        for center_row in np.arange(dim):
-            for center_col in np.arange(dim):
-                center = (center_row, center_col)
-
-                centerized_image, new_center = centerize(image, center, method="point")
-
-                # Ensure the number to be centered is now at new center
-                self.assertEqual(image[int(np.around(center[0])),int(np.around(center[1]))],
-                        centerized_image[int(np.around(new_center[0])),int(np.around(new_center[1]))])
-
-                # Ensure the entire image is still present
-                self.assertEqual(np.sum(centerized_image), np.sum(image))
-
-                # Test to make sure results are accurate using known results
-                self.assertTrue(np.array_equal(known_results[center_row*dim+center_col], centerized_image))
 
     def test_pad_image_prerotation_method(self):
         """
