@@ -9,111 +9,112 @@ import numpy as np
 from scipy.ndimage import map_coordinates
 from skimage.transform import warp_polar
 from scipy.special import jv
-
+from scipy.interpolate import griddata
 from scipy.signal import wiener
 
 import matplotlib.pyplot as plt
 
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
+from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 from eosdxanalysis.models.polar_sampling import sampling_grid
+from eosdxanalysis.models.polar_sampling import freq_sampling_grid
+from eosdxanalysis.models.utils import pol2cart
+from eosdxanalysis.models.utils import cart2pol
+from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 
 t0 = time.time()
+
+"""
+Keratin pattern
+"""
+N1 = 101 # radial sampling count
+N2 = 15 # angular sampling count
+R = 90
 
 MODULE_PATH = os.path.dirname(__file__)
 DATA_DIR = "data"
 DATA_FILENAME = "CRQF_A00823.txt"
 
-N1 = 150 # Radial sampling count
-N2 = 151 # Angular sampling count, must be odd
-R = 90
-
 image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
 image = np.loadtxt(image_path, dtype=np.uint32)
+# filtered_img = wiener(image, 15)
 
-# Original image
-fig = plt.figure()
-plt.imshow(image)
-plt.title("Original Cartesian sampling of {}".format(DATA_FILENAME))
+# Sample the image according to the Baddour polar grid
+# Get rmatrix and thetamatrix
+thetamatrix, rmatrix = sampling_grid(N1, N2, R)
+# Convert to Cartesian
+Xcart, Ycart = pol2cart(thetamatrix, rmatrix)
+# Wrap/extend for plotting
+Xcart_ext = np.vstack([Xcart, Xcart[0,:]])
+Ycart_ext = np.vstack([Ycart, Ycart[0,:]])
 
-# Wiener filtered image
-filtered_img = wiener(image, 5)
-fig = plt.figure()
-plt.imshow(filtered_img)
-plt.title("Wiener Filtered of Original Cartesian sampling of {}".format(DATA_FILENAME))
-
-# Now take 2D FFT to compare filtering
-
-# Sample our image according on the Baddour grid
-dx = 0.2
-dy = 0.2
-
-# Let's create a meshgrid,
-# note that x and y have even length
-#x = np.arange(-R+dx/2, R+dx/2, dx)
-#y = np.arange(-R+dx/2, R+dx/2, dy)
-#XX, YY = np.meshgrid(x, y)
-#RR = np.sqrt(XX**2 + YY**2)
-
+# row, col
 origin = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
 
-# Now sample the discrete image according to the Baddour polar grid
-# First get rmatrix and thetamatrix
-thetamatrix, rmatrix = sampling_grid(N1, N2, R)
-# Now convert rmatrix to Cartesian coordinates
-Xcart = rmatrix*np.cos(thetamatrix)
-Ycart = rmatrix*np.sin(thetamatrix)
-# Now convert Cartesian coordinates to the array notation
-# by shifting according to the origin
 Xindices = Xcart + origin[0]
 Yindices = origin[1] - Ycart
 
 cart_sampling_indices = [Yindices, Xindices]
 
-fdiscrete = map_coordinates(filtered_img, cart_sampling_indices)
+# Interpolate
+img_sampled = map_coordinates(image, cart_sampling_indices)
 
-# Plot the original image with the Baddour polar sampling grid in Cartesian coordinates
-fig = plt.figure()
-plt.imshow(filtered_img)
-plt.scatter(Xindices, Yindices, s=1.0)
-plt.title("Filtered image with polar DFT sampling grid")
-
-# plt.show()
-
-# exit(0)
-
-
+"""
+Take polar DFT
+"""
+pdft = pfft2_SpaceLimited(img_sampled, N1, N2, R)
 t1 = time.time()
+print("Time to calculate the polar transform:", np.round(t1-t0, decimals=2), "s")
 
-print("Start-up time to sample Baddour polar grid:",np.round(t1-t0, decimals=2), "s")
+# Wrap/extend for plotting
+pdft_ext = np.vstack([pdft, pdft[0,:]])
 
-# Calculate the polar dft in frequency space (rho, theta)
-pdft = pfft2_SpaceLimited(fdiscrete, N1, N2, R)
+psimatrix, rhomatrix = freq_sampling_grid(N1, N2, R)
+FX, FY = pol2cart(psimatrix, rhomatrix)
+FX_ext = np.vstack([FX, FX[0,:]])
+FY_ext = np.vstack([FY, FY[0,:]])
 
-# Convert the polar dft to Cartesian frequency space
+# Convert to frequeny domain Cartesian coordinates with scaling
+FXX, FYY = pol2cart(psimatrix, rhomatrix)
 
-t2 = time.time()
+"""
+Classic DFT
+"""
+dft = np.fft.fft2(image)
+# Get frequencies
+FFrows = np.fft.fftshift(np.broadcast_to(np.fft.fftfreq(dft.shape[0],d=2), dft.shape).T)
+FFcols = np.fft.fftshift(np.broadcast_to(np.fft.fftfreq(dft.shape[1],d=2), dft.shape))
+# Rows and Cols
+Frowindices, Fcolindices = np.mgrid[:image.shape[0], :image.shape[1]]
 
-print("Time to calculate the polar transform:", np.round(t2-t1, decimals=2), "s")
+"""
+Plots
+"""
 
+# 2D Plot of original image
+fig = plt.figure("2D Plot original")
+plt.imshow(image, cmap="gray")
+plt.title("Original image")
 
-# Warped
-polar_image = warp_polar(filtered_img)
-fig = plt.figure()
-plt.imshow(polar_image)
-plt.title("Polar warped sampling of filtered {}".format(DATA_FILENAME))
-plt.colorbar()
+# 3D Plot of DFT
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+fig.canvas.manager.set_window_title("3D Polar DFT")
+surf = ax.plot_surface(FX_ext, FY_ext, 20*np.log10(np.abs(pdft_ext)), cmap="gray",
+                               linewidth=0, antialiased=False)
+clb = fig.colorbar(surf)
+# ax.set_zlim(0, 1.5)
+plt.title("3D Polar DFT (Frequency Domain, Polar Grid)")
 
-# Polar DFT
-fig = plt.figure()
-plt.imshow(20*np.log10(np.abs(pdft)))
-plt.title("Magnitude DFT of filtered {} [dB]\n in polar frequency domain using Baddour coordinates".format(DATA_FILENAME))
-plt.colorbar()
+# 2D Classic DFT
+fig = plt.figure("2D Classic DFT")
+plt.imshow(20*np.log10(np.abs(np.fft.fftshift(dft))), cmap="gray")
+plt.title("2D Classic DFT")
 
-# Compare to 2D FFT
-fft = np.fft.fftshift(np.fft.fft2(filtered_img))
-
-fig = plt.figure()
-plt.imshow(20*np.log10(np.abs(fft)))
-plt.title("Magnitude FFT of filtered {}\n [dB] in frequency domain".format(DATA_FILENAME))
-
-plt.show()
+# 3D Plot classic DFT
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+fig.canvas.manager.set_window_title("3D Classic DFT")
+surf = ax.plot_surface(Fcolindices, Frowindices, 20*np.log10(np.fft.fftshift(np.abs(dft))), cmap="gray",
+                               linewidth=0, antialiased=False)
+clb = fig.colorbar(surf)
+# ax.set_zlim(0, 1.5)
+plt.title("3D Classic DFT (Frequency Domain, Cartesian Grid)")
