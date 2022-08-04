@@ -9,7 +9,6 @@ import unittest
 import numpy as np
 
 from eosdxanalysis.preprocessing.center_finding import find_center
-from eosdxanalysis.preprocessing.image_processing import centerize
 
 from eosdxanalysis.calibration.calibration import Calibration
 
