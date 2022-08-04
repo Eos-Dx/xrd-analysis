@@ -31,8 +31,9 @@ int main()
                 // Use boost library function to calculate Jn zero
                 double root = boost::math::cyl_bessel_j_zero(n*1.0, z+1);
                 // Write results to file
-                outfile << root << std::endl;
+                outfile << root << " ";
             }
+            outfile << std::endl;
         }
 
     }
