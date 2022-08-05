@@ -213,3 +213,33 @@ def feature_5a_9a_peak_location_ratio(image,
 
     ratio = peak_5a_radius/peak_9a_radius
     return ratio
+
+def feature_amorphous_scattering_intensity_ratio(image):
+    """
+    Calculate the amorphous scattering intensity,
+    which is the intensity in areas outside of the main features
+    of the 9A and 5A peaks
+    """
+    # Get the 9A rois
+    intensity_ratio_9a, rois_9a, centers_9a, anchors_9a = feature_9a_ratio(image)
+    equatorial_9a_roi = [rois_9a[0], rois_9a[1]]
+    # Get the 5A rois
+    # Calculate the 5A slice indices
+    row_min, row_max = 60, 80
+    col_center = int(image.shape[1]/2-0.5)
+    roi_5a_w = 50
+    roi_5a_rows = (row_min, row_max)
+    roi_5a_cols = (int(col_center-roi_5a_w/2),int(col_center+roi_5a_w/2))
+    # Calculate the roi
+    roi_5a_top = image[roi_5a_rows[0]:roi_5a_rows[1],
+                          roi_5a_cols[0]:roi_5a_cols[1]]
+    # Due to quadrant folding, assume roi_5a_bottom = roi_5a_top
+
+    # Plan: sum the entire image, subtract sum of features
+    total_intensity = np.sum(image)
+
+    # Take the sum of all not in rois
+    amorphous_intensity = total_intensity - 2*np.sum(rois_9a[0]) - 2*np.sum(roi_5a_top)
+    amorphous_intensity_ratio = amorphous_intensity/total_intensity
+
+    return amorphous_intensity_ratio
