@@ -15,7 +15,7 @@ class EngineeredFeatures(object):
         and parameters.
 
         Inputs:
-        - image (2D numpy array)
+        - image (quad-folded image as 2D numpy array)
         - params (dictionary)
 
         Returns:
@@ -25,6 +25,115 @@ class EngineeredFeatures(object):
         self.params = params
 
         return super().__init__()
+
+    def feature_5a_peak_location(self, row_min=0, row_max=78, roi_w=6):
+        """
+        Calculate the location (radius) of the 5A peak in the given image.
+
+        Define a rectangular region of interest as in the ascii graphic
+         _ <- roi_w
+        | | -
+        | | |
+        | | | <- row_max - row_min
+        | | |
+        |_| -
+
+        The window is defined from the top of the image.
+        It's height is row_max - row_min.
+        It's width is roi_w.
+        The window is centered horizontally.
+
+        Inputs:
+        - row_min: minimum row number
+        - row_max: maximum row number
+        - roi_w: roi width
+
+        """
+
+        image = self.image
+        # Calculate center of image
+        center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+
+        # Calculate the roi rows and columns
+        roi_rows = (row_min, row_max)
+        roi_cols = (int(center[1]-roi_w/2), int(center[1]+roi_w/2))
+
+        # Calculate the center of the roi
+        roi_center = (roi_rows[1] - roi_rows[0],
+                        roi_cols[1] - roi_cols[0])
+
+        # Calculate anchor (upper-left corner of roi)
+        anchor = (row_min, int(center[1]-roi_w/2))
+
+        # Calculate the roi
+        roi = image[slice(*roi_rows),
+                              slice(*roi_cols)]
+
+        # Average across columns
+        roi_avg = np.mean(roi,axis=1)
+
+        # Calculate peak location using maximum of centroid
+        roi_peak_location_list = np.where(roi_avg == np.max(roi_avg))
+        # Calculate the row number of the peak in the roi
+        roi_peak_location = np.mean(roi_peak_location_list)
+        # Calculaate the row number of the peak in the image
+        peak_location = roi_peak_location + row_min
+
+        return peak_location, roi, roi_center, anchor
+
+    def feature_9a_peak_location(self, row_min=0, row_max=78, roi_w=6):
+        """
+        Calculate the location (radius) of the 9A peak in the given image.
+
+        Define a rectangular region of interest as in the ascii graphic
+         _ <- roi_w
+        | | -
+        | | |
+        | | | <- roi_l
+        | | |
+        |_| -
+
+        The window shown is defined for the right 9.8A peak (eye).
+        It's height is roi_l.
+        It's width is roi_w.
+
+        Inputs:
+        - row_min: minimum row number
+        - row_max: maximum row number
+        - roi_w: roi width
+
+        """
+
+        image = self.image
+        # Calculate center of image
+        center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+
+        # Calculate the roi rows and columns
+        roi_rows = (row_min, row_max)
+        roi_cols = (int(center[1]-roi_w/2), int(center[1]+roi_w/2))
+
+        # Calculate the center of the roi
+        roi_center = (roi_rows[1] - roi_rows[0],
+                        roi_cols[1] - roi_cols[0])
+
+        # Calculate anchor (upper-left corner of roi)
+        anchor = (row_min, int(center[1]-roi_w/2))
+
+        # Calculate the roi
+        roi = image[slice(*roi_rows),
+                              slice(*roi_cols)]
+
+        # Average across columns
+        roi_avg = np.mean(roi,axis=1)
+
+        # Calculate peak location using maximum of centroid
+        roi_peak_location_list = np.where(roi_avg == np.max(roi_avg))
+        # Calculate the row number of the peak in the roi
+        roi_peak_location = np.mean(roi_peak_location_list)
+        # Calculaate the row number of the peak in the image
+        peak_location = roi_peak_location + row_min
+
+        return peak_location, roi, roi_center, anchor
 
     def feature_9a_ratio(self, start_radius=25, roi_l=18, roi_w=4):
         """
@@ -130,57 +239,6 @@ class EngineeredFeatures(object):
 
         return intensity_ratio, rois, centers, anchors
 
-    def feature_5a_peak_location(self, row_min=6, row_max=78, roi_w=5):
-        """
-        Calculate the location of the 5A peak in the given image.
-
-        Define a rectangular region of interest as in the ascii graphic
-         _ <- roi_w
-        | | -
-        | | |
-        | | | <- row_max - row_min
-        | | |
-        |_| -
-
-        The window is defined from the top of the image.
-        It's height is row_max - row_min.
-        It's width is roi_w.
-        """
-        image = self.image
-        # Calculate center of image
-        shape = image.shape
-        row_isodd = shape[0]%2
-        col_isodd = shape[1]%2
-        row_center = shape[0]/2+row_isodd
-        col_center = shape[1]/2+col_isodd
-
-
-        # Calculate the slice indices
-        roi_rows = (row_min, row_max)
-        roi_cols = (int(col_center-roi_w/2),int(col_center+roi_w/2))
-
-        # Calculate the center of the roi
-        roi_center = (roi_rows[1] - roi_rows[0],
-                        roi_cols[1] - roi_cols[0])
-
-        # Calculate anchor (upper-left corner of roi)
-        anchor = (row_min, int(col_center-roi_w/2))
-
-        # Calculate the roi
-        roi = image[roi_rows[0]:roi_rows[1],
-                              roi_cols[0]:roi_cols[1]]
-
-        # Average across columns
-        roi_avg = np.mean(roi,axis=1)
-
-        # Calculate peak location using maximum of centroid
-        roi_peak_location_list = np.where(roi_avg == np.max(roi_avg))
-        # The row number of the peak in the roi
-        roi_peak_location = np.mean(roi_peak_location_list)
-        # The absolute row number of the peak in the image
-        peak_location = roi_peak_location + row_min
-
-        return peak_location, roi, roi_center, anchor
 
     def feature_5a_9a_peak_location_ratio(self,
                                         row_min_5a=6, row_max_5a=78, roi_w_5a=4,

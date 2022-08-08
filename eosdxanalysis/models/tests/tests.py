@@ -210,6 +210,33 @@ class TestFeatureEngineering(unittest.TestCase):
         self.assertEqual(np.mean(roi_top),1)
         self.assertEqual(np.mean(roi_right),2)
 
+    def test_feature_5a_9a_peak_location_ratio(self):
+        # Create a test image
+        test_image = np.zeros((256,256))
+        # set a peak in the 5A region of interest
+        peak_5a_row = 60
+        peak_5a_radius = 256//2-60
+        center_cols = slice(127, 128)
+        test_image[peak_5a_row,center_cols] = 1
+
+        # Create some blobs in the 9.8A region of interest
+        rect_w = 4
+        rect_l = 18
+        start_radius = 25
+        peak_9a_radius = start_radius + rect_w
+
+        # Set the right area to 2
+        test_image[128-rect_l//2:128+rect_l//2,
+                128+start_radius:128+start_radius+rect_w] = 2
+
+        feature_class = EngineeredFeatures(test_image, params=None)
+        # ratio = peak_5a_radius/peak_9a_radius
+        peak_location_ratio = feature_class.feature_5a_9a_peak_location_ratio()
+
+        self.assertEqual(peak_location_ratio, peak_5a_radius/peak_9a_radius)
+
+        self.fail("Finish writing test")
+
 
 class TestL1Metric(unittest.TestCase):
 
