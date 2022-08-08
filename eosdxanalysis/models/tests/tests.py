@@ -19,8 +19,7 @@ from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.utils import pol2cart
 from eosdxanalysis.models.utils import cart2pol
-from eosdxanalysis.models.feature_engineering import feature_5a_peak_location
-from eosdxanalysis.models.feature_engineering import feature_9a_ratio
+from eosdxanalysis.models.feature_engineering import EngineeredFeatures
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import freq_sampling_grid
 from eosdxanalysis.models.polar_sampling import rmatrix_SpaceLimited
@@ -172,7 +171,9 @@ class TestFeatureEngineering(unittest.TestCase):
         center_col = 128
         test_image[peak_row,center_col] = 1
 
-        roi_peak_location, _, _, _ = feature_5a_peak_location(test_image)
+        feature_class = EngineeredFeatures(test_image, params=None)
+
+        roi_peak_location, _, _, _ = feature_class.feature_5a_peak_location()
         abs_peak_location = roi_peak_location
 
         self.assertEqual(abs_peak_location, peak_row)
@@ -192,9 +193,11 @@ class TestFeatureEngineering(unittest.TestCase):
         test_image[128-rect_l//2:128+rect_l//2,
                 128+start_radius:128+start_radius+rect_w] = 2
 
+        feature_class = EngineeredFeatures(test_image, params=None)
+
         # Get the 9A peak ratio
-        test_ratio, test_rois, test_centers, test_anchors = feature_9a_ratio(test_image,
-                start_radius=start_radius)
+        test_ratio, test_rois, test_centers, test_anchors = \
+                feature_class.feature_9a_ratio(start_radius=start_radius)
         known_ratio = 2 # 2/1 = 2
 
         # Ensure the intensity is as expected
