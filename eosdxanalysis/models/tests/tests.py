@@ -30,7 +30,9 @@ from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 
-TEST_PATH = os.path.join("eosdxanalysis", "models", "tests")
+MODULE_PATH = os.path.join("eosdxanalysis", "models")
+MODULE_DATA_PATH = os.path.join(MODULE_PATH, "data")
+TEST_PATH = os.path.join(MODULE_PATH, "tests")
 JN_ZEROSMATRIX_TEST_DIR = "test_jn_zerosmatrix"
 JN_ZEROSMATRIX_FILENAME = "jn_zeros_501_501.npy"
 
@@ -162,6 +164,23 @@ class TestUtils(unittest.TestCase):
 
 
 class TestFeatureEngineering(unittest.TestCase):
+
+    def test_amorphous_scattering_template(self):
+        """
+        Amorphous scattering of the scattering template should be zero
+        """
+        template_filename = "amorphous-scattering-template.txt"
+        template_path = os.path.join(MODULE_DATA_PATH, template_filename)
+        template = np.loadtxt(template_path)
+
+        known_intensity = 0
+
+        feature_class = EngineeredFeatures(template, params=None)
+
+        amorphous_intensity = feature_class.feature_amorphous_scattering_intensity_ratio()
+
+        self.assertTrue(np.isclose(amorphous_intensity, known_intensity))
+
 
     def test_5a_peak_location(self):
         # Create a test image
