@@ -5,7 +5,7 @@ import numpy as np
 Calculate features using preprocessing functions
 """
 
-MODULE_PATH = os.path.join("eosdxanalysis", "models")
+MODULE_PATH = os.path.dirname(__file__)
 MODULE_DATA_PATH = os.path.join(MODULE_PATH, "data")
 TEMPLATE_FILENAME = "amorphous-scattering-template.txt"
 TEMPLATE_PATH = os.path.join(MODULE_DATA_PATH, TEMPLATE_FILENAME)
