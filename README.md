@@ -10,6 +10,23 @@ The `eosdxanalysis` main modules are `preprocessing` and `models`.
 
 `models` contains learning models, such as logistic regression, K-means, function fitting models (polynomial), and function transforms (Fourier).
 
+## Preprocessing
+
+### Preprocessing Raw Data
+In the shell, run the following commands from the `xrd-analysis` directory to preprocess raw data,
+```bash
+python eosdxanalysis/preprocessing/preprocess.py --parent_dir "PARENT_PATH" --samples_dir "SAMPLES_DIR" --params_file "PARAMETERS_FILE_PATH"
+```
+where `PARENT_PATH` contains the directory `SAMPLES_DIR`, and the parameters file path can be anywhere. See existing parameters files for details.
+
+### Generating Image Previews
+In the python shell, run the following commands to generate image previews,
+```python
+from eosdxanalysis.visualization.utils import plot_data_dir
+plot_data_dir("DATA_PATH", "IMAGE_PATH", scaling="linear")
+```
+where `DATA_PATH` is the full path to the preprocessed data, and `IMAGE_PATH` is the output path.
+
 # Contributing
 
 ## Development Environment Setup
