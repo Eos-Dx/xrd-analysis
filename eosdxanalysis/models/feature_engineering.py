@@ -1,8 +1,14 @@
+import os
 import numpy as np
 
 """
 Calculate features using preprocessing functions
 """
+
+MODULE_PATH = os.path.join("eosdxanalysis", "models")
+MODULE_DATA_PATH = os.path.join(MODULE_PATH, "data")
+TEMPLATE_FILENAME = "amorphous-scattering-template.txt"
+TEMPLATE_PATH = os.path.join(MODULE_DATA_PATH, TEMPLATE_FILENAME)
 
 class EngineeredFeatures(object):
     """
@@ -21,6 +27,10 @@ class EngineeredFeatures(object):
         Returns:
         - Class instance
         """
+        # Ensure image size is 256x256
+        if image.shape != (256,256):
+            raise ValueError("This class is only designed for images of size 256x256")
+
         self.image = image
         self.params = params
 
@@ -305,30 +315,12 @@ class EngineeredFeatures(object):
         """
 
         image = self.image
-        # Ensure image size is 256x256
-        if image.shape != (256,256):
-            raise ValueError("This feature is only designed for images of size 256x256")
-
-        # Get the 9A rois
-        intensity_ratio_9a, rois_9a, centers_9a, anchors_9a = self.feature_9a_ratio()
-        equatorial_9a_roi = [rois_9a[0], rois_9a[1]]
-        # Get the 5A rois
-        # Calculate the 5A slice indices
-        row_min, row_max = 60, 80
-        col_center = int(image.shape[1]/2-0.5)
-        roi_5a_w = 50
-        roi_5a_rows = (row_min, row_max)
-        roi_5a_cols = (int(col_center-roi_5a_w/2),int(col_center+roi_5a_w/2))
-        # Calculate the roi
-        roi_5a_top = image[roi_5a_rows[0]:roi_5a_rows[1],
-                              roi_5a_cols[0]:roi_5a_cols[1]]
-        # Due to quadrant folding, assume roi_5a_bottom = roi_5a_top
-
-        # Plan: sum the entire image, subtract sum of features
+        # Import the template
+        template = np.loadtxt(TEMPLATE_PATH, dtype=bool)
+        # Get the intensity outside of the template
+        amorphous_intensity = np.sum(image[~template])
+        # Normalize by the total intensity
         total_intensity = np.sum(image)
-
-        # Take the sum of all not in rois
-        amorphous_intensity = total_intensity - 2*np.sum(rois_9a[0]) - 2*np.sum(roi_5a_top)
         amorphous_intensity_ratio = amorphous_intensity/total_intensity
 
         return amorphous_intensity_ratio
