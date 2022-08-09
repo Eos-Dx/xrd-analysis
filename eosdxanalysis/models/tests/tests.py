@@ -19,8 +19,7 @@ from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.utils import pol2cart
 from eosdxanalysis.models.utils import cart2pol
-from eosdxanalysis.models.feature_engineering import feature_5a_peak_location
-from eosdxanalysis.models.feature_engineering import feature_9a_ratio
+from eosdxanalysis.models.feature_engineering import EngineeredFeatures
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import freq_sampling_grid
 from eosdxanalysis.models.polar_sampling import rmatrix_SpaceLimited
@@ -31,7 +30,9 @@ from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 
-TEST_PATH = os.path.join("eosdxanalysis", "models", "tests")
+TEST_PATH = os.path.dirname(__file__)
+MODULE_PATH = os.path.join(TEST_PATH, "..")
+MODULE_DATA_PATH = os.path.join(MODULE_PATH, "data")
 JN_ZEROSMATRIX_TEST_DIR = "test_jn_zerosmatrix"
 JN_ZEROSMATRIX_FILENAME = "jn_zeros_501_501.npy"
 
@@ -164,6 +165,23 @@ class TestUtils(unittest.TestCase):
 
 class TestFeatureEngineering(unittest.TestCase):
 
+    def test_amorphous_scattering_template(self):
+        """
+        Amorphous scattering of the scattering template should be zero
+        """
+        template_filename = "amorphous-scattering-template.txt"
+        template_path = os.path.join(MODULE_DATA_PATH, template_filename)
+        template = np.loadtxt(template_path)
+
+        known_intensity = 0
+
+        feature_class = EngineeredFeatures(template, params=None)
+
+        amorphous_intensity = feature_class.feature_amorphous_scattering_intensity_ratio()
+
+        self.assertTrue(np.isclose(amorphous_intensity, known_intensity))
+
+
     def test_5a_peak_location(self):
         # Create a test image
         test_image = np.zeros((256,256))
@@ -172,7 +190,9 @@ class TestFeatureEngineering(unittest.TestCase):
         center_col = 128
         test_image[peak_row,center_col] = 1
 
-        roi_peak_location, _, _, _ = feature_5a_peak_location(test_image)
+        feature_class = EngineeredFeatures(test_image, params=None)
+
+        roi_peak_location, _, _, _ = feature_class.feature_5a_peak_location()
         abs_peak_location = roi_peak_location
 
         self.assertEqual(abs_peak_location, peak_row)
@@ -192,9 +212,11 @@ class TestFeatureEngineering(unittest.TestCase):
         test_image[128-rect_l//2:128+rect_l//2,
                 128+start_radius:128+start_radius+rect_w] = 2
 
+        feature_class = EngineeredFeatures(test_image, params=None)
+
         # Get the 9A peak ratio
-        test_ratio, test_rois, test_centers, test_anchors = feature_9a_ratio(test_image,
-                start_radius=start_radius)
+        test_ratio, test_rois, test_centers, test_anchors = \
+                feature_class.feature_9a_ratio(start_radius=start_radius)
         known_ratio = 2 # 2/1 = 2
 
         # Ensure the intensity is as expected
@@ -206,6 +228,33 @@ class TestFeatureEngineering(unittest.TestCase):
 
         self.assertEqual(np.mean(roi_top),1)
         self.assertEqual(np.mean(roi_right),2)
+
+    def test_feature_5a_9a_peak_location_ratio(self):
+        # Create a test image
+        test_image = np.zeros((256,256))
+        # set a peak in the 5A region of interest
+        peak_5a_row = 60
+        peak_5a_radius = 256//2-60
+        center_cols = slice(127, 128)
+        test_image[peak_5a_row,center_cols] = 1
+
+        # Create some blobs in the 9.8A region of interest
+        rect_w = 4
+        rect_l = 18
+        start_radius = 25
+        peak_9a_radius = start_radius + rect_w
+
+        # Set the right area to 2
+        test_image[128-rect_l//2:128+rect_l//2,
+                128+start_radius:128+start_radius+rect_w] = 2
+
+        feature_class = EngineeredFeatures(test_image, params=None)
+        # ratio = peak_5a_radius/peak_9a_radius
+        peak_location_ratio = feature_class.feature_5a_9a_peak_location_ratio()
+
+        self.assertEqual(peak_location_ratio, peak_5a_radius/peak_9a_radius)
+
+        self.fail("Finish writing test")
 
 
 class TestL1Metric(unittest.TestCase):
