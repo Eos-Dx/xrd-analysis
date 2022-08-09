@@ -30,9 +30,9 @@ from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 
-MODULE_PATH = os.path.join("eosdxanalysis", "models")
+TEST_PATH = os.path.dirname(__file__)
+MODULE_PATH = os.path.join(TEST_PATH, "..")
 MODULE_DATA_PATH = os.path.join(MODULE_PATH, "data")
-TEST_PATH = os.path.join(MODULE_PATH, "tests")
 JN_ZEROSMATRIX_TEST_DIR = "test_jn_zerosmatrix"
 JN_ZEROSMATRIX_FILENAME = "jn_zeros_501_501.npy"
 
