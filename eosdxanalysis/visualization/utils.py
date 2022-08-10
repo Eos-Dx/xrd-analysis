@@ -126,7 +126,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
     return texts
 
 def plot_data_dir(input_directory, output_directory, scaling="dB1",
-        filename_format="*.txt"):
+        filename_format="*.txt", cmap="hot"):
     """
     Plots raw text data as png files and saves to file.
     """
@@ -166,7 +166,7 @@ def plot_data_dir(input_directory, output_directory, scaling="dB1",
         # fig.suptitle(basenames[idx] + fig_suptitle_end)
         # fig.set_facecolor("white")
         axes = fig.add_axes(rect=rect)
-        axi = axes.imshow(output_image, aspect='auto', cmap="gray")
+        axi = axes.imshow(output_image, aspect='auto', cmap=cmap)
 
         # Save figure to file
         plt.savefig(os.path.join(output_directory, basenames[idx]) + ".png")
