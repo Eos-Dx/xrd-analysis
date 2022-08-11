@@ -133,18 +133,14 @@ clb = fig.colorbar(surf)
 plt.title("2D Gaussian Polar Convolution")
 
 
-plt.show()
-
-exit(0)
-
 """
 Keratin pattern
 """
 
 MODULE_PATH = os.path.dirname(__file__)
 DATA_DIR = "data"
-# DATA_FILENAME = "CRQF_A00823.txt"
-DATA_FILENAME = "CR_AA00248.txt"
+DATA_FILENAME = "CRQF_A00823.txt"
+# DATA_FILENAME = "CR_AA00248.txt"
 
 image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
 image = np.loadtxt(image_path, dtype=np.uint32)
