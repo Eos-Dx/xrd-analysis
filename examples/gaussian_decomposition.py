@@ -122,16 +122,22 @@ if False:
 
 cmap = "hot"
 
-if False:
+if True:
 
-    fig = plt.figure()
+    plot_title = "2D Gaussian"
+    fig = plt.figure(plot_title)
     plt.imshow(gaussian_9A, cmap=cmap)
+    plt.title(plot_title)
 
-    fig = plt.figure()
+    plot_title = "9A Peaks Template"
+    fig = plt.figure(plot_title)
     plt.imshow(curve_9A, cmap=cmap)
+    plt.title(plot_title)
 
-    fig = plt.figure()
+    plot_title = "9A Gaussian Peaks"
+    fig = plt.figure(plot_title)
     plt.imshow(gaussian_9A_feature, cmap=cmap)
+    plt.title(plot_title)
 
     # 3D Gaussian 9A Feature
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
@@ -305,10 +311,10 @@ filtered_img = noise_floor_subtracted_img
 # filtered_img[image > percentile] = percentile
 
 filtered_img = gaussian_filter(filtered_img, 2)
+# filtered_img = wiener(filtered_img, 15)
 for idx in range(0):
-    filtered_img = wiener(filtered_img, 2)
+    # filtered_img = wiener(filtered_img, 2)
     filtered_img = gaussian_filter(filtered_img, 2)
-
 
 """
 Polar DFT Grid
