@@ -14,6 +14,7 @@ from skimage.transform import warp_polar
 from skimage.transform import warp
 from skimage.transform import EuclideanTransform
 from skimage.transform import AffineTransform
+from skimage.transform import rotate
 from scipy.special import jv
 from scipy.interpolate import griddata
 from scipy.signal import wiener
@@ -121,7 +122,7 @@ if False:
 
 cmap = "hot"
 
-if True:
+if False:
 
     fig = plt.figure()
     plt.imshow(gaussian_9A, cmap=cmap)
@@ -159,6 +160,81 @@ if True:
 # plt.show()
 
 # exit(0)
+
+"""
+Radial profiles
+"""
+# Import sample image
+MODULE_PATH = os.path.dirname(__file__)
+DATA_DIR = "data"
+DATA_FILENAME = "CRQF_A00005.txt"
+
+image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
+image = np.loadtxt(image_path, dtype=np.uint32)
+
+# Plot image
+plot_title = DATA_FILENAME
+fig = plt.figure(plot_title)
+plt.imshow(image, cmap=cmap)
+plt.title(plot_title)
+
+# Define window properties
+center = (image.shape[0]//2, image.shape[1]//2)
+window_thickness = 4*2
+window_length = image.shape[0]//2
+row_start = int(center[0] - window_thickness/2)
+row_end = int(center[0] + window_thickness/2)
+window_rows = slice(row_start, row_end)
+col_start = int(center[1])
+col_end = int(image.shape[1])
+window_cols = slice(col_start, col_end)
+
+# Rotate image twice to take horizontal windows
+image_45 = rotate(image, angle=45, resize=False, preserve_range=True, mode='constant')
+image_90 = rotate(image, angle=90, resize=False, preserve_range=True, mode='constant')
+
+# Take radial profiles, average across rows axis=0
+radial_0 = image[window_rows, window_cols]
+radial_0 = np.mean(radial_0, axis=0)
+radial_45 = image_45[window_rows, window_cols]
+radial_45 = np.mean(radial_45, axis=0)
+radial_90 = image_90[window_rows, window_cols]
+radial_90 = np.mean(radial_90, axis=0)
+
+# Plot intensity vs. pixel radius
+
+plot_title = "Radial profile: 0 degrees"
+fig = plt.figure(plot_title)
+plt.plot(np.arange(window_length), radial_0)
+plt.title(plot_title)
+
+plot_title = "Radial profile: 45 degrees"
+fig = plt.figure(plot_title)
+plt.plot(np.arange(window_length), radial_45)
+plt.title(plot_title)
+
+plot_title = "Radial profile: 90 degrees"
+fig = plt.figure(plot_title)
+plt.plot(np.arange(window_length), radial_90)
+plt.title(plot_title)
+
+
+# Full radial profile
+polar_image = warp_polar(image, radius=window_length, preserve_range=True)
+radial_profile = np.sum(polar_image, axis=0)
+
+# Plot polar image
+plot_title = "Polar warped image"
+fig = plt.figure(plot_title)
+plt.imshow(polar_image, cmap=cmap)
+plt.title(plot_title)
+
+# Plot radial profile
+plot_title = "Radial profile"
+fig = plt.figure(plot_title)
+plt.plot(np.arange(window_length), radial_profile)
+plt.title(plot_title)
+
 
 """
 Swirl
@@ -229,7 +305,7 @@ filtered_img = noise_floor_subtracted_img
 # filtered_img[image > percentile] = percentile
 
 filtered_img = gaussian_filter(filtered_img, 2)
-for idx in range(5):
+for idx in range(0):
     filtered_img = wiener(filtered_img, 2)
     filtered_img = gaussian_filter(filtered_img, 2)
 
@@ -334,7 +410,7 @@ fig.canvas.manager.set_window_title("3D Filtered Image")
 surf = ax.plot_surface(XX, YY, filtered_img, cmap=cmap,
                                linewidth=0, antialiased=False)
 clb = fig.colorbar(surf)
-# ax.set_zlim(0, 1e3)
+ax.set_zlim(0, 2e3)
 plt.title("3D Filtered Image")
 
 if False:
