@@ -209,17 +209,17 @@ radial_90 = np.mean(radial_90, axis=0)
 
 # Plot intensity vs. pixel radius
 
-plot_title = "Radial profile: 0 degrees"
+plot_title = DATA_FILENAME + " Radial profile: 0 degrees"
 fig = plt.figure(plot_title)
 plt.plot(np.arange(window_length), radial_0)
 plt.title(plot_title)
 
-plot_title = "Radial profile: 45 degrees"
+plot_title = DATA_FILENAME + " Radial profile: 45 degrees"
 fig = plt.figure(plot_title)
 plt.plot(np.arange(window_length), radial_45)
 plt.title(plot_title)
 
-plot_title = "Radial profile: 90 degrees"
+plot_title = DATA_FILENAME + " Radial profile: 90 degrees"
 fig = plt.figure(plot_title)
 plt.plot(np.arange(window_length), radial_90)
 plt.title(plot_title)
