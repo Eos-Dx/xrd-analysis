@@ -103,7 +103,7 @@ class PreprocessData(object):
         return super().__init__()
 
     def preprocess(self, denoise=False, visualize=False, plans=["centerize_rotate"],
-                        mask_style="both"):
+                        mask_style="both", uniform_filter_size=None):
         """
         Run all preprocessing steps
 
@@ -158,8 +158,12 @@ class PreprocessData(object):
                     # Set output
                     output = centered_rotated_image
 
-                    if mask_style:
-                        output = self.mask(centered_rotated_image, style=mask_style)
+                    # Uniform filter
+                    if uniform_filter_size:
+                        output = ndimage.uniform_filter(output, size=uniform_filter_size)
+                        # Mask
+                        if mask_style:
+                            output = self.mask(output, style=mask_style)
 
                     self.cache["centered_rotated"].append(output)
 
@@ -171,8 +175,12 @@ class PreprocessData(object):
                     # Set output
                     output = centered_rotated_quad_folded_image
 
-                    if mask_style:
-                        output = self.mask(centered_rotated_quad_folded_image, style=mask_style)
+                    # Uniform filter
+                    if uniform_filter_size:
+                        output = ndimage.uniform_filter(output, size=uniform_filter_size)
+                        # Mask
+                        if mask_style:
+                            output = self.mask(output, style=mask_style)
 
                     self.cache["centered_rotated_quad_folded"].append(output)
 
@@ -184,8 +192,12 @@ class PreprocessData(object):
                     # Set output
                     output = local_thresh_centered_rotated_image
 
-                    if mask_style:
-                        output = self.mask(local_thresh_centered_rotated_image, style=mask_style)
+                    # Uniform filter
+                    if uniform_filter_size:
+                        output = ndimage.uniform_filter(output, size=uniform_filter_size)
+                        # Mask
+                        if mask_style:
+                            output = self.mask(output, style=mask_style)
 
                     self.cache["local_thresh_centered_rotated"].append(output)
 
@@ -199,8 +211,12 @@ class PreprocessData(object):
                     # Set output
                     output = local_thresh_centered_rotated_quad_folded_image
 
-                    if mask_style:
-                        output = self.mask(local_thresh_centered_rotated_quad_folded_image, style=mask_style)
+                    # Uniform filter
+                    if uniform_filter_size:
+                        output = ndimage.uniform_filter(output, size=uniform_filter_size)
+                        # Mask
+                        if mask_style:
+                            output = self.mask(output, style=mask_style)
 
                     self.cache["local_thresh_centered_rotated_quad_folded"].append(output)
 
@@ -532,6 +548,9 @@ if __name__ == "__main__":
     parser.add_argument(
             "--plans", default=None,
             help="The plans for preprocessing")
+    parser.add_argument(
+            "--uniform_filter_size", default=None,
+            help="Uniform filter size")
 
     args = parser.parse_args()
 
@@ -575,13 +594,16 @@ if __name__ == "__main__":
     if not plans:
         raise ValueError("Plans required.")
 
+    # Set uniform filter size
+    uniform_filter_size = int(args.uniform_filter_size)
+
     # Instantiate PreprocessData class
     preprocessor = PreprocessData(input_dir=input_dir, output_dir=output_dir,
             parent_dir=parent_dir, samples_dir=samples_dir, params=params)
 
     # Run preprocessing
     preprocessor.preprocess(visualize=False, plans=plans,
-            mask_style=params.get("crop_style"))
+            mask_style=params.get("crop_style"), uniform_filter_size=uniform_filter_size)
 
     # Save
     preprocessor.save()
