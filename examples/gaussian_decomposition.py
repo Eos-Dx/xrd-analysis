@@ -11,10 +11,14 @@ from scipy.ndimage import uniform_filter
 from scipy.ndimage import sobel
 from scipy.ndimage import gaussian_filter
 from skimage.transform import warp_polar
+from skimage.transform import warp
+from skimage.transform import EuclideanTransform
 from scipy.special import jv
 from scipy.interpolate import griddata
 from scipy.signal import wiener
+from scipy.signal import convolve
 from scipy import signal
+from scipy.stats import multivariate_normal
 
 import matplotlib.pyplot as plt
 
@@ -27,6 +31,111 @@ from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 
 t0 = time.time()
+
+"""
+Gaussian Synthesis functions
+"""
+
+YY, XX = np.mgrid[-1:1:256j, -1:1:256j]
+
+# TT, RR = cart2pol(XX, YY)
+
+# Create 2D Gaussian
+
+sigma_x = 0.1
+sigma_y = 0.1
+mu_x = 0
+mu_y = 0
+rho = 1
+
+# XPP = mu_r * XX/RR
+# YPP = mu_r * YY/RR
+pos = np.dstack([XX, YY])
+rv = multivariate_normal([0.0, 0.0], [[0.001, 0.0], [0.0, 0.001]])
+rv2 = multivariate_normal([0.0, 0.0], [[0.0001, 0.0], [0.0, 0.0001]])
+rv3 = multivariate_normal([0.0, 0.0], [[0.5, 0.0], [0.0, 0.5]])
+gaussian = rv.pdf(pos)
+gaussian2 = rv2.pdf(pos)
+bg_noise = rv3.pdf(pos)
+
+# Translate gaussian from (0,0) to (x0,y0)
+# x0, y0 = (0.25*gaussian.shape[1], 0)
+# translation = (x0, y0)
+# translation_tform = EuclideanTransform(translation=translation)
+# translated_image = warp(gaussian, translation_tform.inverse)
+
+# Draw a curve for convolution along 0.45 < r < 0.55
+# and pi/4 < theta < pi/2
+TT, RR = cart2pol(XX, YY)
+curve = np.zeros(gaussian.shape)
+curve2 = np.zeros(gaussian.shape)
+
+
+# TODO: Make these curves gaussian instead of constant-valued
+# First set entire radius values = 1
+# 5A region peaks
+region_radial = (0.5 + 0.01 < RR) & (RR < 0.5 + 0.02)
+region_angular_1 = (np.pi/2 - np.pi/8 < TT) & (TT < np.pi/2 + np.pi/8)
+region_angular_2 = (np.pi/2 - np.pi - np.pi/8 < TT) & (TT < np.pi/2 - np.pi + np.pi/8)
+region1 = region_radial & region_angular_1
+region2 = region_radial & region_angular_2
+# curve2[region1] += 1
+# curve2[region2] += 1
+
+# 9A region
+region2_radial = (0.25 - 0.02 < RR) & (RR < 0.25 + 0.02)
+region2_angular_1 = (-np.pi/8 < TT) & (TT < np.pi/8)
+region2_angular_2 = (- np.pi + np.pi/8 > TT) | (TT > np.pi - np.pi/8)
+region1 = region2_radial & region2_angular_1
+region2 = region2_radial & region2_angular_2
+curve[region1] += 1
+curve[region2] += 1
+
+# 5-4 A region diffuse scattering
+region3_radial = (0.5 < RR)
+curve[region3_radial] += 0.5
+
+# Now put Gaussian decay
+curve[region3_radial] *= np.exp(-(2*RR[region3_radial])**2)
+# Add in background noise
+curve += bg_noise/np.max(bg_noise)/10
+
+# Convolution
+polar_gaussian = convolve(gaussian, curve, mode="same")
+# Normalize
+polar_gaussian /= np.max(polar_gaussian)
+
+# Convolution 2
+polar_gaussian2 = convolve(gaussian2, curve2, mode="same")
+# Normalize
+polar_gaussian2 /= np.max(polar_gaussian2)
+
+cmap = "hot"
+
+fig = plt.figure()
+plt.imshow(gaussian, cmap=cmap)
+
+fig = plt.figure()
+plt.imshow(curve, cmap=cmap)
+
+fig = plt.figure()
+plt.imshow(polar_gaussian, cmap=cmap)
+
+plt.imsave("synthetic_peaks.png", polar_gaussian, cmap=cmap)
+
+# 3D Plot of result
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+fig.canvas.manager.set_window_title("2D Gaussian Polar Convolution")
+surf = ax.plot_surface(XX, YY, polar_gaussian, cmap=cmap,
+                               linewidth=0, antialiased=False)
+clb = fig.colorbar(surf)
+# ax.set_zlim(0, 1.5)
+plt.title("2D Gaussian Polar Convolution")
+
+
+plt.show()
+
+exit(0)
 
 """
 Keratin pattern
