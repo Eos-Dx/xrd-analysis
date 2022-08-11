@@ -37,134 +37,160 @@ t0 = time.time()
 Gaussian Synthesis functions
 """
 
+# Construct Cartesian and polar meshgrids
 YY, XX = np.mgrid[-1:1:256j, -1:1:256j]
-
-# TT, RR = cart2pol(XX, YY)
-
-# Create 2D Gaussian
-
-sigma_x = 0.1
-sigma_y = 0.1
-mu_x = 0
-mu_y = 0
-rho = 1
-
-# XPP = mu_r * XX/RR
-# YPP = mu_r * YY/RR
-pos = np.dstack([XX, YY])
-rv = multivariate_normal([0.0, 0.0], [[0.001, 0.0], [0.0, 0.001]])
-rv2 = multivariate_normal([0.0, 0.0], [[0.0001, 0.0], [0.0, 0.0001]])
-rv3 = multivariate_normal([0.0, 0.0], [[0.5, 0.0], [0.0, 0.5]])
-gaussian = rv.pdf(pos)
-gaussian2 = rv2.pdf(pos)
-bg_noise = rv3.pdf(pos)
-
-# Translate gaussian from (0,0) to (x0,y0)
-# x0, y0 = (0.25*gaussian.shape[1], 0)
-# translation = (x0, y0)
-# translation_tform = EuclideanTransform(translation=translation)
-# translated_image = warp(gaussian, translation_tform.inverse)
-
-# Draw a curve for convolution along 0.45 < r < 0.55
-# and pi/4 < theta < pi/2
 TT, RR = cart2pol(XX, YY)
-curve = np.zeros(gaussian.shape)
-curve2 = np.zeros(gaussian.shape)
 
+# Create Gaussians of each feature:
+# 9A< 5A, and 5-4A
 
-# TODO: Make these curves gaussian instead of constant-valued
-# First set entire radius values = 1
-# 5A region peaks
+# Construct 9A Gaussian peak
+pos_9A = np.dstack([XX, YY])
+rv_9A = multivariate_normal([0.0, 0.0], [[0.001, 0.0], [0.0, 0.001]])
+gaussian_9A = rv_9A.pdf(pos_9A)
+
+# Draw a curve for convolution along  rmin_9A < r < rmax_9A
+# and theta_min_9A < theta < theta_max_9A
+
+# Set some constants
+r_9A = 0.25
+dr_9A = 0.02
+curve_9A = np.zeros(gaussian_9A.shape)
+theta1_9A = 0
+theta2_9A = np.pi
+dtheta_9A = np.pi/16
+
+# Set curve = 1 in defined template regions
+# Define radial region of interest
+radial_9A = (r_9A - dr_9A < RR) & (RR < r_9A + dr_9A)
+# Define disjoint angular regions of interest
+angular1_9A = (-np.pi/8 < TT) & (TT < np.pi/8)
+angular2_9A = (- np.pi + np.pi/8 > TT) | (TT > np.pi - np.pi/8)
+# Combine regions of interest
+region_9A = radial_9A & (angular1_9A | angular2_9A)
+# Set curve = 1
+curve_9A[region_9A] += 1
+
+# Take 9A convolution
+gaussian_9A_feature = convolve(gaussian_9A, curve_9A, mode="same")
+# Normalize
+gaussian_9A_feature /= np.max(gaussian_9A_feature)
+
+# Construct 5A Gaussian peak
+
 region_radial = (0.5 + 0.01 < RR) & (RR < 0.5 + 0.02)
 region_angular_1 = (np.pi/2 - np.pi/8 < TT) & (TT < np.pi/2 + np.pi/8)
 region_angular_2 = (np.pi/2 - np.pi - np.pi/8 < TT) & (TT < np.pi/2 - np.pi + np.pi/8)
 region1 = region_radial & region_angular_1
 region2 = region_radial & region_angular_2
-# curve2[region1] += 1
-# curve2[region2] += 1
 
-# 9A region
-region2_radial = (0.25 - 0.02 < RR) & (RR < 0.25 + 0.02)
-region2_angular_1 = (-np.pi/8 < TT) & (TT < np.pi/8)
-region2_angular_2 = (- np.pi + np.pi/8 > TT) | (TT > np.pi - np.pi/8)
-region1 = region2_radial & region2_angular_1
-region2 = region2_radial & region2_angular_2
-curve[region1] += 1
-curve[region2] += 1
 
-# 5-4 A region diffuse scattering
-region3_radial = (0.5 < RR)
-curve[region3_radial] += 0.5
+if False:
+    curve2 = np.zeros(gaussian.shape)
 
-# Now put Gaussian decay
-curve[region3_radial] *= np.exp(-(2*RR[region3_radial])**2)
-# Add in background noise
-curve += bg_noise/np.max(bg_noise)/10
+    rv2 = multivariate_normal([0.0, 0.0], [[0.0001, 0.0], [0.0, 0.0001]])
+    rv3 = multivariate_normal([0.0, 0.0], [[0.5, 0.0], [0.0, 0.5]])
+    gaussian2 = rv2.pdf(pos)
+    bg_noise = rv3.pdf(pos)
 
-# Convolution
-polar_gaussian = convolve(gaussian, curve, mode="same")
-# Normalize
-polar_gaussian /= np.max(polar_gaussian)
+    # Translate gaussian from (0,0) to (x0,y0)
+    # x0, y0 = (0.25*gaussian.shape[1], 0)
+    # translation = (x0, y0)
+    # translation_tform = EuclideanTransform(translation=translation)
+    # translated_image = warp(gaussian, translation_tform.inverse)
 
-# Convolution 2
-polar_gaussian2 = convolve(gaussian2, curve2, mode="same")
-# Normalize
-polar_gaussian2 /= np.max(polar_gaussian2)
+
+    # 5-4 A region diffuse scattering
+    region3_radial = (0.5 < RR)
+    curve[region3_radial] += 0.5
+
+    # Now put Gaussian decay
+    curve[region3_radial] *= np.exp(-(2*RR[region3_radial])**2)
+    # Add in background noise
+    curve += bg_noise/np.max(bg_noise)/10
+
+    # Convolution
+    polar_gaussian = convolve(gaussian, curve, mode="same")
+    # Normalize
+    polar_gaussian /= np.max(polar_gaussian)
+
+    # Convolution 2
+    polar_gaussian2 = convolve(gaussian2, curve2, mode="same")
+    # Normalize
+    polar_gaussian2 /= np.max(polar_gaussian2)
 
 cmap = "hot"
 
-if False:
+if True:
 
     fig = plt.figure()
-    plt.imshow(gaussian, cmap=cmap)
+    plt.imshow(gaussian_9A, cmap=cmap)
 
     fig = plt.figure()
-    plt.imshow(curve, cmap=cmap)
+    plt.imshow(curve_9A, cmap=cmap)
 
     fig = plt.figure()
-    plt.imshow(polar_gaussian, cmap=cmap)
+    plt.imshow(gaussian_9A_feature, cmap=cmap)
 
-    plt.imsave("synthetic_peaks.png", polar_gaussian, cmap=cmap)
-
-    # 3D Plot of result
+    # 3D Gaussian 9A Feature
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    fig.canvas.manager.set_window_title("2D Gaussian Polar Convolution")
-    surf = ax.plot_surface(XX, YY, polar_gaussian, cmap=cmap,
+    fig.canvas.manager.set_window_title("3D Gaussian 9A Feature")
+    surf = ax.plot_surface(XX, YY, gaussian_9A_feature, cmap=cmap,
                                    linewidth=0, antialiased=False)
     clb = fig.colorbar(surf)
     # ax.set_zlim(0, 1.5)
-    plt.title("2D Gaussian Polar Convolution")
+    plt.title("3D Gaussian 9A Feature")
+
+    if False:
+        fig = plt.figure()
+        plt.imshow(polar_gaussian, cmap=cmap)
+
+        plt.imsave("synthetic_peaks.png", polar_gaussian, cmap=cmap)
+
+        # 3D Plot of result
+        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        fig.canvas.manager.set_window_title("2D Gaussian Polar Convolution")
+        surf = ax.plot_surface(XX, YY, polar_gaussian, cmap=cmap,
+                                       linewidth=0, antialiased=False)
+        clb = fig.colorbar(surf)
+        # ax.set_zlim(0, 1.5)
+        plt.title("2D Gaussian Polar Convolution")
+
+# plt.show()
+
+# exit(0)
 
 """
 Swirl
 """
-# Translate gaussian from (0,0) to (x0,y0)
-x0, y0 = (0.25*gaussian.shape[1], 0)
-theta_center = np.arctan2(y0, x0)
-translation = (x0, y0)
-translation_tform = EuclideanTransform(translation=translation)
-translated_image = warp(gaussian, translation_tform.inverse)
+if False:
+    # Translate gaussian from (0,0) to (x0,y0)
+    x0, y0 = (0.25*gaussian.shape[1], 0)
+    theta_center = np.arctan2(y0, x0)
+    translation = (x0, y0)
+    translation_tform = EuclideanTransform(translation=translation)
+    translated_image = warp(gaussian, translation_tform.inverse)
 
-# Transform to polar coordinates
-N = int(256)
-polar_image = warp_polar(translated_image.T, radius=N, output_shape=(N,N))
+    # Transform to polar coordinates
+    Nsize = int(256)
+    polar_image = warp_polar(translated_image.T, radius=Nsize, output_shape=(Nsize,Nsize))
 
-# Unwarp
-output_shape = gaussian.shape
-sheared_image = unwarp_polar(polar_image, output_shape=output_shape).T
+    # Unwarp
+    output_shape = gaussian.shape
+    sheared_image = unwarp_polar(polar_image, output_shape=output_shape).T
 
-fig = plt.figure(1)
-plt.imshow(translated_image)
+    fig = plt.figure(1)
+    plt.imshow(translated_image)
 
-fig = plt.figure(2)
-plt.imshow(polar_image)
+    fig = plt.figure(2)
+    plt.imshow(polar_image)
 
-fig = plt.figure(4)
-plt.imshow(sheared_image)
+    fig = plt.figure(4)
+    plt.imshow(sheared_image)
 
-plt.show()
+    plt.show()
 
-exit(0)
+    exit(0)
 
 
 """
@@ -173,8 +199,7 @@ Keratin pattern
 
 MODULE_PATH = os.path.dirname(__file__)
 DATA_DIR = "data"
-DATA_FILENAME = "CRQF_A00823.txt"
-# DATA_FILENAME = "CR_AA00248.txt"
+DATA_FILENAME = "CRQF_A00005.txt"
 
 image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
 image = np.loadtxt(image_path, dtype=np.uint32)
@@ -189,6 +214,7 @@ intensities = np.unique(image)
 noise_floor = intensities[1]
 noise_floor_subtracted_img = image.copy()
 noise_floor_subtracted_img[image > 0] = image[image > 0] - noise_floor
+
 # filtered_img = wiener(noise_floor_subtracted_img, 15)
 # Take low-pass filter (remove high frequencies)
 # Get IIR filter coefficients for Butterworth filter
@@ -199,8 +225,8 @@ noise_floor_subtracted_img[image > 0] = image[image > 0] - noise_floor
 filtered_img = noise_floor_subtracted_img
 
 # Percentile clipping
-percentile = np.percentile(image, 75)
-filtered_img[image > percentile] = percentile
+# percentile = np.percentile(image, 99)
+# filtered_img[image > percentile] = percentile
 
 filtered_img = gaussian_filter(filtered_img, 2)
 for idx in range(5):
@@ -280,32 +306,32 @@ Plots
 
 # 2D Plot of original image
 fig = plt.figure("2D Plot original")
-plt.imshow(image, cmap="gray")
+plt.imshow(image, cmap=cmap)
 plt.title("Original image")
 
 # 2D Plot of noise-floor-subtracted original image
 fig = plt.figure("2D Plot noise-floor-subtracted original")
-plt.imshow(noise_floor_subtracted_img, cmap="gray")
+plt.imshow(noise_floor_subtracted_img, cmap=cmap)
 plt.title("Original image (noise-floor-subtracted)")
 
 # 2D Plot of low-pass-filtered image
 fig = plt.figure("2D Plot low-pass image")
-plt.imshow(filtered_img, cmap="gray")
+plt.imshow(filtered_img, cmap=cmap)
 plt.title("Low-pass filtered original image")
 
-# 3D Plot of noise-floor-offset image
+# 3D Plot of original image
 fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 fig.canvas.manager.set_window_title("3D Original Image")
-surf = ax.plot_surface(XX, YY, noise_floor_subtracted_img , cmap="gray",
+surf = ax.plot_surface(XX, YY, image , cmap=cmap,
                                linewidth=0, antialiased=False)
 clb = fig.colorbar(surf)
-ax.set_zlim(0, 1e3)
-plt.title("3D Noise-Floor-Offset Original Image")
+ax.set_zlim(0, 2e3)
+plt.title("3D Original Image")
 
 # 3D Plot of filtered image
 fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 fig.canvas.manager.set_window_title("3D Filtered Image")
-surf = ax.plot_surface(XX, YY, filtered_img, cmap="gray",
+surf = ax.plot_surface(XX, YY, filtered_img, cmap=cmap,
                                linewidth=0, antialiased=False)
 clb = fig.colorbar(surf)
 # ax.set_zlim(0, 1e3)
