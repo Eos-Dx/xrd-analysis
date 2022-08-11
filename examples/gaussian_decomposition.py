@@ -13,6 +13,7 @@ from scipy.ndimage import gaussian_filter
 from skimage.transform import warp_polar
 from skimage.transform import warp
 from skimage.transform import EuclideanTransform
+from skimage.transform import AffineTransform
 from scipy.special import jv
 from scipy.interpolate import griddata
 from scipy.signal import wiener
@@ -112,25 +113,58 @@ polar_gaussian2 /= np.max(polar_gaussian2)
 
 cmap = "hot"
 
-fig = plt.figure()
-plt.imshow(gaussian, cmap=cmap)
+if False:
 
-fig = plt.figure()
-plt.imshow(curve, cmap=cmap)
+    fig = plt.figure()
+    plt.imshow(gaussian, cmap=cmap)
 
-fig = plt.figure()
-plt.imshow(polar_gaussian, cmap=cmap)
+    fig = plt.figure()
+    plt.imshow(curve, cmap=cmap)
 
-plt.imsave("synthetic_peaks.png", polar_gaussian, cmap=cmap)
+    fig = plt.figure()
+    plt.imshow(polar_gaussian, cmap=cmap)
 
-# 3D Plot of result
-fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-fig.canvas.manager.set_window_title("2D Gaussian Polar Convolution")
-surf = ax.plot_surface(XX, YY, polar_gaussian, cmap=cmap,
-                               linewidth=0, antialiased=False)
-clb = fig.colorbar(surf)
-# ax.set_zlim(0, 1.5)
-plt.title("2D Gaussian Polar Convolution")
+    plt.imsave("synthetic_peaks.png", polar_gaussian, cmap=cmap)
+
+    # 3D Plot of result
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    fig.canvas.manager.set_window_title("2D Gaussian Polar Convolution")
+    surf = ax.plot_surface(XX, YY, polar_gaussian, cmap=cmap,
+                                   linewidth=0, antialiased=False)
+    clb = fig.colorbar(surf)
+    # ax.set_zlim(0, 1.5)
+    plt.title("2D Gaussian Polar Convolution")
+
+"""
+Swirl
+"""
+# Translate gaussian from (0,0) to (x0,y0)
+x0, y0 = (0.25*gaussian.shape[1], 0)
+theta_center = np.arctan2(y0, x0)
+translation = (x0, y0)
+translation_tform = EuclideanTransform(translation=translation)
+translated_image = warp(gaussian, translation_tform.inverse)
+
+# Transform to polar coordinates
+N = int(256)
+polar_image = warp_polar(translated_image.T, radius=N, output_shape=(N,N))
+
+# Unwarp
+output_shape = gaussian.shape
+sheared_image = unwarp_polar(polar_image, output_shape=output_shape).T
+
+fig = plt.figure(1)
+plt.imshow(translated_image)
+
+fig = plt.figure(2)
+plt.imshow(polar_image)
+
+fig = plt.figure(4)
+plt.imshow(sheared_image)
+
+plt.show()
+
+exit(0)
 
 
 """
