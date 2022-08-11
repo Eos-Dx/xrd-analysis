@@ -102,8 +102,8 @@ class PreprocessData(object):
 
         return super().__init__()
 
-    def preprocess(self, denoise=False, visualize=False, plans=["centerize_rotate"],
-                        mask_style="both", uniform_filter_size=None):
+    def preprocess(self, denoise=False, plans=["centerize_rotate"],
+                mask_style="both", uniform_filter_size=None):
         """
         Run all preprocessing steps
 
@@ -141,31 +141,56 @@ class PreprocessData(object):
         # Set timestamp
         timestr = "%Y%m%dT%H%M%S.%f"
         timestamp = datetime.utcnow().strftime(timestr)
-        self.timestamp = timestamp
 
-        # sample_count
-        for filename_fullpath in filenames_fullpaths:
-            # Load file
-            sample = np.loadtxt(filename_fullpath)
-            # Store original in cache
-            self.cache["original"].append(sample)
+        # Store output directory info
+        if not self.output_dir:
+            # Create output directory if it does not exist
+            if samples_dir:
+                output_dir_name = "preprocessed_{}_{}".format(
+                                        samples_dir, timestamp)
+            else:
+                output_dir_name = "preprocessed_{}".format(timestamp)
+            output_dir = os.path.join(parent_dir, output_dir_name)
+            os.makedirs(output_dir, exist_ok=True)
 
-            for plan in plans:
+        print("Saving to", output_dir, "...")
+
+        # Write params to file
+        with open(os.path.join(output_dir,"params.txt"),"w") as paramsfile:
+            paramsfile.write(json.dumps(params,indent=4))
+
+
+        # Loop over plans
+        for plan in plans:
+
+            output_style = INVERSE_OUTPUT_MAP.get(plan)
+            output_style_abbreviation = ABBREVIATIONS.get(output_style)
+
+            # Create output directory for plan and output format
+            plan_output_dir = os.path.join(output_dir, output_style)
+            os.makedirs(plan_output_dir, exist_ok=True)
+
+            # Loop over files
+            for filename_fullpath in filenames_fullpaths:
+
+                # Load file
+                sample = np.loadtxt(filename_fullpath)
+
+                filename = os.path.basename(filename_fullpath)
+
+                # Set the output based on output specifications
+                try:
+                    cache = self.cache["{}".format(output_style)]
+                except KeyError as err:
+                    print("Could not find image cache for style {}.".format(output_style))
+                    raise err
+
 
                 if plan == "centerize_rotate":
                     # Centerize and rotate
                     centered_rotated_image, center, angle = self.centerize_and_rotate(sample)
                     # Set output
                     output = centered_rotated_image
-
-                    # Uniform filter
-                    if uniform_filter_size:
-                        output = ndimage.uniform_filter(output, size=uniform_filter_size)
-                        # Mask
-                        if mask_style:
-                            output = self.mask(output, style=mask_style)
-
-                    self.cache["centered_rotated"].append(output)
 
                 if plan == "centerize_rotate_quad_fold":
                     # Centerize and rotate
@@ -175,15 +200,6 @@ class PreprocessData(object):
                     # Set output
                     output = centered_rotated_quad_folded_image
 
-                    # Uniform filter
-                    if uniform_filter_size:
-                        output = ndimage.uniform_filter(output, size=uniform_filter_size)
-                        # Mask
-                        if mask_style:
-                            output = self.mask(output, style=mask_style)
-
-                    self.cache["centered_rotated_quad_folded"].append(output)
-
                 if plan == "local_thresh_centerize_rotate":
                     # Take local threshold
                     local_thresh_image = threshold_local(sample, local_thresh_block_size)
@@ -191,15 +207,6 @@ class PreprocessData(object):
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Set output
                     output = local_thresh_centered_rotated_image
-
-                    # Uniform filter
-                    if uniform_filter_size:
-                        output = ndimage.uniform_filter(output, size=uniform_filter_size)
-                        # Mask
-                        if mask_style:
-                            output = self.mask(output, style=mask_style)
-
-                    self.cache["local_thresh_centered_rotated"].append(output)
 
                 if plan == "local_thresh_centerize_rotate_quad_fold":
                     # Take local threshold
@@ -211,70 +218,20 @@ class PreprocessData(object):
                     # Set output
                     output = local_thresh_centered_rotated_quad_folded_image
 
-                    # Uniform filter
-                    if uniform_filter_size:
-                        output = ndimage.uniform_filter(output, size=uniform_filter_size)
-                        # Mask
-                        if mask_style:
-                            output = self.mask(output, style=mask_style)
+                # Uniform filter
+                if uniform_filter_size:
+                    output = ndimage.uniform_filter(output, size=uniform_filter_size)
+                    # Mask
+                    if mask_style:
+                        output = self.mask(output, style=mask_style)
 
-                    self.cache["local_thresh_centered_rotated_quad_folded"].append(output)
-
-            if visualize:
-                # Recenter image
-                local_thresh_image = self.cache["local_thresh"][0]
-
-                # Plot
-                fig = plt.figure(dpi=100)
-                fig.set_size_inches(4*4,4*1) # x,y
-                fig.set_facecolor("white")
-                filename = os.path.basename(filename_fullpath)
-                fig.suptitle("Preprocessing "+filename)
-
-        #         # Plot histograms
-        #         fig.add_subplot(1,2,1)
-        #         plt.hist(sample, bins=25, range=(0,100))
-        #         plt.title("Original Sample Intensities")
-
-        #         fig.add_subplot(1,2,2)
-        #         plt.hist(orig_centered, bins=25, range=(0,100))
-        #         plt.title("Centerized Sample Intensities")
-
-        #         print(np.sum(sample),np.sum(orig_centered))
-
-                # Original image
-                ax1 = fig.add_subplot(1,4,1)
-                plt.imshow(20*np.log10(beam_masked_img+1))
-                plt.plot(center[1],center[0],marker='o',color='g')
-                ax1.add_artist(mpl.lines.Line2D(*pre_rotation_line,color='g'))
-                plt.title("Original [dB+1]")
-
-                # Plot 9A features region of interest
-                fig.add_subplot(1,4,2)
-                plt.imshow(eye_roi)
-    #             plt.imshow(eye_roi_binary)
-                plt.plot(initial_max_centroid[1],initial_max_centroid[0],marker='o',color='r')
-                plt.plot(eye_max_blob_centroid[1],eye_max_blob_centroid[0],marker='o',color='g')
-                plt.title("Feature: 9A Arc Maximas")
-
-                # Final results denoised
-                fig.add_subplot(1,4,3)
-                plt.imshow(scaled_masked_img)
-                plt.plot(256//2,256//2,marker='o',color='g')
-                plt.hlines(256//2,256//2-100,256//2+100,color='g')
-                plt.title("Rotated Centered Denoised")
-
-                # Original plot preprocessed
-                fig.add_subplot(1,4,4)
-                plt.imshow(20*np.log10(orig_preprocessed+1))
-                plt.title("Rotated Centered Original [dB+1]")
-
-        #         # Quadrant-folded image
-        #         fig.add_subplot(1,4,4)
-        #         plt.imshow(quad_masked)
-        #         plt.title("Quadrant-Folded Original [dB+1]")
-
-                plt.show()
+                # Save the file
+                save_filename = "{}_{}".format(output_style_abbreviation,
+                                            filename)
+                save_filename_fullpath = os.path.join(plan_output_dir,
+                                            save_filename)
+                np.savetxt(save_filename_fullpath,
+                                np.round(output).astype(np.uint16), fmt='%i')
 
     def find_eye_rotation_angle(self, image, center):
         """
@@ -431,76 +388,6 @@ class PreprocessData(object):
 
         return image
 
-    def save(self, parent_dir=None, samples_dir=None, output_dir=None):
-        """
-        Save preprocessed image to file
-        Inputs:
-        - output_dir: Output directory
-        - output_formats: Output formats are "txt" or "png", can input a csv
-        - output_style: according to preprocessing plan type
-        """
-        if not samples_dir:
-            samples_dir = self.samples_dir
-        if not parent_dir:
-            parent_dir = self.parent_dir
-        timestamp = self.timestamp
-        # Make sure cache is not empty
-        if self.cache == {}:
-            raise ValueError("Image cache is empty, please call preprocess method first.")
-
-        # Get filename info
-        filenames_fullpaths = self.filenames_fullpaths
-        # Store output directory info
-        if not output_dir:
-            if not self.output_dir:
-                # Create output directory if it does not exist
-                if samples_dir:
-                    output_dir_name = "preprocessed_{}_{}".format(
-                                            samples_dir, timestamp)
-                else:
-                    output_dir_name = "preprocessed_{}".format(timestamp)
-                output_dir = os.path.join(parent_dir, output_dir_name)
-                os.makedirs(output_dir, exist_ok=True)
-            else:
-                output_dir = self.output_dir
-                os.makedirs(output_dir, exist_ok=True)
-        print("Saving to", output_dir, "...")
-
-        # Write params to file
-        with open(os.path.join(output_dir,"params.txt"),"w") as paramsfile:
-            paramsfile.write(json.dumps(self.params,indent=4))
-
-        for plan in self.plans:
-            output_style = INVERSE_OUTPUT_MAP.get(plan)
-            output_style_abbreviation = ABBREVIATIONS.get(output_style)
-
-            # Create output directory for plan and output format
-            plan_output_dir = os.path.join(output_dir, output_style)
-            os.makedirs(plan_output_dir, exist_ok=True)
-
-            for idx, filename_fullpath in enumerate(filenames_fullpaths):
-                filename = os.path.basename(filename_fullpath)
-
-                # Set the output based on output specifications
-                try:
-                    cache = self.cache["{}".format(output_style)]
-                except KeyError as err:
-                    print("Could not find image cache for style {}.".format(output_style))
-                    raise err
-
-                # Get the image from the cache
-                try:
-                    output = cache[idx]
-                except IndexError as err:
-                    print("Error accessing image cache.")
-                    raise err
-
-                save_filename = "{}_{}".format(output_style_abbreviation,
-                                            filename)
-                save_filename_fullpath = os.path.join(plan_output_dir,
-                                            save_filename)
-                np.savetxt(save_filename_fullpath,
-                                np.round(output).astype(np.uint16), fmt='%i')
 
 
 if __name__ == "__main__":
@@ -602,9 +489,7 @@ if __name__ == "__main__":
             parent_dir=parent_dir, samples_dir=samples_dir, params=params)
 
     # Run preprocessing
-    preprocessor.preprocess(visualize=False, plans=plans,
-            mask_style=params.get("crop_style"), uniform_filter_size=uniform_filter_size)
+    preprocessor.preprocess(plans=plans, mask_style=params.get("crop_style"),
+            uniform_filter_size=uniform_filter_size)
 
-    # Save
-    preprocessor.save()
     print("Done preprocessing.")
