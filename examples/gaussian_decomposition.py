@@ -39,45 +39,48 @@ Gaussian Synthesis functions
 """
 
 # Construct Cartesian and polar meshgrids
-YY, XX = np.mgrid[-1:1:256j, -1:1:256j]
+# y goes from 1 to -1, rows
+# x goes from -1 to 1, columns
+YY, XX = np.mgrid[1:-1:256j, -1:1:256j]
 TT, RR = cart2pol(XX, YY)
 
 # Create Gaussians of each feature:
 # 9A< 5A, and 5-4A
 
 # Construct 9A Gaussian peak
-pos_9A = np.dstack([XX, YY])
-rv_9A = multivariate_normal([0.0, 0.0], [[0.001, 0.0], [0.0, 0.001]])
-gaussian_9A = rv_9A.pdf(pos_9A)
+pos_5A = np.dstack([XX, YY])
+rv_5A = multivariate_normal([0.0, 0.0], [[0.001, 0.0], [0.0, 0.001]])
+gaussian_5A = rv_5A.pdf(pos_5A)
 
 # Draw a curve for convolution along  rmin_9A < r < rmax_9A
 # and theta_min_9A < theta < theta_max_9A
 
 # Set some constants
-r_9A = 0.25
-dr_9A = 0.02
-curve_9A = np.zeros(gaussian_9A.shape)
-theta1_9A = 0
-theta2_9A = np.pi
-dtheta_9A = np.pi/16
+r_5A = 0.5
+dr_5A = 0.01
+curve_5A = np.zeros(gaussian_5A.shape)
+theta1_5A = np.pi/2
+theta2_5A = -np.pi/2
+dtheta_5A = np.pi/4
 
 # Set curve = 1 in defined template regions
 # Define radial region of interest
-radial_9A = (r_9A - dr_9A < RR) & (RR < r_9A + dr_9A)
+radial_5A = (r_5A - dr_5A < RR) & (RR < r_5A + dr_5A)
 # Define disjoint angular regions of interest
-angular1_9A = (-np.pi/8 < TT) & (TT < np.pi/8)
-angular2_9A = (- np.pi + np.pi/8 > TT) | (TT > np.pi - np.pi/8)
+angular1_5A = (theta1_5A - dtheta_5A/2 < TT) & (TT < theta1_5A + dtheta_5A/2)
+angular2_5A = (theta2_5A - dtheta_5A/2 < TT) & (TT < theta2_5A + dtheta_5A/2)
 # Combine regions of interest
-region_9A = radial_9A & (angular1_9A | angular2_9A)
+region_5A = radial_5A & (angular1_5A | angular2_5A)
 # Set curve = 1
-curve_9A[region_9A] += 1
+curve_5A[region_5A] += 1
 
-# Take 9A convolution
-gaussian_9A_feature = convolve(gaussian_9A, curve_9A, mode="same")
+# Take 5A convolution
+gaussian_5A_feature = convolve(gaussian_5A, curve_5A, mode="same")
 # Normalize
-gaussian_9A_feature /= np.max(gaussian_9A_feature)
+gaussian_5A_feature /= np.max(gaussian_5A_feature)
 
-# Construct 5A Gaussian peak
+
+# Construct 9A Gaussian peak
 
 region_radial = (0.5 + 0.01 < RR) & (RR < 0.5 + 0.02)
 region_angular_1 = (np.pi/2 - np.pi/8 < TT) & (TT < np.pi/2 + np.pi/8)
@@ -126,27 +129,27 @@ if True:
 
     plot_title = "2D Gaussian"
     fig = plt.figure(plot_title)
-    plt.imshow(gaussian_9A, cmap=cmap)
+    plt.imshow(gaussian_5A, cmap=cmap)
     plt.title(plot_title)
 
-    plot_title = "9A Peaks Template"
+    plot_title = "5A Peaks Template"
     fig = plt.figure(plot_title)
-    plt.imshow(curve_9A, cmap=cmap)
+    plt.imshow(curve_5A, cmap=cmap)
     plt.title(plot_title)
 
-    plot_title = "9A Gaussian Peaks"
+    plot_title = "5A Gaussian Peaks"
     fig = plt.figure(plot_title)
-    plt.imshow(gaussian_9A_feature, cmap=cmap)
+    plt.imshow(gaussian_5A_feature, cmap=cmap)
     plt.title(plot_title)
 
-    # 3D Gaussian 9A Feature
+    # 3D Gaussian 5A Feature
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    fig.canvas.manager.set_window_title("3D Gaussian 9A Feature")
-    surf = ax.plot_surface(XX, YY, gaussian_9A_feature, cmap=cmap,
+    fig.canvas.manager.set_window_title("3D Gaussian 5A Feature")
+    surf = ax.plot_surface(XX, YY, gaussian_5A_feature, cmap=cmap,
                                    linewidth=0, antialiased=False)
     clb = fig.colorbar(surf)
     # ax.set_zlim(0, 1.5)
-    plt.title("3D Gaussian 9A Feature")
+    plt.title("3D Gaussian 5A Feature")
 
     if False:
         fig = plt.figure()
