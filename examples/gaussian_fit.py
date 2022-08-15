@@ -25,6 +25,30 @@ DISTANCE = 10e-3 # Distance from sample to detector in [meters]
 
 cmap="hot"
 
+
+def feature_pixel_location(spacing, distance=DISTANCE, wavelength=WAVELENGTH,
+            pixel_width=PIXEL_WIDTH):
+    """
+    Function to calculate the pixel distance from the center to a
+    specified feature defined by spacing.
+
+    Inputs:
+    - spacing: [meters]
+    - distance: sample-to-detector distance [meters]
+    - wavelength: source wavelength [meters]
+
+    Returns:
+    - distance from center to feature location in pixel units
+
+    Note that since our sampling rate corresponds to pixels,
+    pixel units directly correspond to array indices,
+    i.e.  distance of 1 pixel = distance of 1 array element
+    """
+    twoTheta = np.arcsin(wavelength/spacing)
+    d_inv = distance * np.tan(twoTheta)
+    d_inv_pixels = d_inv / PIXEL_WIDTH
+    return d_inv_pixels
+
 # Generate coordinate grid
 YY, XX = np.mgrid[-10:10:256j, -10:10:256j]
 TT, RR = cart2pol(XX, YY)
@@ -40,6 +64,9 @@ DATA_FILENAME = "CRQF_A00005.txt"
 
 image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
 image = np.loadtxt(image_path, dtype=np.uint32)
+
+# Calculate center coordinates of image in array index notation
+center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
 
 # Plot image
 plot_title = DATA_FILENAME
@@ -62,27 +89,21 @@ gau_aniso *= (1 + np.cos(2*TT))/2
 Calculate angles corresponding to isotropic 5-4 A feature
 """
 d5 = 5e-10 # 5 Angstroms in meters
-twoTheta = np.arcsin(WAVELENGTH/d5)
-# tan(theta) = recpirocal d5 / sample-to-detector distance
-d5_inv = DISTANCE * np.tan(twoTheta)
-d5_inv_pixels = d5_inv / PIXEL_WIDTH
+d5_inv_pixels = feature_pixel_location(d5)
 
-center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
 
 plot_title = "5A feature"
 fig = plt.figure(plot_title)
-plt.imshow(image)
+plt.imshow(image, cmap=cmap)
 plt.scatter(center[1], center[0] - d5_inv_pixels)
 plt.title(plot_title)
 
 """
 9A 
 """
+
 d9 = 9e-10 # 9 Angstroms in meters
-twoTheta = np.arcsin(WAVELENGTH/d9)
-# tan(theta) = recpirocal d9 / sample-to-detector distance
-d9_inv = DISTANCE * np.tan(twoTheta)
-d9_inv_pixels = d9_inv / PIXEL_WIDTH
+d9_inv_pixels = feature_pixel_location(d9)
 
 center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
 
