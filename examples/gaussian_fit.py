@@ -15,6 +15,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
+from scipy.optimize import minimize
 
 import abel
 
@@ -117,18 +118,36 @@ y_start = x_start
 YY, XX = np.mgrid[y_start:y_end:size*1j, x_start:x_end:size*1j]
 TT, RR = cart2pol(XX, YY)
 
-def radial_gaussian(rgrid, thetagrid, peak_radius, width, amplitude,
+def radial_gaussian(r, theta, peak_radius, width, amplitude,
             cos_power=0, phase=0, iso=False):
     """
     Isotropic and anisotropic radial Gaussian
     """
-    gau = amplitude*np.exp(-((rgrid - peak_radius) / width)**2)
+    gau = amplitude*np.exp(-((r - peak_radius) / width)**2)
     # If the function is isotropic, return
     if iso:
         return gau
     # Anisotropic case
-    gau *= np.power(np.cos(thetagrid + phase), 2**cos_power)
+    gau *= np.power(np.cos(theta + phase), 2**cos_power)
     return gau
+
+def fit_error(func, approx):
+    """
+    Returns the square error between a function and
+    its approximation.
+    """
+    return np.sum(np.square(func - approx))
+
+def objective(p, image, rgrid, thetagrid):
+    """
+    """
+    # Create four Gaussians, then sum
+    approx_9A = radial_gaussian(rgrid, thetagrid, p[0], p[1], p[2], p[3], p[4], p[5])
+    approx_5A = radial_gaussian(rgrid, thetagrid, p[6], p[7], p[8], p[9], p[10], p[11])
+    approx_5_4A = radial_gaussian(rgrid, thetagrid, p[12], p[13], p[14], p[15], p[16], p[17])
+    approx_bg = radial_gaussian(rgrid, thetagrid,  p[18], p[19], p[20], p[21], p[22], p[23])
+    approx = approx_9A + approx_5A + approx_5_4A + approx_bg
+    return fit_error(image, approx)
 
 
 # Specify isotropic Gaussian function for 5-4 A
@@ -158,7 +177,41 @@ Abg = 6
 gau_bg = radial_gaussian(RR, TT, 0, width_bg, Abg, iso=True)
 
 # Add gaussians
-gau_sum = gau_5_4 + gau_9 + gau_5 + gau_bg
+gau_approx = gau_5_4 + gau_9 + gau_5 + gau_bg
+
+"""
+Fit Error Analysis
+"""
+
+p0 = [
+    d9_inv_pixels, # peak_radius
+    width_9, # width
+    A9, #amplitude
+    power_2n9, # cos_power=0
+    phase_9, # phase=0
+    0, # iso=False
+    d5_inv_pixels, # peak_radius
+    width_5, # width
+    A5, #amplitude
+    power_2n5, # cos_power=0
+    phase_5, # phase=0
+    0, # iso=False
+    d5_4_inv_pixels, # peak_radius
+    width_5_4, # width
+    A5_4, #amplitude
+    power_2n5_4, # cos_power=0
+    phase_5_4, # phase=0
+    1, # iso=False
+    0, # peak_radius
+    width_bg, # width
+    Abg, #amplitude
+    0, # cos_power=0
+    0, # phase=0
+    1, # iso=False
+    ]
+
+# Object function objective(p, image)
+p_opt = minimize(objective, p0, args = (image, RR, TT))
 
 
 """
@@ -195,7 +248,7 @@ plt.savefig("filtered_" + DATA_FILENAME + "_features.png", cmap=cmap)
 
 plot_title = "Gaussian approximation " + DATA_FILENAME 
 fig = plt.figure(plot_title)
-plt.imshow(gau_sum, cmap=cmap)
+plt.imshow(gau_approx, cmap=cmap)
 plt.scatter(center[1] - d9_inv_pixels, center[0], c="green", label="9 A")
 plt.scatter(center[1], center[0] - d5_inv_pixels, c="blue", label="5 A")
 plt.plot([center[1] + d5_inv_pixels, center[1] + d4_inv_pixels],
