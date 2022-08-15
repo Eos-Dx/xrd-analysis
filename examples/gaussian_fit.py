@@ -152,7 +152,7 @@ def fit_error(p, data, approx, r, theta):
     p has 4 * 6 elements
     which are the arguements to 4 calls of radial_gaussian
     """
-    return np.sum(np.square(func - approx))
+    return np.sum(np.square(data - approx))
 
 def objective(p, data, r, theta):
     """
