@@ -14,6 +14,7 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter
 
 import abel
 
@@ -49,10 +50,6 @@ def feature_pixel_location(spacing, distance=DISTANCE, wavelength=WAVELENGTH,
     d_inv_pixels = d_inv / PIXEL_WIDTH
     return d_inv_pixels
 
-# Generate coordinate grid
-YY, XX = np.mgrid[-10:10:256j, -10:10:256j]
-TT, RR = cart2pol(XX, YY)
-
 
 """
 Import keratin diffraction image
@@ -65,6 +62,8 @@ DATA_FILENAME = "CRQF_A00005.txt"
 image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
 image = np.loadtxt(image_path, dtype=np.uint32)
 
+filtered_img = gaussian_filter(image, 2)
+
 # Calculate center coordinates of image in array index notation
 center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
 
@@ -74,54 +73,137 @@ fig = plt.figure(plot_title)
 plt.imshow(image, cmap=cmap)
 plt.title(plot_title)
 
-# Specify isotropic Gaussian function for 5-4A
-r0 = 1.5
-width = 0.2
-gau_iso = np.exp(-((RR - r0) / width)**2)
-
-# Anisotropic radial Gaussian
-r0 = 5
-width = 0.5
-gau_aniso = np.exp(-((RR - r0) / width)**2)
-gau_aniso *= (1 + np.cos(2*TT))/2
 
 """
-Calculate angles corresponding to isotropic 5-4 A feature
+Calculate pixel radius corresponding to 5 A peak
 """
-d5 = 5e-10 # 5 Angstroms in meters
+d5 = 5e-10 # 5 Angstroms in [meters]
 d5_inv_pixels = feature_pixel_location(d5)
 
-
-plot_title = "5A feature"
-fig = plt.figure(plot_title)
-plt.imshow(image, cmap=cmap)
-plt.scatter(center[1], center[0] - d5_inv_pixels)
-plt.title(plot_title)
-
 """
-9A 
+Calculate pixel radius corresponding to 9 A peak
 """
-
-d9 = 9e-10 # 9 Angstroms in meters
+d9 = 9e-10 # 9 Angstroms in [meters]
 d9_inv_pixels = feature_pixel_location(d9)
 
-center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+"""
+Calculate start and end radius corresponding to isotropic 5-4 A feature
+"""
+# We already have d5_inv_pixels,
+# so just calculate d4
+d4 = 4e-10 # 4 Angstroms in [meters]
+d4_inv_pixels = feature_pixel_location(d4)
 
-plot_title = "9A feature"
-fig = plt.figure(plot_title)
-plt.imshow(image, cmap=cmap)
-plt.scatter(center[1] - d9_inv_pixels, center[0])
-plt.title(plot_title)
+"""
+Calculate radius corresponding to 4.5 A, which we take
+to be the center of the 5-4 A isotropic ring
+"""
+d5_4 = 4.5e-10 # 4.5 Angstroms in [meters]
+d5_4_inv_pixels = feature_pixel_location(d5_4)
+
+
+
+
+"""
+Gaussian fit
+"""
+
+# Generate coordinate grid
+size = 256
+x_end = size/2 - 0.5
+x_start = -x_end
+y_end = x_end
+y_start = x_start
+YY, XX = np.mgrid[y_start:y_end:size*1j, x_start:x_end:size*1j]
+TT, RR = cart2pol(XX, YY)
+
+def radial_gaussian(rgrid, thetagrid, peak_radius, width, amplitude,
+            cos_power=0, phase=0, iso=False):
+    """
+    Isotropic and anisotropic radial Gaussian
+    """
+    gau = amplitude*np.exp(-((rgrid - peak_radius) / width)**2)
+    # If the function is isotropic, return
+    if iso:
+        return gau
+    # Anisotropic case
+    gau *= np.power(np.cos(thetagrid + phase), 2**cos_power)
+    return gau
+
+
+# Specify isotropic Gaussian function for 5-4 A
+width_5_4 = 18.0
+A5_4 = 7
+power_2n5_4 = 1
+phase_5_4 = 0
+gau_5_4 = radial_gaussian(RR, TT, d5_4_inv_pixels, width_5_4, A5_4, iso=True)
+
+# Specify anisotropic Gaussian function for 9 A
+width_9 = 8
+A9 = 10
+power_2n9 = 4
+phase_9 = 0
+gau_9 = radial_gaussian(RR, TT, d9_inv_pixels, width_9, A9, power_2n9)
+
+# Specify anisotropic Gaussian function for 5 A
+width_5 = 5.0
+A5 = 2
+power_2n5 = 3
+phase_5 = np.pi/2
+gau_5 = radial_gaussian(RR, TT, d5_inv_pixels, width_5, A5, power_2n5, phase_5)
+
+# Specify background noise Gaussian
+width_bg = 70.0
+Abg = 6
+gau_bg = radial_gaussian(RR, TT, 0, width_bg, Abg, iso=True)
+
+# Add gaussians
+gau_sum = gau_5_4 + gau_9 + gau_5 + gau_bg
+
 
 """
 Plot
 """
 
-plot_title = "9A and 5A features"
+plot_title = DATA_FILENAME 
 fig = plt.figure(plot_title)
 plt.imshow(image, cmap=cmap)
-plt.scatter(center[1] - d9_inv_pixels, center[0], c="black")
-plt.scatter(center[1], center[0] - d5_inv_pixels, c="black")
+plt.scatter(center[1] - d9_inv_pixels, center[0], c="green", label="9 A")
+plt.scatter(center[1], center[0] - d5_inv_pixels, c="blue", label="5 A")
+plt.plot([center[1] + d5_inv_pixels, center[1] + d4_inv_pixels],
+        [center[0], center[0]], c="white", label="5-4 A")
+plt.scatter(center[1] + d5_4_inv_pixels, center[0], c="black", label="4.5 A")
+plt.legend()
 plt.title(plot_title)
+
+plt.savefig(DATA_FILENAME + "_features.png", cmap=cmap)
+
+
+plot_title = "Filtered " + DATA_FILENAME
+fig = plt.figure(plot_title)
+plt.imshow(filtered_img, cmap=cmap)
+plt.scatter(center[1] - d9_inv_pixels, center[0], c="green", label="9 A")
+plt.scatter(center[1], center[0] - d5_inv_pixels, c="blue", label="5 A")
+plt.plot([center[1] + d5_inv_pixels, center[1] + d4_inv_pixels],
+        [center[0], center[0]], c="white", label="5-4 A")
+plt.scatter(center[1] + d5_4_inv_pixels, center[0], c="black", label="4.5 A")
+plt.legend()
+plt.title(plot_title)
+
+plt.savefig("filtered_" + DATA_FILENAME + "_features.png", cmap=cmap)
+
+
+plot_title = "Gaussian approximation " + DATA_FILENAME 
+fig = plt.figure(plot_title)
+plt.imshow(gau_sum, cmap=cmap)
+plt.scatter(center[1] - d9_inv_pixels, center[0], c="green", label="9 A")
+plt.scatter(center[1], center[0] - d5_inv_pixels, c="blue", label="5 A")
+plt.plot([center[1] + d5_inv_pixels, center[1] + d4_inv_pixels],
+        [center[0], center[0]], c="white", label="5-4 A")
+plt.scatter(center[1] + d5_4_inv_pixels, center[0], c="black", label="4.5 A", zorder=2.0)
+plt.legend()
+plt.title(plot_title)
+
+plt.savefig("gaussian_fit_" + DATA_FILENAME + "_features.png", cmap=cmap)
 
 plt.show()
