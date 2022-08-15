@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from scipy.optimize import minimize
+from scipy.optimize import curve_fit
 
 import abel
 
@@ -131,19 +132,22 @@ def radial_gaussian(r, theta, peak_radius, width, amplitude,
     gau *= np.power(np.cos(theta + phase), 2**cos_power)
     return gau
 
-def keratin_function(p, r, theta):
+def keratin_function(polar_point,
+        p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13,
+        p14, p15, p16, p17, p18, p19, p20, p21, p22, p23):
     """
     Generate entire kertain diffraction pattern
     p has 4 * 6 elements
     which are the arguements to 4 calls of radial_gaussian
     """
+    r, theta = polar_point
     # Create four Gaussians, then sum
-    approx_9A = radial_gaussian(r, theta, p[0], p[1], p[2], p[3], p[4], p[5])
-    approx_5A = radial_gaussian(r, theta, p[6], p[7], p[8], p[9], p[10], p[11])
-    approx_5_4A = radial_gaussian(r, theta, p[12], p[13], p[14], p[15], p[16], p[17])
-    approx_bg = radial_gaussian(r, theta,  p[18], p[19], p[20], p[21], p[22], p[23])
+    approx_9A = radial_gaussian(r, theta, p0, p1, p2, p3, p4, p5)
+    approx_5A = radial_gaussian(r, theta, p6, p7, p8, p9, p10, p11)
+    approx_5_4A = radial_gaussian(r, theta, p12, p13, p14, p15, p16, p17)
+    approx_bg = radial_gaussian(r, theta,  p18, p19, p20, p21, p22, p23)
     approx = approx_9A + approx_5A + approx_5_4A + approx_bg
-    return approx
+    return approx.ravel()
 
 def fit_error(p, data, approx, r, theta):
     """
@@ -159,7 +163,7 @@ def objective(p, data, r, theta):
     Generate a kertain diffraction pattern and
     return how good the fit is.
     """
-    approx = keratin_function(p, r, theta)
+    approx = keratin_function((r, theta), p)
     return fit_error(p, data, approx, r, theta)
 
 
@@ -224,11 +228,28 @@ p0 = [
     1, # iso=False
     ]
 
+p_bounds = (
+        np.array([
+            90, # 9A peak_radius minimum
+            1, # 9A width minimum
+            ],
+        ),
+        np.array([
+            100, # 9A peak_radius maximum
+            20, # 9A width maximum
+            ],
+        )
+    )
+
+# Use `scipy.optimize.minimize`
 # Object function: objective(p, image, radius, theta)
-p_opt = minimize(objective, p0, args = (image, RR, TT))
+# p_opt = minimize(objective, p0, args = (image, RR, TT))
 
-
-
+# Use `scipy.optimize.curve_fit`
+# Function: kertain_function
+xdata = (RR, TT)
+ydata = image.ravel()
+popt, pcov = curve_fit(keratin_function, xdata, ydata, p0)
 
 """
 Plot
@@ -245,7 +266,7 @@ plt.scatter(center[1] + d5_4_inv_pixels, center[0], c="black", label="4.5 A")
 plt.legend()
 plt.title(plot_title)
 
-plt.savefig(DATA_FILENAME + "_features.png", cmap=cmap)
+plt.savefig(DATA_FILENAME + "_features.png")
 
 
 plot_title = "Filtered " + DATA_FILENAME
@@ -259,7 +280,7 @@ plt.scatter(center[1] + d5_4_inv_pixels, center[0], c="black", label="4.5 A")
 plt.legend()
 plt.title(plot_title)
 
-plt.savefig("filtered_" + DATA_FILENAME + "_features.png", cmap=cmap)
+plt.savefig("filtered_" + DATA_FILENAME + "_features.png")
 
 
 plot_title = "Gaussian approximation " + DATA_FILENAME 
@@ -273,6 +294,6 @@ plt.scatter(center[1] + d5_4_inv_pixels, center[0], c="black", label="4.5 A", zo
 plt.legend()
 plt.title(plot_title)
 
-plt.savefig("gaussian_fit_" + DATA_FILENAME + "_features.png", cmap=cmap)
+plt.savefig("gaussian_fit_" + DATA_FILENAME + "_features.png")
 
 plt.show()
