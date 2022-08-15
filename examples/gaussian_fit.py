@@ -138,14 +138,14 @@ def fit_error(func, approx):
     """
     return np.sum(np.square(func - approx))
 
-def objective(p, image, rgrid, thetagrid):
+def objective(p, image, r, theta):
     """
     """
     # Create four Gaussians, then sum
-    approx_9A = radial_gaussian(rgrid, thetagrid, p[0], p[1], p[2], p[3], p[4], p[5])
-    approx_5A = radial_gaussian(rgrid, thetagrid, p[6], p[7], p[8], p[9], p[10], p[11])
-    approx_5_4A = radial_gaussian(rgrid, thetagrid, p[12], p[13], p[14], p[15], p[16], p[17])
-    approx_bg = radial_gaussian(rgrid, thetagrid,  p[18], p[19], p[20], p[21], p[22], p[23])
+    approx_9A = radial_gaussian(r, theta, p[0], p[1], p[2], p[3], p[4], p[5])
+    approx_5A = radial_gaussian(r, theta, p[6], p[7], p[8], p[9], p[10], p[11])
+    approx_5_4A = radial_gaussian(r, theta, p[12], p[13], p[14], p[15], p[16], p[17])
+    approx_bg = radial_gaussian(r, theta,  p[18], p[19], p[20], p[21], p[22], p[23])
     approx = approx_9A + approx_5A + approx_5_4A + approx_bg
     return fit_error(image, approx)
 
@@ -210,7 +210,7 @@ p0 = [
     1, # iso=False
     ]
 
-# Object function objective(p, image)
+# Object function: objective(p, image, radius, theta)
 p_opt = minimize(objective, p0, args = (image, RR, TT))
 
 
