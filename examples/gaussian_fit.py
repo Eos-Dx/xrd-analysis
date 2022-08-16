@@ -21,6 +21,7 @@ from scipy.optimize import curve_fit
 import abel
 
 from eosdxanalysis.models.utils import cart2pol
+from eosdxanalysis.preprocessing.utils import create_circular_mask
 
 PIXEL_WIDTH = 55e-6 # 55 um in [meters]
 WAVELENGTH = 1.5418e-10 # 1.5418 Angstrom in [meters]
@@ -303,9 +304,21 @@ p_bounds = (
 
 # Use `scipy.optimize.curve_fit`
 # Function: kertain_function
+
+# Remove meshgrid components that are in the beam center
+beam_rmax = 25
+mask = create_circular_mask(size, size, rmax=beam_rmax)
+
 xdata = (RR, TT)
 ydata = image.ravel()
 popt, pcov = curve_fit(keratin_function, xdata, ydata, p0, bounds=p_bounds)
+
+# Now get "best-fit" diffraction pattern
+decomp_opt  = keratin_function((RR, TT), *popt).reshape(size,size)
+
+# Save optimal parameters and image
+np.savetxt("optimal_parameters.txt", popt)
+np.savetxt("best_fit.txt", decomp_opt)
 
 """
 Plot
@@ -351,5 +364,19 @@ plt.legend()
 plt.title(plot_title)
 
 plt.savefig("gaussian_fit_" + DATA_FILENAME + "_features.png")
+
+
+plot_title = "Optimum fit " + DATA_FILENAME
+fig = plt.figure(plot_title)
+plt.imshow(decomp_opt, cmap=cmap)
+plt.scatter(center[1] - d9_inv_pixels, center[0], c="green", label="9 A")
+plt.scatter(center[1], center[0] - d5_inv_pixels, c="blue", label="5 A")
+plt.plot([center[1] + d5_inv_pixels, center[1] + d4_inv_pixels],
+        [center[0], center[0]], c="white", label="5-4 A")
+plt.scatter(center[1] + d5_4_inv_pixels, center[0], c="black", label="4.5 A", zorder=2.0)
+plt.legend()
+plt.title(plot_title)
+
+plt.savefig("optimum_fit_" + DATA_FILENAME + "_features.png")
 
 plt.show()
