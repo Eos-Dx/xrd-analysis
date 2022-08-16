@@ -309,7 +309,7 @@ p_bounds = (
 beam_rmax = 25
 mask = create_circular_mask(size, size, rmax=beam_rmax)
 
-xdata = (RR, TT)
+xdata = (RR.ravel(), TT.ravel())
 ydata = image.ravel()
 popt, pcov = curve_fit(keratin_function, xdata, ydata, p0, bounds=p_bounds)
 
