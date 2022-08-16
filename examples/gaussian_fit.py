@@ -93,32 +93,43 @@ y_start = x_start
 YY, XX = np.mgrid[y_start:y_end:size*1j, x_start:x_end:size*1j]
 TT, RR = cart2pol(XX, YY)
 
-def radial_gaussian(r, theta, peak_radius, width, amplitude,
-            cos_power=0, phase=0, beta=1):
+def radial_gaussian(r, theta, phase, beta,
+            peak_radius, width, amplitude, cos_power):
     """
     Isotropic and anisotropic radial Gaussian
 
-    Inputs:
+    Inputs: (fixed parameters)
     - beta: isotropic = 0, anisotropic = 1
+    - phase: either 0 or np.pi/2 to signify equatorial or meridional peak location
     """
     gau = amplitude*np.exp(-((r - peak_radius) / width)**2)
     gau *= np.power(np.cos(theta + phase)**2, beta*cos_power)
     return gau
 
-def keratin_function(polar_point,
-        p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13,
-        p14, p15, p16, p17, p18, p19, p20, p21, p22, p23):
+def keratin_function(polar_point, p0, p1, p2, p3, p4, p5, p6, p7,
+        p8, p9, p10, p11, p12, p13, p14, p15):
     """
     Generate entire kertain diffraction pattern
-    p has 4 * 6 elements
+    p has 4 * 4 elements
     which are the arguements to 4 calls of radial_gaussian
     """
     r, theta = polar_point
     # Create four Gaussians, then sum
-    approx_9A = radial_gaussian(r, theta, p0, p1, p2, p3, p4, p5)
-    approx_5A = radial_gaussian(r, theta, p6, p7, p8, p9, p10, p11)
-    approx_5_4A = radial_gaussian(r, theta, p12, p13, p14, p15, p16, p17)
-    approx_bg = radial_gaussian(r, theta,  p18, p19, p20, p21, p22, p23)
+    # Set phases
+    phase_9A = 0.0 # Equatorial peak
+    phase_5A = np.pi/2 # Meridional peak
+    phase_5_4A = 0.0 # Don't care
+    phase_bg = 0.0 # Don't care
+    # Set betas
+    beta_9A = True # Anisotropic
+    beta_5A = True # Anisotropic
+    beta_5_4A = False # Isotropic
+    beta_bg = False # Isotropic
+
+    approx_9A = radial_gaussian(r, theta, phase_9A, beta_9A, p0, p1, p2, p3)
+    approx_5A = radial_gaussian(r, theta, phase_5A, beta_5A, p4, p5, p6, p7)
+    approx_5_4A = radial_gaussian(r, theta, phase_5_4A, beta_5_4A, p8, p9, p10, p11)
+    approx_bg = radial_gaussian(r, theta, phase_bg, beta_bg, p12, p13, p14, p15)
     approx = approx_9A + approx_5A + approx_5_4A + approx_bg
     return approx.ravel()
 
@@ -146,26 +157,33 @@ width_5_4 = 18.0
 A5_4 = 7
 power_5_4 = 2**1
 phase_5_4 = 0
-gau_5_4 = radial_gaussian(RR, TT, d5_4_inv_pixels, width_5_4, A5_4, beta=0)
+beta_5_4 = False
+gau_5_4 = radial_gaussian(RR, TT, phase_5_4, beta_5_4, d5_4_inv_pixels, width_5_4, A5_4, power_5_4)
 
 # Specify anisotropic Gaussian function for 9 A
 width_9 = 8
 A9 = 10
 power_9 = 2**4
 phase_9 = 0
-gau_9 = radial_gaussian(RR, TT, d9_inv_pixels, width_9, A9, power_9)
+beta_9 = True
+gau_9 = radial_gaussian(RR, TT, phase_9, beta_9, d9_inv_pixels, width_9, A9, power_9)
 
 # Specify anisotropic Gaussian function for 5 A
 width_5 = 5.0
 A5 = 2
 power_5 = 2**3
 phase_5 = np.pi/2
-gau_5 = radial_gaussian(RR, TT, d5_inv_pixels, width_5, A5, power_5, phase_5)
+beta_5 = True
+gau_5 = radial_gaussian(RR, TT, phase_5, beta_5, d5_inv_pixels, width_5, A5, power_5)
 
 # Specify background noise Gaussian
 width_bg = 70.0
 Abg = 6
-gau_bg = radial_gaussian(RR, TT, 0, width_bg, Abg, beta=0)
+power_bg = 0.0
+phase_bg = 0.0
+bg_inv_pixels = 0.0
+beta_bg = False
+gau_bg = radial_gaussian(RR, TT, phase_bg, beta_bg, bg_inv_pixels, width_bg, Abg, power_bg)
 
 # Add gaussians
 gau_approx = gau_5_4 + gau_9 + gau_5 + gau_bg
@@ -174,42 +192,11 @@ gau_approx = gau_5_4 + gau_9 + gau_5 + gau_bg
 Fit Error Analysis
 """
 
-p0 = [
-    d9_inv_pixels, # peak_radius
-    2, # width
-    1000, #amplitude
-    8, # cos_power=0
-    0, # phase=0
-    1, # beta=1, anisotropic
-    d5_inv_pixels, # peak_radius
-    width_5, # width
-    800, #amplitude
-    power_5, # cos_power=0
-    phase_5, # phase=0
-    1, # beta=1, anisotropic
-    d5_4_inv_pixels, # peak_radius
-    width_5_4, # width
-    200, #amplitude
-    0, # cos_power=0
-    0, # phase=0
-    0, # iso=False
-    0, # peak_radius
-    width_bg, # width
-    100, #amplitude
-    0, # cos_power=0
-    0, # phase=0
-    0, # beta=1, anisotropic
-    ]
-
-
-
 # P parameters:
 #  - peak_radius
 #  - width
 #  - amplitude
 #  - cos_power
-#  - phase
-#  - beta
 
 # Intial parameters guess
 p0 = [
@@ -218,31 +205,22 @@ p0 = [
         7.45, # Width
         1131.2, # Amplitude
         2.0, # cosine power
-        0.00021, # phase
-        0.9, # beta (isotropic = 0, anisotropic = 1)
         # 5A meridional peaks
         6.272287340528552591e+01, # Peak pixel radius
         6.598313320885878852e+00, # Width
         2.739652038901909918e+02, # Amplitude
         2.000000000494934760e+00, # cosine power
-        1.562941114803230613e+00, # phase
-        0.9, # beta (isotropic = 0, anisotropic = 1)
         # 5-4A isotropic region
         6.456137737533244092e+01, # Peak pixel radius
         3.319087173851783490e+01, # Width
         8.551915935756256886e+02, # Amplitude
         9.999999999999784062e-02, # cosine power
-        -2.289884278603661338e-02, # phase
-        0.0, # beta (isotropic = 0, anisotropic = 1)
         # Background noise
         9.995967745626450907e-02, # Peak pixel radius
         2.999690035706361755e+02, # Width
         5.261225560942693136e+01, # Amplitude
-        0.0, # cosine power
-        0.0, # phase
-        0.0, # beta (isotropic = 0, anisotropic = 1)
+        0.01, # cosine power
         ]
-
 
 # TODO: These bounds should all be a function of exposure time,
 # sample-to-detector distance, and molecular spacings
@@ -255,62 +233,48 @@ p_bounds = (
             1, # 9A width minimum
             10, # 9A amplitude minimum
             2, # 9A cos^2n power minimum
-            -0.1, # 9A phase minimum
-            0.9, # 9A isotropy minimum
             # 5A minimum bounds
             50, # 5A peak_radius minimum
             1, # 5A width minimum
             50, # 5A amplitude minimum
             2, # 5A cos^2n power minimum
-            np.pi/2-0.1, # 5A phase minimum
-            0.9, # 5A isotropy minimum
             # 5-4A minimum bounds
-            50, # 5-4A peak_radius minimum
-            2, # 5-4A width minimum
+            50,  # 5-4A peak_radius minimum
+            2,  # 5-4A width minimum
             20, # 5-4A amplitude minimum
-            -0.1, # 5-4A cos^2n power minimum
-            -0.1, # 5-4A phase minimum
-            -1e-16, # 5-4A isotropy minimum
+            -1, # 5-4A cos^2n power minimum
             # bg minimum bounds
-            -0.1, # bg peak_radius minimum
+            -1, # bg peak_radius minimum
             10, # bg width minimum
             10, # bg amplitude minimum
-            -0.1, # bg cos^2n power minimum
-            -0.1, # bg phase minimum
-            -1e-16, # bg isotropy minimum
+            -1, # bg cos^2n power minimum
             ],
+            dtype=np.float64,
         ),
         # Maximum bounds
         np.array([
             # 9A maximum bounds
             40, # 9A peak_radius maximum
             30, # 9A width maximum
-            2000, #9 A amplitude maximum
+            2000, # 9A amplitude maximum
             20, # 9A cos^2n power maximum
-            0.1, # 9A phase maximum
-            1.1, # 9A isotropy maximum
             # 5A maximum bounds
             70, # 5A peak_radius maximum
             10, # 5A width maximum
             2000, # 5A amplitude maximum
             12, # 5A cos^2n power maximum
-            np.pi/2 + 0.1, # 5A phase maximum
-            1.1, # 5A isotropy maximum
             # 5-4A maximum bounds
             90, # 5-4A peak_radius maximum
             100, # 5-4A width maximum
             2000, # 5-4A amplitude maximum
-            0.1, # 5-4A cos^2n power maximum
-            0.1, # 5-4A phase maximum
-            1e-16, # 5-4A isotropy maximum
+            1, # 5-4A cos^2n power maximum
             # bg maximum bounds
-            0.1, # bg peak_radius maximum
+            1, # bg peak_radius maximum
             300, # bg width maximum
             500, # bg amplitude maximum
-            0.1, # bg cos^2n power maximum
-            0.1, # bg phase maximum
-            1e-16, # bg isotropy maximum
+            1, # bg cos^2n power maximum
             ],
+            dtype=np.float64,
         ),
     )
 
@@ -337,8 +301,8 @@ popt, pcov = curve_fit(keratin_function, xdata, ydata, p0, bounds=p_bounds)
 decomp_opt  = keratin_function((RR, TT), *popt).reshape(size,size)
 
 # Save optimal parameters and image
-np.savetxt("optimal_parameters.txt", popt)
-np.savetxt("best_fit.txt", decomp_opt)
+# np.savetxt("optimal_parameters.txt", popt)
+# np.savetxt("best_fit.txt", decomp_opt)
 
 """
 Plot
@@ -384,7 +348,6 @@ plt.legend()
 plt.title(plot_title)
 
 plt.savefig("gaussian_fit_" + DATA_FILENAME + "_features.png")
-
 
 plot_title = "Optimum fit " + DATA_FILENAME
 fig = plt.figure(plot_title)
