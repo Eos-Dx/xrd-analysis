@@ -309,8 +309,12 @@ p_bounds = (
 beam_rmax = 25
 mask = create_circular_mask(size, size, rmax=beam_rmax)
 
-xdata = (RR.ravel(), TT.ravel())
-ydata = image.ravel()
+RR_masked = RR[~mask]
+TT_masked = TT[~mask]
+image_masked = image[~mask]
+
+xdata = (RR_masked.ravel(), TT_masked.ravel())
+ydata = image_masked.ravel()
 popt, pcov = curve_fit(keratin_function, xdata, ydata, p0, bounds=p_bounds)
 
 # Now get "best-fit" diffraction pattern
