@@ -22,36 +22,9 @@ import abel
 
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.preprocessing.utils import create_circular_mask
-
-PIXEL_WIDTH = 55e-6 # 55 um in [meters]
-WAVELENGTH = 1.5418e-10 # 1.5418 Angstrom in [meters]
-DISTANCE = 10e-3 # Distance from sample to detector in [meters]
+from eosdxanalysis.simulations.utils import feature_pixel_location
 
 cmap="hot"
-
-
-def feature_pixel_location(spacing, distance=DISTANCE, wavelength=WAVELENGTH,
-            pixel_width=PIXEL_WIDTH):
-    """
-    Function to calculate the pixel distance from the center to a
-    specified feature defined by spacing.
-
-    Inputs:
-    - spacing: [meters]
-    - distance: sample-to-detector distance [meters]
-    - wavelength: source wavelength [meters]
-
-    Returns:
-    - distance from center to feature location in pixel units
-
-    Note that since our sampling rate corresponds to pixels,
-    pixel units directly correspond to array indices,
-    i.e.  distance of 1 pixel = distance of 1 array element
-    """
-    twoTheta = np.arcsin(wavelength/spacing)
-    d_inv = distance * np.tan(twoTheta)
-    d_inv_pixels = d_inv / PIXEL_WIDTH
-    return d_inv_pixels
 
 
 """
@@ -228,6 +201,34 @@ p0 = [
     0, # beta=1, anisotropic
     ]
 
+p0 = [
+        3.028714282534907198e+01,
+        7.457737837969659722e+00,
+        1.131150127852141622e+03,
+        2.000000000123841382e+00,
+        2.145294196975234852e-04,
+        9.000000000471215511e-01,
+        6.272287340528552591e+01,
+        6.598313320885878852e+00,
+        2.739652038901909918e+02,
+        2.000000000494934760e+00,
+        1.562941114803230613e+00,
+        9.000000000670986822e-01,
+        6.456137737533244092e+01,
+        3.319087173851783490e+01,
+        8.551915935756256886e+02,
+        9.999999999999784062e-02,
+        -2.289884278603661338e-02,
+        9.999999999999784062e-02,
+        9.995967745626450907e-02,
+        2.999690035706361755e+02,
+        5.261225560942693136e+01,
+        0.000000000000000000e+00,
+        0.000000000000000000e+00,
+        0.000000000000000000e+00,
+        ]
+
+
 # TODO: These bounds should all be a function of exposure time,
 # sample-to-detector distance, and molecular spacings
 # Order is: 9A, 5A, 5-4A, bg
@@ -309,9 +310,9 @@ p_bounds = (
 beam_rmax = 25
 mask = create_circular_mask(size, size, rmax=beam_rmax)
 
-RR_masked = RR[~mask]
-TT_masked = TT[~mask]
-image_masked = image[~mask]
+RR_masked = RR[~mask].astype(np.float64)
+TT_masked = TT[~mask].astype(np.float64)
+image_masked = image[~mask].astype(np.float64)
 
 xdata = (RR_masked.ravel(), TT_masked.ravel())
 ydata = image_masked.ravel()
