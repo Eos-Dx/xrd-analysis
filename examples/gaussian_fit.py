@@ -201,31 +201,46 @@ p0 = [
     0, # beta=1, anisotropic
     ]
 
+
+
+# P parameters:
+#  - peak_radius
+#  - width
+#  - amplitude
+#  - cos_power
+#  - phase
+#  - beta
+
+# Intial parameters guess
 p0 = [
-        3.028714282534907198e+01,
-        7.457737837969659722e+00,
-        1.131150127852141622e+03,
-        2.000000000123841382e+00,
-        2.145294196975234852e-04,
-        9.000000000471215511e-01,
-        6.272287340528552591e+01,
-        6.598313320885878852e+00,
-        2.739652038901909918e+02,
-        2.000000000494934760e+00,
-        1.562941114803230613e+00,
-        9.000000000670986822e-01,
-        6.456137737533244092e+01,
-        3.319087173851783490e+01,
-        8.551915935756256886e+02,
-        9.999999999999784062e-02,
-        -2.289884278603661338e-02,
-        9.999999999999784062e-02,
-        9.995967745626450907e-02,
-        2.999690035706361755e+02,
-        5.261225560942693136e+01,
-        0.000000000000000000e+00,
-        0.000000000000000000e+00,
-        0.000000000000000000e+00,
+        # 9A equatorial peaks
+        30.3, # Peak pixel radius
+        7.45, # Width
+        1131.2, # Amplitude
+        2.0, # cosine power
+        0.00021, # phase
+        0.9, # beta (isotropic = 0, anisotropic = 1)
+        # 5A meridional peaks
+        6.272287340528552591e+01, # Peak pixel radius
+        6.598313320885878852e+00, # Width
+        2.739652038901909918e+02, # Amplitude
+        2.000000000494934760e+00, # cosine power
+        1.562941114803230613e+00, # phase
+        0.9, # beta (isotropic = 0, anisotropic = 1)
+        # 5-4A isotropic region
+        6.456137737533244092e+01, # Peak pixel radius
+        3.319087173851783490e+01, # Width
+        8.551915935756256886e+02, # Amplitude
+        9.999999999999784062e-02, # cosine power
+        -2.289884278603661338e-02, # phase
+        0.0, # beta (isotropic = 0, anisotropic = 1)
+        # Background noise
+        9.995967745626450907e-02, # Peak pixel radius
+        2.999690035706361755e+02, # Width
+        5.261225560942693136e+01, # Amplitude
+        0.0, # cosine power
+        0.0, # phase
+        0.0, # beta (isotropic = 0, anisotropic = 1)
         ]
 
 
@@ -255,14 +270,14 @@ p_bounds = (
             20, # 5-4A amplitude minimum
             -0.1, # 5-4A cos^2n power minimum
             -0.1, # 5-4A phase minimum
-            -0.1, # 5-4A isotropy minimum
+            -1e-16, # 5-4A isotropy minimum
             # bg minimum bounds
             -0.1, # bg peak_radius minimum
             10, # bg width minimum
             10, # bg amplitude minimum
             -0.1, # bg cos^2n power minimum
             -0.1, # bg phase minimum
-            -0.1, # bg isotropy minimum
+            -1e-16, # bg isotropy minimum
             ],
         ),
         # Maximum bounds
@@ -287,14 +302,14 @@ p_bounds = (
             2000, # 5-4A amplitude maximum
             0.1, # 5-4A cos^2n power maximum
             0.1, # 5-4A phase maximum
-            0.1, # 5-4A isotropy maximum
+            1e-16, # 5-4A isotropy maximum
             # bg maximum bounds
             0.1, # bg peak_radius maximum
             300, # bg width maximum
             500, # bg amplitude maximum
             0.1, # bg cos^2n power maximum
             0.1, # bg phase maximum
-            0.1, # bg isotropy maximum
+            1e-16, # bg isotropy maximum
             ],
         ),
     )
