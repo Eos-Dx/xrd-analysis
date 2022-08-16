@@ -18,8 +18,6 @@ from scipy.ndimage import gaussian_filter
 from scipy.optimize import minimize
 from scipy.optimize import curve_fit
 
-import abel
-
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
@@ -201,25 +199,25 @@ Fit Error Analysis
 # Intial parameters guess
 p0 = [
         # 9A equatorial peaks
-        30.3, # Peak pixel radius
-        7.45, # Width
+        31.6, # Peak pixel radius
+        8, # Width
         1131.2, # Amplitude
-        2.0, # cosine power
+        16, # cosine power
         # 5A meridional peaks
-        6.272287340528552591e+01, # Peak pixel radius
-        6.598313320885878852e+00, # Width
-        2.739652038901909918e+02, # Amplitude
-        2.000000000494934760e+00, # cosine power
+        58.9, # Peak pixel radius
+        5, # Width
+        60, # Amplitude
+        8, # cosine power
         # 5-4A isotropic region
-        6.456137737533244092e+01, # Peak pixel radius
-        3.319087173851783490e+01, # Width
-        8.551915935756256886e+02, # Amplitude
-        9.999999999999784062e-02, # cosine power
+        66.3, # Peak pixel radius
+        18, # Width
+        25, # Amplitude
+        0, # cosine power
         # Background noise
-        9.995967745626450907e-02, # Peak pixel radius
-        2.999690035706361755e+02, # Width
-        5.261225560942693136e+01, # Amplitude
-        0.01, # cosine power
+        0, # Peak pixel radius
+        70, # Width
+        12, # Amplitude
+        0, # cosine power
         ]
 
 # TODO: These bounds should all be a function of exposure time,
@@ -228,22 +226,30 @@ p0 = [
 p_bounds = (
         # Minimum bounds
         np.array([
+            #
             # 9A minimum bounds
+            #
             25, # 9A peak_radius minimum
             1, # 9A width minimum
             10, # 9A amplitude minimum
             2, # 9A cos^2n power minimum
+            #
             # 5A minimum bounds
+            #
             50, # 5A peak_radius minimum
             1, # 5A width minimum
             50, # 5A amplitude minimum
             2, # 5A cos^2n power minimum
+            #
             # 5-4A minimum bounds
-            50,  # 5-4A peak_radius minimum
-            2,  # 5-4A width minimum
+            #
+            50, # 5-4A peak_radius minimum
+            2, # 5-4A width minimum
             20, # 5-4A amplitude minimum
             -1, # 5-4A cos^2n power minimum
+            #
             # bg minimum bounds
+            #
             -1, # bg peak_radius minimum
             10, # bg width minimum
             10, # bg amplitude minimum
@@ -253,22 +259,30 @@ p_bounds = (
         ),
         # Maximum bounds
         np.array([
+            #
             # 9A maximum bounds
+            #
             40, # 9A peak_radius maximum
             30, # 9A width maximum
             2000, # 9A amplitude maximum
-            20, # 9A cos^2n power maximum
+            30, # 9A cos^2n power maximum
+            #
             # 5A maximum bounds
+            #
             70, # 5A peak_radius maximum
             10, # 5A width maximum
             2000, # 5A amplitude maximum
             12, # 5A cos^2n power maximum
+            #
             # 5-4A maximum bounds
+            #
             90, # 5-4A peak_radius maximum
             100, # 5-4A width maximum
             2000, # 5-4A amplitude maximum
             1, # 5-4A cos^2n power maximum
+            #
             # bg maximum bounds
+            #
             1, # bg peak_radius maximum
             300, # bg width maximum
             500, # bg amplitude maximum
