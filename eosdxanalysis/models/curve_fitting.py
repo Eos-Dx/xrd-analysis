@@ -227,6 +227,8 @@ class GaussianDecomposition(object):
         # Generate the meshgrid
         if not getattr(self, "meshgrid", None):
             RR, TT = self.gen_meshgrid(image.shape)
+        else:
+            RR, TT = self.meshgrid
 
         # Remove meshgrid components that are in the beam center
         beam_rmax = 25
