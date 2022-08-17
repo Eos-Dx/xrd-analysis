@@ -126,6 +126,22 @@ class TestGaussianDecomposition(unittest.TestCase):
         TEST_DATA_PATH = os.path.join(TEST_PATH, "data", "GaussianDecomposition")
         self.TEST_DATA_PATH = TEST_DATA_PATH
 
+    def test_bg_noise_peak_location(self):
+        """
+        Background noise peak should be close to 0 (right at the origin
+        or center of the image)
+        """
+        # Set input filepath
+        test_filename = "CRQF_A00005.txt"
+        test_filepath = os.path.join(self.TEST_DATA_PATH, "input", test_filename)
+        # Find best-fit parameters
+        test_image = np.loadtxt(test_filepath, dtype=np.uint32)
+        popt, pcov, RR, TT = GaussianDecomposition.best_fit(test_image)
+
+        # Check that background-noise peak location is close to zero
+        bg_peak_location = popt[-4]
+        self.assertTrue(np.isclose(bg_peak_location, 0))
+
     def test_cli(self):
         """
         Simple test to check if there are no errors when running main
