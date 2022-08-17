@@ -197,6 +197,10 @@ class GaussianDecomposition(object):
         beta_5_4A = False # Isotropic
         beta_bg = False # Isotropic
 
+        # Hack to fix isotropic cosine power parameter to zero
+        p11 = 0 # 5-4A cosine power
+        p15 = 0 # Background noise cosine power
+
         approx_9A = self.radial_gaussian(r, theta, phase_9A, beta_9A, p0, p1, p2, p3)
         approx_5A = self.radial_gaussian(r, theta, phase_5A, beta_5A, p4, p5, p6, p7)
         approx_5_4A = self.radial_gaussian(r, theta, phase_5_4A, beta_5_4A, p8, p9, p10, p11)
@@ -222,7 +226,7 @@ class GaussianDecomposition(object):
 
         # Generate the meshgrid
         if not getattr(self, "meshgrid", None):
-            RR, TT = self.gen_meshgrid()
+            RR, TT = self.gen_meshgrid(image.shape)
 
         # Remove meshgrid components that are in the beam center
         beam_rmax = 25
@@ -256,17 +260,16 @@ class GaussianDecomposition(object):
         return fit_error(p, image, fit, r, theta)
 
     @classmethod
-    def gen_meshgrid(self):
+    def gen_meshgrid(self, shape):
         """
         Generate a meshgrid
         """
         # Generate a meshgrid the same size as the image
-        size = image.shape[0]
-        x_end = size/2 - 0.5
+        x_end = shape[1]/2 - 0.5
         x_start = -x_end
         y_end = x_end
         y_start = x_start
-        YY, XX = np.mgrid[y_start:y_end:size*1j, x_start:x_end:size*1j]
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
         TT, RR = cart2pol(XX, YY)
 
         self.meshgrid = RR, TT
