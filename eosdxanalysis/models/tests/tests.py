@@ -5,6 +5,7 @@ import os
 import unittest
 import numpy as np
 import numpy.ma as ma
+import subprocess
 
 from scipy.special import jn_zeros
 from scipy.special import jv
@@ -15,6 +16,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
 from eosdxanalysis.models.curve_fitting import PolynomialFit
+from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.utils import pol2cart
@@ -110,6 +112,56 @@ class TestPolynomialFit(unittest.TestCase):
         # Check that R-suqared is the same
         Rsquared2 = model.score(poly.transform(input_pts1), Y)
         self.assertTrue(np.isclose(Rsquared1,Rsquared2))
+
+
+class TestGaussianDecomposition(unittest.TestCase):
+    """
+    Test `GaussianDecomposition` class
+    """
+
+    def setUp(self):
+        """
+        Set up test class
+        """
+        TEST_DATA_PATH = os.path.join(TEST_PATH, "data", "GaussianDecomposition")
+        self.TEST_DATA_PATH = TEST_DATA_PATH
+
+    def test_cli(self):
+        """
+        Simple test to check if there are no errors when running main
+        """
+        # Set up the command
+        command = ["python", "eosdxanalysis/models/curve_fitting.py",
+                    ]
+        # Run the command
+        subprocess.run(command)
+
+    def test_cli_known_sample(self):
+        """
+        Test `GaussianDecomposition` on a known sample
+        """
+        # Set input filepath
+        input_filename = "CRQF_A00005.txt"
+        input_filepath = os.path.join(self.TEST_DATA_PATH, "input", input_filename)
+        # Set output filepath
+        output_filename = "test_GaussianDecomp_CRQF_A00005.txt"
+        output_filepath = os.path.join(self.TEST_DATA_PATH, "output", output_filename)
+
+        # Set up the command
+        command = ["python", "eosdxanalysis/models/curve_fitting.py",
+                    "--input_filepath", input_filepath,
+                    "--output_filepath", output_filepath,
+                    ]
+        # Run the command
+        subprocess.run(command)
+
+        # Check that the output is the same as the test output file
+        known_output_filename = "GaussianDecomp_CRQF_A00005.txt"
+        known_output_filepath = os.path.join(self.TEST_DATA_PATH, "output", known_output_filename)
+        known_output = np.loadtxt(known_output_filepath, dtype=np.uint32)
+        test_output = np.loadtxt(output_filepath, dtype=np.uint32)
+
+        self.assertTrue(np.isclose(known_output, test_output).all())
 
 
 class TestUtils(unittest.TestCase):
