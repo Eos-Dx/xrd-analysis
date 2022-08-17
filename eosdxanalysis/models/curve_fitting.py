@@ -4,6 +4,7 @@ Code for fitting data to curves
 import os
 import argparse
 import numpy as np
+from collections import OrderedDict
 
 from scipy.optimize import curve_fit
 
@@ -59,100 +60,75 @@ class GaussianDecomposition(object):
     #  - cos_power
 
     # Intial parameters guess for a typical keratin diffraction pattern
-    p0 = [
-            # 9A equatorial peaks
-            31.6, # Peak pixel radius
-            8, # Width
-            1131.2, # Amplitude
-            16, # cosine power
-            # 5A meridional peaks
-            58.9, # Peak pixel radius
-            5, # Width
-            60, # Amplitude
-            8, # cosine power
-            # 5-4A isotropic region
-            66.3, # Peak pixel radius
-            18, # Width
-            25, # Amplitude
-            0, # cosine power
-            # Background noise
-            0, # Peak pixel radius
-            70, # Width
-            12, # Amplitude
-            0, # cosine power
-            ]
+    p0_dict = OrderedDict({
+            # 9A equatorial peaks minimum parameters
+            "peak_radius_9A":       31.6, # Peak pixel radius
+            "width_9A":             8, # Width
+            "amplitude_9A":         1131.2, # Amplitude
+            "cosine_power_9A":      16, # cosine power
+            # 5A meridional peaks minimum parameters
+            "peak_radius_5A":       58.9, # Peak pixel radius
+            "width_5A":             5, # Width
+            "amplitude_5A":         60, # Amplitude
+            "cosine_power_5A":      8, # cosine power
+            # 5-4A isotropic region minimum parameters
+            "peak_radius_5_4A":     66.3, # Peak pixel radius
+            "width_5_4A":           18, # Width
+            "amplitude_5_4A":       25, # Amplitude
+            "cosine_power_5_4A":    0, # cosine power
+            # Background noise minimum parameters
+            "peak_radius_bg":       0, # Peak pixel radius
+            "width_bg":             70, # Width
+            "amplitude_bg":         12, # Amplitude
+            "cosine_power_bg":      0, # cosine power
+        })
 
-    # TODO: These bounds should all be a function of exposure time,
-    # sample-to-detector distance, and molecular spacings
-    # Order is: 9A, 5A, 5-4A, bg
-    p_bounds = (
-            # Minimum bounds
-            np.array([
-                #
-                # 9A minimum bounds
-                #
-                25, # 9A peak_radius minimum
-                1, # 9A width minimum
-                10, # 9A amplitude minimum
-                2, # 9A cos^2n power minimum
-                #
-                # 5A minimum bounds
-                #
-                50, # 5A peak_radius minimum
-                1, # 5A width minimum
-                50, # 5A amplitude minimum
-                2, # 5A cos^2n power minimum
-                #
-                # 5-4A minimum bounds
-                #
-                50, # 5-4A peak_radius minimum
-                2, # 5-4A width minimum
-                20, # 5-4A amplitude minimum
-                -1, # 5-4A cos^2n power minimum
-                #
-                # bg minimum bounds
-                #
-                -1, # bg peak_radius minimum
-                10, # bg width minimum
-                10, # bg amplitude minimum
-                -1, # bg cos^2n power minimum
-                ],
-                dtype=np.float64,
-            ),
-            # Maximum bounds
-            np.array([
-                #
-                # 9A maximum bounds
-                #
-                40, # 9A peak_radius maximum
-                30, # 9A width maximum
-                2000, # 9A amplitude maximum
-                30, # 9A cos^2n power maximum
-                #
-                # 5A maximum bounds
-                #
-                70, # 5A peak_radius maximum
-                10, # 5A width maximum
-                2000, # 5A amplitude maximum
-                12, # 5A cos^2n power maximum
-                #
-                # 5-4A maximum bounds
-                #
-                90, # 5-4A peak_radius maximum
-                100, # 5-4A width maximum
-                2000, # 5-4A amplitude maximum
-                1, # 5-4A cos^2n power maximum
-                #
-                # bg maximum bounds
-                #
-                1, # bg peak_radius maximum
-                300, # bg width maximum
-                500, # bg amplitude maximum
-                1, # bg cos^2n power maximum
-                ],
-                dtype=np.float64,
-            ),
-        )
+    # Lower bounds
+    p_lower_bounds_dict = OrderedDict({
+            # 9A equatorial peaks
+            "peak_radius_9A":       25, # Peak pixel radius
+            "width_9A":             1, # Width
+            "amplitude_9A":         10, # Amplitude
+            "cosine_power_9A":      2, # cosine power
+            # 5A meridional peaks
+            "peak_radius_5A":       50, # Peak pixel radius
+            "width_5A":             1, # Width
+            "amplitude_5A":         50, # Amplitude
+            "cosine_power_5A":      2, # cosine power
+            # 5-4A isotropic region
+            "peak_radius_5_4A":     50, # Peak pixel radius
+            "width_5_4A":           2, # Width
+            "amplitude_5_4A":       20, # Amplitude
+            "cosine_power_5_4A":    -1, # cosine power
+            # Background noise
+            "peak_radius_bg":       -1, # Peak pixel radius
+            "width_bg":             10, # Width
+            "amplitude_bg":         10, # Amplitude
+            "cosine_power_bg":      -1, # cosine power
+        })
+    # Upper bounds
+    p_upper_bounds_dict = OrderedDict({
+            # 9A equatorial peaks maximum parameters
+            "peak_radius_9A":       40, # Peak pixel radius
+            "width_9A":             30, # Width
+            "amplitude_9A":         2000, # Amplitude
+            "cosine_power_9A":      30, # cosine power
+            # 5A meridional peaks maximum parameters
+            "peak_radius_5A":       70, # Peak pixel radius
+            "width_5A":             10, # Width
+            "amplitude_5A":         2000, # Amplitude
+            "cosine_power_5A":      12, # cosine power
+            # 5-4A isotropic region maximum parameters
+            "peak_radius_5_4A":     90, # Peak pixel radius
+            "width_5_4A":           100, # Width
+            "amplitude_5_4A":       2000, # Amplitude
+            "cosine_power_5_4A":    1, # cosine power
+            # Background noise maximum parameters
+            "peak_radius_bg":       1, # Peak pixel radius
+            "width_bg":             300, # Width
+            "amplitude_bg":         500, # Amplitude
+            "cosine_power_bg":      1, # cosine power
+        })
 
     @classmethod
     def radial_gaussian(self, r, theta, phase, beta,
@@ -169,8 +145,11 @@ class GaussianDecomposition(object):
         return gau
 
     @classmethod
-    def keratin_function(self, polar_point, p0, p1, p2, p3, p4, p5, p6, p7,
-            p8, p9, p10, p11, p12, p13, p14, p15):
+    def keratin_function(self, polar_point,
+            peak_radius_9A, width_9A, amplitude_9A, cosine_power_9A,
+            peak_radius_5A, width_5A, amplitude_5A, cosine_power_5A,
+            peak_radius_5_4A, width_5_4A, amplitude_5_4A, cosine_power_5_4A,
+            peak_radius_bg, width_bg, amplitude_bg, cosine_power_bg):
         """
         Generate entire kertain diffraction pattern at the points
         (r, theta), with 16 parameters as the arguements to 4 calls
@@ -198,13 +177,17 @@ class GaussianDecomposition(object):
         beta_bg = False # Isotropic
 
         # Hack to fix isotropic cosine power parameter to zero
-        p11 = 0 # 5-4A cosine power
-        p15 = 0 # Background noise cosine power
+        cosine_power_5_4A = 0 # 5-4A cosine power
+        cosine_power_bg = 0 # Background noise cosine power
 
-        approx_9A = self.radial_gaussian(r, theta, phase_9A, beta_9A, p0, p1, p2, p3)
-        approx_5A = self.radial_gaussian(r, theta, phase_5A, beta_5A, p4, p5, p6, p7)
-        approx_5_4A = self.radial_gaussian(r, theta, phase_5_4A, beta_5_4A, p8, p9, p10, p11)
-        approx_bg = self.radial_gaussian(r, theta, phase_bg, beta_bg, p12, p13, p14, p15)
+        approx_9A = self.radial_gaussian(r, theta, phase_9A, beta_9A,
+                peak_radius_9A, width_9A, amplitude_9A, cosine_power_9A)
+        approx_5A = self.radial_gaussian(r, theta, phase_5A, beta_5A,
+                peak_radius_5A, width_5A, amplitude_5A, cosine_power_5A)
+        approx_5_4A = self.radial_gaussian(r, theta, phase_5_4A, beta_5_4A,
+                peak_radius_5_4A, width_5_4A, amplitude_5_4A, cosine_power_5_4A)
+        approx_bg = self.radial_gaussian(r, theta, phase_bg, beta_bg,
+                peak_radius_bg, width_bg, amplitude_bg, cosine_power_bg)
         approx = approx_9A + approx_5A + approx_5_4A + approx_bg
         return approx.ravel()
 
@@ -217,8 +200,15 @@ class GaussianDecomposition(object):
         Function to optimize: `self.keratin_function`
         """
         # Get parameters and bounds
-        p0 = self.p0
-        p_bounds = self.p_bounds
+        p0 = np.fromiter(self.p0_dict.values(), dtype=np.float64)
+
+        p_bounds = (
+                # Lower bounds
+                np.fromiter(self.p_lower_bounds_dict.values(), dtype=np.float64),
+                # Upper bounds
+                np.fromiter(self.p_upper_bounds_dict.values(), dtype=np.float64),
+            )
+
 
         # Check if image size is square
         if image.shape[0] != image.shape[1]:
