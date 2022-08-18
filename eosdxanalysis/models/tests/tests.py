@@ -179,6 +179,40 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         self.assertTrue(np.isclose(known_output, test_output).all())
 
+    def test_known_sample_bounds(self):
+        """
+        Test `GaussianDecomposition` on a known sample
+        to ensure optimal parameters are not near bounds
+        """
+        # Set input filepath
+        input_filename = "CRQF_A00005.txt"
+        input_filepath = os.path.join(self.TEST_DATA_PATH, "input", input_filename)
+        # Set output filepath
+        output_filename = "test_GaussianDecomp_CRQF_A00005.txt"
+        output_filepath = os.path.join(self.TEST_DATA_PATH, "output", output_filename)
+
+        # Calculate optimum parameters
+        image = np.loadtxt(input_filepath, dtype=np.float64)
+
+        popt, pcov, RR, TT = GaussianDecomposition.best_fit(image)
+        decomp_image  = GaussianDecomposition.keratin_function((RR, TT), *popt).reshape(image.shape)
+
+        # Check that the optimal parameters are not close to the upper or lower bounds
+        p0 = np.fromiter(GaussianDecomposition.p0_dict.values(), dtype=np.float64)
+        p_lower_bounds = np.fromiter(GaussianDecomposition.p_lower_bounds_dict.values(), dtype=np.float64)
+        p_upper_bounds = np.fromiter(GaussianDecomposition.p_upper_bounds_dict.values(), dtype=np.float64)
+
+        self.assertFalse(np.isclose(popt, p_lower_bounds).all())
+        self.assertFalse(np.isclose(popt, p_upper_bounds).all())
+
+        # Check that the output is the same as the test output file
+        known_output_filename = "GaussianDecomp_CRQF_A00005.txt"
+        known_output_filepath = os.path.join(self.TEST_DATA_PATH, "output", known_output_filename)
+        known_output = np.loadtxt(known_output_filepath, dtype=np.uint32)
+        test_output = np.loadtxt(output_filepath, dtype=np.uint32)
+
+        self.assertTrue(np.isclose(known_output, test_output).all())
+
 
 class TestUtils(unittest.TestCase):
 
