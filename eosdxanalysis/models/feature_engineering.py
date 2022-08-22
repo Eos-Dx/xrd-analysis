@@ -158,7 +158,10 @@ class EngineeredFeatures(object):
         # Calculate the horizontal pixel radius of the peak location
         peak_location = roi_peak_location + roi_cols[0]
 
-        return peak_location, roi, roi_center, anchor
+        # Calculate the peak maximum
+        peak_max = np.max(roi)
+
+        return peak_location, peak_max, roi, roi_center, anchor
 
     def feature_9a_ratio(self, roi_h=20, roi_w=6):
         """
