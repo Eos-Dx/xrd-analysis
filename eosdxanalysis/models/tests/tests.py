@@ -307,7 +307,7 @@ class TestFeatureEngineering(unittest.TestCase):
 
         feature_class = EngineeredFeatures(test_image, params=None)
 
-        roi_peak_location, _, _, _ = feature_class.feature_9a_peak_location()
+        roi_peak_location, _, _, _, _ = feature_class.feature_9a_peak_location()
 
         self.assertEqual(roi_peak_location, peak_col)
 
