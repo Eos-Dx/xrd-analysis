@@ -313,18 +313,22 @@ class TestFeatureEngineering(unittest.TestCase):
 
     def test_5a_peak_location(self):
         # Create a test image
-        test_image = np.zeros((256,256))
-        # set a peak in the 5A region of interest
-        peak_row = 60
-        center_col = 128
-        test_image[peak_row,center_col] = 1
+        size = 256
+        test_image = np.zeros((size,size))
+        center = test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5
+
+        # Set a peak in the 5A region of interest
+        SPACING_5A = 5e-10 # meters
+        theory_peak_location = feature_pixel_location(SPACING_5A,
+                distance=DISTANCE, wavelength=WAVELENGTH, pixel_width=PIXEL_WIDTH)
+        known_peak_location = int(center[0] - theory_peak_location)
+        test_image[known_peak_location,int(center[1])] = 1
 
         feature_class = EngineeredFeatures(test_image, params=None)
 
         roi_peak_location, _, _, _ = feature_class.feature_5a_peak_location()
-        abs_peak_location = roi_peak_location
 
-        self.assertEqual(abs_peak_location, peak_row)
+        self.assertEqual(roi_peak_location, known_peak_location)
 
     def test_9a_ratio(self):
         # Create a test image
