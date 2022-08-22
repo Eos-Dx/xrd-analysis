@@ -345,7 +345,7 @@ class TestFeatureEngineering(unittest.TestCase):
 
         # Get the 9A peak ratio
         test_ratio, test_rois, test_centers, test_anchors = \
-                feature_class.feature_9a_ratio(start_radius=start_radius)
+                feature_class.feature_9a_ratio()
         known_ratio = 2 # 2/1 = 2
 
         # Ensure the intensity is as expected
