@@ -328,18 +328,22 @@ class TestFeatureEngineering(unittest.TestCase):
 
     def test_9a_ratio(self):
         # Create a test image
-        test_image = np.zeros((256,256))
+        size = 256
+        test_image = np.zeros((size,size))
+        center = test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5
         # Create some blobs in the 9.8A region of interest
-        rect_w = 4
-        rect_l = 18
-        start_radius = 25
-        # Set the top area to 1
-        test_image[128-start_radius-rect_w:128-start_radius,
-                128-rect_l//2:128+rect_l//2] = 1
-
+        SPACING_9A = 9.8e-10 # meters
+        theory_peak_location = feature_pixel_location(SPACING_9A,
+                distance=DISTANCE, wavelength=WAVELENGTH, pixel_width=PIXEL_WIDTH)
+        rect_w = 6
+        rect_h = 20
         # Set the right area to 2
-        test_image[128-rect_l//2:128+rect_l//2,
-                128+start_radius:128+start_radius+rect_w] = 2
+        test_image[int(center[0]-rect_h/2):int(center[0]+rect_h/2),
+                int(center[1]+theory_peak_location-rect_w/2):int(center[1]+theory_peak_location+rect_w/2)] = 2
+
+        # Set the top area to 1
+        test_image[int(center[1]-theory_peak_location-rect_w/2):int(center[1]-theory_peak_location+rect_w/2),
+                int(center[0]-rect_h/2):int(center[0]+rect_h/2)] = 1
 
         feature_class = EngineeredFeatures(test_image, params=None)
 
@@ -381,9 +385,7 @@ class TestFeatureEngineering(unittest.TestCase):
         # ratio = peak_5a_radius/peak_9a_radius
         peak_location_ratio = feature_class.feature_5a_9a_peak_location_ratio()
 
-        self.assertEqual(peak_location_ratio, peak_5a_radius/peak_9a_radius)
-
-        self.fail("Finish writing test")
+        self.assertTrue(np.isclose(peak_location_ratio, peak_5a_radius/peak_9a_radius))
 
 
 class TestL1Metric(unittest.TestCase):
