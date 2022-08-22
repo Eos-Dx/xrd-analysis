@@ -32,11 +32,18 @@ from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 
+from eosdxanalysis.simulations.utils import feature_pixel_location
+
 TEST_PATH = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(TEST_PATH, "..")
 MODULE_DATA_PATH = os.path.join(MODULE_PATH, "data")
 JN_ZEROSMATRIX_TEST_DIR = "test_jn_zerosmatrix"
 JN_ZEROSMATRIX_FILENAME = "jn_zeros_501_501.npy"
+
+# Machine parameters
+DISTANCE = 10e-3 # meters
+WAVELENGTH = 1.5418e-10 # meters
+PIXEL_WIDTH = 55e-6 # meters
 
 
 class TestPolynomialFit(unittest.TestCase):
@@ -283,6 +290,26 @@ class TestFeatureEngineering(unittest.TestCase):
 
         self.assertTrue(np.isclose(amorphous_intensity, known_intensity))
 
+    def test_9a_peak_location(self):
+        """
+        Test the function to find the 9A peak location
+        """
+        # Create a test image
+        test_image = np.zeros((256,256))
+        # Set a peak in the 9A region of interest
+        SPACING_9A = 9.8e-10 # meters
+        theory_peak_location = feature_pixel_location(SPACING_9A,
+                distance=DISTANCE, wavelength=WAVELENGTH, pixel_width=PIXEL_WIDTH)
+        center = (test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5)
+        peak_row = int(center[0])
+        peak_col = int(center[1]+theory_peak_location)
+        test_image[peak_row,peak_col] = 1
+
+        feature_class = EngineeredFeatures(test_image, params=None)
+
+        roi_peak_location, _, _, _ = feature_class.feature_9a_peak_location()
+
+        self.assertEqual(roi_peak_location, peak_col)
 
     def test_5a_peak_location(self):
         # Create a test image
