@@ -20,6 +20,7 @@ from scipy.optimize import minimize
 from scipy.optimize import curve_fit
 
 from eosdxanalysis.models.utils import cart2pol
+from eosdxanalysis.models.feature_engineering import EngineeredFeatures
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
@@ -32,8 +33,8 @@ Import keratin diffraction image
 """
 # Import sample image
 MODULE_PATH = os.path.dirname(__file__)
-DATA_DIR = "data"
-DATA_FILENAME = "CRQF_A00005.txt"
+DATA_DIR = os.path.join("data", "gaussian_decomposition", "2022_08_20", "centered_rotated")
+DATA_FILENAME = "CR_A00005.txt"
 
 image_path = os.path.join(MODULE_PATH, DATA_DIR, DATA_FILENAME)
 image = np.loadtxt(image_path, dtype=np.uint32)
@@ -49,25 +50,59 @@ fig = plt.figure(plot_title)
 plt.imshow(image, cmap=cmap)
 plt.title(plot_title)
 
+
+"""
+Gaussian fit pipeline
+1. Filter
+2. Centerize, rotate
+3. Calculate engineered features
+  - Peak location
+  - Peak amplitude
+  - Standard deviation
+    - Full-width at half maximum (quick estimate)
+  - Angular spread
+4. Curve fitting
+"""
+
+# preprocessor = PreprocessData()
+
+# Calculate 9A peak location and maximum
+feature_class = EngineeredFeatures(filtered_img, params=None)
+peak_col_9A, peak_9A_max, roi_9A, roi_center_9A, anchor_9A = feature_class.feature_9a_peak_location()
+
+peak_radius_9A = peak_col_9A - center[1]
+
+
+# Calculate full-width half maximum for 9A peak
+image_slice_9A = filtered_img[int(center[0]), int(peak_col_9A):int(peak_col_9A)+20]
+full_width_half_max, max_val, max_val_loc, half_max, half_max_loc = EngineeredFeatures.fwhm(image_slice_9A)
+
+sigma_9A = full_width_half_max/(2*np.sqrt(2*np.log(2)))
+
 """
 Get best-fit parameters
 """
 
-popt, pcov, RR, TT = GaussianDecomposition.best_fit(image)
-decomp_image  = GaussianDecomposition.keratin_function((RR, TT), *popt).reshape(image.shape)
-
-p0 = np.fromiter(GaussianDecomposition.p0_dict.values(), dtype=np.float64)
+# Get initial guess and bounds
+p0_dict = GaussianDecomposition.p0_dict
+p0 = np.fromiter(p0_dict.values(), dtype=np.float64)
 p_lower_bounds = np.fromiter(GaussianDecomposition.p_lower_bounds_dict.values(), dtype=np.float64)
 p_upper_bounds = np.fromiter(GaussianDecomposition.p_upper_bounds_dict.values(), dtype=np.float64)
+
+# Modify initial guess and bounds
+p0_dict["peak_radius_9A"] = peak_radius_9A
+p0_dict["amplitude_9A"] = peak_9A_max
+p0_dict["width_9A"] = sigma_9A
+
+# Perform iterative curve_fit
+popt, pcov, RR, TT = GaussianDecomposition.best_fit(image)
+decomp_image  = GaussianDecomposition.keratin_function((RR, TT), *popt).reshape(image.shape)
 
 # Manual fit
 p0_dict = GaussianDecomposition.p0_dict
 p_guess_dict = p0_dict.fromkeys(p0_dict, 0)
 p_guess = np.fromiter(p0_dict.values(), dtype=np.float64)
 gau_approx = GaussianDecomposition.keratin_function((RR, TT), *p_guess).reshape(image.shape)
-
-
-
 
 """
 Plot
