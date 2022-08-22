@@ -1,14 +1,23 @@
-import os
-import numpy as np
-
 """
 Calculate features using preprocessing functions
 """
+import os
+import numpy as np
+
+from eosdxanalysis.simulations.utils import feature_pixel_location
 
 MODULE_PATH = os.path.dirname(__file__)
 MODULE_DATA_PATH = os.path.join(MODULE_PATH, "data")
 TEMPLATE_FILENAME = "amorphous-scattering-template.txt"
 TEMPLATE_PATH = os.path.join(MODULE_DATA_PATH, TEMPLATE_FILENAME)
+
+# Molecular properties
+SPACING_9A = 9.8e-10 # meters
+
+# Machine properties
+DISTANCE = 10e-3 # meters
+WAVELENGTH = 1.5418e-10 # meters
+PIXEL_WIDTH = 55e-6 # meters
 
 class EngineeredFeatures(object):
     """
@@ -91,7 +100,7 @@ class EngineeredFeatures(object):
 
         return peak_location, roi, roi_center, anchor
 
-    def feature_9a_peak_location(self, row_min=0, row_max=78, roi_w=6):
+    def feature_9a_peak_location(self, roi_h=20, roi_w=6):
         """
         Calculate the location (radius) of the 9A peak in the given image.
 
@@ -99,49 +108,51 @@ class EngineeredFeatures(object):
          _ <- roi_w
         | | -
         | | |
-        | | | <- roi_l
+        | | | <- roi_h
         | | |
         |_| -
 
         The window shown is defined for the right 9.8A peak (eye).
-        It's height is roi_l.
+        It's height is roi_h.
         It's width is roi_w.
 
         Inputs:
-        - row_min: minimum row number
-        - row_max: maximum row number
+        - roi_h: roi height
         - roi_w: roi width
 
         """
+        theory_peak_location = feature_pixel_location(SPACING_9A,
+                distance=DISTANCE, wavelength=WAVELENGTH, pixel_width=PIXEL_WIDTH)
 
         image = self.image
         # Calculate center of image
         center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
 
         # Calculate the roi rows and columns
-        roi_rows = (row_min, row_max)
-        roi_cols = (int(center[1]-roi_w/2), int(center[1]+roi_w/2))
+        roi_rows = (int(center[0] - roi_h/2), int(center[0] + roi_h/2))
+        roi_cols = (int(center[1] + theory_peak_location - roi_w/2),
+                    int(center[1] + theory_peak_location + roi_w/2))
 
         # Calculate the center of the roi
         roi_center = (roi_rows[1] - roi_rows[0],
                         roi_cols[1] - roi_cols[0])
 
         # Calculate anchor (upper-left corner of roi)
-        anchor = (row_min, int(center[1]-roi_w/2))
+        anchor = (int(center[0] - roi_h/2), int(center[1] - roi_w/2))
 
         # Calculate the roi
         roi = image[slice(*roi_rows),
                               slice(*roi_cols)]
 
-        # Average across columns
-        roi_avg = np.mean(roi,axis=1)
+        # Average across rows
+        roi_avg = np.mean(roi,axis=0)
 
         # Calculate peak location using maximum of centroid
         roi_peak_location_list = np.where(roi_avg == np.max(roi_avg))
-        # Calculate the row number of the peak in the roi
+        # Calculate the column number of the peak in the roi
         roi_peak_location = np.mean(roi_peak_location_list)
-        # Calculaate the row number of the peak in the image
-        peak_location = roi_peak_location + row_min
+        # Calculate the horizontal pixel radius of the peak location
+        peak_location = roi_peak_location + roi_cols[0]
 
         return peak_location, roi, roi_center, anchor
 
