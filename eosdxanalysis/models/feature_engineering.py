@@ -43,6 +43,10 @@ class EngineeredFeatures(object):
         self.image = image
         self.params = params
 
+        # Calculte image center coordinates
+        center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+        self.center = center
+
         return super().__init__()
 
     def feature_5a_peak_location(self, row_min=0, row_max=78, roi_w=6):
@@ -71,7 +75,7 @@ class EngineeredFeatures(object):
 
         image = self.image
         # Calculate center of image
-        center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+        center = self.center
 
         # Calculate the roi rows and columns
         roi_rows = (row_min, row_max)
@@ -126,7 +130,7 @@ class EngineeredFeatures(object):
 
         image = self.image
         # Calculate center of image
-        center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+        center = self.center
 
         # Calculate the roi rows and columns
         roi_rows = (int(center[0] - roi_h/2), int(center[0] + roi_h/2))
@@ -156,7 +160,7 @@ class EngineeredFeatures(object):
 
         return peak_location, roi, roi_center, anchor
 
-    def feature_9a_ratio(self, start_radius=25, roi_l=18, roi_w=4):
+    def feature_9a_ratio(self, roi_h=20, roi_w=6):
         """
         Calulate the ratio of vertical region of interest (roi) intensities
         over horizontal window roi intensities in the 9A region
@@ -165,12 +169,12 @@ class EngineeredFeatures(object):
          _ <- roi_w
         | | -
         | | |
-        | | | <- roi_l
+        | | | <- roi_h
         | | |
         |_| -
 
         The window shown is defined for the right 9.8A peak (eye).
-        It's height is roi_l.
+        It's height is roi_h.
         It's width is roi_w.
         The window is the same for the left 9.8A peak (eye).
         The window is rotated +/-90 degrees about the image center
@@ -189,21 +193,20 @@ class EngineeredFeatures(object):
 
         image = self.image
         # Calculate center of image
-        shape = image.shape
-        row_isodd = shape[0]%2
-        col_isodd = shape[1]%2
-        row_center = shape[0]/2+row_isodd
-        col_center = shape[1]/2+col_isodd
+        center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+
+        theory_peak_location = feature_pixel_location(SPACING_9A,
+                distance=DISTANCE, wavelength=WAVELENGTH, pixel_width=PIXEL_WIDTH)
 
         # Calculate center of roi's
-        roi_right_center = (int(row_center),
-                            int(col_center + start_radius + roi_w/2))
-        roi_left_center = (int(row_center),
-                            int(col_center - start_radius - roi_w/2))
-        roi_top_center = (int(row_center - start_radius - roi_w/2),
-                            int(col_center))
-        roi_bottom_center = (int(row_center + start_radius + roi_w/2),
-                            int(col_center))
+        roi_right_center = (int(center[0]),
+                            int(center[1] + theory_peak_location + roi_w/2))
+        roi_left_center = (int(center[0]),
+                            int(center[1] - theory_peak_location - roi_w/2))
+        roi_top_center = (int(center[0] - theory_peak_location - roi_w/2),
+                            int(center[1]))
+        roi_bottom_center = (int(center[0] + theory_peak_location + roi_w/2),
+                            int(center[1]))
 
         centers = (
                 roi_right_center,
@@ -213,32 +216,32 @@ class EngineeredFeatures(object):
                 )
 
         # Calculate slice indices
-        roi_right_rows = (int(roi_right_center[0]-roi_l/2),
-                        int(roi_right_center[0]+roi_l/2))
+        roi_right_rows = (int(roi_right_center[0]-roi_h/2),
+                        int(roi_right_center[0]+roi_h/2))
         roi_right_cols = (int(roi_right_center[1]-roi_w/2),
                         int(roi_right_center[1]+roi_w/2))
 
-        roi_left_rows = (int(roi_left_center[0]-roi_l/2),
-                        int(roi_left_center[0]+roi_l/2))
+        roi_left_rows = (int(roi_left_center[0]-roi_h/2),
+                        int(roi_left_center[0]+roi_h/2))
         roi_left_cols = (int(roi_left_center[1]-roi_w/2),
                         int(roi_left_center[1]+roi_w/2))
 
         roi_top_rows = (int(roi_top_center[0]-roi_w/2),
                         int(roi_top_center[0]+roi_w/2))
-        roi_top_cols = (int(roi_top_center[1]-roi_l/2),
-                        int(roi_top_center[1]+roi_l/2))
+        roi_top_cols = (int(roi_top_center[1]-roi_h/2),
+                        int(roi_top_center[1]+roi_h/2))
 
         roi_bottom_rows = (int(roi_bottom_center[0]-roi_w/2),
                             int(roi_bottom_center[0]+roi_w/2))
-        roi_bottom_cols = (int(roi_bottom_center[1]-roi_l/2),
-                            int(roi_bottom_center[1]+roi_l/2))
+        roi_bottom_cols = (int(roi_bottom_center[1]-roi_h/2),
+                            int(roi_bottom_center[1]+roi_h/2))
 
         # Calculate anchors (upper-left corner of each roi)
         anchors = [
-            (roi_right_rows[0], roi_right_cols[0],roi_l,roi_w),
-            (roi_left_rows[0], roi_left_cols[0],roi_l,roi_w),
-            (roi_top_rows[0], roi_top_cols[0],roi_w,roi_l),
-            (roi_bottom_rows[0], roi_bottom_cols[0],roi_w,roi_l),
+            (roi_right_rows[0], roi_right_cols[0],roi_h,roi_w),
+            (roi_left_rows[0], roi_left_cols[0],roi_h,roi_w),
+            (roi_top_rows[0], roi_top_cols[0],roi_w,roi_h),
+            (roi_bottom_rows[0], roi_bottom_cols[0],roi_w,roi_h),
                   ]
 
         # Calculate windows
