@@ -391,6 +391,34 @@ class TestFeatureEngineering(unittest.TestCase):
 
         self.assertTrue(np.isclose(peak_location_ratio, peak_5a_radius/peak_9a_radius))
 
+    def test_fwhm(self):
+        """
+        Test full-width half maximum function
+
+        Test function is a triangular function as follows:
+        (max = 2.1)
+               /\
+              /  \
+             /    \
+        _________________
+            |  |   |
+           -2  0   2
+
+        """
+        size = 101
+        min_val = 0
+        max_val = 2
+        half_size = size//2
+        test_array = np.zeros(size)
+        test_array[:half_size+1] = np.linspace(min_val,max_val+max_val/(size-1),half_size+1)
+        test_array[half_size+1:] = test_array[:half_size][::-1]
+
+        known_fwhm = half_size
+
+        feature_class = EngineeredFeatures
+        test_fwhm, max_val, max_loc, half_max_val, half_max_loc = feature_class.fwhm(test_array)
+
+        self.assertEqual(known_fwhm, test_fwhm)
 
 class TestL1Metric(unittest.TestCase):
 

@@ -341,3 +341,63 @@ class EngineeredFeatures(object):
         amorphous_intensity_ratio = amorphous_intensity/total_intensity
 
         return amorphous_intensity_ratio
+
+    @classmethod
+    def fwhm(self, input_array, direction=+1):
+        """
+        Calculates the full-width at half maximum for a 1D input array
+        Uses a one-sided half-max
+
+        Inputs:
+        - input_array: 1D array
+        - direction: keyword argument, default is one-sided half-max
+          in the positive index direction
+
+        Outputs:
+        - Full-width half max
+        - Maximum value
+        - Maximum location
+        - Half-maximum value
+        - Half-maximum location
+        """
+        # Ensure input array is 1D
+        if len(input_array.flatten().shape) != 1:
+            raise ValueError("Input array must be 1D!")
+
+        # Find the maximum value in the input array
+        max_val = np.max(input_array)
+        max_val_loc_array = np.where(input_array == max_val)[0]
+
+        # Ensure that only one maximum is found
+        if len(max_val_loc_array) > 1:
+            raise ValueError("More than one maximum found!")
+
+        max_val_loc = max_val_loc_array[0]
+
+        # Calculate the half-maximum value
+        half_max = max_val/2
+
+        # Take a subarray to calculate the one-sided half-max location
+        sub_array = input_array[max_val_loc:]
+
+        # Sub-array from max value to half-max
+        max_to_half_max_array  = np.where(sub_array >= half_max)[0]
+
+        # Get the location of the half-max value in the sub-array
+        try:
+            # The one-sided half-maximum width
+            half_max_sub_loc = max_to_half_max_array[-1]
+        except IndexError as err:
+            # Handle the case where the half-max is not found
+            raise ValueError("Half-max value not found!")
+        except Exception as err:
+            print("An error occured finding half-max location!")
+            raise err
+
+        # Calculate the half-maximum location in the original array
+        half_max_loc = half_max_sub_loc + max_val_loc
+
+        # Calculate the full-width at half-maximum from the one-sided width
+        full_width_half_max = 2 * half_max_sub_loc
+
+        return  full_width_half_max, max_val, max_val_loc, half_max, half_max_loc
