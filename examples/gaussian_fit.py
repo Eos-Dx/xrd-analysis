@@ -87,10 +87,11 @@ for filename_path in filename_path_list:
     """
 
     # Get initial guess and bounds
-    p0_dict = GaussianDecomposition.p0_dict
+    gauss_class = GaussianDecomposition()
+    p0_dict = gauss_class.p0_dict
     p0 = np.fromiter(p0_dict.values(), dtype=np.float64)
-    p_lower_bounds = np.fromiter(GaussianDecomposition.p_lower_bounds_dict.values(), dtype=np.float64)
-    p_upper_bounds = np.fromiter(GaussianDecomposition.p_upper_bounds_dict.values(), dtype=np.float64)
+    p_lower_bounds = np.fromiter(gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
+    p_upper_bounds = np.fromiter(gauss_class.p_upper_bounds_dict.values(), dtype=np.float64)
 
     # Modify initial guess and bounds
     p0_dict["peak_radius_9A"] = peak_radius_9A
@@ -98,11 +99,11 @@ for filename_path in filename_path_list:
     p0_dict["width_9A"] = sigma_9A
 
     # Perform iterative curve_fit
-    popt, pcov, RR, TT = GaussianDecomposition.best_fit(image)
-    decomp_image  = GaussianDecomposition.keratin_function((RR, TT), *popt).reshape(image.shape)
+    popt, pcov, RR, TT = gauss_class.best_fit(image)
+    decomp_image  = gauss_class.keratin_function((RR, TT), *popt).reshape(image.shape)
 
     # Calculate fit error
-    error = GaussianDecomposition.fit_error(image, decomp_image)
+    error = gauss_class.fit_error(image, decomp_image)
     error_ratio = error/np.sum(np.square(image))
     print(np.round(error), end=" ")
     print(np.round(error_ratio*100, decimals=2), end=" ")
