@@ -7,6 +7,8 @@ import numpy as np
 import numpy.ma as ma
 import subprocess
 
+from collections import OrderedDict
+
 from scipy.special import jn_zeros
 from scipy.special import jv
 from scipy.io import loadmat
@@ -219,6 +221,76 @@ class TestGaussianDecomposition(unittest.TestCase):
         test_output = np.loadtxt(output_filepath, dtype=np.uint32)
 
         self.assertTrue(np.isclose(known_output, test_output).all())
+
+    def test_synthetic_keratin_pattern(self):
+        """
+        Generate a synthetic diffraction pattern
+        and ensure the Gaussian fit error is small
+        """
+        # Set parameters for a synthetic keratin diffraction pattern
+        p_dict = OrderedDict({
+                # 9A equatorial peaks minimum parameters
+                "peak_radius_9A":       feature_pixel_location(9e-10), # Peak pixel radius
+                "width_9A":             1, # Width
+                "amplitude_9A":         100, # Amplitude
+                "cosine_power_9A":      8, # cosine power
+                # 5A meridional peaks minimum parameters
+                "peak_radius_5A":       feature_pixel_location(5e-10), # Peak pixel radius
+                "width_5A":             2, # Width
+                "amplitude_5A":         20, # Amplitude
+                "cosine_power_5A":      6, # cosine power
+                # 5-4A isotropic region minimum parameters
+                "peak_radius_5_4A":     feature_pixel_location(4.9e-10), # Peak pixel radius
+                "width_5_4A":           5, # Width
+                "amplitude_5_4A":       50, # Amplitude
+                # Background noise minimum parameters
+                "peak_radius_bg":       0, # Peak pixel radius
+                "width_bg":             100, # Width
+                "amplitude_bg":         100, # Amplitude
+            })
+
+        # Set mesh size
+        size = 256
+        RR, TT = GaussianDecomposition.gen_meshgrid((size,size))
+
+        # Generate synthetic image
+        synth_image = GaussianDecomposition.keratin_function((RR, TT), *p_dict.values()).reshape(RR.shape)
+
+        # Set guess parameters
+        p0_dict = OrderedDict({
+                # 9A equatorial peaks minimum parameters
+                "peak_radius_9A":       feature_pixel_location(9e-10), # Peak pixel radius
+                "width_9A":             1, # Width
+                "amplitude_9A":         100, # Amplitude
+                "cosine_power_9A":      8, # cosine power
+                # 5A meridional peaks minimum parameters
+                "peak_radius_5A":       feature_pixel_location(5e-10), # Peak pixel radius
+                "width_5A":             2, # Width
+                "amplitude_5A":         20, # Amplitude
+                "cosine_power_5A":      6, # cosine power
+                # 5-4A isotropic region minimum parameters
+                "peak_radius_5_4A":     feature_pixel_location(4.9e-10), # Peak pixel radius
+                "width_5_4A":           5, # Width
+                "amplitude_5_4A":       50, # Amplitude
+                # Background noise minimum parameters
+                "peak_radius_bg":       0, # Peak pixel radius
+                "width_bg":             100, # Width
+                "amplitude_bg":         100, # Amplitude
+            })
+
+        # Find Gaussian fit
+        popt, pcov, RR, TT = GaussianDecomposition.best_fit(synth_image)
+        decomp_image  = GaussianDecomposition.keratin_function((RR, TT), *popt).reshape(RR.shape)
+
+        # Get squared error
+        error = GaussianDecomposition.fit_error(synth_image, decomp_image)
+        error_ratio = error/np.sum(np.square(synth_image))
+
+        # Ensure that error ratio is below 1%
+        self.assertTrue(error_ratio < 0.01)
+
+        # Ensure that popt values are close to p_dict values
+        self.assertTrue(np.array_equal(popt, p_dict.values()))
 
 
 class TestUtils(unittest.TestCase):
