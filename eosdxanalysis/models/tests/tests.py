@@ -135,22 +135,6 @@ class TestGaussianDecomposition(unittest.TestCase):
         TEST_DATA_PATH = os.path.join(TEST_PATH, "data", "GaussianDecomposition")
         self.TEST_DATA_PATH = TEST_DATA_PATH
 
-    def test_bg_noise_peak_location(self):
-        """
-        Background noise peak should be close to 0 (right at the origin
-        or center of the image)
-        """
-        # Set input filepath
-        test_filename = "CRQF_A00005.txt"
-        test_filepath = os.path.join(self.TEST_DATA_PATH, "input", test_filename)
-        # Find best-fit parameters
-        test_image = np.loadtxt(test_filepath, dtype=np.uint32)
-        popt, pcov, RR, TT = GaussianDecomposition.best_fit(test_image)
-
-        # Check that background-noise peak location is close to zero
-        bg_peak_location = popt[-4]
-        self.assertTrue(np.isclose(bg_peak_location, 0))
-
     def test_cli(self):
         """
         Simple test to check if there are no errors when running main
@@ -203,13 +187,14 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Calculate optimum parameters
         image = np.loadtxt(input_filepath, dtype=np.float64)
 
-        popt, pcov, RR, TT = GaussianDecomposition.best_fit(image)
-        decomp_image  = GaussianDecomposition.keratin_function((RR, TT), *popt).reshape(image.shape)
+        gauss_class = GaussianDecomposition()
+        popt, pcov, RR, TT = gauss_class.best_fit(image)
+        decomp_image  = gauss_class.keratin_function((RR, TT), *popt).reshape(image.shape)
 
         # Check that the optimal parameters are not close to the upper or lower bounds
-        p0 = np.fromiter(GaussianDecomposition.p0_dict.values(), dtype=np.float64)
-        p_lower_bounds = np.fromiter(GaussianDecomposition.p_lower_bounds_dict.values(), dtype=np.float64)
-        p_upper_bounds = np.fromiter(GaussianDecomposition.p_upper_bounds_dict.values(), dtype=np.float64)
+        p0 = np.fromiter(gauss_class.p0_dict.values(), dtype=np.float64)
+        p_lower_bounds = np.fromiter(gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
+        p_upper_bounds = np.fromiter(gauss_class.p_upper_bounds_dict.values(), dtype=np.float64)
 
         self.assertFalse(np.isclose(popt, p_lower_bounds).all())
         self.assertFalse(np.isclose(popt, p_upper_bounds).all())
@@ -228,69 +213,120 @@ class TestGaussianDecomposition(unittest.TestCase):
         and ensure the Gaussian fit error is small
         """
         # Set parameters for a synthetic keratin diffraction pattern
-        p_dict = OrderedDict({
-                # 9A equatorial peaks minimum parameters
+        p_synth_dict = OrderedDict({
+                # 9A equatorial peaks parameters
                 "peak_radius_9A":       feature_pixel_location(9e-10), # Peak pixel radius
-                "width_9A":             1, # Width
-                "amplitude_9A":         100, # Amplitude
-                "cosine_power_9A":      8, # cosine power
-                # 5A meridional peaks minimum parameters
+                "width_9A":             1.0, # Width
+                "amplitude_9A":         100.0, # Amplitude
+                "cosine_power_9A":      8.0, # cosine power
+                # 5A meridional peaks parameters
                 "peak_radius_5A":       feature_pixel_location(5e-10), # Peak pixel radius
-                "width_5A":             2, # Width
-                "amplitude_5A":         20, # Amplitude
-                "cosine_power_5A":      6, # cosine power
-                # 5-4A isotropic region minimum parameters
+                "width_5A":             2.0, # Width
+                "amplitude_5A":         20.0, # Amplitude
+                "cosine_power_5A":      6.0, # cosine power
+                # 5-4A isotropic region parameters
                 "peak_radius_5_4A":     feature_pixel_location(4.9e-10), # Peak pixel radius
-                "width_5_4A":           5, # Width
-                "amplitude_5_4A":       50, # Amplitude
-                # Background noise minimum parameters
-                "peak_radius_bg":       0, # Peak pixel radius
-                "width_bg":             100, # Width
-                "amplitude_bg":         100, # Amplitude
+                "width_5_4A":           5.0, # Width
+                "amplitude_5_4A":       50.0, # Amplitude
+                # Background noise parameters
+                "width_bg":             100.0, # Width
+                "amplitude_bg":         100.0, # Amplitude
             })
 
         # Set mesh size
         size = 256
-        RR, TT = GaussianDecomposition.gen_meshgrid((size,size))
+        gauss_class = GaussianDecomposition()
+        RR, TT = gauss_class.gen_meshgrid((size,size))
 
         # Generate synthetic image
-        synth_image = GaussianDecomposition.keratin_function((RR, TT), *p_dict.values()).reshape(RR.shape)
+        synth_image = gauss_class.keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
 
-        # Set guess parameters
+        # Set the initial parameters guess and bounds
         p0_dict = OrderedDict({
-                # 9A equatorial peaks minimum parameters
+                # 9A equatorial peaks parameters
                 "peak_radius_9A":       feature_pixel_location(9e-10), # Peak pixel radius
-                "width_9A":             1, # Width
-                "amplitude_9A":         100, # Amplitude
-                "cosine_power_9A":      8, # cosine power
-                # 5A meridional peaks minimum parameters
+                "width_9A":             1.3, # Width
+                "amplitude_9A":         92.0, # Amplitude
+                "cosine_power_9A":      8.0, # cosine power
+                # 5A meridional peaks parameters
                 "peak_radius_5A":       feature_pixel_location(5e-10), # Peak pixel radius
-                "width_5A":             2, # Width
-                "amplitude_5A":         20, # Amplitude
-                "cosine_power_5A":      6, # cosine power
-                # 5-4A isotropic region minimum parameters
+                "width_5A":             2.1, # Width
+                "amplitude_5A":         19.1, # Amplitude
+                "cosine_power_5A":      6.3, # cosine power
+                # 5-4A isotropic region parameters
                 "peak_radius_5_4A":     feature_pixel_location(4.9e-10), # Peak pixel radius
-                "width_5_4A":           5, # Width
-                "amplitude_5_4A":       50, # Amplitude
-                # Background noise minimum parameters
-                "peak_radius_bg":       0, # Peak pixel radius
-                "width_bg":             100, # Width
-                "amplitude_bg":         100, # Amplitude
+                "width_5_4A":           4.7, # Width
+                "amplitude_5_4A":       51.0, # Amplitude
+                # Background noise parameters
+                "width_bg":             92.0, # Width
+                "amplitude_bg":         101.0, # Amplitude
             })
 
+        p_lower_bounds_dict = OrderedDict({
+                # 9A equatorial peaks minimum parameters
+                "peak_radius_9A":       -20+feature_pixel_location(9e-10), # Peak pixel radius
+                "width_9A":             0.1, # Width
+                "amplitude_9A":         10.0, # Amplitude
+                "cosine_power_9A":      2.0, # cosine power
+                # 5A meridional peaks minimum parameters
+                "peak_radius_5A":       -20+feature_pixel_location(5e-10), # Peak pixel radius
+                "width_5A":             0.1, # Width
+                "amplitude_5A":         10.0, # Amplitude
+                "cosine_power_5A":      2.0, # cosine power
+                # 5-4A isotropic region minimum parameters
+                "peak_radius_5_4A":     -20+feature_pixel_location(4.9e-10), # Peak pixel radius
+                "width_5_4A":           0.1, # Width
+                "amplitude_5_4A":       10.0, # Amplitude
+                # Background noise minimum parameters
+                "width_bg":             0.1, # Width
+                "amplitude_bg":         10.0, # Amplitude
+            })
+
+        p_upper_bounds_dict = OrderedDict({
+                # 9A equatorial peaks maximum parameters
+                "peak_radius_9A":       20+feature_pixel_location(9e-10), # Peak pixel radius
+                "width_9A":             10.0, # Width
+                "amplitude_9A":         200.0, # Amplitude
+                "cosine_power_9A":      16.0, # cosine power
+                # 5A meridional peaks maximum parameters
+                "peak_radius_5A":       20+feature_pixel_location(5e-10), # Peak pixel radius
+                "width_5A":             10.0, # Width
+                "amplitude_5A":         200.0, # Amplitude
+                "cosine_power_5A":      16.0, # cosine power
+                # 5-4A isotropic region maximum parameters
+                "peak_radius_5_4A":     20+feature_pixel_location(4.9e-10), # Peak pixel radius
+                "width_5_4A":           10.0, # Width
+                "amplitude_5_4A":       200.0, # Amplitude
+                # Background noise maximum parameters
+                "width_bg":             1000.0, # Width
+                "amplitude_bg":         1000.0, # Amplitude
+            })
+
+        gauss_class.p0_dict = p0_dict
+        gauss_class.p_lower_bounds_dict = p_lower_bounds_dict
+        gauss_class.p_upper_bounds_dict = p_upper_bounds_dict
+
         # Find Gaussian fit
-        popt, pcov, RR, TT = GaussianDecomposition.best_fit(synth_image)
-        decomp_image  = GaussianDecomposition.keratin_function((RR, TT), *popt).reshape(RR.shape)
+        popt, pcov, RR, TT = gauss_class.best_fit(synth_image)
+        decomp_image  = gauss_class.keratin_function((RR, TT), *popt).reshape(RR.shape)
 
         # Get squared error
-        error = GaussianDecomposition.fit_error(synth_image, decomp_image)
+        error = gauss_class.fit_error(synth_image, decomp_image)
         error_ratio = error/np.sum(np.square(synth_image))
+
+        p_lower_bounds = np.fromiter(p_lower_bounds_dict.values(), dtype=np.float64)
+        p_upper_bounds = np.fromiter(p_upper_bounds_dict.values(), dtype=np.float64)
+
+        self.assertFalse(np.isclose(popt, p_lower_bounds).all())
+        self.assertFalse(np.isclose(popt, p_upper_bounds).all())
 
         # Ensure that error ratio is below 1%
         self.assertTrue(error_ratio < 0.01)
 
+        p_synth = np.fromiter(p_synth_dict.values(), dtype=np.float64)
+
         # Ensure that popt values are close to p_dict values
-        self.assertTrue(np.array_equal(popt, p_dict.values()))
+        self.assertTrue(np.isclose(popt, p_synth).all())
 
 
 class TestUtils(unittest.TestCase):
