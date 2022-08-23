@@ -76,7 +76,6 @@ class GaussianDecomposition(object):
             "width_5_4A":           18, # Width
             "amplitude_5_4A":       370, # Amplitude
             # Background noise minimum parameters
-            "peak_radius_bg":       40, # Peak pixel radius
             "width_bg":             84, # Width
             "amplitude_bg":         886, # Amplitude
         })
@@ -86,7 +85,7 @@ class GaussianDecomposition(object):
             # 9A equatorial peaks
             "peak_radius_9A":       25, # Peak pixel radius
             "width_9A":             1, # Width
-            "amplitude_9A":         10, # Amplitude
+            "amplitude_9A":         0, # Amplitude
             "cosine_power_9A":      1, # cosine power
             # 5A meridional peaks
             "peak_radius_5A":       50, # Peak pixel radius
@@ -96,9 +95,8 @@ class GaussianDecomposition(object):
             # 5-4A isotropic region
             "peak_radius_5_4A":     50, # Peak pixel radius
             "width_5_4A":           2, # Width
-            "amplitude_5_4A":       20, # Amplitude
+            "amplitude_5_4A":       0, # Amplitude
             # Background noise
-            "peak_radius_bg":       30, # Peak pixel radius
             "width_bg":             10, # Width
             "amplitude_bg":          0, # Amplitude
         })
@@ -120,12 +118,10 @@ class GaussianDecomposition(object):
             "width_5_4A":           100, # Width
             "amplitude_5_4A":       2000, # Amplitude
             # Background noise maximum parameters
-            "peak_radius_bg":       50, # Peak pixel radius
             "width_bg":             300, # Width
             "amplitude_bg":         1000, # Amplitude
         })
 
-    @classmethod
     def radial_gaussian(self, r, theta, phase, beta,
                 peak_radius, width, amplitude, cos_power):
         """
@@ -139,12 +135,11 @@ class GaussianDecomposition(object):
         gau *= np.power(np.cos(theta + phase)**2, beta*cos_power)
         return gau
 
-    @classmethod
     def keratin_function(self, polar_point,
             peak_radius_9A, width_9A, amplitude_9A, cosine_power_9A,
             peak_radius_5A, width_5A, amplitude_5A, cosine_power_5A,
             peak_radius_5_4A, width_5_4A, amplitude_5_4A,
-            peak_radius_bg, width_bg, amplitude_bg):
+            width_bg, amplitude_bg):
         """
         Generate entire kertain diffraction pattern at the points
         (r, theta), with 16 parameters as the arguements to 4 calls
@@ -174,6 +169,8 @@ class GaussianDecomposition(object):
         # Fix isotropic cosine power parameter to zero
         cosine_power_5_4A = 0 # 5-4A cosine power
         cosine_power_bg = 0 # Background noise cosine power
+        # Fix background noise peak radius to zero
+        peak_radius_bg = 0
 
         approx_9A = self.radial_gaussian(r, theta, phase_9A, beta_9A,
                 peak_radius_9A, width_9A, amplitude_9A, cosine_power_9A)
@@ -186,7 +183,6 @@ class GaussianDecomposition(object):
         approx = approx_9A + approx_5A + approx_5_4A + approx_bg
         return approx.ravel()
 
-    @classmethod
     def best_fit(self, image):
         """
         Use `scipy.optimize.curve_fit` to decompose a keratin diffraction pattern
@@ -203,7 +199,6 @@ class GaussianDecomposition(object):
                 # Upper bounds
                 np.fromiter(self.p_upper_bounds_dict.values(), dtype=np.float64),
             )
-
 
         # Check if image size is square
         if image.shape[0] != image.shape[1]:
@@ -229,7 +224,6 @@ class GaussianDecomposition(object):
 
         return popt, pcov, RR, TT
 
-    @classmethod
     def fit_error(self, image, fit):
         """
         Returns the square error between a function and
@@ -237,7 +231,6 @@ class GaussianDecomposition(object):
         """
         return np.sum(np.square(image - fit))
 
-    @classmethod
     def objective(self, p, image, r, theta):
         """
         Generate a keratin diffraction pattern with the given
@@ -246,7 +239,6 @@ class GaussianDecomposition(object):
         fit = self.keratin_function((r, theta), *p)
         return fit_error(p, image, fit, r, theta)
 
-    @classmethod
     def gen_meshgrid(self, shape):
         """
         Generate a meshgrid
@@ -288,8 +280,9 @@ if __name__ == '__main__':
     image = np.loadtxt(input_filepath, dtype=np.float64)
 
     # Now get "best-fit" diffraction pattern
-    popt, pcov, RR, TT = GaussianDecomposition.best_fit(image)
-    decomp_image  = GaussianDecomposition.keratin_function((RR, TT), *popt).reshape(*image.shape)
+    gauss_class = GaussianDecomposition()
+    popt, pcov, RR, TT = gauss_class.best_fit(image)
+    decomp_image  = gauss_class.keratin_function((RR, TT), *popt).reshape(*image.shape)
 
     # Save output
     if output_filepath:
