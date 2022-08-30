@@ -23,6 +23,7 @@ from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.utils import pol2cart
 from eosdxanalysis.models.utils import cart2pol
+from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.feature_engineering import EngineeredFeatures
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import freq_sampling_grid
@@ -280,18 +281,6 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Ensure that popt values are close to p_dict values
         self.assertTrue(np.isclose(popt, p_synth).all())
 
-    def test_radial_intensity_1d(self):
-        """
-        Test radial intensity 1d function
-        """
-        test_image = np.zeros((256,256))
-        test_image[:,128:] = np.sin(np.arange(128))
-
-        gauss_class = GaussianDecomposition(test_image)
-        horizontal_1d = gauss_class.radial_intensity_1d(image=test_image, width=4)
-
-        self.assertTrue(np.array_equal(horizontal_1d, np.sin(np.arange(128))))
-
 
 class TestUtils(unittest.TestCase):
 
@@ -342,6 +331,17 @@ class TestUtils(unittest.TestCase):
         # starting after x = 0
         J_1_zeros_ref = known_zeros[:3, n1]
         self.assertTrue(np.isclose(J_1_zeros_calc, J_1_zeros_ref, atol=1e-3).all())
+
+    def test_radial_intensity_1d(self):
+        """
+        Test radial intensity 1d function
+        """
+        test_image = np.zeros((256,256))
+        test_image[:,128:] = np.sin(np.arange(128))
+
+        horizontal_1d = radial_intensity_1d(test_image, width=4)
+
+        self.assertTrue(np.array_equal(horizontal_1d, np.sin(np.arange(128))))
 
 
 class TestFeatureEngineering(unittest.TestCase):
