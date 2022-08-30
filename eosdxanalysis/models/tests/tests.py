@@ -281,6 +281,9 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Ensure that popt values are close to p_dict values
         self.assertTrue(np.isclose(popt, p_synth).all())
 
+        # Now test parameter estimation
+        gauss_class = GaussianDecomposition(synth_image)
+
 
 class TestUtils(unittest.TestCase):
 
