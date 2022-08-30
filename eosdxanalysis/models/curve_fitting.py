@@ -12,6 +12,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
 from eosdxanalysis.models.utils import cart2pol
+from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -59,34 +60,15 @@ class GaussianDecomposition(object):
         self.parameter_init(image, p0_dict, p_lower_bounds_dict, p_upper_bounds_dict)
         return super().__init__()
 
-    def radial_intensity_1d(self, image=None, width=4):
-        """
-        Returns the 1D radial intensity of positive horizontal strip (averaged).
-        For any other strip, e.g. vertical, transpose and reverse order the rows/columns.
-           __
-         /    \
-        |   ===|
-         \ __ /
-
-        """
-        # Calculate 1D radial intensity in positive horizontal direction
-        center = getattr(self, "center", (image.shape[0]/2-0.5, image.shape[1]/2-0.5))
-        row_start, row_end = int(np.ceil(center[0] - width/2)), int(np.ceil(center[0] + width/2))
-        col_start, col_end = int(np.ceil(center[1])), image.shape[1]
-        intensity_strip = image[row_start:row_end, col_start:col_end]
-        intensity_1d = np.mean(intensity_strip, axis=0) # Average across rows
-
-        return intensity_1d
-
     def estimate_parameters(self, image=None, width=4):
         """
         Estimate Gaussian fit parameters based on provided image
         """
         # Get 1D radial intensity in positive horizontal direction
-        horizontal_intensity_1d = self.radial_intensity_1d(image, width=width)
+        horizontal_intensity_1d = radial_intensity_1d(image, width=width)
 
         # Get 1D radial intensity in positive vertical direction
-        vertical_intensity_1d = self.radial_intensity_1d(image.T[:,::-1], width=width)
+        vertical_intensity_1d = radial_intensity_1d(image.T[:,::-1], width=width)
 
         # 9A maxima
         # 5A maxima
