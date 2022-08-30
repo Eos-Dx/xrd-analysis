@@ -7,12 +7,16 @@ import numpy as np
 from collections import OrderedDict
 
 from scipy.optimize import curve_fit
+from scipy.ndimage import gaussian_filter
+from scipy.signal import find_peaks
+from scipy.signal import peak_widths
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
+from eosdxanalysis.models.utils import angular_intensity_1d
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -60,15 +64,55 @@ class GaussianDecomposition(object):
         self.parameter_init(image, p0_dict, p_lower_bounds_dict, p_upper_bounds_dict)
         return super().__init__()
 
-    def estimate_parameters(self, image=None, width=4):
+    def estimate_parameters(self, image=None, width=4, position_tol=5):
         """
         Estimate Gaussian fit parameters based on provided image
+
+        - Use horizontal and vertical radial intensity profiles, and their differences,
+          to calculate properties of isotropic and isotropic Gaussians.
         """
         # Get 1D radial intensity in positive horizontal direction
         horizontal_intensity_1d = radial_intensity_1d(image, width=width)
 
         # Get 1D radial intensity in positive vertical direction
         vertical_intensity_1d = radial_intensity_1d(image.T[:,::-1], width=width)
+
+        # Estimate the 9A peak location and calculate peak properties
+        intensity_diff_1d_9A = horizontal_intensity_1d - vertical_intensity_1d
+        peaks_aniso_9A, _ = find_peaks(intensity_diff_1d_9A)
+
+        # Ensure that at least one peak was found
+        try:
+            # Get peak location
+            peak_location_radius_9A = peaks_aniso_9A[0]
+        except IndexError as err:
+            print("No peaks found for 9A parameters estimation.")
+            raise err
+        # Ensure that peak_9A is close to theoretical value
+        peak_location_raidius_9A_theory = feature_pixel_location(9e-10)
+        if abs(peak_location_radius_9A - peak_location_raidius_9A_theory) > position_tol:
+            raise ValueError("9A peak is too far from theoretical value.")
+
+        # Estimate the 9A peak widths (full-width at half maximum)
+        width_results_aniso_9A = peak_widths(intensity_diff_1d_9A, peaks_aniso_9A)
+        peak_width_aniso_9A = width_results_aniso_9A[0][0]
+        peak_std_9A = peak_width_aniso_9A / (2*np.sqrt(2*np.log(2))) # convert FWHM to standard deviation
+
+        # Estimate the 9A anisotropic peak amplitude
+        peak_amplitude_aniso_9A = intensity_diff_1d_9A[peak_location_radius_9A]
+
+        # Estimate the anisotropic part of the angular intensity
+        # TODO: invert and use `find_peaks` with the greatest prominence
+        angular_intensity_9A_1d = angular_intensity_1d(image, radius=peak_location_radius_9A, width=width)
+        angular_intensity_aniso_9A_1d = angular_intensity_9A_1d - angular_intensity_9A_1d.min()
+
+        # Integrate the normalized anisotropic angular intensity
+        alpha_intensity_9A_1d = 1/360 * np.sum(angular_intensity_aniso_9A_1d/angular_intensity_aniso_9A_1d.max())
+        cos_power_9A = 1/alpha_intensity_9A_1d 
+
+        # Locate the 5A peaks and calculate some properties
+        intensity_diff_5A = vertical_intensity_1d - horizontal_intensity_1d
+
 
         # 9A maxima
         # 5A maxima
