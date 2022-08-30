@@ -51,39 +51,53 @@ class GaussianDecomposition(object):
         """
         Initialize `GaussianDecomposition` class.
         """
-        # Calculate image center coordinates
-        if image:
+        if type(image) == np.ndarray:
+            # Calculate image center coordinates
             center = image.shape[0]/2-0.5, image.shape[1]/2-0.5
             self.center = center
         # Initialize parameters
         self.parameter_init(image, p0_dict, p_lower_bounds_dict, p_upper_bounds_dict)
         return super().__init__()
 
-    def estimate_parameters(self, image, width=4):
+    def radial_intensity_1d(self, image=None, width=4):
+        """
+        Returns the 1D radial intensity of positive horizontal strip (averaged).
+        For any other strip, e.g. vertical, transpose and reverse order the rows/columns.
+           __
+         /    \
+        |   ===|
+         \ __ /
+
+        """
+        # Calculate 1D radial intensity in positive horizontal direction
+        center = getattr(self, "center", (image.shape[0]/2-0.5, image.shape[1]/2-0.5))
+        row_start, row_end = int(np.ceil(center[0] - width/2)), int(np.ceil(center[0] + width/2))
+        col_start, col_end = int(np.ceil(center[1])), image.shape[1]
+        intensity_strip = image[row_start:row_end, col_start:col_end]
+        intensity_1d = np.mean(intensity_strip, axis=0) # Average across rows
+
+        return intensity_1d
+
+    def estimate_parameters(self, image=None, width=4):
         """
         Estimate Gaussian fit parameters based on provided image
         """
-        # Calculate 1D radial intensity in positive horizontal direction
-        center = getattr(self, "center", image.shape[0]/2-0.5, image.shape[1]/2-0.5)
-        row_start, row_end = np.floor(center - width/2), np.ceil(center + width/2)
-        col_start, col_end = np.ceil(center), image.shape[1]-1
-        horizontal_strip = image[row_start:row_end, col_start:col_end]
-        horizontal_1d = np.mean(horizontal_strip, axis=0) # Average across rows
-        # Calculate 1D radial intensity in positive vertical direction
-        vertical_strip = image[:,:]
-        vertical_1d = np.mean(vertical_strip, axis=1) # Average across columns
+        # Get 1D radial intensity in positive horizontal direction
+        horizontal_intensity_1d = self.radial_intensity_1d(image, width=width)
+
+        # Get 1D radial intensity in positive vertical direction
+        vertical_intensity_1d = self.radial_intensity_1d(image.T[:,::-1], width=width)
 
         # 9A maxima
         # 5A maxima
         # 5-4A ring
         # Background noise
 
-        self.p0_dict = p0_dict
-        self.p_lower_bounds_dict = p_lower_bounds_dict
-        self.p_upper_bounds_dict = p_upper_bounds_dict
-
-
-    def parameter_init(self, image, p0_dict, p_lower_bounds_dict, p_upper_bounds_dict):
+#         self.p0_dict = p0_dict
+#         self.p_lower_bounds_dict = p_lower_bounds_dict
+#         self.p_upper_bounds_dict = p_upper_bounds_dict
+#
+    def parameter_init(self, image=None, p0_dict=None, p_lower_bounds_dict=None, p_upper_bounds_dict=None):
         """
         P parameters:
         - peak_radius
@@ -91,7 +105,7 @@ class GaussianDecomposition(object):
         - amplitude
         """
         # Estimate parameters based on image if image is provided
-        if image:
+        if type(image) == np.ndarray:
             self.estimate_parameters(image)
             return
 
