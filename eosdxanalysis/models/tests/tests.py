@@ -280,6 +280,18 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Ensure that popt values are close to p_dict values
         self.assertTrue(np.isclose(popt, p_synth).all())
 
+    def test_radial_intensity_1d(self):
+        """
+        Test radial intensity 1d function
+        """
+        test_image = np.zeros((256,256))
+        test_image[:,128:] = np.sin(np.arange(128))
+
+        gauss_class = GaussianDecomposition(test_image)
+        horizontal_1d = gauss_class.radial_intensity_1d(image=test_image, width=4)
+
+        self.assertTrue(np.array_equal(horizontal_1d, np.sin(np.arange(128))))
+
 
 class TestUtils(unittest.TestCase):
 
