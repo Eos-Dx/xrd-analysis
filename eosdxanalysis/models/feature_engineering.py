@@ -1,14 +1,23 @@
-import os
-import numpy as np
-
 """
 Calculate features using preprocessing functions
 """
+import os
+import numpy as np
+
+from eosdxanalysis.simulations.utils import feature_pixel_location
 
 MODULE_PATH = os.path.dirname(__file__)
 MODULE_DATA_PATH = os.path.join(MODULE_PATH, "data")
 TEMPLATE_FILENAME = "amorphous-scattering-template.txt"
 TEMPLATE_PATH = os.path.join(MODULE_DATA_PATH, TEMPLATE_FILENAME)
+
+# Molecular properties
+SPACING_9A = 9.8e-10 # meters
+
+# Machine properties
+DISTANCE = 10e-3 # meters
+WAVELENGTH = 1.5418e-10 # meters
+PIXEL_WIDTH = 55e-6 # meters
 
 class EngineeredFeatures(object):
     """
@@ -33,6 +42,10 @@ class EngineeredFeatures(object):
 
         self.image = image
         self.params = params
+
+        # Calculte image center coordinates
+        center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+        self.center = center
 
         return super().__init__()
 
@@ -62,7 +75,7 @@ class EngineeredFeatures(object):
 
         image = self.image
         # Calculate center of image
-        center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+        center = self.center
 
         # Calculate the roi rows and columns
         roi_rows = (row_min, row_max)
@@ -91,7 +104,7 @@ class EngineeredFeatures(object):
 
         return peak_location, roi, roi_center, anchor
 
-    def feature_9a_peak_location(self, row_min=0, row_max=78, roi_w=6):
+    def feature_9a_peak_location(self, roi_h=20, roi_w=6):
         """
         Calculate the location (radius) of the 9A peak in the given image.
 
@@ -99,53 +112,58 @@ class EngineeredFeatures(object):
          _ <- roi_w
         | | -
         | | |
-        | | | <- roi_l
+        | | | <- roi_h
         | | |
         |_| -
 
         The window shown is defined for the right 9.8A peak (eye).
-        It's height is roi_l.
+        It's height is roi_h.
         It's width is roi_w.
 
         Inputs:
-        - row_min: minimum row number
-        - row_max: maximum row number
+        - roi_h: roi height
         - roi_w: roi width
 
         """
+        theory_peak_location = feature_pixel_location(SPACING_9A,
+                distance=DISTANCE, wavelength=WAVELENGTH, pixel_width=PIXEL_WIDTH)
 
         image = self.image
         # Calculate center of image
-        center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+        center = self.center
 
         # Calculate the roi rows and columns
-        roi_rows = (row_min, row_max)
-        roi_cols = (int(center[1]-roi_w/2), int(center[1]+roi_w/2))
+        roi_rows = (int(center[0] - roi_h/2), int(center[0] + roi_h/2))
+        roi_cols = (int(center[1] + theory_peak_location - roi_w/2),
+                    int(center[1] + theory_peak_location + roi_w/2))
 
         # Calculate the center of the roi
         roi_center = (roi_rows[1] - roi_rows[0],
                         roi_cols[1] - roi_cols[0])
 
         # Calculate anchor (upper-left corner of roi)
-        anchor = (row_min, int(center[1]-roi_w/2))
+        anchor = (int(center[0] - roi_h/2), int(center[1] - roi_w/2))
 
         # Calculate the roi
         roi = image[slice(*roi_rows),
                               slice(*roi_cols)]
 
-        # Average across columns
-        roi_avg = np.mean(roi,axis=1)
+        # Average across rows
+        roi_avg = np.mean(roi,axis=0)
 
         # Calculate peak location using maximum of centroid
         roi_peak_location_list = np.where(roi_avg == np.max(roi_avg))
-        # Calculate the row number of the peak in the roi
+        # Calculate the column number of the peak in the roi
         roi_peak_location = np.mean(roi_peak_location_list)
-        # Calculaate the row number of the peak in the image
-        peak_location = roi_peak_location + row_min
+        # Calculate the horizontal pixel radius of the peak location
+        peak_location = roi_peak_location + roi_cols[0]
 
-        return peak_location, roi, roi_center, anchor
+        # Calculate the peak maximum
+        peak_max = np.max(roi)
 
-    def feature_9a_ratio(self, start_radius=25, roi_l=18, roi_w=4):
+        return peak_location, peak_max, roi, roi_center, anchor
+
+    def feature_9a_ratio(self, roi_h=20, roi_w=6):
         """
         Calulate the ratio of vertical region of interest (roi) intensities
         over horizontal window roi intensities in the 9A region
@@ -154,12 +172,12 @@ class EngineeredFeatures(object):
          _ <- roi_w
         | | -
         | | |
-        | | | <- roi_l
+        | | | <- roi_h
         | | |
         |_| -
 
         The window shown is defined for the right 9.8A peak (eye).
-        It's height is roi_l.
+        It's height is roi_h.
         It's width is roi_w.
         The window is the same for the left 9.8A peak (eye).
         The window is rotated +/-90 degrees about the image center
@@ -178,21 +196,20 @@ class EngineeredFeatures(object):
 
         image = self.image
         # Calculate center of image
-        shape = image.shape
-        row_isodd = shape[0]%2
-        col_isodd = shape[1]%2
-        row_center = shape[0]/2+row_isodd
-        col_center = shape[1]/2+col_isodd
+        center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+
+        theory_peak_location = feature_pixel_location(SPACING_9A,
+                distance=DISTANCE, wavelength=WAVELENGTH, pixel_width=PIXEL_WIDTH)
 
         # Calculate center of roi's
-        roi_right_center = (int(row_center),
-                            int(col_center + start_radius + roi_w/2))
-        roi_left_center = (int(row_center),
-                            int(col_center - start_radius - roi_w/2))
-        roi_top_center = (int(row_center - start_radius - roi_w/2),
-                            int(col_center))
-        roi_bottom_center = (int(row_center + start_radius + roi_w/2),
-                            int(col_center))
+        roi_right_center = (int(center[0]),
+                            int(center[1] + theory_peak_location + roi_w/2))
+        roi_left_center = (int(center[0]),
+                            int(center[1] - theory_peak_location - roi_w/2))
+        roi_top_center = (int(center[0] - theory_peak_location - roi_w/2),
+                            int(center[1]))
+        roi_bottom_center = (int(center[0] + theory_peak_location + roi_w/2),
+                            int(center[1]))
 
         centers = (
                 roi_right_center,
@@ -202,32 +219,32 @@ class EngineeredFeatures(object):
                 )
 
         # Calculate slice indices
-        roi_right_rows = (int(roi_right_center[0]-roi_l/2),
-                        int(roi_right_center[0]+roi_l/2))
+        roi_right_rows = (int(roi_right_center[0]-roi_h/2),
+                        int(roi_right_center[0]+roi_h/2))
         roi_right_cols = (int(roi_right_center[1]-roi_w/2),
                         int(roi_right_center[1]+roi_w/2))
 
-        roi_left_rows = (int(roi_left_center[0]-roi_l/2),
-                        int(roi_left_center[0]+roi_l/2))
+        roi_left_rows = (int(roi_left_center[0]-roi_h/2),
+                        int(roi_left_center[0]+roi_h/2))
         roi_left_cols = (int(roi_left_center[1]-roi_w/2),
                         int(roi_left_center[1]+roi_w/2))
 
         roi_top_rows = (int(roi_top_center[0]-roi_w/2),
                         int(roi_top_center[0]+roi_w/2))
-        roi_top_cols = (int(roi_top_center[1]-roi_l/2),
-                        int(roi_top_center[1]+roi_l/2))
+        roi_top_cols = (int(roi_top_center[1]-roi_h/2),
+                        int(roi_top_center[1]+roi_h/2))
 
         roi_bottom_rows = (int(roi_bottom_center[0]-roi_w/2),
                             int(roi_bottom_center[0]+roi_w/2))
-        roi_bottom_cols = (int(roi_bottom_center[1]-roi_l/2),
-                            int(roi_bottom_center[1]+roi_l/2))
+        roi_bottom_cols = (int(roi_bottom_center[1]-roi_h/2),
+                            int(roi_bottom_center[1]+roi_h/2))
 
         # Calculate anchors (upper-left corner of each roi)
         anchors = [
-            (roi_right_rows[0], roi_right_cols[0],roi_l,roi_w),
-            (roi_left_rows[0], roi_left_cols[0],roi_l,roi_w),
-            (roi_top_rows[0], roi_top_cols[0],roi_w,roi_l),
-            (roi_bottom_rows[0], roi_bottom_cols[0],roi_w,roi_l),
+            (roi_right_rows[0], roi_right_cols[0],roi_h,roi_w),
+            (roi_left_rows[0], roi_left_cols[0],roi_h,roi_w),
+            (roi_top_rows[0], roi_top_cols[0],roi_w,roi_h),
+            (roi_bottom_rows[0], roi_bottom_cols[0],roi_w,roi_h),
                   ]
 
         # Calculate windows
@@ -324,3 +341,63 @@ class EngineeredFeatures(object):
         amorphous_intensity_ratio = amorphous_intensity/total_intensity
 
         return amorphous_intensity_ratio
+
+    @classmethod
+    def fwhm(self, input_array, direction=+1):
+        """
+        Calculates the full-width at half maximum for a 1D input array
+        Uses a one-sided half-max
+
+        Inputs:
+        - input_array: 1D array
+        - direction: keyword argument, default is one-sided half-max
+          in the positive index direction
+
+        Outputs:
+        - Full-width half max
+        - Maximum value
+        - Maximum location
+        - Half-maximum value
+        - Half-maximum location
+        """
+        # Ensure input array is 1D
+        if len(input_array.flatten().shape) != 1:
+            raise ValueError("Input array must be 1D!")
+
+        # Find the maximum value in the input array
+        max_val = np.max(input_array)
+        max_val_loc_array = np.where(input_array == max_val)[0]
+
+        # Ensure that only one maximum is found
+        if len(max_val_loc_array) > 1:
+            raise ValueError("More than one maximum found!")
+
+        max_val_loc = max_val_loc_array[0]
+
+        # Calculate the half-maximum value
+        half_max = max_val/2
+
+        # Take a subarray to calculate the one-sided half-max location
+        sub_array = input_array[max_val_loc:]
+
+        # Sub-array from max value to half-max
+        max_to_half_max_array  = np.where(sub_array >= half_max)[0]
+
+        # Get the location of the half-max value in the sub-array
+        try:
+            # The one-sided half-maximum width
+            half_max_sub_loc = max_to_half_max_array[-1]
+        except IndexError as err:
+            # Handle the case where the half-max is not found
+            raise ValueError("Half-max value not found!")
+        except Exception as err:
+            print("An error occured finding half-max location!")
+            raise err
+
+        # Calculate the half-maximum location in the original array
+        half_max_loc = half_max_sub_loc + max_val_loc
+
+        # Calculate the full-width at half-maximum from the one-sided width
+        full_width_half_max = 2 * half_max_sub_loc
+
+        return  full_width_half_max, max_val, max_val_loc, half_max, half_max_loc

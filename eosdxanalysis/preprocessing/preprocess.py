@@ -219,11 +219,11 @@ class PreprocessData(object):
                     output = local_thresh_centered_rotated_quad_folded_image
 
                 # Uniform filter
-                if uniform_filter_size:
+                if uniform_filter_size > 1:
                     output = ndimage.uniform_filter(output, size=uniform_filter_size)
-                    # Mask
-                    if mask_style:
-                        output = self.mask(output, style=mask_style)
+                # Mask
+                if mask_style:
+                    output = self.mask(output, style=mask_style)
 
                 # Save the file
                 save_filename = "{}_{}".format(output_style_abbreviation,
@@ -482,7 +482,9 @@ if __name__ == "__main__":
         raise ValueError("Plans required.")
 
     # Set uniform filter size
-    uniform_filter_size = int(args.uniform_filter_size)
+    uniform_filter_size = args.uniform_filter_size
+    if not uniform_filter_size:
+        uniform_filter_size = 0
 
     # Instantiate PreprocessData class
     preprocessor = PreprocessData(input_dir=input_dir, output_dir=output_dir,

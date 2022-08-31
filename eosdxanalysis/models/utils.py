@@ -11,6 +11,7 @@ import scipy
 import scipy.cluster.hierarchy as sch
 
 from skimage.transform import rescale
+from skimage.transform import warp_polar
 
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import pad_image
@@ -60,6 +61,41 @@ def cart2pol(x, y):
     r = np.sqrt(x**2 + y**2)
     theta = np.arctan2(y, x)
     return theta, r
+
+def radial_intensity_1d(image, width=4):
+    """
+    Returns the 1D radial intensity of positive horizontal strip (averaged).
+    For any other strip or quadrant, transpose and/or reverse rows/columns order.
+       __
+     /    \
+    |   ===|
+     \ __ /
+
+    """
+    # Calculate 1D radial intensity in positive horizontal direction
+    center = image.shape[0]/2-0.5, image.shape[1]/2-0.5
+    row_start, row_end = int(np.ceil(center[0] - width/2)), int(np.ceil(center[0] + width/2))
+    col_start, col_end = int(np.ceil(center[1])), image.shape[1]
+    intensity_strip = image[row_start:row_end, col_start:col_end]
+    intensity_1d = np.mean(intensity_strip, axis=0) # Average across rows
+
+    return intensity_1d
+
+def angular_intensity_1d(image, radius=None, width=4):
+    # If radius is not specified, do half of smallest image shape
+    if radius is None:
+        smallest_shape = np.min(image.shape)
+        radius = smallest_shape/2
+    # Calculate image center
+    center = image.shape[0]/2-0.5, image.shape[1]/2-0.5
+
+    # Use warp_polar
+    polar_image = warp_polar(image, radius=radius+int(width/2),
+            output_shape=(360, image.shape[1]))
+    col_start, col_end = int(np.floor(radius - width/2)), int(np.ceil(radius + width/2))
+    # Average across the columns corresponding to the annulus
+    angular_profile_1d = np.mean(polar_image[:, col_start:col_end], axis=1)
+    return angular_profile_1d
 
 def l1_metric(A, B):
     """
