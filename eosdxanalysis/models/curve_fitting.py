@@ -64,22 +64,43 @@ class GaussianDecomposition(object):
         self.parameter_init(image, p0_dict, p_lower_bounds_dict, p_upper_bounds_dict)
         return super().__init__()
 
-    def estimate_parameters(self, image=None, width=4, position_tol=5):
+    def estimate_parameters(self, image=None, width=4, position_tol=0.2):
         """
         Estimate Gaussian fit parameters based on provided image
 
+        Inputs:
+        - image: can be None, pulled from init
+        - width: averaging width used to produce 1D profiles
+        - position_tol: factor used to check if detected peak locations are incorrect
+
+        Outputs:
+        - (p0_dict, p_lower_bounds_dict, p_upper_bounds_dict): tuple
+
+        Also stores these parameters in class parameters.
+
+        Notes:
         - Use horizontal and vertical radial intensity profiles, and their differences,
           to calculate properties of isotropic and isotropic Gaussians.
+        - The 9A and 5A peaks are hypothesized to be the sum of isotropic and anisotropic Gaussians
+        - The 5-4A ring and background intensities are hypothesized to be isotropic Gaussians
         """
+
         # Get 1D radial intensity in positive horizontal direction
         horizontal_intensity_1d = radial_intensity_1d(image, width=width)
-
         # Get 1D radial intensity in positive vertical direction
         vertical_intensity_1d = radial_intensity_1d(image.T[:,::-1], width=width)
+        # Take the difference of the horizontal and vertical 1D intensity profiles
+        # to estimate some anisotropic Gaussian properties
+        intensity_diff_1d = horizontal_intensity_1d - vertical_intensity_1d
 
-        # Estimate the 9A peak location and calculate peak properties
-        intensity_diff_1d_9A = horizontal_intensity_1d - vertical_intensity_1d
-        peaks_aniso_9A, _ = find_peaks(intensity_diff_1d_9A)
+        """
+        Estimate the 9A isotropic and anisotropic Gaussian function properties
+
+        - Anisotropic
+        - Isotropic
+        """
+
+        peaks_aniso_9A, _ = find_peaks(intensity_diff_1d)
 
         # Ensure that at least one peak was found
         try:
@@ -90,16 +111,16 @@ class GaussianDecomposition(object):
             raise err
         # Ensure that peak_9A is close to theoretical value
         peak_location_raidius_9A_theory = feature_pixel_location(9e-10)
-        if abs(peak_location_radius_9A - peak_location_raidius_9A_theory) > position_tol:
-            raise ValueError("9A peak is too far from theoretical value.")
+        if abs(peak_location_radius_9A - peak_location_raidius_9A_theory) > position_tol * peak_location_raidius_9A_theory:
+            raise ValueError("First peak is too far from theoretical value of 9A peak location.")
 
         # Estimate the 9A peak widths (full-width at half maximum)
-        width_results_aniso_9A = peak_widths(intensity_diff_1d_9A, peaks_aniso_9A)
+        width_results_aniso_9A = peak_widths(intensity_diff_1d, peaks_aniso_9A)
         peak_width_aniso_9A = width_results_aniso_9A[0][0]
         peak_std_9A = peak_width_aniso_9A / (2*np.sqrt(2*np.log(2))) # convert FWHM to standard deviation
 
         # Estimate the 9A anisotropic peak amplitude
-        peak_amplitude_aniso_9A = intensity_diff_1d_9A[peak_location_radius_9A]
+        peak_amplitude_aniso_9A = intensity_diff_1d[peak_location_radius_9A]
 
         # Estimate the anisotropic part of the angular intensity
         # TODO: invert and use `find_peaks` with the greatest prominence
@@ -113,11 +134,18 @@ class GaussianDecomposition(object):
         # Locate the 5A peaks and calculate some properties
         intensity_diff_5A = vertical_intensity_1d - horizontal_intensity_1d
 
+        """
+        Estimate the 5A isotropic and anisotropic Gaussian function properties
+        """
 
-        # 9A maxima
-        # 5A maxima
-        # 5-4A ring
-        # Background noise
+        """
+        Estimate the 5-4A isotropic Gaussian function properties
+        """
+
+        """
+        Estimate the background isotropic Gaussian function properties
+        """
+
 
 #         self.p0_dict = p0_dict
 #         self.p_lower_bounds_dict = p_lower_bounds_dict
