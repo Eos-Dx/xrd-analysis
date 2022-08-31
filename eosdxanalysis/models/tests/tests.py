@@ -24,6 +24,7 @@ from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.utils import pol2cart
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
+from eosdxanalysis.models.utils import angular_intensity_1d
 from eosdxanalysis.models.feature_engineering import EngineeredFeatures
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import freq_sampling_grid
@@ -345,6 +346,33 @@ class TestUtils(unittest.TestCase):
         horizontal_1d = radial_intensity_1d(test_image, width=4)
 
         self.assertTrue(np.array_equal(horizontal_1d, np.sin(np.arange(128))))
+
+    def test_angular_intensity_1d(self):
+        """
+        Test angular intensity 1d function with a simple example
+        """
+        # Create test image
+        size = 256
+        test_image = np.zeros((size,size))
+        # Create meshgrid
+        YY, XX = np.ogrid[:size, :size]
+        center = (size/2-0.5, size/2-0.5)
+        # Calculate meshgrid of radii
+        dist_from_center = np.sqrt((YY - center[0])**2 + (XX - center[1])**2)
+        # Calculate meshgrid of angles
+        angle = np.arctan2(YY-center[0], XX-center[1])
+        # Create a ring sinusoid
+        radius_start = 50
+        radius_end = 75
+        ring = (dist_from_center >= 50) & (dist_from_center <= 75)
+        test_image[ring] = np.cos(2*angle)[ring]
+
+        ring_intensity = angular_intensity_1d(test_image, radius=size/2, width=4)
+
+        # Ensure the ring intensity follows a sinusoid, within a certain tolerance
+        expected_intensity = np.cos(2*np.linspace(-np.pi + 2*np.pi/360/2, np.pi - 2*np.pi/360/2,
+            num=360, endpoint=True))
+        self.assertTrue(np.isclose(ring_intensity, expected_intensity, atol=0.02).all())
 
 
 class TestFeatureEngineering(unittest.TestCase):
