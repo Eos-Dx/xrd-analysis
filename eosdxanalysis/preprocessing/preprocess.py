@@ -152,6 +152,8 @@ class PreprocessData(object):
                 output_dir_name = "preprocessed_{}".format(timestamp)
             output_dir = os.path.join(parent_dir, output_dir_name)
             os.makedirs(output_dir, exist_ok=True)
+        else:
+            output_dir = self.output_dir
 
         print("Saving to", output_dir, "...")
 
