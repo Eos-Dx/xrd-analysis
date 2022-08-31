@@ -18,8 +18,14 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
+from scipy.ndimage import maximum_filter
 from scipy.optimize import minimize
 from scipy.optimize import curve_fit
+
+from scipy.signal import find_peaks
+from scipy.signal import peak_widths
+
+from skimage.feature import peak_local_max
 
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.feature_engineering import EngineeredFeatures
@@ -40,6 +46,7 @@ DATA_DIR = os.path.join("")
 OUT_DIR = os.path.join("")
 
 filename_path_list = glob.glob(os.path.join(DATA_DIR,"*.txt"))
+filename_path_list.sort()
 
 size = 256
 # Calculate center coordinates of image in array index notation
@@ -52,7 +59,25 @@ for filename_path in filename_path_list:
     filename = os.path.basename(filename_path)
     print(filename, end=" ", flush=True)
     image = np.loadtxt(filename_path, dtype=np.uint32)
-    filtered_img = gaussian_filter(image, 2)
+    # filtered_img = gaussian_filter(image, 2)
+
+    # peaks = peak_local_max(image, min_distance=20, num_peaks=4)
+
+    gauss_class = GaussianDecomposition(image)
+    # Get the estimated parameters
+    p0_dict, p_lower_bounds_dict, p_upper_bounds_dict = \
+            gauss_class.p0_dict, gauss_class.p_lower_bounds_dict, gauss_class.p_upper_bounds_dict 
+
+
+#      fig = plt.figure()
+#      plt.imshow(image, cmap="hot")
+#      plt.scatter(peaks[:,1], peaks[:,0], c="blue")
+#      plt.title(filename)
+#      plt.show()
+
+    print()
+
+    continue
 
     """
     Gaussian fit pipeline
