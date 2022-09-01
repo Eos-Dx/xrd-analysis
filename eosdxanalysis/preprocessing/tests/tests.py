@@ -483,11 +483,12 @@ class TestCenterFinding(unittest.TestCase):
     def test_find_center_max_centroid(self):
         # Original filename: 20220330/A00041.txt
         test_filename = "test_preprocess_center.txt"
+        test_dir = "test_preprocessing_images"
+        test_image_path = os.path.join(TEST_IMAGE_PATH, test_dir, "input", test_filename)
         # Set known center using centroid of max pixels in beam region of interest
         known_center = (126.125, 132.375) # Using centroid of max pixels
-        test_dir = os.path.dirname(os.path.realpath(__file__))
-        test_img = np.loadtxt(os.path.join(TEST_IMAGE_DIR, test_filename))
-        calculated_center = find_center(test_img, method="max_centroid")
+        test_image = np.loadtxt(test_image_path)
+        calculated_center = find_center(test_image, method="max_centroid")
 
         self.assertTrue(np.array_equal(calculated_center, known_center))
 
