@@ -26,6 +26,7 @@ from eosdxanalysis.preprocessing.denoising import filter_strays
 from eosdxanalysis.preprocessing.utils import count_intervals
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import gen_rotation_line
+from eosdxanalysis.preprocessing.utils import get_angle
 
 from eosdxanalysis.preprocessing.preprocess import PreprocessData
 from eosdxanalysis.preprocessing.preprocess import ABBREVIATIONS
@@ -35,7 +36,10 @@ from eosdxanalysis.preprocessing.preprocess import INVERSE_OUTPUT_MAP
 from eosdxanalysis.preprocessing.peak_finding import find_2d_peak
 from eosdxanalysis.preprocessing.peak_finding import find_1d_peaks
 
-TEST_IMAGE_DIR = os.path.join("eosdxanalysis","preprocessing","tests","test_images")
+TEST_PATH = os.path.dirname(__file__)
+MODULE_PATH = os.path.join(TEST_PATH, "..")
+TEST_IMAGE_DIR = "test_images"
+TEST_IMAGE_PATH = os.path.join(TEST_PATH, TEST_IMAGE_DIR)
 
 
 def intensity_profile_function(coords,N=16):
@@ -521,6 +525,47 @@ class TestUtils(unittest.TestCase):
         count = count_intervals(num_array)
         self.assertEqual(count,1)
 
+    def test_get_angle_0_degrees(self):
+        """
+        Two features are on a horizontal line, so angle should be zero
+        """
+        known_angle = 0.0
+
+        feature_1 = [10, 10]
+        feature_2 = [10, 20]
+
+        test_angle = get_angle(feature_1, feature_2)
+
+        self.assertTrue(np.array_equal(known_angle, test_angle))
+
+    def test_get_angle_90_degrees(self):
+        """
+        Two features are on a vertical line, so angle should be 90
+        based on input order.
+        """
+        known_angle = 90.0
+
+        feature_1 = [20, 10]
+        feature_2 = [10, 10]
+
+        test_angle = get_angle(feature_1, feature_2)
+
+        self.assertTrue(np.array_equal(known_angle, test_angle))
+
+    def test_get_angle_n90_degrees(self):
+        """
+        Two features are on a vertical line, so angle should be -90
+        based on input order.
+        """
+        known_angle = -90.0
+
+        feature_1 = [10, 10]
+        feature_2 = [20, 10]
+
+        test_angle = get_angle(feature_1, feature_2)
+
+        self.assertTrue(np.array_equal(known_angle, test_angle))
+
 
 class TestDenoising(unittest.TestCase):
 
@@ -984,7 +1029,7 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         Set up some paths
         """
         test_dirname = "test_output_saturation_images"
-        test_parent_path = os.path.join(TEST_IMAGE_DIR, test_dirname)
+        test_parent_path = os.path.join(TEST_IMAGE_PATH, test_dirname)
 
         samples_dir = "samples"
         samples_path = os.path.join(test_parent_path, samples_dir)
@@ -992,7 +1037,7 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         output_dir = "output"
         output_path = os.path.join(test_parent_path, output_dir)
 
-        saturated_dir = "preprocessed_samples"
+        saturated_dir = "saturated_samples"
         saturated_path = os.path.join(test_parent_path, saturated_dir)
 
         control_dir = "controls"
