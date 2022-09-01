@@ -346,13 +346,16 @@ class PreprocessData(object):
         """
         Move diffraction pattern to the center of the image
         """
-        array_center = self.array_center
         params = self.params
         h = params.get("h")
         w = params.get("w")
         beam_rmax = params.get("beam_rmax")
         rmin = params.get("rmin")
         rmax = params.get("rmax")
+
+        # Calculate array center
+        array_center = np.array(image.shape)/2-0.5
+        self.array_center = array_center
 
         # Find center using original image
         center = find_center(image,method="max_centroid",rmax=beam_rmax)
@@ -375,13 +378,16 @@ class PreprocessData(object):
         3. find rotation angle
         4. rotate
         """
-        array_center = self.array_center
         params = self.params
         h = params.get("h")
         w = params.get("w")
         beam_rmax = params.get("beam_rmax")
         rmin = params.get("rmin")
         rmax = params.get("rmax")
+
+        # Calculate array center
+        array_center = np.array(image.shape)/2-0.5
+        self.array_center = array_center
 
         centered_image, center = self.centerize(image)
 
