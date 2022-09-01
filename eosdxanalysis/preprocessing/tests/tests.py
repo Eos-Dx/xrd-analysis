@@ -199,7 +199,7 @@ class TestPreprocessingCLI(unittest.TestCase):
     """
 
     def setUp(self):
-        test_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images")
+        test_dir = os.path.join(TEST_IMAGE_PATH, "test_cli_images")
         self.test_dir = test_dir
 
         # Specify parameters file without plans
@@ -217,7 +217,7 @@ class TestPreprocessingCLI(unittest.TestCase):
         self.params_with_plans = params_with_plans
 
         # Create test images
-        INPUT_DIR="input"
+        input_dir="input"
 
         # Set up test image
         test_image = np.zeros((256,256), dtype=np.uint16)
@@ -229,13 +229,15 @@ class TestPreprocessingCLI(unittest.TestCase):
         # Set the filename
         filename = "test_cli.txt"
         # Set the full output path
-        fullpath = os.path.join(test_dir, INPUT_DIR, filename)
+        fullpath = os.path.join(test_dir, input_dir, filename)
         # Save the image to file
         np.savetxt(fullpath, test_image, fmt="%d")
 
         # Set the input and output directories
         test_input_dir = os.path.join(test_dir, "input")
         test_output_dir = os.path.join(test_dir, "output")
+        # Create the test output directory
+        os.makedirs(test_output_dir, exist_ok=True)
 
         self.test_input_dir = test_input_dir
         self.test_output_dir = test_output_dir
@@ -356,11 +358,8 @@ class TestPreprocessingCLI(unittest.TestCase):
             self.assertTrue(np.mean(output_image) < np.mean(input_image))
 
     def tearDown(self):
-        """
-        Remove any output files
-        """
-        test_output_dir = self.test_output_dir
-        # os.remove(os.path.join(test_output_dir, "*"))
+        # Delete the output folder
+        shutil.rmtree(self.test_output_dir)
 
 
 class TestPreprocessData(unittest.TestCase):
@@ -406,7 +405,7 @@ class TestPreprocessData(unittest.TestCase):
         test_input_dir = os.path.join(test_dir, "input")
         test_output_dir = os.path.join(test_dir, "output")
         # Create the output directory
-        os.mkdir(test_output_dir)
+        os.makedirs(test_output_dir, exist_ok=True)
 
         self.test_input_dir = test_input_dir
         self.test_output_dir = test_output_dir
@@ -1044,7 +1043,7 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         output_dir = "output"
         output_path = os.path.join(test_parent_path, output_dir)
         # Create the output directory
-        os.mkdir(output_path)
+        os.makedirs(output_path, exist_ok=True)
 
         saturated_dir = "saturated_samples"
         saturated_path = os.path.join(test_parent_path, saturated_dir)
