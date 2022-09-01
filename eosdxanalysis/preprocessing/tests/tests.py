@@ -487,7 +487,7 @@ class TestPreprocessData(unittest.TestCase):
             output_image = np.loadtxt(output_filename_fullpath)
 
             # Call this on input image, not output image
-            entered_rotated_image, center, angle_degrees = preprocessor.centerize_and_rotate(input_image)
+            centered_rotated_image, center, angle_degrees = preprocessor.centerize_and_rotate(input_image)
 
             centers.append(center)
             angles.append(angle_degrees)
