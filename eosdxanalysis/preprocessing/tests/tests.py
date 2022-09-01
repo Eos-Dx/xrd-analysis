@@ -17,7 +17,7 @@ from eosdxanalysis.preprocessing.image_processing import rotate_image
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
 
-from eosdxanalysis.preprocessing.center_finding import radial_mean
+from eosdxanalysis.preprocessing.center_finding import circular_average
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
 
@@ -505,13 +505,27 @@ class TestCenterFinding(unittest.TestCase):
         intensities = gen_1d_intensity_profile()
         self.assertEqual('foo'.upper(), 'FOO')
 
-    def test_radial_mean(self):
-        intensities = np.array([[4,6,4,],[5,10,5],[4,6,4]])
-        center = (1,1)
-        rmean = radial_mean(intensities,center)
-        rmean_ref = np.array([0,1,2,3,4,5,6])
-        self.fail("Finish writing test")
-        self.assertIsNone(np.testing.assert_array_equal(rmean, rmean_ref))
+    def test_circular_average_trivial_example(self):
+        size = 8
+        test_image = np.ones((size,size))
+        center = test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5
+        avg_image = circular_average(test_image,center)
+
+        # Check that the circularly averaged image is close to identical
+        self.assertTrue(np.isclose(test_image, avg_image).all())
+
+    def test_circular_average(self):
+        test_image = np.array([
+            [4,6,6,4,],
+            [5,10,10,5],
+            [5,10,10,5],
+            [4,6,6,4,],
+            ])
+        center = test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5
+        avg_image = circular_average(test_image,center)
+
+        # Check that the circular mean is close to the original mean
+        self.assertTrue(np.isclose(np.mean(test_image), np.mean(avg_image)))
 
 
 class TestUtils(unittest.TestCase):
