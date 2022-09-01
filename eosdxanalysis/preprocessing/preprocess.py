@@ -118,7 +118,6 @@ class PreprocessData(object):
         - both
         """
         # Get and set parameters
-        self.plans = plans
         params = self.params
         h = params.get("h")
         w = params.get("w")
@@ -131,6 +130,9 @@ class PreprocessData(object):
         eyes_percentile = params.get("eyes_percentile")
         local_thresh_block_size = params.get("local_thresh_block_size")
         cmap = params.get("cmap", "hot")
+
+        # Get plans from from parameters or keyword argument
+        plans = params.get("plans", plans)
 
         # Set mask style from params if crop_style is set
         mask_style = params.get("crop_style", mask_style)
