@@ -365,7 +365,7 @@ class TestPreprocessingCLI(unittest.TestCase):
 class TestPreprocessData(unittest.TestCase):
 
     def setUp(self):
-        test_dir = os.path.join(TEST_IMAGE_DIR, "test_preprocessing_images")
+        test_dir = os.path.join(TEST_IMAGE_PATH, "test_preprocessing_images")
         self.test_dir = test_dir
 
         # Specify parameters file without plans
