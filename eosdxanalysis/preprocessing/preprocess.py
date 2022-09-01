@@ -154,6 +154,7 @@ class PreprocessData(object):
             os.makedirs(output_dir, exist_ok=True)
         else:
             output_dir = self.output_dir
+            os.makedirs(output_dir, exist_ok=True)
 
         print("Saving to", output_dir, "...")
 
