@@ -25,7 +25,6 @@ from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import find_maxima
 from eosdxanalysis.preprocessing.denoising import filter_strays
-from eosdxanalysis.preprocessing.image_processing import convert_to_cv2_img
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 

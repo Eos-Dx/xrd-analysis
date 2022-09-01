@@ -13,7 +13,6 @@ from skimage.transform import warp_polar
 from scipy.ndimage import center_of_mass
 
 from eosdxanalysis.preprocessing.image_processing import pad_image
-from eosdxanalysis.preprocessing.image_processing import rotate_image
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
 
@@ -659,66 +658,6 @@ class TestImageProcessing(unittest.TestCase):
         padded_image = pad_image(image, method="prerotation")
 
         self.assertEqual(padded_image.shape, (14,14))
-
-    def test_rotate_image_nearest(self):
-        """
-        Test rotate_image function with nearest method
-        which uses cv2.INTER_NEAREST flag
-        """
-        # Create 4x4 array
-        dim=4
-        image = np.array([
-            [0,0,0,0],
-            [0,1,0,0],
-            [0,0,1,0],
-            [0,0,0,0],
-        ])
-
-        # Create known 90 degree rotation of 2x2 array
-        rot_image_known = np.array([
-            [0,0,0,0],
-            [0,0,1,0],
-            [0,1,0,0],
-            [0,0,0,0],
-        ])
-
-        angle = 90.0
-
-        rotated_image_nearest = rotate_image(image, angle=angle, method="nearest")
-        rotated_image_standard = rotate_image(image, angle=angle, method="standard")
-
-        self.assertTrue(np.array_equal(rot_image_known, rotated_image_nearest))
-
-    def test_rotate_image_elastic(self):
-        """
-        Test rotate_image function with nearest method
-        which uses cv2.INTER_NEAREST flag
-        """
-        # Create 4x4 array
-        dim=4
-        image = np.array([
-            [0,0,0,0],
-            [0,10,0,0],
-            [0,0,10,0],
-            [0,0,0,0],
-        ])
-
-        # Create known 90 degree rotation of 2x2 array
-        rot_image_known = np.array([
-            [0,0,0,0],
-            [0,0,10,0],
-            [0,10,0,0],
-            [0,0,0,0],
-        ])
-
-        angle = 45.0
-
-        rotated_image_elastic = rotate_image(image, angle=angle, method="elastic")
-        rotated_image_standard = rotate_image(image, angle=angle, method="standard")
-
-        print(rotated_image_elastic)
-
-        self.assertTrue(np.array_equal(rot_image_known, rotated_image_elastic))
 
     def test_unwarp_polar(self):
         """

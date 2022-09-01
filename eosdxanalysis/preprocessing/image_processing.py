@@ -1,5 +1,4 @@
 import numpy as np
-import cv2
 import skimage
 from scipy.ndimage import map_coordinates
 
@@ -35,52 +34,6 @@ def pad_image(img, method="prerotation", padding=None):
             padding[2]:ncols+padding[2]] = img
 
     return new_img
-
-def convert_to_cv2_img(orig_img):
-    """
-    Converts raw intensity data to 16-bit grayscale image
-    """
-    img_float = orig_img/np.max(orig_img)
-    uint_img = np.array(img_float * (2**16-1), dtype = np.uint16)
-    cv2_img = cv2.cvtColor(uint_img, cv2.COLOR_GRAY2BGR)
-
-    return cv2_img
-
-def rotate_image(img, center=None, angle=None, method="standard"):
-    """
-    Rotates an image about its center
-    Note that cv2 uses x,y for images so we take the transpose
-    """
-    if center == None:
-        nrows, ncols = img.shape
-        center = ((nrows-1)/2,(ncols-1)/2)
-
-    # Convert to cv2 center where upper-left corner of image is origin
-    # which is (-0.5, -0.5) in our point-centered coordinate system
-    cv2_center = (center[0] + 0.0, center[1] + 0.0)
-
-    rot_mat = cv2.getRotationMatrix2D(cv2_center,angle,1.0)
-    # Convert to cv2 image
-    # uint_img = img.astype(np.uint16)
-    # img = cv2.cvtColor(uint_img, cv2.COLOR_GRAY2BGR)[:,:,0]
-    img = convert_to_cv2_img(img)[:,:,0]
-    img_shape_T = (img.shape[1],img.shape[0])
-
-    if method == "standard":
-        rotated_img = cv2.warpAffine(convert_to_cv2_img(img.T), rot_mat, img_shape_T)[:,:,0]
-        rotated_img = rotated_img.T
-        return rotated_img
-    elif method == "nearest":
-        flag = cv2.INTER_NEAREST
-        rotated_img = cv2.warpAffine(img.T, rot_mat, img.shape, flag)
-        return rotated_img
-    elif method == "elastic":
-        # Use skimage.transform.rotate
-        rotated_img = skimage.transform.rotate(img, angle, resize=True, order=0)
-        return rotated_img
-    else:
-        raise NotImplemented("Choose an existing rotation method.")
-
 
 def crop_image(img,height,width,center=None):
     """
