@@ -1,4 +1,5 @@
 import os
+import shutil
 import unittest
 import numpy as np
 import pandas as pd
@@ -404,6 +405,8 @@ class TestPreprocessData(unittest.TestCase):
         # Set the input and output directories
         test_input_dir = os.path.join(test_dir, "input")
         test_output_dir = os.path.join(test_dir, "output")
+        # Create the output directory
+        os.mkdir(test_output_dir)
 
         self.test_input_dir = test_input_dir
         self.test_output_dir = test_output_dir
@@ -431,7 +434,6 @@ class TestPreprocessData(unittest.TestCase):
 
         # Preprocess data, saving to a file
         preprocessor.preprocess()
-        preprocessor.save()
 
         # Load data
         input_image = np.loadtxt(input_filename_fullpath)
@@ -450,6 +452,11 @@ class TestPreprocessData(unittest.TestCase):
         # Check the rotation angle
         angle = preprocessor.find_eye_rotation_angle(preprocessed_image, center)
         self.assertTrue(np.isclose(angle,135))
+
+
+    def tearDown(self):
+        # Delete the output folder
+        shutil.rmtree(self.test_output_dir)
 
 
 class TestCenterFinding(unittest.TestCase):
