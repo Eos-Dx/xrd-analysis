@@ -12,21 +12,23 @@ import matplotlib as mpl
 import matplotlib.colors as colors
 
 from scipy import ndimage
+from scipy.ndimage import gaussian_filter
+from skimage.feature import peak_local_max
 from skimage.filters import threshold_local
 from skimage.transform import EuclideanTransform
 from skimage.transform import warp
 from skimage.transform import rotate
-import imageio
 
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
 from eosdxanalysis.preprocessing.utils import create_circular_mask
-from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import find_maxima
 from eosdxanalysis.preprocessing.denoising import filter_strays
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
+
+from eosdxanalysis.simulations.utils import feature_pixel_location
 
 
 """
@@ -93,12 +95,6 @@ class PreprocessData(object):
         # Store parameters
         self.params = params
 
-        self.cache = {}
-        self.cache["original"] = []
-        self.cache["local_thresh"] = []
-        for plan in OUTPUT_MAP.keys():
-            self.cache[plan] = []
-
         return super().__init__()
 
     def preprocess(self, denoise=False, plans=["centerize_rotate"],
@@ -140,6 +136,7 @@ class PreprocessData(object):
         # Set timestamp
         timestr = "%Y%m%dT%H%M%S.%f"
         timestamp = datetime.utcnow().strftime(timestr)
+        self.timestamp = timestamp
 
         # Store output directory info
         if not self.output_dir:
@@ -181,13 +178,6 @@ class PreprocessData(object):
                 filename = os.path.basename(filename_fullpath)
 
                 # Set the output based on output specifications
-                try:
-                    cache = self.cache["{}".format(output_style)]
-                except KeyError as err:
-                    print("Could not find image cache for style {}.".format(output_style))
-                    raise err
-
-
                 if plan == "centerize_rotate":
                     # Centerize and rotate
                     centered_rotated_image, center, angle = self.centerize_and_rotate(sample)
@@ -260,35 +250,40 @@ class PreprocessData(object):
         eyes_blob_rmax = params.get("eyes_blob_rmax")
         eyes_percentile = params.get("eyes_percentile")
         local_thresh_block_size = params.get("local_thresh_block_size")
+        gauss_filter_size = params.get("gauss_filter_size", 3)
 
         # 1. Find the 9A arc maxima features
 
-        # Perform local thresholding on original
-        local_thresh_image = threshold_local(image, local_thresh_block_size)
-
-        # Add local threshold image to cache
-        self.cache["local_thresh"].append(local_thresh_image)
+        # Perform Gaussian filtering on original
+        filtered_image = gaussian_filter(image, gauss_filter_size)
 
         # Apply circular mask as a digital beamstop to center
         beam_mask = create_circular_mask(h,w,center=center,rmin=rmin,rmax=rmax)
-        # masked_image = np.copy(local_thresh_image)
         masked_image = np.copy(image)
         masked_image[~beam_mask] = 0
 
-        # Get the max_centroid as a starting guess
-        maxima = find_maxima(masked_image,mask_center=center,
-                rmin=eyes_rmin,rmax=eyes_rmax)
-
-        # Take the first maximum
-        initial_max_centroid = maxima[0]
-
-        # 2. Use percentile thresholding to convert 9A arc maxima features to blobs
-
         # Create mask for eye region
         eye_mask = create_circular_mask(h,w,center=center,rmin=eyes_rmin,rmax=eyes_rmax)
-        # Use local threshold results
-        eye_roi = np.copy(local_thresh_image)
+
+        # Use filtered_image results
+        eye_roi = np.copy(filtered_image)
         eye_roi[~eye_mask] = 0
+
+        # Find the peaks in the 9A region using eye roi
+        peak_location_radius_9A_theory = feature_pixel_location(9e-10)
+        peaks = peak_local_max(eye_roi,
+                min_distance=int(np.ceil(1.5*peak_location_radius_9A_theory)))
+
+        # Use the first peak as the maximum
+        try:
+            peak_location = peaks[0]
+        except IndexError as err:
+            # No peaks found, take the first maximum found instead
+            maxima = find_maxima(eye_mask, mask_center=center,
+                    rmin=eyes_rmin,rmax=eyes_rmax)
+            peak_location = maxima[0]
+
+        # 2. Use the binary blob method to improve 9A peak location estimate
         eye_roi_binary = np.copy(eye_roi)
         # Calculate percentile
         percentile = np.percentile(eye_roi_binary,eyes_percentile)
@@ -298,28 +293,25 @@ class PreprocessData(object):
         eye_roi_binary[eye_roi_binary >= percentile] = 1
 
         # Now calculate centroid of max blob
-
         # Now set region of interest for maximum
-        eye_max_roi_mask = create_circular_mask(h,w,center=initial_max_centroid,rmax=eyes_blob_rmax)
+        eye_max_roi_mask = create_circular_mask(h,w,center=peak_location,rmax=peak_location_radius_9A_theory)
         # Mask out areas outside of eye max roi
         eye_max_roi = np.copy(eye_roi_binary)
         eye_max_roi[~eye_max_roi_mask] = 0
         # Take centroid of this
         eye_max_roi_coordinates = np.array(np.where(eye_max_roi == 1)).T
 
-        blob_centroid = None
-        if np.any(eye_max_roi_coordinates):
-            blob_centroid = find_centroid(eye_max_roi_coordinates)
-            centroid = blob_centroid
+        blob_centroid = find_centroid(eye_max_roi_coordinates)
 
-        # If we do not get a result, use the initial eye max centroid
-        if not blob_centroid:
-            centroid = initial_max_centroid
+        if blob_centroid:
+            anchor = blob_centroid
+        else:
+            anchor = peak_location
 
         # 3. Calculate the rotation angle of the XRD pattern using result from 9A feature analysis
 
         # Calculate angle between two points
-        angle = get_angle(center, centroid)
+        angle = get_angle(center, anchor)
 
         return angle
 
@@ -358,7 +350,8 @@ class PreprocessData(object):
         else:
             centered_rotated_image = rotate(centered_image, -angle_degrees, preserve_range=True)
 
-        # Centerize the image
+        # Returned the centerized and rotated image,
+        # the calculated center of the original image, and the rotation angle in degrees
         return centered_rotated_image, center, angle_degrees
 
     def mask(self, image, style="both"):
