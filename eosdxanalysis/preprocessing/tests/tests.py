@@ -1045,7 +1045,7 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         # Create the output directory
         os.makedirs(output_path, exist_ok=True)
 
-        saturated_dir = "saturated_samples"
+        saturated_dir = "saturated_preprocessed_samples"
         saturated_path = os.path.join(test_parent_path, saturated_dir)
 
         control_dir = "controls"
@@ -1059,6 +1059,32 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         self.saturated_path = saturated_path
         self.control_path = control_path
         self.saturation_value = saturation_value
+
+    def test_output_saturation_occurs_with_known_problem_samples(self):
+        """
+        Ensure preprocessed images do not saturate
+        """
+        samples_path = self.samples_path
+        saturated_path = self.saturated_path
+        output_path = self.output_path
+        saturation_value = self.saturation_value
+
+        # Check that saturation indeed occured previously
+        saturated_filepath_list = glob.glob(
+                                    os.path.join(saturated_path, "*.txt"))
+
+        # Check that files list is not empty
+        self.assertTrue(saturated_filepath_list)
+
+        for saturated_filepath in saturated_filepath_list:
+            data = np.loadtxt(saturated_filepath)
+            unique = np.unique(data)
+            # Ensure that we get only two values
+            self.assertEqual(unique.size, 2)
+            # Ensure that the first ordered value is 0
+            self.assertEqual(unique[0], 0)
+            # Ensure that the second ordered value is saturation_value
+            self.assertEqual(unique[1], saturation_value)
 
     def test_no_output_saturation_control_samples(self):
         """
