@@ -1043,6 +1043,8 @@ class TestOutputSaturationBugFix(unittest.TestCase):
 
         output_dir = "output"
         output_path = os.path.join(test_parent_path, output_dir)
+        # Create the output directory
+        os.mkdir(output_path)
 
         saturated_dir = "saturated_samples"
         saturated_path = os.path.join(test_parent_path, saturated_dir)
@@ -1058,32 +1060,6 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         self.saturated_path = saturated_path
         self.control_path = control_path
         self.saturation_value = saturation_value
-
-    def test_output_saturation_occurs_with_known_problem_samples(self):
-        """
-        Ensure preprocessed images do not saturate
-        """
-        samples_path = self.samples_path
-        saturated_path = self.saturated_path
-        output_path = self.output_path
-        saturation_value = self.saturation_value
-
-        # Check that saturation indeed occured previously
-        saturated_filepath_list = glob.glob(
-                                    os.path.join(saturated_path, "*.txt"))
-
-        # Check that files list is not empty
-        self.assertTrue(saturated_filepath_list)
-
-        for saturated_filepath in saturated_filepath_list:
-            data = np.loadtxt(saturated_filepath)
-            unique = np.unique(data)
-            # Ensure that we get only two values
-            self.assertEqual(unique.size, 2)
-            # Ensure that the first ordered value is 0
-            self.assertEqual(unique[0], 0)
-            # Ensure that the second ordered value is saturation_value
-            self.assertEqual(unique[1], saturation_value)
 
     def test_no_output_saturation_control_samples(self):
         """
@@ -1111,7 +1087,6 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         preprocessor = PreprocessData(
                         input_dir=control_path, output_dir=output_path, params=params)
         preprocessor.preprocess(plans=plans)
-        preprocessor.save()
 
         # Now ensure that preprocessed output file is not saturated
         output_style_abbreviation = ABBREVIATIONS.get(output_style)
@@ -1123,7 +1098,6 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         self.assertGreater(unique.size, 2)
         # Ensure that the saturation_value is not in the file
         self.assertNotIn(saturation_value, unique)
-
 
     def test_output_saturation_bugfix(self):
         """
@@ -1138,7 +1112,6 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         output_path = self.output_path
         saturation_value = self.saturation_value
 
-
         # Set up parameters and plans
         params_file = "params.txt"
         params_path = os.path.join(test_parent_path, params_file)
@@ -1146,18 +1119,18 @@ class TestOutputSaturationBugFix(unittest.TestCase):
             params = json.loads(params_fp.read())
 
         plans = ["centerize_rotate_quad_fold"]
-        output_style = INVERSE_OUTPUT_MAP[plans[0]]
+        output_style = INVERSE_OUTPUT_MAP.get(plans[0])
         plan_output_path = os.path.join(output_path, output_style)
+        plan_abbr = ABBREVIATIONS.get(output_style)
 
         # Run preprocessing
         preprocessor = PreprocessData(
-                        input_dir=input_path, output_dir=plan_output_path, params=params)
+                        input_dir=input_path, output_dir=output_path, params=params)
         preprocessor.preprocess(plans=plans)
-        preprocessor.save()
 
         # Now ensure that preprocessed files are not saturated
         output_filepath_list = glob.glob(
-                                    os.path.join(plan_output_path, "*.txt"))
+                                    os.path.join(plan_output_path, "{}*.txt".format(plan_abbr)))
 
         # Ensure that output_filepath_list is not empty
         self.assertTrue(output_filepath_list)
@@ -1169,6 +1142,10 @@ class TestOutputSaturationBugFix(unittest.TestCase):
             self.assertGreater(unique.size, 2)
             # Ensure that the saturation_value is not in the file
             self.assertNotIn(saturation_value, unique)
+
+    def tearDown(self):
+        # Delete the output folder
+        shutil.rmtree(self.output_path)
 
 
 if __name__ == '__main__':
