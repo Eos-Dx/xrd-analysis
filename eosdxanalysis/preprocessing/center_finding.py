@@ -1,13 +1,16 @@
+"""
+Methods for finding the center of the diffraction pattern.
+"""
 import numpy as np
+from skimage.transform import warp_polar
+
 from eosdxanalysis.preprocessing.utils import create_circular_mask
+from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 
 RMIN_BEAM=0
 RMAX_BEAM=50
 
 
-"""
-Methods for finding the center of the diffraction pattern.
-"""
 
 def find_centroid(points):
     """
@@ -60,40 +63,26 @@ def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None)
     else:
         raise NotImplementedError("Please choose another method.")
 
-def radial_mean(intensities,center):
+def circular_average(image, center, order=1):
     """
-    Given a 2D array of intensities, return the radial mean
-    for each intensity value
-
-    Smallest radius is 1 pixel, so 4 pixels is
-    the smallest annulus.
+    Returns a circularly averaged version of the input image.
 
     Inputs:
-    - intensities: 2D array
+    - image: 2D array of intensities
     - center: tuple of coordinates for center of 2D array
-
     """
-    ycenter, xcenter = center
+    radius = np.ceil(np.min([image.shape[0]/2, image.shape[1]/2]))
+    # Get the polar warped image
+    polar_image = warp_polar(image, center=center, radius=radius,
+            output_shape=(360, radius), order=order)
+    # Take the mean across all angles (first index)
+    polar_image_avg_1d = np.mean(polar_image, axis=0)
+    # Copy to 2D
+    polar_image_avg_2d = np.tile(polar_image_avg_1d, (360, 1))
+    # Convert 1D intensity profile to 2D image
+    image_avg_2d = unwarp_polar(polar_image_avg_2d, output_shape = image.shape, order=order)
 
-    # Create meshgrid
-    X,Y = np.meshgrid(np.arange(intensities.shape[1]),np.arange(intensities.shape[0]))
-    # Calculate radii
-    R = np.sqrt(np.square(X-xcenter)+np.square(Y-ycenter))
-
-    # Calculate the average for each annulus
-    radial_mean = np.zeros(intensities.shape)
-
-    # Get unique radii
-    radii = np.unique(R).flatten()
-    # Get annulus areas for each radius
-    areas = np.pi*(np.square(radii+1) - np.square(radii)) 
-
-    for idx in np.arange(radii.shape[0]):
-        total_intensity = np.sum(intensities[R == radii[idx]])
-        intensity_mean = total_intensity/areas[idx]
-        radial_mean[R == radii[idx]] = intensity_mean
-
-    return radial_mean
+    return image_avg_2d
 
 def radial_histogram(intensities,center):
     """
