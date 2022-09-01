@@ -37,6 +37,7 @@ Performs preprocessing pipeline
 
 ABBREVIATIONS = {
         # output style: output style abbreviation
+        "centered": "C",
         "centered_rotated": "CR",
         "centered_rotated_quad_folded": "CRQF",
         "local_thresh_centered_rotated": "LTCR",
@@ -45,6 +46,7 @@ ABBREVIATIONS = {
 
 OUTPUT_MAP = {
         # Maps output style to input plan
+        "centered":"centerize",
         "centered_rotated":"centerize_rotate",
         "centered_rotated_quad_folded":"centerize_rotate_quad_fold",
         "local_thresh_centered_rotated":"local_thresh_centerize_rotate",
@@ -53,6 +55,7 @@ OUTPUT_MAP = {
 
 INVERSE_OUTPUT_MAP = {
         # Maps preprocessing plan to output style
+        "centerize":"centered",
         "centerize_rotate":"centered_rotated",
         "centerize_rotate_quad_fold":"centered_rotated_quad_folded",
         "local_thresh_centerize_rotate":"local_thresh_centered_rotated",
@@ -103,6 +106,7 @@ class PreprocessData(object):
         Run all preprocessing steps
 
         Plan options include:
+        - centerize
         - centerize_rotate
         - quad_fold
         - local_thresh_centerize_rotate
@@ -126,6 +130,7 @@ class PreprocessData(object):
         eyes_blob_rmax = params.get("eyes_blob_rmax")
         eyes_percentile = params.get("eyes_percentile")
         local_thresh_block_size = params.get("local_thresh_block_size")
+        cmap = params.get("cmap", "hot")
 
         # Set mask style from params if crop_style is set
         mask_style = params.get("crop_style", mask_style)
@@ -158,7 +163,6 @@ class PreprocessData(object):
         with open(os.path.join(output_dir,"params.txt"),"w") as paramsfile:
             paramsfile.write(json.dumps(params,indent=4))
 
-
         # Loop over plans
         for plan in plans:
 
@@ -169,15 +173,29 @@ class PreprocessData(object):
             plan_output_dir = os.path.join(output_dir, output_style)
             os.makedirs(plan_output_dir, exist_ok=True)
 
+            # Create output directory for images
+            plan_output_images_dir = os.path.join(output_dir, output_style + "_images")
+            os.makedirs(plan_output_images_dir, exist_ok=True)
+
             # Loop over files
             for filename_fullpath in filenames_fullpaths:
 
                 # Load file
                 sample = np.loadtxt(filename_fullpath)
 
+                # Calculate array center
+                array_center = np.array(sample.shape)/2-0.5
+                self.array_center = array_center
+
                 filename = os.path.basename(filename_fullpath)
 
                 # Set the output based on output specifications
+                if plan == "centerize":
+                    # Centerize and rotate
+                    centered_image, center = self.centerize(sample)
+                    # Set output
+                    output = centered_image
+
                 if plan == "centerize_rotate":
                     # Centerize and rotate
                     centered_rotated_image, center, angle = self.centerize_and_rotate(sample)
@@ -224,6 +242,13 @@ class PreprocessData(object):
                                             save_filename)
                 np.savetxt(save_filename_fullpath,
                                 np.round(output).astype(np.uint16), fmt='%i')
+
+                # Save the image
+                save_image_filename = save_filename + ".png"
+                save_image_fullpath = os.path.join(plan_output_images_dir,
+                        save_image_filename)
+                plt.imsave(save_image_fullpath, output, cmap=cmap)
+
 
     def find_eye_rotation_angle(self, image, center):
         """
@@ -315,14 +340,11 @@ class PreprocessData(object):
 
         return angle
 
-    def centerize_and_rotate(self, image):
+    def centerize(self, image):
         """
-        Given an input image, perform the following steps:
-        1. determine its center
-        2. centerize
-        3. find rotation angle
-        4. rotate
+        Move diffraction pattern to the center of the image
         """
+        array_center = self.array_center
         params = self.params
         h = params.get("h")
         w = params.get("w")
@@ -332,9 +354,6 @@ class PreprocessData(object):
 
         # Find center using original image
         center = find_center(image,method="max_centroid",rmax=beam_rmax)
-        array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
-        # Find eye rotation using original image
-        angle_degrees = self.find_eye_rotation_angle(image, center)
         translation = (array_center[1] - center[1], array_center[0] - center[0])
 
         # Center the image if need be
@@ -343,6 +362,29 @@ class PreprocessData(object):
         else:
             translation_tform = EuclideanTransform(translation=translation)
             centered_image = warp(image, translation_tform.inverse)
+
+        return centered_image, center
+
+    def centerize_and_rotate(self, image):
+        """
+        Given an input image, perform the following steps:
+        1. determine its center
+        2. centerize
+        3. find rotation angle
+        4. rotate
+        """
+        array_center = self.array_center
+        params = self.params
+        h = params.get("h")
+        w = params.get("w")
+        beam_rmax = params.get("beam_rmax")
+        rmin = params.get("rmin")
+        rmax = params.get("rmax")
+
+        centered_image, center = self.centerize(image)
+
+        # Find eye rotation using original image
+        angle_degrees = self.find_eye_rotation_angle(image, center)
 
         # Rotate the image
         if np.isclose(angle_degrees, 0):
