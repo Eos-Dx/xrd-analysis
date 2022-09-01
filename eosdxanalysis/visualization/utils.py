@@ -125,7 +125,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
     return texts
 
-def plot_data_dir(input_directory, output_directory, scaling="dB1",
+def plot_data_dir(input_directory, output_directory, scaling="linear",
         filename_format="*.txt", cmap="hot"):
     """
     Plots raw text data as png files and saves to file.
