@@ -452,6 +452,41 @@ class TestPreprocessData(unittest.TestCase):
         self.assertTrue(np.isclose(angle,135))
 
 
+    def test_preprocess_sample_924_remeasurements(self):
+        """
+        Ensure that rotation angle is close over 10 measurements
+        """
+        input_filepath_list = glob.glob(os.path.join(self.test_input_dir, "*924.txt"))
+        input_filepath_list.sort()
+        params_filename = "params_centerize_rotate.txt"
+        params_filepath = os.path.join(self.test_dir, params_filename)
+
+        with open(params_filepath, "r") as params_fp:
+            params = json.loads(params_fp.read())
+
+        centers = []
+        angles = []
+        for input_filepath in input_filepath_list:
+            preprocessor = PreprocessData(filename=input_filepath,
+                    input_dir=self.test_input_dir, output_dir=self.test_output_dir, params=params)
+            preprocessor.preprocess()
+            # Load the image file
+            input_filename = os.path.basename(input_filepath)
+            output_filename_fullpath = os.path.join(self.test_output_dir, "centered_rotated", "CR_" + input_filename)
+            input_image = np.loadtxt(input_filepath)
+            output_image = np.loadtxt(output_filename_fullpath)
+
+            # Call this on input image, not output image
+            entered_rotated_image, center, angle_degrees = preprocessor.centerize_and_rotate(input_image)
+
+            centers.append(center)
+            angles.append(angle_degrees)
+
+        # Ensure that angles and centers are close to each other
+        for idx in range(len(angles)):
+            self.assertTrue(np.isclose(angles[idx], angles[0]))
+            self.assertTrue(np.isclose(centers[idx], centers[0]).all())
+
     def tearDown(self):
         # Delete the output folder
         shutil.rmtree(self.test_output_dir)
