@@ -486,7 +486,7 @@ class TestPreprocessData(unittest.TestCase):
         # Ensure that angles and centers are close to each other
         for idx in range(len(angles)):
             self.assertTrue(np.isclose(angles[idx], angles[0], rtol=0.05))
-            self.assertTrue(np.isclose(centers[idx], centers[0], rtol=0.05).all())
+            self.assertTrue(np.isclose(centers[idx], centers[0], rtol=0.01).all())
 
     def tearDown(self):
         # Delete the output folder
