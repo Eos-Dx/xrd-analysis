@@ -16,7 +16,6 @@ from skimage.filters import threshold_local
 from skimage.transform import EuclideanTransform
 from skimage.transform import warp
 from skimage.transform import rotate
-import imageio
 
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
