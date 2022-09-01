@@ -472,7 +472,8 @@ class TestPreprocessData(unittest.TestCase):
             preprocessor.preprocess()
             # Load the image file
             input_filename = os.path.basename(input_filepath)
-            output_filename_fullpath = os.path.join(self.test_output_dir, "centered_rotated", "CR_" + input_filename)
+            output_filename_fullpath = os.path.join(self.test_output_dir,
+                    "centered_rotated", "CR_" + input_filename)
             input_image = np.loadtxt(input_filepath)
             output_image = np.loadtxt(output_filename_fullpath)
 
@@ -484,8 +485,8 @@ class TestPreprocessData(unittest.TestCase):
 
         # Ensure that angles and centers are close to each other
         for idx in range(len(angles)):
-            self.assertTrue(np.isclose(angles[idx], angles[0]))
-            self.assertTrue(np.isclose(centers[idx], centers[0]).all())
+            self.assertTrue(np.isclose(angles[idx], angles[0], rtol=0.05))
+            self.assertTrue(np.isclose(centers[idx], centers[0], rtol=0.05).all())
 
     def tearDown(self):
         # Delete the output folder
