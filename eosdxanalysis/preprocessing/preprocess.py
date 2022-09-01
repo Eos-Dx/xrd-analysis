@@ -103,7 +103,7 @@ class PreprocessData(object):
         return super().__init__()
 
     def preprocess(self, denoise=False, plans=["centerize_rotate"],
-                mask_style="both", uniform_filter_size=None):
+                mask_style="both", uniform_filter_size=0):
         """
         Run all preprocessing steps
 
