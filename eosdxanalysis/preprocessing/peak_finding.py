@@ -6,7 +6,14 @@ import numpy as np
 from scipy.stats import multivariate_normal
 from scipy.stats import norm
 
-def find_2d_peak(image, window_size=3):
+def find_peaks_2d(image, window_size=5):
+    """
+    Given an image, find 2D peaks using a Gaussian curve fitting procedure
+
+    Inputs:
+    - image: 2D numpy array
+    - window_size: int
+    """
     # Check that window size is not smaller than the image size
     if window_size > image.shape[0] or window_size > image.shape[1]:
         raise ValueError("Window size must be less than image size.")
@@ -42,14 +49,9 @@ def find_2d_peak(image, window_size=3):
                 new_peak_location = np.array([idx+window_size/2-0.5,
                                             jdx+window_size/2-0.5])
                 peak_location_list.append(new_peak_location)
+    return np.array(peak_location_list)
 
-    # If we have multiple peak locations, return the centroid
-    peak_location_array = np.array(peak_location_list)
-    peak_location = np.mean(peak_location_array, axis=0)
-
-    return peak_location
-
-def find_1d_peaks(radial_profile, window_size=3, peak_width=1):
+def find_peaks_1d(radial_profile, window_size=3, peak_width=1):
     """
     Find a single peak in a 1D array
     This uses index notation.

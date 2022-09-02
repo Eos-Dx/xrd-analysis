@@ -33,8 +33,8 @@ from eosdxanalysis.preprocessing.preprocess import ABBREVIATIONS
 from eosdxanalysis.preprocessing.preprocess import OUTPUT_MAP
 from eosdxanalysis.preprocessing.preprocess import INVERSE_OUTPUT_MAP
 
-from eosdxanalysis.preprocessing.peak_finding import find_2d_peak
-from eosdxanalysis.preprocessing.peak_finding import find_1d_peaks
+from eosdxanalysis.preprocessing.peak_finding import find_peaks_2d
+from eosdxanalysis.preprocessing.peak_finding import find_peaks_1d
 
 TEST_PATH = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(TEST_PATH, "..")
