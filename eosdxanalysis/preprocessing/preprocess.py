@@ -37,6 +37,7 @@ Performs preprocessing pipeline
 
 ABBREVIATIONS = {
         # output style: output style abbreviation
+        "original": "O",
         "centered": "C",
         "centered_rotated": "CR",
         "centered_rotated_quad_folded": "CRQF",
@@ -46,6 +47,7 @@ ABBREVIATIONS = {
 
 OUTPUT_MAP = {
         # Maps output style to input plan
+        "original":"original",
         "centered":"centerize",
         "centered_rotated":"centerize_rotate",
         "centered_rotated_quad_folded":"centerize_rotate_quad_fold",
@@ -55,6 +57,7 @@ OUTPUT_MAP = {
 
 INVERSE_OUTPUT_MAP = {
         # Maps preprocessing plan to output style
+        "original":"original",
         "centerize":"centered",
         "centerize_rotate":"centered_rotated",
         "centerize_rotate_quad_fold":"centered_rotated_quad_folded",
@@ -100,8 +103,8 @@ class PreprocessData(object):
 
         return super().__init__()
 
-    def preprocess(self, denoise=False, plans=["centerize_rotate"],
-                mask_style="both", uniform_filter_size=0):
+    def preprocess(self, denoise=False, plans=["centerize"],
+                mask_style="both", uniform_filter_size=0, scaling="linear"):
         """
         Run all preprocessing steps
 
@@ -192,6 +195,9 @@ class PreprocessData(object):
                 filename = os.path.basename(filename_fullpath)
 
                 # Set the output based on output specifications
+                if plan == "original":
+                    output = sample
+
                 if plan == "centerize":
                     # Centerize and rotate
                     centered_image, center = self.centerize(sample)
@@ -249,6 +255,8 @@ class PreprocessData(object):
                 save_image_filename = save_filename + ".png"
                 save_image_fullpath = os.path.join(plan_output_images_dir,
                         save_image_filename)
+                if scaling == "dB1":
+                    output = 20*np.log10(output+1)
                 plt.imsave(save_image_fullpath, output, cmap=cmap)
 
 
@@ -408,7 +416,7 @@ class PreprocessData(object):
         """
         Mask an image according to style:
         - "beam" means beam mask only
-        - "outer" means outer ring mask only
+        - "outside" means outer ring mask only
         - "both" means annulus
         """
         params = self.params
@@ -428,7 +436,8 @@ class PreprocessData(object):
             image[~roi_mask] = 0
         if style == "outside":
             # Mask area outside outer ring
-            inv_roi_mask = create_circular_mask(h,w,rmin=rmax)
+            outside = np.max(image.shape)
+            inv_roi_mask = create_circular_mask(h,w,rmin=rmax, rmax=outside)
             image[inv_roi_mask] = 0
 
         return image
@@ -483,6 +492,9 @@ if __name__ == "__main__":
     parser.add_argument(
             "--uniform_filter_size", default=None,
             help="Uniform filter size")
+    parser.add_argument(
+            "--scaling", default=None,
+            help="Plot scaling")
 
     args = parser.parse_args()
 
@@ -531,12 +543,15 @@ if __name__ == "__main__":
     if not uniform_filter_size:
         uniform_filter_size = 0
 
+    # Set plot scaling
+    scaling = args.scaling
+
     # Instantiate PreprocessData class
     preprocessor = PreprocessData(input_dir=input_dir, output_dir=output_dir,
             parent_dir=parent_dir, samples_dir=samples_dir, params=params)
 
     # Run preprocessing
     preprocessor.preprocess(plans=plans, mask_style=params.get("crop_style"),
-            uniform_filter_size=uniform_filter_size)
+            uniform_filter_size=uniform_filter_size, scaling=scaling)
 
     print("Done preprocessing.")
