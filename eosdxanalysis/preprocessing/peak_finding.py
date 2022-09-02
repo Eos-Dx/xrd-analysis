@@ -6,7 +6,7 @@ import numpy as np
 from scipy.stats import multivariate_normal
 from scipy.stats import norm
 
-def find_2d_peak(image, roi=None, window_size=3):
+def find_2d_peak(image, window_size=3):
     # Check that window size is not smaller than the image size
     if window_size > image.shape[0] or window_size > image.shape[1]:
         raise ValueError("Window size must be less than image size.")
