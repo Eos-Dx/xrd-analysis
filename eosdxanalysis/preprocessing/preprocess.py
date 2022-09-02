@@ -318,6 +318,9 @@ class PreprocessData(object):
                     rmin=eyes_rmin,rmax=eyes_rmax)
             peak_location = maxima[0]
 
+        # Get sub-pixel accuracy taking center of mass
+        # peak_location = sub_pixel_peak_location(eye_roi, peak_location_coords, window_size=5)
+
         # 2. Use the binary blob method to improve 9A peak location estimate
         eye_roi_binary = np.copy(eye_roi)
         # Calculate percentile
