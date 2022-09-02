@@ -305,7 +305,7 @@ class PreprocessData(object):
         eye_roi[~eye_mask] = 0
 
         # Find the peaks in the 9A region using eye roi
-        peak_location_radius_9A_theory = feature_pixel_location(9e-10)
+        peak_location_radius_9A_theory = feature_pixel_location(9.8e-10)
         peaks = peak_local_max(eye_roi,
                 min_distance=int(np.ceil(1.5*peak_location_radius_9A_theory)))
 
@@ -314,7 +314,7 @@ class PreprocessData(object):
             peak_location = peaks[0]
         except IndexError as err:
             # No peaks found, take the first maximum found instead
-            maxima = find_maxima(eye_mask, mask_center=center,
+            maxima = find_maxima(eye_roi, mask_center=center,
                     rmin=eyes_rmin,rmax=eyes_rmax)
             peak_location = maxima[0]
 
