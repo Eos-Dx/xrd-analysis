@@ -12,6 +12,8 @@ import matplotlib as mpl
 import matplotlib.colors as colors
 
 from scipy import ndimage
+from scipy.ndimage import gaussian_filter
+from skimage.feature import peak_local_max
 from skimage.filters import threshold_local
 from skimage.transform import EuclideanTransform
 from skimage.transform import warp
@@ -20,13 +22,13 @@ from skimage.transform import rotate
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
 from eosdxanalysis.preprocessing.utils import create_circular_mask
-from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import find_maxima
 from eosdxanalysis.preprocessing.denoising import filter_strays
-from eosdxanalysis.preprocessing.image_processing import convert_to_cv2_img
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
+
+from eosdxanalysis.simulations.utils import feature_pixel_location
 
 
 """
@@ -35,6 +37,8 @@ Performs preprocessing pipeline
 
 ABBREVIATIONS = {
         # output style: output style abbreviation
+        "original": "O",
+        "centered": "C",
         "centered_rotated": "CR",
         "centered_rotated_quad_folded": "CRQF",
         "local_thresh_centered_rotated": "LTCR",
@@ -43,6 +47,8 @@ ABBREVIATIONS = {
 
 OUTPUT_MAP = {
         # Maps output style to input plan
+        "original":"original",
+        "centered":"centerize",
         "centered_rotated":"centerize_rotate",
         "centered_rotated_quad_folded":"centerize_rotate_quad_fold",
         "local_thresh_centered_rotated":"local_thresh_centerize_rotate",
@@ -51,6 +57,8 @@ OUTPUT_MAP = {
 
 INVERSE_OUTPUT_MAP = {
         # Maps preprocessing plan to output style
+        "original":"original",
+        "centerize":"centered",
         "centerize_rotate":"centered_rotated",
         "centerize_rotate_quad_fold":"centered_rotated_quad_folded",
         "local_thresh_centerize_rotate":"local_thresh_centered_rotated",
@@ -93,20 +101,15 @@ class PreprocessData(object):
         # Store parameters
         self.params = params
 
-        self.cache = {}
-        self.cache["original"] = []
-        self.cache["local_thresh"] = []
-        for plan in OUTPUT_MAP.keys():
-            self.cache[plan] = []
-
         return super().__init__()
 
-    def preprocess(self, denoise=False, plans=["centerize_rotate"],
-                mask_style="both", uniform_filter_size=None):
+    def preprocess(self, denoise=False, plans=["centerize"],
+                mask_style="both", uniform_filter_size=0, scaling="linear"):
         """
         Run all preprocessing steps
 
         Plan options include:
+        - centerize
         - centerize_rotate
         - quad_fold
         - local_thresh_centerize_rotate
@@ -118,7 +121,6 @@ class PreprocessData(object):
         - both
         """
         # Get and set parameters
-        self.plans = plans
         params = self.params
         h = params.get("h")
         w = params.get("w")
@@ -130,6 +132,10 @@ class PreprocessData(object):
         eyes_blob_rmax = params.get("eyes_blob_rmax")
         eyes_percentile = params.get("eyes_percentile")
         local_thresh_block_size = params.get("local_thresh_block_size")
+        cmap = params.get("cmap", "hot")
+
+        # Get plans from from parameters or keyword argument
+        plans = params.get("plans", plans)
 
         # Set mask style from params if crop_style is set
         mask_style = params.get("crop_style", mask_style)
@@ -140,6 +146,7 @@ class PreprocessData(object):
         # Set timestamp
         timestr = "%Y%m%dT%H%M%S.%f"
         timestamp = datetime.utcnow().strftime(timestr)
+        self.timestamp = timestamp
 
         # Store output directory info
         if not self.output_dir:
@@ -151,13 +158,15 @@ class PreprocessData(object):
                 output_dir_name = "preprocessed_{}".format(timestamp)
             output_dir = os.path.join(parent_dir, output_dir_name)
             os.makedirs(output_dir, exist_ok=True)
+        else:
+            output_dir = self.output_dir
+            os.makedirs(output_dir, exist_ok=True)
 
         print("Saving to", output_dir, "...")
 
         # Write params to file
         with open(os.path.join(output_dir,"params.txt"),"w") as paramsfile:
             paramsfile.write(json.dumps(params,indent=4))
-
 
         # Loop over plans
         for plan in plans:
@@ -169,21 +178,31 @@ class PreprocessData(object):
             plan_output_dir = os.path.join(output_dir, output_style)
             os.makedirs(plan_output_dir, exist_ok=True)
 
+            # Create output directory for images
+            plan_output_images_dir = os.path.join(output_dir, output_style + "_images")
+            os.makedirs(plan_output_images_dir, exist_ok=True)
+
             # Loop over files
             for filename_fullpath in filenames_fullpaths:
 
                 # Load file
                 sample = np.loadtxt(filename_fullpath)
 
+                # Calculate array center
+                array_center = np.array(sample.shape)/2-0.5
+                self.array_center = array_center
+
                 filename = os.path.basename(filename_fullpath)
 
                 # Set the output based on output specifications
-                try:
-                    cache = self.cache["{}".format(output_style)]
-                except KeyError as err:
-                    print("Could not find image cache for style {}.".format(output_style))
-                    raise err
+                if plan == "original":
+                    output = sample
 
+                if plan == "centerize":
+                    # Centerize and rotate
+                    centered_image, center = self.centerize(sample)
+                    # Set output
+                    output = centered_image
 
                 if plan == "centerize_rotate":
                     # Centerize and rotate
@@ -232,6 +251,15 @@ class PreprocessData(object):
                 np.savetxt(save_filename_fullpath,
                                 np.round(output).astype(np.uint16), fmt='%i')
 
+                # Save the image
+                save_image_filename = save_filename + ".png"
+                save_image_fullpath = os.path.join(plan_output_images_dir,
+                        save_image_filename)
+                if scaling == "dB1":
+                    output = 20*np.log10(output+1)
+                plt.imsave(save_image_fullpath, output, cmap=cmap)
+
+
     def find_eye_rotation_angle(self, image, center):
         """
         Find the rotation angle of the original XRD pattern using the following steps:
@@ -257,35 +285,40 @@ class PreprocessData(object):
         eyes_blob_rmax = params.get("eyes_blob_rmax")
         eyes_percentile = params.get("eyes_percentile")
         local_thresh_block_size = params.get("local_thresh_block_size")
+        gauss_filter_size = params.get("gauss_filter_size", 3)
 
         # 1. Find the 9A arc maxima features
 
-        # Perform local thresholding on original
-        local_thresh_image = threshold_local(image, local_thresh_block_size)
-
-        # Add local threshold image to cache
-        self.cache["local_thresh"].append(local_thresh_image)
+        # Perform Gaussian filtering on original
+        filtered_image = gaussian_filter(image, gauss_filter_size)
 
         # Apply circular mask as a digital beamstop to center
         beam_mask = create_circular_mask(h,w,center=center,rmin=rmin,rmax=rmax)
-        # masked_image = np.copy(local_thresh_image)
         masked_image = np.copy(image)
         masked_image[~beam_mask] = 0
 
-        # Get the max_centroid as a starting guess
-        maxima = find_maxima(masked_image,mask_center=center,
-                rmin=eyes_rmin,rmax=eyes_rmax)
-
-        # Take the first maximum
-        initial_max_centroid = maxima[0]
-
-        # 2. Use percentile thresholding to convert 9A arc maxima features to blobs
-
         # Create mask for eye region
         eye_mask = create_circular_mask(h,w,center=center,rmin=eyes_rmin,rmax=eyes_rmax)
-        # Use local threshold results
-        eye_roi = np.copy(local_thresh_image)
+
+        # Use filtered_image results
+        eye_roi = np.copy(filtered_image)
         eye_roi[~eye_mask] = 0
+
+        # Find the peaks in the 9A region using eye roi
+        peak_location_radius_9A_theory = feature_pixel_location(9e-10)
+        peaks = peak_local_max(eye_roi,
+                min_distance=int(np.ceil(1.5*peak_location_radius_9A_theory)))
+
+        # Use the first peak as the maximum
+        try:
+            peak_location = peaks[0]
+        except IndexError as err:
+            # No peaks found, take the first maximum found instead
+            maxima = find_maxima(eye_mask, mask_center=center,
+                    rmin=eyes_rmin,rmax=eyes_rmax)
+            peak_location = maxima[0]
+
+        # 2. Use the binary blob method to improve 9A peak location estimate
         eye_roi_binary = np.copy(eye_roi)
         # Calculate percentile
         percentile = np.percentile(eye_roi_binary,eyes_percentile)
@@ -295,30 +328,55 @@ class PreprocessData(object):
         eye_roi_binary[eye_roi_binary >= percentile] = 1
 
         # Now calculate centroid of max blob
-
         # Now set region of interest for maximum
-        eye_max_roi_mask = create_circular_mask(h,w,center=initial_max_centroid,rmax=eyes_blob_rmax)
+        eye_max_roi_mask = create_circular_mask(h,w,center=peak_location,rmax=peak_location_radius_9A_theory)
         # Mask out areas outside of eye max roi
         eye_max_roi = np.copy(eye_roi_binary)
         eye_max_roi[~eye_max_roi_mask] = 0
         # Take centroid of this
         eye_max_roi_coordinates = np.array(np.where(eye_max_roi == 1)).T
 
-        blob_centroid = None
-        if np.any(eye_max_roi_coordinates):
-            blob_centroid = find_centroid(eye_max_roi_coordinates)
-            centroid = blob_centroid
+        blob_centroid = find_centroid(eye_max_roi_coordinates)
 
-        # If we do not get a result, use the initial eye max centroid
-        if not blob_centroid:
-            centroid = initial_max_centroid
+        if blob_centroid:
+            anchor = blob_centroid
+        else:
+            anchor = peak_location
 
         # 3. Calculate the rotation angle of the XRD pattern using result from 9A feature analysis
 
         # Calculate angle between two points
-        angle = get_angle(center, centroid)
+        angle = get_angle(center, anchor)
 
         return angle
+
+    def centerize(self, image):
+        """
+        Move diffraction pattern to the center of the image
+        """
+        params = self.params
+        h = params.get("h")
+        w = params.get("w")
+        beam_rmax = params.get("beam_rmax")
+        rmin = params.get("rmin")
+        rmax = params.get("rmax")
+
+        # Calculate array center
+        array_center = np.array(image.shape)/2-0.5
+        self.array_center = array_center
+
+        # Find center using original image
+        center = find_center(image,method="max_centroid",rmax=beam_rmax)
+        translation = (array_center[1] - center[1], array_center[0] - center[0])
+
+        # Center the image if need be
+        if np.array_equal(center, array_center):
+            centered_image = image
+        else:
+            translation_tform = EuclideanTransform(translation=translation)
+            centered_image = warp(image, translation_tform.inverse)
+
+        return centered_image, center
 
     def centerize_and_rotate(self, image):
         """
@@ -335,19 +393,14 @@ class PreprocessData(object):
         rmin = params.get("rmin")
         rmax = params.get("rmax")
 
-        # Find center using original image
-        center = find_center(image,method="max_centroid",rmax=beam_rmax)
-        array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+        # Calculate array center
+        array_center = np.array(image.shape)/2-0.5
+        self.array_center = array_center
+
+        centered_image, center = self.centerize(image)
+
         # Find eye rotation using original image
         angle_degrees = self.find_eye_rotation_angle(image, center)
-        translation = (array_center[1] - center[1], array_center[0] - center[0])
-
-        # Center the image if need be
-        if np.array_equal(center, array_center):
-            centered_image = image
-        else:
-            translation_tform = EuclideanTransform(translation=translation)
-            centered_image = warp(image, translation_tform.inverse)
 
         # Rotate the image
         if np.isclose(angle_degrees, 0):
@@ -355,14 +408,15 @@ class PreprocessData(object):
         else:
             centered_rotated_image = rotate(centered_image, -angle_degrees, preserve_range=True)
 
-        # Centerize the image
+        # Returned the centerized and rotated image,
+        # the calculated center of the original image, and the rotation angle in degrees
         return centered_rotated_image, center, angle_degrees
 
     def mask(self, image, style="both"):
         """
         Mask an image according to style:
         - "beam" means beam mask only
-        - "outer" means outer ring mask only
+        - "outside" means outer ring mask only
         - "both" means annulus
         """
         params = self.params
@@ -382,7 +436,8 @@ class PreprocessData(object):
             image[~roi_mask] = 0
         if style == "outside":
             # Mask area outside outer ring
-            inv_roi_mask = create_circular_mask(h,w,rmin=rmax)
+            outside = np.max(image.shape)
+            inv_roi_mask = create_circular_mask(h,w,rmin=rmax, rmax=outside)
             image[inv_roi_mask] = 0
 
         return image
@@ -437,6 +492,9 @@ if __name__ == "__main__":
     parser.add_argument(
             "--uniform_filter_size", default=None,
             help="Uniform filter size")
+    parser.add_argument(
+            "--scaling", default=None,
+            help="Plot scaling")
 
     args = parser.parse_args()
 
@@ -485,12 +543,15 @@ if __name__ == "__main__":
     if not uniform_filter_size:
         uniform_filter_size = 0
 
+    # Set plot scaling
+    scaling = args.scaling
+
     # Instantiate PreprocessData class
     preprocessor = PreprocessData(input_dir=input_dir, output_dir=output_dir,
             parent_dir=parent_dir, samples_dir=samples_dir, params=params)
 
     # Run preprocessing
     preprocessor.preprocess(plans=plans, mask_style=params.get("crop_style"),
-            uniform_filter_size=uniform_filter_size)
+            uniform_filter_size=uniform_filter_size, scaling=scaling)
 
     print("Done preprocessing.")
