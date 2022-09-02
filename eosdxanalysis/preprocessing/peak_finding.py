@@ -91,5 +91,19 @@ def find_peaks_1d(radial_profile, window_size=3, peak_width=1):
     return peak_location_array
 
 
+def sub_pixel_peak_location(image, peak_location_coords, window_size=5):
+    """
+    Given an image and the 2D coordinates in index notation,
+    find the sub-pixel peak location using center of mass calculation.
+
+    Input:
+    - image: 2D numpy array
+    - peak_location_coords: integers (row, column) array notation
+    - window_size: integer (size of NxN window to calculate center of mass)
+    """
+
+    return peak_location
+
+
 if __name__ == "__main__":
     pass
