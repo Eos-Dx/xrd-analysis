@@ -35,6 +35,8 @@ from eosdxanalysis.preprocessing.preprocess import INVERSE_OUTPUT_MAP
 
 from eosdxanalysis.preprocessing.peak_finding import find_peaks_2d
 from eosdxanalysis.preprocessing.peak_finding import find_peaks_1d
+from eosdxanalysis.preprocessing.peak_finding import sub_pixel_peak_location
+
 
 TEST_PATH = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(TEST_PATH, "..")
@@ -1021,6 +1023,28 @@ class TestPeakFinding(unittest.TestCase):
 
         # Check if peak location is correct
         self.assertTrue(np.array(known_peak_locations == test_peak_locations).all())
+
+    def test_sub_pixel_peak_location_finding(self):
+        """
+        Simple test with a 8x8 array, should get half-integer coordinates.
+        """
+        test_array = np.array([
+            [1, 1, 1, 1, 1, 1, 1, 1,],
+            [1, 1, 1, 2, 2, 1, 1, 1,],
+            [1, 1, 2, 3, 3, 2, 1, 1,],
+            [1, 2, 3, 5, 5, 3, 1, 1,],
+            [1, 2, 3, 5, 5, 3, 1, 1,],
+            [1, 1, 2, 3, 3, 2, 1, 1,],
+            [1, 1, 1, 1, 1, 1, 1, 1,],
+            [1, 1, 1, 1, 1, 1, 1, 1,],
+            ])
+        known_sub_pixel_peak_location = (3.5,3.5)
+        peak_location = (3,3)
+
+        test_sub_pixel_peak_location = sub_pixel_peak_location(test_array,
+                peak_location, window_size=5)
+
+        self.assertTrue(np.array_equal(test_sub_pixel_peak_location, known_sub_pixel_peak_location))
 
 
 class TestOutputSaturationBugFix(unittest.TestCase):
