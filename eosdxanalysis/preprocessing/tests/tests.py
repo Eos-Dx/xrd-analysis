@@ -1,4 +1,5 @@
 import os
+import shutil
 import unittest
 import numpy as np
 import pandas as pd
@@ -12,11 +13,10 @@ from skimage.transform import warp_polar
 from scipy.ndimage import center_of_mass
 
 from eosdxanalysis.preprocessing.image_processing import pad_image
-from eosdxanalysis.preprocessing.image_processing import rotate_image
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
 
-from eosdxanalysis.preprocessing.center_finding import radial_mean
+from eosdxanalysis.preprocessing.center_finding import circular_average
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
 
@@ -26,6 +26,7 @@ from eosdxanalysis.preprocessing.denoising import filter_strays
 from eosdxanalysis.preprocessing.utils import count_intervals
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import gen_rotation_line
+from eosdxanalysis.preprocessing.utils import get_angle
 
 from eosdxanalysis.preprocessing.preprocess import PreprocessData
 from eosdxanalysis.preprocessing.preprocess import ABBREVIATIONS
@@ -35,7 +36,10 @@ from eosdxanalysis.preprocessing.preprocess import INVERSE_OUTPUT_MAP
 from eosdxanalysis.preprocessing.peak_finding import find_2d_peak
 from eosdxanalysis.preprocessing.peak_finding import find_1d_peaks
 
-TEST_IMAGE_DIR = os.path.join("eosdxanalysis","preprocessing","tests","test_images")
+TEST_PATH = os.path.dirname(__file__)
+MODULE_PATH = os.path.join(TEST_PATH, "..")
+TEST_IMAGE_DIR = "test_images"
+TEST_IMAGE_PATH = os.path.join(TEST_PATH, TEST_IMAGE_DIR)
 
 
 def intensity_profile_function(coords,N=16):
@@ -194,7 +198,7 @@ class TestPreprocessingCLI(unittest.TestCase):
     """
 
     def setUp(self):
-        test_dir = os.path.join(TEST_IMAGE_DIR, "test_cli_images")
+        test_dir = os.path.join(TEST_IMAGE_PATH, "test_cli_images")
         self.test_dir = test_dir
 
         # Specify parameters file without plans
@@ -212,7 +216,7 @@ class TestPreprocessingCLI(unittest.TestCase):
         self.params_with_plans = params_with_plans
 
         # Create test images
-        INPUT_DIR="input"
+        input_dir="input"
 
         # Set up test image
         test_image = np.zeros((256,256), dtype=np.uint16)
@@ -224,13 +228,15 @@ class TestPreprocessingCLI(unittest.TestCase):
         # Set the filename
         filename = "test_cli.txt"
         # Set the full output path
-        fullpath = os.path.join(test_dir, INPUT_DIR, filename)
+        fullpath = os.path.join(test_dir, input_dir, filename)
         # Save the image to file
         np.savetxt(fullpath, test_image, fmt="%d")
 
         # Set the input and output directories
         test_input_dir = os.path.join(test_dir, "input")
         test_output_dir = os.path.join(test_dir, "output")
+        # Create the test output directory
+        os.makedirs(test_output_dir, exist_ok=True)
 
         self.test_input_dir = test_input_dir
         self.test_output_dir = test_output_dir
@@ -351,17 +357,14 @@ class TestPreprocessingCLI(unittest.TestCase):
             self.assertTrue(np.mean(output_image) < np.mean(input_image))
 
     def tearDown(self):
-        """
-        Remove any output files
-        """
-        test_output_dir = self.test_output_dir
-        # os.remove(os.path.join(test_output_dir, "*"))
+        # Delete the output folder
+        shutil.rmtree(self.test_output_dir)
 
 
 class TestPreprocessData(unittest.TestCase):
 
     def setUp(self):
-        test_dir = os.path.join(TEST_IMAGE_DIR, "test_preprocessing_images")
+        test_dir = os.path.join(TEST_IMAGE_PATH, "test_preprocessing_images")
         self.test_dir = test_dir
 
         # Specify parameters file without plans
@@ -377,6 +380,13 @@ class TestPreprocessData(unittest.TestCase):
         with open(params_with_plans_file, "r") as param_fp:
             params_with_plans = param_fp.read()
         self.params_with_plans = params_with_plans
+
+        # Specify parameters file with centerize rotate plans
+        params_centerize_rotate_file = os.path.join(test_dir, "params_centerize_rotate.txt")
+        self.params_centerize_rotate_file = params_centerize_rotate_file
+        with open(params_centerize_rotate_file, "r") as param_fp:
+            params_centerize_rotate = param_fp.read()
+        self.params_centerize_rotate = params_centerize_rotate
 
         # Create test images
         INPUT_DIR="input"
@@ -400,6 +410,8 @@ class TestPreprocessData(unittest.TestCase):
         # Set the input and output directories
         test_input_dir = os.path.join(test_dir, "input")
         test_output_dir = os.path.join(test_dir, "output")
+        # Create the output directory
+        os.makedirs(test_output_dir, exist_ok=True)
 
         self.test_input_dir = test_input_dir
         self.test_output_dir = test_output_dir
@@ -410,24 +422,24 @@ class TestPreprocessData(unittest.TestCase):
         self.input_files_fullpaths = input_files_fullpaths
 
     def test_preprocess_single_image_rotate_centerize(self):
-        params_with_plans_file = self.params_with_plans_file
+        params_centerize_rotate = self.params_centerize_rotate
         test_input_dir = self.test_input_dir
         test_output_dir = self.test_output_dir
         input_files_fullpaths = self.input_files_fullpaths
 
         input_filename = "synthetic_sparse_image.txt"
         input_filename_fullpath = os.path.join(test_input_dir, input_filename)
-        output_filename_fullpath = os.path.join(test_output_dir, "centered_rotated", "CR_" + input_filename)
+        output_filename_fullpath = os.path.join(test_output_dir,
+                "centered_rotated", "CR_" + input_filename)
 
-        with open(params_with_plans_file, "r") as params_fp:
-            params = json.loads(params_fp.read())
+
+        params = json.loads(params_centerize_rotate)
 
         preprocessor = PreprocessData(input_filename,
                 input_dir=test_input_dir, output_dir=test_output_dir, params=params)
 
         # Preprocess data, saving to a file
         preprocessor.preprocess()
-        preprocessor.save()
 
         # Load data
         input_image = np.loadtxt(input_filename_fullpath)
@@ -441,11 +453,53 @@ class TestPreprocessData(unittest.TestCase):
         # Check center of saved file
         calculated_center = find_center(preprocessed_image)
         center = (127.5,127.5)
+
         self.assertTrue(np.isclose(center, calculated_center, atol=0.75).all())
+
 
         # Check the rotation angle
         angle = preprocessor.find_eye_rotation_angle(preprocessed_image, center)
         self.assertTrue(np.isclose(angle,135))
+
+    def test_preprocess_sample_924_remeasurements(self):
+        """
+        Ensure that rotation angle is close over 10 measurements
+        """
+        input_filepath_list = glob.glob(os.path.join(self.test_input_dir, "*924.txt"))
+        input_filepath_list.sort()
+        params_filename = "params_centerize_rotate.txt"
+        params_filepath = os.path.join(self.test_dir, params_filename)
+
+        with open(params_filepath, "r") as params_fp:
+            params = json.loads(params_fp.read())
+
+        centers = []
+        angles = []
+        for input_filepath in input_filepath_list:
+            preprocessor = PreprocessData(filename=input_filepath,
+                    input_dir=self.test_input_dir, output_dir=self.test_output_dir, params=params)
+            preprocessor.preprocess()
+            # Load the image file
+            input_filename = os.path.basename(input_filepath)
+            output_filename_fullpath = os.path.join(self.test_output_dir,
+                    "centered_rotated", "CR_" + input_filename)
+            input_image = np.loadtxt(input_filepath)
+            output_image = np.loadtxt(output_filename_fullpath)
+
+            # Call this on input image, not output image
+            centered_rotated_image, center, angle_degrees = preprocessor.centerize_and_rotate(input_image)
+
+            centers.append(center)
+            angles.append(angle_degrees)
+
+        # Ensure that angles and centers are close to each other
+        for idx in range(len(angles)):
+            self.assertTrue(np.isclose(angles[idx], angles[0], rtol=0.05))
+            self.assertTrue(np.isclose(centers[idx], centers[0], rtol=0.01).all())
+
+    def tearDown(self):
+        # Delete the output folder
+        shutil.rmtree(self.test_output_dir)
 
 
 class TestCenterFinding(unittest.TestCase):
@@ -473,11 +527,12 @@ class TestCenterFinding(unittest.TestCase):
     def test_find_center_max_centroid(self):
         # Original filename: 20220330/A00041.txt
         test_filename = "test_preprocess_center.txt"
+        test_dir = "test_preprocessing_images"
+        test_image_path = os.path.join(TEST_IMAGE_PATH, test_dir, "input", test_filename)
         # Set known center using centroid of max pixels in beam region of interest
         known_center = (126.125, 132.375) # Using centroid of max pixels
-        test_dir = os.path.dirname(os.path.realpath(__file__))
-        test_img = np.loadtxt(os.path.join(TEST_IMAGE_DIR, test_filename))
-        calculated_center = find_center(test_img, method="max_centroid")
+        test_image = np.loadtxt(test_image_path)
+        calculated_center = find_center(test_image, method="max_centroid")
 
         self.assertTrue(np.array_equal(calculated_center, known_center))
 
@@ -494,13 +549,27 @@ class TestCenterFinding(unittest.TestCase):
         intensities = gen_1d_intensity_profile()
         self.assertEqual('foo'.upper(), 'FOO')
 
-    def test_radial_mean(self):
-        intensities = np.array([[4,6,4,],[5,10,5],[4,6,4]])
-        center = (1,1)
-        rmean = radial_mean(intensities,center)
-        rmean_ref = np.array([0,1,2,3,4,5,6])
-        self.fail("Finish writing test")
-        self.assertIsNone(np.testing.assert_array_equal(rmean, rmean_ref))
+    def test_circular_average_trivial_example(self):
+        size = 8
+        test_image = np.ones((size,size))
+        center = test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5
+        avg_image = circular_average(test_image,center)
+
+        # Check that the circularly averaged image is close to identical
+        self.assertTrue(np.isclose(test_image, avg_image).all())
+
+    def test_circular_average(self):
+        test_image = np.array([
+            [4,6,6,4,],
+            [5,10,10,5],
+            [5,10,10,5],
+            [4,6,6,4,],
+            ])
+        center = test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5
+        avg_image = circular_average(test_image,center)
+
+        # Check that the circular mean is close to the original mean
+        self.assertTrue(np.isclose(np.mean(test_image), np.mean(avg_image)))
 
 
 class TestUtils(unittest.TestCase):
@@ -520,6 +589,47 @@ class TestUtils(unittest.TestCase):
         num_array = np.array([3])
         count = count_intervals(num_array)
         self.assertEqual(count,1)
+
+    def test_get_angle_0_degrees(self):
+        """
+        Two features are on a horizontal line, so angle should be zero
+        """
+        known_angle = 0.0
+
+        feature_1 = [10, 10]
+        feature_2 = [10, 20]
+
+        test_angle = get_angle(feature_1, feature_2)
+
+        self.assertTrue(np.array_equal(known_angle, test_angle))
+
+    def test_get_angle_90_degrees(self):
+        """
+        Two features are on a vertical line, so angle should be 90
+        based on input order.
+        """
+        known_angle = 90.0
+
+        feature_1 = [20, 10]
+        feature_2 = [10, 10]
+
+        test_angle = get_angle(feature_1, feature_2)
+
+        self.assertTrue(np.array_equal(known_angle, test_angle))
+
+    def test_get_angle_n90_degrees(self):
+        """
+        Two features are on a vertical line, so angle should be -90
+        based on input order.
+        """
+        known_angle = -90.0
+
+        feature_1 = [10, 10]
+        feature_2 = [20, 10]
+
+        test_angle = get_angle(feature_1, feature_2)
+
+        self.assertTrue(np.array_equal(known_angle, test_angle))
 
 
 class TestDenoising(unittest.TestCase):
@@ -593,66 +703,6 @@ class TestImageProcessing(unittest.TestCase):
         padded_image = pad_image(image, method="prerotation")
 
         self.assertEqual(padded_image.shape, (14,14))
-
-    def test_rotate_image_nearest(self):
-        """
-        Test rotate_image function with nearest method
-        which uses cv2.INTER_NEAREST flag
-        """
-        # Create 4x4 array
-        dim=4
-        image = np.array([
-            [0,0,0,0],
-            [0,1,0,0],
-            [0,0,1,0],
-            [0,0,0,0],
-        ])
-
-        # Create known 90 degree rotation of 2x2 array
-        rot_image_known = np.array([
-            [0,0,0,0],
-            [0,0,1,0],
-            [0,1,0,0],
-            [0,0,0,0],
-        ])
-
-        angle = 90.0
-
-        rotated_image_nearest = rotate_image(image, angle=angle, method="nearest")
-        rotated_image_standard = rotate_image(image, angle=angle, method="standard")
-
-        self.assertTrue(np.array_equal(rot_image_known, rotated_image_nearest))
-
-    def test_rotate_image_elastic(self):
-        """
-        Test rotate_image function with nearest method
-        which uses cv2.INTER_NEAREST flag
-        """
-        # Create 4x4 array
-        dim=4
-        image = np.array([
-            [0,0,0,0],
-            [0,10,0,0],
-            [0,0,10,0],
-            [0,0,0,0],
-        ])
-
-        # Create known 90 degree rotation of 2x2 array
-        rot_image_known = np.array([
-            [0,0,0,0],
-            [0,0,10,0],
-            [0,10,0,0],
-            [0,0,0,0],
-        ])
-
-        angle = 45.0
-
-        rotated_image_elastic = rotate_image(image, angle=angle, method="elastic")
-        rotated_image_standard = rotate_image(image, angle=angle, method="standard")
-
-        print(rotated_image_elastic)
-
-        self.assertTrue(np.array_equal(rot_image_known, rotated_image_elastic))
 
     def test_unwarp_polar(self):
         """
@@ -984,15 +1034,17 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         Set up some paths
         """
         test_dirname = "test_output_saturation_images"
-        test_parent_path = os.path.join(TEST_IMAGE_DIR, test_dirname)
+        test_parent_path = os.path.join(TEST_IMAGE_PATH, test_dirname)
 
         samples_dir = "samples"
         samples_path = os.path.join(test_parent_path, samples_dir)
 
         output_dir = "output"
         output_path = os.path.join(test_parent_path, output_dir)
+        # Create the output directory
+        os.makedirs(output_path, exist_ok=True)
 
-        saturated_dir = "preprocessed_samples"
+        saturated_dir = "saturated_preprocessed_samples"
         saturated_path = os.path.join(test_parent_path, saturated_dir)
 
         control_dir = "controls"
@@ -1059,7 +1111,6 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         preprocessor = PreprocessData(
                         input_dir=control_path, output_dir=output_path, params=params)
         preprocessor.preprocess(plans=plans)
-        preprocessor.save()
 
         # Now ensure that preprocessed output file is not saturated
         output_style_abbreviation = ABBREVIATIONS.get(output_style)
@@ -1071,7 +1122,6 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         self.assertGreater(unique.size, 2)
         # Ensure that the saturation_value is not in the file
         self.assertNotIn(saturation_value, unique)
-
 
     def test_output_saturation_bugfix(self):
         """
@@ -1086,7 +1136,6 @@ class TestOutputSaturationBugFix(unittest.TestCase):
         output_path = self.output_path
         saturation_value = self.saturation_value
 
-
         # Set up parameters and plans
         params_file = "params.txt"
         params_path = os.path.join(test_parent_path, params_file)
@@ -1094,18 +1143,18 @@ class TestOutputSaturationBugFix(unittest.TestCase):
             params = json.loads(params_fp.read())
 
         plans = ["centerize_rotate_quad_fold"]
-        output_style = INVERSE_OUTPUT_MAP[plans[0]]
+        output_style = INVERSE_OUTPUT_MAP.get(plans[0])
         plan_output_path = os.path.join(output_path, output_style)
+        plan_abbr = ABBREVIATIONS.get(output_style)
 
         # Run preprocessing
         preprocessor = PreprocessData(
-                        input_dir=input_path, output_dir=plan_output_path, params=params)
+                        input_dir=input_path, output_dir=output_path, params=params)
         preprocessor.preprocess(plans=plans)
-        preprocessor.save()
 
         # Now ensure that preprocessed files are not saturated
         output_filepath_list = glob.glob(
-                                    os.path.join(plan_output_path, "*.txt"))
+                                    os.path.join(plan_output_path, "{}*.txt".format(plan_abbr)))
 
         # Ensure that output_filepath_list is not empty
         self.assertTrue(output_filepath_list)
@@ -1117,6 +1166,10 @@ class TestOutputSaturationBugFix(unittest.TestCase):
             self.assertGreater(unique.size, 2)
             # Ensure that the saturation_value is not in the file
             self.assertNotIn(saturation_value, unique)
+
+    def tearDown(self):
+        # Delete the output folder
+        shutil.rmtree(self.output_path)
 
 
 if __name__ == '__main__':
