@@ -68,13 +68,15 @@ class GaussianDecomposition(object):
         """
         Estimate Gaussian fit parameters based on provided image
 
-        Inputs:
-        - image: can be None, pulled from init
-        - width: averaging width used to produce 1D profiles
-        - position_tol: factor used to check if detected peak locations are incorrect
+        Parameters
+        ----------
+        image : can be None, pulled from init
+        width : averaging width used to produce 1D profiles
+        position_tol : factor used to check if detected peak locations are incorrect
 
-        Outputs:
-        - (p0_dict, p_lower_bounds_dict, p_upper_bounds_dict): tuple
+        Returns
+        -------
+        (p0_dict, p_lower_bounds_dict, p_upper_bounds_dict): tuple
 
         Also stores these parameters in class parameters.
 
