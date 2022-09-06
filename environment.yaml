@@ -1,10 +1,6 @@
-name: C:\Custom\Programs\Tools\Miniforge
 channels:
   - conda-forge
 dependencies:
   - python=3.9
   - conda==4.12.0
   - pip
-  - miniforge_console_shortcut=1
-  - m2-base
-prefix: C:\Custom\Programs\Tools\Miniforge
