@@ -317,12 +317,12 @@ class GaussianDecomposition(object):
         mu_x = mu_y = 0
 
         # Generate a Gaussian at the origin
-        gau = peak_amplitude*np.exp( 1/(2*np/pi*peak_std_x*peak_std_y*np.sqrt(1-rho**2)) * \
+        gau = peak_amplitude*np.exp(-1/(2*np/pi*peak_std_x*peak_std_y*np.sqrt(1-rho**2)) * \
                 ( -1/(2*(1-rho**2)) * ( ((x - mu_x)/peak_std_x)**2 - \
                 2*rho*(x - mu_x)/peak_std_x*(y - mu_y)/peak_std_y +
                 ((y - mu_y)/peak_std_y)**2 )))
         # Generate a high-resolution arc to perform convolution with
-        arc = arc(peak_radius, peak_angle, arc_angle, resolution=resolution)
+        arc = dirac_arc(peak_radius, peak_angle, arc_angle, resolution=resolution)
         # Perform convolution to get radial Gaussian,
         # ensuring output is the same as the low-res gaussian first input
         radial_gau = convolve2d(gau, arc, mode="same")
