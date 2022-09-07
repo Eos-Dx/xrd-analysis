@@ -98,7 +98,7 @@ def angular_intensity_1d(image, radius=None, width=4):
     angular_profile_1d = np.mean(polar_image[:, col_start:col_end], axis=1)
     return angular_profile_1d
 
-def dirac_arc(radius, start_angle, angle_spread, output_shape):
+def draw_antialiased_arc(radius, start_angle, angle_spread, output_shape):
     """
     Creates a 2D direc delta function in the shape of an arc.
     The ``angle_spread`` parameter is symmetric about the ``start_angle``.
@@ -120,7 +120,7 @@ def dirac_arc(radius, start_angle, angle_spread, output_shape):
     :param output_shape: Shape of the output
     :type output_shape: ndarray
 
-    :returns arc: The dirac arc
+    :returns arc: The antialiased arc
     :rtype: ndarray
 
 
@@ -132,18 +132,23 @@ def dirac_arc(radius, start_angle, angle_spread, output_shape):
 
     """
     # First calculate the arc as normal, then rotate if needed
-    if angle_spread < 0 or np.isclose(angle_spread, 0):
-        raise ValueError("Arc angle spread must be positive.")
-
-    if angle_spread >= np.pi/2:
-        raise ValueError("Arc angle spread cannot exceed pi/2.")
+    radius = int(radius)
 
     # Take the modulus of angle_spread with 2*pi
     angle_spread %= 2*np.pi
 
-    point_array = np.zeros((radius, radius))
+    # Check if the angle_spread is 0, meaning we want a full circle
+    if np.isclose(angle_spread, 0):
+        # Use ``draw_antialiased_circle`` function instead
+        return draw_antialiased_circle(radius)
+
+    if angle_spread >= np.pi/2:
+        raise ValueError("Arc angle spread cannot exceed pi/2.")
+
+
+    point_array = np.zeros((radius+1, radius+1))
     i = 0
-    j = radius-1
+    j = radius
     theta = 0
     last_fade_amount = 0
     fade_amount = 0
