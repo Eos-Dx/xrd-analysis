@@ -415,12 +415,12 @@ class TestUtils(unittest.TestCase):
         # Second argument is used as the rtol reference
         self.assertTrue(np.isclose(bool_overlap_arc_length, known_arc_length, rtol=0.1))
 
-    def test_arc_on_axis_point_odd_shape(self):
+    def test_arc_on_axis_point_even_shape(self):
         """
         Test the arc function for the point case on an axis
         for an odd shape.
 
-        We should end up with exactly one point with a value of 1.
+        We should end up with exactly two points with a value of 0.5
         """
         size = 15
         shape = size, size
