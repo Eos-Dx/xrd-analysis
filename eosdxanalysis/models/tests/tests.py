@@ -25,6 +25,8 @@ from eosdxanalysis.models.utils import pol2cart
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
+from eosdxanalysis.models.utils import dirac_arc
+from eosdxanalysis.models.utils import draw_antialiased_circle
 from eosdxanalysis.models.feature_engineering import EngineeredFeatures
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import freq_sampling_grid
@@ -136,6 +138,85 @@ class TestGaussianDecomposition(unittest.TestCase):
         """
         TEST_DATA_PATH = os.path.join(TEST_PATH, "data", "GaussianDecomposition")
         self.TEST_DATA_PATH = TEST_DATA_PATH
+
+
+    def test_radial_gaussian_trivial_centered(self):
+        """
+        Test radial gaussian function for a standard normal Gaussian
+        centered at the origin
+        """
+        SPACING_9A = 9.8e-10 # 9.8A molecular spacing theory location in meters
+        # Set space parameters
+        size = 256
+        shape = size, size
+        center = np.array(shape)/2-0.5
+
+        # Generate polar meshgrid
+        gau_class = GaussianDecomposition()
+        RR, TT = gau_class.gen_meshgrid(shape)
+
+        # Set radial gaussian parameters
+        peak_angle = 0.0 # equatorial
+        peak_radius = 0.0 # pixel distance from center
+        peak_std = 10
+        peak_amplitude = 100
+        arc_angle = 0 # Fully anisotropic
+
+        gau = gau_class.radial_gaussian(RR, TT,
+                peak_angle, peak_radius, peak_std,
+                peak_amplitude, arc_angle)
+
+        import matplotlib.pyplot as plt
+        plt.imshow(gau, cmap="hot")
+        plt.show()
+
+        self.fail("Finish test")
+
+    def test_radial_gaussian_equatorial_fully_anisotropic(self):
+        """
+        Test radial gaussian function for a simple equatorial anisotropic Gaussian pattern
+        with quadrant-fold symmetry
+        """
+        SPACING_9A = 9.8e-10 # 9.8A molecular spacing theory location in meters
+        # Set space parameters
+        size = 256
+        shape = size, size
+
+        # Generate polar meshgrid
+        gau_class = GaussianDecomposition()
+        RR, TT = gau_class.gen_meshgrid(shape)
+
+        # Set radial gaussian parameters
+        peak_angle = 0.0 # equatorial
+        peak_radius = pixel_feature_location(SPACING_9A)
+        peak_std = 10
+        peak_amplitude = 100
+        arc_theta = 0 # Fully anisotropic
+
+        self.fail("Finish test")
+
+    def test_radial_gaussian_fully_isotropic(self):
+        """
+        Test radial gaussian function for a fully isotropic Gaussian
+        not centered at the origin
+        """
+        SPACING_9A = 9.8e-10 # 9.8A molecular spacing theory location in meters
+        # Set space parameters
+        size = 256
+        shape = size, size
+
+        # Generate polar meshgrid
+        gau_class = GaussianDecomposition()
+        RR, TT = gau_class.gen_meshgrid(shape)
+
+        # Set radial gaussian parameters
+        peak_angle = 0.0 # equatorial
+        peak_radius = pixel_feature_location(SPACING_9A)
+        peak_std = 10
+        peak_amplitude = 100
+        arc_theta = 0 # Fully anisotropic
+
+        self.fail("Finish test")
 
     def test_cli(self):
         """
@@ -300,6 +381,68 @@ class TestUtils(unittest.TestCase):
             [14.9309, 16.4706, 17.9598, 19.4094, 20.8269, 22.2178],
             ])
         self.known_zeros = known_zeros
+
+    def test_draw_antialiased_circle(self):
+        """
+        Ensure we get a proper circle
+        """
+        radius = 100
+        test_circle = draw_antialiased_circle(radius)
+
+        # Check the arc length, ensure it is within 10% of expected arc length
+        # s = r * theta
+        known_arc_length = radius*2*np.pi
+        test_arc_length = np.sum(test_circle)
+
+        # Second argument is used as the rtol reference
+        self.assertTrue(np.isclose(test_arc_length, known_arc_length, rtol=0.1))
+
+        # Generate a meshgrid
+        center = np.array(test_circle.shape)/2-0.5
+        YY, XX = np.ogrid[:test_circle.shape[0], :test_circle.shape[1]]
+        RR = np.sqrt((XX-center[1])**2 + (YY-center[0])**2)
+
+        bool_known_circle = np.zeros_like(test_circle)
+        bool_known_circle[(RR <= 100+1) & (RR >= 100)] = 1
+
+        bool_test_circle = test_circle >= 0
+
+        bool_overlap_circle = bool_known_circle == bool_test_circle
+
+        bool_overlap_arc_length = np.sum(bool_overlap_circle)
+
+        # Check that the overlap arc length is also close to the known arc length
+        # Second argument is used as the rtol reference
+        self.assertTrue(np.isclose(bool_overlap_arc_length, known_arc_length, rtol=0.1))
+
+    def test_arc_on_axis_point_odd_shape(self):
+        """
+        Test the arc function for the point case on an axis
+        for an odd shape.
+
+        We should end up with exactly one point with a value of 1.
+        """
+        size = 15
+        shape = size, size
+        center = np.array(shape)/2-0.5
+
+        arc_radius = 5
+        arc_start_angle = 0
+        arc_angle_spread = 0
+
+        test_image = dirac_arc(arc_radius, arc_start_angle, arc_angle_spread, shape)
+
+        # Set up the known image, with a single 1
+        known_image = np.zeros(shape)
+        known_image[int(center[0]), int(center[1] + arc_radius)] = 1
+
+        self.assertTrue(np.array_equal(test_image, known_image))
+
+    def test_arc_circular_case(self):
+        """
+        Test the arc function for a complete circle
+        """
+        self.fail("Finish test")
 
     def test_gen_jn_zerosmatrix(self):
         # Test if values are close to table values with relative tolerance

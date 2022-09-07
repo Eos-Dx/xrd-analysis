@@ -97,6 +97,82 @@ def angular_intensity_1d(image, radius=None, width=4):
     angular_profile_1d = np.mean(polar_image[:, col_start:col_end], axis=1)
     return angular_profile_1d
 
+def dirac_arc(radius, start_angle, angle_spread, output_shape):
+    """
+    Creates a 2D direc delta function in the shape of an arc
+
+    :param radius: Radius of the arc
+    :type radius: float
+
+    :param start_angle: The starting angle of the arc in radians.
+        The angle in the positive x direction is `0` radians,
+        positive angle is counter-clockwise.
+    :type start_angle: float
+
+    :param angle_spread: The angular spread of the arc in radians.
+        This is a positive number from `0` to `2pi`.
+    :type angle_spread: float
+
+    :param output_shape: Shape of the output
+    :type output_shape: ndarray
+
+    :returns arc: The dirac arc
+    :rtype: ndarray
+
+    """
+    return
+
+def draw_antialiased_circle(outer_radius):
+    """
+    Adapted via: https://stackoverflow.com/a/37714284
+
+    This will always output a shape 2*(outer_radius+1)
+
+    :param outer_radius: radius of circle
+    :type outer_radius: int
+
+    :returns circle: Numpy array of antialiased circle of shape ``2*(outer_radius+1)``
+    :rtype: ndarray
+
+    """
+    point_array = np.zeros((outer_radius+1, outer_radius+1))
+
+    i = 0
+    j = outer_radius
+    last_fade_amount = 0
+    fade_amount = 0
+
+    MAX_OPAQUE = 1.0
+
+    while i < j:
+        height = np.sqrt(np.max(outer_radius * outer_radius - i * i, 0))
+        fade_amount = MAX_OPAQUE * (np.ceil(height) - height)
+
+        if fade_amount < last_fade_amount:
+            # Opaqueness reset so drop down a row.
+            j -= 1
+        last_fade_amount = fade_amount
+
+        # The API needs integers, so convert here now we've checked if
+        # it dropped.
+        fade_amount_i = int(fade_amount)
+
+        # We're fading out the current j row, and fading in the next one down.
+        point_array[i,j] = MAX_OPAQUE - fade_amount_i
+        point_array[i,j-1] = fade_amount_i
+
+        i += 1
+
+    # Construct the lower-right quadrant
+    quad_lower_right = point_array + point_array.T
+
+    # Stack the lower-right quadrant to form the entire circle
+    circle_right = np.vstack((quad_lower_right[::-1, :], quad_lower_right))
+    circle_left = circle_right[:,::-1]
+    circle = np.hstack((circle_left, circle_right))
+
+    return circle
+
 def l1_metric(A, B):
     """
     Calculates the L1 metric (distance) of two matrices
