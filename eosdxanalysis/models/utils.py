@@ -159,12 +159,17 @@ def draw_antialiased_circle(outer_radius):
 
         i += 1
 
-    # Construct the lower-right quadrant
+    # Fully construct the lower-right quadrant by adding the transpose
     quad_lower_right = point_array + point_array.T
 
-    # Stack the lower-right quadrant to form the entire circle
-    circle_right = np.vstack((quad_lower_right[::-1, :], quad_lower_right))
+    # Flip the lower-right quadrant vertically to get the upper-right quadrant
+    quad_upper_right = quad_lower_right[::-1, :]
+    # Stack the upper-right and lower-right quadrants to get the right half
+    circle_right = np.vstack((quad_upper_right, quad_lower_right))
+    # Flip the right half horizontally (row-wise, i.e. reverse order of columns)
+    # to get the left half of the circle
     circle_left = circle_right[:,::-1]
+    # Finally, stack the left and right halves to form the full circle
     circle = np.hstack((circle_left, circle_right))
 
     return circle
