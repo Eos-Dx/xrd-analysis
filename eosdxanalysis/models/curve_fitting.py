@@ -317,7 +317,7 @@ class GaussianDecomposition(object):
         mu_x = mu_y = 0
 
         # Generate a Gaussian at the origin
-        gau = peak_amplitude*np.exp(-1/(2*np/pi*peak_std_x*peak_std_y*np.sqrt(1-rho**2)) * \
+        gau = peak_amplitude*np.exp(-1/(2*np.pi*peak_std_x*peak_std_y*np.sqrt(1-rho**2)) * \
                 ( -1/(2*(1-rho**2)) * ( ((x - mu_x)/peak_std_x)**2 - \
                 2*rho*(x - mu_x)/peak_std_x*(y - mu_y)/peak_std_y +
                 ((y - mu_y)/peak_std_y)**2 )))
