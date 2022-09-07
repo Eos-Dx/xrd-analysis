@@ -10,6 +10,7 @@ from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter
 from scipy.signal import find_peaks
 from scipy.signal import peak_widths
+from scipy.signal import convolve2d
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
@@ -86,6 +87,7 @@ class GaussianDecomposition(object):
         - The 9A and 5A peaks are hypothesized to be the sum of isotropic and anisotropic Gaussians
         - The 5-4A ring and background intensities are hypothesized to be isotropic Gaussians
         - That makes a total of 6 Gaussians
+
         """
 
         # Get 1D radial intensity in positive horizontal direction
@@ -96,12 +98,9 @@ class GaussianDecomposition(object):
         # to estimate some anisotropic Gaussian properties
         intensity_diff_1d = horizontal_intensity_1d - vertical_intensity_1d
 
-        """
-        Estimate the 9A isotropic and anisotropic Gaussian function properties
-
-        - Anisotropic
-        - Isotropic
-        """
+        # Estimate the 9A isotropic and anisotropic Gaussian function properties
+        # - Anisotropic
+        # - Isotropic
 
         peaks_aniso_9A, _ = find_peaks(intensity_diff_1d)
 
@@ -144,19 +143,20 @@ class GaussianDecomposition(object):
         peak_width_iso_9A = width_results_iso_9A[0]
         peak_std_iso_9A = peak_width_iso_9A / (2*np.sqrt(2*np.log(2))) # convert FWHM to standard deviation
 
-        """
-        Estimate the 5A isotropic and anisotropic Gaussian function properties
-        """
+        ########################################################################
+        # Estimate the 5A isotropic and anisotropic Gaussian function properties
+        ########################################################################
+
         # Locate the 5A peaks and calculate some properties
         intensity_diff_5A = vertical_intensity_1d - horizontal_intensity_1d
 
-        """
-        Estimate the 5-4A isotropic Gaussian function properties
-        """
+        ##########################################################
+        # Estimate the 5-4A isotropic Gaussian function properties
+        ##########################################################
 
-        """
-        Estimate the background isotropic Gaussian function properties
-        """
+        ################################################################
+        # Estimate the background isotropic Gaussian function properties
+        ################################################################
 
         p0_dict = OrderedDict({
                     # 9A parameters
@@ -264,21 +264,70 @@ class GaussianDecomposition(object):
 
         return p0_dict, p_lower_bounds_dict, p_upper_bounds_dict
 
-    def radial_gaussian(self, r, theta, phase,
-                peak_location_radius, peak_std, peak_amplitude, beta, cos_power):
+    def radial_gaussian(self, r, theta, peak_radius, peak_angle,
+                peak_std, peak_amplitude, arc_angle, resolution=(512,512)):
         """
         Isotropic and radial Gaussian
 
-        Inputs: (fixed parameters)
-        - phase: 0 or np.pi/2 to signify equatorial or meridional peak location
-        - alpha: isotropy parameter, 1 is isotropic, 0 is anisotropic
-        - beta: anisotropy parameter, 1 is anisotropic, 0 is isotropic
-        - peak_location_radius: location of the Gaussian peak from the center
-        - peak_std: Gaussian standard deviation
+        Currently uses convolution with a high-resolution arc specified by arc-angle.
+        Future will possibly use analytic expression for convolution of a Gaussian with an arc.
+        Assumes quadrant-fold symmetry.
+        Assumes standard deviation is the same for x and y directions.
+
+        .. Parameters
+
+        :param r: Polar point radius to evaluate function at (``r`` must be same shape as ``theta``)
+        :type r: array_like
+
+        :param theta: Polar point angle to evaluate function at (``r`` must be same shape as ``theta``)
+        :type theta: array_like
+
+        :param peak_radius: Location of the Gaussian peak from the center
+        :type peak_radius: float
+
+        :param peak_angle: 0 or np.pi/2 to signify equatorial or meridional peak location (respectively)
+        :type peak_angle: float
+
+        :param peak_std: Gaussian standard deviation
+        :type peak_std: float
+
+        :param peak_amplitude: Gaussian peak amplitude
+        :type peak_amplitude: float
+
+        :param arc_angle: arc angle in radians, `0` is anisotropic, `pi` is fully isotropic
+        :type arc_angle: float
+
+        .. Returns
+        :return: Value of Gaussian function at polar input points ``(r, theta)``
+        :rtype: array_like (same shape as ``r`` and ``theta``)
+
         """
-        gau_iso = peak_amplitude*np.exp(-((r - peak_location_radius) / peak_std)**2)
-        gau = gau_iso * np.power(np.square(np.cos(theta+phase)), beta*cos_power)
-        return gau
+        # Set up Gaussian at peak_radius, peak_angle position
+        # Convert from polar to Cartesian coordinates
+        peak_x = peak_radius*np.cos(peak_angle)
+        peak_y = peak_radius*np.sin(peak_angle)
+        x = r*np.cos(theta)
+        y = r*np.sin(theta)
+        # Assume standard deviation is the same in x and y
+        peak_std_x = peak_std
+        peak_std_y = peak_std
+        # Assume x and y are uncoorrelated
+        rho = 0 # correlation coefficient
+        # Set Gaussian origin to (0,0)
+        mu_x = mu_y = 0
+
+        # Generate a Gaussian at the origin
+        gau = peak_amplitude*np.exp( 1/(2*np/pi*peak_std_x*peak_std_y*np.sqrt(1-rho**2)) * \
+                ( -1/(2*(1-rho**2)) * ( ((x - mu_x)/peak_std_x)**2 - \
+                2*rho*(x - mu_x)/peak_std_x*(y - mu_y)/peak_std_y +
+                ((y - mu_y)/peak_std_y)**2 )))
+        # Generate a high-resolution arc to perform convolution with
+        arc = arc(peak_radius, peak_angle, arc_angle, resolution=resolution)
+        # Perform convolution to get radial Gaussian,
+        # ensuring output is the same as the low-res gaussian first input
+        radial_gau = convolve2d(gau, arc, mode="same")
+
+        return radial_gau
 
     def keratin_function(self, polar_point,
             peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, cos_power_9A,
@@ -290,13 +339,17 @@ class GaussianDecomposition(object):
         (r, theta), with 16 parameters as the arguements to 4 calls
         of radial_gaussian.
 
-        Inputs:
-        - polar_point: tuple (r, theta) where r and theta are a meshgrid
-        - p0 ... p15: parameters to 4 radial_gaussians. Each 4 parameters are
-          peak_location, peak_width, peak_amplitude, and angular spread.
+        .. Parameters
 
-        Returns a contiguous flattened array suitable for use with
-        `scipy.optimize.curve_fit`.
+        :param polar_point: (r, theta) where r and theta are a meshgrid
+        :type polar_point: tuple
+        p0 ... p15: parameters to 4 radial_gaussians. Each 4 parameters are
+        peak_location, peak_width, peak_amplitude, and angular spread.
+
+        Returns
+        -------
+            Returns a contiguous flattened array suitable for use with
+            `scipy.optimize.curve_fit`.
         """
         r, theta = polar_point
         # Create four Gaussians, then sum
