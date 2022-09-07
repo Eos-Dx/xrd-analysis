@@ -25,7 +25,7 @@ from eosdxanalysis.models.utils import pol2cart
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
-from eosdxanalysis.models.utils import dirac_arc
+from eosdxanalysis.models.utils import draw_antialiased_arc
 from eosdxanalysis.models.utils import draw_antialiased_circle
 from eosdxanalysis.models.feature_engineering import EngineeredFeatures
 from eosdxanalysis.models.polar_sampling import sampling_grid
@@ -157,18 +157,14 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         # Set radial gaussian parameters
         peak_angle = 0.0 # equatorial
-        peak_radius = 0.0 # pixel distance from center
-        peak_std = 10
-        peak_amplitude = 100
+        peak_radius = 50.0 # pixel distance from center
+        peak_std = 10.0
+        peak_amplitude = 100.0
         arc_angle = 0 # Fully anisotropic
 
         gau = gau_class.radial_gaussian(RR, TT,
-                peak_angle, peak_radius, peak_std,
-                peak_amplitude, arc_angle)
-
-        import matplotlib.pyplot as plt
-        plt.imshow(gau, cmap="hot")
-        plt.show()
+                peak_radius, peak_angle, peak_std,
+                peak_amplitude, arc_angle, resolution=(50,50))
 
         self.fail("Finish test")
 
@@ -415,7 +411,7 @@ class TestUtils(unittest.TestCase):
         # Second argument is used as the rtol reference
         self.assertTrue(np.isclose(bool_overlap_arc_length, known_arc_length, rtol=0.1))
 
-    def test_dirac_arc_zero_arc_angle_spread(self):
+    def test_draw_antialiased_arc_zero_arc_angle_spread(self):
         """
         Zero spread should raise a ValueError
         """
@@ -427,7 +423,7 @@ class TestUtils(unittest.TestCase):
         arc_start_angle = 0
         arc_angle_spread = 0
 
-        self.assertRaises(ValueError, dirac_arc, 
+        self.assertRaises(ValueError, draw_antialiased_arc,
                 arc_radius, arc_start_angle, arc_angle_spread, shape)
 
     def test_gen_jn_zerosmatrix(self):
