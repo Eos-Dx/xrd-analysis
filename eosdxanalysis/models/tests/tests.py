@@ -415,34 +415,20 @@ class TestUtils(unittest.TestCase):
         # Second argument is used as the rtol reference
         self.assertTrue(np.isclose(bool_overlap_arc_length, known_arc_length, rtol=0.1))
 
-    def test_arc_on_axis_point_even_shape(self):
+    def test_dirac_arc_zero_arc_angle_spread(self):
         """
-        Test the arc function for the point case on an axis
-        for an odd shape.
-
-        We should end up with exactly two points with a value of 0.5
+        Zero spread should raise a ValueError
         """
         size = 15
         shape = size, size
         center = np.array(shape)/2-0.5
 
-        arc_radius = 5
+        arc_radius = 100
         arc_start_angle = 0
         arc_angle_spread = 0
 
-        test_image = dirac_arc(arc_radius, arc_start_angle, arc_angle_spread, shape)
-
-        # Set up the known image, with a single 1
-        known_image = np.zeros(shape)
-        known_image[int(center[0]), int(center[1] + arc_radius)] = 1
-
-        self.assertTrue(np.array_equal(test_image, known_image))
-
-    def test_arc_circular_case(self):
-        """
-        Test the arc function for a complete circle
-        """
-        self.fail("Finish test")
+        self.assertRaises(ValueError, dirac_arc, 
+                arc_radius, arc_start_angle, arc_angle_spread, shape)
 
     def test_gen_jn_zerosmatrix(self):
         # Test if values are close to table values with relative tolerance
