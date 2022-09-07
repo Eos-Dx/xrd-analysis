@@ -18,6 +18,7 @@ from sklearn.linear_model import LinearRegression
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
+from eosdxanalysis.models.utils import draw_antialiased_arc
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -304,28 +305,29 @@ class GaussianDecomposition(object):
         """
         # Set up Gaussian at peak_radius, peak_angle position
         # Convert from polar to Cartesian coordinates
-        peak_x = peak_radius*np.cos(peak_angle)
-        peak_y = peak_radius*np.sin(peak_angle)
+        peak_x = 0.0
+        peak_y = 0.0
         x = r*np.cos(theta)
         y = r*np.sin(theta)
         # Assume standard deviation is the same in x and y
         peak_std_x = peak_std
         peak_std_y = peak_std
         # Assume x and y are uncoorrelated
-        rho = 0 # correlation coefficient
+        rho = 0.0 # correlation coefficient
         # Set Gaussian origin to (0,0)
-        mu_x = mu_y = 0
+        mu_x = mu_y = 0.0
 
         # Generate a Gaussian at the origin
-        gau = peak_amplitude*np.exp(-1/(2*np.pi*peak_std_x*peak_std_y*np.sqrt(1-rho**2)) * \
-                ( -1/(2*(1-rho**2)) * ( ((x - mu_x)/peak_std_x)**2 - \
+        gau = peak_amplitude*np.exp( -1/(2*(1-rho**2)) * ( ((x - mu_x)/peak_std_x)**2 - \
                 2*rho*(x - mu_x)/peak_std_x*(y - mu_y)/peak_std_y +
-                ((y - mu_y)/peak_std_y)**2 )))
+                ((y - mu_y)/peak_std_y)**2 ))
         # Generate a high-resolution arc to perform convolution with
-        arc = dirac_arc(peak_radius, peak_angle, arc_angle, resolution=resolution)
+        radius = 100
+        arc = draw_antialiased_arc(radius, peak_angle, arc_angle, output_shape=resolution)
+        double_arc = arc.T + arc[:,::-1].T
         # Perform convolution to get radial Gaussian,
         # ensuring output is the same as the low-res gaussian first input
-        radial_gau = convolve2d(gau, arc, mode="same")
+        radial_gau = convolve2d(gau, double_arc, mode="same")
 
         return radial_gau
 
