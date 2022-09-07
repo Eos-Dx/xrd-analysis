@@ -11,12 +11,10 @@ Welcome to the Eos Dx Analysis documentation!
 .. toctree::
     usage
     contributing
-    eosdxanalysis
-    :maxdepth: 3
+    api
+    :maxdepth: 4
     :caption: Contents:
 
-.. automodule:: eosdxanalysis
-    :members:
 
 Indices and tables
 ==================
