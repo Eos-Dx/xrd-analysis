@@ -12,6 +12,7 @@ import scipy.cluster.hierarchy as sch
 
 from skimage.transform import rescale
 from skimage.transform import warp_polar
+from skimage.transform import rotate
 
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import pad_image
@@ -99,7 +100,10 @@ def angular_intensity_1d(image, radius=None, width=4):
 
 def dirac_arc(radius, start_angle, angle_spread, output_shape):
     """
-    Creates a 2D direc delta function in the shape of an arc
+    Creates a 2D direc delta function in the shape of an arc.
+    The ``angle_spread`` parameter is symmetric about the ``start_angle``.
+    See diagram below.
+    See ``draw_antialiased_circle`` for reference.
 
     :param radius: Radius of the arc
     :type radius: float
@@ -119,8 +123,67 @@ def dirac_arc(radius, start_angle, angle_spread, output_shape):
     :returns arc: The dirac arc
     :rtype: ndarray
 
+
+       ___
+     / \ / \
+    |   V   |
+     \ ___ /
+
+
     """
-    return
+    # First calculate the arc as normal, then rotate if needed
+    if angle_spread < 0 or np.isclose(angle_spread, 0):
+        raise ValueError("Arc angle spread must be positive.")
+
+    if angle_spread >= np.pi/2:
+        raise ValueError("Arc angle spread cannot exceed pi/2.")
+
+    # Take the modulus of angle_spread with 2*pi
+    angle_spread %= 2*np.pi
+
+    point_array = np.zeros((radius, radius))
+    i = 0
+    j = radius-1
+    theta = 0
+    last_fade_amount = 0
+    fade_amount = 0
+
+    MAX_OPAQUE = 1.0
+
+    # Calculate at most the 1/8th arc
+    while i < j and theta < angle_spread/2:
+        height = np.sqrt(np.max(radius * radius - i * i, 0))
+        fade_amount = MAX_OPAQUE * (np.ceil(height) - height)
+
+        if fade_amount < last_fade_amount:
+            # Opaqueness reset so drop down a row.
+            j -= 1
+        last_fade_amount = fade_amount
+
+        # We're fading out the current j row, and fading in the next one down.
+        point_array[i,j] = MAX_OPAQUE - fade_amount
+        point_array[i,j-1] = fade_amount
+
+        i += 1
+        theta = np.arctan2(i, j)
+
+    image_lower_right = point_array
+    # Flip point array vertically (switch order of rows)
+    image_upper_right = image_lower_right[::-1, :]
+    image_right = np.vstack((image_upper_right, image_lower_right))
+    # Image left will be all zeros
+    image_left = np.zeros_like(image_right)
+    # Join image left and image right
+    image = np.hstack((image_left, image_right))
+
+    # Rotate image if specified
+    if np.isclose(start_angle, 0):
+        return image
+    else:
+        # Rotation angle is specified radians, convert to degrees
+        rotation_degrees = start_angle*180/np.pi
+        rotated_image = rotate(image, rotation_degrees, preserve_range=True)
+        return rotated_image
 
 def draw_antialiased_circle(outer_radius):
     """
