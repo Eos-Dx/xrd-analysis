@@ -153,13 +153,9 @@ def draw_antialiased_circle(outer_radius):
             j -= 1
         last_fade_amount = fade_amount
 
-        # The API needs integers, so convert here now we've checked if
-        # it dropped.
-        fade_amount_i = int(fade_amount)
-
         # We're fading out the current j row, and fading in the next one down.
-        point_array[i,j] = MAX_OPAQUE - fade_amount_i
-        point_array[i,j-1] = fade_amount_i
+        point_array[i,j] = MAX_OPAQUE - fade_amount
+        point_array[i,j-1] = fade_amount
 
         i += 1
 
