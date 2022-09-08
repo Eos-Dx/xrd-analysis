@@ -12,8 +12,11 @@ Welcome to the Eos Dx Analysis documentation!
     usage
     contributing
     api
-    :maxdepth: 4
+    :maxdepth: 5
     :caption: Contents:
+
+.. autosummary::
+   :toctree: generated
 
 
 Indices and tables
