@@ -37,7 +37,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'generated/eosdxanalysis.models.utils';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="prev" title="eosdxanalysis.models.curve_fitting" href="eosdxanalysis.models.curve_fitting.html" />
+    <link rel="prev" title="eosdxanalysis.models.tests.tests" href="eosdxanalysis.models.tests.tests.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
   </head>
@@ -116,20 +116,6 @@
                 <li class="nav-item">
                     <a class="nav-link" href="../contributing.html">
                         Contributing
-                    </a>
-                </li>
-                
-
-                <li class="nav-item">
-                    <a class="nav-link" href="../eosdxanalysis.html">
-                        Modules
-                    </a>
-                </li>
-                
-
-                <li class="nav-item">
-                    <a class="nav-link" href="../curve_fitting.html">
-                        Curve Fitting
                     </a>
                 </li>
                 
@@ -220,20 +206,6 @@
                 </li>
                 
 
-                <li class="nav-item">
-                    <a class="nav-link" href="../eosdxanalysis.html">
-                        Modules
-                    </a>
-                </li>
-                
-
-                <li class="nav-item">
-                    <a class="nav-link" href="../curve_fitting.html">
-                        Curve Fitting
-                    </a>
-                </li>
-                
-
                 <li class="nav-item current active">
                     <a class="nav-link" href="../api.html">
                         API
@@ -276,25 +248,64 @@
   </p>
   <div class="bd-toc-item navbar-nav">
     <ul class="current nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.html">
-   eosdxanalysis
-  </a>
- </li>
- <li class="toctree-l1">
+ <li class="toctree-l1 current active has-children">
   <a class="reference internal" href="eosdxanalysis.models.html">
    eosdxanalysis.models
   </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.models.curve_fitting.html">
-   eosdxanalysis.models.curve_fitting
-  </a>
- </li>
- <li class="toctree-l1 current active">
-  <a class="current reference internal" href="#">
-   eosdxanalysis.models.utils
-  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label class="toctree-toggle" for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2">
+    <a class="reference internal" href="eosdxanalysis.models.curve_fitting.html">
+     eosdxanalysis.models.curve_fitting
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="eosdxanalysis.models.feature_engineering.html">
+     eosdxanalysis.models.feature_engineering
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="eosdxanalysis.models.fourier_analysis.html">
+     eosdxanalysis.models.fourier_analysis
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="eosdxanalysis.models.kmeans.html">
+     eosdxanalysis.models.kmeans
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="eosdxanalysis.models.polar_sampling.html">
+     eosdxanalysis.models.polar_sampling
+    </a>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="eosdxanalysis.models.tests.html">
+     eosdxanalysis.models.tests
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+    <label class="toctree-toggle" for="toctree-checkbox-2">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="eosdxanalysis.models.tests.tests.html">
+       eosdxanalysis.models.tests.tests
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 current active">
+    <a class="current reference internal" href="#">
+     eosdxanalysis.models.utils
+    </a>
+   </li>
+  </ul>
  </li>
 </ul>
 
@@ -342,8 +353,8 @@
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cluster_corr</span></code>(corr_array[, inplace])</p></td>
 <td><p>Rearranges the correlation matrix, corr_array, so that groups of highly correlated variables are next to eachother</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dirac_arc</span></code>(radius, start_angle, angle_spread, ...)</p></td>
-<td><p>Creates a 2D direc delta function in the shape of an arc</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw_antialiased_arc</span></code>(radius, start_angle, ...)</p></td>
+<td><p>Creates a 2D direc delta function in the shape of an arc.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw_antialiased_circle</span></code>(outer_radius)</p></td>
 <td><p>Adapted via: <a class="reference external" href="https://stackoverflow.com/a/37714284">https://stackoverflow.com/a/37714284</a></p></td>
@@ -375,11 +386,11 @@
             <footer class="bd-footer-article">
                 <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="eosdxanalysis.models.curve_fitting.html" title="previous page">
+  <a class='left-prev' id="prev-link" href="eosdxanalysis.models.tests.tests.html" title="previous page">
       <i class="fas fa-angle-left"></i>
       <div class="prev-next-info">
           <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">eosdxanalysis.models.curve_fitting</p>
+          <p class="prev-next-title">eosdxanalysis.models.tests.tests</p>
       </div>
   </a>
 </div>

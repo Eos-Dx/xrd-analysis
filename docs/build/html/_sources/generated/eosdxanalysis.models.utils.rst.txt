@@ -1,4 +1,4 @@
-﻿eosdxanalysis.models.utils
+eosdxanalysis.models.utils
 ==========================
 
 .. automodule:: eosdxanalysis.models.utils
@@ -17,7 +17,7 @@
       calculate_min_distance
       cart2pol
       cluster_corr
-      dirac_arc
+      draw_antialiased_arc
       draw_antialiased_circle
       gen_jn_zerosmatrix
       l1_metric
