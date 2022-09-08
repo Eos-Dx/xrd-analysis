@@ -290,7 +290,8 @@ class GaussianDecomposition(object):
         :param peak_radius: Location of the Gaussian peak from the center
         :type peak_radius: float
 
-        :param peak_angle: 0 or np.pi/2 to signify equatorial or meridional peak location (respectively)
+        :param peak_angle: 0 or np.pi/2 to signify equatorial or meridional peak location (respectively).
+            Future will take a continuous input.
         :type peak_angle: float
 
         :param peak_std: Gaussian standard deviation
@@ -321,6 +322,10 @@ class GaussianDecomposition(object):
 
         # Take the modulus of the arc_angle
         arc_angle %= np.pi
+        # Force theta to be between -pi and pi
+        theta += np.pi
+        theta %= 2*np.pi
+        theta -= np.pi
         # If the arc angle is 0 or pi, return the isometric Gaussian
         if np.isclose(arc_angle, 0.0):
             # Construct an isometric Gaussian centered at peak_radius
@@ -330,32 +335,94 @@ class GaussianDecomposition(object):
         else:
             # Create an array of zeros
             gau = np.zeros_like(r)
-            # Add the endpoints
-            theta1 = -arc_angle/2
-            theta2 = arc_angle/2
-            # Add the shift
-            theta += peak_angle
-            # Convert to cartesian coordinates
-            x = r*np.cos(theta)
-            y = r*np.sin(theta)
-            # Create quadrant-folded arc using masks
-            # Create mask for top side
-            mask_top = (theta >= arc_angle/2) & (theta <= np.pi - arc_angle/2)
-            gau[mask_top] = peak_amplitude*np.exp(
-                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta2))**2 + \
-                            (y - peak_radius*np.sin(theta2))**2) )[mask_top]
-            # Create mask for bottom side
-            mask_bottom = (theta <= -arc_angle/2) & (theta >= -np.pi + arc_angle/2)
-            gau[mask_bottom] = peak_amplitude*np.exp(
-                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta1))**2 + \
-                            (y - peak_radius*np.sin(theta1))**2) )[mask_bottom]
-            # Create mask for inside
-            mask_in = ( (theta >= -arc_angle/2) & (theta <= arc_angle/2) ) | \
-                    ((theta >= np.pi - arc_angle/2) & (theta < -np.pi + arc_angle/2))
-            gau[mask_in] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in]
 
-            # Set the output as the quadrant-folded arc
-            output = gau
+            # Handle two cases: peak_angle = 0 or pi/2
+            if np.isclose(peak_angle, 0):
+                # Add the endpoints
+                theta1 = -arc_angle/2
+                theta2 = arc_angle/2
+                # Convert to cartesian coordinates
+                x = r*np.cos(theta)
+                y = r*np.sin(theta)
+
+                # Create quadrant-folded arc using masks
+                # Create masks for right side
+                # Create mask for top_right side
+                mask_top_right = (theta >= arc_angle/2) & (theta <= np.pi/2)
+                gau[mask_top_right] = peak_amplitude*np.exp(
+                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta2))**2 + \
+                                (y - peak_radius*np.sin(theta2))**2) )[mask_top_right]
+                # Create mask for bottom_right side
+                mask_bottom_right = (theta <= -arc_angle/2) & (theta >= -np.pi/2)
+                gau[mask_bottom_right] = peak_amplitude*np.exp(
+                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta1))**2 + \
+                                (y - peak_radius*np.sin(theta1))**2) )[mask_bottom_right]
+                # Create mask for inside right side
+                mask_in_right = (theta > -arc_angle/2) & (theta < arc_angle/2)
+                gau[mask_in_right] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_right]
+
+                # Create masks for left side
+                # Create mask for top_left side
+                mask_top_left = (theta <= np.pi-arc_angle/2) & (theta >= np.pi/2)
+                gau[mask_top_left] = peak_amplitude*np.exp(
+                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(np.pi-arc_angle/2))**2 + \
+                                (y - peak_radius*np.sin(np.pi-arc_angle/2))**2) )[mask_top_left]
+                # Create mask for bottom_left side
+                mask_bottom_left = (theta >= -np.pi+arc_angle/2) & (theta <= -np.pi/2)
+                gau[mask_bottom_left] = peak_amplitude*np.exp(
+                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(-np.pi+arc_angle/2))**2 + \
+                                (y - peak_radius*np.sin(-np.pi+arc_angle/2))**2) )[mask_bottom_left]
+                # Create mask for inside left side
+                mask_in_left = (theta > np.pi-arc_angle/2) | (theta < -np.pi+arc_angle/2)
+                gau[mask_in_left] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_left]
+
+                # Set the output as the quadrant-folded arc
+                output = gau
+
+            elif np.isclose(peak_angle, np.pi/2):
+                # Add the endpoints
+                theta1 = np.pi/2-arc_angle/2
+                theta2 = np.pi/2+arc_angle/2
+                # Convert to cartesian coordinates
+                x = r*np.cos(theta)
+                y = r*np.sin(theta)
+
+                # Create quadrant-folded arc using masks
+                # Create masks for top side
+                # Create mask for top right side
+                mask_right_top = (theta <= peak_angle - arc_angle/2) & (theta >= 0)
+                gau[mask_right_top] = peak_amplitude*np.exp(
+                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta1))**2 + \
+                                (y - peak_radius*np.sin(theta1))**2) )[mask_right_top]
+                # Create mask for top left side
+                mask_left_top = (theta >= peak_angle + arc_angle/2) & (theta >= 0)
+                gau[mask_left_top] = peak_amplitude*np.exp(
+                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta2))**2 + \
+                                (y - peak_radius*np.sin(theta2))**2) )[mask_left_top]
+                # Create mask for top inside
+                mask_in_top = (theta > peak_angle - arc_angle/2) & (theta < peak_angle + arc_angle/2)
+                gau[mask_in_top] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_top]
+
+                # Create masks for bottom side
+                # Create mask for bottom right side
+                mask_right_bottom = (theta >= -peak_angle+arc_angle/2) & (theta <= 0)
+                gau[mask_right_bottom] = peak_amplitude*np.exp(
+                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(-np.pi/2+arc_angle/2))**2 + \
+                                (y - peak_radius*np.sin(-np.pi/2+arc_angle/2))**2) )[mask_right_bottom]
+                # Create mask for bottom left side
+                mask_left_bottom = (theta <= -peak_angle-arc_angle/2) & (theta <= 0)
+                gau[mask_left_bottom] = peak_amplitude*np.exp(
+                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(-np.pi/2-arc_angle/2))**2 + \
+                                (y - peak_radius*np.sin(-np.pi/2-arc_angle/2))**2) )[mask_left_bottom]
+                # Create mask for bottom inside
+                mask_in_bottom = (theta > -peak_angle-arc_angle/2) & (theta < -peak_angle+arc_angle/2)
+                gau[mask_in_bottom] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_bottom]
+
+                # Set the output as the quadrant-folded arc
+                output = gau
+
+            else:
+                raise ValueError("peak_angle must be 0 or pi/2.")
 
             return output
 
@@ -477,8 +544,8 @@ class GaussianDecomposition(object):
         # Generate a meshgrid the same size as the image
         x_end = shape[1]/2 - 0.5
         x_start = -x_end
-        y_end = x_end
-        y_start = x_start
+        y_end = x_start
+        y_start = x_end
         YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
         TT, RR = cart2pol(XX, YY)
 
