@@ -14,6 +14,7 @@ from scipy.signal import convolve2d
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
+from skimage.transform import rotate
 
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
@@ -354,9 +355,15 @@ class GaussianDecomposition(object):
 
             # If peak_angle is non-zero, rotate result
             if not np.isclose(peak_angle, 0):
-                peak_angle_degrees = peak_angle*180/np.pi
-                rotated_image = rotate(output, peak_angle_degrees, preserve_range=True)
-                output = rotated_image
+                # If angle is a multiple of pi/2, then just flip accordingly
+                if np.isclose(peak_angle%np.pi/2, 0):
+                    rot_k = int(peak_angle / np.pi/2)
+                    output = np.rot90(gau, k=rot_k)
+                else:
+                    # Use `skimage.transform.rotate`
+                    peak_angle_degrees = peak_angle*180/np.pi
+                    rotated_image = rotate(output, peak_angle_degrees, preserve_range=True)
+                    output = rotated_image
 
             return output
 
