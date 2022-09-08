@@ -71,14 +71,14 @@ class GaussianDecomposition(object):
         """
         Estimate Gaussian fit parameters based on provided image
 
-        Parameters
-        ----------
+        .. Parameters
+
         image : can be None, pulled from init
         width : averaging width used to produce 1D profiles
         position_tol : factor used to check if detected peak locations are incorrect
 
-        Returns
-        -------
+        .. Returns
+
         (p0_dict, p_lower_bounds_dict, p_upper_bounds_dict): tuple
 
         Also stores these parameters in class parameters.
@@ -324,7 +324,7 @@ class GaussianDecomposition(object):
         # If the arc angle is 0 or pi, return the isometric Gaussian
         if np.isclose(arc_angle, 0.0):
             # Construct an isometric Gaussian centered at peak_radius
-            gau = peak_amplitude*np.exp( -((r-peak_radius)/peak_std)**2)
+            gau = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)
             return gau
         # Else we need to convolve with an arc
         else:
@@ -333,96 +333,83 @@ class GaussianDecomposition(object):
             # Add the endpoints
             theta1 = -arc_angle/2
             theta2 = arc_angle/2
+            # Add the shift
+            theta += peak_angle
             # Convert to cartesian coordinates
             x = r*np.cos(theta)
             y = r*np.sin(theta)
+            # Create quadrant-folded arc using masks
             # Create mask for top side
-            mask_gt = [theta >= theta2]
-            gau[mask_gt] = peak_amplitude*np.exp(
-                    -1/peak_std**2*( (x - peak_radius*np.cos(theta2))**2 + \
-                            (y - peak_radius*np.sin(theta2))**2) )[mask_gt]
+            mask_top = (theta >= arc_angle/2) & (theta <= np.pi - arc_angle/2)
+            gau[mask_top] = peak_amplitude*np.exp(
+                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta2))**2 + \
+                            (y - peak_radius*np.sin(theta2))**2) )[mask_top]
             # Create mask for bottom side
-            mask_lt = theta <= theta1
-            gau[mask_lt] = peak_amplitude*np.exp(
-                    -1/peak_std**2*( (x - peak_radius*np.cos(theta1))**2 + \
-                            (y - peak_radius*np.sin(theta1))**2) )[mask_lt]
+            mask_bottom = (theta <= -arc_angle/2) & (theta >= -np.pi + arc_angle/2)
+            gau[mask_bottom] = peak_amplitude*np.exp(
+                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta1))**2 + \
+                            (y - peak_radius*np.sin(theta1))**2) )[mask_bottom]
             # Create mask for inside
-            mask_in = (theta >= theta1) & (theta <= theta2)
-            gau[mask_in] = peak_amplitude*np.exp( -((r-peak_radius)/peak_std)**2)[mask_in]
+            mask_in = ( (theta >= -arc_angle/2) & (theta <= arc_angle/2) ) | \
+                    ((theta >= np.pi - arc_angle/2) & (theta < -np.pi + arc_angle/2))
+            gau[mask_in] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in]
 
-            # Set the output as the arc plus it's mirror image (quadrant folded)
-            output = gau + gau[:, ::-1]
-
-            # If peak_angle is non-zero, rotate result
-            if not np.isclose(peak_angle, 0):
-                # If angle is a multiple of pi/2, then just flip accordingly
-                if np.isclose(peak_angle%np.pi/2, 0):
-                    rot_k = int(peak_angle / np.pi/2)
-                    output = np.rot90(gau, k=rot_k)
-                else:
-                    # Use `skimage.transform.rotate`
-                    peak_angle_degrees = peak_angle*180/np.pi
-                    rotated_image = rotate(output, peak_angle_degrees, preserve_range=True)
-                    output = rotated_image
+            # Set the output as the quadrant-folded arc
+            output = gau
 
             return output
 
     def keratin_function(self, polar_point,
-            peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, cos_power_9A,
-            peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, cos_power_5A,
+            peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, arc_angle_9A,
+            peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, arc_angle_5A,
             peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
             peak_std_bg, peak_amplitude_bg):
         """
         Generate entire kertain diffraction pattern at the points
-        (r, theta), with 16 parameters as the arguements to 4 calls
+        (r, theta), with parameters as the arguements to 4 calls
         of radial_gaussian.
 
         .. Parameters
 
-        :param polar_point: (r, theta) where r and theta are a meshgrid
-        :type polar_point: tuple
-        p0 ... p15: parameters to 4 radial_gaussians. Each 4 parameters are
-        peak_location, peak_width, peak_amplitude, and angular spread.
+        :param polar_point: (r, theta) where r and theta are polar coordinates
+        :type polar_point: 2-tuple of array_like
 
-        Returns
-        -------
-            Returns a contiguous flattened array suitable for use with
-            `scipy.optimize.curve_fit`.
+        .. Returns
+
+        :returns a: Returns a contiguous flattened array suitable for use
+            with ``scipy.optimize.curve_fit``.
+        :rtype: array_like
+
         """
         r, theta = polar_point
-        # Create four Gaussians, then sum
-        # Set phases
-        phase_9A = 0.0 # Equatorial peak
-        phase_5A = np.pi/2 # Meridional peak
-        phase_5_4A = 0.0 # Don't care since beta = 0
-        phase_bg = 0.0 # Don't care since beta = 0
-        # Set betas
-        beta_9A = 1.0 # Anisotropic
-        beta_5A = 1.0 # Anisotropic
-        beta_5_4A = 0.0 # Isotropic
-        beta_bg = 0.0 # Isotropic
-        # Fix background noise peak radius to zero
+
+        # Set peak position angle parameters
+        peak_angle_9A = 0
+        peak_angle_5A = np.pi/2
+        peak_angle_5_4A = 0 # Don't care
+        peak_angle_bg = 0 # Don't care
+        # Set peak arc angle parameters for isotropic cases
+        arc_angle_5_4A = 0 # Don't care
+        arc_angle_bg = 0 # Don't care
+        # Set peak location radius for background noise case (Airy disc from pinhole)
         peak_location_radius_bg = 0
-        # Set cosine powers
-        cos_power_5_4A = 0.0 # Don't care since beta = 0
-        cos_power_bg = 0.0 # Don't care since beta = 0
 
         # 9A peaks
-        pattern_9A = self.radial_gaussian(r, theta, phase_9A,
-                peak_location_radius_9A, peak_std_9A, peak_amplitude_9A,
-                beta_9A, cos_power_9A)
+        pattern_9A = self.radial_gaussian(r, theta, peak_location_radius_9A,
+                peak_angle_9A, peak_std_9A, peak_amplitude_9A,
+                arc_angle_9A)
         # 5A peaks
-        pattern_5A = self.radial_gaussian(r, theta, phase_5A,
-                peak_location_radius_5A, peak_std_5A, peak_amplitude_5A,
-                beta_5A, cos_power_5A)
+        pattern_5A = self.radial_gaussian(r, theta, peak_location_radius_5A,
+                peak_angle_5A, peak_std_5A, peak_amplitude_5A,
+                arc_angle_5A)
         # 5-4 A anisotropic ring
-        pattern_5_4A = self.radial_gaussian(r, theta, phase_5_4A,
-                peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
-                beta_5_4A, cos_power_5_4A)
+        pattern_5_4A = self.radial_gaussian(r, theta, peak_location_radius_5_4A,
+                peak_angle_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
+                arc_angle_5_4A)
         # Background noise
-        pattern_bg = self.radial_gaussian(r, theta, phase_bg,
-                peak_location_radius_bg, peak_std_bg, peak_amplitude_bg,
-                beta_bg, cos_power_bg)
+        pattern_bg = self.radial_gaussian(r, theta, peak_location_radius_bg,
+                peak_angle_bg, peak_std_bg, peak_amplitude_bg,
+                arc_angle_bg)
         # Additive model
         pattern = pattern_9A + pattern_5A + pattern_5_4A + pattern_bg
         return pattern.ravel()
