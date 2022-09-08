@@ -266,7 +266,7 @@ class GaussianDecomposition(object):
         return p0_dict, p_lower_bounds_dict, p_upper_bounds_dict
 
     def radial_gaussian(self, r, theta, peak_radius, peak_angle,
-                peak_std, peak_amplitude, arc_angle, resolution=(512,512)):
+                peak_std, peak_amplitude, arc_angle):
         """
         Isotropic and radial Gaussian
 
@@ -274,6 +274,9 @@ class GaussianDecomposition(object):
         Future will possibly use analytic expression for convolution of a Gaussian with an arc.
         Assumes quadrant-fold symmetry.
         Assumes standard deviation is the same for x and y directions.
+        A peak_angle of 0 corresponds to horizontal (equatorial) arcs.
+        A peak_angle of pi/2 corresponds to vertical (meridional) arcs.
+        Algorithm starts with equatorial peaks, then rotates as neeed.
 
         .. Parameters
 
@@ -303,33 +306,54 @@ class GaussianDecomposition(object):
         :rtype: array_like (same shape as ``r`` and ``theta``)
 
         """
-        # Set up Gaussian at peak_radius, peak_angle position
-        # Convert from polar to Cartesian coordinates
-        peak_x = 0.0
-        peak_y = 0.0
-        x = r*np.cos(theta)
-        y = r*np.sin(theta)
-        # Assume standard deviation is the same in x and y
-        peak_std_x = peak_std
-        peak_std_y = peak_std
-        # Assume x and y are uncoorrelated
-        rho = 0.0 # correlation coefficient
-        # Set Gaussian origin to (0,0)
-        mu_x = mu_y = 0.0
+        # Check if arc_angle is between 0 and pi
+        if arc_angle < 0 or arc_angle > np.pi:
+            raise ValueError("arc_angle must be between 0 and pi")
 
-        # Generate a Gaussian at the origin
-        gau = peak_amplitude*np.exp( -1/(2*(1-rho**2)) * ( ((x - mu_x)/peak_std_x)**2 - \
-                2*rho*(x - mu_x)/peak_std_x*(y - mu_y)/peak_std_y +
-                ((y - mu_y)/peak_std_y)**2 ))
-        # Generate a high-resolution arc to perform convolution with
-        radius = 100
-        arc = draw_antialiased_arc(radius, peak_angle, arc_angle, output_shape=resolution)
-        double_arc = arc.T + arc[:,::-1].T
-        # Perform convolution to get radial Gaussian,
-        # ensuring output is the same as the low-res gaussian first input
-        radial_gau = convolve2d(gau, double_arc, mode="same")
+        # Check if peak_angle is between 0 and pi/2
+        if peak_angle < 0 or peak_angle > np.pi/2:
+            raise ValueError("peak_angle must be between 0 and pi/2")
 
-        return radial_gau
+        # Check if size of r and theta inputs are equal
+        if np.array(r).shape != np.array(theta).shape:
+            raise ValueError("Inputs r and theta must have the same shape")
+
+        # Take the modulus of the arc_angle
+        arc_angle %= np.pi
+        # If the arc angle is 0 or pi, return the isometric Gaussian
+        if np.isclose(arc_angle, 0.0):
+            # Construct an isometric Gaussian centered at peak_radius
+            gau = peak_amplitude*np.exp( -((r-peak_radius)/peak_std)**2)
+            return gau
+        # Else we need to convolve with an arc
+        else:
+            # Create an array of zeros
+            gau = np.zeros_like(r)
+            # Add the endpoints
+            theta1 = -arc_angle/2
+            theta2 = arc_angle/2
+            # Create mask for top side
+            mask_gt = [theta > theta2]
+            gau[mask_gt] = peak_amplitude*np.exp(
+                    -1/peak_std**2*( (r-peak_radius)**2 + (r*theta - peak_radius*theta2)**2 ) )[mask_gt]
+            # Create mask for bottom side
+            mask_lt = theta < theta1
+            gau[mask_lt] = peak_amplitude*np.exp(
+                    -1/peak_std**2*( (r-peak_radius)**2 + (r*theta - peak_radius*theta1)**2 ) )[mask_lt]
+            # Create mask for inside
+            mask_in = (theta > theta1) & (theta < theta2)
+            gau[mask_in] = peak_amplitude*np.exp( -((r-peak_radius)/peak_std)**2)[mask_in]
+
+            # Set the output as the arc plus it's mirror image (quadrant folded)
+            output = gau + gau[:, ::-1]
+
+            # If peak_angle is non-zero, rotate result
+            if not np.isclose(peak_angle, 0):
+                peak_angle_degrees = peak_angle*180/np.pi
+                rotated_image = rotate(output, peak_angle_degrees, preserve_range=True)
+                output = rotated_image
+
+            return output
 
     def keratin_function(self, polar_point,
             peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, cos_power_9A,
