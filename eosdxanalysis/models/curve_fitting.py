@@ -225,24 +225,24 @@ class GaussianDecomposition(object):
         # for a typical keratin diffraction pattern
         if not p0_dict:
             p0_dict = OrderedDict({
-                    # 9A equatorial peaks parameters
-                    "peak_location_radius_9A":  feature_pixel_location(9e-10), # Peak pixel radius
-                    "peak_std_9A":              10, # Width
-                    "peak_amplitude_9A":        1000, # Amplitude
-                    "cos_power_9A":             8.0, # Cosine power
-                    # 5A meridional peaks parameters
-                    "peak_location_radius_5A":  feature_pixel_location(5e-10), # Peak pixel radius
-                    "peak_std_5A":              10, # Width
-                    "peak_amplitude_5A":        1000, # Amplitude
-                    "cos_power_5A":             4.0, # Cosine power
-                    # 5-4A isotropic region parameters
-                    "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
-                    "peak_std_5_4A":            20, # Width
-                    "peak_amplitude_5_4A":      800, # Amplitude
-                    # Background noise parameters
-                    "peak_std_bg":              30, # Width
-                    "peak_amplitude_bg":        200, # Amplitude
-                })
+                # 9A equatorial peaks parameters
+                "peak_location_radius_9A":  feature_pixel_location(9e-10), # Peak pixel radius
+                "peak_std_9A":              8, # Width
+                "peak_amplitude_9A":        400, # Amplitude
+                "arc_angle_9A":             1e-1, # Arc angle
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":  feature_pixel_location(5e-10), # Peak pixel radius
+                "peak_std_5A":              2, # Width
+                "peak_amplitude_5A":        50, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
+                "peak_std_5_4A":            15, # Width
+                "peak_amplitude_5_4A":      100, # Amplitude
+                # Background noise parameters
+                "peak_std_bg":              200, # Width
+                "peak_amplitude_bg":        200, # Amplitude
+            })
 
         # Lower bounds
         if not p_lower_bounds_dict:
