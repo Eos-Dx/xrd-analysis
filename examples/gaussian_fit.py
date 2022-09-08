@@ -58,26 +58,51 @@ print("Filename | Fit Error | Fit Error (%) | R-like factor (%) | Time (s)")
 for filename_path in filename_path_list:
     filename = os.path.basename(filename_path)
     print(filename, end=" ", flush=True)
-    image = np.loadtxt(filename_path, dtype=np.uint32)
-    # filtered_img = gaussian_filter(image, 2)
+    # Load preprocessed image, centered and rotated
+    image = np.loadtxt(filename_path, dtype=np.float64)
+    filtered_img = gaussian_filter(image, 3)
 
-    # peaks = peak_local_max(image, min_distance=20, num_peaks=4)
+    """
+    Try using the labels parameter in `skimage.feature.peak_local_max`
+    """
+    # Create labels for 9A, 5A, and 5-4A feature regions
+    YY, XX = np.ogrid[:size, :size]
+    center = (size/2-0.5, size/2-0.5)
+    RR = np.sqrt((YY - center[0])**2 + (XX - center[1])**2)
+    labels = np.zeros_like(image, dtype=int)
+
+    # Get pixel locations
+    loc_9A = feature_pixel_location(9.8e-10)
+
+    # Give 9A region the label `1`
+    eyes_rmin = 30
+    eyes_rmax = 45
+    labels[(RR >= 30) & (RR <= 45)] = 1
+
+    # Give 5A region the label `2`
+    # labels[(RR >= (loc_5A-5)) & (RR < (loc_5A+5))] = 2
+
+    # Give 5-4A region the label `3`
+    # labels[RR >= (loc_5A+5)] = 3
+
+    peaks_on_filtered_img = peak_local_max(filtered_img, min_distance=int(np.ceil(1.5*loc_9A)),
+            num_peaks_per_label=1, labels=labels)
+    peaks_orig = peak_local_max(image, min_distance=int(np.ceil(1.5*loc_9A)),
+            num_peaks_per_label=1, labels=labels)
 
     gauss_class = GaussianDecomposition(image)
     # Get the estimated parameters
     p0_dict, p_lower_bounds_dict, p_upper_bounds_dict = \
             gauss_class.p0_dict, gauss_class.p_lower_bounds_dict, gauss_class.p_upper_bounds_dict 
 
-
-#      fig = plt.figure()
-#      plt.imshow(image, cmap="hot")
-#      plt.scatter(peaks[:,1], peaks[:,0], c="blue")
-#      plt.title(filename)
-#      plt.show()
-
-    print()
-
-    continue
+    # fig = plt.figure()
+    # plt.imshow(image, cmap="hot")
+    # plt.imshow(filtered_img, cmap="hot")
+    # plt.imshow(labels, cmap="Greens", alpha=0.5)
+    # plt.scatter(peaks_on_filtered_img[:,1], peaks_on_filtered_img[:,0], s=50, edgecolors="blue", marker="o", facecolors='none')
+    # plt.scatter(peaks_orig[:,1], peaks_orig[:,0], edgecolors="green", marker="o", facecolors='none')
+    # plt.title(filename)
+    # plt.show()
 
     """
     Gaussian fit pipeline
@@ -119,9 +144,9 @@ for filename_path in filename_path_list:
     p_upper_bounds = np.fromiter(gauss_class.p_upper_bounds_dict.values(), dtype=np.float64)
 
     # Modify initial guess and bounds
-    p0_dict["peak_radius_9A"] = peak_radius_9A
-    p0_dict["amplitude_9A"] = peak_9A_max
-    p0_dict["width_9A"] = sigma_9A
+    # p0_dict["peak_radius_9A"] = peak_radius_9A
+    # p0_dict["amplitude_9A"] = peak_9A_max
+    # p0_dict["width_9A"] = sigma_9A
 
     # Perform iterative curve_fit
     popt, pcov, RR, TT = gauss_class.best_fit(image)
