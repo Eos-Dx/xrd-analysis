@@ -332,14 +332,19 @@ class GaussianDecomposition(object):
             # Add the endpoints
             theta1 = -arc_angle/2
             theta2 = arc_angle/2
+            # Convert to cartesian coordinates
+            x = r*np.cos(theta)
+            y = r*np.sin(theta)
             # Create mask for top side
             mask_gt = [theta > theta2]
             gau[mask_gt] = peak_amplitude*np.exp(
-                    -1/peak_std**2*( (r-peak_radius)**2 + (r*theta - peak_radius*theta2)**2 ) )[mask_gt]
+                    -1/peak_std**2*( (x - peak_radius*np.cos(theta2))**2 + \
+                            (y - peak_radius*np.sin(theta2))**2) )[mask_gt]
             # Create mask for bottom side
             mask_lt = theta < theta1
             gau[mask_lt] = peak_amplitude*np.exp(
-                    -1/peak_std**2*( (r-peak_radius)**2 + (r*theta - peak_radius*theta1)**2 ) )[mask_lt]
+                    -1/peak_std**2*( (x - peak_radius*np.cos(theta1))**2 + \
+                            (y - peak_radius*np.sin(theta1))**2) )[mask_lt]
             # Create mask for inside
             mask_in = (theta > theta1) & (theta < theta2)
             gau[mask_in] = peak_amplitude*np.exp( -((r-peak_radius)/peak_std)**2)[mask_in]
