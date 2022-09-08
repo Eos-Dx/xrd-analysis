@@ -157,14 +157,14 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         # Set radial gaussian parameters
         peak_angle = 0.0 # equatorial
-        peak_radius = 50.0 # pixel distance from center
+        peak_radius = 0.0 # pixel distance from center
         peak_std = 10.0
         peak_amplitude = 100.0
         arc_angle = 0 # Fully anisotropic
 
         gau = gau_class.radial_gaussian(RR, TT,
                 peak_radius, peak_angle, peak_std,
-                peak_amplitude, arc_angle, resolution=(50,50))
+                peak_amplitude, arc_angle)
 
         self.fail("Finish test")
 
@@ -213,6 +213,54 @@ class TestGaussianDecomposition(unittest.TestCase):
         arc_theta = 0 # Fully anisotropic
 
         self.fail("Finish test")
+
+    def test_radial_gaussian_peak_amplitude(self):
+        """
+        Ensure that the peak_amplitude value corresponds to gau(0)
+        """
+        # Set radial gaussian parameters
+        peak_angle = 0.0 # equatorial
+        peak_radius = 0.0
+        peak_std = 10
+        peak_amplitude = 13
+        arc_angle = 0 # Fully anisotropic
+
+        gau_class = GaussianDecomposition()
+
+        r = theta = 0.0
+        gau = gau_class.radial_gaussian(r, theta,
+                peak_radius, peak_angle, peak_std,
+                peak_amplitude, arc_angle)
+
+        self.assertTrue(np.isclose(gau, peak_amplitude))
+
+    def test_radial_gaussian_peak_std(self):
+        """
+        Ensure that the peak_std value corresponds to the
+        standard deviation
+        """
+        # Set space parameters
+        size = 256
+        shape = size, size
+
+        # Set radial gaussian parameters
+        peak_angle = 0.0 # equatorial
+        peak_radius = 0.0
+        peak_std = 20
+        peak_amplitude = 17
+        arc_angle = 0 # Fully anisotropic
+
+        gau_class = GaussianDecomposition()
+        RR, TT = gau_class.gen_meshgrid(shape)
+
+        XX = RR*np.cos(TT)
+
+        gau = gau_class.radial_gaussian(RR, TT,
+                peak_radius, peak_angle, peak_std,
+                peak_amplitude, arc_angle)
+
+        self.fail("Finish test")
+        self.assertTrue(np.isclose(peak_std, test_std))
 
     def test_cli(self):
         """
@@ -295,21 +343,21 @@ class TestGaussianDecomposition(unittest.TestCase):
         p_synth_dict = OrderedDict({
                 # 9A equatorial peaks parameters
                 "peak_location_radius_9A":  feature_pixel_location(9e-10), # Peak pixel radius
-                "peak_std_9A":              12, # Width
-                "peak_amplitude_9A":        1000, # Amplitude
-                "cos_power_9A":             8.0, # Cosine power
+                "peak_std_9A":              8, # Width
+                "peak_amplitude_9A":        400, # Amplitude
+                "arc_angle_9A":             1e-1, # Arc angle
                 # 5A meridional peaks parameters
                 "peak_location_radius_5A":  feature_pixel_location(5e-10), # Peak pixel radius
-                "peak_std_5A":              4, # Width
-                "peak_amplitude_5A":        200, # Amplitude
-                "cos_power_5A":             4.0, # Cosine power
+                "peak_std_5A":              2, # Width
+                "peak_amplitude_5A":        50, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
                 # 5-4A isotropic region parameters
                 "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
                 "peak_std_5_4A":            15, # Width
-                "peak_amplitude_5_4A":      500, # Amplitude
+                "peak_amplitude_5_4A":      100, # Amplitude
                 # Background noise parameters
                 "peak_std_bg":              200, # Width
-                "peak_amplitude_bg":        600, # Amplitude
+                "peak_amplitude_bg":        200, # Amplitude
             })
 
         # Lower bounds
