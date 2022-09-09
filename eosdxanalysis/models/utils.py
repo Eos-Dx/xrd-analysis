@@ -9,6 +9,7 @@ from scipy.special import jn_zeros
 from scipy.io import savemat
 import scipy
 import scipy.cluster.hierarchy as sch
+from scipy.ndimage import map_coordinates
 
 from skimage.transform import rescale
 from skimage.transform import warp_polar
@@ -82,20 +83,46 @@ def radial_intensity_1d(image, width=4):
 
     return intensity_1d
 
-def angular_intensity_1d(image, radius=None, width=4):
-    # If radius is not specified, do half of smallest image shape
+def angular_intensity_1d(image, radius=None, N=360):
+    """
+    Get a 1D profile of intensity vs. theta using scipy's
+    radial basis function interpolator.
+
+    :param image: image
+    :type image: ndarray, two dimensions
+
+    :param radius: radius to take the angular profile at
+    :type radius: float
+
+    :param N: output size
+    :type N: int
+
+    :returns profile: angular 1D profile
+    :rtype: ndarray of length N
+    """
+    # If radius is not specified, use largest sensible radius
     if radius is None:
         smallest_shape = np.min(image.shape)
-        radius = smallest_shape/2
+        radius = smallest_shape - 0.5
     # Calculate image center
     center = image.shape[0]/2-0.5, image.shape[1]/2-0.5
 
-    # Use warp_polar
-    polar_image = warp_polar(image, radius=radius+int(width/2),
-            output_shape=(360, image.shape[1]))
-    col_start, col_end = int(np.floor(radius - width/2)), int(np.ceil(radius + width/2))
-    # Average across the columns corresponding to the annulus
-    angular_profile_1d = np.mean(polar_image[:, col_start:col_end], axis=1)
+    # Set up interpolation points in polar coordinates
+    start_angle = -np.pi + 2*np.pi/N/2
+    end_angle = np.pi - 2*np.pi/N/2
+    step = 2*np.pi/N
+    angle_array = np.arange(start_angle, end_angle+step, step).reshape(-1,1)
+    # Set up interpolation points in Cartesian coordinates
+    Xcart = radius*np.cos(angle_array)
+    Ycart = radius*np.sin(angle_array)
+    # Change to array notation
+    row_indices = Ycart + center[0]
+    col_indices = Xcart + center[1]
+    indices = [row_indices, col_indices]
+
+    # Perform interpolation
+    angular_profile_1d = map_coordinates(image, indices).flatten()
+
     return angular_profile_1d
 
 def draw_antialiased_arc(radius, start_angle, angle_spread, output_shape):
