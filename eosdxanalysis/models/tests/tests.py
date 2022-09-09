@@ -342,14 +342,14 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Set parameters for a synthetic keratin diffraction pattern
         p_synth_dict = OrderedDict({
                 # 9A equatorial peaks parameters
-                "peak_location_radius_9A":  feature_pixel_location(9e-10), # Peak pixel radius
+                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
                 "peak_std_9A":              8, # Width
                 "peak_amplitude_9A":        400, # Amplitude
                 "arc_angle_9A":             1e-1, # Arc angle
                 # 5A meridional peaks parameters
-                "peak_location_radius_5A":  feature_pixel_location(5e-10), # Peak pixel radius
+                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
                 "peak_std_5A":              2, # Width
-                "peak_amplitude_5A":        50, # Amplitude
+                "peak_amplitude_5A":        100, # Amplitude
                 "arc_angle_5A":             np.pi/4, # Arc angle
                 # 5-4A isotropic region parameters
                 "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
@@ -363,15 +363,19 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Lower bounds
         p_lower_bounds_dict = OrderedDict()
         p_upper_bounds_dict = OrderedDict()
+        p_guess_dict = OrderedDict()
 
         p_min_factor = 0.7
         p_max_factor = 1.3
+        p_guess_factor = 1.1
 
         for key, value in p_synth_dict.items():
             # Set lower bounds
             p_lower_bounds_dict[key] = p_min_factor*value
             # Set upper bounds
             p_upper_bounds_dict[key] = p_max_factor*value
+            # Set guess values
+            p_guess_dict[key] = p_guess_factor*value
 
         # Set mesh size
         size = 256
@@ -409,7 +413,7 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         # Now test parameter estimation
         gauss_class = GaussianDecomposition(synth_image)
-
+    
 
 class TestUtils(unittest.TestCase):
 
@@ -540,12 +544,13 @@ class TestUtils(unittest.TestCase):
         ring = (dist_from_center >= 50) & (dist_from_center <= 75)
         test_image[ring] = np.cos(2*angle)[ring]
 
-        ring_intensity = angular_intensity_1d(test_image, radius=size/2, width=4)
+        ring_intensity = angular_intensity_1d(test_image, radius=(radius_start+radius_end)/2)
 
         # Ensure the ring intensity follows a sinusoid, within a certain tolerance
         expected_intensity = np.cos(2*np.linspace(-np.pi + 2*np.pi/360/2, np.pi - 2*np.pi/360/2,
             num=360, endpoint=True))
-        self.assertTrue(np.isclose(ring_intensity, expected_intensity, atol=0.02).all())
+
+        self.assertTrue(np.isclose(ring_intensity, expected_intensity).all())
 
 
 class TestFeatureEngineering(unittest.TestCase):
