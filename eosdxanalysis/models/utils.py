@@ -111,7 +111,7 @@ def angular_intensity_1d(image, radius=None, N=360):
     start_angle = -np.pi + 2*np.pi/N/2
     end_angle = np.pi - 2*np.pi/N/2
     step = 2*np.pi/N
-    angle_array = np.arange(start_angle, end_angle+step, step).reshape(-1,1)
+    angle_array = np.linspace(start_angle, end_angle, num=N, endpoint=True).reshape(-1,1)
     # Set up interpolation points in Cartesian coordinates
     Xcart = radius*np.cos(angle_array)
     Ycart = radius*np.sin(angle_array)
