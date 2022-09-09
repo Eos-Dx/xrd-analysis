@@ -69,40 +69,48 @@ class GaussianDecomposition(object):
 
     def estimate_parameters(self, image=None, width=4, position_tol=0.2):
         """
-        Estimate Gaussian fit parameters based on provided image
-
-        .. Parameters
-
-        image : can be None, pulled from init
-        width : averaging width used to produce 1D profiles
-        position_tol : factor used to check if detected peak locations are incorrect
-
-        .. Returns
-
-        (p0_dict, p_lower_bounds_dict, p_upper_bounds_dict): tuple
-
-        Also stores these parameters in class parameters.
+        Estimate Gaussian fit parameters based on provided image.
+        Used for providing accurate initial guesses to speed up curve fitting algorithm.
 
         Notes:
         - Use horizontal and vertical radial intensity profiles, and their differences,
           to calculate properties of isotropic and anisotropic Gaussians.
         - The 9A and 5A peaks are hypothesized to be the sum of isotropic and anisotropic Gaussians
+            - For now, use only anisotropic functions for these, increasing error will
+              correspond to less normal specimens
         - The 5-4A ring and background intensities are hypothesized to be isotropic Gaussians
         - That makes a total of 6 Gaussians
 
+        Also stores these parameters in class parameters.
+
+        .. Parameters
+
+        :param image: ``image`` can be None, in which case it is pulled from init
+        :type image: array_like
+
+        :param width: averaging width used to produce 1D profiles
+        :type width: int
+        :param position_tol: factor used to check if detected peak locations are incorrect
+        :type position_tol: float
+
+        .. Returns
+
+        :returns (p0_dict, p_lower_bounds_dict, p_upper_bounds_dict)
+        :rtype: tuple
         """
 
         # Get 1D radial intensity in positive horizontal direction
         horizontal_intensity_1d = radial_intensity_1d(image, width=width)
         # Get 1D radial intensity in positive vertical direction
         vertical_intensity_1d = radial_intensity_1d(image.T[:,::-1], width=width)
+
         # Take the difference of the horizontal and vertical 1D intensity profiles
         # to estimate some anisotropic Gaussian properties
         intensity_diff_1d = horizontal_intensity_1d - vertical_intensity_1d
 
         # Estimate the 9A isotropic and anisotropic Gaussian function properties
         # - Anisotropic
-        # - Isotropic
+        # - Isotropic: TODO
 
         peaks_aniso_9A, _ = find_peaks(intensity_diff_1d)
 
@@ -114,7 +122,7 @@ class GaussianDecomposition(object):
             print("No peaks found for 9A parameters estimation.")
             raise err
         # Ensure that peak_9A is close to theoretical value
-        peak_location_radius_9A_theory = feature_pixel_location(9e-10)
+        peak_location_radius_9A_theory = feature_pixel_location(9.8e-10)
         if abs(peak_location_radius_9A - peak_location_radius_9A_theory) > position_tol * peak_location_radius_9A_theory:
             # Use the theoretical value
             peak_location_radius_9A = peak_location_radius_9A_theory
@@ -132,18 +140,23 @@ class GaussianDecomposition(object):
         # Estimate the anisotropic part of the angular intensity
         # TODO: invert and use `find_peaks` with the greatest prominence
         angular_intensity_9A_1d = angular_intensity_1d(image, radius=peak_location_radius_9A, width=width)
+
         # Estimate the 9A isotropic peak amplitude
-        peak_amplitude_iso_9A = angular_intensity_9A_1d.min()
-        angular_intensity_aniso_9A_1d = angular_intensity_9A_1d - peak_amplitude_iso_9A 
+        # NOTE: This actually picks up the background amplitude if there's no 9A isotropic
+        # peak_amplitude_iso_9A = angular_intensity_9A_1d.min()
+        # angular_intensity_aniso_9A_1d = angular_intensity_9A_1d - peak_amplitude_iso_9A 
 
         # Integrate the normalized anisotropic angular intensity
-        alpha_intensity_9A_1d = 1/360 * np.sum(angular_intensity_aniso_9A_1d/angular_intensity_aniso_9A_1d.max())
-        cos_power_9A = 1/alpha_intensity_9A_1d 
+        # alpha_intensity_9A_1d = 1/360 * np.sum(angular_intensity_aniso_9A_1d/angular_intensity_aniso_9A_1d.max())
+        # cos_power_9A = 1/alpha_intensity_9A_1d 
 
         # Estimate the width of the 9A isotropic peak
-        width_results_iso_9A = peak_widths(vertical_intensity_1d, [peak_location_radius_9A])
-        peak_width_iso_9A = width_results_iso_9A[0]
-        peak_std_iso_9A = peak_width_iso_9A / (2*np.sqrt(2*np.log(2))) # convert FWHM to standard deviation
+        # width_results_iso_9A = peak_widths(vertical_intensity_1d, [peak_location_radius_9A])
+        # peak_width_iso_9A = width_results_iso_9A[0]
+        # peak_std_iso_9A = peak_width_iso_9A / (2*np.sqrt(2*np.log(2))) # convert FWHM to standard deviation
+
+        # Estimate the arc_angle for the 9A anisotropic peak
+        arc_width_results_iso_9A = peak_widths(angular_intensity_9A_1d, [peak_location_radius_9A])
 
         ########################################################################
         # Estimate the 5A isotropic and anisotropic Gaussian function properties
@@ -161,32 +174,24 @@ class GaussianDecomposition(object):
         ################################################################
 
         p0_dict = OrderedDict({
-                    # 9A parameters
-                    "peak_location_radius_9A":      peak_location_radius_9A, # Peak pixel radius
-                    # 9A isometric (ring) parameters
-                    "peak_std_iso_9A":              peak_std_iso_9A, # Standard deviation
-                    "peak_amplitude_iso_9A":        peak_amplitude_iso_9A, # Amplitude
-                    # 9A anisotropic (equatorial peaks) parameters
-                    "peak_std_aniso_9A":            peak_std_aniso_9A, # Standard deviation
-                    "peak_amplitude_aniso_9A":      peak_amplitude_aniso_9A, # Amplitude
-                    "cos_power_9A":                 cos_power_9A, # Cosine power
-#                      # 5A parameters
-#                      "peak_location_radius_5A":      peak_location_radius_5A, # Peak pixel radius
-#                      # 5A isometric (ring) parameters
-#                      "peak_std_iso_5A":              peak_std_iso_5A, # Standard deviation
-#                      "peak_amplitude_iso_5A":        peak_amplitude_iso_5A, # Amplitude
-#                      # 5A anisotropic (equatorial peaks) parameters
-#                      "peak_std_aniso_5A":            peak_std_aniso_5A, # Standard deviation
-#                      "peak_amplitude_aniso_5A":      peak_amplitude_aniso_5A, # Amplitude
-#                      "cos_power_5A":                 cos_power_5A, # Cosine power
-#                      # 5-4A isotropic parameters
-#                      "peak_location_radius_5_4A":    peak_location_radius_5_4A, # Peak pixel radius
-#                      "peak_std_iso_5_4A":            peak_std_iso_5_4A, # Width
-#                      "peak_amplitude_iso_5_4A":      peak_amplitude_iso_5_4A, # Amplitude
-#                      # Background isotropic parameters
-#                      "peak_std_iso_bg":              peak_std_iso_bg, # Width
-#                      "peak_amplitude_iso_bg":        peak_amplitude_iso_bg, # Amplitude
-                })
+                # 9A equatorial peaks parameters
+                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
+                "peak_std_9A":              8, # Width
+                "peak_amplitude_9A":        400, # Amplitude
+                "arc_angle_9A":             1e-1, # Arc angle
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
+                "peak_std_5A":              2, # Width
+                "peak_amplitude_5A":        100, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
+                "peak_std_5_4A":            15, # Width
+                "peak_amplitude_5_4A":      100, # Amplitude
+                # Background noise parameters
+                "peak_std_bg":              200, # Width
+                "peak_amplitude_bg":        200, # Amplitude
+            })
 
         # Lower bounds
         if "p_lower_bounds_dict" not in self.__dict__:
