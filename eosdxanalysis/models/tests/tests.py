@@ -544,11 +544,12 @@ class TestUtils(unittest.TestCase):
         ring = (dist_from_center >= 50) & (dist_from_center <= 75)
         test_image[ring] = np.cos(2*angle)[ring]
 
-        ring_intensity = angular_intensity_1d(test_image, radius=(radius_start+radius_end)/2)
+        N = 361
+        ring_intensity = angular_intensity_1d(test_image, radius=(radius_start+radius_end)/2, N=N)
 
         # Ensure the ring intensity follows a sinusoid, within a certain tolerance
-        expected_intensity = np.cos(2*np.linspace(-np.pi + 2*np.pi/360/2, np.pi - 2*np.pi/360/2,
-            num=360, endpoint=True))
+        expected_intensity = np.cos(2*np.linspace(-np.pi + 2*np.pi/N/2, np.pi - 2*np.pi/N/2,
+            num=N, endpoint=True))
 
         self.assertTrue(np.isclose(ring_intensity, expected_intensity).all())
 
