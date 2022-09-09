@@ -301,8 +301,8 @@ class TestGaussianDecomposition(unittest.TestCase):
 
     def test_known_sample_bounds(self):
         """
-        Test `GaussianDecomposition` on a known sample
-        to ensure optimal parameters are not near bounds
+        Test `GaussianDecomposition` on quality measurement of a normal
+        specimen to ensure optimal parameters are not near bounds.
         """
         # Set input filepath
         input_filename = "CRQF_A00005.txt"
@@ -314,25 +314,20 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Calculate optimum parameters
         image = np.loadtxt(input_filepath, dtype=np.float64)
 
-        gauss_class = GaussianDecomposition()
-        popt, pcov, RR, TT = gauss_class.best_fit(image)
+        gauss_class = GaussianDecomposition(image)
+        popt_dict, pcov, RR, TT = gauss_class.best_fit(image)
+        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
         decomp_image  = gauss_class.keratin_function((RR, TT), *popt).reshape(image.shape)
 
         # Check that the optimal parameters are not close to the upper or lower bounds
-        p0 = np.fromiter(gauss_class.p0_dict.values(), dtype=np.float64)
-        p_lower_bounds = np.fromiter(gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
-        p_upper_bounds = np.fromiter(gauss_class.p_upper_bounds_dict.values(), dtype=np.float64)
+        p0_values = np.fromiter(gauss_class.p0_dict.values(), dtype=np.float64)
+        p_lower_bounds_values = np.fromiter(gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
+        p_upper_bounds_values = np.fromiter(gauss_class.p_upper_bounds_dict.values(), dtype=np.float64)
 
-        self.assertFalse(np.isclose(popt, p_lower_bounds).all())
-        self.assertFalse(np.isclose(popt, p_upper_bounds).all())
+        self.assertFalse(np.isclose(popt, p_lower_bounds_values).all())
+        self.assertFalse(np.isclose(popt, p_upper_bounds_values).all())
 
-        # Check that the output is the same as the test output file
-        known_output_filename = "GaussianDecomp_CRQF_A00005.txt"
-        known_output_filepath = os.path.join(self.TEST_DATA_PATH, "output", known_output_filename)
-        known_output = np.loadtxt(known_output_filepath, dtype=np.uint32)
-        test_output = np.loadtxt(output_filepath, dtype=np.uint32)
-
-        self.assertTrue(np.isclose(known_output, test_output).all())
+        self.fail("Finish writing test.")
 
     def test_synthetic_keratin_pattern(self):
         """
