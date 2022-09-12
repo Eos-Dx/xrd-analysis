@@ -20,6 +20,7 @@ from eosdxanalysis.models.utils import angular_intensity_1d
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
+BG_NOISE_STD=20
 
 class PolynomialFit(object):
     """
@@ -646,7 +647,7 @@ class GaussianDecomposition(object):
 
         # Generate the meshgrid
         if not getattr(self, "meshgrid", None):
-            RR, TT = self.gen_meshgrid(image.shape)
+            RR, TT = gen_meshgrid(image.shape)
         else:
             RR, TT = self.meshgrid
 
@@ -686,21 +687,83 @@ class GaussianDecomposition(object):
         fit = self.keratin_function((r, theta), *p)
         return fit_error(p, image, fit, r, theta)
 
-    def gen_meshgrid(self, shape):
-        """
-        Generate a meshgrid
-        """
-        # Generate a meshgrid the same size as the image
-        x_end = shape[1]/2 - 0.5
-        x_start = -x_end
-        y_end = x_start
-        y_start = x_end
-        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
-        TT, RR = cart2pol(XX, YY)
+def gen_meshgrid(shape):
+    """
+    Generate a meshgrid
+    """
+    # Generate a meshgrid the same size as the image
+    x_end = shape[1]/2 - 0.5
+    x_start = -x_end
+    y_end = x_start
+    y_start = x_end
+    YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+    TT, RR = cart2pol(XX, YY)
 
-        self.meshgrid = RR, TT
+    return RR, TT
 
-        return RR, TT
+def gaussian_iso(r, a, std):
+    """
+    Define the isometric Gaussian function as follows:
+
+    .. math ::
+        \mathtt{a}\exp(-1/2(r/\sgiam)^2)
+
+    Parameters
+    ----------
+    r : float
+        The polar radial coordinate to evaluate the function at
+
+    a : float
+        The amplitude
+
+    std : float
+        The standard deviation of the isotropic Gaussian
+    """
+    return a*np.exp( -1/2*( (r/std)**2) )
+
+
+def estimate_background_noise(image):
+    """
+    Fit an isotropic Gaussian to the image, excluding zero-value points
+    There are several options. We use `scipy.optimize.curve_fit`.
+    """
+    # Set up inputs to curve_fit
+    # Generate the meshgrid
+    RR, TT = gen_meshgrid(image.shape)
+    # Get 1D slice for radial intensity
+    r = np.arange(0,int(image.shape[0]/2))
+
+    # Get 1D vertical intensity profile
+    vertical_intensity_1d = radial_intensity_1d(image.T[:,::-1])
+
+    # Generate non-zero pixels mask
+    mask = vertical_intensity_1d > 0
+    r_masked = r[mask].astype(np.float64)
+    vertical_intensity_1d_masked = vertical_intensity_1d[mask].astype(np.float64)
+
+    # Prepare independent and dependent inputs to optimizer
+    xdata = r_masked.ravel()
+    ydata = vertical_intensity_1d_masked.ravel().astype(np.float64)
+
+    # Generate initial guess for peak_amplitude and peak_std
+    peak_results, _ = find_peaks(vertical_intensity_1d)
+    peak_width_results = peak_widths(vertical_intensity_1d, peak_results)
+    try:
+        peak_amplitude_guess = r[peak_results[0]]
+        peak_std_guess = np.min(peak_width_results[0])
+    except IndexError:
+        # No peaks found, use median of vertical_intensity_1d as peak amplitude guess
+        peak_amplitude_guess = np.median(vertical_intensity_1d)
+        peak_std_guess = BG_NOISE_STD
+
+    p0 = [peak_amplitude_guess, peak_std_guess]
+
+    # Run curve fitting procedure
+    popt, pcov = curve_fit(gaussian_iso, xdata, ydata, p0)
+
+    peak_amplitude, peak_std = popt
+
+    return peak_amplitude, peak_std
 
 
 if __name__ == '__main__':

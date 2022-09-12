@@ -13,12 +13,17 @@ from scipy.special import jn_zeros
 from scipy.special import jv
 from scipy.io import loadmat
 from scipy.ndimage import map_coordinates
+from scipy.signal import find_peaks
+from scipy.signal import peak_widths
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
 from eosdxanalysis.models.curve_fitting import PolynomialFit
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
+from eosdxanalysis.models.curve_fitting import estimate_background_noise
+from eosdxanalysis.models.curve_fitting import gen_meshgrid
+from eosdxanalysis.models.curve_fitting import gaussian_iso
 from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.utils import pol2cart
@@ -138,7 +143,6 @@ class TestGaussianDecomposition(unittest.TestCase):
         """
         TEST_DATA_PATH = os.path.join(TEST_PATH, "data", "GaussianDecomposition")
         self.TEST_DATA_PATH = TEST_DATA_PATH
-
 
     def test_radial_gaussian_trivial_centered(self):
         """
@@ -327,6 +331,19 @@ class TestGaussianDecomposition(unittest.TestCase):
         self.assertFalse(np.isclose(popt, p_lower_bounds_values).all())
         self.assertFalse(np.isclose(popt, p_upper_bounds_values).all())
 
+        import matplotlib.pyplot as plt
+        plot_title = input_filename
+        fig = plt.figure(plot_title)
+        plt.imshow(image, cmap="hot")
+        plt.title(plot_title)
+
+        plot_title = "Gaussian Decomposition"
+        fig = plt.figure(plot_title)
+        plt.imshow(decomp_image, cmap="hot")
+        plt.title(plot_title)
+
+        plt.show()
+
         self.fail("Finish writing test.")
 
     def test_synthetic_keratin_pattern(self):
@@ -408,7 +425,54 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         # Now test parameter estimation
         gauss_class = GaussianDecomposition(synth_image)
-    
+
+    def test_estimate_background_noise(self):
+        """
+        Test background-noise peak amplitude and standard deviation
+        across noise study measurements.
+        """
+        # Generate a test Gaussian
+        size = 256
+        shape = size, size
+        RR, TT = gen_meshgrid(shape)
+        a = 117
+        std = 31
+        test_gaussian = a*np.exp(-1/2*( (RR/std)**2) )
+
+        # Estimate the parameters
+        peak_amplitude, peak_std = estimate_background_noise(test_gaussian)
+
+        # Ensure the estimated parameters are identically close to the known
+        # parameters
+        self.assertTrue(np.isclose(peak_amplitude, a, rtol=0.05))
+        self.assertTrue(np.isclose(peak_std, std, rtol=0.05))
+
+    def test_estimate_background_noise_nonzero(self):
+        """
+        Test background-noise peak amplitude and standard deviation
+        across noise study measurements.
+        This tests situations with missing data (0 intensity)
+        """
+        # Generate a test Gaussian
+        size = 256
+        shape = size, size
+        RR, TT = gen_meshgrid(shape)
+        a = 117
+        std = 31
+        test_gaussian = a*np.exp(-1/2*( (RR/std)**2) )
+
+        # Set inside to zero
+        r_min = 25
+        test_gaussian[RR < 25] = 0
+
+        # Estimate the parameters
+        peak_amplitude, peak_std = estimate_background_noise(test_gaussian)
+
+        # Ensure the estimated parameters are identically close to the known
+        # parameters
+        self.assertTrue(np.isclose(peak_amplitude, a, rtol=0.05))
+        self.assertTrue(np.isclose(peak_std, std, rtol=0.05))
+
 
 class TestUtils(unittest.TestCase):
 
