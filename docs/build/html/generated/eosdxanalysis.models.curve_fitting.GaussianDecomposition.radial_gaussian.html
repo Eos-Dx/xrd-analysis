@@ -276,23 +276,35 @@ A peak_angle of pi/2 corresponds to vertical (meridional) arcs.
 Algorithm starts with equatorial peaks, then rotates as neeed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>r</strong> (<em>array_like</em>) – Polar point radius to evaluate function at (<code class="docutils literal notranslate"><span class="pre">r</span></code> must be same shape as <code class="docutils literal notranslate"><span class="pre">theta</span></code>)</p></li>
-<li><p><strong>theta</strong> (<em>array_like</em>) – Polar point angle to evaluate function at (<code class="docutils literal notranslate"><span class="pre">r</span></code> must be same shape as <code class="docutils literal notranslate"><span class="pre">theta</span></code>)</p></li>
-<li><p><strong>peak_radius</strong> (<em>float</em>) – Location of the Gaussian peak from the center</p></li>
-<li><p><strong>peak_angle</strong> (<em>float</em>) – 0 or np.pi/2 to signify equatorial or meridional peak location (respectively)</p></li>
-<li><p><strong>peak_std</strong> (<em>float</em>) – Gaussian standard deviation</p></li>
-<li><p><strong>peak_amplitude</strong> (<em>float</em>) – Gaussian peak amplitude</p></li>
-<li><p><strong>arc_angle</strong> (<em>float</em>) – arc angle in radians, <cite>0</cite> is anisotropic, <cite>pi</cite> is fully isotropic</p></li>
-</ul>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>r</strong><span class="classifier">array_like</span></dt><dd><p>Polar point radius to evaluate function at (<code class="docutils literal notranslate"><span class="pre">r</span></code> must be same shape as <code class="docutils literal notranslate"><span class="pre">theta</span></code>)</p>
+</dd>
+<dt><strong>:param theta: Polar point angle to evaluate function at (``r`` must be same shape as ``theta``)</strong></dt><dd></dd>
+<dt><strong>:type theta: array_like</strong></dt><dd></dd>
+<dt><strong>:param peak_radius: Location of the Gaussian peak from the center</strong></dt><dd></dd>
+<dt><strong>:type peak_radius: float</strong></dt><dd></dd>
+<dt><strong>:param peak_angle: 0 or np.pi/2 to signify equatorial or meridional peak location (respectively).</strong></dt><dd><p>Future will take a continuous input.</p>
+</dd>
+<dt><strong>:type peak_angle: float</strong></dt><dd></dd>
+<dt><strong>:param peak_std: Gaussian standard deviation</strong></dt><dd></dd>
+<dt><strong>:type peak_std: float</strong></dt><dd></dd>
+<dt><strong>:param peak_amplitude: Gaussian peak amplitude</strong></dt><dd></dd>
+<dt><strong>:type peak_amplitude: float</strong></dt><dd></dd>
+<dt><strong>:param arc_angle: arc angle in radians, `0` is anisotropic, `pi` is fully isotropic</strong></dt><dd></dd>
+<dt><strong>:type arc_angle: float</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="field-list simple">
+<dt class="field-odd">return<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Value of Gaussian function at polar input points <code class="docutils literal notranslate"><span class="pre">(r,</span> <span class="pre">theta)</span></code>
+..</p>
+</dd>
+<dt class="field-even">rtype<span class="colon">:</span></dt>
+<dd class="field-even"><p>array_like (same shape as <code class="docutils literal notranslate"><span class="pre">r</span></code> and <code class="docutils literal notranslate"><span class="pre">theta</span></code>)
+..</p>
 </dd>
 </dl>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Value of Gaussian function at polar input points <code class="docutils literal notranslate"><span class="pre">(r,</span> <span class="pre">theta)</span></code></p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>array_like (same shape as <code class="docutils literal notranslate"><span class="pre">r</span></code> and <code class="docutils literal notranslate"><span class="pre">theta</span></code>)</p>
 </dd>
 </dl>
 </dd></dl>
