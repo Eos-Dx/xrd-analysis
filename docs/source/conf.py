@@ -18,6 +18,7 @@ extensions = [
         'sphinx.ext.autodoc',
         'sphinx.ext.autosectionlabel',
         'sphinx.ext.autosummary',
+        'numpydoc',
         ]
 
 # Make sure the target is unique

@@ -268,6 +268,78 @@
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eosdxanalysis.models.curve_fitting.</span></span><span class="sig-name descname"><span class="pre">GaussianDecomposition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p0_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_lower_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_upper_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.models.curve_fitting.GaussianDecomposition" title="Permalink to this definition">#</a></dt>
 <dd><p>Class for decomposing keratin diffraction patterns
 as a sum of Gaussians with angular spread.</p>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">best_fit</span></code>([image])</p></td>
+<td><p>Use <cite>scipy.optimize.curve_fit</cite> to decompose a keratin diffraction pattern into a sum of Gaussians with angular spread.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_arc_angle_5A</span></code>(image, ...)</p></td>
+<td><p>Estimate the 5A arc maxima arc angle</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_arc_angle_9A</span></code>(image, ...)</p></td>
+<td><p>Estimate the 9A maxima arc angle</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_parameters</span></code>([width, position_tol])</p></td>
+<td><p>Estimate Gaussian fit parameters based on provided image.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_peak_amplitude_5A</span></code>(image, ...)</p></td>
+<td><p>Estimate the 5A peak amplitude</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_peak_amplitude_9A</span></code>(image, ...)</p></td>
+<td><p>Estimate the 9A peak amplitude</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_peak_location_radius_5A</span></code>(image, ...)</p></td>
+<td><p>Estimate the 5A peak using the intensity difference which isolates the anisotropic 5A peak</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_peak_location_radius_9A</span></code>(image, ...)</p></td>
+<td><p>Estimate the 9A peak distance from the center</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_peak_std_5A</span></code>(image, ...)</p></td>
+<td><p>Estimate the 5A peak widths (full-width at half maximum)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_peak_std_9A</span></code>(image, ...)</p></td>
+<td><p>Estimate the 9A peak widths (full-width at half maximum)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_error</span></code>(image, fit)</p></td>
+<td><p>Returns the square error between a function and its approximation.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_meshgrid</span></code>(shape)</p></td>
+<td><p>Generate a meshgrid</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="eosdxanalysis.models.curve_fitting.GaussianDecomposition.keratin_function.html#eosdxanalysis.models.curve_fitting.GaussianDecomposition.keratin_function" title="eosdxanalysis.models.curve_fitting.GaussianDecomposition.keratin_function"><code class="xref py py-obj docutils literal notranslate"><span class="pre">keratin_function</span></code></a>(polar_point, ...)</p></td>
+<td><p>Generate entire kertain diffraction pattern at the points (r, theta), with parameters as the arguements to 4 calls of radial_gaussian.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">objective</span></code>(p, image, r, theta)</p></td>
+<td><p>Generate a keratin diffraction pattern with the given parameters list p and return the fit error</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameter_init</span></code>([p0_dict, ...])</p></td>
+<td><p>P parameters: - peak_radius - width - amplitude</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="eosdxanalysis.models.curve_fitting.GaussianDecomposition.radial_gaussian.html#eosdxanalysis.models.curve_fitting.GaussianDecomposition.radial_gaussian" title="eosdxanalysis.models.curve_fitting.GaussianDecomposition.radial_gaussian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">radial_gaussian</span></code></a>(r, theta, peak_radius, ...)</p></td>
+<td><p>Isotropic and radial Gaussian</p></td>
+</tr>
+</tbody>
+</table>
+<table class="table">
+<tbody>
+<tr class="row-odd"><td><p><strong>estimate_peak_amplitude_5_4A</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>estimate_peak_amplitude_bg</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>estimate_peak_location_radius_5_4A</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>estimate_peak_std_5_4A</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>estimate_peak_std_bg</strong></p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
 <dl class="py method">
 <dt class="sig sig-object py" id="eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p0_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_lower_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_upper_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__" title="Permalink to this definition">#</a></dt>
@@ -280,11 +352,11 @@ as a sum of Gaussians with angular spread.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__" title="eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([image, p0_dict, ...])</p></td>
 <td><p>Initialize <cite>GaussianDecomposition</cite> class.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">best_fit</span></code>(image)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">best_fit</span></code>([image])</p></td>
 <td><p>Use <cite>scipy.optimize.curve_fit</cite> to decompose a keratin diffraction pattern into a sum of Gaussians with angular spread.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_parameters</span></code>([image, width, position_tol])</p></td>
-<td><p>Estimate Gaussian fit parameters based on provided image</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_parameters</span></code>([width, position_tol])</p></td>
+<td><p>Estimate Gaussian fit parameters based on provided image.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_error</span></code>(image, fit)</p></td>
 <td><p>Returns the square error between a function and its approximation.</p></td>
@@ -298,7 +370,7 @@ as a sum of Gaussians with angular spread.</p>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">objective</span></code>(p, image, r, theta)</p></td>
 <td><p>Generate a keratin diffraction pattern with the given parameters list p and return the fit error</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameter_init</span></code>([image, p0_dict, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameter_init</span></code>([p0_dict, ...])</p></td>
 <td><p>P parameters: - peak_radius - width - amplitude</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="eosdxanalysis.models.curve_fitting.GaussianDecomposition.radial_gaussian.html#eosdxanalysis.models.curve_fitting.GaussianDecomposition.radial_gaussian" title="eosdxanalysis.models.curve_fitting.GaussianDecomposition.radial_gaussian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">radial_gaussian</span></code></a>(r, theta, peak_radius, ...)</p></td>
