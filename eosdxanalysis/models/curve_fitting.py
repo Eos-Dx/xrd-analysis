@@ -414,10 +414,11 @@ class GaussianDecomposition(object):
         A peak_angle of pi/2 corresponds to vertical (meridional) arcs.
         Algorithm starts with equatorial peaks, then rotates as neeed.
 
-        .. Parameters
+        Parameters
+        ----------
 
-        :param r: Polar point radius to evaluate function at (``r`` must be same shape as ``theta``)
-        :type r: array_like
+        r : array_like
+            Polar point radius to evaluate function at (``r`` must be same shape as ``theta``)
 
         :param theta: Polar point angle to evaluate function at (``r`` must be same shape as ``theta``)
         :type theta: array_like
@@ -438,7 +439,9 @@ class GaussianDecomposition(object):
         :param arc_angle: arc angle in radians, `0` is anisotropic, `pi` is fully isotropic
         :type arc_angle: float
 
-        .. Returns
+        Returns
+        -------
+
         :return: Value of Gaussian function at polar input points ``(r, theta)``
         :rtype: array_like (same shape as ``r`` and ``theta``)
 
