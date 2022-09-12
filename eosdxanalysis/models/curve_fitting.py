@@ -5,6 +5,7 @@ import os
 import argparse
 import numpy as np
 from collections import OrderedDict
+import warnings
 
 from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter
@@ -124,8 +125,8 @@ class GaussianDecomposition(object):
                     horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d)
             peak_amplitude_9A = self.estimate_peak_amplitude_9A(image, peak_location_radius_9A,
                     horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d)
-            arc_angle_9A = self.estimate_arc_angle_9A(image, horizontal_intensity_1d,
-                    vertical_intensity_1d, intensity_diff_1d)
+            arc_angle_9A = self.estimate_arc_angle_9A(image, peak_location_radius_9A,
+                    horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d)
 
             # Estimate 5A parameters
             # NOTE: Here we flip intensity_diff_1d using a minus sign
@@ -135,8 +136,8 @@ class GaussianDecomposition(object):
                     horizontal_intensity_1d, vertical_intensity_1d, -intensity_diff_1d)
             peak_amplitude_5A = self.estimate_peak_amplitude_5A(image, peak_location_radius_5A,
                     horizontal_intensity_1d, vertical_intensity_1d, -intensity_diff_1d)
-            arc_angle_5A = self.estimate_arc_angle_5A(image, horizontal_intensity_1d,
-                    vertical_intensity_1d, -intensity_diff_1d)
+            arc_angle_5A = self.estimate_arc_angle_5A(image, peak_location_radius_5A,
+                    horizontal_intensity_1d, vertical_intensity_1d, -intensity_diff_1d)
             
             # Estimate 5-4A parameters
             peak_location_radius_5_4A = self.estimate_peak_location_radius_5_4A(image,
@@ -214,8 +215,8 @@ class GaussianDecomposition(object):
                 p_upper_bounds_dict[key] = p_max_factor*value
 
             # Set arc_angle parameters individually
-            p_upper_bounds_dict["arc_angle_9A"] = np.pi/2
-            p_upper_bounds_dict["arc_angle_5A"] = np.pi/2
+            p_upper_bounds_dict["arc_angle_9A"] = np.pi
+            p_upper_bounds_dict["arc_angle_5A"] = np.pi
 
         self.p0_dict = p0_dict
         self.p_lower_bounds_dict = p_lower_bounds_dict
@@ -256,35 +257,50 @@ class GaussianDecomposition(object):
     def estimate_peak_std_9A(self, image, peak_location_radius_9A,
             peaks_aniso_9A, horizontal_intensity_1d,
             vertical_intensity_1d, intensity_diff_1d):
-        # Estimate the 9A peak widths (full-width at half maximum)
+        """
+        Estimate the 9A peak widths (full-width at half maximum)
+        """
         width_results_aniso_9A = peak_widths(intensity_diff_1d, peaks_aniso_9A)
         peak_width_aniso_9A = width_results_aniso_9A[0][0]
         peak_std_aniso_9A = peak_width_aniso_9A / (2*np.sqrt(2*np.log(2))) # convert FWHM to standard deviation
-
-        # Estimate the 9A anisotropic peak amplitude
-        peak_amplitude_aniso_9A = intensity_diff_1d[int(peak_location_radius_9A)]
-
-        # Estimate the anisotropic part of the angular intensity
-        angular_intensity_9A_1d = angular_intensity_1d(image, radius=peak_location_radius_9A)
-
-        # Estimate the arc_angle for the 9A anisotropic peak
-        arc_width_results_iso_9A = peak_widths(angular_intensity_9A_1d, [peak_location_radius_9A])
 
         return peak_std_aniso_9A
 
     def estimate_peak_amplitude_9A(self, image, peak_location_radius_9A,
             horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d):
+        """
+        Estimate the 9A peak amplitude
+        """
         return intensity_diff_1d[int(peak_location_radius_9A)]
 
-    def estimate_arc_angle_9A(self, image, horizontal_intensity_1d,
+    def estimate_arc_angle_9A(self, image, peak_location_radius_9A, horizontal_intensity_1d,
             vertical_intensity_1d, intensity_diff_1d):
-        dummy_value = 1e-3
-        return dummy_value
+        """
+        Estimate the 9A maxima arc angle
+        """
+        # Estimate the anisotropic part of the angular intensity
+        angular_intensity_9A_1d = angular_intensity_1d(image, radius=peak_location_radius_9A)
+
+        # Estimate the arc_angle for the 9A anisotropic peak
+        arc_width_results_aniso_9A = peak_widths(angular_intensity_9A_1d, [peak_location_radius_9A])
+
+        # If peaks are found, convert from arc length to radians (s = r*theta)
+        try:
+            arc_angle = arc_width_results_aniso_9A[0]/peak_location_radius_9A
+            # If peak prominence is 0, set angle to pi
+            if np.isclose(arc_angle, 0):
+                arc_angle = np.pi-1e-3
+        except IndexError as err:
+            arc_angle = np.pi-1e-3
+
+        return arc_angle
 
     def estimate_peak_location_radius_5A(self, image, position_tol,
             horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d):
-        # Estimate the 5A peak using the intensity difference
-        # which isolates the anisotropic 5A peak
+        """
+        Estimate the 5A peak using the intensity difference
+        which isolates the anisotropic 5A peak
+        """
         peaks_aniso, _ = find_peaks(intensity_diff_1d)
 
         # Ensure that at least one peak was found
@@ -299,36 +315,55 @@ class GaussianDecomposition(object):
         if abs(peak_location - peak_location_theory) > position_tol * peak_location_theory:
             # Use the theoretical value
             peak_location = int(peak_location_theory)
-            # raise ValueError("First peak is too far from theoretical value of 9A peak location.")
+            # raise ValueError("First peak is too far from theoretical value of 5A peak location.")
         return peak_location, peaks_aniso
 
     def estimate_peak_std_5A(self, image, peak_location_radius_5A,
             peaks_aniso_5A, horizontal_intensity_1d,
             vertical_intensity_1d, intensity_diff_1d):
-        # Estimate the 5A peak widths (full-width at half maximum)
+        """
+        Estimate the 5A peak widths (full-width at half maximum)
+        """
         width_results_aniso_5A = peak_widths(intensity_diff_1d, peaks_aniso_5A)
         peak_width_aniso_5A = width_results_aniso_5A[0][0]
         peak_std_aniso_5A = peak_width_aniso_5A / (2*np.sqrt(2*np.log(2))) # convert FWHM to standard deviation
-
-        # Estimate the 5A anisotropic peak amplitude
-        peak_amplitude_aniso_5A = intensity_diff_1d[int(peak_location_radius_5A)]
-
-        # Estimate the anisotropic part of the angular intensity
-        angular_intensity_5A_1d = angular_intensity_1d(image, radius=peak_location_radius_5A)
-
-        # Estimate the arc_angle for the 5A anisotropic peak
-        arc_width_results_iso_5A = peak_widths(angular_intensity_5A_1d, [peak_location_radius_5A], rel_height=0.2)
 
         return peak_std_aniso_5A
 
     def estimate_peak_amplitude_5A(self, image, peak_location_radius_5A,
             horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d):
+        """
+        Estimate the 5A peak amplitude
+        """
         return intensity_diff_1d[int(peak_location_radius_5A)]
 
-    def estimate_arc_angle_5A(self, image, horizontal_intensity_1d,
+    def estimate_arc_angle_5A(self, image, peak_location_radius_5A, horizontal_intensity_1d,
             vertical_intensity_1d, intensity_diff_1d):
-        dummy_value = np.pi/3
-        return dummy_value
+        """
+        Estimate the 5A arc maxima arc angle
+        """
+        # Compute the angular intensity
+        angular_intensity_5A_1d = angular_intensity_1d(image, radius=peak_location_radius_5A)
+
+        # Find the peak widths along the 5A position ring
+        with warnings.catch_warnings():
+            # `peak_widths` raises a `PeakPropertyWarning` which is a simple child class
+            # of Python's built-in `RuntimeWarning
+            warnings.simplefilter('ignore', RuntimeWarning)
+            arc_width_results_aniso_5A = peak_widths(angular_intensity_5A_1d,
+                    [peak_location_radius_5A], rel_height=0.2)
+
+        # If peaks are found, convert from arc length to radians (s = r*theta)
+        try:
+            arc_angle = arc_width_results_aniso_5A[0]/peak_location_radius_5A
+            # If peak prominence is 0, set angle to pi (isotropic)
+            if np.isclose(arc_angle, 0):
+                arc_angle = np.pi-1e-3
+        except IndexError as err:
+            # No peaks found, so set the angle to pi (isotropic)
+            arc_angle = np.pi-1e-3
+
+        return arc_angle
 
     def estimate_peak_location_radius_5_4A(self, image, horizontal_intensity_1d,
             vertical_intensity_1d, intensity_diff_1d):
