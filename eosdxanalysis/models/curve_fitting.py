@@ -8,19 +8,15 @@ from collections import OrderedDict
 import warnings
 
 from scipy.optimize import curve_fit
-from scipy.ndimage import gaussian_filter
 from scipy.signal import find_peaks
 from scipy.signal import peak_widths
-from scipy.signal import convolve2d
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
-from skimage.transform import rotate
 
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
-from eosdxanalysis.models.utils import draw_antialiased_arc
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -41,7 +37,7 @@ class PolynomialFit(object):
         """
         # Fit the polynomial
         poly = PolynomialFeatures(degree=degree)
-        
+
         # Transform the input to features
         in_features = poly.fit_transform(input_points)
 
@@ -50,13 +46,16 @@ class PolynomialFit(object):
         model.fit(in_features, outputs)
         return model, poly
 
+
 class GaussianDecomposition(object):
     """
     Class for decomposing keratin diffraction patterns
     as a sum of Gaussians with angular spread.
     """
 
-    def __init__(self, image=None, p0_dict=None, p_lower_bounds_dict=None, p_upper_bounds_dict=None):
+    def __init__(
+            self, image=None, p0_dict=None, p_lower_bounds_dict=None,
+            p_upper_bounds_dict=None):
         """
         Initialize `GaussianDecomposition` class.
         """
@@ -74,15 +73,19 @@ class GaussianDecomposition(object):
     def estimate_parameters(self, width=4, position_tol=0.2):
         """
         Estimate Gaussian fit parameters based on provided image.
-        Used for providing accurate initial guesses to speed up curve fitting algorithm.
+        Used for providing accurate initial guesses to speed up curve fitting
+        algorithm.
 
         Notes:
-        - Use horizontal and vertical radial intensity profiles, and their differences,
-          to calculate properties of isotropic and anisotropic Gaussians.
-        - The 9A and 5A peaks are hypothesized to be the sum of isotropic and anisotropic Gaussians
-            - For now, use only anisotropic functions for these, increasing error will
-              correspond to less normal specimens
-        - The 5-4A ring and background intensities are hypothesized to be isotropic Gaussians
+        - Use horizontal and vertical radial intensity profiles, and their
+          differences, to calculate properties of isotropic and anisotropic
+          Gaussians.
+        - The 9A and 5A peaks are hypothesized to be the sum of isotropic and
+          anisotropic Gaussians
+            - For now, use only anisotropic functions for these, increasing
+              error will correspond to less normal specimens
+        - The 5-4A ring and background intensities are hypothesized to be
+          isotropic Gaussians
         - That makes a total of 6 Gaussians
 
         Also stores these parameters in class parameters.
