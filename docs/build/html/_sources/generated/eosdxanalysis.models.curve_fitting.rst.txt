@@ -1,4 +1,4 @@
-eosdxanalysis.models.curve\_fitting
+﻿eosdxanalysis.models.curve\_fitting
 ===================================
 
 .. automodule:: eosdxanalysis.models.curve_fitting
@@ -8,6 +8,14 @@ eosdxanalysis.models.curve\_fitting
    
 
    
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      estimate_background_noise
+      gauss_iso
+      gen_meshgrid
    
    
 

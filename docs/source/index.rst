@@ -9,11 +9,12 @@ Welcome to the Eos Dx Analysis documentation!
 **Eos Dx Analysis** is a Python library for performing preprocessing and analysis on x-ray fiber diffraction data.
 
 .. toctree::
+    :maxdepth: 2
+    :caption: Contents:
+
     usage
     contributing
     api
-    :maxdepth: 5
-    :caption: Contents:
 
 .. autosummary::
    :toctree: generated

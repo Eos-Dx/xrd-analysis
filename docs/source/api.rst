@@ -1,16 +1,18 @@
 API
 ===
 
-.. module:: eosdxanalysis.models.curve_fitting.GaussianDecomposition
-
-.. autosummary::
-   radial_gaussian
-   keratin_function
-
-.. module:: eosdxanalysis
+.. module:: eosdxanalysis.models
 
 .. autosummary::
    :toctree: generated
    :recursive:
 
-   models
+   curve_fitting
+
+.. module:: eosdxanalysis.models.curve_fitting
+
+.. autoclass::
+   :toctree: generated
+   :recursive:
+
+   GaussianDecomposition
