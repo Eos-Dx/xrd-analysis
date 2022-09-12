@@ -14,7 +14,7 @@
    .. autosummary::
    
       estimate_background_noise
-      gauss_iso
+      gaussian_iso
       gen_meshgrid
    
    

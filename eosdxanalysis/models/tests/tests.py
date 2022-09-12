@@ -331,19 +331,6 @@ class TestGaussianDecomposition(unittest.TestCase):
         self.assertFalse(np.isclose(popt, p_lower_bounds_values).all())
         self.assertFalse(np.isclose(popt, p_upper_bounds_values).all())
 
-        import matplotlib.pyplot as plt
-        plot_title = input_filename
-        fig = plt.figure(plot_title)
-        plt.imshow(image, cmap="hot")
-        plt.title(plot_title)
-
-        plot_title = "Gaussian Decomposition"
-        fig = plt.figure(plot_title)
-        plt.imshow(decomp_image, cmap="hot")
-        plt.title(plot_title)
-
-        plt.show()
-
         self.fail("Finish writing test.")
 
     def test_synthetic_keratin_pattern(self):
