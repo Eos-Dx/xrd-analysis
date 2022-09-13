@@ -24,6 +24,7 @@ from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 from eosdxanalysis.models.curve_fitting import estimate_background_noise
 from eosdxanalysis.models.curve_fitting import gen_meshgrid
 from eosdxanalysis.models.curve_fitting import gaussian_iso
+from eosdxanalysis.models.curve_fitting import keratin_function
 from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.utils import pol2cart
@@ -378,19 +379,20 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         # Set mesh size
         size = 256
-        gauss_class = GaussianDecomposition()
-        RR, TT = gauss_class.gen_meshgrid((size,size))
+        RR, TT = gen_meshgrid((size,size))
 
         # Generate synthetic image
-        synth_image = gauss_class.keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
+        synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
+        gauss_class = GaussianDecomposition(synth_image)
 
         gauss_class.p0_dict = p_synth_dict
         gauss_class.p_lower_bounds_dict = p_lower_bounds_dict
         gauss_class.p_upper_bounds_dict = p_upper_bounds_dict
 
         # Find Gaussian fit
-        popt, pcov, RR, TT = gauss_class.best_fit(synth_image)
-        decomp_image  = gauss_class.keratin_function((RR, TT), *popt).reshape(RR.shape)
+        popt_dict, pcov = gauss_class.best_fit(synth_image)
+        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+        decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
 
         # Get squared error
         error = gauss_class.fit_error(synth_image, decomp_image)
@@ -409,9 +411,6 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         # Ensure that popt values are close to p_dict values
         self.assertTrue(np.isclose(popt, p_synth).all())
-
-        # Now test parameter estimation
-        gauss_class = GaussianDecomposition(synth_image)
 
     def test_estimate_background_noise(self):
         """
