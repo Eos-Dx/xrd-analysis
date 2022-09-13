@@ -291,16 +291,19 @@ class GaussianDecomposition(object):
         angular_intensity_9A_1d = angular_intensity_1d(image, radius=peak_location_radius_9A)
 
         # Estimate the arc_angle for the 9A anisotropic peak
-        arc_width_results_aniso_9A = peak_widths(angular_intensity_9A_1d, [peak_location_radius_9A])
+        angular_peaks, _ = find_peaks(angular_intensity_9A_1d)
+        widths, width_heights, left_ips, right_ips = peak_widths(
+                angular_intensity_9A_1d, angular_peaks)
 
         # If peaks are found, convert from arc length to radians (s = r*theta)
         try:
-            arc_angle = arc_width_results_aniso_9A[0]/peak_location_radius_9A
-            # If peak prominence is 0, set angle to pi
+            arc_angle = widths[0]/peak_location_radius_9A
+            # If peak value is 0, set angle to near 0 to avoid bounds issues
             if np.isclose(arc_angle, 0):
-                arc_angle = np.pi-1e-3
+                arc_angle = 1e-6
         except IndexError as err:
-            arc_angle = np.pi-1e-3
+            # No peaks found case, set angle to near pi to avoid bounds issues
+            arc_angle = np.pi-1e-6
 
         return arc_angle
 
