@@ -142,8 +142,46 @@ class TestGaussianDecomposition(unittest.TestCase):
         """
         Set up test class
         """
+        # Set up data path
         TEST_DATA_PATH = os.path.join(TEST_PATH, "data", "GaussianDecomposition")
         self.TEST_DATA_PATH = TEST_DATA_PATH
+
+        # Set parameters for a synthetic keratin diffraction pattern
+        p_synth_dict = OrderedDict({
+                # 9A equatorial peaks parameters
+                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
+                "peak_std_9A":              7, # Width
+                "peak_amplitude_9A":        401, # Amplitude
+                "arc_angle_9A":             1e-2, # Arc angle
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
+                "peak_std_5A":              1, # Width
+                "peak_amplitude_5A":        13, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
+                "peak_std_5_4A":            17, # Width
+                "peak_amplitude_5_4A":      113, # Amplitude
+                # Background noise parameters
+                "peak_std_bg":              211, # Width
+                "peak_amplitude_bg":        223, # Amplitude
+            })
+
+        # Set mesh size
+        size = 256
+        RR, TT = gen_meshgrid((size,size))
+
+        # Generate synthetic image
+        synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
+
+        # Initialize GaussianDecomposition class
+        gauss_class = GaussianDecomposition(synth_image)
+
+        self.p_synth_dict = p_synth_dict
+        self.size = size
+        self.RR, self.TT = RR, TT
+        self.synth_image = synth_image
+        self.gauss_class = gauss_class
 
     def test_radial_gaussian_trivial_centered(self):
         """
@@ -458,6 +496,22 @@ class TestGaussianDecomposition(unittest.TestCase):
         # parameters
         self.assertTrue(np.isclose(peak_amplitude, a, rtol=0.05))
         self.assertTrue(np.isclose(peak_std, std, rtol=0.05))
+
+    def test_estimate_parameters(self):
+        """
+        Test the estimate of peak_location_radius_9A for a synthetic pattern
+        """
+        p_synth_dict = self.p_synth_dict
+        gauss_class = self.gauss_class
+
+        p0_dict = gauss_class.p0_dict
+
+        # Ensure that p0_dict values are near p_synth_dict values
+        for key, value in p0_dict.items():
+            known_parameter = p_synth_dict[key]
+            test_parameter = p0_dict[key]
+            if not known_parameter < 1 and test_parameter < 1:
+                self.assertTrue(np.isclose(test_parameter, known_parameter, rtol=0.05))
 
 
 class TestUtils(unittest.TestCase):
