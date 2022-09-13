@@ -113,6 +113,7 @@ class GaussianDecomposition(object):
 
         """
         image = self.image
+        RR, TT = self.meshgrid
 
         # Get 1D radial intensity in positive horizontal direction
         horizontal_intensity_1d = radial_intensity_1d(image, width=width)
@@ -144,6 +145,13 @@ class GaussianDecomposition(object):
             arc_angle_9A = self.estimate_arc_angle_9A(
                     image, peak_location_radius_9A, horizontal_intensity_1d,
                     vertical_intensity_1d, intensity_diff_1d)
+
+            # Create a radial gaussian estimate based on the 9A parameters
+#             radial_gaussian_estimate_9A = radial_gaussian(
+#                     RR, RR, peak_location_radius_9A, 0,
+#                     peak_std_9A, peak_amplitude_9A, arc_angle_9A)
+#             horizontal_intensity_9A = radial_intensity_1d(
+#                     radial_gaussian_estimate_9A)
 
             # Estimate 5A parameters
             # NOTE: Here we flip intensity_diff_1d using a minus sign
@@ -285,19 +293,20 @@ class GaussianDecomposition(object):
     def estimate_arc_angle_9A(self, image, peak_location_radius_9A,
             horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d):
         """
-        Estimate the 9A maxima arc angle
+        Estimate the 9A maxima arc angle, related to the plateau size
         """
         # Estimate the anisotropic part of the angular intensity
         angular_intensity_9A_1d = angular_intensity_1d(image, radius=peak_location_radius_9A)
 
         # Estimate the arc_angle for the 9A anisotropic peak
-        angular_peaks, _ = find_peaks(angular_intensity_9A_1d)
-        widths, width_heights, left_ips, right_ips = peak_widths(
-                angular_intensity_9A_1d, angular_peaks)
+        angular_peaks, peak_properties = find_peaks(
+                angular_intensity_9A_1d, plateau_size=(None, None))
+        plateau_sizes = peak_properties["plateau_sizes"]
 
         # If peaks are found, convert from arc length to radians (s = r*theta)
         try:
-            arc_angle = widths[0]/peak_location_radius_9A
+            arc_length = plateau_sizes[0]
+            arc_angle = arc_length*np.pi/180/peak_location_radius_9A
             # If peak value is 0, set angle to near 0 to avoid bounds issues
             if np.isclose(arc_angle, 0):
                 arc_angle = 1e-6
@@ -352,19 +361,20 @@ class GaussianDecomposition(object):
     def estimate_arc_angle_5A(self, image, peak_location_radius_5A, horizontal_intensity_1d,
             vertical_intensity_1d, intensity_diff_1d):
         """
-        Estimate the 9A maxima arc angle
+        Estimate the 5A maxima arc angle, related to the plateau size
         """
         # Estimate the anisotropic part of the angular intensity
         angular_intensity_5A_1d = angular_intensity_1d(image, radius=peak_location_radius_5A)
 
         # Estimate the arc_angle for the 5A anisotropic peak
-        angular_peaks, _ = find_peaks(angular_intensity_5A_1d)
-        widths, width_heights, left_ips, right_ips = peak_widths(
-                angular_intensity_5A_1d, angular_peaks)
+        angular_peaks, peak_properties = find_peaks(
+                angular_intensity_5A_1d, plateau_size=(None, None))
+        plateau_sizes = peak_properties["plateau_sizes"]
 
         # If peaks are found, convert from arc length to radians (s = r*theta)
         try:
-            arc_angle = widths[0]/peak_location_radius_5A
+            arc_length = plateau_sizes[0]
+            arc_angle = arc_length*np.pi/180/peak_location_radius_5A
             # If peak value is 0, set angle to near 0 to avoid bounds issues
             if np.isclose(arc_angle, 0):
                 arc_angle = 1e-6
@@ -418,10 +428,11 @@ class GaussianDecomposition(object):
         Estimate the 5_4A peak widths (full-width at half maximum)
         """
         # Look at the horizontal intensity
-        width_results_iso_5_4A = peak_widths(
-                horizontal_intensity_1d, peaks_iso_5_4A)
+        widths, width_heights, left_ips, right_ips = peak_widths(
+                horizontal_intensity_1d, [peak_location_radius_5_4A])
+
         # Take the last peak
-        peak_width_iso_5_4A = width_results_iso_5_4A[0][-1]
+        peak_width_iso_5_4A = widths[-1]
         # convert FWHM to standard deviation
         peak_std_iso_5_4A = peak_width_iso_5_4A / (2*np.sqrt(2*np.log(2)))
 
@@ -440,6 +451,9 @@ class GaussianDecomposition(object):
         - amplitude
         """
         image = self.image
+        # Generate meshgrid
+        meshgrid = gen_meshgrid(image.shape)
+        self.meshgrid = meshgrid
         # Estimate parameters based on image if image is provided
         if type(image) == np.ndarray:
             return self.estimate_parameters()
