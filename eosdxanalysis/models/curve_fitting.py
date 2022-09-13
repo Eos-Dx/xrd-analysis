@@ -55,13 +55,11 @@ class GaussianDecomposition(object):
     """
 
     def __init__(
-            self, image=None, p0_dict=None, p_lower_bounds_dict=None,
+            self, image, p0_dict=None, p_lower_bounds_dict=None,
             p_upper_bounds_dict=None):
         """
         Initialize `GaussianDecomposition` class.
         """
-        if not isinstance(image, np.ndarray):
-            raise ValueError("Image required.")
         self.image = image
 
         # Calculate image center coordinates
@@ -442,13 +440,14 @@ class GaussianDecomposition(object):
         if type(image) == np.ndarray:
             return self.estimate_parameters()
 
-    def best_fit(self, image=None):
+    def best_fit(self):
         """
         Use `scipy.optimize.curve_fit` to decompose a keratin diffraction pattern
         into a sum of Gaussians with angular spread.
 
         Function to optimize: `self.keratin_function`
         """
+        image = self.image
         # Get parameters and bounds
         p0 = np.fromiter(self.p0_dict.values(), dtype=np.float64)
 
@@ -798,8 +797,7 @@ def estimate_background_noise(image):
     p0 = [peak_amplitude_guess, peak_std_guess]
 
     # Run curve fitting procedure
-    popt_dict, pcov = curve_fit(gaussian_iso, xdata, ydata, p0)
-    popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+    popt, pcov = curve_fit(gaussian_iso, xdata, ydata, p0)
     peak_amplitude, peak_std = popt
 
     return peak_amplitude, peak_std
@@ -829,9 +827,11 @@ if __name__ == '__main__':
     image = np.loadtxt(input_filepath, dtype=np.float64)
 
     # Now get "best-fit" diffraction pattern
-    gauss_class = GaussianDecomposition()
-    popt, pcov, RR, TT = gauss_class.best_fit(image)
-    decomp_image  = gauss_class.keratin_function((RR, TT), *popt).reshape(*image.shape)
+    gauss_class = GaussianDecomposition(image)
+    popt_dict, pcov = gauss_class.best_fit()
+    RR, TT = gen_meshgrid(image.shape)
+    popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+    decomp_image  = keratin_function((RR, TT), *popt).reshape(*image.shape)
 
     # Save output
     if output_filepath:
