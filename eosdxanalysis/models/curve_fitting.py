@@ -352,24 +352,25 @@ class GaussianDecomposition(object):
     def estimate_arc_angle_5A(self, image, peak_location_radius_5A, horizontal_intensity_1d,
             vertical_intensity_1d, intensity_diff_1d):
         """
-        Estimate the 5A arc maxima arc angle
+        Estimate the 9A maxima arc angle
         """
-        # Compute the angular intensity
+        # Estimate the anisotropic part of the angular intensity
         angular_intensity_5A_1d = angular_intensity_1d(image, radius=peak_location_radius_5A)
 
-        # Find the peak widths along the 5A position ring
-        arc_width_results_aniso_5A = peak_widths(angular_intensity_5A_1d,
-                [peak_location_radius_5A], rel_height=0.2)
+        # Estimate the arc_angle for the 5A anisotropic peak
+        angular_peaks, _ = find_peaks(angular_intensity_5A_1d)
+        widths, width_heights, left_ips, right_ips = peak_widths(
+                angular_intensity_5A_1d, angular_peaks)
 
         # If peaks are found, convert from arc length to radians (s = r*theta)
         try:
-            arc_angle = arc_width_results_aniso_5A[0]/peak_location_radius_5A
-            # If peak prominence is 0, set angle to pi (isotropic)
+            arc_angle = widths[0]/peak_location_radius_5A
+            # If peak value is 0, set angle to near 0 to avoid bounds issues
             if np.isclose(arc_angle, 0):
-                arc_angle = np.pi-1e-3
+                arc_angle = 1e-6
         except IndexError as err:
-            # No peaks found, so set the angle to pi (isotropic)
-            arc_angle = np.pi-1e-3
+            # No peaks found case, set angle to near pi to avoid bounds issues
+            arc_angle = np.pi-1e-6
 
         return arc_angle
 
