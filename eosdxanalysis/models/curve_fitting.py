@@ -165,25 +165,21 @@ class GaussianDecomposition(object):
                     vertical_intensity_1d, -intensity_diff_1d)
 
             # Estimate 5-4A parameters
-            peak_location_radius_5_4A = \
+            peak_location_radius_5_4A, peaks_iso_5_4A = \
                 self.estimate_peak_location_radius_5_4A(
-                        image, horizontal_intensity_1d, vertical_intensity_1d,
-                        intensity_diff_1d)
+                        image, position_tol, horizontal_intensity_1d,
+                        vertical_intensity_1d, intensity_diff_1d)
             peak_std_5_4A = self.estimate_peak_std_5_4A(
-                    image,
+                    image, peak_location_radius_5_4A, peaks_iso_5_4A,
                     horizontal_intensity_1d, vertical_intensity_1d,
                     intensity_diff_1d)
             peak_amplitude_5_4A = self.estimate_peak_amplitude_5_4A(
-                    image, horizontal_intensity_1d, vertical_intensity_1d,
+                    image, peak_location_radius_5_4A, horizontal_intensity_1d,
+                    vertical_intensity_1d,
                     intensity_diff_1d)
 
             # Estimate background intensity parameters
-            peak_std_bg = self.estimate_peak_std_bg(
-                    image, horizontal_intensity_1d, vertical_intensity_1d,
-                    intensity_diff_1d)
-            peak_amplitude_bg = self.estimate_peak_amplitude_bg(
-                    image, horizontal_intensity_1d, vertical_intensity_1d,
-                    intensity_diff_1d)
+            peak_amplitude_bg, peak_std_bg = estimate_background_noise(image)
 
             # Set up initial parameters dictionary with None for each value
             p0_dict = OrderedDict({
@@ -376,29 +372,63 @@ class GaussianDecomposition(object):
 
         return arc_angle
 
-    def estimate_peak_location_radius_5_4A(self, image, horizontal_intensity_1d,
+    def estimate_peak_location_radius_5_4A(
+            self, image, position_tol, horizontal_intensity_1d,
             vertical_intensity_1d, intensity_diff_1d):
-        dummy_value = feature_pixel_location(4.5e-10)
-        return dummy_value
+        """
+        Estimates the 5-4A peak distance from the center
 
-    def estimate_peak_std_5_4A(self, image, horizontal_intensity_1d,
-            vertical_intensity_1d, intensity_diff_1d):
-        dummy_value = 10
-        return dummy_value
+        Parameters
+        ----------
+        image : 2D ndarray
+            The input image
 
-    def estimate_peak_amplitude_5_4A(self, image, horizontal_intensity_1d,
-            vertical_intensity_1d, intensity_diff_1d):
-        dummy_value = 50
-        return dummy_value
+        Returns
+        -------
+        peak_location : int
+        peak_results : tuple
+            First output of `scipy.signal.find_peaks`
 
-    def estimate_peak_std_bg(self, image, horizontal_intensity_1d,
-            vertical_intensity_1d, intensity_diff_1d):
-        dummy_value = 100
-        return dummy_value
+        """
+        # Estimate the 5-4A peak using the horizontal intensity
+        peaks_iso, _ = find_peaks(horizontal_intensity_1d)
 
-    def estimate_peak_amplitude_bg(self, image, horizontal_intensity_1d,
+        # Ensure that at least one peak was found
+        try:
+            # Get farthest peak location
+            peak_location = peaks_iso[-1]
+        except IndexError as err:
+            print("No peaks found for 5-4A parameters estimation.")
+            raise err
+        # Ensure that peak_5-4A is close to theoretical value
+        peak_location_theory = feature_pixel_location(5.1e-10)
+        if abs(peak_location - peak_location_theory) > \
+                position_tol * peak_location_theory:
+            # Use the theoretical value
+            peak_location = peak_location_theory
+
+        return peak_location, peaks_iso
+
+    def estimate_peak_std_5_4A(
+            self, image, peak_location_radius_5_4A, peaks_iso_5_4A,
+            horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d):
+        """
+        Estimate the 5_4A peak widths (full-width at half maximum)
+        """
+        # Look at the horizontal intensity
+        width_results_iso_5_4A = peak_widths(
+                horizontal_intensity_1d, peaks_iso_5_4A)
+        # Take the last peak
+        peak_width_iso_5_4A = width_results_iso_5_4A[0][-1]
+        # convert FWHM to standard deviation
+        peak_std_iso_5_4A = peak_width_iso_5_4A / (2*np.sqrt(2*np.log(2)))
+
+        return peak_std_iso_5_4A
+
+    def estimate_peak_amplitude_5_4A(
+            self, image, peak_location_radius_5_4A, horizontal_intensity_1d,
             vertical_intensity_1d, intensity_diff_1d):
-        return 100
+        return horizontal_intensity_1d[int(peak_location_radius_5_4A)]
 
     def parameter_init(self, p0_dict=None, p_lower_bounds_dict=None, p_upper_bounds_dict=None):
         """
@@ -411,225 +441,6 @@ class GaussianDecomposition(object):
         # Estimate parameters based on image if image is provided
         if type(image) == np.ndarray:
             return self.estimate_parameters()
-
-    def radial_gaussian(self, r, theta, peak_radius, peak_angle,
-                peak_std, peak_amplitude, arc_angle):
-        """
-        Isotropic and radial Gaussian
-
-        Currently uses convolution with a high-resolution arc specified by arc-angle.
-        Future will possibly use analytic expression for convolution of a Gaussian with an arc.
-        Assumes quadrant-fold symmetry.
-        Assumes standard deviation is the same for x and y directions.
-        A peak_angle of 0 corresponds to horizontal (equatorial) arcs.
-        A peak_angle of pi/2 corresponds to vertical (meridional) arcs.
-        Algorithm starts with equatorial peaks, then rotates as neeed.
-
-        Parameters
-        ----------
-
-        r : array_like
-            Polar point radius to evaluate function at (``r`` must be same shape as ``theta``)
-
-        :param theta: Polar point angle to evaluate function at (``r`` must be same shape as ``theta``)
-        :type theta: array_like
-
-        :param peak_radius: Location of the Gaussian peak from the center
-        :type peak_radius: float
-
-        :param peak_angle: 0 or np.pi/2 to signify equatorial or meridional peak location (respectively).
-            Future will take a continuous input.
-        :type peak_angle: float
-
-        :param peak_std: Gaussian standard deviation
-        :type peak_std: float
-
-        :param peak_amplitude: Gaussian peak amplitude
-        :type peak_amplitude: float
-
-        :param arc_angle: arc angle in radians, `0` is anisotropic, `pi` is fully isotropic
-        :type arc_angle: float
-
-        Returns
-        -------
-
-        :return: Value of Gaussian function at polar input points ``(r, theta)``
-        :rtype: array_like (same shape as ``r`` and ``theta``)
-
-        """
-        # Check if arc_angle is between 0 and pi
-        if arc_angle < 0 or arc_angle > np.pi:
-            raise ValueError("arc_angle must be between 0 and pi")
-
-        # Check if peak_angle is between 0 and pi/2
-        if peak_angle < 0 or peak_angle > np.pi/2:
-            raise ValueError("peak_angle must be between 0 and pi/2")
-
-        # Check if size of r and theta inputs are equal
-        if np.array(r).shape != np.array(theta).shape:
-            raise ValueError("Inputs r and theta must have the same shape")
-
-        # Take the modulus of the arc_angle
-        arc_angle %= np.pi
-        # Force theta to be between -pi and pi
-        theta += np.pi
-        theta %= 2*np.pi
-        theta -= np.pi
-        # If the arc angle is 0 or pi, return the isometric Gaussian
-        if np.isclose(arc_angle, 0.0):
-            # Construct an isometric Gaussian centered at peak_radius
-            gau = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)
-            return gau
-        # Else we need to convolve with an arc
-        else:
-            # Create an array of zeros
-            gau = np.zeros_like(r)
-
-            # Handle two cases: peak_angle = 0 or pi/2
-            if np.isclose(peak_angle, 0):
-                # Add the endpoints
-                theta1 = -arc_angle/2
-                theta2 = arc_angle/2
-                # Convert to cartesian coordinates
-                x = r*np.cos(theta)
-                y = r*np.sin(theta)
-
-                # Create quadrant-folded arc using masks
-                # Create masks for right side
-                # Create mask for top_right side
-                mask_top_right = (theta >= arc_angle/2) & (theta <= np.pi/2)
-                gau[mask_top_right] = peak_amplitude*np.exp(
-                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta2))**2 + \
-                                (y - peak_radius*np.sin(theta2))**2) )[mask_top_right]
-                # Create mask for bottom_right side
-                mask_bottom_right = (theta <= -arc_angle/2) & (theta >= -np.pi/2)
-                gau[mask_bottom_right] = peak_amplitude*np.exp(
-                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta1))**2 + \
-                                (y - peak_radius*np.sin(theta1))**2) )[mask_bottom_right]
-                # Create mask for inside right side
-                mask_in_right = (theta > -arc_angle/2) & (theta < arc_angle/2)
-                gau[mask_in_right] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_right]
-
-                # Create masks for left side
-                # Create mask for top_left side
-                mask_top_left = (theta <= np.pi-arc_angle/2) & (theta >= np.pi/2)
-                gau[mask_top_left] = peak_amplitude*np.exp(
-                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(np.pi-arc_angle/2))**2 + \
-                                (y - peak_radius*np.sin(np.pi-arc_angle/2))**2) )[mask_top_left]
-                # Create mask for bottom_left side
-                mask_bottom_left = (theta >= -np.pi+arc_angle/2) & (theta <= -np.pi/2)
-                gau[mask_bottom_left] = peak_amplitude*np.exp(
-                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(-np.pi+arc_angle/2))**2 + \
-                                (y - peak_radius*np.sin(-np.pi+arc_angle/2))**2) )[mask_bottom_left]
-                # Create mask for inside left side
-                mask_in_left = (theta > np.pi-arc_angle/2) | (theta < -np.pi+arc_angle/2)
-                gau[mask_in_left] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_left]
-
-                # Set the output as the quadrant-folded arc
-                output = gau
-
-            elif np.isclose(peak_angle, np.pi/2):
-                # Add the endpoints
-                theta1 = np.pi/2-arc_angle/2
-                theta2 = np.pi/2+arc_angle/2
-                # Convert to cartesian coordinates
-                x = r*np.cos(theta)
-                y = r*np.sin(theta)
-
-                # Create quadrant-folded arc using masks
-                # Create masks for top side
-                # Create mask for top right side
-                mask_right_top = (theta <= peak_angle - arc_angle/2) & (theta >= 0)
-                gau[mask_right_top] = peak_amplitude*np.exp(
-                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta1))**2 + \
-                                (y - peak_radius*np.sin(theta1))**2) )[mask_right_top]
-                # Create mask for top left side
-                mask_left_top = (theta >= peak_angle + arc_angle/2) & (theta >= 0)
-                gau[mask_left_top] = peak_amplitude*np.exp(
-                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta2))**2 + \
-                                (y - peak_radius*np.sin(theta2))**2) )[mask_left_top]
-                # Create mask for top inside
-                mask_in_top = (theta > peak_angle - arc_angle/2) & (theta < peak_angle + arc_angle/2)
-                gau[mask_in_top] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_top]
-
-                # Create masks for bottom side
-                # Create mask for bottom right side
-                mask_right_bottom = (theta >= -peak_angle+arc_angle/2) & (theta <= 0)
-                gau[mask_right_bottom] = peak_amplitude*np.exp(
-                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(-np.pi/2+arc_angle/2))**2 + \
-                                (y - peak_radius*np.sin(-np.pi/2+arc_angle/2))**2) )[mask_right_bottom]
-                # Create mask for bottom left side
-                mask_left_bottom = (theta <= -peak_angle-arc_angle/2) & (theta <= 0)
-                gau[mask_left_bottom] = peak_amplitude*np.exp(
-                        -1/(2*peak_std**2)*( (x - peak_radius*np.cos(-np.pi/2-arc_angle/2))**2 + \
-                                (y - peak_radius*np.sin(-np.pi/2-arc_angle/2))**2) )[mask_left_bottom]
-                # Create mask for bottom inside
-                mask_in_bottom = (theta > -peak_angle-arc_angle/2) & (theta < -peak_angle+arc_angle/2)
-                gau[mask_in_bottom] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_bottom]
-
-                # Set the output as the quadrant-folded arc
-                output = gau
-
-            else:
-                raise ValueError("peak_angle must be 0 or pi/2.")
-
-            return output
-
-    def keratin_function(self, polar_point,
-            peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, arc_angle_9A,
-            peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, arc_angle_5A,
-            peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
-            peak_std_bg, peak_amplitude_bg):
-        """
-        Generate entire kertain diffraction pattern at the points
-        (r, theta), with parameters as the arguements to 4 calls
-        of radial_gaussian.
-
-        .. Parameters
-
-        :param polar_point: (r, theta) where r and theta are polar coordinates
-        :type polar_point: 2-tuple of array_like
-
-        .. Returns
-
-        :returns a: Returns a contiguous flattened array suitable for use
-            with ``scipy.optimize.curve_fit``.
-        :rtype: array_like
-
-        """
-        r, theta = polar_point
-
-        # Set peak position angle parameters
-        peak_angle_9A = 0
-        peak_angle_5A = np.pi/2
-        peak_angle_5_4A = 0 # Don't care
-        peak_angle_bg = 0 # Don't care
-        # Set peak arc angle parameters for isotropic cases
-        arc_angle_5_4A = 0 # Don't care
-        arc_angle_bg = 0 # Don't care
-        # Set peak location radius for background noise case (Airy disc from pinhole)
-        peak_location_radius_bg = 0
-
-        # 9A peaks
-        pattern_9A = self.radial_gaussian(r, theta, peak_location_radius_9A,
-                peak_angle_9A, peak_std_9A, peak_amplitude_9A,
-                arc_angle_9A)
-        # 5A peaks
-        pattern_5A = self.radial_gaussian(r, theta, peak_location_radius_5A,
-                peak_angle_5A, peak_std_5A, peak_amplitude_5A,
-                arc_angle_5A)
-        # 5-4 A anisotropic ring
-        pattern_5_4A = self.radial_gaussian(r, theta, peak_location_radius_5_4A,
-                peak_angle_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
-                arc_angle_5_4A)
-        # Background noise
-        pattern_bg = self.radial_gaussian(r, theta, peak_location_radius_bg,
-                peak_angle_bg, peak_std_bg, peak_amplitude_bg,
-                arc_angle_bg)
-        # Additive model
-        pattern = pattern_9A + pattern_5A + pattern_5_4A + pattern_bg
-
-        return pattern.ravel()
 
     def best_fit(self, image=None):
         """
@@ -668,7 +479,7 @@ class GaussianDecomposition(object):
 
         xdata = (RR_masked.ravel(), TT_masked.ravel())
         ydata = image_masked.ravel().astype(np.float64)
-        popt, pcov = curve_fit(self.keratin_function, xdata, ydata, p0, bounds=p_bounds)
+        popt, pcov = curve_fit(keratin_function, xdata, ydata, p0, bounds=p_bounds)
 
         # Create popt_dict so we can have keys
         popt_dict = OrderedDict()
@@ -677,7 +488,7 @@ class GaussianDecomposition(object):
             popt_dict[key] = popt[idx]
             idx += 1
 
-        return popt_dict, pcov, RR, TT
+        return popt_dict, pcov
 
     def fit_error(self, image, fit):
         """
@@ -691,8 +502,229 @@ class GaussianDecomposition(object):
         Generate a keratin diffraction pattern with the given
         parameters list p and return the fit error
         """
-        fit = self.keratin_function((r, theta), *p)
+        fit = keratin_function((r, theta), *p)
         return fit_error(p, image, fit, r, theta)
+
+def radial_gaussian(r, theta, peak_radius, peak_angle,
+            peak_std, peak_amplitude, arc_angle):
+    """
+    Isotropic and radial Gaussian
+
+    Currently uses convolution with a high-resolution arc specified by arc-angle.
+    Future will possibly use analytic expression for convolution of a Gaussian with an arc.
+    Assumes quadrant-fold symmetry.
+    Assumes standard deviation is the same for x and y directions.
+    A peak_angle of 0 corresponds to horizontal (equatorial) arcs.
+    A peak_angle of pi/2 corresponds to vertical (meridional) arcs.
+    Algorithm starts with equatorial peaks, then rotates as neeed.
+
+    Parameters
+    ----------
+
+    r : array_like
+        Polar point radius to evaluate function at (``r`` must be same shape as ``theta``)
+
+    :param theta: Polar point angle to evaluate function at (``r`` must be same shape as ``theta``)
+    :type theta: array_like
+
+    :param peak_radius: Location of the Gaussian peak from the center
+    :type peak_radius: float
+
+    :param peak_angle: 0 or np.pi/2 to signify equatorial or meridional peak location (respectively).
+        Future will take a continuous input.
+    :type peak_angle: float
+
+    :param peak_std: Gaussian standard deviation
+    :type peak_std: float
+
+    :param peak_amplitude: Gaussian peak amplitude
+    :type peak_amplitude: float
+
+    :param arc_angle: arc angle in radians, `0` is anisotropic, `pi` is fully isotropic
+    :type arc_angle: float
+
+    Returns
+    -------
+
+    :return: Value of Gaussian function at polar input points ``(r, theta)``
+    :rtype: array_like (same shape as ``r`` and ``theta``)
+
+    """
+    # Check if arc_angle is between 0 and pi
+    if arc_angle < 0 or arc_angle > np.pi:
+        raise ValueError("arc_angle must be between 0 and pi")
+
+    # Check if peak_angle is between 0 and pi/2
+    if peak_angle < 0 or peak_angle > np.pi/2:
+        raise ValueError("peak_angle must be between 0 and pi/2")
+
+    # Check if size of r and theta inputs are equal
+    if np.array(r).shape != np.array(theta).shape:
+        raise ValueError("Inputs r and theta must have the same shape")
+
+    # Take the modulus of the arc_angle
+    arc_angle %= np.pi
+    # Force theta to be between -pi and pi
+    theta += np.pi
+    theta %= 2*np.pi
+    theta -= np.pi
+    # If the arc angle is 0 or pi, return the isometric Gaussian
+    if np.isclose(arc_angle, 0.0):
+        # Construct an isometric Gaussian centered at peak_radius
+        gau = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)
+        return gau
+    # Else we need to convolve with an arc
+    else:
+        # Create an array of zeros
+        gau = np.zeros_like(r)
+
+        # Handle two cases: peak_angle = 0 or pi/2
+        if np.isclose(peak_angle, 0):
+            # Add the endpoints
+            theta1 = -arc_angle/2
+            theta2 = arc_angle/2
+            # Convert to cartesian coordinates
+            x = r*np.cos(theta)
+            y = r*np.sin(theta)
+
+            # Create quadrant-folded arc using masks
+            # Create masks for right side
+            # Create mask for top_right side
+            mask_top_right = (theta >= arc_angle/2) & (theta <= np.pi/2)
+            gau[mask_top_right] = peak_amplitude*np.exp(
+                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta2))**2 + \
+                            (y - peak_radius*np.sin(theta2))**2) )[mask_top_right]
+            # Create mask for bottom_right side
+            mask_bottom_right = (theta <= -arc_angle/2) & (theta >= -np.pi/2)
+            gau[mask_bottom_right] = peak_amplitude*np.exp(
+                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta1))**2 + \
+                            (y - peak_radius*np.sin(theta1))**2) )[mask_bottom_right]
+            # Create mask for inside right side
+            mask_in_right = (theta > -arc_angle/2) & (theta < arc_angle/2)
+            gau[mask_in_right] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_right]
+
+            # Create masks for left side
+            # Create mask for top_left side
+            mask_top_left = (theta <= np.pi-arc_angle/2) & (theta >= np.pi/2)
+            gau[mask_top_left] = peak_amplitude*np.exp(
+                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(np.pi-arc_angle/2))**2 + \
+                            (y - peak_radius*np.sin(np.pi-arc_angle/2))**2) )[mask_top_left]
+            # Create mask for bottom_left side
+            mask_bottom_left = (theta >= -np.pi+arc_angle/2) & (theta <= -np.pi/2)
+            gau[mask_bottom_left] = peak_amplitude*np.exp(
+                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(-np.pi+arc_angle/2))**2 + \
+                            (y - peak_radius*np.sin(-np.pi+arc_angle/2))**2) )[mask_bottom_left]
+            # Create mask for inside left side
+            mask_in_left = (theta > np.pi-arc_angle/2) | (theta < -np.pi+arc_angle/2)
+            gau[mask_in_left] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_left]
+
+            # Set the output as the quadrant-folded arc
+            output = gau
+
+        elif np.isclose(peak_angle, np.pi/2):
+            # Add the endpoints
+            theta1 = np.pi/2-arc_angle/2
+            theta2 = np.pi/2+arc_angle/2
+            # Convert to cartesian coordinates
+            x = r*np.cos(theta)
+            y = r*np.sin(theta)
+
+            # Create quadrant-folded arc using masks
+            # Create masks for top side
+            # Create mask for top right side
+            mask_right_top = (theta <= peak_angle - arc_angle/2) & (theta >= 0)
+            gau[mask_right_top] = peak_amplitude*np.exp(
+                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta1))**2 + \
+                            (y - peak_radius*np.sin(theta1))**2) )[mask_right_top]
+            # Create mask for top left side
+            mask_left_top = (theta >= peak_angle + arc_angle/2) & (theta >= 0)
+            gau[mask_left_top] = peak_amplitude*np.exp(
+                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(theta2))**2 + \
+                            (y - peak_radius*np.sin(theta2))**2) )[mask_left_top]
+            # Create mask for top inside
+            mask_in_top = (theta > peak_angle - arc_angle/2) & (theta < peak_angle + arc_angle/2)
+            gau[mask_in_top] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_top]
+
+            # Create masks for bottom side
+            # Create mask for bottom right side
+            mask_right_bottom = (theta >= -peak_angle+arc_angle/2) & (theta <= 0)
+            gau[mask_right_bottom] = peak_amplitude*np.exp(
+                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(-np.pi/2+arc_angle/2))**2 + \
+                            (y - peak_radius*np.sin(-np.pi/2+arc_angle/2))**2) )[mask_right_bottom]
+            # Create mask for bottom left side
+            mask_left_bottom = (theta <= -peak_angle-arc_angle/2) & (theta <= 0)
+            gau[mask_left_bottom] = peak_amplitude*np.exp(
+                    -1/(2*peak_std**2)*( (x - peak_radius*np.cos(-np.pi/2-arc_angle/2))**2 + \
+                            (y - peak_radius*np.sin(-np.pi/2-arc_angle/2))**2) )[mask_left_bottom]
+            # Create mask for bottom inside
+            mask_in_bottom = (theta > -peak_angle-arc_angle/2) & (theta < -peak_angle+arc_angle/2)
+            gau[mask_in_bottom] = peak_amplitude*np.exp( -1/2*((r-peak_radius)/peak_std)**2)[mask_in_bottom]
+
+            # Set the output as the quadrant-folded arc
+            output = gau
+
+        else:
+            raise ValueError("peak_angle must be 0 or pi/2.")
+
+        return output
+
+def keratin_function(
+        polar_point,
+        peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, arc_angle_9A,
+        peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, arc_angle_5A,
+        peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
+        peak_std_bg, peak_amplitude_bg):
+    """
+    Generate entire kertain diffraction pattern at the points
+    (r, theta), with parameters as the arguements to 4 calls
+    of radial_gaussian.
+
+    .. Parameters
+
+    :param polar_point: (r, theta) where r and theta are polar coordinates
+    :type polar_point: 2-tuple of array_like
+
+    .. Returns
+
+    :returns a: Returns a contiguous flattened array suitable for use
+        with ``scipy.optimize.curve_fit``.
+    :rtype: array_like
+
+    """
+    r, theta = polar_point
+
+    # Set peak position angle parameters
+    peak_angle_9A = 0
+    peak_angle_5A = np.pi/2
+    peak_angle_5_4A = 0 # Don't care
+    peak_angle_bg = 0 # Don't care
+    # Set peak arc angle parameters for isotropic cases
+    arc_angle_5_4A = 0 # Don't care
+    arc_angle_bg = 0 # Don't care
+    # Set peak location radius for background noise case (Airy disc from pinhole)
+    peak_location_radius_bg = 0
+
+    # 9A peaks
+    pattern_9A = radial_gaussian(r, theta, peak_location_radius_9A,
+            peak_angle_9A, peak_std_9A, peak_amplitude_9A,
+            arc_angle_9A)
+    # 5A peaks
+    pattern_5A = radial_gaussian(r, theta, peak_location_radius_5A,
+            peak_angle_5A, peak_std_5A, peak_amplitude_5A,
+            arc_angle_5A)
+    # 5-4 A anisotropic ring
+    pattern_5_4A = radial_gaussian(r, theta, peak_location_radius_5_4A,
+            peak_angle_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
+            arc_angle_5_4A)
+    # Background noise
+    pattern_bg = radial_gaussian(r, theta, peak_location_radius_bg,
+            peak_angle_bg, peak_std_bg, peak_amplitude_bg,
+            arc_angle_bg)
+    # Additive model
+    pattern = pattern_9A + pattern_5A + pattern_5_4A + pattern_bg
+
+    return pattern.ravel()
+
 
 def gen_meshgrid(shape):
     """
@@ -766,8 +798,8 @@ def estimate_background_noise(image):
     p0 = [peak_amplitude_guess, peak_std_guess]
 
     # Run curve fitting procedure
-    popt, pcov = curve_fit(gaussian_iso, xdata, ydata, p0)
-
+    popt_dict, pcov = curve_fit(gaussian_iso, xdata, ydata, p0)
+    popt = np.fromiter(popt_dict.values(), dtype=np.float64)
     peak_amplitude, peak_std = popt
 
     return peak_amplitude, peak_std
