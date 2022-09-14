@@ -63,12 +63,14 @@ class GaussianDecomposition(object):
     """
 
     def __init__(
-            self, image, p0_dict=None, p_lower_bounds_dict=None,
+            self, image, rmin=25, rmax=90, p0_dict=None, p_lower_bounds_dict=None,
             p_upper_bounds_dict=None):
         """
         Initialize `GaussianDecomposition` class.
         """
         self.image = image
+        self.rmin = rmin
+        self.rmax = rmax
 
         # Calculate image center coordinates
         center = image.shape[0]/2-0.5, image.shape[1]/2-0.5
@@ -482,7 +484,9 @@ class GaussianDecomposition(object):
         # Subtract intensity from other sources to get the correct amplitude
         corrected_intensity_5_4A = np.abs(
                 total_intensity_5_4A - intensity_from_9A - intensity_from_bg)
-        corrected_intensity_5_4A  = DEFAULT_5_4A_AMPLITUDE
+
+        if np.isclose(corrected_intensity_5_4A, 0):
+            corrected_intensity_5_4A = DEFAULT_5_4A_AMPLITUDE
 
         return corrected_intensity_5_4A
 
@@ -509,6 +513,8 @@ class GaussianDecomposition(object):
         Function to optimize: `self.keratin_function`
         """
         image = self.image
+        rmin = self.rmin
+        rmax = self.rmax
         # Get parameters and bounds
         p0 = np.fromiter(self.p0_dict.values(), dtype=np.float64)
 
@@ -530,8 +536,8 @@ class GaussianDecomposition(object):
             RR, TT = self.meshgrid
 
         # Remove meshgrid components that are in the beam center
-        beam_rmax = 25
-        mask = create_circular_mask(image.shape[0], image.shape[1], rmax=beam_rmax)
+        mask = create_circular_mask(
+                image.shape[0], image.shape[1], rmin=rmin, rmax=rmax)
 
         RR_masked = RR[~mask].astype(np.float64)
         TT_masked = TT[~mask].astype(np.float64)
@@ -976,6 +982,9 @@ if __name__ == '__main__':
             "--input_path", default=None, required=True,
             help="The path containing raw files to perform fitting on")
     parser.add_argument(
+            "--output_path", default=None, required=False,
+            help="The output path to store results.")
+    parser.add_argument(
             "--fitting_method", default="gaussian-decomposition", required=False,
             help="The fitting method to perform on the raw files."
             " Options are: `gaussian-decomposition`.")
@@ -983,10 +992,11 @@ if __name__ == '__main__':
     # Collect arguments
     args = parser.parse_args()
     input_path = args.input_path
+    output_path = args.output_path
     fitting_method = args.fitting_method
 
     if fitting_method == "gaussian-decomposition":
-        gaussian_decomposition(input_path)
+        gaussian_decomposition(input_path, output_path)
 
     if fitting_method == "polynomial":
         raise NotImplementedError("Not fully implemeneted yet.")
