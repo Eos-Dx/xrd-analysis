@@ -34,7 +34,7 @@ from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 
-def main(input_path, output_path):
+def main(input_path, output_path=None):
     t0 = time.time()
 
     cmap="hot"
