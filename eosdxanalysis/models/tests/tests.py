@@ -374,7 +374,7 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         self.fail("Finish writing test.")
 
-    def test_synthetic_keratin_pattern(self):
+    def test_synthetic_keratin_pattern_manual_guess(self):
         """
         Generate a synthetic diffraction pattern
         and ensure the Gaussian fit error is small
@@ -443,6 +443,78 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         self.assertFalse(np.isclose(popt, p_lower_bounds).all())
         self.assertFalse(np.isclose(popt, p_upper_bounds).all())
+
+        # Ensure that error ratio is below 1%
+        self.assertTrue(error_ratio < 0.01)
+
+        p_synth = np.fromiter(p_synth_dict.values(), dtype=np.float64)
+
+        # Ensure that popt values are close to p_dict values
+        self.assertTrue(np.isclose(popt, p_synth).all())
+
+    def test_synthetic_keratin_pattern_auto_guess(self):
+        """
+        Generate a synthetic diffraction pattern
+        and ensure the Gaussian fit error is small
+        """
+        # Set parameters for a synthetic keratin diffraction pattern
+        p_synth_dict = OrderedDict({
+                # 9A equatorial peaks parameters
+                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
+                "peak_std_9A":              8, # Width
+                "peak_amplitude_9A":        400, # Amplitude
+                "arc_angle_9A":             1e-1, # Arc angle
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
+                "peak_std_5A":              2, # Width
+                "peak_amplitude_5A":        100, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
+                "peak_std_5_4A":            15, # Width
+                "peak_amplitude_5_4A":      100, # Amplitude
+                # Background noise parameters
+                "peak_std_bg":              200, # Width
+                "peak_amplitude_bg":        200, # Amplitude
+            })
+
+        # Set mesh size
+        size = 256
+        RR, TT = gen_meshgrid((size,size))
+
+        # Generate synthetic image
+        synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
+        gauss_class = GaussianDecomposition(synth_image)
+
+        # Get initial paramter guess and bounds
+        p0_dict = gauss_class.p0_dict
+        p_lower_bounds_dict = gauss_class.p_lower_bounds_dict
+        p_upper_bounds_dict = gauss_class.p_upper_bounds_dict
+
+        # Find Gaussian fit
+        popt_dict, pcov = gauss_class.best_fit()
+        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+        decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
+
+        # Get squared error
+        error = gauss_class.fit_error(synth_image, decomp_image)
+        error_ratio = error/np.sum(np.square(synth_image))
+
+        p_lower_bounds = np.fromiter(p_lower_bounds_dict.values(), dtype=np.float64)
+        p_upper_bounds = np.fromiter(p_upper_bounds_dict.values(), dtype=np.float64)
+
+        self.assertFalse(np.isclose(popt, p_lower_bounds).all())
+        self.assertFalse(np.isclose(popt, p_upper_bounds).all())
+
+        # Ensure automatic parameter guesses are close to the known values
+        for key, value in p_synth_dict.items():
+            known_value = p_synth_dict[key]
+            estimated_value = p0_dict[key]
+            # Only check for closeness if a value is bigger than 1
+            if known_value > 1 or estimated_value > 1:
+                self.assertTrue(np.isclose(estimated_value, known_value, rtol=0.05),
+                        "Estimate is too far: {}, {}, {}".format(
+                            key, known_value, estimated_value))
 
         # Ensure that error ratio is below 1%
         self.assertTrue(error_ratio < 0.01)
