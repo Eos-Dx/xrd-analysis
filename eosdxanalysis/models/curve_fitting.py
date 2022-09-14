@@ -876,16 +876,14 @@ def gaussian_decomposition(input_path, output_path=None):
         output_dir = "gaussian_decomposition_{}".format(timestamp)
         output_path = os.path.join(input_path, "..", output_dir)
 
-    # Create output path
-    os.makedirs(output_path, exist_ok=True)
+    output_data_dir = "decomp"
+    output_data_path = os.path.join(output_path, output_data_dir)
+    output_images_dir = "decomp_images"
+    output_images_path = os.path.join(output_path, output_images_dir)
 
-    # Create image output path in same location as output dir
-    output_parent_dir = os.path.basename(os.path.normpath(output_path))
-    image_output_dir = "{}_images".format(output_parent_dir)
-    image_output_path = os.path.join(output_path, "..", image_output_dir)
-
-    # Create image output path
-    os.makedirs(image_output_path, exist_ok=True)
+    # Create output data and images paths
+    os.makedirs(output_data_path, exist_ok=True)
+    os.makedirs(output_images_path, exist_ok=True)
 
     # Get list of parameters
     param_list = GaussianDecomposition.parameter_list()
@@ -919,12 +917,12 @@ def gaussian_decomposition(input_path, output_path=None):
 
         # Save output
         output_filename = "GD_{}".format(filename)
-        output_file_path = os.path.join(output_path, output_filename)
+        output_file_path = os.path.join(output_data_path, output_filename)
         np.savetxt(output_file_path, decomp_image, fmt="%d")
 
         # Save image preview
         save_image_filename = "GD_{}.png".format(filename)
-        save_image_fullpath = os.path.join(image_output_path,
+        save_image_fullpath = os.path.join(output_images_path,
                 save_image_filename)
         plt.imsave(save_image_fullpath, decomp_image, cmap=cmap)
 
