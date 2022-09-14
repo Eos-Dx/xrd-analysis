@@ -147,11 +147,11 @@ class GaussianDecomposition(object):
                     vertical_intensity_1d, intensity_diff_1d)
 
             # Create a radial gaussian estimate based on the 9A parameters
-#             radial_gaussian_estimate_9A = radial_gaussian(
-#                     RR, RR, peak_location_radius_9A, 0,
-#                     peak_std_9A, peak_amplitude_9A, arc_angle_9A)
-#             horizontal_intensity_9A = radial_intensity_1d(
-#                     radial_gaussian_estimate_9A)
+            radial_gaussian_estimate_9A = radial_gaussian(
+                    RR, TT, peak_location_radius_9A, 0,
+                    peak_std_9A, peak_amplitude_9A, arc_angle_9A)
+            horizontal_intensity_9A = radial_intensity_1d(
+                    radial_gaussian_estimate_9A)
 
             # Estimate 5A parameters
             # NOTE: Here we flip intensity_diff_1d using a minus sign
@@ -178,7 +178,7 @@ class GaussianDecomposition(object):
             peak_std_5_4A = self.estimate_peak_std_5_4A(
                     image, peak_location_radius_5_4A, peaks_iso_5_4A,
                     horizontal_intensity_1d, vertical_intensity_1d,
-                    intensity_diff_1d)
+                    intensity_diff_1d, horizontal_intensity_9A)
             peak_amplitude_5_4A = self.estimate_peak_amplitude_5_4A(
                     image, peak_location_radius_5_4A, horizontal_intensity_1d,
                     vertical_intensity_1d,
@@ -423,13 +423,19 @@ class GaussianDecomposition(object):
 
     def estimate_peak_std_5_4A(
             self, image, peak_location_radius_5_4A, peaks_iso_5_4A,
-            horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d):
+            horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d,
+            horizontal_intensity_9A):
         """
         Estimate the 5_4A peak widths (full-width at half maximum)
         """
+        # Subtract the 1d horizontal intensity profile from the radial gaussian
+        # 9A estimate
+        horizontal_intensity_5_4A_1d_estimate = \
+                horizontal_intensity_1d - horizontal_intensity_9A
         # Look at the horizontal intensity
         widths, width_heights, left_ips, right_ips = peak_widths(
-                horizontal_intensity_1d, [peak_location_radius_5_4A])
+                horizontal_intensity_5_4A_1d_estimate,
+                [peak_location_radius_5_4A])
 
         # Take the last peak
         peak_width_iso_5_4A = widths[-1]
