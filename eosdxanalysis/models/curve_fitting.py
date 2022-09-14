@@ -856,7 +856,7 @@ def estimate_background_noise(image):
     return peak_amplitude, peak_std
 
 
-def gaussian_decomposition(input_path):
+def gaussian_decomposition(input_path, output_path=None):
     """
     Runs batch gaussian decomposition
     """
@@ -868,9 +868,12 @@ def gaussian_decomposition(input_path):
     timestr = "%Y%m%dT%H%M%S.%f"
     timestamp = datetime.utcnow().strftime(timestr)
 
-    # Create output directory
-    output_dir = "gaussian_decomposition_{}".format(timestamp)
-    output_path = os.path.join(input_path, output_dir)
+    # Set output path with a timestamp if not specified
+    if not output_path:
+        output_dir = "gaussian_decomposition_{}".format(timestamp)
+        output_path = os.path.join(input_path, output_dir)
+
+    # Create output path
     os.makedirs(output_path, exist_ok=True)
 
     print("Saving to", output_path, "...")
