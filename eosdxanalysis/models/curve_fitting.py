@@ -10,6 +10,8 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
+import matplotlib.pyplot as plt
+
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.signal import peak_widths
@@ -25,6 +27,7 @@ from eosdxanalysis.simulations.utils import feature_pixel_location
 
 BG_NOISE_STD = 20
 DEFAULT_5_4A_STD = 20
+cmap = "hot"
 
 class PolynomialFit(object):
     """
@@ -876,7 +879,13 @@ def gaussian_decomposition(input_path, output_path=None):
     # Create output path
     os.makedirs(output_path, exist_ok=True)
 
-    print("Saving to", output_path, "...")
+    # Create image output path in same location as output dir
+    output_parent_dir = os.path.basename(os.path.normpath(output_path))
+    image_output_dir = "{}_images".format(output_parent_dir)
+    image_output_path = os.path.join(output_path, "..", image_output_dir)
+
+    # Create image output path
+    os.makedirs(image_output_path, exist_ok=True)
 
     # Get list of parameters
     param_list = GaussianDecomposition.parameter_list()
@@ -912,6 +921,12 @@ def gaussian_decomposition(input_path, output_path=None):
         output_filename = "GD_{}".format(filename)
         output_file_path = os.path.join(output_path, output_filename)
         np.savetxt(output_file_path, decomp_image, fmt="%d")
+
+        # Save image preview
+        save_image_filename = "GD_{}.png".format(filename)
+        save_image_fullpath = os.path.join(image_output_path,
+                save_image_filename)
+        plt.imsave(save_image_fullpath, decomp_image, cmap=cmap)
 
     # Create dataframe to store parameters
 
