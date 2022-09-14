@@ -425,12 +425,12 @@ class TestGaussianDecomposition(unittest.TestCase):
         synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
         gauss_class = GaussianDecomposition(synth_image)
 
-        gauss_class.p0_dict = p_synth_dict
+        gauss_class.p0_dict = p_guess_dict
         gauss_class.p_lower_bounds_dict = p_lower_bounds_dict
         gauss_class.p_upper_bounds_dict = p_upper_bounds_dict
 
         # Find Gaussian fit
-        popt_dict, pcov = gauss_class.best_fit(synth_image)
+        popt_dict, pcov = gauss_class.best_fit()
         popt = np.fromiter(popt_dict.values(), dtype=np.float64)
         decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
 
