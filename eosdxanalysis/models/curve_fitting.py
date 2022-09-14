@@ -539,9 +539,9 @@ class GaussianDecomposition(object):
         mask = create_circular_mask(
                 image.shape[0], image.shape[1], rmin=rmin, rmax=rmax)
 
-        RR_masked = RR[~mask].astype(np.float64)
-        TT_masked = TT[~mask].astype(np.float64)
-        image_masked = image[~mask].astype(np.float64)
+        RR_masked = RR[mask].astype(np.float64)
+        TT_masked = TT[mask].astype(np.float64)
+        image_masked = image[mask].astype(np.float64)
 
         xdata = (RR_masked.ravel(), TT_masked.ravel())
         ydata = image_masked.ravel().astype(np.float64)
