@@ -499,7 +499,7 @@ class TestGaussianDecomposition(unittest.TestCase):
 
     def test_estimate_parameters(self):
         """
-        Test the estimate of peak_location_radius_9A for a synthetic pattern
+        Test the estimate of all parameters for a synthetic pattern
         """
         p_synth_dict = self.p_synth_dict
         gauss_class = self.gauss_class
@@ -510,7 +510,11 @@ class TestGaussianDecomposition(unittest.TestCase):
         for key, value in p0_dict.items():
             known_parameter = p_synth_dict[key]
             test_parameter = p0_dict[key]
-            if not known_parameter < 1 and test_parameter < 1:
+            # If parameters are small, no need to check
+            large_parameters_flag = known_parameter >= 1 or test_parameter >= 1
+            if large_parameters_flag:
+                if not np.isclose(test_parameter, known_parameter, rtol=0.05):
+                    print(key, known_parameter, test_parameter)
                 self.assertTrue(np.isclose(test_parameter, known_parameter, rtol=0.05))
 
 
