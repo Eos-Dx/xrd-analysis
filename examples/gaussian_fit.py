@@ -10,6 +10,7 @@ Gaussian fit to keratin diffraction patterns
 
 import os
 import glob
+import argparse
 from collections import OrderedDict
 import time
 
@@ -32,30 +33,48 @@ from eosdxanalysis.models.curve_fitting import gaussian_decomposition
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
-t0 = time.time()
 
-cmap="hot"
+def main(input_path, output_path):
+    t0 = time.time()
 
-# 1 Run Gaussian decomposition on data set
-# ----------------------------------------
-run_gauss_decomp = True
-if run_gauss_decomp:
-    # Set the input path
-    input_path = ""
-    output_path = ""
+    cmap="hot"
 
-    # Run Gaussian decomposition
-    gaussian_decomposition(input_path, output_path)
+    # 1 Run Gaussian decomposition on data set
+    # ----------------------------------------
+    run_gauss_decomp = True
+    if run_gauss_decomp:
+        # Run Gaussian decomposition
+        gaussian_decomposition(input_path, output_path)
 
-# 2 Run K-means on Gaussian parameters
-# ------------------------------------
-run_kmeans = False
-if run_kmeans:
-    pass
+    # 2 Run K-means on Gaussian parameters
+    # ------------------------------------
+    run_kmeans = False
+    if run_kmeans:
+        pass
 
+    # 3 Run logistic regression on Gaussian parameters
+    # ------------------------------------------------
+    run_logreg = False
+    if run_logreg:
+        pass
 
-# 3 Run logistic regression on Gaussian parameters
-# ------------------------------------------------
-run_logreg = False
-if run_logreg:
-    pass
+if __name__ == '__main__':
+    """
+    Run Gaussian decomposition example
+    """
+    # Set up argument parser
+    parser = argparse.ArgumentParser()
+    # Set up parser arguments
+    parser.add_argument(
+            "--input_path", default=None, required=True,
+            help="The path containing raw files to perform fitting on.")
+    parser.add_argument(
+            "--output_path", default=None, required=True,
+            help="The output path to save results in.")
+
+    # Collect arguments
+    args = parser.parse_args()
+    input_path = args.input_path
+    output_path = args.output_path
+
+    main(input_path, output_path)
