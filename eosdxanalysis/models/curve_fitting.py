@@ -71,12 +71,15 @@ class GaussianDecomposition(object):
         self.image = image
         self.rmin = rmin
         self.rmax = rmax
+        self.p0_dict = p0_dict
+        self.p_lower_bounds_dict = p_lower_bounds_dict
+        self.p_upper_bounds_dict = p_upper_bounds_dict
 
         # Calculate image center coordinates
         center = image.shape[0]/2-0.5, image.shape[1]/2-0.5
         self.center = center
         # Initialize parameters
-        self.parameter_init(p0_dict, p_lower_bounds_dict, p_upper_bounds_dict)
+        self.parameter_init()
         return super().__init__()
 
     def estimate_parameters(self, width=4, position_tol=0.2):
@@ -84,7 +87,6 @@ class GaussianDecomposition(object):
         Estimate Gaussian fit parameters based on provided image.
         Used for providing accurate initial guesses to speed up curve fitting
         algorithm.
-
 
         Parameters
         ----------
@@ -105,7 +107,6 @@ class GaussianDecomposition(object):
             tuple of initial paremeters guess, as well as lower and upper
             bounds on the parameters.
 
-
         Notes
         -----
         - Use horizontal and vertical radial intensity profiles, and their
@@ -123,6 +124,9 @@ class GaussianDecomposition(object):
 
         """
         image = self.image
+        p0_dict = self.p0_dict
+        p_upper_bounds_dict = self.p_upper_bounds_dict
+        p_lower_bounds_dict = self.p_lower_bounds_dict
         RR, TT = self.meshgrid
 
         # Get 1D radial intensity in positive horizontal direction
@@ -135,7 +139,7 @@ class GaussianDecomposition(object):
         # profiles to estimate some anisotropic Gaussian properties
         intensity_diff_1d = horizontal_intensity_1d - vertical_intensity_1d
 
-        if "p0_dict" not in self.__dict__:
+        if  not p0_dict:
             # Call all functions to estimate individual parameters
             # Note that some estimator functions have dependcies on the output
             # of other estimator functions
@@ -226,7 +230,7 @@ class GaussianDecomposition(object):
                 })
 
         # Lower bounds
-        if "p_lower_bounds_dict" not in self.__dict__:
+        if not p_lower_bounds_dict:
             p_min_factor = 1e-2
             p_lower_bounds_dict = OrderedDict()
             for key, value in p0_dict.items():
@@ -238,7 +242,7 @@ class GaussianDecomposition(object):
             p_lower_bounds_dict["arc_angle_5A"] = 1e-6
 
         # Upper bounds
-        if "p_upper_bounds_dict" not in self.__dict__:
+        if not p_upper_bounds_dict:
             p_upper_bounds_dict = OrderedDict()
             p_max_factor = 1e2
             for key, value in p0_dict.items():
@@ -490,7 +494,7 @@ class GaussianDecomposition(object):
 
         return corrected_intensity_5_4A
 
-    def parameter_init(self, p0_dict=None, p_lower_bounds_dict=None, p_upper_bounds_dict=None):
+    def parameter_init(self):
         """
         P parameters:
         - peak_radius
