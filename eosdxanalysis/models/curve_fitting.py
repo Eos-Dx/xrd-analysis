@@ -3,8 +3,12 @@ Code for fitting data to curves
 """
 import os
 import argparse
-import numpy as np
+import glob
 from collections import OrderedDict
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
 
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
@@ -20,7 +24,7 @@ from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 BG_NOISE_STD = 20
-
+DEFAULT_5_4A_STD = 20
 
 class PolynomialFit(object):
     """
@@ -435,12 +439,15 @@ class GaussianDecomposition(object):
         # Look at the horizontal intensity
         widths, width_heights, left_ips, right_ips = peak_widths(
                 horizontal_intensity_5_4A_1d_estimate,
-                [peak_location_radius_5_4A])
+                [int(peak_location_radius_5_4A)])
 
         # Take the last peak
         peak_width_iso_5_4A = widths[-1]
         # convert FWHM to standard deviation
         peak_std_iso_5_4A = peak_width_iso_5_4A / (2*np.sqrt(2*np.log(2)))
+
+        if np.isclose(peak_std_iso_5_4A, 0):
+            peak_std_iso_5_4A = DEFAULT_5_4A_STD
 
         return peak_std_iso_5_4A
 
@@ -527,6 +534,28 @@ class GaussianDecomposition(object):
         """
         fit = keratin_function((r, theta), *p)
         return fit_error(p, image, fit, r, theta)
+
+    @classmethod
+    def parameter_list(self):
+        """
+        Returns the list of parameter names
+        """
+        params = [
+                "peak_location_radius_9A",
+                "peak_std_9A",
+                "peak_amplitude_9A",
+                "arc_angle_9A",
+                "peak_location_radius_5A",
+                "peak_std_5A",
+                "peak_amplitude_5A",
+                "arc_angle_5A",
+                "peak_location_radius_5_4A",
+                "peak_std_5_4A",
+                "peak_amplitude_5_4A",
+                "peak_std_bg",
+                "peak_amplitude_bg",
+                ]
+        return params
 
 def radial_gaussian(r, theta, peak_radius, peak_angle,
             peak_std, peak_amplitude, arc_angle):
@@ -827,6 +856,68 @@ def estimate_background_noise(image):
     return peak_amplitude, peak_std
 
 
+def gaussian_decomposition(input_path):
+    """
+    Runs batch gaussian decomposition
+    """
+    # Get full paths to files and created sorted list
+    file_path_list = glob.glob(os.path.join(input_path,"*.txt"))
+    file_path_list.sort()
+
+    # Set timestamp
+    timestr = "%Y%m%dT%H%M%S.%f"
+    timestamp = datetime.utcnow().strftime(timestr)
+
+    # Create output directory
+    output_dir = "gaussian_decomposition_{}".format(timestamp)
+    output_path = os.path.join(input_path, output_dir)
+    os.makedirs(output_path, exist_ok=True)
+
+    print("Saving to", output_path, "...")
+
+    # Get list of parameters
+    param_list = GaussianDecomposition.parameter_list()
+
+    # Construct empty list for storing data
+    row_list = []
+
+    # Loop over files
+    for file_path in file_path_list:
+        # Load data
+        filename = os.path.basename(file_path)
+        image = np.loadtxt(file_path, dtype=np.float64)
+
+        # Now get ``best-fit`` diffraction pattern
+        gauss_class = GaussianDecomposition(image)
+        popt_dict, pcov = gauss_class.best_fit()
+        RR, TT = gen_meshgrid(image.shape)
+        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+
+        # Construct dataframe row
+        # - filename
+        # - optimum fit parameters
+        row = [filename] + popt.tolist()
+        row_list.append(row)
+
+        decomp_image  = keratin_function((RR, TT), *popt).reshape(*image.shape)
+
+        # Save output
+        output_filename = "GD_{}".format(filename)
+        output_file_path = os.path.join(output_path, output_filename)
+        np.savetxt(output_file_path, decomp_image, fmt="%d")
+
+    # Create dataframe to store parameters
+
+    # Construct pandas dataframe columns
+    columns = ["Filename"] + param_list
+
+    df = pd.DataFrame(data=row_list, columns=columns)
+
+    # Save dataframe
+    csv_filename = "GD_results.csv"
+    csv_output_path = os.path.join(output_path, csv_filename)
+    df.to_csv(csv_output_path)
+
 if __name__ == '__main__':
     """
     Run curve_fitting on a file or entire folder.
@@ -835,28 +926,20 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--input_filepath", default=None, required=True,
-            help="The filepath of the raw file to perform fitting on")
+            "--input_path", default=None, required=True,
+            help="The path containing raw files to perform fitting on")
     parser.add_argument(
-            "--output_filepath", default=None, required=True,
-            help="The filepath of the output file")
+            "--fitting_method", default="gaussian-decomposition", required=False,
+            help="The fitting method to perform on the raw files."
+            " Options are: `gaussian-decomposition`.")
 
     # Collect arguments
     args = parser.parse_args()
-    input_filepath = args.input_filepath
-    output_filepath = args.output_filepath
+    input_path = args.input_path
+    fitting_method = args.fitting_method
 
-    # Load image
-    input_filename = os.path.basename(input_filepath)
-    image = np.loadtxt(input_filepath, dtype=np.float64)
+    if fitting_method == "gaussian-decomposition":
+        gaussian_decomposition(input_path)
 
-    # Now get "best-fit" diffraction pattern
-    gauss_class = GaussianDecomposition(image)
-    popt_dict, pcov = gauss_class.best_fit()
-    RR, TT = gen_meshgrid(image.shape)
-    popt = np.fromiter(popt_dict.values(), dtype=np.float64)
-    decomp_image  = keratin_function((RR, TT), *popt).reshape(*image.shape)
-
-    # Save output
-    if output_filepath:
-        np.savetxt(output_filepath, decomp_image, fmt="%d")
+    if fitting_method == "polynomial":
+        raise NotImplementedError("Not fully implemeneted yet.")
