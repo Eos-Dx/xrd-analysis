@@ -46,6 +46,8 @@ from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 
+from eosdxanalysis.preprocessing.utils import create_circular_mask
+
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 TEST_PATH = os.path.dirname(__file__)
@@ -321,28 +323,29 @@ class TestGaussianDecomposition(unittest.TestCase):
         """
         Test `GaussianDecomposition` on a known sample
         """
-        # Set input filepath
-        input_filename = "CRQF_A00005.txt"
-        input_filepath = os.path.join(self.TEST_DATA_PATH, "input", input_filename)
-        # Set output filepath
-        output_filename = "test_GaussianDecomp_CRQF_A00005.txt"
-        output_filepath = os.path.join(self.TEST_DATA_PATH, "output", output_filename)
+        # Set paths
+        input_path = os.path.join(self.TEST_DATA_PATH, "input")
+        output_path = os.path.join(self.TEST_DATA_PATH, "output")
 
         # Set up the command
         command = ["python", "eosdxanalysis/models/curve_fitting.py",
-                    "--input_filepath", input_filepath,
-                    "--output_filepath", output_filepath,
+                    "--input_path", input_path,
+                    "--output_path", output_path,
                     ]
         # Run the command
         subprocess.run(command)
 
-        # Check that the output is the same as the test output file
-        known_output_filename = "GaussianDecomp_CRQF_A00005.txt"
-        known_output_filepath = os.path.join(self.TEST_DATA_PATH, "output", known_output_filename)
-        known_output = np.loadtxt(known_output_filepath, dtype=np.uint32)
-        test_output = np.loadtxt(output_filepath, dtype=np.uint32)
+        # Check all output files
+        if False:
+            # Check that the output is the same as the test output file
+            known_output_filename = "GaussianDecomp_CRQF_A00005.txt"
+            known_output_filepath = os.path.join(self.TEST_DATA_PATH, "output", known_output_filename)
+            known_output = np.loadtxt(known_output_filepath, dtype=np.uint32)
+            test_output = np.loadtxt(output_filepath, dtype=np.uint32)
 
-        self.assertTrue(np.isclose(known_output, test_output).all())
+            self.assertTrue(np.isclose(known_output, test_output).all())
+
+        self.fail("Finish writing test.")
 
     def test_known_sample_bounds(self):
         """
@@ -373,6 +376,82 @@ class TestGaussianDecomposition(unittest.TestCase):
         self.assertFalse(np.isclose(popt, p_upper_bounds_values).all())
 
         self.fail("Finish writing test.")
+
+    def test_synthetic_keratin_pattern_good_sample_manual_guess(self):
+        """
+        Evaluate performance of automatic parameter estimation
+        """
+        # Set manual parameter guess
+        p0_dict = OrderedDict({
+                # 9A equatorial peaks parameters
+                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
+                "peak_std_9A":              8, # Width
+                "peak_amplitude_9A":        400, # Amplitude
+                "arc_angle_9A":             1e-1, # Arc angle
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
+                "peak_std_5A":              2, # Width
+                "peak_amplitude_5A":        100, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A":feature_pixel_location(4.15e-10), # Peak pixel radius
+                "peak_std_5_4A":            15, # Width
+                "peak_amplitude_5_4A":      100, # Amplitude
+                # Background noise parameters
+                "peak_std_bg":              200, # Width
+                "peak_amplitude_bg":        200, # Amplitude
+            })
+
+        # Set mesh size
+        size = 256
+        RR, TT = gen_meshgrid((size,size))
+
+        # Generate synthetic guess image
+        synth_image = keratin_function((RR, TT), *p0_dict.values()).reshape(RR.shape)
+
+        # Set input filepath
+        input_filename = "CRQF_AA00832.txt"
+        input_filepath = os.path.join(self.TEST_DATA_PATH, "input", input_filename)
+
+        # Load input image
+        image = np.loadtxt(input_filepath, dtype=np.float64)
+
+        gauss_class = GaussianDecomposition(image, p0_dict=p0_dict)
+
+        # Find Gaussian fit
+        popt_dict, pcov = gauss_class.best_fit()
+        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+        decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
+
+        # Get squared error for best fit image
+        error = gauss_class.fit_error(image, decomp_image)
+        error_ratio = error/np.sum(np.square(image))
+
+        # Get squared error for guess image
+        error = gauss_class.fit_error(image, synth_image)
+        error_ratio = error/np.sum(np.square(image))
+
+        # Mask the gaussian image for comparison purposes
+        rmin = 25
+        rmax = 90
+        mask = create_circular_mask(
+                image.shape[0], image.shape[1], rmin=rmin, rmax=rmax)
+        decomp_image_masked = decomp_image.copy()
+        decomp_image_masked[~mask] = 0
+
+        p_lower_bounds = np.fromiter(p_lower_bounds_dict.values(), dtype=np.float64)
+        p_upper_bounds = np.fromiter(p_upper_bounds_dict.values(), dtype=np.float64)
+
+        self.assertFalse(np.isclose(popt, p_lower_bounds).all())
+        self.assertFalse(np.isclose(popt, p_upper_bounds).all())
+
+        # Ensure that error ratio is below 1%
+        self.assertTrue(error_ratio < 0.01)
+
+        p_synth = np.fromiter(p_synth_dict.values(), dtype=np.float64)
+
+        # Ensure that popt values are close to p_dict values
+        self.assertTrue(np.isclose(popt, p_synth).all())
 
     def test_synthetic_keratin_pattern_manual_guess(self):
         """
