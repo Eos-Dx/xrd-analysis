@@ -27,6 +27,7 @@ from eosdxanalysis.simulations.utils import feature_pixel_location
 
 BG_NOISE_STD = 20
 DEFAULT_5_4A_STD = 20
+DEFAULT_5_4A_AMPLITUDE = 200
 cmap = "hot"
 
 class PolynomialFit(object):
@@ -140,6 +141,12 @@ class GaussianDecomposition(object):
             # Estimate background intensity parameters
             peak_amplitude_bg, peak_std_bg = estimate_background_noise(image)
 
+            # Create a radial gaussian estimate based on the bg parameters
+            radial_gaussian_estimate_bg = radial_gaussian(
+                    RR, TT,  0, 0, peak_std_bg, peak_amplitude_bg, np.pi)
+            horizontal_intensity_bg = radial_intensity_1d(
+                    radial_gaussian_estimate_bg)
+
             # Estimate 9A parameters
             peak_location_radius_9A, peaks_aniso_9A = \
                     self.estimate_peak_location_radius_9A(
@@ -158,8 +165,8 @@ class GaussianDecomposition(object):
 
             # Create a radial gaussian estimate based on the 9A parameters
             radial_gaussian_estimate_9A = radial_gaussian(
-                    RR, TT, peak_location_radius_9A, 0,
-                    peak_std_9A, peak_amplitude_9A, arc_angle_9A)
+                    RR, TT, peak_location_radius_9A, 0, peak_std_9A,
+                    peak_amplitude_9A, arc_angle_9A)
             horizontal_intensity_9A = radial_intensity_1d(
                     radial_gaussian_estimate_9A)
 
@@ -188,11 +195,12 @@ class GaussianDecomposition(object):
             peak_std_5_4A = self.estimate_peak_std_5_4A(
                     image, peak_location_radius_5_4A, peaks_iso_5_4A,
                     horizontal_intensity_1d, vertical_intensity_1d,
-                    intensity_diff_1d, horizontal_intensity_9A)
+                    intensity_diff_1d, horizontal_intensity_9A,
+                    horizontal_intensity_bg)
             peak_amplitude_5_4A = self.estimate_peak_amplitude_5_4A(
                     image, peak_location_radius_5_4A, horizontal_intensity_1d,
-                    vertical_intensity_1d,
-                    intensity_diff_1d)
+                    vertical_intensity_1d, intensity_diff_1d,
+                    horizontal_intensity_9A, horizontal_intensity_bg)
 
             # Set up initial parameters dictionary with None for each value
             p0_dict = OrderedDict({
@@ -431,18 +439,21 @@ class GaussianDecomposition(object):
     def estimate_peak_std_5_4A(
             self, image, peak_location_radius_5_4A, peaks_iso_5_4A,
             horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d,
-            horizontal_intensity_9A):
+            horizontal_intensity_9A, horizontal_intensity_bg):
         """
         Estimate the 5_4A peak widths (full-width at half maximum)
         """
         # Subtract the 1d horizontal intensity profile from the radial gaussian
-        # 9A estimate
-        horizontal_intensity_5_4A_1d_estimate = \
-                horizontal_intensity_1d - horizontal_intensity_9A
+        # 9A and background-noise estimates
+        horizontal_intensity_5_4A_1d_estimate = horizontal_intensity_1d \
+                - horizontal_intensity_9A - horizontal_intensity_bg
+        # Zero out negative values
+        horizontal_intensity_5_4A_1d_estimate[
+                horizontal_intensity_5_4A_1d_estimate < 0] = 0
         # Look at the horizontal intensity
         widths, width_heights, left_ips, right_ips = peak_widths(
                 horizontal_intensity_5_4A_1d_estimate,
-                [int(peak_location_radius_5_4A)])
+                [int(peak_location_radius_5_4A)], rel_height=1.0)
 
         # Take the last peak
         peak_width_iso_5_4A = widths[-1]
@@ -456,8 +467,24 @@ class GaussianDecomposition(object):
 
     def estimate_peak_amplitude_5_4A(
             self, image, peak_location_radius_5_4A, horizontal_intensity_1d,
-            vertical_intensity_1d, intensity_diff_1d):
-        return horizontal_intensity_1d[int(peak_location_radius_5_4A)]
+            vertical_intensity_1d, intensity_diff_1d, horizontal_intensity_9A,
+            horizontal_intensity_bg):
+        # Total intensity at 5_4A
+        total_intensity_5_4A = horizontal_intensity_1d[
+                int(peak_location_radius_5_4A)]
+        # Intensity at 5_4A from the 9A source
+        intensity_from_9A = horizontal_intensity_9A[
+                int(peak_location_radius_5_4A)]
+        # Intensity at 5_4A from the background noise source
+        intensity_from_bg = horizontal_intensity_bg[
+                int(peak_location_radius_5_4A)]
+
+        # Subtract intensity from other sources to get the correct amplitude
+        corrected_intensity_5_4A = np.abs(
+                total_intensity_5_4A - intensity_from_9A - intensity_from_bg)
+        corrected_intensity_5_4A  = DEFAULT_5_4A_AMPLITUDE
+
+        return corrected_intensity_5_4A
 
     def parameter_init(self, p0_dict=None, p_lower_bounds_dict=None, p_upper_bounds_dict=None):
         """
