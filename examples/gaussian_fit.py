@@ -69,7 +69,7 @@ if __name__ == '__main__':
             "--input_path", default=None, required=True,
             help="The path containing raw files to perform fitting on.")
     parser.add_argument(
-            "--output_path", default=None, required=True,
+            "--output_path", default=None, required=False,
             help="The output path to save results in.")
 
     # Collect arguments
