@@ -561,7 +561,7 @@ class GaussianDecomposition(object):
         Returns the square error between a function and
         its approximation.
         """
-        return np.sqrt(np.sum(np.square(image - fit)))
+        return np.sum(np.square(image - fit))
 
     def objective(self, p, image, r, theta):
         """
@@ -940,7 +940,7 @@ def gaussian_decomposition(input_path, output_path=None):
 
         # Get fit error
         error = gauss_class.fit_error(image, decomp_image)
-        error_ratio = error/np.sqrt(np.sum(np.square(image)))
+        error_ratio = error/np.sum(np.square(image))
 
         # Construct dataframe row
         # - filename
