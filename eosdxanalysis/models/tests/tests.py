@@ -2,6 +2,8 @@
 Tests for models module
 """
 import os
+import shutil
+import glob
 import unittest
 import numpy as np
 import numpy.ma as ma
@@ -517,6 +519,28 @@ class TestGaussianDecomposition(unittest.TestCase):
                     print(key, known_parameter, test_parameter)
                 self.assertTrue(np.isclose(test_parameter, known_parameter, rtol=0.05))
 
+    def test_cli_batch_gaussian_decomposition(self):
+        """
+        Test main cli on test data
+        """
+        test_dir = "batch_gaussian_decomposition"
+        input_path = os.path.join(self.TEST_DATA_PATH, "input", test_dir)
+
+        # Set up the command
+        command = ["python", "eosdxanalysis/models/curve_fitting.py",
+                    "--input_path", input_path,
+                    "--fitting_method", "gaussian-decomposition",
+                    ]
+        # Run the command
+        subprocess.run(command)
+
+
+        # Remove any directories created
+        output_path_list = glob.glob(os.path.join(input_path, "gaussian_decomposition_*"))
+        for output_path in output_path_list:
+            shutil.rmtree(output_path)
+
+        self.fail("Finish writing test.")
 
 class TestUtils(unittest.TestCase):
 
