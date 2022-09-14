@@ -137,6 +137,9 @@ class GaussianDecomposition(object):
             # Note that some estimator functions have dependcies on the output
             # of other estimator functions
 
+            # Estimate background intensity parameters
+            peak_amplitude_bg, peak_std_bg = estimate_background_noise(image)
+
             # Estimate 9A parameters
             peak_location_radius_9A, peaks_aniso_9A = \
                     self.estimate_peak_location_radius_9A(
@@ -190,9 +193,6 @@ class GaussianDecomposition(object):
                     image, peak_location_radius_5_4A, horizontal_intensity_1d,
                     vertical_intensity_1d,
                     intensity_diff_1d)
-
-            # Estimate background intensity parameters
-            peak_amplitude_bg, peak_std_bg = estimate_background_noise(image)
 
             # Set up initial parameters dictionary with None for each value
             p0_dict = OrderedDict({
