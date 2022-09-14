@@ -525,7 +525,7 @@ class GaussianDecomposition(object):
         Returns the square error between a function and
         its approximation.
         """
-        return np.sum(np.square(image - fit))
+        return np.sqrt(np.sum(np.square(image - fit)))
 
     def objective(self, p, image, r, theta):
         """
@@ -896,13 +896,17 @@ def gaussian_decomposition(input_path, output_path=None):
         RR, TT = gen_meshgrid(image.shape)
         popt = np.fromiter(popt_dict.values(), dtype=np.float64)
 
+        decomp_image  = keratin_function((RR, TT), *popt).reshape(*image.shape)
+
+        # Get fit error
+        error = gauss_class.fit_error(image, decomp_image)
+        error_ratio = error/np.sqrt(np.sum(np.square(image)))
+
         # Construct dataframe row
         # - filename
         # - optimum fit parameters
-        row = [filename] + popt.tolist()
+        row = [filename, error, error_ratio] + popt.tolist()
         row_list.append(row)
-
-        decomp_image  = keratin_function((RR, TT), *popt).reshape(*image.shape)
 
         # Save output
         output_filename = "GD_{}".format(filename)
@@ -912,7 +916,7 @@ def gaussian_decomposition(input_path, output_path=None):
     # Create dataframe to store parameters
 
     # Construct pandas dataframe columns
-    columns = ["Filename"] + param_list
+    columns = ["Filename", "Error", "Error_Ratio"] + param_list
 
     df = pd.DataFrame(data=row_list, columns=columns)
 
