@@ -1045,7 +1045,7 @@ def gaussian_decomposition(
 
         # Now get ``best-fit`` diffraction pattern
         gauss_class = GaussianDecomposition(
-                image, init_params_method=params_init_method)
+                image, params_init_method=params_init_method)
         popt_dict, pcov = gauss_class.best_fit()
         RR, TT = gen_meshgrid(image.shape)
         popt = np.fromiter(popt_dict.values(), dtype=np.float64)
