@@ -34,7 +34,7 @@ from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 
-def main(input_path, output_path=None):
+def main(input_path, output_path=None, params_init_method=None):
     t0 = time.time()
 
     cmap="hot"
@@ -44,7 +44,7 @@ def main(input_path, output_path=None):
     run_gauss_decomp = True
     if run_gauss_decomp:
         # Run Gaussian decomposition
-        gaussian_decomposition(input_path, output_path)
+        gaussian_decomposition(input_path, output_path, params_init_method)
 
     # 2 Run K-means on Gaussian parameters
     # ------------------------------------
@@ -71,10 +71,15 @@ if __name__ == '__main__':
     parser.add_argument(
             "--output_path", default=None, required=False,
             help="The output path to save results in.")
+    parser.add_argument(
+            "--params_init_method", default="ideal", required=False,
+            help="The default method to initialize the parameters"
+            " Options are: ``ideal`` and ``estimation``.")
 
     # Collect arguments
     args = parser.parse_args()
     input_path = args.input_path
     output_path = args.output_path
+    params_init_method = args.params_init_method
 
-    main(input_path, output_path)
+    main(input_path, output_path, params_init_method)
