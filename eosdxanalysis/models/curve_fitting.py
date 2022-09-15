@@ -581,7 +581,7 @@ class GaussianDecomposition(object):
                 "peak_std_5_4A":             9.95,
                 "peak_amplitude_5_4A":       272.76,
                 # Background noise parameters
-                "peak_std_bg":               20000,
+                "peak_std_bg":               1000,
                 "peak_amplitude_bg":         428.57,
                 })
             self.p0_dict = p0_dict
