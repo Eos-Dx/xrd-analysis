@@ -989,16 +989,16 @@ def gaussian_decomposition(input_path, output_path=None):
         row = [filename, error, error_ratio, r_factor] + popt.tolist()
         row_list.append(row)
 
-        # Save output
+        # Save masked output
         output_filename = "GD_{}".format(filename)
         output_file_path = os.path.join(output_data_path, output_filename)
-        np.savetxt(output_file_path, decomp_image, fmt="%d")
+        np.savetxt(output_file_path, decomp_image_masked, fmt="%d")
 
-        # Save image preview
+        # Save masked image preview
         save_image_filename = "GD_{}.png".format(filename)
         save_image_fullpath = os.path.join(output_images_path,
                 save_image_filename)
-        plt.imsave(save_image_fullpath, decomp_image, cmap=cmap)
+        plt.imsave(save_image_fullpath, decomp_image_masked, cmap=cmap)
 
     # Create dataframe to store parameters
 
