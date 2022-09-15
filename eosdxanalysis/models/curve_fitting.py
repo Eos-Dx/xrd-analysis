@@ -968,14 +968,25 @@ def gaussian_decomposition(input_path, output_path=None):
 
         decomp_image  = keratin_function((RR, TT), *popt).reshape(*image.shape)
 
-        # Get fit error
-        error = gauss_class.fit_error(image, decomp_image)
+        # Mask the gaussian image for comparison purposes
+        rmin = 25
+        rmax = 90
+        mask = create_circular_mask(
+                image.shape[0], image.shape[1], rmin=rmin, rmax=rmax)
+        decomp_image_masked = decomp_image.copy()
+        decomp_image_masked[~mask] = 0
+
+        # Get squared error for best fit image
+        error = gauss_class.fit_error(image, decomp_image_masked)
         error_ratio = error/np.sum(np.square(image))
+        r_factor = np.sum(
+                np.abs(np.sqrt(image) - np.sqrt(decomp_image_masked))) \
+                / np.sum(np.sqrt(image))
 
         # Construct dataframe row
         # - filename
         # - optimum fit parameters
-        row = [filename, error, error_ratio] + popt.tolist()
+        row = [filename, error, error_ratio, r_factor] + popt.tolist()
         row_list.append(row)
 
         # Save output
@@ -992,7 +1003,7 @@ def gaussian_decomposition(input_path, output_path=None):
     # Create dataframe to store parameters
 
     # Construct pandas dataframe columns
-    columns = ["Filename", "Error", "Error_Ratio"] + param_list
+    columns = ["Filename", "Error", "Error_Ratio", "R_Factor"] + param_list
 
     df = pd.DataFrame(data=row_list, columns=columns)
 
