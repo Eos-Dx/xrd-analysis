@@ -271,18 +271,27 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_background_noise</span></code>(image)</p></td>
 <td><p>Fit an isotropic Gaussian to the image, excluding zero-value points There are several options.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gaussian_iso</span></code>(r, a, std)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gaussian_decomposition</span></code>(input_path[, output_path])</p></td>
+<td><p>Runs batch gaussian decomposition</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gaussian_iso</span></code>(r, a, std)</p></td>
 <td><p>Define the isometric Gaussian function as follows:</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_meshgrid</span></code>(shape)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_meshgrid</span></code>(shape)</p></td>
 <td><p>Generate a meshgrid</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">keratin_function</span></code>(polar_point, ...)</p></td>
+<td><p>Generate entire kertain diffraction pattern at the points (r, theta), with parameters as the arguements to 4 calls of radial_gaussian.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">radial_gaussian</span></code>(r, theta, peak_radius, ...)</p></td>
+<td><p>Isotropic and radial Gaussian</p></td>
 </tr>
 </tbody>
 </table>
 <p class="rubric">Classes</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="eosdxanalysis.models.curve_fitting.GaussianDecomposition.html#eosdxanalysis.models.curve_fitting.GaussianDecomposition" title="eosdxanalysis.models.curve_fitting.GaussianDecomposition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianDecomposition</span></code></a>([image, p0_dict, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="eosdxanalysis.models.curve_fitting.GaussianDecomposition.html#eosdxanalysis.models.curve_fitting.GaussianDecomposition" title="eosdxanalysis.models.curve_fitting.GaussianDecomposition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianDecomposition</span></code></a>(image[, rmin, rmax, ...])</p></td>
 <td><p>Class for decomposing keratin diffraction patterns as a sum of Gaussians with angular spread.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">PolynomialFit</span></code>()</p></td>
