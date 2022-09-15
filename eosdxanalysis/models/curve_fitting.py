@@ -1004,7 +1004,8 @@ def estimate_background_noise(image):
     return peak_amplitude, peak_std
 
 
-def gaussian_decomposition(input_path, output_path=None):
+def gaussian_decomposition(
+        input_path, output_path=None, params_init_method=None):
     """
     Runs batch gaussian decomposition
     """
@@ -1043,7 +1044,8 @@ def gaussian_decomposition(input_path, output_path=None):
         image = np.loadtxt(file_path, dtype=np.float64)
 
         # Now get ``best-fit`` diffraction pattern
-        gauss_class = GaussianDecomposition(image)
+        gauss_class = GaussianDecomposition(
+                image, init_params_method=params_init_method)
         popt_dict, pcov = gauss_class.best_fit()
         RR, TT = gen_meshgrid(image.shape)
         popt = np.fromiter(popt_dict.values(), dtype=np.float64)
@@ -1111,15 +1113,20 @@ if __name__ == '__main__':
             "--fitting_method", default="gaussian-decomposition", required=False,
             help="The fitting method to perform on the raw files."
             " Options are: `gaussian-decomposition`.")
+    parser.add_argument(
+            "--params_init_method", default="ideal", required=False,
+            help="The default method to initialize the parameters"
+            " Options are: ``ideal`` and ``estimation``.")
 
     # Collect arguments
     args = parser.parse_args()
     input_path = args.input_path
     output_path = args.output_path
     fitting_method = args.fitting_method
+    params_init_method = args.params_init_method
 
     if fitting_method == "gaussian-decomposition":
-        gaussian_decomposition(input_path, output_path)
+        gaussian_decomposition(input_path, output_path, params_init_method)
 
     if fitting_method == "polynomial":
         raise NotImplementedError("Not fully implemeneted yet.")
