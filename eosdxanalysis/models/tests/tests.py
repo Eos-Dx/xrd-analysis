@@ -439,8 +439,10 @@ class TestGaussianDecomposition(unittest.TestCase):
         decomp_image_masked = decomp_image.copy()
         decomp_image_masked[~mask] = 0
 
-        p_lower_bounds = np.fromiter(p_lower_bounds_dict.values(), dtype=np.float64)
-        p_upper_bounds = np.fromiter(p_upper_bounds_dict.values(), dtype=np.float64)
+        p_lower_bounds = np.fromiter(
+                gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
+        p_upper_bounds = np.fromiter(
+                gauss_class.p_upper_bounds_dict.values(), dtype=np.float64)
 
         self.assertFalse(np.isclose(popt, p_lower_bounds).all())
         self.assertFalse(np.isclose(popt, p_upper_bounds).all())
