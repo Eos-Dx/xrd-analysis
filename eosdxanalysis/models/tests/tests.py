@@ -423,14 +423,6 @@ class TestGaussianDecomposition(unittest.TestCase):
         popt = np.fromiter(popt_dict.values(), dtype=np.float64)
         decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
 
-        # Get squared error for best fit image
-        error = gauss_class.fit_error(image, decomp_image)
-        error_ratio = error/np.sum(np.square(image))
-
-        # Get squared error for guess image
-        error = gauss_class.fit_error(image, synth_image)
-        error_ratio = error/np.sum(np.square(image))
-
         # Mask the gaussian image for comparison purposes
         rmin = 25
         rmax = 90
@@ -438,6 +430,10 @@ class TestGaussianDecomposition(unittest.TestCase):
                 image.shape[0], image.shape[1], rmin=rmin, rmax=rmax)
         decomp_image_masked = decomp_image.copy()
         decomp_image_masked[~mask] = 0
+
+        # Get squared error for best fit image
+        error = gauss_class.fit_error(image, decomp_image_masked)
+        error_ratio = error/np.sum(np.square(image))
 
         p_lower_bounds = np.fromiter(
                 gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
@@ -449,11 +445,6 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         # Ensure that error ratio is below 1%
         self.assertTrue(error_ratio < 0.01)
-
-        p_synth = np.fromiter(p_synth_dict.values(), dtype=np.float64)
-
-        # Ensure that popt values are close to p_dict values
-        self.assertTrue(np.isclose(popt, p_synth).all())
 
     def test_synthetic_keratin_pattern_manual_guess(self):
         """
