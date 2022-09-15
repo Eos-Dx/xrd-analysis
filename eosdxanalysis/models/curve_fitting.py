@@ -63,8 +63,8 @@ class GaussianDecomposition(object):
     """
 
     def __init__(
-            self, image, rmin=25, rmax=90, p0_dict=None, p_lower_bounds_dict=None,
-            p_upper_bounds_dict=None):
+            self, image, rmin=25, rmax=90, params_init_method="estimation", p0_dict=None,
+            p_lower_bounds_dict=None, p_upper_bounds_dict=None):
         """
         Initialize `GaussianDecomposition` class.
         """
@@ -79,7 +79,7 @@ class GaussianDecomposition(object):
         center = image.shape[0]/2-0.5, image.shape[1]/2-0.5
         self.center = center
         # Initialize parameters
-        self.parameter_init()
+        self.parameter_init(params_init_method)
         return super().__init__()
 
     def estimate_parameters(self, width=4, position_tol=0.2):
@@ -139,7 +139,7 @@ class GaussianDecomposition(object):
         # profiles to estimate some anisotropic Gaussian properties
         intensity_diff_1d = horizontal_intensity_1d - vertical_intensity_1d
 
-        if  not p0_dict:
+        if not p0_dict:
             # Call all functions to estimate individual parameters
             # Note that some estimator functions have dependcies on the output
             # of other estimator functions
@@ -520,12 +520,23 @@ class GaussianDecomposition(object):
 
         return corrected_intensity_5_4A
 
-    def parameter_init(self):
+    def parameter_init(self, params_init_method="estimation"):
         """
-        P parameters:
-        - peak_radius
-        - width
-        - amplitude
+        Initialize parameter estimates for curve fitting optimization
+
+        Parameters
+        ----------
+        method : string, optional
+
+            ``ideal`` method uses parameters from ideal structure.
+            ``estimation`` estimates parameters by analyzing the input image.
+
+        Returns
+        -------
+        p0_dict, p_lower_bounds_dict, p_upper_bounds_dict : tuple
+            tuple of initial paremeters guess, as well as lower and upper
+            bounds on the parameters.
+
         """
         image = self.image
         # Generate meshgrid
@@ -533,7 +544,78 @@ class GaussianDecomposition(object):
         self.meshgrid = meshgrid
         # Estimate parameters based on image if image is provided
         if type(image) == np.ndarray:
-            return self.estimate_parameters()
+            if params_init_method == "ideal":
+                return self.ideal_parameters()
+            if params_init_method == "estimation":
+                return self.estimate_parameters()
+
+    def ideal_parameters(self):
+        """
+        Returns ideal parameters from literature
+
+        Returns
+        -------
+        p0_dict : OrderedDict
+            Initial ideal paremeters guess
+
+        """
+        p0_dict = self.p0_dict
+        p_upper_bounds_dict = self.p_upper_bounds_dict
+        p_lower_bounds_dict = self.p_lower_bounds_dict
+
+        if not p0_dict:
+            # Set up initial ideal parameters dictionary
+            p0_dict = OrderedDict({
+                # 9A equatorial peaks parameters
+                "peak_location_radius_9A":   feature_pixel_location(9.8e-10),
+                "peak_std_9A":               10.32,
+                "peak_amplitude_9A":         673.81,
+                "arc_angle_9A":              0.035,
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":   feature_pixel_location(5.1e-10),
+                "peak_std_5A":               2.37,
+                "peak_amplitude_5A":         155.75,
+                "arc_angle_5A":              1.130,
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A": feature_pixel_location(4.15e-10),
+                "peak_std_5_4A":             9.95,
+                "peak_amplitude_5_4A":       272.76,
+                # Background noise parameters
+                "peak_std_bg":               20000,
+                "peak_amplitude_bg":         428.57,
+                })
+            self.p0_dict = p0_dict
+
+        # Lower bounds
+        if not p_lower_bounds_dict:
+            p_min_factor = 1e-2
+            p_lower_bounds_dict = OrderedDict()
+            for key, value in p0_dict.items():
+                # Set lower bounds
+                p_lower_bounds_dict[key] = p_min_factor*value
+
+            # Set arc_angle parameters individually
+            p_lower_bounds_dict["arc_angle_9A"] = 1e-6
+            p_lower_bounds_dict["arc_angle_5A"] = 1e-6
+
+        # Upper bounds
+        if not p_upper_bounds_dict:
+            p_upper_bounds_dict = OrderedDict()
+            p_max_factor = 1e2
+            for key, value in p0_dict.items():
+                # Set upper bounds
+                p_upper_bounds_dict[key] = p_max_factor*value
+
+            # Set arc_angle parameters individually
+            p_upper_bounds_dict["arc_angle_9A"] = np.pi
+            p_upper_bounds_dict["arc_angle_5A"] = np.pi
+
+        self.p0_dict = p0_dict
+        self.p_lower_bounds_dict = p_lower_bounds_dict
+        self.p_upper_bounds_dict = p_upper_bounds_dict
+
+
+        return p0_dict
 
     def best_fit(self):
         """
