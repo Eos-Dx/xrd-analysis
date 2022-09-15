@@ -315,6 +315,32 @@ class GaussianDecomposition(object):
             horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d):
         """
         Estimate the 9A maxima arc angle, related to the plateau size
+
+        Parameters
+        ----------
+        image : 2d-ndarray
+
+        peak_location_radius_9A : float
+            Estimate of where the 9A peak is located, value is the distance
+            from the center of the diffraction pattern in pixel units.
+
+        horizontal_intensity_1d : ndarray of floats
+            1d horizontal (or equatorial) slice of the diffraction pattern.
+            The assumption is that the input image is quadrant folded.
+
+        vertical_intensity_1d : ndarray of floats
+            1d vertical (or meridional) slice of the diffraction pattern.
+            The assumption is that the input image is quadrant folded.
+
+        intensity_diff_1d : ndarray of floats
+            = horizontal intensity - vertical intensity
+
+        Returns
+        -------
+        arc_angle : float
+            The arc angle (or convolution angle) in radians. The plateau size
+            is the arc length subtended by this angle.
+
         """
         # Estimate the anisotropic part of the angular intensity
         angular_intensity_9A_1d = angular_intensity_1d(image, radius=peak_location_radius_9A)
