@@ -1046,9 +1046,15 @@ def gaussian_decomposition(
         # Now get ``best-fit`` diffraction pattern
         gauss_class = GaussianDecomposition(
                 image, params_init_method=params_init_method)
-        popt_dict, pcov = gauss_class.best_fit()
+        try:
+            popt_dict, pcov = gauss_class.best_fit()
+            popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+        except RuntimeError as err:
+            print("Could not find Gaussian fit for {}.".format(filename))
+            print(err)
+            popt = [np.nan]*13
+
         RR, TT = gen_meshgrid(image.shape)
-        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
 
         decomp_image  = keratin_function((RR, TT), *popt).reshape(*image.shape)
 
