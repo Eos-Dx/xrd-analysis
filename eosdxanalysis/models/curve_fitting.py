@@ -1052,7 +1052,7 @@ def gaussian_decomposition(
         except RuntimeError as err:
             print("Could not find Gaussian fit for {}.".format(filename))
             print(err)
-            popt = np.array([np.nan]*13)
+            popt = np.array([-1]*13)
 
         RR, TT = gen_meshgrid(image.shape)
 
