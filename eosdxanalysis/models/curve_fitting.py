@@ -63,8 +63,8 @@ class GaussianDecomposition(object):
     """
 
     def __init__(
-            self, image, rmin=25, rmax=90, params_init_method="estimation", p0_dict=None,
-            p_lower_bounds_dict=None, p_upper_bounds_dict=None):
+            self, image, rmin=25, rmax=90, params_init_method="estimation",
+            p0_dict=None, p_lower_bounds_dict=None, p_upper_bounds_dict=None):
         """
         Initialize `GaussianDecomposition` class.
         """
@@ -288,6 +288,7 @@ class GaussianDecomposition(object):
                 position_tol * peak_location_theory:
             # Use the theoretical value
             peak_location = peak_location_theory
+
         return peak_location, peaks_aniso
 
     def estimate_peak_std_9A(
@@ -924,7 +925,6 @@ def keratin_function(
     pattern = pattern_9A + pattern_5A + pattern_5_4A + pattern_bg
 
     return pattern.ravel()
-
 
 def gen_meshgrid(shape):
     """
