@@ -29,20 +29,20 @@ def main(fit_results_file, output_path=None):
     normal_rows = df[df["Cancer"] == 0]
     Xnormal = normal_rows["peak_location_radius_5A"]
     Ynormal = normal_rows["peak_location_radius_5_4A"]
-    plt.scatter(Xnormal, Ynormal, color="blue", label="Normal")
+    plt.scatter(Xnormal, Ynormal, color="blue", label="Normal", s=10)
 
     # Plot cancer
     cancer_rows = df[df["Cancer"] == 1]
     Xcancer = cancer_rows["peak_location_radius_5A"]
     Ycancer = cancer_rows["peak_location_radius_5_4A"]
-    plt.scatter(Xcancer, Ycancer, color="red", label="Cancer")
+    plt.scatter(Xcancer, Ycancer, color="red", label="Cancer", s=10)
 
     # Plot settings
     plt.xlim([45, 70])
     plt.ylim([55, 80])
 
-    plt.xlabel("Peak location radius 5 A")
-    plt.ylabel("Peak location radius 5-4 A")
+    plt.xlabel("Peak location radius 5 A [Pixels]")
+    plt.ylabel("Peak location radius 5-4 A [Pixels]")
 
     plt.title("Gaussian Fitting Features Subspace")
     plt.legend()
