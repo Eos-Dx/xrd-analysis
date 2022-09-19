@@ -9,9 +9,11 @@ from scipy.special import jn_zeros
 from scipy.io import savemat
 import scipy
 import scipy.cluster.hierarchy as sch
+from scipy.ndimage import map_coordinates
 
 from skimage.transform import rescale
 from skimage.transform import warp_polar
+from skimage.transform import rotate
 
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import pad_image
@@ -81,21 +83,191 @@ def radial_intensity_1d(image, width=4):
 
     return intensity_1d
 
-def angular_intensity_1d(image, radius=None, width=4):
-    # If radius is not specified, do half of smallest image shape
+def angular_intensity_1d(image, radius=None, N=360):
+    """
+    Get a 1D profile of intensity vs. theta using scipy's
+    radial basis function interpolator.
+
+    :param image: image
+    :type image: ndarray, two dimensions
+
+    :param radius: radius to take the angular profile at
+    :type radius: float
+
+    :param N: output size
+    :type N: int
+
+    :returns profile: angular 1D profile
+    :rtype: ndarray of length N
+    """
+    # If radius is not specified, use largest sensible radius
     if radius is None:
         smallest_shape = np.min(image.shape)
-        radius = smallest_shape/2
+        radius = smallest_shape - 0.5
     # Calculate image center
     center = image.shape[0]/2-0.5, image.shape[1]/2-0.5
 
-    # Use warp_polar
-    polar_image = warp_polar(image, radius=radius+int(width/2),
-            output_shape=(360, image.shape[1]))
-    col_start, col_end = int(np.floor(radius - width/2)), int(np.ceil(radius + width/2))
-    # Average across the columns corresponding to the annulus
-    angular_profile_1d = np.mean(polar_image[:, col_start:col_end], axis=1)
+    # Set up interpolation points in polar coordinates
+    start_angle = -np.pi + 2*np.pi/N/2
+    end_angle = np.pi - 2*np.pi/N/2
+    step = 2*np.pi/N
+    angle_array = np.linspace(start_angle, end_angle, num=N, endpoint=True).reshape(-1,1)
+    # Set up interpolation points in Cartesian coordinates
+    Xcart = radius*np.cos(angle_array)
+    Ycart = radius*np.sin(angle_array)
+    # Change to array notation
+    row_indices = Ycart + center[0]
+    col_indices = Xcart + center[1]
+    indices = [row_indices, col_indices]
+
+    # Perform interpolation
+    angular_profile_1d = map_coordinates(image, indices).flatten()
+
     return angular_profile_1d
+
+def draw_antialiased_arc(radius, start_angle, angle_spread, output_shape):
+    """
+    Creates a 2D direc delta function in the shape of an arc.
+    The ``angle_spread`` parameter is symmetric about the ``start_angle``.
+    See diagram below.
+    See ``draw_antialiased_circle`` for reference.
+
+    :param radius: Radius of the arc
+    :type radius: float
+
+    :param start_angle: The starting angle of the arc in radians.
+        The angle in the positive x direction is `0` radians,
+        positive angle is counter-clockwise.
+    :type start_angle: float
+
+    :param angle_spread: The angular spread of the arc in radians.
+        This is a positive number from `0` to `2pi`.
+    :type angle_spread: float
+
+    :param output_shape: Shape of the output
+    :type output_shape: ndarray
+
+    :returns arc: The antialiased arc
+    :rtype: ndarray
+
+
+       ___
+     / \ / \
+    |   V   |
+     \ ___ /
+
+
+    """
+    # First calculate the arc as normal, then rotate if needed
+    radius = int(radius)
+
+    # Take the modulus of angle_spread with 2*pi
+    angle_spread %= 2*np.pi
+
+    # Check if the angle_spread is 0, meaning we want a full circle
+    if np.isclose(angle_spread, 0):
+        # Use ``draw_antialiased_circle`` function instead
+        return draw_antialiased_circle(radius)
+
+    if angle_spread >= np.pi/2:
+        raise ValueError("Arc angle spread cannot exceed pi/2.")
+
+
+    point_array = np.zeros((radius+1, radius+1))
+    i = 0
+    j = radius
+    theta = 0
+    last_fade_amount = 0
+    fade_amount = 0
+
+    MAX_OPAQUE = 1.0
+
+    # Calculate at most the 1/8th arc
+    while i < j and theta < angle_spread/2:
+        height = np.sqrt(np.max(radius * radius - i * i, 0))
+        fade_amount = MAX_OPAQUE * (np.ceil(height) - height)
+
+        if fade_amount < last_fade_amount:
+            # Opaqueness reset so drop down a row.
+            j -= 1
+        last_fade_amount = fade_amount
+
+        # We're fading out the current j row, and fading in the next one down.
+        point_array[i,j] = MAX_OPAQUE - fade_amount
+        point_array[i,j-1] = fade_amount
+
+        i += 1
+        theta = np.arctan2(i, j)
+
+    image_lower_right = point_array
+    # Flip point array vertically (switch order of rows)
+    image_upper_right = image_lower_right[::-1, :]
+    image_right = np.vstack((image_upper_right, image_lower_right))
+    # Image left will be all zeros
+    image_left = np.zeros_like(image_right)
+    # Join image left and image right
+    image = np.hstack((image_left, image_right))
+
+    # Rotate image if specified
+    if np.isclose(start_angle, 0):
+        return image
+    else:
+        # Rotation angle is specified radians, convert to degrees
+        rotation_degrees = start_angle*180/np.pi
+        rotated_image = rotate(image, rotation_degrees, preserve_range=True)
+        return rotated_image
+
+def draw_antialiased_circle(outer_radius):
+    """
+    Adapted via: https://stackoverflow.com/a/37714284
+
+    This will always output a shape 2*(outer_radius+1)
+
+    :param outer_radius: radius of circle
+    :type outer_radius: int
+
+    :returns circle: Numpy array of antialiased circle of shape ``2*(outer_radius+1)``
+    :rtype: ndarray
+
+    """
+    point_array = np.zeros((outer_radius+1, outer_radius+1))
+
+    i = 0
+    j = outer_radius
+    last_fade_amount = 0
+    fade_amount = 0
+
+    MAX_OPAQUE = 1.0
+
+    while i < j:
+        height = np.sqrt(np.max(outer_radius * outer_radius - i * i, 0))
+        fade_amount = MAX_OPAQUE * (np.ceil(height) - height)
+
+        if fade_amount < last_fade_amount:
+            # Opaqueness reset so drop down a row.
+            j -= 1
+        last_fade_amount = fade_amount
+
+        # We're fading out the current j row, and fading in the next one down.
+        point_array[i,j] = MAX_OPAQUE - fade_amount
+        point_array[i,j-1] = fade_amount
+
+        i += 1
+
+    # Fully construct the lower-right quadrant by adding the transpose
+    quad_lower_right = point_array + point_array.T
+
+    # Flip the lower-right quadrant vertically to get the upper-right quadrant
+    quad_upper_right = quad_lower_right[::-1, :]
+    # Stack the upper-right and lower-right quadrants to get the right half
+    circle_right = np.vstack((quad_upper_right, quad_lower_right))
+    # Flip the right half horizontally (row-wise, i.e. reverse order of columns)
+    # to get the left half of the circle
+    circle_left = circle_right[:,::-1]
+    # Finally, stack the left and right halves to form the full circle
+    circle = np.hstack((circle_left, circle_right))
+
+    return circle
 
 def l1_metric(A, B):
     """

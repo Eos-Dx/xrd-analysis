@@ -2,6 +2,8 @@
 Tests for models module
 """
 import os
+import shutil
+import glob
 import unittest
 import numpy as np
 import numpy.ma as ma
@@ -13,18 +15,26 @@ from scipy.special import jn_zeros
 from scipy.special import jv
 from scipy.io import loadmat
 from scipy.ndimage import map_coordinates
+from scipy.signal import find_peaks
+from scipy.signal import peak_widths
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
 from eosdxanalysis.models.curve_fitting import PolynomialFit
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
+from eosdxanalysis.models.curve_fitting import estimate_background_noise
+from eosdxanalysis.models.curve_fitting import gen_meshgrid
+from eosdxanalysis.models.curve_fitting import gaussian_iso
+from eosdxanalysis.models.curve_fitting import keratin_function
 from eosdxanalysis.models.utils import gen_jn_zerosmatrix
 from eosdxanalysis.models.utils import l1_metric
 from eosdxanalysis.models.utils import pol2cart
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
+from eosdxanalysis.models.utils import draw_antialiased_arc
+from eosdxanalysis.models.utils import draw_antialiased_circle
 from eosdxanalysis.models.feature_engineering import EngineeredFeatures
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import freq_sampling_grid
@@ -35,6 +45,8 @@ from eosdxanalysis.models.polar_sampling import psimatrix_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
+
+from eosdxanalysis.preprocessing.utils import create_circular_mask
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -134,8 +146,164 @@ class TestGaussianDecomposition(unittest.TestCase):
         """
         Set up test class
         """
+        # Set up data path
         TEST_DATA_PATH = os.path.join(TEST_PATH, "data", "GaussianDecomposition")
         self.TEST_DATA_PATH = TEST_DATA_PATH
+
+        # Set parameters for a synthetic keratin diffraction pattern
+        p_synth_dict = OrderedDict({
+                # 9A equatorial peaks parameters
+                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
+                "peak_std_9A":              7, # Width
+                "peak_amplitude_9A":        401, # Amplitude
+                "arc_angle_9A":             1e-2, # Arc angle
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
+                "peak_std_5A":              1, # Width
+                "peak_amplitude_5A":        13, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
+                "peak_std_5_4A":            17, # Width
+                "peak_amplitude_5_4A":      113, # Amplitude
+                # Background noise parameters
+                "peak_std_bg":              211, # Width
+                "peak_amplitude_bg":        223, # Amplitude
+            })
+
+        # Set mesh size
+        size = 256
+        RR, TT = gen_meshgrid((size,size))
+
+        # Generate synthetic image
+        synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
+
+        self.p_synth_dict = p_synth_dict
+        self.size = size
+        self.RR, self.TT = RR, TT
+        self.synth_image = synth_image
+
+    def test_radial_gaussian_trivial_centered(self):
+        """
+        Test radial gaussian function for a standard normal Gaussian
+        centered at the origin
+        """
+        SPACING_9A = 9.8e-10 # 9.8A molecular spacing theory location in meters
+        # Set space parameters
+        size = 256
+        shape = size, size
+        center = np.array(shape)/2-0.5
+
+        # Generate polar meshgrid
+        gau_class = GaussianDecomposition()
+        RR, TT = gau_class.gen_meshgrid(shape)
+
+        # Set radial gaussian parameters
+        peak_angle = 0.0 # equatorial
+        peak_radius = 0.0 # pixel distance from center
+        peak_std = 10.0
+        peak_amplitude = 100.0
+        arc_angle = 0 # Fully anisotropic
+
+        gau = gau_class.radial_gaussian(RR, TT,
+                peak_radius, peak_angle, peak_std,
+                peak_amplitude, arc_angle)
+
+        self.fail("Finish test")
+
+    def test_radial_gaussian_equatorial_fully_anisotropic(self):
+        """
+        Test radial gaussian function for a simple equatorial anisotropic Gaussian pattern
+        with quadrant-fold symmetry
+        """
+        SPACING_9A = 9.8e-10 # 9.8A molecular spacing theory location in meters
+        # Set space parameters
+        size = 256
+        shape = size, size
+
+        # Generate polar meshgrid
+        gau_class = GaussianDecomposition()
+        RR, TT = gau_class.gen_meshgrid(shape)
+
+        # Set radial gaussian parameters
+        peak_angle = 0.0 # equatorial
+        peak_radius = pixel_feature_location(SPACING_9A)
+        peak_std = 10
+        peak_amplitude = 100
+        arc_theta = 0 # Fully anisotropic
+
+        self.fail("Finish test")
+
+    def test_radial_gaussian_fully_isotropic(self):
+        """
+        Test radial gaussian function for a fully isotropic Gaussian
+        not centered at the origin
+        """
+        SPACING_9A = 9.8e-10 # 9.8A molecular spacing theory location in meters
+        # Set space parameters
+        size = 256
+        shape = size, size
+
+        # Generate polar meshgrid
+        gau_class = GaussianDecomposition()
+        RR, TT = gau_class.gen_meshgrid(shape)
+
+        # Set radial gaussian parameters
+        peak_angle = 0.0 # equatorial
+        peak_radius = pixel_feature_location(SPACING_9A)
+        peak_std = 10
+        peak_amplitude = 100
+        arc_theta = 0 # Fully anisotropic
+
+        self.fail("Finish test")
+
+    def test_radial_gaussian_peak_amplitude(self):
+        """
+        Ensure that the peak_amplitude value corresponds to gau(0)
+        """
+        # Set radial gaussian parameters
+        peak_angle = 0.0 # equatorial
+        peak_radius = 0.0
+        peak_std = 10
+        peak_amplitude = 13
+        arc_angle = 0 # Fully anisotropic
+
+        gau_class = GaussianDecomposition()
+
+        r = theta = 0.0
+        gau = gau_class.radial_gaussian(r, theta,
+                peak_radius, peak_angle, peak_std,
+                peak_amplitude, arc_angle)
+
+        self.assertTrue(np.isclose(gau, peak_amplitude))
+
+    def test_radial_gaussian_peak_std(self):
+        """
+        Ensure that the peak_std value corresponds to the
+        standard deviation
+        """
+        # Set space parameters
+        size = 256
+        shape = size, size
+
+        # Set radial gaussian parameters
+        peak_angle = 0.0 # equatorial
+        peak_radius = 0.0
+        peak_std = 20
+        peak_amplitude = 17
+        arc_angle = 0 # Fully anisotropic
+
+        gau_class = GaussianDecomposition()
+        RR, TT = gau_class.gen_meshgrid(shape)
+
+        XX = RR*np.cos(TT)
+
+        gau = gau_class.radial_gaussian(RR, TT,
+                peak_radius, peak_angle, peak_std,
+                peak_amplitude, arc_angle)
+
+        self.fail("Finish test")
+        self.assertTrue(np.isclose(peak_std, test_std))
 
     def test_cli(self):
         """
@@ -151,33 +319,34 @@ class TestGaussianDecomposition(unittest.TestCase):
         """
         Test `GaussianDecomposition` on a known sample
         """
-        # Set input filepath
-        input_filename = "CRQF_A00005.txt"
-        input_filepath = os.path.join(self.TEST_DATA_PATH, "input", input_filename)
-        # Set output filepath
-        output_filename = "test_GaussianDecomp_CRQF_A00005.txt"
-        output_filepath = os.path.join(self.TEST_DATA_PATH, "output", output_filename)
+        # Set paths
+        input_path = os.path.join(self.TEST_DATA_PATH, "input")
+        output_path = os.path.join(self.TEST_DATA_PATH, "output")
 
         # Set up the command
         command = ["python", "eosdxanalysis/models/curve_fitting.py",
-                    "--input_filepath", input_filepath,
-                    "--output_filepath", output_filepath,
+                    "--input_path", input_path,
+                    "--output_path", output_path,
                     ]
         # Run the command
         subprocess.run(command)
 
-        # Check that the output is the same as the test output file
-        known_output_filename = "GaussianDecomp_CRQF_A00005.txt"
-        known_output_filepath = os.path.join(self.TEST_DATA_PATH, "output", known_output_filename)
-        known_output = np.loadtxt(known_output_filepath, dtype=np.uint32)
-        test_output = np.loadtxt(output_filepath, dtype=np.uint32)
+        # Check all output files
+        if False:
+            # Check that the output is the same as the test output file
+            known_output_filename = "GaussianDecomp_CRQF_A00005.txt"
+            known_output_filepath = os.path.join(self.TEST_DATA_PATH, "output", known_output_filename)
+            known_output = np.loadtxt(known_output_filepath, dtype=np.uint32)
+            test_output = np.loadtxt(output_filepath, dtype=np.uint32)
 
-        self.assertTrue(np.isclose(known_output, test_output).all())
+            self.assertTrue(np.isclose(known_output, test_output).all())
+
+        self.fail("Finish writing test.")
 
     def test_known_sample_bounds(self):
         """
-        Test `GaussianDecomposition` on a known sample
-        to ensure optimal parameters are not near bounds
+        Test `GaussianDecomposition` on quality measurement of a normal
+        specimen to ensure optimal parameters are not near bounds.
         """
         # Set input filepath
         input_filename = "CRQF_A00005.txt"
@@ -189,27 +358,98 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Calculate optimum parameters
         image = np.loadtxt(input_filepath, dtype=np.float64)
 
-        gauss_class = GaussianDecomposition()
-        popt, pcov, RR, TT = gauss_class.best_fit(image)
+        gauss_class = GaussianDecomposition(image)
+        popt_dict, pcov, RR, TT = gauss_class.best_fit(image)
+        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
         decomp_image  = gauss_class.keratin_function((RR, TT), *popt).reshape(image.shape)
 
         # Check that the optimal parameters are not close to the upper or lower bounds
-        p0 = np.fromiter(gauss_class.p0_dict.values(), dtype=np.float64)
-        p_lower_bounds = np.fromiter(gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
-        p_upper_bounds = np.fromiter(gauss_class.p_upper_bounds_dict.values(), dtype=np.float64)
+        p0_values = np.fromiter(gauss_class.p0_dict.values(), dtype=np.float64)
+        p_lower_bounds_values = np.fromiter(gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
+        p_upper_bounds_values = np.fromiter(gauss_class.p_upper_bounds_dict.values(), dtype=np.float64)
+
+        self.assertFalse(np.isclose(popt, p_lower_bounds_values).all())
+        self.assertFalse(np.isclose(popt, p_upper_bounds_values).all())
+
+        self.fail("Finish writing test.")
+
+    def test_gaussian_decomposition_good_sample_manual_guess(self):
+        """
+        Evaluate performance of automatic parameter estimation
+        """
+        # Set manual parameter guess
+        p0_guess_dict = OrderedDict({
+                # 9A equatorial peaks parameters
+                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
+                "peak_std_9A":              8, # Width
+                "peak_amplitude_9A":        400, # Amplitude
+                "arc_angle_9A":             1e-1, # Arc angle
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
+                "peak_std_5A":              2, # Width
+                "peak_amplitude_5A":        100, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A":feature_pixel_location(4.15e-10), # Peak pixel radius
+                "peak_std_5_4A":            15, # Width
+                "peak_amplitude_5_4A":      100, # Amplitude
+                # Background noise parameters
+                "peak_std_bg":              200, # Width
+                "peak_amplitude_bg":        200, # Amplitude
+            })
+
+        # Set mesh size
+        size = 256
+        RR, TT = gen_meshgrid((size,size))
+
+        # Generate synthetic guess image
+        synth_image = keratin_function(
+                (RR, TT), *p0_guess_dict.values()).reshape(RR.shape)
+
+        # Set input filepath
+        # input_filename = "CRQF_AA00832.txt"
+        input_filename = "CRQF_AA00730-4.txt"
+        input_filepath = os.path.join(self.TEST_DATA_PATH, "input", input_filename)
+
+        # Load input image
+        image = np.loadtxt(input_filepath, dtype=np.float64)
+
+        gauss_class = GaussianDecomposition(
+                image, p0_dict=p0_guess_dict, params_init_method="estimation")
+
+        # Find Gaussian fit
+        popt_dict, pcov = gauss_class.best_fit()
+        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+        decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
+
+        # Mask the gaussian image for comparison purposes
+        rmin = 25
+        rmax = 90
+        mask = create_circular_mask(
+                image.shape[0], image.shape[1], rmin=rmin, rmax=rmax)
+        decomp_image_masked = decomp_image.copy()
+        decomp_image_masked[~mask] = 0
+
+        # Ensure the decomp_image and synth_image are different
+        self.assertFalse(np.isclose(decomp_image, synth_image).all())
+        self.assertFalse(np.array_equal(decomp_image, synth_image))
+
+        # Get squared error for best fit image
+        error = gauss_class.fit_error(image, decomp_image_masked)
+        error_ratio = error/np.sum(np.square(image))
+
+        p_lower_bounds = np.fromiter(
+                gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
+        p_upper_bounds = np.fromiter(
+                gauss_class.p_upper_bounds_dict.values(), dtype=np.float64)
 
         self.assertFalse(np.isclose(popt, p_lower_bounds).all())
         self.assertFalse(np.isclose(popt, p_upper_bounds).all())
 
-        # Check that the output is the same as the test output file
-        known_output_filename = "GaussianDecomp_CRQF_A00005.txt"
-        known_output_filepath = os.path.join(self.TEST_DATA_PATH, "output", known_output_filename)
-        known_output = np.loadtxt(known_output_filepath, dtype=np.uint32)
-        test_output = np.loadtxt(output_filepath, dtype=np.uint32)
+        # Ensure that error ratio is below 1%
+        self.assertTrue(error_ratio < 0.01)
 
-        self.assertTrue(np.isclose(known_output, test_output).all())
-
-    def test_synthetic_keratin_pattern(self):
+    def test_synthetic_keratin_pattern_manual_guess(self):
         """
         Generate a synthetic diffraction pattern
         and ensure the Gaussian fit error is small
@@ -217,52 +457,57 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Set parameters for a synthetic keratin diffraction pattern
         p_synth_dict = OrderedDict({
                 # 9A equatorial peaks parameters
-                "peak_location_radius_9A":  feature_pixel_location(9e-10), # Peak pixel radius
-                "peak_std_9A":              12, # Width
-                "peak_amplitude_9A":        1000, # Amplitude
-                "cos_power_9A":             8.0, # Cosine power
+                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
+                "peak_std_9A":              8, # Width
+                "peak_amplitude_9A":        400, # Amplitude
+                "arc_angle_9A":             1e-1, # Arc angle
                 # 5A meridional peaks parameters
-                "peak_location_radius_5A":  feature_pixel_location(5e-10), # Peak pixel radius
-                "peak_std_5A":              4, # Width
-                "peak_amplitude_5A":        200, # Amplitude
-                "cos_power_5A":             4.0, # Cosine power
+                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
+                "peak_std_5A":              2, # Width
+                "peak_amplitude_5A":        100, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
                 # 5-4A isotropic region parameters
                 "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
                 "peak_std_5_4A":            15, # Width
-                "peak_amplitude_5_4A":      500, # Amplitude
+                "peak_amplitude_5_4A":      100, # Amplitude
                 # Background noise parameters
                 "peak_std_bg":              200, # Width
-                "peak_amplitude_bg":        600, # Amplitude
+                "peak_amplitude_bg":        200, # Amplitude
             })
 
         # Lower bounds
         p_lower_bounds_dict = OrderedDict()
         p_upper_bounds_dict = OrderedDict()
+        p_guess_dict = OrderedDict()
 
         p_min_factor = 0.7
         p_max_factor = 1.3
+        p_guess_factor = 1.1
 
         for key, value in p_synth_dict.items():
             # Set lower bounds
             p_lower_bounds_dict[key] = p_min_factor*value
             # Set upper bounds
             p_upper_bounds_dict[key] = p_max_factor*value
+            # Set guess values
+            p_guess_dict[key] = p_guess_factor*value
 
         # Set mesh size
         size = 256
-        gauss_class = GaussianDecomposition()
-        RR, TT = gauss_class.gen_meshgrid((size,size))
+        RR, TT = gen_meshgrid((size,size))
 
         # Generate synthetic image
-        synth_image = gauss_class.keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
+        synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
+        gauss_class = GaussianDecomposition(synth_image)
 
-        gauss_class.p0_dict = p_synth_dict
+        gauss_class.p0_dict = p_guess_dict
         gauss_class.p_lower_bounds_dict = p_lower_bounds_dict
         gauss_class.p_upper_bounds_dict = p_upper_bounds_dict
 
         # Find Gaussian fit
-        popt, pcov, RR, TT = gauss_class.best_fit(synth_image)
-        decomp_image  = gauss_class.keratin_function((RR, TT), *popt).reshape(RR.shape)
+        popt_dict, pcov = gauss_class.best_fit()
+        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+        decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
 
         # Get squared error
         error = gauss_class.fit_error(synth_image, decomp_image)
@@ -282,9 +527,167 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Ensure that popt values are close to p_dict values
         self.assertTrue(np.isclose(popt, p_synth).all())
 
-        # Now test parameter estimation
+    def test_synthetic_keratin_pattern_auto_guess(self):
+        """
+        Generate a synthetic diffraction pattern
+        and ensure the Gaussian fit error is small
+        """
+        # Set parameters for a synthetic keratin diffraction pattern
+        p_synth_dict = OrderedDict({
+                # 9A equatorial peaks parameters
+                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
+                "peak_std_9A":              8, # Width
+                "peak_amplitude_9A":        400, # Amplitude
+                "arc_angle_9A":             1e-1, # Arc angle
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
+                "peak_std_5A":              2, # Width
+                "peak_amplitude_5A":        100, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
+                "peak_std_5_4A":            15, # Width
+                "peak_amplitude_5_4A":      100, # Amplitude
+                # Background noise parameters
+                "peak_std_bg":              200, # Width
+                "peak_amplitude_bg":        200, # Amplitude
+            })
+
+        # Set mesh size
+        size = 256
+        RR, TT = gen_meshgrid((size,size))
+
+        # Generate synthetic image
+        synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
         gauss_class = GaussianDecomposition(synth_image)
 
+        # Get initial paramter guess and bounds
+        p0_dict = gauss_class.p0_dict
+        p_lower_bounds_dict = gauss_class.p_lower_bounds_dict
+        p_upper_bounds_dict = gauss_class.p_upper_bounds_dict
+
+        # Find Gaussian fit
+        popt_dict, pcov = gauss_class.best_fit()
+        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+        decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
+
+        # Get squared error
+        error = gauss_class.fit_error(synth_image, decomp_image)
+        error_ratio = error/np.sum(np.square(synth_image))
+
+        p_lower_bounds = np.fromiter(p_lower_bounds_dict.values(), dtype=np.float64)
+        p_upper_bounds = np.fromiter(p_upper_bounds_dict.values(), dtype=np.float64)
+
+        self.assertFalse(np.isclose(popt, p_lower_bounds).all())
+        self.assertFalse(np.isclose(popt, p_upper_bounds).all())
+
+        # Ensure automatic parameter guesses are close to the known values
+        for key, value in p_synth_dict.items():
+            known_value = p_synth_dict[key]
+            estimated_value = p0_dict[key]
+            # Only check for closeness if a value is bigger than 1
+            if known_value > 1 or estimated_value > 1:
+                self.assertTrue(np.isclose(estimated_value, known_value, rtol=0.05),
+                        "Estimate is too far: {}, {}, {}".format(
+                            key, known_value, estimated_value))
+
+        # Ensure that error ratio is below 1%
+        self.assertTrue(error_ratio < 0.01)
+
+        p_synth = np.fromiter(p_synth_dict.values(), dtype=np.float64)
+
+        # Ensure that popt values are close to p_dict values
+        self.assertTrue(np.isclose(popt, p_synth).all())
+
+    def test_estimate_background_noise(self):
+        """
+        Test background-noise peak amplitude and standard deviation
+        across noise study measurements.
+        """
+        # Generate a test Gaussian
+        size = 256
+        shape = size, size
+        RR, TT = gen_meshgrid(shape)
+        a = 117
+        std = 31
+        test_gaussian = a*np.exp(-1/2*( (RR/std)**2) )
+
+        # Estimate the parameters
+        peak_amplitude, peak_std = estimate_background_noise(test_gaussian)
+
+        # Ensure the estimated parameters are identically close to the known
+        # parameters
+        self.assertTrue(np.isclose(peak_amplitude, a, rtol=0.05))
+        self.assertTrue(np.isclose(peak_std, std, rtol=0.05))
+
+    def test_estimate_background_noise_nonzero(self):
+        """
+        Test background-noise peak amplitude and standard deviation
+        across noise study measurements.
+        This tests situations with missing data (0 intensity)
+        """
+        # Generate a test Gaussian
+        size = 256
+        shape = size, size
+        RR, TT = gen_meshgrid(shape)
+        a = 117
+        std = 31
+        test_gaussian = a*np.exp(-1/2*( (RR/std)**2) )
+
+        # Set inside to zero
+        r_min = 25
+        test_gaussian[RR < 25] = 0
+
+        # Estimate the parameters
+        peak_amplitude, peak_std = estimate_background_noise(test_gaussian)
+
+        # Ensure the estimated parameters are identically close to the known
+        # parameters
+        self.assertTrue(np.isclose(peak_amplitude, a, rtol=0.05))
+        self.assertTrue(np.isclose(peak_std, std, rtol=0.05))
+
+    def test_estimate_parameters(self):
+        """
+        Test the estimate of all parameters for a synthetic pattern
+        """
+        p_synth_dict = self.p_synth_dict
+        gauss_class = self.gauss_class
+
+        p0_dict = gauss_class.p0_dict
+
+        # Ensure that p0_dict values are near p_synth_dict values
+        for key, value in p0_dict.items():
+            known_parameter = p_synth_dict[key]
+            test_parameter = p0_dict[key]
+            # If parameters are small, no need to check
+            large_parameters_flag = known_parameter >= 1 or test_parameter >= 1
+            if large_parameters_flag:
+                if not np.isclose(test_parameter, known_parameter, rtol=0.05):
+                    print(key, known_parameter, test_parameter)
+                self.assertTrue(np.isclose(test_parameter, known_parameter, rtol=0.05))
+
+    def test_cli_batch_gaussian_decomposition(self):
+        """
+        Test main cli on test data
+        """
+        test_dir = "batch_gaussian_decomposition"
+        input_path = os.path.join(self.TEST_DATA_PATH, "input", test_dir)
+
+        # Set up the command
+        command = ["python", "eosdxanalysis/models/curve_fitting.py",
+                    "--input_path", input_path,
+                    "--fitting_method", "gaussian-decomposition",
+                    ]
+        # Run the command
+        subprocess.run(command)
+
+
+        # Remove any directories created
+        output_path_list = glob.glob(os.path.join(input_path, "gaussian_decomposition_*"))
+        for output_path in output_path_list:
+            shutil.rmtree(output_path)
+
+        self.fail("Finish writing test.")
 
 class TestUtils(unittest.TestCase):
 
@@ -300,6 +703,54 @@ class TestUtils(unittest.TestCase):
             [14.9309, 16.4706, 17.9598, 19.4094, 20.8269, 22.2178],
             ])
         self.known_zeros = known_zeros
+
+    def test_draw_antialiased_circle(self):
+        """
+        Ensure we get a proper circle
+        """
+        radius = 100
+        test_circle = draw_antialiased_circle(radius)
+
+        # Check the arc length, ensure it is within 10% of expected arc length
+        # s = r * theta
+        known_arc_length = radius*2*np.pi
+        test_arc_length = np.sum(test_circle)
+
+        # Second argument is used as the rtol reference
+        self.assertTrue(np.isclose(test_arc_length, known_arc_length, rtol=0.1))
+
+        # Generate a meshgrid
+        center = np.array(test_circle.shape)/2-0.5
+        YY, XX = np.ogrid[:test_circle.shape[0], :test_circle.shape[1]]
+        RR = np.sqrt((XX-center[1])**2 + (YY-center[0])**2)
+
+        bool_known_circle = np.zeros_like(test_circle)
+        bool_known_circle[(RR <= 100+1) & (RR >= 100)] = 1
+
+        bool_test_circle = test_circle >= 0
+
+        bool_overlap_circle = bool_known_circle == bool_test_circle
+
+        bool_overlap_arc_length = np.sum(bool_overlap_circle)
+
+        # Check that the overlap arc length is also close to the known arc length
+        # Second argument is used as the rtol reference
+        self.assertTrue(np.isclose(bool_overlap_arc_length, known_arc_length, rtol=0.1))
+
+    def test_draw_antialiased_arc_zero_arc_angle_spread(self):
+        """
+        Zero spread should raise a ValueError
+        """
+        size = 15
+        shape = size, size
+        center = np.array(shape)/2-0.5
+
+        arc_radius = 100
+        arc_start_angle = 0
+        arc_angle_spread = 0
+
+        self.assertRaises(ValueError, draw_antialiased_arc,
+                arc_radius, arc_start_angle, arc_angle_spread, shape)
 
     def test_gen_jn_zerosmatrix(self):
         # Test if values are close to table values with relative tolerance
@@ -367,12 +818,14 @@ class TestUtils(unittest.TestCase):
         ring = (dist_from_center >= 50) & (dist_from_center <= 75)
         test_image[ring] = np.cos(2*angle)[ring]
 
-        ring_intensity = angular_intensity_1d(test_image, radius=size/2, width=4)
+        N = 360
+        ring_intensity = angular_intensity_1d(test_image, radius=(radius_start+radius_end)/2, N=N)
 
         # Ensure the ring intensity follows a sinusoid, within a certain tolerance
-        expected_intensity = np.cos(2*np.linspace(-np.pi + 2*np.pi/360/2, np.pi - 2*np.pi/360/2,
-            num=360, endpoint=True))
-        self.assertTrue(np.isclose(ring_intensity, expected_intensity, atol=0.02).all())
+        expected_intensity = np.cos(2*np.linspace(-np.pi + 2*np.pi/N/2, np.pi - 2*np.pi/N/2,
+            num=N, endpoint=True))
+
+        self.assertTrue(np.isclose(ring_intensity, expected_intensity).all())
 
 
 class TestFeatureEngineering(unittest.TestCase):

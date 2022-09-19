@@ -1,5 +1,5 @@
 Modules
-=============
+=======
 
 Calibration
 -----------
@@ -10,6 +10,8 @@ Models
 ------
 
 Dimensionality reduction and machine learning.
+
+:docs:curve_fitting
 
 Preprocessing
 -------------
