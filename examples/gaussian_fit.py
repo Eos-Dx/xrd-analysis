@@ -24,6 +24,15 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.signal import peak_widths
 
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import accuracy_score
+from sklearn.inspection import DecisionBoundaryDisplay
+
 from skimage.feature import peak_local_max
 
 from eosdxanalysis.models.utils import cart2pol
@@ -60,6 +69,7 @@ def main(
     # Run logistic regression on Gaussian parameters
     # ----------------------------------------------
     if run_logreg:
+        # Set feature vector
         pass
 
 if __name__ == '__main__':
