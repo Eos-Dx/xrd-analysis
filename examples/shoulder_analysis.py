@@ -130,7 +130,8 @@ def main(fit_results_file, output_path=None, max_iter=100):
             C=1e6,class_weight="balanced", solver="newton-cg",
             max_iter=max_iter)
     logreg.fit(X, Y)
-    print("Score: {:.2f}".format(logreg.score(X,Y)))
+    print("Score:")
+    print("{:.2f}".format(logreg.score(X,Y)))
 
     thetas = logreg.coef_.ravel()
     theta0 = logreg.intercept_[0]
