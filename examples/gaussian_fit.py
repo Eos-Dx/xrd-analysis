@@ -45,7 +45,7 @@ from eosdxanalysis.simulations.utils import feature_pixel_location
 
 def main(
         input_path, output_path=None, params_init_method=None,
-        run_gauss_decomp=False, run_pca=False, run_kmeans=False,
+        run_gauss_fit=False, run_pca=False, run_kmeans=False,
         run_logreg=False):
     t0 = time.time()
 
@@ -53,7 +53,7 @@ def main(
 
     # Run Gaussian decomposition on data set
     # --------------------------------------
-    if run_gauss_decomp:
+    if run_gauss_fit:
         # Run Gaussian decomposition
         gaussian_decomposition(input_path, output_path, params_init_method)
 
@@ -89,11 +89,15 @@ if __name__ == '__main__':
             "--params_init_method", default="ideal", required=False,
             help="The default method to initialize the parameters"
             " Options are: ``ideal`` and ``estimation``.")
+    parser.add_argument(
+            "--run_gauss_fit", default=False, required=False,
+            action='store_true', help="Run Gaussian fit algorithm.")
 
     # Collect arguments
     args = parser.parse_args()
     input_path = args.input_path
     output_path = args.output_path
     params_init_method = args.params_init_method
+    run_gauss_fit = args.run_gauss_fit
 
-    main(input_path, output_path, params_init_method)
+    main(input_path, output_path, params_init_method, run_gauss_fit)
