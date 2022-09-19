@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import balanced_accuracy_score
@@ -25,7 +26,7 @@ from sklearn.inspection import DecisionBoundaryDisplay
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 
 
-def main(fit_results_file, output_path=None, max_iter=100):
+def main(fit_results_file, output_path=None, max_iter=100, degree=1):
     t0 = time()
 
     cmap="hot"
@@ -72,7 +73,11 @@ def main(fit_results_file, output_path=None, max_iter=100):
 
     feature_list = GaussianDecomposition.parameter_list()
 
-    X = df[[*feature_list]].astype(float).values
+    Xlinear = df[[*feature_list]].astype(float).values
+    # Create a polynomial
+    poly = PolynomialFeatures(degree=degree)
+
+    X = poly.fit_transform(Xlinear)
 
     patient_averaging = False
 
@@ -125,22 +130,24 @@ def main(fit_results_file, output_path=None, max_iter=100):
     # Perform Logistic Regression
     # ---------------------------
 
+
     # Perform logistic regression
     logreg = LogisticRegression(
             C=1e6,class_weight="balanced", solver="newton-cg",
             max_iter=max_iter)
-    logreg.fit(X, Y)
+    pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
+    pipe.fit(X, Y)
     print("Score:")
-    print("{:.2f}".format(logreg.score(X,Y)))
+    print("{:.2f}".format(pipe.score(X,Y)))
 
-    thetas = logreg.coef_.ravel()
-    theta0 = logreg.intercept_[0]
+    thetas = pipe['logreg'].coef_.ravel()
+    theta0 = pipe['logreg'].intercept_[0]
     theta_array = np.array([[theta0, *thetas]])
     # print("Theta array:")
     # print(theta_array)
 
     # Predict
-    Y_predict = logreg.predict(X)
+    Y_predict = pipe.predict(X)
 
     # Get scores
     precision = precision_score(Y, Y_predict)
