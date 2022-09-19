@@ -706,6 +706,13 @@ class GaussianDecomposition(object):
                 ]
         return params
 
+
+class GaussianShoulderFitting(GaussianDecomposition):
+    """
+    Gaussian shoulder fitting class
+    """
+    pass
+
 def radial_gaussian(r, theta, peak_radius, peak_angle,
             peak_std, peak_amplitude, arc_angle):
     """

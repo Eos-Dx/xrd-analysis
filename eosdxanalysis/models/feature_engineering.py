@@ -2,9 +2,15 @@
 Calculate features using preprocessing functions
 """
 import os
+import glob
+from datetime import datetime
 import numpy as np
 
+from eosdxanalysis.models.curve_fitting import GaussianShoulderFitting
+
 from eosdxanalysis.simulations.utils import feature_pixel_location
+
+from eosdxanalysis.models.utils import radial_intensity_1d
 
 MODULE_PATH = os.path.dirname(__file__)
 MODULE_DATA_PATH = os.path.join(MODULE_PATH, "data")
@@ -24,7 +30,7 @@ class EngineeredFeatures(object):
     Class to calculate engineered features.
     """
 
-    def __init__(self, image, params):
+    def __init__(self, image, params=None):
         """
         Initialize engineered features class with an image
         and parameters.
@@ -401,3 +407,209 @@ class EngineeredFeatures(object):
         full_width_half_max = 2 * half_max_sub_loc
 
         return  full_width_half_max, max_val, max_val_loc, half_max, half_max_loc
+
+    def features_5A_shoulder(self, method="approximate"):
+        """
+        Given an image, approximate the 5.1 A peak and beyond as a sum of two
+        Gaussians. The hypothesis is that measurements of healthy specimens
+        present with a single Gaussian, whereas measurements of cancerous
+        specimens present with a second Gaussian slightly beyond 5.1 A
+        (perhaps 4.9 A)
+
+        Parameters
+        ----------
+
+        method : str
+            ``method`` can be `optimal` or `approximate`.
+
+        Returns
+        -------
+
+        shoulder_params : tuple of Gaussian parameters
+            5.1 A peak location, standard deviation, and amplitude, as well as
+            4.9 A peak location, standard deviation, and amplitude.
+
+        """
+
+        if method == "ideal":
+            # Use initial parameter guesses close to the ideal
+            # Get the rotated image
+            image = np.rot90(self.image)
+            # Calculate the radial intensity of the positive meridian
+            vertical_intensity_1d = radial_intensity_1d(image)
+
+            # Calculate the full 1D angular integrated profile
+            from eosdxanalysis.models.utils import angular_intensity_1d
+
+            intensity = np.zeros((95,))
+            for idx in range(95):
+                radius = idx + 25
+                angular_profile = angular_intensity_1d(image, radius=radius, N=360)
+                intensity[idx] = np.sum(angular_profile)
+
+            import matplotlib.pyplot as plt
+            plt.plot(intensity)
+            plt.show()
+
+            return
+
+        elif method == "estimation":
+            raise NotImplementedError(
+            "``estimation`` shoulder feature calculations not implemented yet.")
+        else:
+            raise ValueError("Specify a valid method.")
+
+        return vertical_intensity_1d, features_dict
+
+    @classmethod
+    def features_5A_shoulder_params_list(self):
+        """
+        Returns list of 5A shoulder parameters
+        """
+
+        shoulder_parameters_list = [
+                "gauss_51nm_amplitude",
+                "gauss_51nm_std",
+                "gauss_51nm_mean",
+                "gauss_49nm_amplitude",
+                "gauss_49nm_std",
+                "gauss_49nm_mean",
+                ]
+
+        return shoulder_parameters_list
+
+def shoulder_analysis(input_path, output_path=None,
+        method="ideal"):
+    """
+    Runs batch shoulder analysis
+    """
+    # Get full paths to files and created sorted list
+    file_path_list = glob.glob(os.path.join(input_path,"*.txt"))
+    file_path_list.sort()
+
+    # Set timestamp
+    timestr = "%Y%m%dT%H%M%S.%f"
+    timestamp = datetime.utcnow().strftime(timestr)
+
+    # Set output path with a timestamp if not specified
+    if not output_path:
+        output_dir = "shoulder_analysis_{}".format(timestamp)
+        output_path = os.path.join(input_path, "..", output_dir)
+
+    plot_orig_dir = "plot_orig"
+    plot_orig_path = os.path.join(output_path, plot_orig_dir)
+    plot_fit_dir = "plot_fit"
+    plot_fit_path = os.path.join(output_path, plot_fit_dir)
+
+    # Create output image paths
+    os.makedirs(plot_orig_path, exist_ok=True)
+    os.makedirs(plot_fit_path, exist_ok=True)
+
+    # Get list of parameters
+    param_list = EngineeredFeatures.features_5A_shoulder_params_list()
+
+    # Construct empty list for storing data
+    row_list = []
+
+    # Loop over files
+    for file_path in file_path_list:
+        # Load data
+        filename = os.path.basename(file_path)
+        image = np.loadtxt(file_path, dtype=np.float64)
+
+        # Get features
+        feature_class = EngineeredFeatures(image)
+
+        try:
+            radial_profile_1d_orig, popt_dict = \
+                    feature_class.features_5A_shoulder(method=method)
+            popt = np.fromiter(popt_dict.values(), dtype=np.float64)
+        except RuntimeError as err:
+            print("Could not find Gaussian fit for {}.".format(filename))
+            print(err)
+            popt = np.array([0]*6)
+        except TypeError:
+            continue
+
+        # Get best fit profile
+        radial_profile_1d_fit = EngineeredFeatures.shoulder_pattern(popt)
+
+        # Get squared error for best fit
+        error = gauss_class.fit_error(
+                radial_profile_1d_orig, radial_profile_1d_fit)
+        error_ratio = error/np.sum(np.square(radial_profile_1d_orig))
+        r_factor = np.sum(
+                np.abs(np.sqrt(radial_profile_1d_orig) \
+                        - np.sqrt(radial_profile_1d_fit))) \
+                / np.sum(np.sqrt(radial_profile_1d_orig))
+
+        # Construct dataframe row
+        # - filename
+        # - optimum fit parameters
+        row = [filename, error, error_ratio, r_factor] + popt.tolist()
+        row_list.append(row)
+
+        # Save original 1D plot
+        save_plot_filename = "{}_{}.png".format(output_prefix, filename)
+        save_plot_fullpath = os.path.join(plot_fit_path,
+                save_plot_filename)
+        fig = plt.figure(facecolor="white")
+        plt.plot(radial_intensity_1d_orig)
+        plt.savefig(save_plot_fullpath)
+        fig.clear()
+        plt.close(fig)
+
+        # Save Gaussian sum 1D plot
+        save_plot_filename = "{}_{}.png".format(output_prefix, filename)
+        save_plot_fullpath = os.path.join(plot_fit_path,
+                save_plot_filename)
+        fig = plt.figure(facecolor="white")
+        plt.plot(radial_intensity_1d_fit)
+        plt.savefig(save_plot_fullpath)
+        fig.clear()
+        plt.close(fig)
+
+    # Create dataframe to store parameters
+
+    # Construct pandas dataframe columns
+    columns = ["Filename", "Error", "Error_Ratio", "R_Factor"] + param_list
+
+    df = pd.DataFrame(data=row_list, columns=columns)
+
+    # Save dataframe
+    csv_filename = "{}.csv".format(output_prefix)
+    csv_output_path = os.path.join(output_path, csv_filename)
+    df.to_csv(csv_output_path)
+
+if __name__ == '__main__':
+    """
+    Run feature analysis on a file or entire folder.
+    """
+    # Set up argument parser
+    parser = argparse.ArgumentParser()
+    # Set up parser arguments
+    parser.add_argument(
+            "--input_path", default=None, required=True,
+            help="The path containing raw files to perform fitting on")
+    parser.add_argument(
+            "--output_path", default=None, required=False,
+            help="The output path to store results.")
+    parser.add_argument(
+            "--feature", default="shoulder", required=True,
+            help="Specify the feature to calculate. Use ``all`` for all.")
+    parser.add_argument(
+            "--params_init_method", default="ideal", required=False,
+            help="For Gaussian fitting, the default method to initialize the"
+            " parameters Options are: ``ideal`` and ``approximate``.")
+
+    # Collect arguments
+    args = parser.parse_args()
+    input_path = args.input_path
+    output_path = args.output_path
+    feature = args.feature
+    params_init_method = args.params_init_method
+
+    if feature == "gaussian-decomposition":
+        gaussian_decomposition(input_path, output_path, params_init_method)
+    else:
+        raise NotImplementedError("``{}`` not implemented.".format(feature))
