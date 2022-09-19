@@ -13,6 +13,17 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import accuracy_score
+from sklearn.inspection import DecisionBoundaryDisplay
+
+from eosdxanalysis.models.curve_fitting import GaussianDecomposition
+
 
 def main(fit_results_file, output_path=None):
     t0 = time()
@@ -47,10 +58,113 @@ def main(fit_results_file, output_path=None):
     plt.title("Gaussian Fitting Features Subspace")
     plt.legend()
 
-    plt.show()
+    # plt.show()
+    fig.clear()
+    plt.close(fig)
 
     print("Cancer:",cancer_rows.shape[0])
     print("Normal:",normal_rows.shape[0])
+
+
+    # Logistic Regression
+    # -------------------
+    # Data
+
+    feature_list = GaussianDecomposition.parameter_list()
+
+    X = df[[*feature_list]].astype(float).values
+
+    patient_averaging = False
+
+    # Patient averaging
+    if patient_averaging:
+        csv_num = df["Patient"].nunique()
+
+        print("There are " + str(csv_num) + " unique samples.")
+
+        # Y = np.zeros((X.shape[0],1))
+        # Y = df['Cancer'].values.reshape((-1,1))
+        # print(Y.shape)
+
+        # Labels
+        Y = np.zeros((csv_num,1),dtype=bool)
+        X_new = np.zeros((csv_num,2))
+
+        # Loop over each sample
+        # and average X and label Y
+
+        for idx in np.arange(csv_num):
+            # Get a sample
+            sample = df.loc[df['Barcode'] == barcodes[idx]]
+            patient = sample.values[0][1]
+            # Get all specimens from the same patient
+            df_rows = df.loc[df['Patient'] == patient]
+            indices = df_rows.index
+            # Now average across all samples
+            X_new[idx,:] = np.mean(X[indices,:],axis=0)
+            # Get the labels for the samples, first one is ok'
+            Y[idx] = df_rows["Cancer"][indices[0]]
+
+
+        X = X_new
+        print("Total data count after averaging:")
+        print(Y.shape)
+
+        print("Normal data count:")
+        print(np.sum(Y == False))
+        print("Cancer data count:")
+        print(np.sum(Y == True))
+
+    # No patient averaging
+    elif not patient_averaging:
+        Y = df["Cancer"]
+
+    # Check that X and Y have same number of rows
+    assert(np.array_equal(X.shape[0], Y.shape[0]))
+
+    # Perform Logistic Regression
+    # ---------------------------
+
+    # Perform logistic regression
+    logreg = LogisticRegression(
+            C=1e6,class_weight="balanced", solver="newton-cg", max_iter=1000)
+    logreg.fit(X, Y)
+    print("Score: {:.2f}".format(logreg.score(X,Y)))
+
+    thetas = logreg.coef_.ravel()
+    theta0 = logreg.intercept_[0]
+    theta_array = np.array([[theta0, *thetas]])
+    # print("Theta array:")
+    # print(theta_array)
+
+    # Predict
+    Y_predict = logreg.predict(X)
+
+    # Get scores
+    precision = precision_score(Y, Y_predict)
+    print("Precision:")
+    print("{:2.2}".format(precision))
+    recall = recall_score(Y, Y_predict)
+    print("Recall (Sensitivity):")
+    print("{:2.2}".format(recall))
+    # False positive rate: false positives
+    # Of samples identified as positive, what percentage are false
+    print("False positive rate:")
+    false_positives = np.sum(Y[Y_predict == True] == False)
+    predicted_positives = np.sum(Y_predict == True)
+    false_positive_rate = false_positives/predicted_positives
+    print("{:2.2}".format(false_positive_rate))
+
+    # Accuracy = number of correct predictions / total predictions
+    # Balanced accuracy score, weights by counts
+    balanced_accuracy = balanced_accuracy_score(Y, Y_predict)
+    print("Balanced accuracy:")
+    print("{:2.2}".format(balanced_accuracy))
+    # Unbalanced accuracy
+    unbalanced_accuracy = accuracy_score(Y, Y_predict)
+    print("Unbalanced accuracy:")
+    print("{:2.2}".format(unbalanced_accuracy))
+
 
 if __name__ == '__main__':
     """
