@@ -34,27 +34,31 @@ from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 
-def main(input_path, output_path=None, params_init_method=None):
+def main(
+        input_path, output_path=None, params_init_method=None,
+        run_gauss_decomp=False, run_pca=False, run_kmeans=False,
+        run_logreg=False):
     t0 = time.time()
 
     cmap="hot"
 
-    # 1 Run Gaussian decomposition on data set
-    # ----------------------------------------
-    run_gauss_decomp = True
+    # Run Gaussian decomposition on data set
+    # --------------------------------------
     if run_gauss_decomp:
         # Run Gaussian decomposition
         gaussian_decomposition(input_path, output_path, params_init_method)
 
-    # 2 Run K-means on Gaussian parameters
-    # ------------------------------------
-    run_kmeans = False
+    # Run Principal Component Analysis
+    if run_pca:
+        pass
+
+    # Run K-means on Gaussian parameters
+    # ----------------------------------
     if run_kmeans:
         pass
 
-    # 3 Run logistic regression on Gaussian parameters
-    # ------------------------------------------------
-    run_logreg = False
+    # Run logistic regression on Gaussian parameters
+    # ----------------------------------------------
     if run_logreg:
         pass
 
