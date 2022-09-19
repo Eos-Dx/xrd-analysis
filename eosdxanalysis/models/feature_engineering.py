@@ -5,6 +5,9 @@ import os
 import glob
 from datetime import datetime
 import numpy as np
+import pandas as pd
+
+from collections import OrderedDict
 
 from eosdxanalysis.models.curve_fitting import GaussianShoulderFitting
 
@@ -435,23 +438,14 @@ class EngineeredFeatures(object):
             # Use initial parameter guesses close to the ideal
             # Get the rotated image
             image = np.rot90(self.image)
+
+            # Filter the image
+            from scipy.ndimage import uniform_filter
+            filtered_img = uniform_filter(image, size=3)
             # Calculate the radial intensity of the positive meridian
-            vertical_intensity_1d = radial_intensity_1d(image)
+            vertical_intensity_1d = radial_intensity_1d(filtered_img, width=10)
 
-            # Calculate the full 1D angular integrated profile
-            from eosdxanalysis.models.utils import angular_intensity_1d
-
-            intensity = np.zeros((95,))
-            for idx in range(95):
-                radius = idx + 25
-                angular_profile = angular_intensity_1d(image, radius=radius, N=360)
-                intensity[idx] = np.sum(angular_profile)
-
-            import matplotlib.pyplot as plt
-            plt.plot(intensity)
-            plt.show()
-
-            return
+            features_dict = OrderedDict()
 
         elif method == "estimation":
             raise NotImplementedError(
@@ -478,6 +472,14 @@ class EngineeredFeatures(object):
 
         return shoulder_parameters_list
 
+def shoulder_pattern(
+        amplitude_5A, std_5A, location_5A,
+        amplitude_5_4A, std_5_4A, location_5_4A):
+    """
+    Shoulder pattern as a sum of two 1D Gaussians
+    """
+    raise NotImplementedError
+
 def shoulder_analysis(input_path, output_path=None,
         method="ideal"):
     """
@@ -500,6 +502,8 @@ def shoulder_analysis(input_path, output_path=None,
     plot_orig_path = os.path.join(output_path, plot_orig_dir)
     plot_fit_dir = "plot_fit"
     plot_fit_path = os.path.join(output_path, plot_fit_dir)
+
+    output_prefix = "shoulder_analysis"
 
     # Create output image paths
     os.makedirs(plot_orig_path, exist_ok=True)
@@ -528,11 +532,9 @@ def shoulder_analysis(input_path, output_path=None,
             print("Could not find Gaussian fit for {}.".format(filename))
             print(err)
             popt = np.array([0]*6)
-        except TypeError:
-            continue
 
         # Get best fit profile
-        radial_profile_1d_fit = EngineeredFeatures.shoulder_pattern(popt)
+        radial_profile_1d_fit = shoulder_pattern(*popt)
 
         # Get squared error for best fit
         error = gauss_class.fit_error(
