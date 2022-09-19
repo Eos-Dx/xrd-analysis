@@ -178,14 +178,10 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Generate synthetic image
         synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
 
-        # Initialize GaussianDecomposition class
-        gauss_class = GaussianDecomposition(synth_image)
-
         self.p_synth_dict = p_synth_dict
         self.size = size
         self.RR, self.TT = RR, TT
         self.synth_image = synth_image
-        self.gauss_class = gauss_class
 
     def test_radial_gaussian_trivial_centered(self):
         """
@@ -377,12 +373,12 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         self.fail("Finish writing test.")
 
-    def test_synthetic_keratin_pattern_good_sample_manual_guess(self):
+    def test_gaussian_decomposition_good_sample_manual_guess(self):
         """
         Evaluate performance of automatic parameter estimation
         """
         # Set manual parameter guess
-        p0_dict = OrderedDict({
+        p0_guess_dict = OrderedDict({
                 # 9A equatorial peaks parameters
                 "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
                 "peak_std_9A":              8, # Width
@@ -407,16 +403,19 @@ class TestGaussianDecomposition(unittest.TestCase):
         RR, TT = gen_meshgrid((size,size))
 
         # Generate synthetic guess image
-        synth_image = keratin_function((RR, TT), *p0_dict.values()).reshape(RR.shape)
+        synth_image = keratin_function(
+                (RR, TT), *p0_guess_dict.values()).reshape(RR.shape)
 
         # Set input filepath
-        input_filename = "CRQF_AA00832.txt"
+        # input_filename = "CRQF_AA00832.txt"
+        input_filename = "CRQF_AA00730-4.txt"
         input_filepath = os.path.join(self.TEST_DATA_PATH, "input", input_filename)
 
         # Load input image
         image = np.loadtxt(input_filepath, dtype=np.float64)
 
-        gauss_class = GaussianDecomposition(image, p0_dict=p0_dict)
+        gauss_class = GaussianDecomposition(
+                image, p0_dict=p0_guess_dict, params_init_method="estimation")
 
         # Find Gaussian fit
         popt_dict, pcov = gauss_class.best_fit()
@@ -430,6 +429,10 @@ class TestGaussianDecomposition(unittest.TestCase):
                 image.shape[0], image.shape[1], rmin=rmin, rmax=rmax)
         decomp_image_masked = decomp_image.copy()
         decomp_image_masked[~mask] = 0
+
+        # Ensure the decomp_image and synth_image are different
+        self.assertFalse(np.isclose(decomp_image, synth_image).all())
+        self.assertFalse(np.array_equal(decomp_image, synth_image))
 
         # Get squared error for best fit image
         error = gauss_class.fit_error(image, decomp_image_masked)
