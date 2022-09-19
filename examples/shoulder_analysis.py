@@ -25,7 +25,7 @@ from sklearn.inspection import DecisionBoundaryDisplay
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 
 
-def main(fit_results_file, output_path=None):
+def main(fit_results_file, output_path=None, max_iter=100):
     t0 = time()
 
     cmap="hot"
@@ -127,7 +127,8 @@ def main(fit_results_file, output_path=None):
 
     # Perform logistic regression
     logreg = LogisticRegression(
-            C=1e6,class_weight="balanced", solver="newton-cg", max_iter=1000)
+            C=1e6,class_weight="balanced", solver="newton-cg",
+            max_iter=max_iter)
     logreg.fit(X, Y)
     print("Score: {:.2f}".format(logreg.score(X,Y)))
 
@@ -179,10 +180,14 @@ if __name__ == '__main__':
     parser.add_argument(
             "--output_path", default=None, required=False,
             help="The output path to save results in.")
+    parser.add_argument(
+            "--max_iter", type=int, default=None, required=False,
+            help="The maximum iteration number for logistic regression.")
 
     # Collect arguments
     args = parser.parse_args()
     input_filepath = args.input_filepath
     output_path = args.output_path
+    max_iter = args.max_iter
 
-    main(input_filepath, output_path)
+    main(input_filepath, output_path=output_path, max_iter=max_iter)
