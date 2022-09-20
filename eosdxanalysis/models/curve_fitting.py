@@ -1040,6 +1040,7 @@ def gaussian_decomposition(
 
     # Get list of parameters
     param_list = GaussianDecomposition.parameter_list()
+    num_params = len(param_list)
 
     # Construct empty list for storing data
     row_list = []
@@ -1059,7 +1060,7 @@ def gaussian_decomposition(
         except RuntimeError as err:
             print("Could not find Gaussian fit for {}.".format(filename))
             print(err)
-            popt = np.array([0]*13)
+            popt = np.array([0]*num_params)
 
         RR, TT = gen_meshgrid(image.shape)
 
