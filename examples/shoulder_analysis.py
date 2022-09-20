@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_validate
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.preprocessing import StandardScaler
@@ -145,44 +146,37 @@ def main(
     pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
     pipe.fit(X_train, y_train)
 
-    scores = cross_val_score(pipe, X, y, cv=5)
-
-    print(
-            "%0.2f accuracy with a standard deviation of %0.2f" % (
-        scores.mean(), scores.std()))
-
-    print(scores)
+    # scores = cross_val_score(pipe, X, y, cv=5)
+    scoring = [
+            'accuracy',
+            'balanced_accuracy',
+            'precision',
+            'recall',
+            ]
+    scores = cross_validate(pipe, X_train, y_train, scoring=scoring)
 
     # Now check performance on entire set
     # Predict
     y_predict = pipe.predict(X)
 
-    # Get scores
-    precision = precision_score(y, y_predict)
-    print("Precision:")
-    print("{:2.2}".format(precision))
-    recall = recall_score(y, y_predict)
-    print("Recall (Sensitivity):")
-    print("{:2.2}".format(recall))
-    # False positive rate: false positives
-    # Of samples identified as positive, what percentage are false
-    print("False positive rate:")
-    false_positives = np.sum(y[y_predict == True] == False)
-    predicted_positives = np.sum(y_predict == True)
-    false_positive_rate = false_positives/predicted_positives
-    print("{:2.2}".format(false_positive_rate))
+    # Get true negatives, false positives, false negatives, true positives
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
 
-    # Accuracy = number of correct predictions / total predictions
-    # Balanced accuracy score, weights by counts
-    balanced_accuracy = balanced_accuracy_score(y, y_predict)
-    print("Balanced accuracy:")
-    print("{:2.2}".format(balanced_accuracy))
-    # Unbalanced accuracy
-    unbalanced_accuracy = accuracy_score(y, y_predict)
-    print("Unbalanced accuracy:")
-    print("{:2.2}".format(unbalanced_accuracy))
+    # Print scores
+    print("Accuracy", end=" |")
+    print("Balanced Accuracy", end=" |")
+    print("Precision", end=" |")
+    print("Recall (Sensitivity)", end=" |")
+    print("False Positives", end=" |")
+    print("False Negatives", end="\n")
 
-
+    # 
+    print(scores['accuracy'], end=" | ")
+    print(scores['balanced_accuracy'], end=" | ")
+    print(scores['precision'], end=" | ")
+    print(scores['recall'], end=" | ")
+    print(fp, end=" | ")
+    print(fn, end="\n")
 
     return scores
 
