@@ -161,7 +161,7 @@ def main(
     y_predict = pipe.predict(X)
 
     # Get true negatives, false positives, false negatives, true positives
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    tn, fp, fn, tp = confusion_matrix(y, y_pred).ravel()
 
     # Print scores
     print("Accuracy", end=" |")
