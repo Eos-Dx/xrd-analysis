@@ -7,6 +7,7 @@ import glob
 from collections import OrderedDict
 from datetime import datetime
 from time import time
+from joblib import dump
 
 import numpy as np
 import pandas as pd
@@ -142,7 +143,7 @@ def main(
 
     # Perform logistic regression
     logreg = LogisticRegression(
-            C=1e3,class_weight="balanced", solver="newton-cg",
+            C=1e2,class_weight="balanced", solver="newton-cg",
             max_iter=max_iter)
     pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
     pipe.fit(X_train, y_train)
@@ -187,6 +188,19 @@ def main(
     print("{:2.2}".format(false_positive_rate), end=" | ")
     print("{:2.2}".format(false_negative_rate), end="\n")
 
+    # Set timestamp
+    timestr = "%y%m%dT%H%M%S.%f"
+    timestamp = datetime.utcnow().strftime(timestr)
+
+    # Set output path with a timestamp if not specified
+    if not output_path:
+        output_dir = "logistic_regression_".format(timestamp)
+        output_path = os.path.dirname(data_filepath)
+
+    # Save the model
+    model_filename = "model_{}.joblib".format(timestamp)
+    model_filepath = os.path.join(output_path, model_filename)
+    dump(pipe, model_filepath)
 
     # Blind data predictions
     # ----------------------
@@ -212,15 +226,6 @@ def main(
         # Prefix
         output_prefix = "blind_set_predictions"
 
-        # Set output path with a timestamp if not specified
-        if not output_path:
-            # Set timestamp
-            timestr = "%y%m%dT%H%M%S.%f"
-            timestamp = datetime.utcnow().strftime(timestr)
-
-            output_dir = "predictions_".format(timestamp)
-            output_path = os.path.dirname(data_filepath)
-
         csv_filename = "{}_degree_{}_{}.csv".format(
                 output_prefix, str(degree), timestamp)
         csv_output_path = os.path.join(output_path, csv_filename)
@@ -228,6 +233,7 @@ def main(
         df_blind["Prediction"].to_csv(csv_output_path)
 
         print("Blind predictions saved to", csv_output_path)
+
 
     return scores
 
