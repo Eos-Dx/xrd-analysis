@@ -147,14 +147,7 @@ def main(
     pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
     pipe.fit(X_train, y_train)
 
-    # scores = cross_val_score(pipe, X, y, cv=5)
-    scoring = [
-            'accuracy',
-            'balanced_accuracy',
-            'precision',
-            'recall',
-            ]
-    scores = cross_validate(pipe, X_train, y_train, scoring=scoring)
+    scores = cross_val_score(pipe, X, y, cv=5)
 
     # Now check performance on entire set
     # Predict
@@ -163,8 +156,18 @@ def main(
     # Get true negatives, false positives, false negatives, true positives
     tn, fp, fn, tp = confusion_matrix(y, y_predict).ravel()
 
+    # Get scores
+    precision = precision_score(y, y_predict)
+    recall = recall_score(y, y_predict)
+
+    # Accuracy = number of correct predictions / total predictions
+    # Balanced accuracy score, weights by counts
+    balanced_accuracy = balanced_accuracy_score(y, y_predict)
+    # Unbalanced accuracy
+    unbalanced_accuracy = accuracy_score(y, y_predict)
+
     # Print scores
-    print("Accuracy", end=" |")
+    print("Unbalanced Accuracy", end=" |")
     print("Balanced Accuracy", end=" |")
     print("Precision", end=" |")
     print("Recall (Sensitivity)", end=" |")
@@ -172,10 +175,10 @@ def main(
     print("False Negatives", end="\n")
 
     # 
-    print(scores['accuracy'], end=" | ")
-    print(scores['balanced_accuracy'], end=" | ")
-    print(scores['precision'], end=" | ")
-    print(scores['recall'], end=" | ")
+    print(balanced_accuracy, end=" | ")
+    print(unbalanced_accuracy, end=" | ")
+    print(precision, end=" | ")
+    print(recall, end=" | ")
     print(fp, end=" | ")
     print(fn, end="\n")
 
