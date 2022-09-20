@@ -172,11 +172,11 @@ def main(
     unbalanced_accuracy = accuracy_score(y, y_predict)
 
     # Print scores
-    print("Unbalanced Accuracy", end=" |")
-    print("Balanced Accuracy", end=" |")
+    print("Unbalanced Accuracy", end=" | ")
+    print("Balanced Accuracy", end=" | ")
     print("Precision", end=" |")
-    print("Recall (Sensitivity)", end=" |")
-    print("False Positive Rate", end=" |")
+    print("Recall (Sensitivity)", end=" | ")
+    print("False Positive Rate", end=" | ")
     print("False Negative Rate", end="\n")
 
     # 
