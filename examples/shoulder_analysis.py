@@ -174,18 +174,18 @@ def main(
     # Print scores
     print("Unbalanced Accuracy", end=" | ")
     print("Balanced Accuracy", end=" | ")
-    print("Precision", end=" |")
+    print("Precision", end=" | ")
     print("Recall (Sensitivity)", end=" | ")
     print("False Positive Rate", end=" | ")
     print("False Negative Rate", end="\n")
 
     # 
-    print(balanced_accuracy, end=" | ")
-    print(unbalanced_accuracy, end=" | ")
-    print(precision, end=" | ")
-    print(recall, end=" | ")
-    print(false_positive_rate, end=" | ")
-    print(false_negative_rate, end="\n")
+    print("{:2.2}".format(balanced_accuracy), end=" | ")
+    print("{:2.2}".format(unbalanced_accuracy), end=" | ")
+    print("{:2.2}".format(precision), end=" | ")
+    print("{:2.2}".format(recall), end=" | ")
+    print("{:2.2}".format(false_positive_rate), end=" | ")
+    print("{:2.2}".format(false_negative_rate), end="\n")
 
     return scores
 
