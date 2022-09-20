@@ -24,6 +24,7 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
 from sklearn.inspection import DecisionBoundaryDisplay
 
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
