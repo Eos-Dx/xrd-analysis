@@ -33,7 +33,7 @@ from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 
 def main(
         data_filepath, blind_data_filepath=None, output_path=None,
-        max_iter=100, degree=1):
+        max_iter=100, degree=1, use_cross_val=False):
     t0 = time()
 
     cmap="hot"
@@ -134,9 +134,12 @@ def main(
     # Check that X and y have same number of rows
     assert(np.array_equal(X.shape[0], y.shape[0]))
 
-    # Randomly split up training and test set
-    X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.4, random_state=0)
+    if use_cross_val == True:
+        # Randomly split up training and test set
+        X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.4, random_state=0)
+    else:
+        X_train = X, y_train = y
 
     # Perform Logistic Regression
     # ---------------------------
@@ -259,6 +262,10 @@ if __name__ == '__main__':
     parser.add_argument(
             "--degree", type=int, default=None, required=False,
             help="The logistic regression decision boundary polynomial degree.")
+    parser.add_argument(
+            "--use_cross_val", type=bool, default=False, required=False,
+            action="store_true",
+            help="The logistic regression decision boundary polynomial degree.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -267,7 +274,9 @@ if __name__ == '__main__':
     output_path = args.output_path
     max_iter = args.max_iter
     degree = args.degree
+    use_cross_val = args.use_cross_val
 
     main(
             data_filepath, blind_data_filepath=blind_data_filepath,
-            output_path=output_path, max_iter=max_iter, degree=degree)
+            output_path=output_path, max_iter=max_iter, degree=degree,
+            use_cross_val=use_cross_val)
