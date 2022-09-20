@@ -156,6 +156,11 @@ def main(
     # Get true negatives, false positives, false negatives, true positives
     tn, fp, fn, tp = confusion_matrix(y, y_predict).ravel()
 
+    # False positive rate
+    false_positive_rate = fp/(fp + tp)
+    # False negative rate
+    false_negative_rate = fn/(fn + tn)
+
     # Get scores
     precision = precision_score(y, y_predict)
     recall = recall_score(y, y_predict)
@@ -171,16 +176,16 @@ def main(
     print("Balanced Accuracy", end=" |")
     print("Precision", end=" |")
     print("Recall (Sensitivity)", end=" |")
-    print("False Positives", end=" |")
-    print("False Negatives", end="\n")
+    print("False Positive Rate", end=" |")
+    print("False Negative Rate", end="\n")
 
     # 
     print(balanced_accuracy, end=" | ")
     print(unbalanced_accuracy, end=" | ")
     print(precision, end=" | ")
     print(recall, end=" | ")
-    print(fp, end=" | ")
-    print(fn, end="\n")
+    print(false_positive_rate, end=" | ")
+    print(false_negative_rate, end="\n")
 
     return scores
 
