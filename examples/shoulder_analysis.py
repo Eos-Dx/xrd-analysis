@@ -29,26 +29,26 @@ from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 
 
 def main(
-        training_data_filepath, test_data_filepath=None, output_path=None,
+        data_filepath, blind_data_filepath=None, output_path=None,
         max_iter=100, degree=1):
     t0 = time()
 
     cmap="hot"
 
     # Load dataframe
-    df_train = pd.read_csv(training_data_filepath, index_col=0)
+    df = pd.read_csv(data_filepath, index_col=0)
 
     # Set up figure
     fig = plt.figure(figsize=(8,8))
 
     # Plot normal
-    normal_rows = df_train[df_train["Cancer"] == 0]
+    normal_rows = df[df["Cancer"] == 0]
     Xnormal = normal_rows["peak_location_radius_5A"]
     Ynormal = normal_rows["peak_location_radius_5_4A"]
     plt.scatter(Xnormal, Ynormal, color="blue", label="Normal", s=10)
 
     # Plot cancer
-    cancer_rows = df_train[df_train["Cancer"] == 1]
+    cancer_rows = df[df["Cancer"] == 1]
     Xcancer = cancer_rows["peak_location_radius_5A"]
     Ycancer = cancer_rows["peak_location_radius_5_4A"]
     plt.scatter(Xcancer, Ycancer, color="red", label="Cancer", s=10)
@@ -77,7 +77,7 @@ def main(
 
     feature_list = GaussianDecomposition.parameter_list()
 
-    Xlinear = df_train[[*feature_list]].astype(float).values
+    Xlinear = df[[*feature_list]].astype(float).values
     # Create a polynomial
     poly = PolynomialFeatures(degree=degree)
 
@@ -87,12 +87,12 @@ def main(
 
     # Patient averaging
     if patient_averaging:
-        csv_num = df_train["Patient"].nunique()
+        csv_num = df["Patient"].nunique()
 
         print("There are " + str(csv_num) + " unique samples.")
 
         # y = np.zeros((X.shape[0],1))
-        # y = df_train['Cancer'].values.reshape((-1,1))
+        # y = df['Cancer'].values.reshape((-1,1))
         # print(..shape)
 
         # Labels
@@ -104,15 +104,15 @@ def main(
 
         for idx in np.arange(csv_num):
             # Get a sample
-            sample = df_train.loc[df_train['Barcode'] == barcodes[idx]]
+            sample = df.loc[df['Barcode'] == barcodes[idx]]
             patient = sample.values[0][1]
             # Get all specimens from the same patient
-            df_train_rows = df_train.loc[df_train['Patient'] == patient]
-            indices = df_train_rows.index
+            df_rows = df.loc[df['Patient'] == patient]
+            indices = df_rows.index
             # Now average across all samples
             X_new[idx,:] = np.mean(X[indices,:],axis=0)
             # Get the labels for the samples, first one is ok'
-            y[idx] = df_train_rows["Cancer"][indices[0]]
+            y[idx] = df_rows["Cancer"][indices[0]]
 
 
         X = X_new
@@ -126,7 +126,7 @@ def main(
 
     # No patient averaging
     elif not patient_averaging:
-        y = df_train["Cancer"]
+        y = df["Cancer"]
 
     # Check that X and y have same number of rows
     assert(np.array_equal(X.shape[0], y.shape[0]))
@@ -159,11 +159,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--training_data_filepath", default=None, required=True,
-            help="The file path containing 2D Gaussian fit results training data.")
+            "--data_filepath", default=None, required=True,
+            help="The file path containing 2D Gaussian fit results labeled data.")
     parser.add_argument(
-            "--test_data_filepath", default=None, required=False,
-            help="The file path containing 2D Gaussian fit results for test data.")
+            "--blind_data_filepath", default=None, required=False,
+            help="The file path containing 2D Gaussian fit results for blind data.")
     parser.add_argument(
             "--output_path", default=None, required=False,
             help="The output path to save results in.")
@@ -176,12 +176,12 @@ if __name__ == '__main__':
 
     # Collect arguments
     args = parser.parse_args()
-    training_data_filepath = args.training_data_filepath
-    test_data_filepath = args.test_data_filepath
+    data_filepath = args.data_filepath
+    blind_data_filepath = args.blind_data_filepath
     output_path = args.output_path
     max_iter = args.max_iter
     degree = args.degree
 
     main(
-            training_data_filepath, test_data_filepath=test_data_filepath,
+            data_filepath, blind_data_filepath=blind_data_filepath,
             output_path=output_path, max_iter=max_iter, degree=degree)
