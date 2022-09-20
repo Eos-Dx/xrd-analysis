@@ -227,7 +227,7 @@ def main(
 
         df_blind["Prediction"].to_csv(csv_output_path)
 
-        print("Blind predictions saved to," csv_output_path)
+        print("Blind predictions saved to", csv_output_path)
 
     return scores
 
