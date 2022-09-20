@@ -167,8 +167,7 @@ class TestGaussianDecomposition(unittest.TestCase):
                 "peak_std_5_4A":            17, # Width
                 "peak_amplitude_5_4A":      113, # Amplitude
                 # Background noise parameters
-                "peak_std_bg":              211, # Width
-                "peak_amplitude_bg":        223, # Amplitude
+                "bg_intensity":             400, # Intensity
             })
 
         # Set mesh size
@@ -394,8 +393,7 @@ class TestGaussianDecomposition(unittest.TestCase):
                 "peak_std_5_4A":            15, # Width
                 "peak_amplitude_5_4A":      100, # Amplitude
                 # Background noise parameters
-                "peak_std_bg":              200, # Width
-                "peak_amplitude_bg":        200, # Amplitude
+                "bg_intensity":             400, # Intensity
             })
 
         # Set mesh size
