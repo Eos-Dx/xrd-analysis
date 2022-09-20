@@ -263,7 +263,7 @@ if __name__ == '__main__':
             "--degree", type=int, default=None, required=False,
             help="The logistic regression decision boundary polynomial degree.")
     parser.add_argument(
-            "--use_cross_val", type=bool, default=False, required=False,
+            "--use_cross_val", default=False, required=False,
             action="store_true",
             help="The logistic regression decision boundary polynomial degree.")
 
