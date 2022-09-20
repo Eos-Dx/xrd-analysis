@@ -24,6 +24,15 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.signal import peak_widths
 
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import accuracy_score
+from sklearn.inspection import DecisionBoundaryDisplay
+
 from skimage.feature import peak_local_max
 
 from eosdxanalysis.models.utils import cart2pol
@@ -34,28 +43,33 @@ from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 
-def main(input_path, output_path=None, params_init_method=None):
+def main(
+        input_path, output_path=None, params_init_method=None,
+        run_gauss_fit=False, run_pca=False, run_kmeans=False,
+        run_logreg=False):
     t0 = time.time()
 
     cmap="hot"
 
-    # 1 Run Gaussian decomposition on data set
-    # ----------------------------------------
-    run_gauss_decomp = True
-    if run_gauss_decomp:
+    # Run Gaussian decomposition on data set
+    # --------------------------------------
+    if run_gauss_fit:
         # Run Gaussian decomposition
         gaussian_decomposition(input_path, output_path, params_init_method)
 
-    # 2 Run K-means on Gaussian parameters
-    # ------------------------------------
-    run_kmeans = False
+    # Run Principal Component Analysis
+    if run_pca:
+        pass
+
+    # Run K-means on Gaussian parameters
+    # ----------------------------------
     if run_kmeans:
         pass
 
-    # 3 Run logistic regression on Gaussian parameters
-    # ------------------------------------------------
-    run_logreg = False
+    # Run logistic regression on Gaussian parameters
+    # ----------------------------------------------
     if run_logreg:
+        # Set feature vector
         pass
 
 if __name__ == '__main__':
@@ -75,11 +89,15 @@ if __name__ == '__main__':
             "--params_init_method", default="ideal", required=False,
             help="The default method to initialize the parameters"
             " Options are: ``ideal`` and ``estimation``.")
+    parser.add_argument(
+            "--run_gauss_fit", default=False, required=False,
+            action='store_true', help="Run Gaussian fit algorithm.")
 
     # Collect arguments
     args = parser.parse_args()
     input_path = args.input_path
     output_path = args.output_path
     params_init_method = args.params_init_method
+    run_gauss_fit = args.run_gauss_fit
 
-    main(input_path, output_path, params_init_method)
+    main(input_path, output_path, params_init_method, run_gauss_fit)
