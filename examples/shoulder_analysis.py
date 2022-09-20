@@ -26,25 +26,27 @@ from sklearn.inspection import DecisionBoundaryDisplay
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 
 
-def main(fit_results_file, output_path=None, max_iter=100, degree=1):
+def main(
+        training_data_filepath, test_data_filepath=None, output_path=None,
+        max_iter=100, degree=1):
     t0 = time()
 
     cmap="hot"
 
     # Load dataframe
-    df = pd.read_csv(fit_results_file, index_col=0)
+    df_train = pd.read_csv(training_data_filepath, index_col=0)
 
     # Set up figure
     fig = plt.figure(figsize=(8,8))
 
     # Plot normal
-    normal_rows = df[df["Cancer"] == 0]
+    normal_rows = df_train[df_train["Cancer"] == 0]
     Xnormal = normal_rows["peak_location_radius_5A"]
     Ynormal = normal_rows["peak_location_radius_5_4A"]
     plt.scatter(Xnormal, Ynormal, color="blue", label="Normal", s=10)
 
     # Plot cancer
-    cancer_rows = df[df["Cancer"] == 1]
+    cancer_rows = df_train[df_train["Cancer"] == 1]
     Xcancer = cancer_rows["peak_location_radius_5A"]
     Ycancer = cancer_rows["peak_location_radius_5_4A"]
     plt.scatter(Xcancer, Ycancer, color="red", label="Cancer", s=10)
@@ -73,7 +75,7 @@ def main(fit_results_file, output_path=None, max_iter=100, degree=1):
 
     feature_list = GaussianDecomposition.parameter_list()
 
-    Xlinear = df[[*feature_list]].astype(float).values
+    Xlinear = df_train[[*feature_list]].astype(float).values
     # Create a polynomial
     poly = PolynomialFeatures(degree=degree)
 
@@ -83,12 +85,12 @@ def main(fit_results_file, output_path=None, max_iter=100, degree=1):
 
     # Patient averaging
     if patient_averaging:
-        csv_num = df["Patient"].nunique()
+        csv_num = df_train["Patient"].nunique()
 
         print("There are " + str(csv_num) + " unique samples.")
 
         # Y = np.zeros((X.shape[0],1))
-        # Y = df['Cancer'].values.reshape((-1,1))
+        # Y = df_train['Cancer'].values.reshape((-1,1))
         # print(Y.shape)
 
         # Labels
@@ -100,15 +102,15 @@ def main(fit_results_file, output_path=None, max_iter=100, degree=1):
 
         for idx in np.arange(csv_num):
             # Get a sample
-            sample = df.loc[df['Barcode'] == barcodes[idx]]
+            sample = df_train.loc[df_train['Barcode'] == barcodes[idx]]
             patient = sample.values[0][1]
             # Get all specimens from the same patient
-            df_rows = df.loc[df['Patient'] == patient]
-            indices = df_rows.index
+            df_train_rows = df_train.loc[df_train['Patient'] == patient]
+            indices = df_train_rows.index
             # Now average across all samples
             X_new[idx,:] = np.mean(X[indices,:],axis=0)
             # Get the labels for the samples, first one is ok'
-            Y[idx] = df_rows["Cancer"][indices[0]]
+            Y[idx] = df_train_rows["Cancer"][indices[0]]
 
 
         X = X_new
@@ -122,7 +124,7 @@ def main(fit_results_file, output_path=None, max_iter=100, degree=1):
 
     # No patient averaging
     elif not patient_averaging:
-        Y = df["Cancer"]
+        Y = df_train["Cancer"]
 
     # Check that X and Y have same number of rows
     assert(np.array_equal(X.shape[0], Y.shape[0]))
@@ -133,7 +135,7 @@ def main(fit_results_file, output_path=None, max_iter=100, degree=1):
 
     # Perform logistic regression
     logreg = LogisticRegression(
-            C=1e6,class_weight="balanced", solver="newton-cg",
+            C=1e3,class_weight="balanced", solver="newton-cg",
             max_iter=max_iter)
     pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
     pipe.fit(X, Y)
@@ -174,6 +176,44 @@ def main(fit_results_file, output_path=None, max_iter=100, degree=1):
     print("Unbalanced accuracy:")
     print("{:2.2}".format(unbalanced_accuracy))
 
+    # Test data
+    # ---------
+    if test_data_filepath:
+        # Run test data through trained model and assess performance
+        # Load dataframe
+        df_test = pd.read_csv(test_data_filepath, index_col=0)
+
+        X_test_linear = df_test[[*feature_list]].astype(float).values
+        # Create a polynomial
+        poly = PolynomialFeatures(degree=degree)
+
+        X_test_poly = poly.fit_transform(X_test_linear)
+
+        # Predict
+        Y_predict = pipe.predict(X_test_poly)
+
+        # Save results
+        df_test["Prediction"] = Y_predict
+
+        # Prefix
+        output_prefix = "test_set_predictions"
+
+        # Set output path with a timestamp if not specified
+        if not output_path:
+            # Set timestamp
+            timestr = "%Y%m%dT%H%M%S.%f"
+            timestamp = datetime.utcnow().strftime(timestr)
+
+            output_dir = "predictions_".format(timestamp)
+            output_path = os.path.dirname(training_data_filepath)
+
+        csv_filename = "{}_degree_{}_{}.csv".format(
+                output_prefix, str(degree), timestamp)
+        csv_output_path = os.path.join(output_path, csv_filename)
+
+        df_test["Prediction"].to_csv(csv_output_path)
+
+    # TODO: Save model
 
 if __name__ == '__main__':
     """
@@ -183,19 +223,29 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--input_filepath", default=None, required=True,
-            help="The file path containing 2D Gaussian fit results.")
+            "--training_data_filepath", default=None, required=True,
+            help="The file path containing 2D Gaussian fit results training data.")
+    parser.add_argument(
+            "--test_data_filepath", default=None, required=False,
+            help="The file path containing 2D Gaussian fit results for test data.")
     parser.add_argument(
             "--output_path", default=None, required=False,
             help="The output path to save results in.")
     parser.add_argument(
             "--max_iter", type=int, default=None, required=False,
             help="The maximum iteration number for logistic regression.")
+    parser.add_argument(
+            "--degree", type=int, default=None, required=False,
+            help="The logistic regression decision boundary polynomial degree.")
 
     # Collect arguments
     args = parser.parse_args()
-    input_filepath = args.input_filepath
+    training_data_filepath = args.training_data_filepath
+    test_data_filepath = args.test_data_filepath
     output_path = args.output_path
     max_iter = args.max_iter
+    degree = args.degree
 
-    main(input_filepath, output_path=output_path, max_iter=max_iter)
+    main(
+            training_data_filepath, test_data_filepath=test_data_filepath,
+            output_path=output_path, max_iter=max_iter, degree=degree)
