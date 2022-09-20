@@ -575,8 +575,7 @@ class GaussianDecomposition(object):
                 "peak_std_5_4A":             9.95,
                 "peak_amplitude_5_4A":       272.76,
                 # Background noise parameters
-                "peak_std_bg":               1000,
-                "peak_amplitude_bg":         428.57,
+                "bg_intensity":               400,
                 })
             self.p0_dict = p0_dict
 
@@ -694,8 +693,7 @@ class GaussianDecomposition(object):
                 "peak_location_radius_5_4A",
                 "peak_std_5_4A",
                 "peak_amplitude_5_4A",
-                "peak_std_bg",
-                "peak_amplitude_bg",
+                "bg_intensity",
                 ]
         return params
 
@@ -874,7 +872,7 @@ def keratin_function(
         peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, arc_angle_9A,
         peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, arc_angle_5A,
         peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
-        peak_std_bg, peak_amplitude_bg):
+        bg_intensity):
     """
     Generate entire kertain diffraction pattern at the points
     (r, theta), with parameters as the arguements to 4 calls
@@ -917,12 +915,8 @@ def keratin_function(
     pattern_5_4A = radial_gaussian(r, theta, peak_location_radius_5_4A,
             peak_angle_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
             arc_angle_5_4A)
-    # Background noise
-    pattern_bg = radial_gaussian(r, theta, peak_location_radius_bg,
-            peak_angle_bg, peak_std_bg, peak_amplitude_bg,
-            arc_angle_bg)
     # Additive model
-    pattern = pattern_9A + pattern_5A + pattern_5_4A + pattern_bg
+    pattern = pattern_9A + pattern_5A + pattern_5_4A + bg_intensity
 
     return pattern.ravel()
 
