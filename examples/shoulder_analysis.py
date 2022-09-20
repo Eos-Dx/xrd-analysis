@@ -187,6 +187,48 @@ def main(
     print("{:2.2}".format(false_positive_rate), end=" | ")
     print("{:2.2}".format(false_negative_rate), end="\n")
 
+
+    # Blind data predictions
+    # ----------------------
+    # Predict data on blind data set
+
+    if blind_data_filepath:
+        # Run blind data through trained model and assess performance
+        # Load dataframe
+        df_blind = pd.read_csv(blind_data_filepath, index_col=0)
+
+        X_blind_linear = df_blind[[*feature_list]].astype(float).values
+        # Create a polynomial
+        poly = PolynomialFeatures(degree=degree)
+
+        X_blind_poly = poly.fit_transform(X_blind_linear)
+
+        # Predict
+        y_predict = pipe.predict(X_blind_poly)
+
+        # Save results
+        df_blind["Prediction"] = y_predict
+
+        # Prefix
+        output_prefix = "blind_set_predictions"
+
+        # Set output path with a timestamp if not specified
+        if not output_path:
+            # Set timestamp
+            timestr = "%y%m%dT%H%M%S.%f"
+            timestamp = datetime.utcnow().strftime(timestr)
+
+            output_dir = "predictions_".format(timestamp)
+            output_path = os.path.dirname(training_data_filepath)
+
+        csv_filename = "{}_degree_{}_{}.csv".format(
+                output_prefix, str(degree), timestamp)
+        csv_output_path = os.path.join(output_path, csv_filename)
+
+        df_blind["Prediction"].to_csv(csv_output_path)
+
+        print("Blind predictions saved to," csv_output_path)
+
     return scores
 
 if __name__ == '__main__':
