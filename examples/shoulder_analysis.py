@@ -153,6 +153,37 @@ def main(
 
     print(scores)
 
+    # Now check performance on entire set
+    # Predict
+    y_predict = pipe.predict(X)
+
+    # Get scores
+    precision = precision_score(y, y_predict)
+    print("Precision:")
+    print("{:2.2}".format(precision))
+    recall = recall_score(y, y_predict)
+    print("Recall (Sensitivity):")
+    print("{:2.2}".format(recall))
+    # False positive rate: false positives
+    # Of samples identified as positive, what percentage are false
+    print("False positive rate:")
+    false_positives = np.sum(y[y_predict == True] == False)
+    predicted_positives = np.sum(y_predict == True)
+    false_positive_rate = false_positives/predicted_positives
+    print("{:2.2}".format(false_positive_rate))
+
+    # Accuracy = number of correct predictions / total predictions
+    # Balanced accuracy score, weights by counts
+    balanced_accuracy = balanced_accuracy_score(y, y_predict)
+    print("Balanced accuracy:")
+    print("{:2.2}".format(balanced_accuracy))
+    # Unbalanced accuracy
+    unbalanced_accuracy = accuracy_score(y, y_predict)
+    print("Unbalanced accuracy:")
+    print("{:2.2}".format(unbalanced_accuracy))
+
+
+
     return scores
 
 if __name__ == '__main__':
