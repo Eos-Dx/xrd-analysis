@@ -219,7 +219,7 @@ def main(
             timestamp = datetime.utcnow().strftime(timestr)
 
             output_dir = "predictions_".format(timestamp)
-            output_path = os.path.dirname(training_data_filepath)
+            output_path = os.path.dirname(data_filepath)
 
         csv_filename = "{}_degree_{}_{}.csv".format(
                 output_prefix, str(degree), timestamp)
