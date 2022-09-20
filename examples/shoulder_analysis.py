@@ -147,6 +147,10 @@ def main(
 
     scores = cross_val_score(pipe, X, y, cv=5)
 
+    print(
+            "%0.2f accuracy with a standard deviation of %0.2f" % (
+        scores.mean(), scores.std()))
+
     print(scores)
 
     return scores
