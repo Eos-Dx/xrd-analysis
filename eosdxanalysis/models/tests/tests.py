@@ -45,6 +45,7 @@ from eosdxanalysis.models.polar_sampling import psimatrix_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
+from eosdxanalysis.models.stats import plot_feature_histograms
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 
@@ -688,6 +689,68 @@ class TestGaussianDecomposition(unittest.TestCase):
             shutil.rmtree(output_path)
 
         self.fail("Finish writing test.")
+
+
+class TestStats(unittest.TestCase):
+    """
+    Test ``stats`` code
+    """
+
+    def setUp(self):
+        """
+        Set up for ``TestStats`` tests.
+        """
+        # Set up data path
+        TEST_DATA_PATH = os.path.join(TEST_PATH, "data", "feature_stats")
+        self.TEST_DATA_PATH = TEST_DATA_PATH
+
+    def test_plot_feature_histograms_cli(self):
+        """
+        Test CLI
+        """
+        self.fail("Finish writing test.")
+
+    @unittest.skipIf(os.environ.get("VISUAL_TESTING") != "True",
+        "Skip unless testing visuals")
+    def test_plot_feature_histograms_visualize(self):
+        """
+        Test ``plot_feature_histograms`` visualization with some test data
+        """
+        input_path = os.path.join(self.TEST_DATA_PATH, "input")
+        input_filename = "gauss_fit_ideal_features_only_2022_09_20.csv"
+        input_filepath = os.path.join(input_path, input_filename)
+
+        # Plot feature histograms
+        plot_feature_histograms(input_filepath, visualize=True)
+
+    def test_plot_feature_histograms_save_nonempty_output(self):
+        """
+        Test ``plot_feature_histograms`` file output with some test data,
+        checks if there are non-empty png files.
+        """
+        input_path = os.path.join(self.TEST_DATA_PATH, "input")
+        input_filename = "gauss_fit_ideal_features_only_2022_09_20.csv"
+        input_filepath = os.path.join(input_path, input_filename)
+        output_path = os.path.join(self.TEST_DATA_PATH, "output")
+        # Create output path
+        os.makedirs(output_path, exist_ok=True)
+
+        # Plot feature histograms
+        plot_feature_histograms(input_filepath, output_path, save=True)
+
+        # Test that ``output_path`` is not empty
+        output_file_suffix = "*.png"
+        output_filepath_list = glob.glob(os.path.join(output_path, output_file_suffix))
+
+        # Ensure there are some output files
+        self.assertTrue(len(output_filepath_list) > 0)
+        
+        # Ensure the output files are not empty
+        for output_filepath in output_filepath_list:
+            self.assertTrue(os.stat(output_filepath).st_size > 0)
+            # Remove the output file
+            os.remove(output_filepath)
+
 
 class TestUtils(unittest.TestCase):
 
