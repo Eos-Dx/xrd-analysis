@@ -20,7 +20,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import cross_validate
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import balanced_accuracy_score
@@ -148,7 +148,7 @@ def main(
     logreg = LogisticRegression(
             C=1e2,class_weight="balanced", solver="newton-cg",
             max_iter=max_iter)
-    pipe = Pipeline([('scaler', RobustScaler()), ('logreg', logreg)])
+    pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
     pipe.fit(X_train, y_train)
 
     scores = cross_val_score(pipe, X, y, cv=5)
