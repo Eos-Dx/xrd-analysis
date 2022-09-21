@@ -1,8 +1,13 @@
+"""
+Performs preprocessing pipeline
+"""
+
 import os
 import glob
 import argparse
 import json
 from datetime import datetime
+import subprocess
 
 import numpy as np
 import pandas as pd
@@ -31,9 +36,6 @@ from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 
-"""
-Performs preprocessing pipeline
-"""
 
 ABBREVIATIONS = {
         # output style: output style abbreviation
@@ -71,7 +73,7 @@ class PreprocessData(object):
     Class to run processing pipeline on data set.
     """
 
-    def __init__(self, filename=None, parent_dir=None, samples_dir=None,
+    def __init__(self, input_filepath=None, parent_dir=None, samples_dir=None,
             input_dir=None, output_dir=None, params={}):
         # Store input and output directories
         self.parent_dir = parent_dir
@@ -80,9 +82,9 @@ class PreprocessData(object):
         self.output_dir = output_dir
 
         # If we are provided with a single image, set its full path
-        if filename != None and input_dir != None:
+        if input_filepath:
             # Collect full file fullpath into a single-element list
-            filenames_fullpaths = [os.path.join(input_dir, filename)]
+            filenames_fullpaths = [input_filepath]
 
         # Else we are provided with an input directory
         elif filename == None and input_dir != None:
@@ -184,7 +186,6 @@ class PreprocessData(object):
 
             # Loop over files
             for filename_fullpath in filenames_fullpaths:
-
                 # Load file
                 sample = np.loadtxt(filename_fullpath)
 
@@ -475,6 +476,12 @@ if __name__ == "__main__":
             "--samples_dir", default=None,
             help="The subdirectory name of samples to analyze")
     parser.add_argument(
+            "--input_path", default=None,
+            help="The path with files to preprocess.")
+    parser.add_argument(
+            "--input_filepath", default=None,
+            help="The path to the file to preprocess.")
+    parser.add_argument(
             "--input_dir", default=None,
             help="The files directory to analyze")
     parser.add_argument(
@@ -495,6 +502,9 @@ if __name__ == "__main__":
     parser.add_argument(
             "--scaling", default=None,
             help="Plot scaling")
+    parser.add_argument(
+            "--parallel", default=None, action="store_true",
+            help="Flag to run preprocessing in parallel.")
 
     args = parser.parse_args()
 
@@ -504,6 +514,10 @@ if __name__ == "__main__":
     samples_dir = args.samples_dir
     input_dir = args.input_dir
     output_dir = args.output_dir
+
+    # Set filepath info
+    input_path = args.input_path
+    input_filepath = args.input_filepath
 
     # If parent_dir and samples_dir are set, and input_dir and output_dir
     # are empty, then set input_dir and output_dir appropriately
@@ -515,6 +529,10 @@ if __name__ == "__main__":
         pass
     elif parent_dir and samples_dir and output_dir:
         input_dir = os.path.join(parent_dir, samples_dir)
+    elif input_path:
+        pass
+    elif input_filepath:
+        pass
     else:
         raise ValueError("Must specify parent_dir and samples_dir or input_dir")
 
@@ -546,12 +564,63 @@ if __name__ == "__main__":
     # Set plot scaling
     scaling = args.scaling
 
-    # Instantiate PreprocessData class
-    preprocessor = PreprocessData(input_dir=input_dir, output_dir=output_dir,
-            parent_dir=parent_dir, samples_dir=samples_dir, params=params)
+    # Check if parallel processing should be used
+    parallel = args.parallel
 
-    # Run preprocessing
-    preprocessor.preprocess(plans=plans, mask_style=params.get("crop_style"),
-            uniform_filter_size=uniform_filter_size, scaling=scaling)
+    if parallel:
+        # Set timestamp
+        timestr = "%Y%m%dT%H%M%S.%f"
+        timestamp = datetime.utcnow().strftime(timestr)
+        # Construct the output directory name
+        input_dir = os.path.basename(os.path.abspath(input_path))
+        output_dir_name = "preprocessed_{}_{}".format(input_dir, timestamp)
+
+        # Set the output path
+        if not output_dir:
+            output_dir = os.path.dirname(os.path.abspath(input_path))
+        output_path = os.path.join(output_dir, output_dir_name)
+        os.makedirs(output_path, exist_ok=True)
+
+        # Get the list of file paths
+        input_filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
+
+        # Run all processes in parallel
+        process_list = []
+        print("Begin parallel preprocessing...")
+        for input_filepath in input_filepath_list:
+            print(
+                    "Preprocessing... {}".format(
+                        os.path.basename(input_filepath)))
+            # Construct the CLI function call
+            function_cli_list = [
+                    'python',
+                    'eosdxanalysis/preprocessing/preprocess.py',
+                    '--input_filepath',
+                    str(input_filepath),
+                    '--params_file',
+                    str(params_file),
+                    '--output_dir',
+                    str(output_path),
+                    ]
+
+            p = subprocess.Popen(function_cli_list)
+            process_list.append(p)
+
+        # Wait for all processes to finish
+        for p in process_list:
+            p.wait()
+
+        print("Done parallel preprocessing.")
+
+    else:
+        # Instantiate PreprocessData class
+        preprocessor = PreprocessData(
+                input_filepath=input_filepath, input_dir=input_dir,
+                output_dir=output_dir, parent_dir=parent_dir,
+                samples_dir=samples_dir, params=params)
+
+        # Run preprocessing
+        preprocessor.preprocess(plans=plans, mask_style=params.get("crop_style"),
+                uniform_filter_size=uniform_filter_size, scaling=scaling)
 
     print("Done preprocessing.")
