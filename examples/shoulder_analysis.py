@@ -146,7 +146,7 @@ def main(
 
     # Perform logistic regression
     logreg = LogisticRegression(
-            C=1e2,class_weight="balanced", solver="newton-cg",
+            C=1,class_weight="balanced", solver="newton-cg",
             max_iter=max_iter)
     pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
     pipe.fit(X_train, y_train)
@@ -201,7 +201,7 @@ def main(
         output_path = os.path.dirname(data_filepath)
 
     # Save the model
-    model_filename = "model_{}.joblib".format(timestamp)
+    model_filename = "logistic_regression_model_{}.joblib".format(timestamp)
     model_filepath = os.path.join(output_path, model_filename)
     dump(pipe, model_filepath)
 
