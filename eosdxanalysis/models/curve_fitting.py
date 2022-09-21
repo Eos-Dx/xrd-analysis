@@ -145,7 +145,13 @@ class GaussianDecomposition(object):
             # of other estimator functions
 
             # Estimate background intensity parameters
-            bg_intensity = estimate_background_noise(image)
+            peak_amplitude_bg, peak_std_bg = estimate_background_noise(image)
+
+            # Create a radial gaussian estimate based on the bg parameters
+            radial_gaussian_estimate_bg = radial_gaussian(
+                    RR, TT,  0, 0, peak_std_bg, peak_amplitude_bg, np.pi)
+            horizontal_intensity_bg = radial_intensity_1d(
+                    radial_gaussian_estimate_bg)
 
             # Estimate 9A parameters
             peak_location_radius_9A, peaks_aniso_9A = \
@@ -196,11 +202,11 @@ class GaussianDecomposition(object):
                     image, peak_location_radius_5_4A, peaks_iso_5_4A,
                     horizontal_intensity_1d, vertical_intensity_1d,
                     intensity_diff_1d, horizontal_intensity_9A,
-                    bg_intensity)
+                    horizontal_intensity_bg)
             peak_amplitude_5_4A = self.estimate_peak_amplitude_5_4A(
                     image, peak_location_radius_5_4A, horizontal_intensity_1d,
                     vertical_intensity_1d, intensity_diff_1d,
-                    horizontal_intensity_9A, bg_intensity)
+                    horizontal_intensity_9A, horizontal_intensity_bg)
 
             # Set up initial parameters dictionary with None for each value
             p0_dict = OrderedDict({
@@ -219,7 +225,8 @@ class GaussianDecomposition(object):
                     "peak_std_5_4A":             peak_std_5_4A,
                     "peak_amplitude_5_4A":       peak_amplitude_5_4A,
                     # Background noise parameters
-                    "bg_intensity":              peak_amplitude_bg,
+                    "peak_std_bg":               peak_std_bg,
+                    "peak_amplitude_bg":         peak_amplitude_bg,
                 })
 
         # Lower bounds
@@ -465,14 +472,14 @@ class GaussianDecomposition(object):
     def estimate_peak_std_5_4A(
             self, image, peak_location_radius_5_4A, peaks_iso_5_4A,
             horizontal_intensity_1d, vertical_intensity_1d, intensity_diff_1d,
-            horizontal_intensity_9A, bg_intensity):
+            horizontal_intensity_9A, horizontal_intensity_bg):
         """
         Estimate the 5_4A peak widths (full-width at half maximum)
         """
         # Subtract the 1d horizontal intensity profile from the radial gaussian
         # 9A and background-noise estimates
         horizontal_intensity_5_4A_1d_estimate = horizontal_intensity_1d \
-                - horizontal_intensity_9A - bg_intensity
+                - horizontal_intensity_9A - horizontal_intensity_bg
         # Zero out negative values
         horizontal_intensity_5_4A_1d_estimate[
                 horizontal_intensity_5_4A_1d_estimate < 0] = 0
@@ -494,7 +501,7 @@ class GaussianDecomposition(object):
     def estimate_peak_amplitude_5_4A(
             self, image, peak_location_radius_5_4A, horizontal_intensity_1d,
             vertical_intensity_1d, intensity_diff_1d, horizontal_intensity_9A,
-            bg_intensity):
+            horizontal_intensity_bg):
         # Total intensity at 5_4A
         total_intensity_5_4A = horizontal_intensity_1d[
                 int(peak_location_radius_5_4A)]
@@ -502,7 +509,7 @@ class GaussianDecomposition(object):
         intensity_from_9A = horizontal_intensity_9A[
                 int(peak_location_radius_5_4A)]
         # Intensity at 5_4A from the background noise source
-        intensity_from_bg = bg_intensity[
+        intensity_from_bg = horizontal_intensity_bg[
                 int(peak_location_radius_5_4A)]
 
         # Subtract intensity from other sources to get the correct amplitude
@@ -575,7 +582,8 @@ class GaussianDecomposition(object):
                 "peak_std_5_4A":             9.95,
                 "peak_amplitude_5_4A":       272.76,
                 # Background noise parameters
-                "bg_intensity":               400,
+                "peak_std_bg":               1000,
+                "peak_amplitude_bg":         428.57,
                 })
             self.p0_dict = p0_dict
 
@@ -693,7 +701,8 @@ class GaussianDecomposition(object):
                 "peak_location_radius_5_4A",
                 "peak_std_5_4A",
                 "peak_amplitude_5_4A",
-                "bg_intensity",
+                "peak_std_bg",
+                "peak_amplitude_bg",
                 ]
         return params
 
@@ -872,7 +881,7 @@ def keratin_function(
         peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, arc_angle_9A,
         peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, arc_angle_5A,
         peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
-        bg_intensity):
+        peak_std_bg, peak_amplitude_bg):
     """
     Generate entire kertain diffraction pattern at the points
     (r, theta), with parameters as the arguements to 4 calls
@@ -915,8 +924,12 @@ def keratin_function(
     pattern_5_4A = radial_gaussian(r, theta, peak_location_radius_5_4A,
             peak_angle_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
             arc_angle_5_4A)
+    # Background noise
+    pattern_bg = radial_gaussian(r, theta, peak_location_radius_bg,
+            peak_angle_bg, peak_std_bg, peak_amplitude_bg,
+            arc_angle_bg)
     # Additive model
-    pattern = pattern_9A + pattern_5A + pattern_5_4A + bg_intensity
+    pattern = pattern_9A + pattern_5A + pattern_5_4A + pattern_bg
 
     return pattern.ravel()
 
@@ -955,13 +968,48 @@ def gaussian_iso(r, a, std):
     return a*np.exp( -1/2*( (r/std)**2) )
 
 
-def estimate_background_noise(image, percentile=0.05):
+def estimate_background_noise(image):
     """
-    Estimate constant background noise using percentile
+    Fit an isotropic Gaussian to the image, excluding zero-value points
+    There are several options. We use `scipy.optimize.curve_fit`.
     """
-    percentile_value = np.percentile(image, percentile)
+    # Set up inputs to curve_fit
+    # Generate the meshgrid
+    RR, TT = gen_meshgrid(image.shape)
+    # Get 1D slice for radial intensity
+    r = np.arange(0,int(image.shape[0]/2))
 
-    return percentile_value
+    # Get 1D vertical intensity profile
+    vertical_intensity_1d = radial_intensity_1d(image.T[:,::-1])
+
+    # Generate non-zero pixels mask
+    mask = vertical_intensity_1d > 0
+    r_masked = r[mask].astype(np.float64)
+    vertical_intensity_1d_masked = vertical_intensity_1d[mask].astype(np.float64)
+
+    # Prepare independent and dependent inputs to optimizer
+    xdata = r_masked.ravel()
+    ydata = vertical_intensity_1d_masked.ravel().astype(np.float64)
+
+    # Generate initial guess for peak_amplitude and peak_std
+    peak_results, _ = find_peaks(vertical_intensity_1d)
+    peak_width_results = peak_widths(vertical_intensity_1d, peak_results)
+    try:
+        peak_amplitude_guess = r[peak_results[0]]
+        peak_std_guess = np.min(peak_width_results[0])
+    except IndexError:
+        # No peaks found, use median of vertical_intensity_1d as peak amplitude guess
+        peak_amplitude_guess = np.median(vertical_intensity_1d)
+        peak_std_guess = BG_NOISE_STD
+
+    p0 = [peak_amplitude_guess, peak_std_guess]
+
+    # Run curve fitting procedure
+    popt, pcov = curve_fit(gaussian_iso, xdata, ydata, p0)
+    peak_amplitude, peak_std = popt
+
+    return peak_amplitude, peak_std
+
 
 def gaussian_decomposition(
         input_path, output_path=None, params_init_method=None):
