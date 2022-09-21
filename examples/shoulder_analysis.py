@@ -233,7 +233,9 @@ def main(
                 output_prefix, str(degree), timestamp)
         csv_output_path = os.path.join(output_path, csv_filename)
 
-        df_blind["Prediction"].to_csv(csv_output_path)
+        df_blind.to_csv(
+                csv_output_path, columns=["Filename", "Prediction"],
+                index=False)
 
         print("Blind predictions saved to", csv_output_path)
 
