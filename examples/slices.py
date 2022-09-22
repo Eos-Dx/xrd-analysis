@@ -33,21 +33,6 @@ def plot_slices(input_path=None, db_filepath=None, output_path=None, width=10):
         With of slice to average over, must be even integer.
 
     """
-
-    # Load measurements database
-    df = pd.read_csv(db_filepath)
-
-    # Extract list of patients
-    patient_list = np.sort(np.unique(df["Patient"].values))
-
-    # Get input files list
-    file_suffix = ".txt"
-    file_name_pattern = "*" + file_suffix
-    file_path_list = glob.glob(os.path.join(input_path, file_name_pattern))
-    # Filename list
-    file_name_list = [
-            os.path.basename(file_path) for file_path in file_path_list]
-
     # Set timestamp
     timestr = "%y%m%dT%H%M%S.%f"
     timestamp = datetime.utcnow().strftime(timestr)
@@ -57,6 +42,27 @@ def plot_slices(input_path=None, db_filepath=None, output_path=None, width=10):
     output_subpath = os.path.join(output_path, output_dir)
 
     os.makedirs(output_subpath)
+
+    # Load measurements database
+    df = pd.read_csv(db_filepath)
+
+    # Plot patient slices
+    _plot_patient_slices(
+            df, output_subpath, patient_key="Patient")
+    # Plot patient code slices
+    _plot_patient_slices(
+            df, output_subpath, patient_key="Patient_Code")
+
+def _plot_patient_slices(df, output_subpath, patient_key="Patient"):
+    """
+    Plot patient slices
+    """
+
+    # Extract list of patients
+    patient_list = np.sort(np.unique(df[patient_key].values))
+
+    # Set file suffix
+    file_suffix = ".txt"
 
     # Plot all slices per patient onto a single graph
     for patient in patient_list:
