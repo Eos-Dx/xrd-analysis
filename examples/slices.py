@@ -5,6 +5,7 @@ import os
 import glob
 import argparse
 from datetime import datetime
+import re
 
 import numpy as np
 import pandas as pd
@@ -33,21 +34,6 @@ def plot_slices(input_path=None, db_filepath=None, output_path=None, width=10):
         With of slice to average over, must be even integer.
 
     """
-
-    # Load measurements database
-    df = pd.read_csv(db_filepath)
-
-    # Extract list of patients
-    patient_list = np.sort(np.unique(df["Patient"].values))
-
-    # Get input files list
-    file_suffix = ".txt"
-    file_name_pattern = "*" + file_suffix
-    file_path_list = glob.glob(os.path.join(input_path, file_name_pattern))
-    # Filename list
-    file_name_list = [
-            os.path.basename(file_path) for file_path in file_path_list]
-
     # Set timestamp
     timestr = "%y%m%dT%H%M%S.%f"
     timestamp = datetime.utcnow().strftime(timestr)
@@ -58,16 +44,56 @@ def plot_slices(input_path=None, db_filepath=None, output_path=None, width=10):
 
     os.makedirs(output_subpath)
 
+    # Load measurements database
+    df = pd.read_csv(db_filepath)
+
+    # Plot patient slices
+    _plot_patient_slices(
+            df, input_path, output_subpath, patient_key="Patient")
+    # Plot patient code slices
+    _plot_patient_slices(
+            df, input_path, output_subpath, patient_key="Patient_Code")
+
+def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
+    """
+    Plot patient slices
+    """
+
+    # Extract list of patients
+    patient_list = df[patient_key].dropna().unique()
+
+    # Set file suffix
+    file_suffix = ".txt"
+
+    # Get list of files
+    file_path_list = glob.glob(os.path.join(input_path, "*" + file_suffix))
+
+    # Get the file names
+    basename_list = [os.path.basename(file_path) for file_path in file_path_list]
+
+    # Get barcode list
+    active_barcode_list = [
+            re.sub(r"CRQF_","", os.path.splitext(bname)[0]) for bname in \
+                    basename_list]
+
+    # Get the list of patients we have files for
+    patient_list = df[df["Barcode"].isin(
+        active_barcode_list)][patient_key].dropna().unique()
+
+    # Create a dataframe subset of active barcodes only
+    df_active = df[df["Barcode"].isin(active_barcode_list)]
+
     # Plot all slices per patient onto a single graph
     for patient in patient_list:
         fig = plt.figure(patient)
         fig.suptitle(patient)
 
-        # Get list of barcodes
-        barcode_list = df[df["Patient"] == patient]["Barcode"].values
+        # Get barcodes for this patient
+        patient_active_barcode_list = \
+                df_active[df_active[patient_key] == patient]["Barcode"].tolist()
 
         # For each barcode, load the corresponding measurement data
-        for barcode in barcode_list:
+        for barcode in patient_active_barcode_list:
             # Construct the file path based on the barcode
             file_prefix_pattern = "CRQF_"
             file_name = file_prefix_pattern + barcode + file_suffix
@@ -96,7 +122,9 @@ def plot_slices(input_path=None, db_filepath=None, output_path=None, width=10):
             plt.plot(slice_1d, label=barcode)
 
         # Set output image path
-        output_filepath = os.path.join(output_subpath, str(patient))
+        plot_suffix = ".png"
+        output_filepath = os.path.join(
+                output_subpath, str(patient) + plot_suffix)
 
         plt.legend()
         plt.xlabel("Distance from top [pixels]")
