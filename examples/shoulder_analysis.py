@@ -197,7 +197,7 @@ def main(
 
     # Set output path with a timestamp if not specified
     if not output_path:
-        output_dir = "logistic_regression_".format(timestamp)
+        output_dir = "logistic_regression_{}".format(timestamp)
         output_path = os.path.dirname(data_filepath)
 
     # Save the model
