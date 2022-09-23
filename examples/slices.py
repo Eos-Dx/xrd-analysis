@@ -57,6 +57,18 @@ def plot_slices(input_path=None, db_filepath=None, output_path=None, width=10):
 def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
     """
     Plot patient slices
+
+    Parameters
+    ----------
+
+    df : DataFrame
+
+    input_path : str
+
+    output_subpath : str
+
+    patient_key : str
+
     """
 
     # Extract list of patients
@@ -71,22 +83,30 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
     # Get the file names
     basename_list = [os.path.basename(file_path) for file_path in file_path_list]
 
-    # Get barcode list
+    # Get barcode list, remove any repeating As or Bs
+    active_subbarcode_list = [
+            re.sub(
+                r"CRQF_([A-Z])[A-Z]*([0-9]+.*)", r"\1\2",
+                os.path.splitext(bname)[0]) for bname in basename_list]
+
     active_barcode_list = [
-            re.sub(r"CRQF_","", os.path.splitext(bname)[0]) for bname in \
-                    basename_list]
+            re.sub(
+                r"([A-Z])[A-Z]*([0-9]+).*", r"\1\2",
+                barcode) for barcode in active_subbarcode_list]
+
+    file_lookup_dict = dict(zip(file_path_list, active_barcode_list))
 
     # Get the list of patients we have files for
-    patient_list = df[df["Barcode"].isin(
+    active_patient_list = df[df["Barcode"].isin(
         active_barcode_list)][patient_key].dropna().unique()
 
     # Create a dataframe subset of active barcodes only
     df_active = df[df["Barcode"].isin(active_barcode_list)]
 
     # Plot all slices per patient onto a single graph
-    for patient in patient_list:
+    for patient in active_patient_list:
         fig = plt.figure(patient)
-        fig_suptitle = "Meridional slice for {} {}".format(
+        fig_suptitle = "Meridional slices for {} {}".format(
                 patient_key, patient)
         fig.suptitle(fig_suptitle)
 
@@ -94,13 +114,16 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
         patient_active_barcode_list = \
                 df_active[df_active[patient_key] == patient]["Barcode"]
 
-        # For each barcode, load the corresponding measurement data
+        # Get Files for this patient using ``file_lookup_dict``
+        patient_file_path_list = []
         for barcode in patient_active_barcode_list:
-            # Construct the file path based on the barcode
-            file_prefix_pattern = "CRQF_"
-            file_name = file_prefix_pattern + barcode + file_suffix
-            file_path = os.path.join(input_path, file_name)
+            patient_file_path_matches = \
+                    [file_path for file_path, active_barcode in \
+                    file_lookup_dict.items() if active_barcode == barcode]
+            patient_file_path_list += patient_file_path_matches
 
+        # For each barcode, load the corresponding measurement data
+        for file_path in patient_file_path_list:
             # Load the file
             data = np.loadtxt(file_path, dtype=np.uint32)
             # Calculate the center based on shape
@@ -124,7 +147,12 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
             # slice_1d = np.mean(data_slice, axis=1)[::-1]
             slice_1d = np.mean(data_slice, axis=1)
 
-            plt.plot(slice_1d, label=barcode)
+            # Generate plot label
+            basename = os.path.basename(file_path)
+            file_prefix = os.path.splitext(basename)[0]
+            plot_label = re.sub(r"CRQF_", r"", file_prefix)
+
+            plt.plot(slice_1d, label=plot_label)
 
         # Set output image path
         plot_suffix = ".png"
@@ -134,6 +162,7 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
         plt.legend()
         plt.xlabel("Distance from top [pixels]")
         plt.ylabel("Intensity [arbitrary units]")
+        plt.ylim([0, 5])
         # plt.show()
         fig.savefig(output_filepath)
         plt.close(fig)
