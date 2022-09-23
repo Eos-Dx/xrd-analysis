@@ -78,10 +78,10 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
 
     # Get the list of patients we have files for
     patient_list = df[df["Barcode"].isin(
-        active_barcode_list)][patient_key].dropna().unique()
+        active_barcode_list)][patient_key].dropna().unique().astype(str)
 
     # Create a dataframe subset of active barcodes only
-    df_active = df[df["Barcode"].isin(active_barcode_list)]
+    df_active = df[df["Barcode"].isin(active_barcode_list)].astype(str)
 
     # Plot all slices per patient onto a single graph
     for patient in patient_list:
@@ -90,7 +90,8 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
 
         # Get barcodes for this patient
         patient_active_barcode_list = \
-                df_active[df_active[patient_key] == patient]["Barcode"].tolist()
+                df_active[df_active[patient_key] == patient]["Barcode"].astype(
+                        str)
 
         # For each barcode, load the corresponding measurement data
         for barcode in patient_active_barcode_list:
