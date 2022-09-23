@@ -104,9 +104,12 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
             # Calculate the center based on shape
             center = (data.shape[0]/2-0.5, data.shape[1]/2-0.5)
 
+            # Rescale the data
+            data_rescaled = data/data.sum()*data.size
+
             # Perform filtering twice in a row
             filtered_data = uniform_filter(
-                    uniform_filter(data, size=3), size=3)
+                    uniform_filter(data_rescaled, size=3), size=3)
 
             # Take a vertical slice
             row_start = 0
