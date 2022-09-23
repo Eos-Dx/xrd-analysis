@@ -45,7 +45,7 @@ def plot_slices(input_path=None, db_filepath=None, output_path=None, width=10):
     os.makedirs(output_subpath)
 
     # Load measurements database
-    df = pd.read_csv(db_filepath)
+    df = pd.read_csv(db_filepath, dtype=str)
 
     # Plot patient slices
     _plot_patient_slices(
@@ -90,7 +90,7 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
 
         # Get barcodes for this patient
         patient_active_barcode_list = \
-                df_active[df_active[patient_key] == patient]["Barcode"].tolist()
+                df_active[df_active[patient_key] == patient]["Barcode"]
 
         # For each barcode, load the corresponding measurement data
         for barcode in patient_active_barcode_list:
@@ -104,9 +104,12 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
             # Calculate the center based on shape
             center = (data.shape[0]/2-0.5, data.shape[1]/2-0.5)
 
+            # Rescale the data
+            data_rescaled = data/data.sum()*data.size
+
             # Perform filtering twice in a row
             filtered_data = uniform_filter(
-                    uniform_filter(data, size=3), size=3)
+                    uniform_filter(data_rescaled, size=3), size=3)
 
             # Take a vertical slice
             row_start = 0
@@ -124,7 +127,7 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
         # Set output image path
         plot_suffix = ".png"
         output_filepath = os.path.join(
-                output_subpath, str(patient) + plot_suffix)
+                output_subpath, patient + plot_suffix)
 
         plt.legend()
         plt.xlabel("Distance from top [pixels]")
