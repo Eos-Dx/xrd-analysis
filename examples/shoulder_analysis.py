@@ -33,7 +33,7 @@ from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 
 def main(
         data_filepath, blind_data_filepath=None, output_path=None,
-        max_iter=100, degree=1, use_cross_val=False):
+        max_iter=100, degree=1, use_cross_val=False, feature_list=[]):
     t0 = time()
 
     cmap="hot"
@@ -78,7 +78,8 @@ def main(
     # -------------------
     # Data
 
-    feature_list = GaussianDecomposition.parameter_list()
+    if not feature_list:
+        feature_list = GaussianDecomposition.parameter_list()
 
     Xlinear = df[[*feature_list]].astype(float).values
     # Create a polynomial
@@ -259,6 +260,9 @@ if __name__ == '__main__':
             "--output_path", default=None, required=False,
             help="The output path to save results in.")
     parser.add_argument(
+            "--feature_list", default=None, required=False,
+            help="List of features to perform logistic regression on.")
+    parser.add_argument(
             "--max_iter", type=int, default=None, required=False,
             help="The maximum iteration number for logistic regression.")
     parser.add_argument(
@@ -277,8 +281,11 @@ if __name__ == '__main__':
     max_iter = args.max_iter
     degree = args.degree
     use_cross_val = args.use_cross_val
+    feature_list_kwarg = args.feature_list
+
+    feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
 
     main(
             data_filepath, blind_data_filepath=blind_data_filepath,
             output_path=output_path, max_iter=max_iter, degree=degree,
-            use_cross_val=use_cross_val)
+            use_cross_val=use_cross_val, feature_list=feature_list)
