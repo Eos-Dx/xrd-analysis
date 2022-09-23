@@ -86,7 +86,9 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
     # Plot all slices per patient onto a single graph
     for patient in patient_list:
         fig = plt.figure(patient)
-        fig.suptitle(patient)
+        fig_suptitle = "Meridional slice for {} {}".format(
+                patient_key, patient)
+        fig.suptitle(fig_suptitle)
 
         # Get barcodes for this patient
         patient_active_barcode_list = \
@@ -131,6 +133,7 @@ def _plot_patient_slices(df, input_path, output_subpath, patient_key="Patient"):
 
         plt.legend()
         plt.xlabel("Distance from top [pixels]")
+        plt.ylabel("Intensity [arbitrary units]")
         # plt.show()
         fig.savefig(output_filepath)
         plt.close(fig)
