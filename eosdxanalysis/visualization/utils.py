@@ -10,6 +10,7 @@ import glob
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
+from scipy.ndimage import uniform_filter
 
 def heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw={}, cbarlabel="", **kwargs):
@@ -184,10 +185,10 @@ def plot_slices(
 
         # Filter noise
         # sos = signal.butter(10, 50, 'lp', fs=256, output='sos')
-        sos = signal.butter(N=N, Wn=Wn, btype='lp', fs=fs, output='sos')
-        data_filtered = signal.sosfilt(sos, data_rescaled)
-        # data_filtered = uniform_filter(
-        #     uniform_filter(data_rescaled, size=3), size=3)
+        # sos = signal.butter(N=N, Wn=Wn, btype='lp', fs=fs, output='sos')
+        # data_filtered = signal.sosfilt(sos, data_rescaled)
+        data_filtered = uniform_filter(
+            uniform_filter(data_rescaled, size=3), size=3)
 
         # Set up indices for slicing
         center = (data.shape[0]/2-0.5, data.shape[1]/2-0.5)
