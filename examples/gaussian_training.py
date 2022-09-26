@@ -1,5 +1,5 @@
 """
-Use the 2D Gaussian fit results to analyze 5 A meridional "shoulder"
+Use the 2D Gaussian fit results to run logistic regression
 """
 import os
 import argparse
@@ -29,6 +29,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.inspection import DecisionBoundaryDisplay
 
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
+from eosdxanalysis.models.utils import metrics_report
 
 
 def main(
@@ -161,38 +162,8 @@ def main(
     # Get true negatives, false positives, false negatives, true positives
     tn, fp, fn, tp = confusion_matrix(y, y_predict).ravel()
 
-    # False positive rate
-    false_positive_rate = fp/(fp + tp)
-    # False negative rate
-    false_negative_rate = fn/(fn + tn)
-
-    # Get scores
-    precision = precision_score(y, y_predict)
-    recall = recall_score(y, y_predict)
-
-    # Accuracy = number of correct predictions / total predictions
-    # Balanced accuracy score, weights by counts
-    balanced_accuracy = balanced_accuracy_score(y, y_predict)
-    # Unbalanced accuracy
-    unbalanced_accuracy = accuracy_score(y, y_predict)
-
     # Print scores
-    print("Unbalanced Accuracy", end=" | ")
-    print("Balanced Accuracy", end=" | ")
-    print("Precision", end=" | ")
-    print("Recall (Sensitivity)", end=" | ")
-    print("False Positive Rate", end=" | ")
-    print("False Negative Rate", end="\n")
-
-    # 
-    print("{:2.2}".format(balanced_accuracy), end=" | ")
-    print("{:2.2}".format(unbalanced_accuracy), end=" | ")
-    print("{:2.2}".format(precision), end=" | ")
-    print("{:2.2}".format(recall), end=" | ")
-    print("{:2.2}".format(false_positive_rate), end=" | ")
-    print("{:2.2}".format(false_negative_rate), end="\n")
-
-    print("TP",tp,"FP",fp,"TN",tn,"FN",fn)
+    metrics_report(TN=tn, FP=tp, FN=fn, TP=tp, printout=True)
 
     # Set timestamp
     timestr = "%y%m%dT%H%M%S.%f"
@@ -246,7 +217,7 @@ def main(
 
 if __name__ == '__main__':
     """
-    Run shoulder analysis on 2D Gaussian fit results
+    Run analysis on 2D Gaussian fit results
     """
     # Set up argument parser
     parser = argparse.ArgumentParser()
