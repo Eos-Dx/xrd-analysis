@@ -1,5 +1,5 @@
 """
-Use the 2D Gaussian fit results to analyze 5 A meridional "shoulder"
+Use the 2D Gaussian fit results to run logistic regression
 """
 import os
 import argparse
@@ -246,7 +246,7 @@ def main(
 
 if __name__ == '__main__':
     """
-    Run shoulder analysis on 2D Gaussian fit results
+    Run analysis on 2D Gaussian fit results
     """
     # Set up argument parser
     parser = argparse.ArgumentParser()
