@@ -33,7 +33,7 @@ from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 
 def main(
         data_filepath, blind_data_filepath=None, output_path=None,
-        max_iter=100, degree=1, use_cross_val=False):
+        max_iter=100, degree=1, use_cross_val=False, feature_list=[]):
     t0 = time()
 
     cmap="hot"
@@ -78,7 +78,8 @@ def main(
     # -------------------
     # Data
 
-    feature_list = GaussianDecomposition.parameter_list()
+    if not feature_list:
+        feature_list = GaussianDecomposition.parameter_list()
 
     Xlinear = df[[*feature_list]].astype(float).values
     # Create a polynomial
@@ -191,6 +192,8 @@ def main(
     print("{:2.2}".format(false_positive_rate), end=" | ")
     print("{:2.2}".format(false_negative_rate), end="\n")
 
+    print("TP",tp,"FP",fp,"TN",tn,"FN",fn)
+
     # Set timestamp
     timestr = "%y%m%dT%H%M%S.%f"
     timestamp = datetime.utcnow().strftime(timestr)
@@ -212,7 +215,7 @@ def main(
     if blind_data_filepath:
         # Run blind data through trained model and assess performance
         # Load dataframe
-        df_blind = pd.read_csv(blind_data_filepath, index_col=0)
+        df_blind = pd.read_csv(blind_data_filepath)
 
         X_blind_linear = df_blind[[*feature_list]].astype(float).values
         # Create a polynomial
@@ -239,7 +242,6 @@ def main(
 
         print("Blind predictions saved to", csv_output_path)
 
-
     return scores
 
 if __name__ == '__main__':
@@ -259,6 +261,9 @@ if __name__ == '__main__':
             "--output_path", default=None, required=False,
             help="The output path to save results in.")
     parser.add_argument(
+            "--feature_list", default=None, required=False,
+            help="List of features to perform logistic regression on.")
+    parser.add_argument(
             "--max_iter", type=int, default=None, required=False,
             help="The maximum iteration number for logistic regression.")
     parser.add_argument(
@@ -277,8 +282,11 @@ if __name__ == '__main__':
     max_iter = args.max_iter
     degree = args.degree
     use_cross_val = args.use_cross_val
+    feature_list_kwarg = args.feature_list
+
+    feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
 
     main(
             data_filepath, blind_data_filepath=blind_data_filepath,
             output_path=output_path, max_iter=max_iter, degree=degree,
-            use_cross_val=use_cross_val)
+            use_cross_val=use_cross_val, feature_list=feature_list)
