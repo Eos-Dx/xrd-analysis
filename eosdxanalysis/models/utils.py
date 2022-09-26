@@ -379,6 +379,73 @@ def calculate_min_distance(image1_post, image2_post_unmasked, mask, scale=1.0,
                 image1_post, image2_largescale_unmasked, mask,
                 scale=new_scale, tol=tol, iterations=iterations)
 
+def metrics_report(TP=0, FP=0, TN=0, FN=0, printout=True):
+    """
+    Generate a metrics report from blind test results
+
+    Parameters
+    ----------
+
+    TP : int
+        True positives
+
+    FP : int
+        False positives
+
+    TN : int
+        True negatives
+
+    FN : int
+        False negatives
+
+    """
+
+    # Calculate accuracy
+    accuracy = (TP + TN) / (TP + TN + FP + FN)
+    # Calculate false positive rate
+    FPR = FP / (FP + TN)
+    # Calculate false negative rate
+    FNR = FN / (FN + TP)
+    # Calculate precision
+    precision = TP / (TP + FP)
+    # Calculate recall (sensitivity)
+    recall = TP / (TP + FN)
+    # Specificity
+    specificity = TN / (TN + FP)
+    # Calculate F1 score
+    F1 = 2 * precision * recall / (precision + recall)
+
+    metrics_dict = {
+            "TP": [TP],
+            "FP": [FP],
+            "TN": [TN],
+            "FN": [FN],
+            "FPR": [FPR],
+            "FNR": [FNR],
+            "accuracy": [accuracy],
+            "precision": [precision],
+            "recall": [recall],
+            "specificity": [specificity],
+            "F1": [F1],
+            }
+
+    df = pd.DataFrame.from_dict(metrics_dict)
+
+    format_tup = (
+            ".0f",
+            ".0f",
+            ".0f",
+            ".0f",
+            ".2f",
+            ".2f",
+            ".2f",
+            ".2f",
+            ".2f",
+            ".2f",
+            ".2f",
+            )
+    print(df.to_markdown(index=False,floatfmt=format_tup))
+
 #def l1_metric_optimized(image1, image2, params, plan=None):
 #    """
 #    Function which computes the L1 distance between two images
