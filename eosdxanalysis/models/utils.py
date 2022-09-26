@@ -10,6 +10,7 @@ from scipy.io import savemat
 import scipy
 import scipy.cluster.hierarchy as sch
 from scipy.ndimage import map_coordinates
+from collections import OrderedDict
 
 from skimage.transform import rescale
 from skimage.transform import warp_polar
@@ -379,7 +380,7 @@ def calculate_min_distance(image1_post, image2_post_unmasked, mask, scale=1.0,
                 image1_post, image2_largescale_unmasked, mask,
                 scale=new_scale, tol=tol, iterations=iterations)
 
-def metrics_report(TP=0, FP=0, TN=0, FN=0, printout=True):
+def metrics_report(TP=0, FP=0, TN=0, FN=0, degree=None, printout=True):
     """
     Generate a metrics report from blind test results
 
@@ -415,36 +416,43 @@ def metrics_report(TP=0, FP=0, TN=0, FN=0, printout=True):
     # Calculate F1 score
     F1 = 2 * precision * recall / (precision + recall)
 
-    metrics_dict = {
+    metrics_dict = OrderedDict({
             "TP": [TP],
             "FP": [FP],
             "TN": [TN],
             "FN": [FN],
             "FPR": [FPR],
             "FNR": [FNR],
-            "accuracy": [accuracy],
-            "precision": [precision],
-            "recall": [recall],
-            "specificity": [specificity],
+            "Accuracy": [accuracy],
+            "Precision": [precision],
+            "Recall": [recall],
+            "Specificity": [specificity],
             "F1": [F1],
-            }
+            })
 
-    df = pd.DataFrame.from_dict(metrics_dict)
+    format_list = [
+            ".0f",
+            ".0f",
+            ".0f",
+            ".0f",
+            ".2f",
+            ".2f",
+            ".2f",
+            ".2f",
+            ".2f",
+            ".2f",
+            ".2f",
+            ]
 
-    format_tup = (
-            ".0f",
-            ".0f",
-            ".0f",
-            ".0f",
-            ".2f",
-            ".2f",
-            ".2f",
-            ".2f",
-            ".2f",
-            ".2f",
-            ".2f",
-            )
-    print(df.to_markdown(index=False,floatfmt=format_tup))
+    if degree:
+        metrics_dict["Degree"] = [degree]
+        metrics_dict.move_to_end("Degree", last=False)
+        format_list = [".0f"] + format_list
+
+    df = pd.DataFrame(metrics_dict,
+            columns=metrics_dict.keys())
+
+    print(df.to_markdown(index=False,floatfmt=format_list))
 
 #def l1_metric_optimized(image1, image2, params, plan=None):
 #    """
