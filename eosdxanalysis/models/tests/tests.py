@@ -1039,6 +1039,102 @@ class TestFeatureEngineering(unittest.TestCase):
 
         self.assertEqual(known_fwhm, test_fwhm)
 
+    def test_5A_shoulder_detection_slices(self):
+        """
+        Check to see if we can detect the 5 A shoulder
+        """
+        rmin = 25
+        rmax = 95
+        width = 10
+        size = 256
+        shape = (size,size)
+
+        params = {
+                "peak_location_radius_9A":   feature_pixel_location(9.8e-10),
+                "peak_std_9A":               10,
+                "peak_amplitude_9A":         200,
+                "arc_angle_9A":              0.05,
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":   feature_pixel_location(5.1e-10),
+                "peak_std_5A":               2.5,
+                "peak_amplitude_5A":         20,
+                "arc_angle_5A":              1.130,
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A": feature_pixel_location(4.5e-10),
+                "peak_std_5_4A":             20,
+                "peak_amplitude_5_4A":       80,
+                # Background noise parameters
+                "peak_std_bg":               20,
+                "peak_amplitude_bg":         180,
+                }
+
+        meshgrid = gen_meshgrid(shape)
+        synth_image = keratin_function(meshgrid, *params.values()).reshape(shape)
+
+        data = synth_image
+        data_rescaled = data/data.sum()*data.size
+        data_filtered = data_rescaled
+
+        center = (data.shape[0]/2-0.5, data.shape[1]/2-0.5)
+        row_start = 0; row_end = int(center[0]+0.5);
+        col_start = int(center[1]+0.5-width/2);
+        col_end = int(center[1]+0.5+width/2);
+
+        data_slice = data_filtered[row_start:row_end, col_start:col_end];
+
+        slice_1d = np.mean(data_slice, axis=1);
+        slice_trunc = slice_1d.copy()
+        slice_trunc[(255-127-rmin):] = 0
+        slice_trunc[:(255-127-rmax)] = 0
+
+        import matplotlib.pyplot as plt
+        title = "Synthetic Keratin Pattern Meridian Slice"
+        fig = plt.figure(title)
+        plt.title(title)
+        plt.plot(slice_trunc)
+        plt.ylim([0,3])
+        plt.xlabel("Distance from top [pixels]")
+        plt.ylabel("Intensity [arbitrary units]")
+        plt.show()
+
+    def test_5A_5_4A_correlation(self):
+        """
+        Check correlation between 5A and 5-4A for three data sets:
+        1. Normal flakes
+        2. Cancer flakes
+        3. Young Dogs
+        """
+
+        import matplotlib.pyplot as plt
+
+        gauss_fit_data_list = [
+                ["Normal", "", "green",],
+                ["Cancer", "", "red",],
+                ]
+
+        title = "Gaussian Fit Parameters Subspace"
+        fig = plt.figure(title)
+        fig.suptitle(title)
+
+        import pandas as pd
+
+        for list_item in gauss_fit_data_list:
+            label, path, color = list_item
+
+            gauss_data = pd.read_csv(path)
+
+            peak_amplitude_5A_array = gauss_data["peak_amplitude_5A"]
+            peak_amplitude_5_4A_array = gauss_data["peak_amplitude_5_4A"]
+
+            plt.scatter(peak_amplitude_5A_array, peak_amplitude_5_4A_array, color=color, label=label, s=10)
+
+
+        plt.xlabel("5 A Peak Amplitude [photon count]")
+        plt.ylabel("5-4 A Peak Amplitude [photon count]")
+        plt.legend()
+        plt.show()
+
+
 class TestL1Metric(unittest.TestCase):
 
     def test_l1_metric(self):
