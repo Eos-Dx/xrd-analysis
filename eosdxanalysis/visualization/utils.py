@@ -9,6 +9,7 @@ import glob
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import signal
 
 def heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw={}, cbarlabel="", **kwargs):
@@ -155,3 +156,62 @@ def plot_data_dir(input_directory, output_directory, scaling="linear",
         # Save image to file
         fname = os.path.join(output_directory, basenames[idx]) + ".png"
         plt.imsave(fname, output_image, cmap=cmap)
+
+def plot_slices(
+        input_path, output_path, title="", width=10, N=10, Wn=50, fs=None):
+    """
+    Plot 1D integrated slices
+    """
+
+    # Get dirname of input_path
+    fig_suptitle = "{}".format(title)
+
+    # Open figure
+    fig = plt.figure(fig_suptitle)
+    fig.suptitle(fig_suptitle)
+
+    # Get list of files paths
+    filepath_list = glob.glob(os.path.join(input_path, "*"))
+
+    for filepath in filepath_list:
+        # Load data
+        data = np.loadtxt(filepath, dtype=np.uint32)
+        # Rescale data for comparison purposes
+        data_rescaled = data/data.sum()*data.size
+
+        if not fs:
+            fs = data.shape[0]
+
+        # Filter noise
+        # sos = signal.butter(10, 50, 'lp', fs=256, output='sos')
+        sos = signal.butter(N=N, Wn=Wn, btype='lp', fs=fs, output='sos')
+        data_filtered = signal.sosfilt(sos, data_rescaled)
+        # data_filtered = uniform_filter(
+        #     uniform_filter(data_rescaled, size=3), size=3)
+
+        # Set up indices for slicing
+        center = (data.shape[0]/2-0.5, data.shape[1]/2-0.5)
+        row_start = 0; row_end = int(center[0]+0.5);
+        col_start = int(center[1]+0.5-width/2);
+        col_end = int(center[1]+0.5+width/2);
+
+        # Take 1D slice of filtered data
+        data_slice = data_filtered[row_start:row_end, col_start:col_end];
+        slice_1d = np.mean(data_slice, axis=1)
+
+        # Plot slice
+        plt.plot(slice_1d)
+
+    # Set output image path
+    plot_suffix = ".png"
+    file_prefix = "{}_slices".format(title) if title else "slices"
+    output_filepath = os.path.join(
+            output_path, "{}_slices".format(title) + plot_suffix)
+
+    plt.xlabel("Distance from top [pixels]")
+    plt.ylabel("Intensity [arbitrary units]")
+    plt.ylim([0, 5])
+    # plt.show()
+    fig.savefig(output_filepath)
+    plt.close(fig)
+    fig.clear()
