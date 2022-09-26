@@ -192,6 +192,8 @@ def main(
     print("{:2.2}".format(false_positive_rate), end=" | ")
     print("{:2.2}".format(false_negative_rate), end="\n")
 
+    print("TP",tp,"FP",fp,"TN",tn,"FN",fn)
+
     # Set timestamp
     timestr = "%y%m%dT%H%M%S.%f"
     timestamp = datetime.utcnow().strftime(timestr)
@@ -213,7 +215,7 @@ def main(
     if blind_data_filepath:
         # Run blind data through trained model and assess performance
         # Load dataframe
-        df_blind = pd.read_csv(blind_data_filepath, index_col=0)
+        df_blind = pd.read_csv(blind_data_filepath)
 
         X_blind_linear = df_blind[[*feature_list]].astype(float).values
         # Create a polynomial
@@ -239,7 +241,6 @@ def main(
                 index=False)
 
         print("Blind predictions saved to", csv_output_path)
-
 
     return scores
 
