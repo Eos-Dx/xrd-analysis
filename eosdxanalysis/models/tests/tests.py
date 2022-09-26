@@ -1039,6 +1039,8 @@ class TestFeatureEngineering(unittest.TestCase):
 
         self.assertEqual(known_fwhm, test_fwhm)
 
+    @unittest.skipIf(os.environ.get("VISUAL_TESTING") != "True",
+        "Skip unless testing visuals")
     def test_5A_shoulder_detection_slices(self):
         """
         Check to see if we can detect the 5 A shoulder
@@ -1097,6 +1099,8 @@ class TestFeatureEngineering(unittest.TestCase):
         plt.ylabel("Intensity [arbitrary units]")
         plt.show()
 
+    @unittest.skipIf(os.environ.get("VISUAL_TESTING") != "True",
+        "Skip unless testing visuals")
     def test_5A_5_4A_correlation(self):
         """
         Check correlation between 5A and 5-4A for three data sets:
