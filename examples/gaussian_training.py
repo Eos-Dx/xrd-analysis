@@ -8,6 +8,7 @@ from collections import OrderedDict
 from datetime import datetime
 from time import time
 from joblib import dump
+from joblib import load
 
 import numpy as np
 import pandas as pd
@@ -34,7 +35,8 @@ from eosdxanalysis.models.utils import metrics_report
 
 def main(
         data_filepath, blind_data_filepath=None, output_path=None,
-        max_iter=100, degree=1, use_cross_val=False, feature_list=[]):
+        max_iter=100, degree=1, use_cross_val=False, feature_list=[],
+        joblib_filepath=None):
     t0 = time()
 
     cmap="hot"
@@ -146,12 +148,32 @@ def main(
     # Perform Logistic Regression
     # ---------------------------
 
-    # Perform logistic regression
-    logreg = LogisticRegression(
-            C=1,class_weight="balanced", solver="newton-cg",
-            max_iter=max_iter)
-    pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
-    pipe.fit(X_train, y_train)
+    # Set timestamp
+    timestr = "%y%m%dT%H%M%S.%f"
+    timestamp = datetime.utcnow().strftime(timestr)
+
+    # Set output path with a timestamp if not specified
+    if not output_path:
+        output_dir = "logistic_regression_{}".format(timestamp)
+        output_path = os.path.dirname(data_filepath)
+
+
+    # Load an existing model if provided
+    if joblib_filepath:
+        pipe = load(joblib_filepath)
+    # Build a new model
+    else:
+        # Perform logistic regression
+        logreg = LogisticRegression(
+                C=1,class_weight="balanced", solver="newton-cg",
+                max_iter=max_iter)
+        pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
+        pipe.fit(X_train, y_train)
+
+        # Save the model
+        model_filename = "logistic_regression_model_{}.joblib".format(timestamp)
+        model_filepath = os.path.join(output_path, model_filename)
+        dump(pipe, model_filepath)
 
     scores = cross_val_score(pipe, X, y, cv=5)
 
@@ -164,20 +186,6 @@ def main(
 
     # Print scores
     metrics_report(TN=tn, FP=tp, FN=fn, TP=tp, printout=True)
-
-    # Set timestamp
-    timestr = "%y%m%dT%H%M%S.%f"
-    timestamp = datetime.utcnow().strftime(timestr)
-
-    # Set output path with a timestamp if not specified
-    if not output_path:
-        output_dir = "logistic_regression_{}".format(timestamp)
-        output_path = os.path.dirname(data_filepath)
-
-    # Save the model
-    model_filename = "logistic_regression_model_{}.joblib".format(timestamp)
-    model_filepath = os.path.join(output_path, model_filename)
-    dump(pipe, model_filepath)
 
     # Blind data predictions
     # ----------------------
@@ -232,6 +240,9 @@ if __name__ == '__main__':
             "--output_path", default=None, required=False,
             help="The output path to save results in.")
     parser.add_argument(
+            "--joblib_filepath", default=None, required=False,
+            help="The path to the joblib model file.")
+    parser.add_argument(
             "--feature_list", default=None, required=False,
             help="List of features to perform logistic regression on.")
     parser.add_argument(
@@ -254,10 +265,12 @@ if __name__ == '__main__':
     degree = args.degree
     use_cross_val = args.use_cross_val
     feature_list_kwarg = args.feature_list
+    joblib_filepath = args.joblib_filepath
 
     feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
 
     main(
             data_filepath, blind_data_filepath=blind_data_filepath,
             output_path=output_path, max_iter=max_iter, degree=degree,
-            use_cross_val=use_cross_val, feature_list=feature_list)
+            use_cross_val=use_cross_val, feature_list=feature_list,
+            joblib_filepath=joblib_filepath)
