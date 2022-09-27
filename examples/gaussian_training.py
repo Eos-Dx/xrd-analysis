@@ -36,10 +36,13 @@ from eosdxanalysis.models.utils import metrics_report
 def main(
         data_filepath, blind_data_filepath=None, output_path=None,
         max_iter=100, degree=1, use_cross_val=False, feature_list=[],
-        joblib_filepath=None):
+        joblib_filepath=None, balanced=None):
     t0 = time()
 
     cmap="hot"
+
+    # Set class_weight
+    class_weight = balanced if balanced else None
 
     # Load dataframe
     df = pd.read_csv(data_filepath, index_col=0)
@@ -157,7 +160,6 @@ def main(
         output_dir = "logistic_regression_{}".format(timestamp)
         output_path = os.path.dirname(data_filepath)
 
-
     # Load an existing model if provided
     if joblib_filepath:
         pipe = load(joblib_filepath)
@@ -165,7 +167,7 @@ def main(
     else:
         # Perform logistic regression
         logreg = LogisticRegression(
-                C=1,class_weight="balanced", solver="newton-cg",
+                C=1,class_weight=class_weight, solver="newton-cg",
                 max_iter=max_iter)
         pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
         pipe.fit(X_train, y_train)
@@ -255,6 +257,10 @@ if __name__ == '__main__':
             "--use_cross_val", default=False, required=False,
             action="store_true",
             help="The logistic regression decision boundary polynomial degree.")
+    parser.add_argument(
+            "--balanced", default=None, required=False,
+            action="store_true",
+            help="Flag to perform balanced logistic regression training.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -266,6 +272,7 @@ if __name__ == '__main__':
     use_cross_val = args.use_cross_val
     feature_list_kwarg = args.feature_list
     joblib_filepath = args.joblib_filepath
+    balanced = args.balanced
 
     feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
 
@@ -273,4 +280,4 @@ if __name__ == '__main__':
             data_filepath, blind_data_filepath=blind_data_filepath,
             output_path=output_path, max_iter=max_iter, degree=degree,
             use_cross_val=use_cross_val, feature_list=feature_list,
-            joblib_filepath=joblib_filepath)
+            joblib_filepath=joblib_filepath, balanced=balanced)
