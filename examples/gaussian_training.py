@@ -34,7 +34,7 @@ from eosdxanalysis.models.utils import metrics_report
 
 
 def main(
-        data_filepath, blind_data_filepath=None, output_path=None,
+        data_filepath=None, blind_data_filepath=None, output_path=None,
         max_iter=100, degree=1, use_cross_val=False, feature_list=[],
         joblib_filepath=None, balanced=None):
     t0 = time()
@@ -44,115 +44,11 @@ def main(
     # Set class_weight
     class_weight = balanced if balanced else None
 
-    # Load dataframe
-    df = pd.read_csv(data_filepath, index_col=0)
-
-    # Set up figure
-    fig = plt.figure(figsize=(8,8))
-
-    # Plot normal
-    normal_rows = df[df["Cancer"] == 0]
-    Xnormal = normal_rows["peak_location_radius_5A"]
-    Ynormal = normal_rows["peak_location_radius_5_4A"]
-    plt.scatter(Xnormal, Ynormal, color="blue", label="Normal", s=10)
-
-    # Plot cancer
-    cancer_rows = df[df["Cancer"] == 1]
-    Xcancer = cancer_rows["peak_location_radius_5A"]
-    Ycancer = cancer_rows["peak_location_radius_5_4A"]
-    plt.scatter(Xcancer, Ycancer, color="red", label="Cancer", s=10)
-
-    # Plot settings
-    plt.xlim([45, 70])
-    plt.ylim([55, 80])
-
-    plt.xlabel("Peak location radius 5 A [Pixels]")
-    plt.ylabel("Peak location radius 5-4 A [Pixels]")
-
-    plt.title("Gaussian Fitting Features Subspace")
-    plt.legend()
-
-    # plt.show()
-    fig.clear()
-    plt.close(fig)
-
-    print("Cancer:",cancer_rows.shape[0])
-    print("Normal:",normal_rows.shape[0])
-
-
-    # Logistic Regression
-    # -------------------
-    # Data
-
-    if not feature_list:
-        feature_list = GaussianDecomposition.parameter_list()
-
-    Xlinear = df[[*feature_list]].astype(float).values
-    # Create a polynomial
-    poly = PolynomialFeatures(degree=degree)
-
-    X = poly.fit_transform(Xlinear)
-
-    patient_averaging = False
-
-    # Patient averaging
-    if patient_averaging:
-        csv_num = df["Patient"].nunique()
-
-        print("There are " + str(csv_num) + " unique samples.")
-
-        # y = np.zeros((X.shape[0],1))
-        # y = df['Cancer'].values.reshape((-1,1))
-        # print(..shape)
-
-        # Labels
-        y = np.zeros((csv_num,1),dtype=bool)
-        X_new = np.zeros((csv_num,2))
-
-        # Loop over each sample
-        # and average X and label y
-
-        for idx in np.arange(csv_num):
-            # Get a sample
-            sample = df.loc[df['Barcode'] == barcodes[idx]]
-            patient = sample.values[0][1]
-            # Get all specimens from the same patient
-            df_rows = df.loc[df['Patient'] == patient]
-            indices = df_rows.index
-            # Now average across all samples
-            X_new[idx,:] = np.mean(X[indices,:],axis=0)
-            # Get the labels for the samples, first one is ok'
-            y[idx] = df_rows["Cancer"][indices[0]]
-
-
-        X = X_new
-        print("Total data count after averaging:")
-        print(y.shape)
-
-        print("Normal data count:")
-        print(np.sum(y == False))
-        print("Cancer data count:")
-        print(np.sum(y == True))
-
-    # No patient averaging
-    elif not patient_averaging:
-        y = df["Cancer"]
-
-    # Check that X and y have same number of rows
-    assert(np.array_equal(X.shape[0], y.shape[0]))
-
-    if use_cross_val == True:
-        # Randomly split up training and test set
-        X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.4, random_state=0)
-    else:
-        X_train, y_train = X, y
-
     # Perform Logistic Regression
     # ---------------------------
 
     # Set timestamp
-    timestr = "%y%m%dT%H%M%S.%f"
+    timestr = "%Y%m%dT%H%M%S.%f"
     timestamp = datetime.utcnow().strftime(timestr)
 
     # Set output path with a timestamp if not specified
@@ -165,6 +61,79 @@ def main(
         pipe = load(joblib_filepath)
     # Build a new model
     else:
+        # Load dataframe
+        df = pd.read_csv(data_filepath, index_col=0)
+
+        # Logistic Regression
+        # -------------------
+        # Data
+
+        if not feature_list:
+            feature_list = GaussianDecomposition.parameter_list()
+
+        Xlinear = df[[*feature_list]].astype(float).values
+        # Create a polynomial
+        poly = PolynomialFeatures(degree=degree)
+
+        X = poly.fit_transform(Xlinear)
+
+        patient_averaging = False
+
+        # Patient averaging
+        if patient_averaging:
+            csv_num = df["Patient"].nunique()
+
+            print("There are " + str(csv_num) + " unique samples.")
+
+            # y = np.zeros((X.shape[0],1))
+            # y = df['Cancer'].values.reshape((-1,1))
+            # print(..shape)
+
+            # Labels
+            y = np.zeros((csv_num,1),dtype=bool)
+            X_new = np.zeros((csv_num,2))
+
+            # Loop over each sample
+            # and average X and label y
+
+            for idx in np.arange(csv_num):
+                # Get a sample
+                sample = df.loc[df['Barcode'] == barcodes[idx]]
+                patient = sample.values[0][1]
+                # Get all specimens from the same patient
+                df_rows = df.loc[df['Patient'] == patient]
+                indices = df_rows.index
+                # Now average across all samples
+                X_new[idx,:] = np.mean(X[indices,:],axis=0)
+                # Get the labels for the samples, first one is ok'
+                y[idx] = df_rows["Cancer"][indices[0]]
+
+
+            X = X_new
+            print("Total data count after averaging:")
+            print(y.shape)
+
+            print("Normal data count:")
+            print(np.sum(y == False))
+            print("Cancer data count:")
+            print(np.sum(y == True))
+
+        # No patient averaging
+        elif not patient_averaging:
+            y = df["Cancer"]
+
+        # Check that X and y have same number of rows
+        assert(np.array_equal(X.shape[0], y.shape[0]))
+
+        if use_cross_val == True:
+            # Randomly split up training and test set
+            X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=0.4, random_state=0)
+        else:
+            X_train, y_train = X, y
+
+
+
         # Perform logistic regression
         logreg = LogisticRegression(
                 C=1,class_weight=class_weight, solver="newton-cg",
@@ -177,17 +146,17 @@ def main(
         model_filepath = os.path.join(output_path, model_filename)
         dump(pipe, model_filepath)
 
-    scores = cross_val_score(pipe, X, y, cv=5)
+        scores = cross_val_score(pipe, X, y, cv=5)
 
-    # Now check performance on entire set
-    # Predict
-    y_predict = pipe.predict(X)
+        # Now check performance on entire set
+        # Predict
+        y_predict = pipe.predict(X)
 
-    # Get true negatives, false positives, false negatives, true positives
-    tn, fp, fn, tp = confusion_matrix(y, y_predict).ravel()
+        # Get true negatives, false positives, false negatives, true positives
+        tn, fp, fn, tp = confusion_matrix(y, y_predict).ravel()
 
-    # Print scores
-    metrics_report(TN=tn, FP=tp, FN=fn, TP=tp, degree=degree, printout=True)
+        # Print scores
+        metrics_report(TN=tn, FP=tp, FN=fn, TP=tp, degree=degree, printout=True)
 
     # Blind data predictions
     # ----------------------
@@ -223,8 +192,6 @@ def main(
 
         print("Blind predictions saved to", csv_output_path)
 
-    return scores
-
 if __name__ == '__main__':
     """
     Run analysis on 2D Gaussian fit results
@@ -233,7 +200,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--data_filepath", default=None, required=True,
+            "--data_filepath", default=None, required=False,
             help="The file path containing 2D Gaussian fit results labeled data.")
     parser.add_argument(
             "--blind_data_filepath", default=None, required=False,
