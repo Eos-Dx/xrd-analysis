@@ -37,7 +37,7 @@ def plot_feature_histograms(
         raise Warning("Must specify at least ``visualize`` or ``save``. Nothing to do.")
 
     # Load dataframe
-    df = pd.read_csv(input_filepath, index_col=0)
+    df = pd.read_csv(input_filepath, index_col="Filename")
     # Get features
     feature_list = df.columns
 
