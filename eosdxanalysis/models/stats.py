@@ -37,7 +37,7 @@ def plot_feature_histograms(
         raise Warning("Must specify at least ``visualize`` or ``save``. Nothing to do.")
 
     # Load dataframe
-    df = pd.read_csv(input_filepath, index_col=0)
+    df = pd.read_csv(input_filepath, index_col="Filename")
     # Get features
     feature_list = df.columns
 
@@ -64,7 +64,7 @@ def plot_feature_histograms(
         feature_values = df[feature].values
 
         # Sanitize the values
-        feature_values[feature_values <= 1e-6] = 0
+        feature_values[feature_values <= 1e-5] = 0
 
         # Create auto histogram
         plt.hist(feature_values, bins='auto')
