@@ -1,4 +1,4 @@
-eosdxanalysis.models.feature\_engineering
+﻿eosdxanalysis.models.feature\_engineering
 =========================================
 
 .. automodule:: eosdxanalysis.models.feature_engineering
@@ -8,6 +8,13 @@ eosdxanalysis.models.feature\_engineering
    
 
    
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      shoulder_analysis
+      shoulder_pattern
    
    
 

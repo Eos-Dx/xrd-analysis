@@ -29,6 +29,7 @@
    .. autosummary::
    
       GaussianDecomposition
+      GaussianShoulderFitting
       PolynomialFit
    
    
