@@ -64,7 +64,7 @@ def plot_feature_histograms(
         feature_values = df[feature].values
 
         # Sanitize the values
-        feature_values[feature_values <= 1e-6] = 0
+        feature_values[feature_values <= 1e-5] = 0
 
         # Create auto histogram
         plt.hist(feature_values, bins='auto')
