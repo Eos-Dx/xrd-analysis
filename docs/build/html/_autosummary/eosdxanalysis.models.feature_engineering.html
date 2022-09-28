@@ -264,10 +264,21 @@
   <section id="module-eosdxanalysis.models.feature_engineering">
 <span id="eosdxanalysis-models-feature-engineering"></span><h1>eosdxanalysis.models.feature_engineering<a class="headerlink" href="#module-eosdxanalysis.models.feature_engineering" title="Permalink to this heading">#</a></h1>
 <p>Calculate features using preprocessing functions</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">shoulder_analysis</span></code>(input_path[, output_path, ...])</p></td>
+<td><p>Runs batch shoulder analysis</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">shoulder_pattern</span></code>(amplitude_5A, std_5A, ...)</p></td>
+<td><p>Shoulder pattern as a sum of two 1D Gaussians</p></td>
+</tr>
+</tbody>
+</table>
 <p class="rubric">Classes</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EngineeredFeatures</span></code>(image, params)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EngineeredFeatures</span></code>(image[, params])</p></td>
 <td><p>Class to calculate engineered features.</p></td>
 </tr>
 </tbody>

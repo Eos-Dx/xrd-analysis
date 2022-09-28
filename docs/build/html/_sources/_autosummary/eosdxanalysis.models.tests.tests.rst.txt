@@ -1,4 +1,4 @@
-eosdxanalysis.models.tests.tests
+﻿eosdxanalysis.models.tests.tests
 ================================
 
 .. automodule:: eosdxanalysis.models.tests.tests
@@ -23,6 +23,7 @@ eosdxanalysis.models.tests.tests
       TestL1Metric
       TestPolarSamplingGrid
       TestPolynomialFit
+      TestStats
       TestUtils
    
    
