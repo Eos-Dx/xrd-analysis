@@ -265,7 +265,7 @@
 <h1>eosdxanalysis.models.curve_fitting.GaussianDecomposition<a class="headerlink" href="#eosdxanalysis-models-curve-fitting-gaussiandecomposition" title="Permalink to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="eosdxanalysis.models.curve_fitting.GaussianDecomposition">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eosdxanalysis.models.curve_fitting.</span></span><span class="sig-name descname"><span class="pre">GaussianDecomposition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">90</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p0_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_lower_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_upper_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.models.curve_fitting.GaussianDecomposition" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eosdxanalysis.models.curve_fitting.</span></span><span class="sig-name descname"><span class="pre">GaussianDecomposition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">90</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params_init_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'estimation'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p0_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_lower_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_upper_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.models.curve_fitting.GaussianDecomposition" title="Permalink to this definition">#</a></dt>
 <dd><p>Class for decomposing keratin diffraction patterns
 as a sum of Gaussians with angular spread.</p>
 <p class="rubric">Methods</p>
@@ -310,13 +310,16 @@ as a sum of Gaussians with angular spread.</p>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_error</span></code>(image, fit)</p></td>
 <td><p>Returns the square error between a function and its approximation.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">objective</span></code>(p, image, r, theta)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ideal_parameters</span></code>()</p></td>
+<td><p>Returns ideal parameters from literature</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">objective</span></code>(p, image, r, theta)</p></td>
 <td><p>Generate a keratin diffraction pattern with the given parameters list p and return the fit error</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameter_init</span></code>()</p></td>
-<td><p>P parameters: - peak_radius - width - amplitude</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameter_init</span></code>([params_init_method])</p></td>
+<td><p>Initialize parameter estimates for curve fitting optimization</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameter_list</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameter_list</span></code>()</p></td>
 <td><p>Returns the list of parameter names</p></td>
 </tr>
 </tbody>
@@ -330,14 +333,14 @@ as a sum of Gaussians with angular spread.</p>
 </table>
 <dl class="py method">
 <dt class="sig sig-object py" id="eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">90</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p0_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_lower_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_upper_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">90</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params_init_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'estimation'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p0_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_lower_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_upper_bounds_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__" title="Permalink to this definition">#</a></dt>
 <dd><p>Initialize <cite>GaussianDecomposition</cite> class.</p>
 </dd></dl>
 
 <p class="rubric">Methods</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__" title="eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(image[, rmin, rmax, p0_dict, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__" title="eosdxanalysis.models.curve_fitting.GaussianDecomposition.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(image[, rmin, rmax, ...])</p></td>
 <td><p>Initialize <cite>GaussianDecomposition</cite> class.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">best_fit</span></code>()</p></td>
@@ -352,8 +355,8 @@ as a sum of Gaussians with angular spread.</p>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">objective</span></code>(p, image, r, theta)</p></td>
 <td><p>Generate a keratin diffraction pattern with the given parameters list p and return the fit error</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameter_init</span></code>()</p></td>
-<td><p>P parameters: - peak_radius - width - amplitude</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameter_init</span></code>([params_init_method])</p></td>
+<td><p>Initialize parameter estimates for curve fitting optimization</p></td>
 </tr>
 </tbody>
 </table>
