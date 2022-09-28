@@ -1,4 +1,4 @@
-eosdxanalysis.models.utils
+﻿eosdxanalysis.models.utils
 ==========================
 
 .. automodule:: eosdxanalysis.models.utils
@@ -22,6 +22,7 @@ eosdxanalysis.models.utils
       gen_jn_zerosmatrix
       l1_metric
       l1_metric_normalized
+      metrics_report
       pol2cart
       radial_intensity_1d
    
