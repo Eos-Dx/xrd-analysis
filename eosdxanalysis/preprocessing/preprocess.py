@@ -85,7 +85,11 @@ class PreprocessData(object):
         if input_filepath:
             # Collect full file fullpath into a single-element list
             filenames_fullpaths = [input_filepath]
-
+        elif parent_dir and samples_dir:
+            # Get sorted list of filenames
+            filenames_fullpaths = glob.glob(
+                    os.path.join(parent_dir, samples_dir, "*.txt"))
+            filenames_fullpaths.sort()
         # Else we are provided with an input directory
         elif filename == None and input_dir != None:
             # Get sorted list of filenames
