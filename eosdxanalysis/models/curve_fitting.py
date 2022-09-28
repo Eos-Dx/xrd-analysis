@@ -1108,7 +1108,7 @@ def gaussian_decomposition(
     # Save dataframe
     csv_filename = "GD_results.csv"
     csv_output_path = os.path.join(output_path, csv_filename)
-    df.to_csv(csv_output_path)
+    df.to_csv(csv_output_path, index=False)
 
 if __name__ == '__main__':
     """
