@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>Contributing &#8212; Eos Dx Analysis 2.2.0 documentation</title>
+    <title>Contributing &#8212; Eos Dx Analysis 2.4.2 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -90,7 +90,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.2.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.4.2 documentation</p>
   
 </a>
     
@@ -265,16 +265,9 @@
               
   <section id="contributing">
 <h1>Contributing<a class="headerlink" href="#contributing" title="Permalink to this heading">#</a></h1>
-<section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
-<p>Follow <a class="reference internal" href="usage.html#installation"><span class="std std-ref">usage:Installation</span></a>, replacing the final step as follows.</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(eos)</span> <span class="gp">$ </span>pip install -e .
-</pre></div>
-</div>
-</section>
 <section id="development-workflow">
 <h2>Development Workflow<a class="headerlink" href="#development-workflow" title="Permalink to this heading">#</a></h2>
-<p>Use the GitHub commandline interface to speed up development. Make sure to follow <strong>best practices</strong>.</p>
+<p>Install the <a class="reference external" href="https://github.com/cli/cli#installation">GitHub commandline interface</a> to speed up development. Make sure to follow <em>best practices</em>.</p>
 <ol class="arabic simple">
 <li><p>Create an issue, and optionally add a label</p></li>
 </ol>
@@ -288,31 +281,33 @@
 </pre></div>
 </div>
 <ol class="arabic simple" start="3">
-<li><p>Solve the issue and include tests and documentation if appropriate.</p></li>
+<li><p>Make some changes to solve the issue, and include tests and documentation if appropriate.</p></li>
+<li><p>Increase the version according to the following system: X.Y.Z, where X = major version that adds major new changes that break backwards-compatibility, Y = minor version that adds non-breaking features, Z = bug fixes or small edits.</p></li>
 <li><p>Make some commits.</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git add changed_file
 <span class="gp">$ </span>git commit -m <span class="s2">&quot;adds new brilliant feature&quot;</span>
 </pre></div>
 </div>
-<ol class="arabic simple" start="5">
+<ol class="arabic simple" start="6">
 <li><p>Merge main to the development branch and resolve any conflicts.</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git merge main
 </pre></div>
 </div>
-<ol class="arabic simple" start="6">
+<ol class="arabic simple" start="7">
 <li><p>Create a pull request and note its number(e.g. 43).</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>gh pr create
 </pre></div>
 </div>
-<ol class="arabic simple" start="7">
-<li><p>Merge the pull request and reference the issue.</p></li>
+<ol class="arabic simple" start="8">
+<li><p>Merge the pull request and reference the issue using the <cite>body</cite> tag.</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>gh pr merge <span class="m">43</span> --body <span class="s2">&quot;Solves #42.&quot;</span>
 </pre></div>
 </div>
+<p>Note: you can answer <cite>y</cite> to delete the branch when merging. If you select <cite>n</cite> then you need to manually switch to main and pull your changes.</p>
 </section>
 </section>
 
@@ -354,11 +349,6 @@
 </div>
 <nav id="bd-toc-nav" class="page-toc">
     <ul class="visible nav section-nav flex-column">
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#installation">
-   Installation
-  </a>
- </li>
  <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#development-workflow">
    Development Workflow
