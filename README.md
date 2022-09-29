@@ -32,9 +32,12 @@ where `DATA_PATH` is the full path to the preprocessed data, and `IMAGE_PATH` is
 ## Development Environment Setup
 Use miniforge (https://github.com/conda-forge/miniforge) and create environment with environment.yml file from xrd-analysis repo:
 
-`conda env create --name env_name --file environment.yaml`
+`conda env create --name eos --file environment.yaml`
 
 ## Installation
+
+First follow steps here to set up GitHub account and use SSH keys for access: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/testing-your-ssh-connection
+
 Install the `eosdxanalysis` python package as follows:
 1. Clone this repository: `git clone https://github.com/Eos-Dx/xrd-analysis`
 2. Change into the `eosdxanalysis` directory.
