@@ -4,22 +4,23 @@ Usage
 Installation
 ------------
 
-To use **eosdxanalysis**, first set up a **conda** environment with `miniforge <https://github.com/conda-forge/miniforge>`_.
+1. Install ``conda`` using `miniforge <https://github.com/conda-forge/miniforge>`_.
 
+2. Follow all steps in `Connecting to GitHub with SSH <https://docs.github.com/en/authentication/connecting-to-github-with-ssh>`_.
 
-1. Clone the repository from GitHub
+3. Clone the repository from GitHub
 
 .. code-block:: console
 
     $ git clone https://github.com/Eos-Dx/xrd-analysis
 
-2. Change into the local repository directory
+3. Change into the local repository directory
 
 .. code-block:: console
 
     $ cd xrd-analysis
 
-3. Set up a conda environment and activate
+4. Set up a ``conda`` environment and activate (Note: very large download and high CPU usage)
 
 .. code-block:: console
 
@@ -32,16 +33,16 @@ To use **eosdxanalysis**, first set up a **conda** environment with `miniforge <
 
     (eos) $ 
 
-5. Finally, install eosdxanalysis Python library
+5. Finally, install the ``eosdxanalysis`` Python library
 
 .. code-block:: console
 
-    (eos) $ pip install .
+    (eos) $ pip install -e .
 
 Preprocessing
 -------------
 
-In the shell, run the following commands from the **xrd-analysis** directory to preprocess raw data,
+In the shell, run the following commands from the ``xrd-analysis`` directory to preprocess raw data,
 
 .. code-block:: console
 

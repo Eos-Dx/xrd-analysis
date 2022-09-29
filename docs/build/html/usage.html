@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>Usage &#8212; Eos Dx Analysis 2.2.0 documentation</title>
+    <title>Usage &#8212; Eos Dx Analysis 2.4.2 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -90,7 +90,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.2.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.4.2 documentation</p>
   
 </a>
     
@@ -267,21 +267,22 @@
 <h1>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h1>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
-<p>To use <strong>eosdxanalysis</strong>, first set up a <strong>conda</strong> environment with <a class="reference external" href="https://github.com/conda-forge/miniforge">miniforge</a>.</p>
 <ol class="arabic simple">
+<li><p>Install <code class="docutils literal notranslate"><span class="pre">conda</span></code> using <a class="reference external" href="https://github.com/conda-forge/miniforge">miniforge</a>.</p></li>
+<li><p>Follow all steps in <a class="reference external" href="https://docs.github.com/en/authentication/connecting-to-github-with-ssh">Connecting to GitHub with SSH</a>.</p></li>
 <li><p>Clone the repository from GitHub</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git clone https://github.com/Eos-Dx/xrd-analysis
 </pre></div>
 </div>
-<ol class="arabic simple" start="2">
+<ol class="arabic simple" start="3">
 <li><p>Change into the local repository directory</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span><span class="nb">cd</span> xrd-analysis
 </pre></div>
 </div>
-<ol class="arabic simple" start="3">
-<li><p>Set up a conda environment and activate</p></li>
+<ol class="arabic simple" start="4">
+<li><p>Set up a <code class="docutils literal notranslate"><span class="pre">conda</span></code> environment and activate (Note: very large download and high CPU usage)</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>conda env create --name eos --file environment.yaml
 <span class="gp">$ </span>conda activate eos
@@ -294,15 +295,15 @@
 </pre></div>
 </div>
 <ol class="arabic simple" start="5">
-<li><p>Finally, install eosdxanalysis Python library</p></li>
+<li><p>Finally, install the <code class="docutils literal notranslate"><span class="pre">eosdxanalysis</span></code> Python library</p></li>
 </ol>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(eos)</span> <span class="gp">$ </span>pip install .
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(eos)</span> <span class="gp">$ </span>pip install -e .
 </pre></div>
 </div>
 </section>
 <section id="preprocessing">
 <h2>Preprocessing<a class="headerlink" href="#preprocessing" title="Permalink to this heading">#</a></h2>
-<p>In the shell, run the following commands from the <strong>xrd-analysis</strong> directory to preprocess raw data,</p>
+<p>In the shell, run the following commands from the <code class="docutils literal notranslate"><span class="pre">xrd-analysis</span></code> directory to preprocess raw data,</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python eosdxanalysis/preprocessing/preprocess.py --parent_dir <span class="s2">&quot;PARENT_PATH&quot;</span> <span class="se">\</span>
     --samples_dir <span class="s2">&quot;SAMPLES_DIR&quot;</span> --params_file <span class="s2">&quot;PARAMETERS_FILE_PATH&quot;</span>
 </pre></div>
