@@ -306,9 +306,9 @@ class TestPreprocessingCLI(unittest.TestCase):
         and output directory.
         """
         params_file = self.params_file
-        test_input_dir = self.test_input_dir
-        test_output_dir = self.test_output_dir
-        input_files_fullpaths = self.input_files_fullpaths
+        test_input_path = self.test_input_path
+        test_output_path = self.test_output_path
+        input_file_path_list = self.input_file_path_list
 
         # Construct plans list
         plan = "centerize_rotate_quad_fold"
@@ -318,8 +318,8 @@ class TestPreprocessingCLI(unittest.TestCase):
 
         # Set up the command
         command = ["python", "eosdxanalysis/preprocessing/preprocess.py",
-                    "--input_dir", test_input_dir,
-                    "--output_dir", test_output_dir,
+                    "--input_path", test_input_path,
+                    "--output_path", test_output_path,
                     "--params_file", params_file,
                     "--plans", ",".join(plans),
                     ]
@@ -329,21 +329,21 @@ class TestPreprocessingCLI(unittest.TestCase):
 
         # Check that output files exist
         # First get list of files
-        num_files = len(input_files_fullpaths)
+        num_files = len(input_file_path_list)
 
         # Check that number of files is > 0
         self.assertTrue(num_files > 0)
         # Check that number of input and output files is the same
-        plan_output_dir = os.path.join(test_output_dir, output_style)
-        plan_output_files_fullpaths = glob.glob(os.path.join(plan_output_dir, "*.txt"))
-        plan_output_files_fullpaths.sort()
+        plan_output_path = os.path.join(test_output_path, output_style)
+        plan_output_file_path_list = glob.glob(os.path.join(plan_output_path, "*.txt"))
+        plan_output_file_path_list.sort()
 
-        self.assertEqual(num_files, len(plan_output_files_fullpaths))
+        self.assertEqual(num_files, len(plan_output_file_path_list))
 
         for idx in range(num_files):
             # Load data
-            input_image = np.loadtxt(input_files_fullpaths[idx])
-            output_image = np.loadtxt(plan_output_files_fullpaths[idx])
+            input_image = np.loadtxt(input_file_path_list[idx])
+            output_image = np.loadtxt(plan_output_file_path_list[idx])
 
             # Check that data are positive
             self.assertTrue(input_image[input_image > 0].all())
