@@ -198,25 +198,25 @@ class TestPreprocessingCLI(unittest.TestCase):
     """
 
     def setUp(self):
-        test_dir = os.path.join(TEST_IMAGE_PATH, "test_cli_images")
-        self.test_dir = test_dir
+        test_path = os.path.join(TEST_IMAGE_PATH, "test_cli_images")
+        self.test_path = test_path
 
         # Specify parameters file without plans
-        params_file = os.path.join(test_dir, "params.txt")
+        params_file = os.path.join(test_path, "params.txt")
         self.params_file = params_file
         with open(params_file, "r") as param_fp:
             params = param_fp.read()
         self.params = params
 
         # Specify parameters file with plans
-        params_with_plans_file = os.path.join(test_dir, "params_with_plans.txt")
+        params_with_plans_file = os.path.join(test_path, "params_with_plans.txt")
         self.params_with_plans_file = params_with_plans_file
         with open(params_with_plans_file, "r") as param_fp:
             params_with_plans = param_fp.read()
         self.params_with_plans = params_with_plans
 
         # Create test images
-        input_dir="input"
+        input_path="input"
 
         # Set up test image
         test_image = np.zeros((256,256), dtype=np.uint16)
@@ -228,23 +228,23 @@ class TestPreprocessingCLI(unittest.TestCase):
         # Set the filename
         filename = "test_cli.txt"
         # Set the full output path
-        fullpath = os.path.join(test_dir, input_dir, filename)
+        fullpath = os.path.join(test_path, input_path, filename)
         # Save the image to file
         np.savetxt(fullpath, test_image, fmt="%d")
 
-        # Set the input and output directories
-        test_input_dir = os.path.join(test_dir, "input")
-        test_output_dir = os.path.join(test_dir, "output")
-        # Create the test output directory
-        os.makedirs(test_output_dir, exist_ok=True)
+        # Set the input and output pathectories
+        test_input_path = os.path.join(test_path, "input")
+        test_output_path = os.path.join(test_path, "output")
+        # Create the test output pathectory
+        os.makedirs(test_output_path, exist_ok=True)
 
-        self.test_input_dir = test_input_dir
-        self.test_output_dir = test_output_dir
+        self.test_input_path = test_input_path
+        self.test_output_path = test_output_path
 
-        input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
-        input_files_fullpaths.sort()
+        input_file_path_list = glob.glob(os.path.join(test_input_path, "*.txt"))
+        input_file_path_list.sort()
 
-        self.input_files_fullpaths = input_files_fullpaths
+        self.input_file_path_list = input_file_path_list
 
     def test_preprocess_cli_input_dir_output_dir_params_file_plans_in_params_file(self):
         """
@@ -252,9 +252,9 @@ class TestPreprocessingCLI(unittest.TestCase):
         and output directory.
         """
         params_with_plans_file = self.params_with_plans_file
-        test_input_dir = self.test_input_dir
-        test_output_dir = self.test_output_dir
-        input_files_fullpaths = self.input_files_fullpaths
+        test_input_path = self.test_input_path
+        test_output_path = self.test_output_path
+        input_file_path_list = self.input_file_path_list
 
         # Construct plans list
         plan = "centerize_rotate_quad_fold"
@@ -263,8 +263,8 @@ class TestPreprocessingCLI(unittest.TestCase):
 
         # Set up the command
         command = ["python", "eosdxanalysis/preprocessing/preprocess.py",
-                    "--input_dir", test_input_dir,
-                    "--output_dir", test_output_dir,
+                    "--input_path", test_input_path,
+                    "--output_path", test_output_path,
                     "--params_file", params_with_plans_file,
                     ]
 
@@ -273,21 +273,21 @@ class TestPreprocessingCLI(unittest.TestCase):
 
         # Check that output files exist
         # First get list of files
-        num_files = len(input_files_fullpaths)
+        num_files = len(input_file_path_list)
 
         # Check that number of files is > 0
         self.assertTrue(num_files > 0)
         # Check that number of input and output files is the same
-        plan_output_dir = os.path.join(test_output_dir, output_style)
-        plan_output_files_fullpaths = glob.glob(os.path.join(plan_output_dir, "*.txt"))
-        plan_output_files_fullpaths.sort()
+        plan_output_path = os.path.join(test_output_path, output_style)
+        plan_output_file_path_list = glob.glob(os.path.join(plan_output_path, "*.txt"))
+        plan_output_file_path_list.sort()
 
-        self.assertEqual(num_files, len(plan_output_files_fullpaths))
+        self.assertEqual(num_files, len(plan_output_file_path_list))
 
         for idx in range(num_files):
             # Load data
-            input_image = np.loadtxt(input_files_fullpaths[idx])
-            output_image = np.loadtxt(plan_output_files_fullpaths[idx])
+            input_image = np.loadtxt(input_file_path_list[idx])
+            output_image = np.loadtxt(plan_output_file_path_list[idx])
 
             # Check that data are positive
             self.assertTrue(input_image[input_image > 0].all())
@@ -358,7 +358,7 @@ class TestPreprocessingCLI(unittest.TestCase):
 
     def tearDown(self):
         # Delete the output folder
-        shutil.rmtree(self.test_output_dir)
+        shutil.rmtree(self.test_output_path)
 
 
 class TestPreprocessData(unittest.TestCase):
