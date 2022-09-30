@@ -190,13 +190,14 @@ class PreprocessData(object):
         # Set paths
         input_path = self.input_path
         output_path = self.output_path
+        data_dir = self.data_dir
 
         # Store output directory info
         if not self.output_path:
             # Create output directory if it does not exist
-            if samples_dir:
+            if data_dir:
                 output_dir = "preprocessed_{}_{}".format(
-                                        samples_dir, timestamp)
+                                        data_dir, timestamp)
             else:
                 output_dir = "preprocessed_{}".format(timestamp)
             output_path = os.path.join(input_path, output_dir)
