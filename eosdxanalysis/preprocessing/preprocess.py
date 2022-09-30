@@ -73,43 +73,76 @@ class PreprocessData(object):
     Class to run processing pipeline on data set.
     """
 
-    def __init__(self, input_filepath=None, parent_dir=None, samples_dir=None,
-            input_dir=None, output_dir=None, params={}):
-        # Store input and output directories
-        self.parent_dir = parent_dir
-        self.samples_dir = samples_dir
-        self.input_dir = input_dir
-        self.output_dir = output_dir
+    def __init__(self, input_path=None, filename=None, data_dir=None,
+            output_path=None, params={}):
+        """
+        Initialize the ``PreprocessData`` class with input, output (optional),
+        and parameters.
 
-        # If we are provided with a single image, set its full path
-        if input_filepath:
+        Parameters
+        ----------
+
+        input_path : str
+
+            Full path to location of input files. If ``data_dir`` is specified,
+            ``input_path`` is the parent directory of ``data_dir``.
+
+        filename : str
+
+            Name of single file to preprocess.
+
+        data_dir : str (optional)
+
+            Name of subdirectory in ``input_path`` containing data files.
+
+        output_path : str (optional)
+
+            Full path to store output files.
+
+        params : dict
+
+            Preprocessing parameters.
+
+        """
+
+        # Store input and output directories
+        self.input_path = input_path
+        self.data_dir = data_dir
+        self.output_path = output_path
+        # Set filename
+        self.filename = filename
+
+        file_path_list = []
+
+        # Handle various cases
+        # We are given a filename
+        if filename and input_path:
             # Collect full file fullpath into a single-element list
-            filenames_fullpaths = [input_filepath]
-        elif parent_dir and samples_dir:
+            file_path = os.path.join(input_path, filename)
+            file_path_list = [file_path]
+        # We are given an input path and a data subdirectory
+        elif input_path and data_dir:
             # Get sorted list of filenames
-            filenames_fullpaths = glob.glob(
-                    os.path.join(parent_dir, samples_dir, "*.txt"))
-            filenames_fullpaths.sort()
-        # Else we are provided with an input directory
-        elif filename == None and input_dir != None:
+            file_path_list = glob.glob(
+                    os.path.join(input_path, data_dir, "*.txt"))
+            file_path_list.sort()
+        # Else we are provided with an input directory only
+        elif input_path:
             # Get sorted list of filenames
-            filenames_fullpaths = glob.glob(os.path.join(input_dir,"*.txt"))
-            filenames_fullpaths.sort()
+            file_path_list = glob.glob(os.path.join(input_path,"*.txt"))
+            file_path_list.sort()
+        else:
+            pass
 
         # Store filenames (these are full paths)
-        self.filenames_fullpaths = filenames_fullpaths
-
-        # Load data from files and store
-        # Vectorization/parallelization
-        # df_list = [pd.read_csv(datafile) for datafile in filenames_fullpaths]
-        # self.df_list = df_list
+        self.file_path_list = file_path_list
 
         # Store parameters
         self.params = params
 
         return super().__init__()
 
-    def preprocess(self, denoise=False, plans=["centerize"],
+    def preprocess(self, plans=["centerize"],
                 mask_style="both", uniform_filter_size=0, scaling="linear"):
         """
         Run all preprocessing steps
@@ -147,31 +180,35 @@ class PreprocessData(object):
         mask_style = params.get("crop_style", mask_style)
 
         # Get filename info
-        filenames_fullpaths = self.filenames_fullpaths
+        file_path_list = self.file_path_list
 
         # Set timestamp
         timestr = "%Y%m%dT%H%M%S.%f"
         timestamp = datetime.utcnow().strftime(timestr)
         self.timestamp = timestamp
 
+        # Set paths
+        input_path = self.input_path
+        output_path = self.output_path
+
         # Store output directory info
-        if not self.output_dir:
+        if not self.output_path:
             # Create output directory if it does not exist
             if samples_dir:
-                output_dir_name = "preprocessed_{}_{}".format(
+                output_dir = "preprocessed_{}_{}".format(
                                         samples_dir, timestamp)
             else:
-                output_dir_name = "preprocessed_{}".format(timestamp)
-            output_dir = os.path.join(parent_dir, output_dir_name)
-            os.makedirs(output_dir, exist_ok=True)
+                output_dir = "preprocessed_{}".format(timestamp)
+            output_path = os.path.join(input_path, output_dir)
+            os.makedirs(output_path, exist_ok=True)
         else:
-            output_dir = self.output_dir
-            os.makedirs(output_dir, exist_ok=True)
+            output_path = self.output_path
+            os.makedirs(output_path, exist_ok=True)
 
-        print("Saving to", output_dir, "...")
+        print("Saving to", output_path, "...")
 
         # Write params to file
-        with open(os.path.join(output_dir,"params.txt"),"w") as paramsfile:
+        with open(os.path.join(output_path,"params.txt"),"w") as paramsfile:
             paramsfile.write(json.dumps(params,indent=4))
 
         # Loop over plans
@@ -181,23 +218,23 @@ class PreprocessData(object):
             output_style_abbreviation = ABBREVIATIONS.get(output_style)
 
             # Create output directory for plan and output format
-            plan_output_dir = os.path.join(output_dir, output_style)
-            os.makedirs(plan_output_dir, exist_ok=True)
+            plan_output_path = os.path.join(output_path, output_style)
+            os.makedirs(plan_output_path, exist_ok=True)
 
             # Create output directory for images
-            plan_output_images_dir = os.path.join(output_dir, output_style + "_images")
-            os.makedirs(plan_output_images_dir, exist_ok=True)
+            plan_output_images_path = os.path.join(output_path, output_style + "_images")
+            os.makedirs(plan_output_images_path, exist_ok=True)
 
             # Loop over files
-            for filename_fullpath in filenames_fullpaths:
+            for file_path in file_path_list:
                 # Load file
-                sample = np.loadtxt(filename_fullpath)
+                sample = np.loadtxt(file_path)
 
                 # Calculate array center
                 array_center = np.array(sample.shape)/2-0.5
                 self.array_center = array_center
 
-                filename = os.path.basename(filename_fullpath)
+                filename = os.path.basename(file_path)
 
                 # Set the output based on output specifications
                 if plan == "original":
@@ -249,20 +286,20 @@ class PreprocessData(object):
                     output = self.mask(output, style=mask_style)
 
                 # Save the file
-                save_filename = "{}_{}".format(output_style_abbreviation,
+                output_filename = "{}_{}".format(output_style_abbreviation,
                                             filename)
-                save_filename_fullpath = os.path.join(plan_output_dir,
-                                            save_filename)
-                np.savetxt(save_filename_fullpath,
+                output_file_path = os.path.join(plan_output_path,
+                                            output_filename)
+                np.savetxt(output_file_path,
                                 np.round(output).astype(np.uint16), fmt='%i')
 
                 # Save the image
-                save_image_filename = save_filename + ".png"
-                save_image_fullpath = os.path.join(plan_output_images_dir,
-                        save_image_filename)
+                output_image_filename = output_filename + ".png"
+                output_image_path = os.path.join(plan_output_images_path,
+                        output_image_filename)
                 if scaling == "dB1":
                     output = 20*np.log10(output+1)
-                plt.imsave(save_image_fullpath, output, cmap=cmap)
+                plt.imsave(output_image_path, output, cmap=cmap)
 
 
     def find_eye_rotation_angle(self, image, center):
@@ -474,23 +511,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--parent_dir", default=None,
-            help="The parent directory to analyze")
-    parser.add_argument(
-            "--samples_dir", default=None,
-            help="The subdirectory name of samples to analyze")
-    parser.add_argument(
             "--input_path", default=None,
-            help="The path with files to preprocess.")
+            help="Path to input files")
     parser.add_argument(
-            "--input_filepath", default=None,
-            help="The path to the file to preprocess.")
+            "--filename", default=None,
+            help="Name of file to analyze")
     parser.add_argument(
-            "--input_dir", default=None,
-            help="The files directory to analyze")
+            "--data_dir", default=None,
+            help="Files subdirectory name")
     parser.add_argument(
-            "--output_dir", default=None,
-            help="The directory to preprocessing results")
+            "--output_path", default=None,
+            help="Path to store preprocessing results")
     parser.add_argument(
             "--params_file", default=None,
             help="The filename with parameters for preprocessing")
@@ -514,31 +545,10 @@ if __name__ == "__main__":
 
     # Set variables based on input arguments
     # Set directory info
-    parent_dir = args.parent_dir
-    samples_dir = args.samples_dir
-    input_dir = args.input_dir
-    output_dir = args.output_dir
-
-    # Set filepath info
     input_path = args.input_path
-    input_filepath = args.input_filepath
-
-    # If parent_dir and samples_dir are set, and input_dir and output_dir
-    # are empty, then set input_dir and output_dir appropriately
-    if parent_dir and samples_dir and not input_dir and not output_dir:
-        input_dir = os.path.join(parent_dir, samples_dir)
-    # If parent_dir and samples_dir are not set, but input_dir and output_dir
-    # are set, then just use those
-    elif input_dir and output_dir:
-        pass
-    elif parent_dir and samples_dir and output_dir:
-        input_dir = os.path.join(parent_dir, samples_dir)
-    elif input_path:
-        pass
-    elif input_filepath:
-        pass
-    else:
-        raise ValueError("Must specify parent_dir and samples_dir or input_dir")
+    filename = args.filename
+    data_dir = args.data_dir
+    output_path = args.output_path
 
     # Get parameters from file or from JSON string commandline argument
     params_file = args.params_file
@@ -572,17 +582,17 @@ if __name__ == "__main__":
     parallel = args.parallel
 
     if parallel:
-        # Set timestamp
-        timestr = "%Y%m%dT%H%M%S.%f"
-        timestamp = datetime.utcnow().strftime(timestr)
-        # Construct the output directory name
-        input_dir = os.path.basename(os.path.abspath(input_path))
-        output_dir_name = "preprocessed_{}_{}".format(input_dir, timestamp)
-
         # Set the output path
-        if not output_dir:
-            output_dir = os.path.dirname(os.path.abspath(input_path))
-        output_path = os.path.join(output_dir, output_dir_name)
+        if not output_path:
+            # Set timestamp
+            timestr = "%Y%m%dT%H%M%S.%f"
+            timestamp = datetime.utcnow().strftime(timestr)
+            # Construct the output directory name
+            input_dir = os.path.basename(os.path.abspath(input_path))
+            output_dir = "preprocessed_{}_{}".format(input_dir, timestamp)
+            output_path = os.path.join(input_path, output_dir)
+
+        # Create the output path
         os.makedirs(output_path, exist_ok=True)
 
         # Get the list of file paths
@@ -599,11 +609,11 @@ if __name__ == "__main__":
             function_cli_list = [
                     'python',
                     'eosdxanalysis/preprocessing/preprocess.py',
-                    '--input_filepath',
+                    '--input_path',
                     str(input_filepath),
                     '--params_file',
                     str(params_file),
-                    '--output_dir',
+                    '--output_path',
                     str(output_path),
                     ]
 
@@ -619,9 +629,8 @@ if __name__ == "__main__":
     else:
         # Instantiate PreprocessData class
         preprocessor = PreprocessData(
-                input_filepath=input_filepath, input_dir=input_dir,
-                output_dir=output_dir, parent_dir=parent_dir,
-                samples_dir=samples_dir, params=params)
+                input_path=input_path, filename=filename, data_dir=data_dir,
+                output_path=output_path, params=params)
 
         # Run preprocessing
         preprocessor.preprocess(plans=plans, mask_style=params.get("crop_style"),

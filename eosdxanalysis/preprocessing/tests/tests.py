@@ -364,25 +364,26 @@ class TestPreprocessingCLI(unittest.TestCase):
 class TestPreprocessData(unittest.TestCase):
 
     def setUp(self):
-        test_dir = os.path.join(TEST_IMAGE_PATH, "test_preprocessing_images")
-        self.test_dir = test_dir
+        # Set test path
+        test_path = os.path.join(TEST_IMAGE_PATH, "test_preprocessing_images")
+        self.test_path = test_path
 
         # Specify parameters file without plans
-        params_file = os.path.join(test_dir, "params.txt")
+        params_file = os.path.join(test_path, "params.txt")
         self.params_file = params_file
         with open(params_file, "r") as param_fp:
             params = param_fp.read()
         self.params = params
 
         # Specify parameters file with plans
-        params_with_plans_file = os.path.join(test_dir, "params_with_plans.txt")
+        params_with_plans_file = os.path.join(test_path, "params_with_plans.txt")
         self.params_with_plans_file = params_with_plans_file
         with open(params_with_plans_file, "r") as param_fp:
             params_with_plans = param_fp.read()
         self.params_with_plans = params_with_plans
 
         # Specify parameters file with centerize rotate plans
-        params_centerize_rotate_file = os.path.join(test_dir, "params_centerize_rotate.txt")
+        params_centerize_rotate_file = os.path.join(test_path, "params_centerize_rotate.txt")
         self.params_centerize_rotate_file = params_centerize_rotate_file
         with open(params_centerize_rotate_file, "r") as param_fp:
             params_centerize_rotate = param_fp.read()
@@ -403,23 +404,23 @@ class TestPreprocessData(unittest.TestCase):
         # Set the filename
         filename = "test_cli.txt"
         # Set the full output path
-        fullpath = os.path.join(test_dir, INPUT_DIR, filename)
+        output_file_path = os.path.join(test_path, INPUT_DIR, filename)
         # Save the image to file
-        np.savetxt(fullpath, test_image, fmt="%d")
+        np.savetxt(output_file_path, test_image, fmt="%d")
 
-        # Set the input and output directories
-        test_input_dir = os.path.join(test_dir, "input")
-        test_output_dir = os.path.join(test_dir, "output")
-        # Create the output directory
-        os.makedirs(test_output_dir, exist_ok=True)
+        # Set the input and output paths
+        test_input_path = os.path.join(test_path, "input")
+        test_output_path = os.path.join(test_path, "output")
+        # Create the output path
+        os.makedirs(test_output_path, exist_ok=True)
 
-        self.test_input_dir = test_input_dir
-        self.test_output_dir = test_output_dir
+        self.test_input_path = test_input_path
+        self.test_output_path = test_output_path
 
-        input_files_fullpaths = glob.glob(os.path.join(test_input_dir, "*.txt"))
-        input_files_fullpaths.sort()
+        input_file_path_list = glob.glob(os.path.join(test_input_path, "*.txt"))
+        input_file_path_list.sort()
 
-        self.input_files_fullpaths = input_files_fullpaths
+        self.input_file_path_list = input_file_path_list
 
     def test_preprocess_single_image_rotate_centerize(self):
         params_centerize_rotate = self.params_centerize_rotate
@@ -465,10 +466,10 @@ class TestPreprocessData(unittest.TestCase):
         """
         Ensure that rotation angle is close over 10 measurements
         """
-        input_filepath_list = glob.glob(os.path.join(self.test_input_dir, "*924.txt"))
+        input_filepath_list = glob.glob(os.path.join(self.test_input_path, "*924.txt"))
         input_filepath_list.sort()
         params_filename = "params_centerize_rotate.txt"
-        params_filepath = os.path.join(self.test_dir, params_filename)
+        params_filepath = os.path.join(self.test_path, params_filename)
 
         with open(params_filepath, "r") as params_fp:
             params = json.loads(params_fp.read())
@@ -477,11 +478,11 @@ class TestPreprocessData(unittest.TestCase):
         angles = []
         for input_filepath in input_filepath_list:
             preprocessor = PreprocessData(filename=input_filepath,
-                    input_dir=self.test_input_dir, output_dir=self.test_output_dir, params=params)
+                    input_path=self.test_input_path, output_path=self.test_output_path, params=params)
             preprocessor.preprocess()
             # Load the image file
             input_filename = os.path.basename(input_filepath)
-            output_filename_fullpath = os.path.join(self.test_output_dir,
+            output_filename_fullpath = os.path.join(self.test_output_path,
                     "centered_rotated", "CR_" + input_filename)
             input_image = np.loadtxt(input_filepath)
             output_image = np.loadtxt(output_filename_fullpath)
@@ -499,7 +500,7 @@ class TestPreprocessData(unittest.TestCase):
 
     def tearDown(self):
         # Delete the output folder
-        shutil.rmtree(self.test_output_dir)
+        shutil.rmtree(self.test_output_path)
 
 
 class TestCenterFinding(unittest.TestCase):
