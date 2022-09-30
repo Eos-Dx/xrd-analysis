@@ -424,27 +424,25 @@ class TestPreprocessData(unittest.TestCase):
 
     def test_preprocess_single_image_rotate_centerize(self):
         params_centerize_rotate = self.params_centerize_rotate
-        test_input_dir = self.test_input_dir
-        test_output_dir = self.test_output_dir
-        input_files_fullpaths = self.input_files_fullpaths
+        test_input_path = self.test_input_path
+        test_output_path = self.test_output_path
+        input_file_path_list = self.input_file_path_list
 
         input_filename = "synthetic_sparse_image.txt"
-        input_filename_fullpath = os.path.join(test_input_dir, input_filename)
-        output_filename_fullpath = os.path.join(test_output_dir,
+        input_filename_fullpath = os.path.join(test_input_path, input_filename)
+        output_filename_fullpath = os.path.join(test_output_path,
                 "centered_rotated", "CR_" + input_filename)
-
 
         params = json.loads(params_centerize_rotate)
 
-        preprocessor = PreprocessData(input_filename,
-                input_dir=test_input_dir, output_dir=test_output_dir, params=params)
+        preprocessor = PreprocessData(filename=input_filename,
+                input_path=test_input_path, output_path=test_output_path, params=params)
 
         # Preprocess data, saving to a file
         preprocessor.preprocess()
 
         # Load data
         input_image = np.loadtxt(input_filename_fullpath)
-        output_image = np.loadtxt(output_filename_fullpath)
 
         preprocessed_image = np.loadtxt(output_filename_fullpath)
 
@@ -455,12 +453,12 @@ class TestPreprocessData(unittest.TestCase):
         calculated_center = find_center(preprocessed_image)
         center = (127.5,127.5)
 
-        self.assertTrue(np.isclose(center, calculated_center, atol=0.75).all())
-
+        self.assertTrue(np.isclose(center, calculated_center, atol=2.0).all())
 
         # Check the rotation angle
-        angle = preprocessor.find_eye_rotation_angle(preprocessed_image, center)
-        self.assertTrue(np.isclose(angle,135))
+        angle = preprocessor.find_eye_rotation_angle(input_image, calculated_center)
+
+        self.assertTrue(np.isclose(angle, 135, atol=2.0))
 
     def test_preprocess_sample_924_remeasurements(self):
         """
