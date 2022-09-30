@@ -15,9 +15,9 @@ The `eosdxanalysis` main modules are `preprocessing` and `models`.
 ### Preprocessing Raw Data
 In the shell, run the following commands from the `xrd-analysis` directory to preprocess raw data,
 ```bash
-python eosdxanalysis/preprocessing/preprocess.py --parent_dir "PARENT_PATH" --samples_dir "SAMPLES_DIR" --params_file "PARAMETERS_FILE_PATH"
+python eosdxanalysis/preprocessing/preprocess.py --input_path "INPUT_PATH" --data_dir "DATA_DIR" --params_file "PARAMETERS_FILE_PATH"
 ```
-where `PARENT_PATH` contains the directory `SAMPLES_DIR`, and the parameters file path can be anywhere. See existing parameters files for details.
+where `INPUT_PATH` contains the directory `DATA_DIR`, and the parameters file path can be anywhere. See existing parameters files for details.
 
 ### Generating Image Previews
 In the python shell, run the following commands to generate image previews,
