@@ -9,12 +9,13 @@
 project = 'Eos Dx Analysis'
 copyright = '2022, Eos Dx, Inc.'
 author = 'Eos Dx, Inc.'
-release = '2.5.1'
+release = '2.5.2'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+        'sphinx_automodapi.automodapi',
         'sphinx.ext.autodoc',
         'sphinx.ext.autosectionlabel',
         'sphinx.ext.autosummary',

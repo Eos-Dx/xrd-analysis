@@ -71,40 +71,54 @@ INVERSE_OUTPUT_MAP = {
 class PreprocessData(object):
     """
     Class to run processing pipeline on data set.
+
+    Initialize the ``PreprocessData`` class with input, output (optional),
+    and parameters.
+
+    Parameters
+    ----------
+
+    input_path : str
+
+        Full path to location of input files. If ``data_dir`` is specified,
+        ``input_path`` is the parent directory of ``data_dir``.
+
+    filename : str
+
+        Name of single file to preprocess.
+
+    data_dir : str (optional)
+
+        Name of subdirectory in ``input_path`` containing data files.
+
+    output_path : str (optional)
+
+        Full path to store output files.
+
+    params : dict
+
+    Notes
+    -----
+
+    Preprocessing parameters are defined as follows:
+
+    * ``h``: image height
+    * ``w``: image width
+    * ``beam_rmax``: defines circular region of interest of the beam
+    * ``rmin``: final image masking inner masking
+    * ``rmax``: final image masking outer masking
+    * ``eyes_rmin``: 9 A region of interest, inner radius of annulus
+    * ``eyes_rmax``: 9 A region of interest, outer radius of annulus
+    * ``eyes_blob_rmax``: defines a circle region of interest centered at the eye peak
+    * ``eyes_percentile``: defines the threshold for generating a binary blob for noise-robust 9 A peak finding
+    * ``local_thresh_block_size``: no longer used (future: specify filter type and size)
+    * ``crop_style``: choice of ``"both"``, ``"beam"``, or ``"outside"``. ``"beam"`` sets the inner circle of radius ``rmin`` to zero. ``"outside"`` sets values outside ``rmax`` to zero. ``"both"`` does both.
+    * ``plans``: a list of strings denoting the preprocessing plan(s) to perform. Choice of ``"original"``, ``"centerize"``, ``"centerize_rotate"``, and ``"centerize_rotate_quad_fold"``. (Note: JSON syntax does not allow for a spare comma at the end of a list, whereas Python does.)
+
     """
 
     def __init__(self, input_path=None, filename=None, data_dir=None,
             output_path=None, params={}):
-        """
-        Initialize the ``PreprocessData`` class with input, output (optional),
-        and parameters.
-
-        Parameters
-        ----------
-
-        input_path : str
-
-            Full path to location of input files. If ``data_dir`` is specified,
-            ``input_path`` is the parent directory of ``data_dir``.
-
-        filename : str
-
-            Name of single file to preprocess.
-
-        data_dir : str (optional)
-
-            Name of subdirectory in ``input_path`` containing data files.
-
-        output_path : str (optional)
-
-            Full path to store output files.
-
-        params : dict
-
-            Preprocessing parameters.
-
-        """
-
         # Store input and output directories
         self.input_path = input_path
         self.data_dir = data_dir
