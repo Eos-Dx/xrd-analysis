@@ -1,7 +1,7 @@
 channels:
   - conda-forge
 dependencies:
-  - python=3.10
+  - python=3.10.4
   - matplotlib=3.5.2
   - numpy=1.22.4
   - numpydoc=1.4.0
@@ -11,3 +11,4 @@ dependencies:
   - scikit-learn=1.1.1
   - scipy=1.9.1
   - sphinx=5.1.1
+  - sphinx-automodapi=0.41.1

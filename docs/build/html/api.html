@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>API &#8212; Eos Dx Analysis 2.5.0 documentation</title>
+    <title>API &#8212; Eos Dx Analysis 2.5.2 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -25,6 +25,7 @@
     href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=9b1a4fa89bdd0e95b23b">
@@ -37,7 +38,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'api';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="eosdxanalysis.models.curve_fitting" href="generated/eosdxanalysis.models.curve_fitting.html" />
+    <link rel="next" title="PreprocessData" href="api/eosdxanalysis.preprocessing.preprocess.PreprocessData.html" />
     <link rel="prev" title="Contributing" href="contributing.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
@@ -90,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.5.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.5.2 documentation</p>
   
 </a>
     
@@ -250,8 +251,144 @@
   <div class="bd-toc-item navbar-nav">
     <ul class="nav bd-sidenav">
  <li class="toctree-l1">
-  <a class="reference internal" href="generated/eosdxanalysis.models.curve_fitting.html">
-   eosdxanalysis.models.curve_fitting
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.preprocess.PreprocessData.html">
+   PreprocessData
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.preprocess.ABBREVIATIONS.html">
+   ABBREVIATIONS
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.preprocess.INVERSE_OUTPUT_MAP.html">
+   INVERSE_OUTPUT_MAP
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.preprocess.OUTPUT_MAP.html">
+   OUTPUT_MAP
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.circular_average.html">
+   circular_average
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.find_center.html">
+   find_center
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.find_centroid.html">
+   find_centroid
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.radial_histogram.html">
+   radial_histogram
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.RMAX_BEAM.html">
+   RMAX_BEAM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.RMIN_BEAM.html">
+   RMIN_BEAM
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.filter_strays.html">
+   filter_strays
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.stray_filter.html">
+   stray_filter
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.crop_image.html">
+   crop_image
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.pad_image.html">
+   pad_image
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.quadrant_fold.html">
+   quadrant_fold
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.unwarp_polar.html">
+   unwarp_polar
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.peak_finding.find_1d_peaks.html">
+   find_1d_peaks
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.peak_finding.find_2d_peak.html">
+   find_2d_peak
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.peak_finding.multivariate_normal.html">
+   multivariate_normal
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.peak_finding.norm.html">
+   norm
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.count_intervals.html">
+   count_intervals
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.create_circular_mask.html">
+   create_circular_mask
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.find_maxima.html">
+   find_maxima
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.gen_rotation_line.html">
+   gen_rotation_line
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.get_angle.html">
+   get_angle
   </a>
  </li>
 </ul>
@@ -282,16 +419,198 @@
             
             <article class="bd-article" role="main">
               
-  <section id="module-eosdxanalysis.models">
-<span id="api"></span><h1>API<a class="headerlink" href="#module-eosdxanalysis.models" title="Permalink to this heading">#</a></h1>
+  <section id="api">
+<h1>API<a class="headerlink" href="#api" title="Permalink to this heading">#</a></h1>
+<section id="module-eosdxanalysis.preprocessing.preprocess">
+<span id="eosdxanalysis-preprocessing-preprocess-module"></span><h2>eosdxanalysis.preprocessing.preprocess Module<a class="headerlink" href="#module-eosdxanalysis.preprocessing.preprocess" title="Permalink to this heading">#</a></h2>
+<p>Performs preprocessing pipeline</p>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/eosdxanalysis.models.curve_fitting.html#module-eosdxanalysis.models.curve_fitting" title="eosdxanalysis.models.curve_fitting"><code class="xref py py-obj docutils literal notranslate"><span class="pre">curve_fitting</span></code></a></p></td>
-<td><p>Code for fitting data to curves</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EuclideanTransform</span></code>([matrix, rotation, ...])</p></td>
+<td><p>Euclidean transformation, also known as a rigid transform.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.preprocess.PreprocessData.html#eosdxanalysis.preprocessing.preprocess.PreprocessData" title="eosdxanalysis.preprocessing.preprocess.PreprocessData"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PreprocessData</span></code></a>([input_path, filename, ...])</p></td>
+<td><p>Class to run processing pipeline on data set.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">datetime</span></code>(year, month, day[, hour[, minute[, ...)</p></td>
+<td><p>The year, month and day arguments are required.</p></td>
 </tr>
 </tbody>
 </table>
-<span class="target" id="module-eosdxanalysis.models.curve_fitting"></span></section>
+</section>
+<section id="variables">
+<h3>Variables<a class="headerlink" href="#variables" title="Permalink to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.preprocess.ABBREVIATIONS.html#eosdxanalysis.preprocessing.preprocess.ABBREVIATIONS" title="eosdxanalysis.preprocessing.preprocess.ABBREVIATIONS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ABBREVIATIONS</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.preprocess.INVERSE_OUTPUT_MAP.html#eosdxanalysis.preprocessing.preprocess.INVERSE_OUTPUT_MAP" title="eosdxanalysis.preprocessing.preprocess.INVERSE_OUTPUT_MAP"><code class="xref py py-obj docutils literal notranslate"><span class="pre">INVERSE_OUTPUT_MAP</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.preprocess.OUTPUT_MAP.html#eosdxanalysis.preprocessing.preprocess.OUTPUT_MAP" title="eosdxanalysis.preprocessing.preprocess.OUTPUT_MAP"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OUTPUT_MAP</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="class-inheritance-diagram">
+<h3>Class Inheritance Diagram<a class="headerlink" href="#class-inheritance-diagram" title="Permalink to this heading">#</a></h3>
+<div class="graphviz"><img src="_images/inheritance-99a6ccd68fde9514695513204e5522ffc699f4e5.png" alt="Inheritance diagram of eosdxanalysis.preprocessing.preprocess.PreprocessData" usemap="#inheritance5e9382282b" class="inheritance graphviz" /></div>
+<map id="inheritance5e9382282b" name="inheritance5e9382282b">
+<area shape="rect" id="node1" href="api/eosdxanalysis.preprocessing.preprocess.PreprocessData.html#eosdxanalysis.preprocessing.preprocess.PreprocessData" target="_top" title="Class to run processing pipeline on data set." alt="" coords="5,5,129,31"/>
+</map></section>
+</section>
+<section id="module-eosdxanalysis.preprocessing.center_finding">
+<span id="eosdxanalysis-preprocessing-center-finding-module"></span><h2>eosdxanalysis.preprocessing.center_finding Module<a class="headerlink" href="#module-eosdxanalysis.preprocessing.center_finding" title="Permalink to this heading">#</a></h2>
+<p>Methods for finding the center of the diffraction pattern.</p>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.circular_average.html#eosdxanalysis.preprocessing.center_finding.circular_average" title="eosdxanalysis.preprocessing.center_finding.circular_average"><code class="xref py py-obj docutils literal notranslate"><span class="pre">circular_average</span></code></a>(image, center[, order])</p></td>
+<td><p>Returns a circularly averaged version of the input image.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_circular_mask</span></code>(nrows, ncols[, center, ...])</p></td>
+<td><p>Creates a circular mask for a pixel array with shape (nrows,ncols) Center can be specified as float tuple (row_center, col_center) rmin and rmax can be float Mask elements are True when distance from center is between rmin and rmax (inclusive)</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.find_center.html#eosdxanalysis.preprocessing.center_finding.find_center" title="eosdxanalysis.preprocessing.center_finding.find_center"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_center</span></code></a>(img[, mask_center, method, ...])</p></td>
+<td><p>Find the center of an image in matrix notation</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.find_centroid.html#eosdxanalysis.preprocessing.center_finding.find_centroid" title="eosdxanalysis.preprocessing.center_finding.find_centroid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_centroid</span></code></a>(points)</p></td>
+<td><p>Given an array of shape (n,2), with elemenets aij, [[a00,a01],  [a10,a11],     ...], calculate the centroid in row, column notation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.radial_histogram.html#eosdxanalysis.preprocessing.center_finding.radial_histogram" title="eosdxanalysis.preprocessing.center_finding.radial_histogram"><code class="xref py py-obj docutils literal notranslate"><span class="pre">radial_histogram</span></code></a>(intensities, center)</p></td>
+<td><p>Given a 2D array of intensities, return the radial histogram for each intensity value along with the corresponding radii</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unwarp_polar</span></code>(img[, origin, output_shape, ...])</p></td>
+<td><p>Convert image from polar to cartesian.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">warp_polar</span></code>(image[, center, radius, ...])</p></td>
+<td><p>Remap image to polar or log-polar coordinates space.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id1">
+<h3>Variables<a class="headerlink" href="#id1" title="Permalink to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.RMAX_BEAM.html#eosdxanalysis.preprocessing.center_finding.RMAX_BEAM" title="eosdxanalysis.preprocessing.center_finding.RMAX_BEAM"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RMAX_BEAM</span></code></a></p></td>
+<td><p>int([x]) -&gt; integer int(x, base=10) -&gt; integer</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.center_finding.RMIN_BEAM.html#eosdxanalysis.preprocessing.center_finding.RMIN_BEAM" title="eosdxanalysis.preprocessing.center_finding.RMIN_BEAM"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RMIN_BEAM</span></code></a></p></td>
+<td><p>int([x]) -&gt; integer int(x, base=10) -&gt; integer</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-eosdxanalysis.preprocessing.denoising">
+<span id="eosdxanalysis-preprocessing-denoising-module"></span><h2>eosdxanalysis.preprocessing.denoising Module<a class="headerlink" href="#module-eosdxanalysis.preprocessing.denoising" title="Permalink to this heading">#</a></h2>
+<section id="id2">
+<h3>Functions<a class="headerlink" href="#id2" title="Permalink to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_circular_mask</span></code>(nrows, ncols[, center, ...])</p></td>
+<td><p>Creates a circular mask for a pixel array with shape (nrows,ncols) Center can be specified as float tuple (row_center, col_center) rmin and rmax can be float Mask elements are True when distance from center is between rmin and rmax (inclusive)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.filter_strays.html#eosdxanalysis.preprocessing.denoising.filter_strays" title="eosdxanalysis.preprocessing.denoising.filter_strays"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_strays</span></code></a>(img[, block_size, factor, ...])</p></td>
+<td><p>Remove stray high-intensity pixels Block size must be odd</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">generic_filter</span></code>(input, function[, size, ...])</p></td>
+<td><p>Calculate a multidimensional filter using the given function.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.stray_filter.html#eosdxanalysis.preprocessing.denoising.stray_filter" title="eosdxanalysis.preprocessing.denoising.stray_filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stray_filter</span></code></a>(img[, factor, filter_mask, ...])</p></td>
+<td><p>Custom noise filter</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-eosdxanalysis.preprocessing.image_processing">
+<span id="eosdxanalysis-preprocessing-image-processing-module"></span><h2>eosdxanalysis.preprocessing.image_processing Module<a class="headerlink" href="#module-eosdxanalysis.preprocessing.image_processing" title="Permalink to this heading">#</a></h2>
+<section id="id3">
+<h3>Functions<a class="headerlink" href="#id3" title="Permalink to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.crop_image.html#eosdxanalysis.preprocessing.image_processing.crop_image" title="eosdxanalysis.preprocessing.image_processing.crop_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">crop_image</span></code></a>(img, height, width[, center])</p></td>
+<td><p>Crops an image to a given height and width about a center</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_coordinates</span></code>(input, coordinates[, ...])</p></td>
+<td><p>Map the input array to new coordinates by interpolation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.pad_image.html#eosdxanalysis.preprocessing.image_processing.pad_image" title="eosdxanalysis.preprocessing.image_processing.pad_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pad_image</span></code></a>(img[, method, padding])</p></td>
+<td><p>Add zeros to image Default behavior is if padding is not specified, then pad image symmetrically to prevent image loss in case of rotation and cropping to original size.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.quadrant_fold.html#eosdxanalysis.preprocessing.image_processing.quadrant_fold" title="eosdxanalysis.preprocessing.image_processing.quadrant_fold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quadrant_fold</span></code></a>(image)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.unwarp_polar.html#eosdxanalysis.preprocessing.image_processing.unwarp_polar" title="eosdxanalysis.preprocessing.image_processing.unwarp_polar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unwarp_polar</span></code></a>(img[, origin, output_shape, ...])</p></td>
+<td><p>Convert image from polar to cartesian.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-eosdxanalysis.preprocessing.peak_finding">
+<span id="eosdxanalysis-preprocessing-peak-finding-module"></span><h2>eosdxanalysis.preprocessing.peak_finding Module<a class="headerlink" href="#module-eosdxanalysis.preprocessing.peak_finding" title="Permalink to this heading">#</a></h2>
+<p>Code to find a peak by taking a dot-product with a Gaussian</p>
+<section id="id4">
+<h3>Functions<a class="headerlink" href="#id4" title="Permalink to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.peak_finding.find_1d_peaks.html#eosdxanalysis.preprocessing.peak_finding.find_1d_peaks" title="eosdxanalysis.preprocessing.peak_finding.find_1d_peaks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_1d_peaks</span></code></a>(radial_profile[, window_size, ...])</p></td>
+<td><p>Find a single peak in a 1D array This uses index notation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.peak_finding.find_2d_peak.html#eosdxanalysis.preprocessing.peak_finding.find_2d_peak" title="eosdxanalysis.preprocessing.peak_finding.find_2d_peak"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_2d_peak</span></code></a>(image[, roi, window_size])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h3>Variables<a class="headerlink" href="#id5" title="Permalink to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.peak_finding.multivariate_normal.html#eosdxanalysis.preprocessing.peak_finding.multivariate_normal" title="eosdxanalysis.preprocessing.peak_finding.multivariate_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">multivariate_normal</span></code></a></p></td>
+<td><p>A multivariate normal random variable.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.peak_finding.norm.html#eosdxanalysis.preprocessing.peak_finding.norm" title="eosdxanalysis.preprocessing.peak_finding.norm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm</span></code></a></p></td>
+<td><p>A normal continuous random variable.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-eosdxanalysis.preprocessing.utils">
+<span id="eosdxanalysis-preprocessing-utils-module"></span><h2>eosdxanalysis.preprocessing.utils Module<a class="headerlink" href="#module-eosdxanalysis.preprocessing.utils" title="Permalink to this heading">#</a></h2>
+<section id="id6">
+<h3>Functions<a class="headerlink" href="#id6" title="Permalink to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.count_intervals.html#eosdxanalysis.preprocessing.utils.count_intervals" title="eosdxanalysis.preprocessing.utils.count_intervals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">count_intervals</span></code></a>(num_array[, count])</p></td>
+<td><p>Given an array of integers, return the number of intervals Example: - num_array = [0,1,2,6,7,10,12,16,17,18] - output: 5</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.create_circular_mask.html#eosdxanalysis.preprocessing.utils.create_circular_mask" title="eosdxanalysis.preprocessing.utils.create_circular_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_circular_mask</span></code></a>(nrows, ncols[, center, ...])</p></td>
+<td><p>Creates a circular mask for a pixel array with shape (nrows,ncols) Center can be specified as float tuple (row_center, col_center) rmin and rmax can be float Mask elements are True when distance from center is between rmin and rmax (inclusive)</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.find_maxima.html#eosdxanalysis.preprocessing.utils.find_maxima" title="eosdxanalysis.preprocessing.utils.find_maxima"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_maxima</span></code></a>(img, mask_center[, rmin, rmax])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.gen_rotation_line.html#eosdxanalysis.preprocessing.utils.gen_rotation_line" title="eosdxanalysis.preprocessing.utils.gen_rotation_line"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_rotation_line</span></code></a>([center, angle, radius])</p></td>
+<td><p>Function to generate line for plotting purposes using x,y coordinates. Parameters: - center: (x0,y0) where origin is top-left (north-west or nw)      horizontal is x0, vertical down is y0 - angle: (theta) [degrees] for standard lower-left origin - radius: (radius) Returns: - line_points: ([x1,x2],[y1,y2]) a tuple of the line endpoints.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.get_angle.html#eosdxanalysis.preprocessing.utils.get_angle" title="eosdxanalysis.preprocessing.utils.get_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_angle</span></code></a>(feature1, feature2)</p></td>
+<td><p>Calculate the angle between two features, angle is for standard origin lower-left</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+</section>
 
 
             </article>
@@ -308,10 +627,10 @@
           <p class="prev-next-title">Contributing</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="generated/eosdxanalysis.models.curve_fitting.html" title="next page">
+  <a class='right-next' id="next-link" href="api/eosdxanalysis.preprocessing.preprocess.PreprocessData.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">eosdxanalysis.models.curve_fitting</p>
+      <p class="prev-next-title">PreprocessData</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>
@@ -324,6 +643,110 @@
           
             <div class="bd-sidebar-secondary bd-toc">
               
+<div class="toc-item">
+  
+<div class="tocsection onthispage">
+    <i class="fas fa-list"></i> On this page
+</div>
+<nav id="bd-toc-nav" class="page-toc">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-eosdxanalysis.preprocessing.preprocess">
+   eosdxanalysis.preprocessing.preprocess Module
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#classes">
+     Classes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#variables">
+     Variables
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#class-inheritance-diagram">
+     Class Inheritance Diagram
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-eosdxanalysis.preprocessing.center_finding">
+   eosdxanalysis.preprocessing.center_finding Module
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#functions">
+     Functions
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id1">
+     Variables
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-eosdxanalysis.preprocessing.denoising">
+   eosdxanalysis.preprocessing.denoising Module
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id2">
+     Functions
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-eosdxanalysis.preprocessing.image_processing">
+   eosdxanalysis.preprocessing.image_processing Module
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id3">
+     Functions
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-eosdxanalysis.preprocessing.peak_finding">
+   eosdxanalysis.preprocessing.peak_finding Module
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id4">
+     Functions
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id5">
+     Variables
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-eosdxanalysis.preprocessing.utils">
+   eosdxanalysis.preprocessing.utils Module
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id6">
+     Functions
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+</div>
+
 <div class="toc-item">
   
 </div>
