@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>Usage &#8212; Eos Dx Analysis 2.5.0 documentation</title>
+    <title>Usage &#8212; Eos Dx Analysis 2.5.2 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -25,6 +25,7 @@
     href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=9b1a4fa89bdd0e95b23b">
@@ -90,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.5.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.5.2 documentation</p>
   
 </a>
     
@@ -309,6 +310,43 @@
 </pre></div>
 </div>
 <p>where <code class="docutils literal notranslate"><span class="pre">INPUT_PATH</span></code> contains the directory <code class="docutils literal notranslate"><span class="pre">DATA_DIR</span></code>, and the parameters file path can be anywhere. See existing parameters files for details.</p>
+<p>Preprocessing requires specifying parameters. Preprocessing parameters can be specified as a text file in JSON-encoded format using the <code class="docutils literal notranslate"><span class="pre">params_file</span></code> flag as demonstrated above (preferred method). Alternatively, preprocessing parameters can be provided as a JSON-encoded string using the <code class="docutils literal notranslate"><span class="pre">params</span></code> flag, as demonstrated above.</p>
+<p>The preprocessing parameters are as follows:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">h</span></code>: image height</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">w</span></code>: image width</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">beam_rmax</span></code>: defines circular region of interest of the beam</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rmin</span></code>: final image masking inner masking</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rmax</span></code>: final image masking outer masking</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">eyes_rmin</span></code>: 9 A region of interest, inner radius of annulus</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">eyes_rmax</span></code>: 9 A region of interest, outer radius of annulus</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">eyes_blob_rmax</span></code>: defines a circle region of interest centered at the eye peak</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">eyes_percentile</span></code>: defines the threshold for generating a binary blob for noise-robust 9 A peak finding</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">local_thresh_block_size</span></code>: no longer used (future: specify filter type and size)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">crop_style</span></code>: choice of <code class="docutils literal notranslate"><span class="pre">&quot;both&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;beam&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;outside&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">&quot;beam&quot;</span></code> sets the inner circle of radius <code class="docutils literal notranslate"><span class="pre">rmin</span></code> to zero. <code class="docutils literal notranslate"><span class="pre">&quot;outside&quot;</span></code> sets values outside <code class="docutils literal notranslate"><span class="pre">rmax</span></code> to zero. <code class="docutils literal notranslate"><span class="pre">&quot;both&quot;</span></code> does both.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plans</span></code>: a list of strings denoting the preprocessing plan(s) to perform. Choice of <code class="docutils literal notranslate"><span class="pre">&quot;original&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;centerize&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;centerize_rotate&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;centerize_rotate_quad_fold&quot;</span></code>. (Note: JSON syntax does not allow for a spare comma at the end of a list, whereas Python does.)</p></li>
+</ul>
+<p>A sample preprocessing parameters text file would containg the following content:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;h&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">256</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;w&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">256</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;beam_rmax&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">25</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;rmin&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">25</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;rmax&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">90</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;eyes_rmin&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">30</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;eyes_rmax&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">45</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;eyes_blob_rmax&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">20</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;eyes_percentile&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">99</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;local_thresh_block_size&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">21</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;crop_style&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;both&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;plans&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="w">        </span><span class="s2">&quot;centerize&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="s2">&quot;centerize_rotate&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="s2">&quot;centerize_rotate_quad_fold&quot;</span><span class="w"></span>
+<span class="w">    </span><span class="p">]</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
 </section>
 </section>
 
