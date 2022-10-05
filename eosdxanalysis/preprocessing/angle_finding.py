@@ -38,7 +38,7 @@ def find_rotation_angle(image, r, width, height):
     result = minimize(
             rotated_rectangle_roi_sum,
             theta_init,
-            args = (-image, r, width, height),
+            args = (-image.astype(np.float64), r, width, height),
             )
     theta = result.x[0]
 
