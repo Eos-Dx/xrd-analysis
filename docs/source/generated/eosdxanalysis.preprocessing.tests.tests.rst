@@ -25,6 +25,7 @@ eosdxanalysis.preprocessing.tests.tests
 
    .. autosummary::
    
+      TestAngleFinding
       TestCenterFinding
       TestCreateCircularMask
       TestDenoising
