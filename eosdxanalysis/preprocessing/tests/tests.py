@@ -1179,7 +1179,7 @@ class TestAngleFinding(unittest.TestCase):
 
     def setUp(self):
         # Set test path
-        test_path = os.path.join(TEST_IMAGE_PATH, "test_preprocessing_images")
+        test_path = os.path.join(TEST_IMAGE_PATH, "test_angle_finding")
         self.test_path = test_path
 
         # Create test images
@@ -1207,6 +1207,34 @@ class TestAngleFinding(unittest.TestCase):
 
         # Check the rotation angle
         self.assertTrue(np.isclose(angle, 45, atol=2.0))
+
+    def test_find_rotation_angle_sample_924_remeasurements(self):
+        """
+        Ensure that rotation angle is close over 10 measurements
+        """
+        test_input_path = self.test_input_path
+
+        # Load centered images
+        input_filepath_list = glob.glob(os.path.join(test_input_path, "C_924*.txt"))
+        input_filepath_list.sort()
+
+        r = int(feature_pixel_location(9.8e-10))
+        width = 10
+        height = 20
+
+        angles = []
+        for input_filepath in input_filepath_list:
+            # Load the image file
+            input_filename = os.path.basename(input_filepath)
+            image = np.loadtxt(input_filepath, dtype=np.uint32)
+
+            # Calculate the rotation angle
+            angle_degrees = find_rotation_angle(image, r, width, height)
+            angles.append(angle_degrees)
+
+        # Ensure that angles and centers are close to each other
+        for idx in range(len(angles)):
+            self.assertTrue(np.isclose(angles[idx], angles[0], rtol=0.05))
 
 
 if __name__ == '__main__':
