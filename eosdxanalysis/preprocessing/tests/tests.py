@@ -1232,9 +1232,11 @@ class TestAngleFinding(unittest.TestCase):
             angle_degrees = find_rotation_angle(image, r, width, height)
             angles.append(angle_degrees)
 
-        # Ensure that angles and centers are close to each other
+        # Ensure that angles are close to each other and that the calculated
+        # angles are between 45 and 90 degrees
         for idx in range(len(angles)):
-            self.assertTrue(np.isclose(angles[idx], angles[0], rtol=0.05))
+            self.assertTrue(np.isclose(angles[idx], np.mean(angles), atol=10))
+            self.assertTrue((angles[idx] < 90) & (angles[idx] > 45))
 
 
 if __name__ == '__main__':
