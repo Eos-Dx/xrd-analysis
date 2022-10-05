@@ -38,6 +38,8 @@ from eosdxanalysis.preprocessing.peak_finding import find_1d_peaks
 
 from eosdxanalysis.preprocessing.angle_finding import find_rotation_angle
 
+from eosdxanalysis.simulations.utils import feature_pixel_location
+
 TEST_PATH = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(TEST_PATH, "..")
 TEST_IMAGE_DIR = "test_images"
@@ -1188,23 +1190,24 @@ class TestAngleFinding(unittest.TestCase):
 
         self.test_input_path = test_input_path
 
-    def test_find_rotation_angle_synthetic_sparse_image(self):
+    def test_find_rotation_angle_synthetic_rotated(self):
         test_input_path = self.test_input_path
 
-        input_filename = "synthetic_sparse_image.txt"
+        input_filename = "rotated_synthetic.txt"
         input_filename_fullpath = os.path.join(test_input_path, input_filename)
 
         # Load data
         test_image = np.loadtxt(input_filename_fullpath)
 
-        r = 25
+        r = int(feature_pixel_location(9.8e-10))
         width = 10
         height = 10
 
         angle = find_rotation_angle(test_image, r, width, height)
 
         # Check the rotation angle
-        self.assertTrue(np.isclose(angle, 135, atol=2.0))
+        self.assertTrue(np.isclose(angle, 45, atol=2.0))
+
 
 if __name__ == '__main__':
     unittest.main()
