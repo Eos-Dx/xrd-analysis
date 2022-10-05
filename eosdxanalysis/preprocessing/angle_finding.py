@@ -72,7 +72,7 @@ def rotated_rectangle_roi_sum(angle, image, r, width, height):
     roi_sum : float
 
     """
-    rotated_image = rotate(image, angle[0])
+    rotated_image = rotate(image, angle[0], preserve_range=True)
     roi_sum = rectangle_roi_sum(rotated_image, r, width, height)
     return roi_sum
 
