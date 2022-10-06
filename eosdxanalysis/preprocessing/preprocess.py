@@ -306,7 +306,7 @@ class PreprocessData(object):
                 output_file_path = os.path.join(plan_output_path,
                                             output_filename)
                 np.savetxt(output_file_path,
-                                np.round(output).astype(np.uint16), fmt='%i')
+                                np.round(output).astype(np.uint32), fmt='%i')
 
                 # Save the image
                 output_image_filename = output_filename + ".png"
