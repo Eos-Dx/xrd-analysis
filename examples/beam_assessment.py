@@ -51,7 +51,7 @@ for input_filepath in input_filepath_list:
     axs[1].plot(grad2, color="red")
     axs[1].set_title("Second Derivative")
 
-    ymax = np.max(np.abs(profile_1d[20:]))
+    ymax = 10000
     axs[1].set_ylim(-ymax, ymax)
 
     plt.show()
