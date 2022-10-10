@@ -486,12 +486,18 @@ class PreprocessData(object):
         # Mask
         if style == "both":
             # Mask out beam and area outside outer ring
-            rmin = beam_radius(image)
+            try:
+                rmin = beam_radius(image)
+            except:
+                pass
             roi_mask = create_circular_mask(h,w,rmin=rmin,rmax=rmax)
             image[~roi_mask] = 0
         if style == "beam":
             # Mask out beam
-            rmin = beam_radius(image)
+            try:
+                rmin = beam_radius(image)
+            except:
+                pass
             roi_mask = create_circular_mask(h,w,rmin=rmin, rmax=h)
             image[~roi_mask] = 0
         if style == "outside":
