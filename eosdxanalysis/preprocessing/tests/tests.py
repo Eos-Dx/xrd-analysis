@@ -1296,22 +1296,7 @@ class TestBeamUtils(unittest.TestCase):
             # Calculate beam radius
             calculated_radius = beam_radius(image)
 
-            # mask_4x4 = create_circular_mask(shape[0], shape[1], center=(row_center, col_center), mode="min")
-            shape = image.shape
-            center = (shape[0]/2-0.5, shape[1]/2-0.5)
-            mask = create_circular_mask(image.shape[0], shape[1], rmin=calculated_radius)
-            # mask = create_circular_mask(image.shape[0], shape[1], rmin=2)
-            image_masked = image.copy()
-            image_masked[~mask] = 0
-
-            import matplotlib.pyplot as plt
-            plt.imshow(image_masked, cmap="hot")
-            # plt.imshow(20*np.log10(image_masked), cmap="hot")
-            # plt.imshow(mask, cmap="Greys")
-            # plt.imshow(20*np.log10(image+1), cmap="hot")
-            plt.show()
-
-            # Check if the beam radius is accurate
+            # Check if the beam radius is accurate to within 1 pixel
             self.assertTrue(np.isclose(calculated_radius, known_radius, atol=1))
 
     def test_beam_radius(self):
