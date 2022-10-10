@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>eosdxanalysis.models.tests.tests &#8212; Eos Dx Analysis 2.7.0 documentation</title>
+    <title>zerocross1d &#8212; Eos Dx Analysis 2.7.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -35,9 +35,10 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/eosdxanalysis.models.tests.tests';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.utils.zerocross1d';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="get_angle" href="eosdxanalysis.preprocessing.utils.get_angle.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
   </head>
@@ -120,7 +121,7 @@
                 </li>
                 
 
-                <li class="nav-item">
+                <li class="nav-item current active">
                     <a class="nav-link" href="../api.html">
                         API
                     </a>
@@ -206,7 +207,7 @@
                 </li>
                 
 
-                <li class="nav-item">
+                <li class="nav-item current active">
                     <a class="nav-link" href="../api.html">
                         API
                     </a>
@@ -247,10 +248,151 @@
     Section Navigation
   </p>
   <div class="bd-toc-item navbar-nav">
-    <ul class="current nav bd-sidenav">
+    <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.PreprocessData.html">
+   PreprocessData
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.ABBREVIATIONS.html">
+   ABBREVIATIONS
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.INVERSE_OUTPUT_MAP.html">
+   INVERSE_OUTPUT_MAP
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.OUTPUT_MAP.html">
+   OUTPUT_MAP
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.circular_average.html">
+   circular_average
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.find_center.html">
+   find_center
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.find_centroid.html">
+   find_centroid
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.radial_histogram.html">
+   radial_histogram
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.RMAX_BEAM.html">
+   RMAX_BEAM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.RMIN_BEAM.html">
+   RMIN_BEAM
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.filter_strays.html">
+   filter_strays
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.stray_filter.html">
+   stray_filter
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.crop_image.html">
+   crop_image
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.pad_image.html">
+   pad_image
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.quadrant_fold.html">
+   quadrant_fold
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.unwarp_polar.html">
+   unwarp_polar
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.find_1d_peaks.html">
+   find_1d_peaks
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.find_2d_peak.html">
+   find_2d_peak
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.multivariate_normal.html">
+   multivariate_normal
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.norm.html">
+   norm
+  </a>
+ </li>
+</ul>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.count_intervals.html">
+   count_intervals
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.create_circular_mask.html">
+   create_circular_mask
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.find_maxima.html">
+   find_maxima
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.gen_rotation_line.html">
+   gen_rotation_line
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.get_angle.html">
+   get_angle
+  </a>
+ </li>
  <li class="toctree-l1 current active">
   <a class="current reference internal" href="#">
-   eosdxanalysis.models.tests.tests
+   zerocross1d
   </a>
  </li>
 </ul>
@@ -281,42 +423,43 @@
             
             <article class="bd-article" role="main">
               
-  <section id="module-eosdxanalysis.models.tests.tests">
-<span id="eosdxanalysis-models-tests-tests"></span><h1>eosdxanalysis.models.tests.tests<a class="headerlink" href="#module-eosdxanalysis.models.tests.tests" title="Permalink to this heading">#</a></h1>
-<p>Tests for models module</p>
-<p class="rubric">Classes</p>
-<table class="autosummary longtable table autosummary">
-<tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestFeatureEngineering</span></code>([methodName])</p></td>
-<td><p><p class="rubric">Methods</p>
-</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestFourierAnalysis</span></code>([methodName])</p></td>
-<td><p><p class="rubric">Methods</p>
-</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestGaussianDecomposition</span></code>([methodName])</p></td>
-<td><p>Test <cite>GaussianDecomposition</cite> class</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestL1Metric</span></code>([methodName])</p></td>
-<td><p><p class="rubric">Methods</p>
-</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestPolarSamplingGrid</span></code>([methodName])</p></td>
-<td><p>Test Python port of functions to create polar grid for 2D Polar Discrete Fourier Transform</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestPolynomialFit</span></code>([methodName])</p></td>
-<td><p>Test create_circular_mask</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestStats</span></code>([methodName])</p></td>
-<td><p>Test <code class="docutils literal notranslate"><span class="pre">stats</span></code> code</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestUtils</span></code>([methodName])</p></td>
-<td><p><p class="rubric">Methods</p>
-</p></td>
-</tr>
-</tbody>
-</table>
+  <section id="zerocross1d">
+<h1>zerocross1d<a class="headerlink" href="#zerocross1d" title="Permalink to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.utils.zerocross1d">
+<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.utils.</span></span><span class="sig-name descname"><span class="pre">zerocross1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">getIndices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.utils.zerocross1d" title="Permalink to this definition">#</a></dt>
+<dd><p>Find the zero crossing points in 1d data.</p>
+<p>Find the zero crossing events in a discrete data set.
+Linear interpolation is used to determine the actual
+locations of the zero crossing between two data points
+showing a change in sign. Data point which are zero
+are counted in as zero crossings if a sign change occurs
+across them. Note that the first and last data point will
+not be considered whether or not they are zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>arrays</em>) – Ordinate and abscissa data values.</p></li>
+<li><p><strong>y</strong> (<em>arrays</em>) – Ordinate and abscissa data values.</p></li>
+<li><p><strong>getIndices</strong> (<em>boolean</em><em>, </em><em>optional</em>) – If True, also the indicies of the points preceding
+the zero crossing event will be returned. Defeualt is
+False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>xvals</strong> (<em>array</em>) – The locations of the zero crossing events determined
+by linear interpolation on the data.</p></li>
+<li><p><strong>indices</strong> (<em>array, optional</em>) – The indices of the points preceding the zero crossing
+events. Only returned if <cite>getIndices</cite> is set True.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Copied with modifications from PyAstronomy library. MIT License.</p>
+</dd></dl>
+
 </section>
 
 
@@ -327,6 +470,13 @@
             <footer class="bd-footer-article">
                 <!-- Previous / next buttons -->
 <div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.utils.get_angle.html" title="previous page">
+      <i class="fas fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">get_angle</p>
+      </div>
+  </a>
 </div>
             </footer>
             
@@ -343,7 +493,7 @@
 <div class="toc-item">
   
 <div class="tocsection sourcelink">
-    <a href="../_sources/generated/eosdxanalysis.models.tests.tests.rst.txt">
+    <a href="../_sources/api/eosdxanalysis.preprocessing.utils.zerocross1d.rst.txt">
         <i class="fas fa-file-alt"></i> Show Source
     </a>
 </div>
