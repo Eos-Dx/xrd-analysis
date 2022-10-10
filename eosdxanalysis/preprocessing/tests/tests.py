@@ -38,6 +38,9 @@ from eosdxanalysis.preprocessing.peak_finding import find_1d_peaks
 
 from eosdxanalysis.preprocessing.angle_finding import find_rotation_angle
 
+from eosdxanalysis.preprocessing.beam_utils import azimuthal_integration
+from eosdxanalysis.preprocessing.beam_utils import beam_radius
+
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 TEST_PATH = os.path.dirname(__file__)
@@ -1237,6 +1240,85 @@ class TestAngleFinding(unittest.TestCase):
         for idx in range(len(angles)):
             self.assertTrue(np.isclose(angles[idx], np.mean(angles), atol=10))
             self.assertTrue((angles[idx] < 90) & (angles[idx] > 45))
+
+
+class TestBeamUtils(unittest.TestCase):
+
+    def setUp(self):
+        # Set test path
+        test_path = os.path.join(TEST_IMAGE_PATH, "test_beam_utils")
+        self.test_path = test_path
+
+        # Create test images
+        INPUT_DIR="input"
+
+        # Set the input and output paths
+        test_input_path = os.path.join(test_path, "input")
+
+        self.test_input_path = test_input_path
+
+    def test_azimuthal_integration(self):
+        """
+        """
+        test_input_path = self.test_input_path
+
+        # Load images
+        input_filepath_list = glob.glob(
+                os.path.join(test_input_path, "924*.txt"))
+        input_filepath_list.sort()
+
+        for input_filepath in input_filepath_list:
+            # Load the image file
+            input_filename = os.path.basename(input_filepath)
+            image = np.loadtxt(input_filepath, dtype=np.uint32)
+
+            # Calculate beam radius
+
+        self.fail("Finish writing test.")
+
+    def test_beam_radius_924_measurements(self):
+        """
+        """
+        test_input_path = self.test_input_path
+
+        # Load images
+        input_filepath_list = glob.glob(
+                os.path.join(test_input_path, "C_924*.txt"))
+        input_filepath_list.sort()
+
+        known_radius = 15
+
+        for input_filepath in input_filepath_list:
+            # Load the image file
+            input_filename = os.path.basename(input_filepath)
+            image = np.loadtxt(input_filepath, dtype=np.uint32)
+
+            # Calculate beam radius
+            calculated_radius = beam_radius(image)
+
+            # Check if the beam radius is accurate to within 1 pixel
+            self.assertTrue(np.isclose(calculated_radius, known_radius, atol=1))
+
+    def test_beam_radius(self):
+        """
+        """
+        test_image_radius_20
+
+        known_radius = 20
+        calculated_radius = beam_radius(test_image_radius_20)
+
+        self.assertTrue(np.isclose(calculated_radius, known_radius))
+
+    def test_beam_radius_no_valley(self):
+        """
+        """
+        self.fail("Finish writing test.")
+
+    def test_azimuthal_integration_linear_radial_function(self):
+        """
+        """
+
+        self.fail("Finish writing test.")
 
 
 if __name__ == '__main__':
