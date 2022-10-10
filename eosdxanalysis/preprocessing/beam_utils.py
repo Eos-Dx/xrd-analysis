@@ -82,8 +82,11 @@ def beam_radius(image, center=None, bounds=None):
 
         # Find the first inflection point of interest
         past_first_valley = inflection_point_indices > first_valley
+
         # Add 1 to the index to get the start of the diffraction pattern
-        first_inflection_poi = inflection_point_indices[past_first_valley][0] + 1
+        # since zerocross1d returns the indx preceding the zero-crossing event
+        first_inflection_poi = \
+                inflection_point_indices[past_first_valley][0] + 1
 
         return first_inflection_poi 
     except:
