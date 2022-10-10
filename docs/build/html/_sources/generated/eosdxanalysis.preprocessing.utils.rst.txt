@@ -1,4 +1,4 @@
-eosdxanalysis.preprocessing.utils
+﻿eosdxanalysis.preprocessing.utils
 =================================
 
 .. automodule:: eosdxanalysis.preprocessing.utils
@@ -18,6 +18,7 @@ eosdxanalysis.preprocessing.utils
       find_maxima
       gen_rotation_line
       get_angle
+      zerocross1d
    
    
 

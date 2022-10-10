@@ -42,11 +42,11 @@ Installation
 Preprocessing
 -------------
 
-In the shell, run the following commands from the ``xrd-analysis`` directory to preprocess raw data,
+In the conda environment, run the following shell command from the ``xrd-analysis`` directory to preprocess raw data,
 
 .. code-block:: console
 
-    $ python eosdxanalysis/preprocessing/preprocess.py --input_path "INPUT_PATH" \
+    (eos) $ python eosdxanalysis/preprocessing/preprocess.py --input_path "INPUT_PATH" \
         --data_dir "DATA_DIR" --params_file "PARAMETERS_FILE_PATH"
 
 where ``INPUT_PATH`` contains the directory ``DATA_DIR``, and the parameters file path can be anywhere. See existing parameters files for details.
@@ -66,6 +66,7 @@ The preprocessing parameters are as follows:
 * ``eyes_percentile``: defines the threshold for generating a binary blob for noise-robust 9 A peak finding
 * ``local_thresh_block_size``: no longer used (future: specify filter type and size)
 * ``crop_style``: choice of ``"both"``, ``"beam"``, or ``"outside"``. ``"beam"`` sets the inner circle of radius ``rmin`` to zero. ``"outside"`` sets values outside ``rmax`` to zero. ``"both"`` does both.
+* ``beam_detection``: Uses beam detection if true, otherwise uses ``rmin`` for beam radius.
 * ``plans``: a list of strings denoting the preprocessing plan(s) to perform. Choice of ``"original"``, ``"centerize"``, ``"centerize_rotate"``, and ``"centerize_rotate_quad_fold"``. (Note: JSON syntax does not allow for a spare comma at the end of a list, whereas Python does.)
 
 A sample preprocessing parameters text file would containg the following content:
@@ -84,9 +85,20 @@ A sample preprocessing parameters text file would containg the following content
         "eyes_percentile": 99,
         "local_thresh_block_size": 21,
         "crop_style": "both",
+        "beam_detection": true,
         "plans": [
             "centerize",
             "centerize_rotate",
             "centerize_rotate_quad_fold"
         ]
     }
+
+
+Gaussian Fitting
+----------------
+
+In the conda envirnoment, run the following shell command from the ``xrd-analysis`` directory to perform Gaussian fitting on preprocessed data,
+
+.. code-block:: console
+
+    (eos) $ python examples/gaussian_fit.py --run_gauss_fit --input_path "INPUT_PATH"

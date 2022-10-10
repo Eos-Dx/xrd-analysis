@@ -32,6 +32,7 @@ from eosdxanalysis.preprocessing.utils import find_maxima
 from eosdxanalysis.preprocessing.denoising import filter_strays
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
+from eosdxanalysis.preprocessing.beam_utils import beam_radius
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -185,6 +186,7 @@ class PreprocessData(object):
         eyes_blob_rmax = params.get("eyes_blob_rmax")
         eyes_percentile = params.get("eyes_percentile")
         local_thresh_block_size = params.get("local_thresh_block_size")
+        beam_detection = params.get("beam_detection")
         cmap = params.get("cmap", "hot")
 
         # Get plans from from parameters or keyword argument
@@ -481,17 +483,28 @@ class PreprocessData(object):
         w = params.get("w")
         rmin = params.get("rmin")
         rmax = params.get("rmax")
+        beam_detection = params.get("beam_detection")
 
         # Mask
         if style == "both":
             # Mask out beam and area outside outer ring
+            if beam_detection:
+                try:
+                    rmin = beam_radius(image)
+                except:
+                    pass
             roi_mask = create_circular_mask(h,w,rmin=rmin,rmax=rmax)
             image[~roi_mask] = 0
-        if style == "beam":
+        elif style == "beam":
             # Mask out beam
+            if beam_detection:
+                try:
+                    rmin = beam_radius(image)
+                except:
+                    pass
             roi_mask = create_circular_mask(h,w,rmin=rmin, rmax=h)
             image[~roi_mask] = 0
-        if style == "outside":
+        elif style == "outside":
             # Mask area outside outer ring
             outside = np.max(image.shape)
             inv_roi_mask = create_circular_mask(h,w,rmin=rmax, rmax=outside)
