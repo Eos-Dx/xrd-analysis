@@ -32,6 +32,7 @@ from eosdxanalysis.preprocessing.utils import find_maxima
 from eosdxanalysis.preprocessing.denoising import filter_strays
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
+from eosdxanalysis.preprocessing.beam_utils import beam_radius
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -485,10 +486,12 @@ class PreprocessData(object):
         # Mask
         if style == "both":
             # Mask out beam and area outside outer ring
+            rmin = beam_radius(image)
             roi_mask = create_circular_mask(h,w,rmin=rmin,rmax=rmax)
             image[~roi_mask] = 0
         if style == "beam":
             # Mask out beam
+            rmin = beam_radius(image)
             roi_mask = create_circular_mask(h,w,rmin=rmin, rmax=h)
             image[~roi_mask] = 0
         if style == "outside":
