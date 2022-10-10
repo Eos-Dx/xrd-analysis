@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>Usage &#8212; Eos Dx Analysis 2.6.1 documentation</title>
+    <title>Usage &#8212; Eos Dx Analysis 2.7.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -91,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.6.1 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.7.0 documentation</p>
   
 </a>
     
@@ -304,8 +304,8 @@
 </section>
 <section id="preprocessing">
 <h2>Preprocessing<a class="headerlink" href="#preprocessing" title="Permalink to this heading">#</a></h2>
-<p>In the shell, run the following commands from the <code class="docutils literal notranslate"><span class="pre">xrd-analysis</span></code> directory to preprocess raw data,</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python eosdxanalysis/preprocessing/preprocess.py --input_path <span class="s2">&quot;INPUT_PATH&quot;</span> <span class="se">\</span>
+<p>In the conda environment, run the following shell command from the <code class="docutils literal notranslate"><span class="pre">xrd-analysis</span></code> directory to preprocess raw data,</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(eos)</span> <span class="gp">$ </span>python eosdxanalysis/preprocessing/preprocess.py --input_path <span class="s2">&quot;INPUT_PATH&quot;</span> <span class="se">\</span>
     --data_dir <span class="s2">&quot;DATA_DIR&quot;</span> --params_file <span class="s2">&quot;PARAMETERS_FILE_PATH&quot;</span>
 </pre></div>
 </div>
@@ -324,6 +324,7 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">eyes_percentile</span></code>: defines the threshold for generating a binary blob for noise-robust 9 A peak finding</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">local_thresh_block_size</span></code>: no longer used (future: specify filter type and size)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">crop_style</span></code>: choice of <code class="docutils literal notranslate"><span class="pre">&quot;both&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;beam&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;outside&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">&quot;beam&quot;</span></code> sets the inner circle of radius <code class="docutils literal notranslate"><span class="pre">rmin</span></code> to zero. <code class="docutils literal notranslate"><span class="pre">&quot;outside&quot;</span></code> sets values outside <code class="docutils literal notranslate"><span class="pre">rmax</span></code> to zero. <code class="docutils literal notranslate"><span class="pre">&quot;both&quot;</span></code> does both.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">beam_detection</span></code>: Uses beam detection if true, otherwise uses <code class="docutils literal notranslate"><span class="pre">rmin</span></code> for beam radius.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plans</span></code>: a list of strings denoting the preprocessing plan(s) to perform. Choice of <code class="docutils literal notranslate"><span class="pre">&quot;original&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;centerize&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;centerize_rotate&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;centerize_rotate_quad_fold&quot;</span></code>. (Note: JSON syntax does not allow for a spare comma at the end of a list, whereas Python does.)</p></li>
 </ul>
 <p>A sample preprocessing parameters text file would containg the following content:</p>
@@ -339,12 +340,20 @@
 <span class="w">    </span><span class="s2">&quot;eyes_percentile&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">99</span><span class="p">,</span><span class="w"></span>
 <span class="w">    </span><span class="s2">&quot;local_thresh_block_size&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">21</span><span class="p">,</span><span class="w"></span>
 <span class="w">    </span><span class="s2">&quot;crop_style&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;both&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;beam_detection&quot;</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"></span>
 <span class="w">    </span><span class="s2">&quot;plans&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
 <span class="w">        </span><span class="s2">&quot;centerize&quot;</span><span class="p">,</span><span class="w"></span>
 <span class="w">        </span><span class="s2">&quot;centerize_rotate&quot;</span><span class="p">,</span><span class="w"></span>
 <span class="w">        </span><span class="s2">&quot;centerize_rotate_quad_fold&quot;</span><span class="w"></span>
 <span class="w">    </span><span class="p">]</span><span class="w"></span>
 <span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="gaussian-fitting">
+<h2>Gaussian Fitting<a class="headerlink" href="#gaussian-fitting" title="Permalink to this heading">#</a></h2>
+<p>In the conda envirnoment, run the following shell command from the <code class="docutils literal notranslate"><span class="pre">xrd-analysis</span></code> directory to perform Gaussian fitting on preprocessed data,</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(eos)</span> <span class="gp">$ </span>python examples/gaussian_fit.py --run_gauss_fit --input_path <span class="s2">&quot;INPUT_PATH&quot;</span>
 </pre></div>
 </div>
 </section>
@@ -396,6 +405,11 @@
  <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#preprocessing">
    Preprocessing
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#gaussian-fitting">
+   Gaussian Fitting
   </a>
  </li>
 </ul>
