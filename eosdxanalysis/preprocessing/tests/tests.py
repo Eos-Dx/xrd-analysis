@@ -1257,6 +1257,29 @@ class TestBeamUtils(unittest.TestCase):
 
         self.test_input_path = test_input_path
 
+    def test_azimuthal_integration_peak_position_conservation(self):
+        """
+        Use a synthetic pattern with known peak location
+        and check that azimuthal integration yields a peak in the
+        same location.
+        """
+        shape = (256,256)
+        x_start = -shape[1]/2 - 0.5
+        x_end = -x_start
+        y_start = x_start
+        y_end = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        RR = np.sqrt(XX**2 + YY**2)
+
+        known_peak_location = 20
+        test_image = np.exp(-(RR - known_peak_location)**2)
+
+        profile_1d = azimuthal_integration(test_image)
+
+        calculated_peak_location = np.where(profile_1d == np.max(profile_1d))[0]
+
+        self.assertEqual(calculated_peak_location, known_peak_location)
+
     def test_azimuthal_integration(self):
         """
         """
