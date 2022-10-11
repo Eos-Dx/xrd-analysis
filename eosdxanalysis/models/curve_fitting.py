@@ -19,9 +19,12 @@ from scipy.signal import peak_widths
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
+from skimage.transform import rotate
+
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
+from eosdxanalysis.models.utils import gen_meshgrid
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -881,7 +884,7 @@ def keratin_function(
         peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, arc_angle_9A,
         peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, arc_angle_5A,
         peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
-        peak_std_bg, peak_amplitude_bg):
+        peak_std_bg, peak_amplitude_bg, rotation_angle):
     """
     Generate entire kertain diffraction pattern at the points
     (r, theta), with parameters as the arguements to 4 calls
@@ -931,21 +934,10 @@ def keratin_function(
     # Additive model
     pattern = pattern_9A + pattern_5A + pattern_5_4A + pattern_bg
 
-    return pattern.ravel()
+    pattern_rotated = rotate(
+            pattern, angle=rotation_angle, preserve_range=True)
 
-def gen_meshgrid(shape):
-    """
-    Generate a meshgrid
-    """
-    # Generate a meshgrid the same size as the image
-    x_end = shape[1]/2 - 0.5
-    x_start = -x_end
-    y_end = x_start
-    y_start = x_end
-    YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
-    TT, RR = cart2pol(XX, YY)
-
-    return RR, TT
+    return pattern_rotated.ravel()
 
 def gaussian_iso(r, a, std):
     """
