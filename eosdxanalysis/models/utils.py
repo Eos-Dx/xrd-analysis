@@ -454,6 +454,20 @@ def metrics_report(TP=0, FP=0, TN=0, FN=0, degree=None, printout=True):
 
     print(df.to_markdown(index=False,floatfmt=format_list))
 
+def gen_meshgrid(shape):
+    """
+    Generate a meshgrid
+    """
+    # Generate a meshgrid the same size as the image
+    x_end = shape[1]/2 - 0.5
+    x_start = -x_end
+    y_end = x_start
+    y_start = x_end
+    YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+    TT, RR = cart2pol(XX, YY)
+
+    return RR, TT
+
 #def l1_metric_optimized(image1, image2, params, plan=None):
 #    """
 #    Function which computes the L1 distance between two images
