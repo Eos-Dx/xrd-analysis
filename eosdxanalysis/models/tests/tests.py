@@ -24,7 +24,6 @@ from sklearn.linear_model import LinearRegression
 from eosdxanalysis.models.curve_fitting import PolynomialFit
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 from eosdxanalysis.models.curve_fitting import estimate_background_noise
-from eosdxanalysis.models.curve_fitting import gen_meshgrid
 from eosdxanalysis.models.curve_fitting import gaussian_iso
 from eosdxanalysis.models.curve_fitting import keratin_function
 from eosdxanalysis.models.utils import gen_jn_zerosmatrix
@@ -35,6 +34,7 @@ from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
 from eosdxanalysis.models.utils import draw_antialiased_arc
 from eosdxanalysis.models.utils import draw_antialiased_circle
+from eosdxanalysis.models.utils import gen_meshgrid
 from eosdxanalysis.models.feature_engineering import EngineeredFeatures
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import freq_sampling_grid
@@ -170,6 +170,8 @@ class TestGaussianDecomposition(unittest.TestCase):
                 # Background noise parameters
                 "peak_std_bg":              211, # Width
                 "peak_amplitude_bg":        223, # Amplitude
+                # Rotation
+                "rotation_angle":           45, # Angle degrees
             })
 
         # Set mesh size
@@ -474,6 +476,8 @@ class TestGaussianDecomposition(unittest.TestCase):
                 # Background noise parameters
                 "peak_std_bg":              200, # Width
                 "peak_amplitude_bg":        200, # Amplitude
+                # Rotation
+                "rotation_angle":           10, # Pattern rotation
             })
 
         # Lower bounds
@@ -499,6 +503,7 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         # Generate synthetic image
         synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
+
         gauss_class = GaussianDecomposition(synth_image)
 
         gauss_class.p0_dict = p_guess_dict
