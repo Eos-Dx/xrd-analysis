@@ -1301,6 +1301,7 @@ class TestBeamUtils(unittest.TestCase):
 
     def test_beam_radius_924_measurements(self):
         """
+        Test dynamic beam detection on remeasurements data
         """
         test_input_path = self.test_input_path
 
@@ -1309,7 +1310,7 @@ class TestBeamUtils(unittest.TestCase):
                 os.path.join(test_input_path, "C_924*.txt"))
         input_filepath_list.sort()
 
-        known_radius = 15
+        known_radius = 21
 
         for input_filepath in input_filepath_list:
             # Load the image file
