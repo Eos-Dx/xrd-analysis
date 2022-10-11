@@ -477,7 +477,7 @@ class TestGaussianDecomposition(unittest.TestCase):
                 "peak_std_bg":              200, # Width
                 "peak_amplitude_bg":        200, # Amplitude
                 # Rotation
-                "rotation_angle":           10, # Pattern rotation
+                "rotation_angle":           10*np.pi/180, # Pattern rotation angle
             })
 
         # Lower bounds
@@ -504,8 +504,13 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Generate synthetic image
         synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
 
-        gauss_class = GaussianDecomposition(synth_image)
+        # Instantiate gauss class
+        rmin = 0
+        rmax = 128
+        gauss_class = GaussianDecomposition(
+                synth_image, params_init_method="ideal", rmin=rmin, rmax=rmax)
 
+        # Overwrite initial guess and bounds for fitting parameters
         gauss_class.p0_dict = p_guess_dict
         gauss_class.p_lower_bounds_dict = p_lower_bounds_dict
         gauss_class.p_upper_bounds_dict = p_upper_bounds_dict
@@ -518,12 +523,22 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Get squared error
         error = gauss_class.fit_error(synth_image, decomp_image)
         error_ratio = error/np.sum(np.square(synth_image))
+        # Get R-Factor
+        r_factor = np.sum(
+                np.abs(np.sqrt(synth_image) - np.sqrt(decomp_image))) \
+                / np.sum(np.sqrt(synth_image))
 
         p_lower_bounds = np.fromiter(p_lower_bounds_dict.values(), dtype=np.float64)
         p_upper_bounds = np.fromiter(p_upper_bounds_dict.values(), dtype=np.float64)
 
         self.assertFalse(np.isclose(popt, p_lower_bounds).all())
         self.assertFalse(np.isclose(popt, p_upper_bounds).all())
+
+        # Ensure that the optimization is not returning the initial guess
+        self.assertFalse(np.array_equal(popt_dict, p_guess_dict))
+
+        # Ensure that the R-Factor is below 1%
+        self.assertTrue(r_factor < 0.01)
 
         # Ensure that error ratio is below 1%
         self.assertTrue(error_ratio < 0.01)
