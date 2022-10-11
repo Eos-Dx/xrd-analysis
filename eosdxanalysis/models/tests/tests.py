@@ -24,7 +24,6 @@ from sklearn.linear_model import LinearRegression
 from eosdxanalysis.models.curve_fitting import PolynomialFit
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 from eosdxanalysis.models.curve_fitting import estimate_background_noise
-from eosdxanalysis.models.curve_fitting import gen_meshgrid
 from eosdxanalysis.models.curve_fitting import gaussian_iso
 from eosdxanalysis.models.curve_fitting import keratin_function
 from eosdxanalysis.models.utils import gen_jn_zerosmatrix
@@ -35,6 +34,7 @@ from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
 from eosdxanalysis.models.utils import draw_antialiased_arc
 from eosdxanalysis.models.utils import draw_antialiased_circle
+from eosdxanalysis.models.utils import gen_meshgrid
 from eosdxanalysis.models.feature_engineering import EngineeredFeatures
 from eosdxanalysis.models.polar_sampling import sampling_grid
 from eosdxanalysis.models.polar_sampling import freq_sampling_grid
@@ -170,6 +170,8 @@ class TestGaussianDecomposition(unittest.TestCase):
                 # Background noise parameters
                 "peak_std_bg":              211, # Width
                 "peak_amplitude_bg":        223, # Amplitude
+                # Rotation
+                "rotation_angle":           45, # Angle degrees
             })
 
         # Set mesh size
@@ -474,6 +476,8 @@ class TestGaussianDecomposition(unittest.TestCase):
                 # Background noise parameters
                 "peak_std_bg":              200, # Width
                 "peak_amplitude_bg":        200, # Amplitude
+                # Rotation
+                "rotation_angle":           10*np.pi/180, # Pattern rotation angle
             })
 
         # Lower bounds
@@ -496,11 +500,16 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Set mesh size
         size = 256
         RR, TT = gen_meshgrid((size,size))
+        TTcopy = TT.copy()
 
         # Generate synthetic image
         synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
-        gauss_class = GaussianDecomposition(synth_image)
 
+        # Instantiate gauss class
+        gauss_class = GaussianDecomposition(
+                synth_image, params_init_method="ideal")
+
+        # Overwrite initial guess and bounds for fitting parameters
         gauss_class.p0_dict = p_guess_dict
         gauss_class.p_lower_bounds_dict = p_lower_bounds_dict
         gauss_class.p_upper_bounds_dict = p_upper_bounds_dict
@@ -510,15 +519,28 @@ class TestGaussianDecomposition(unittest.TestCase):
         popt = np.fromiter(popt_dict.values(), dtype=np.float64)
         decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
 
+        # Ensure TT is not modified
+        self.assertTrue(np.array_equal(TTcopy, TT))
+
         # Get squared error
         error = gauss_class.fit_error(synth_image, decomp_image)
         error_ratio = error/np.sum(np.square(synth_image))
+        # Get R-Factor
+        r_factor = np.sum(
+                np.abs(np.sqrt(synth_image) - np.sqrt(decomp_image))) \
+                / np.sum(np.sqrt(synth_image))
 
         p_lower_bounds = np.fromiter(p_lower_bounds_dict.values(), dtype=np.float64)
         p_upper_bounds = np.fromiter(p_upper_bounds_dict.values(), dtype=np.float64)
 
         self.assertFalse(np.isclose(popt, p_lower_bounds).all())
         self.assertFalse(np.isclose(popt, p_upper_bounds).all())
+
+        # Ensure that the optimization is not returning the initial guess
+        self.assertFalse(np.array_equal(popt_dict, p_guess_dict))
+
+        # Ensure that the R-Factor is below 1%
+        self.assertTrue(r_factor < 0.01)
 
         # Ensure that error ratio is below 1%
         self.assertTrue(error_ratio < 0.01)

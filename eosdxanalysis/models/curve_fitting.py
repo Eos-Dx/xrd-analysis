@@ -19,9 +19,12 @@ from scipy.signal import peak_widths
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
+from skimage.transform import warp_polar
+
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
+from eosdxanalysis.models.utils import gen_meshgrid
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -208,6 +211,9 @@ class GaussianDecomposition(object):
                     vertical_intensity_1d, intensity_diff_1d,
                     horizontal_intensity_9A, horizontal_intensity_bg)
 
+            # Estimate rotation angle
+            rotation_angle = self.estimate_rotation_angle(image)
+
             # Set up initial parameters dictionary with None for each value
             p0_dict = OrderedDict({
                     # 9A equatorial peaks parameters
@@ -227,6 +233,8 @@ class GaussianDecomposition(object):
                     # Background noise parameters
                     "peak_std_bg":               peak_std_bg,
                     "peak_amplitude_bg":         peak_amplitude_bg,
+                    # Rotation
+                    "rotation_angle":            rotation_angle,
                 })
 
         # Lower bounds
@@ -521,6 +529,29 @@ class GaussianDecomposition(object):
 
         return corrected_intensity_5_4A
 
+    def estimate_rotation_angle(self, image):
+        """
+        Estimates rotation angle using ``skimage.transform.warp_polar``
+        to find the direction with the highest intensity
+        """
+        # Get the polar image
+        radius = image.shape[1]/2
+        polar_image = warp_polar(image, radius=radius, preserve_range=True,
+                output_shape=(360, radius))
+        # Average all rows
+        profile_1d = np.mean(polar_image, axis=1)
+        # Find the peak
+        peak_index_list = find_peaks(profile_1d)
+        # Find the angle of the highest peak
+        try:
+            peak_index = peak_index_list[0]
+            rotation_angle = peak_index
+        except IndexError as err:
+            print("No peaks found for rotation angle!")
+            raise err
+
+        return rotation_angle
+
     def parameter_init(self, params_init_method="estimation"):
         """
         Initialize parameter estimates for curve fitting optimization
@@ -584,6 +615,8 @@ class GaussianDecomposition(object):
                 # Background noise parameters
                 "peak_std_bg":               1000,
                 "peak_amplitude_bg":         428.57,
+                # Rotation angle
+                "rotation_angle":           0,
                 })
             self.p0_dict = p0_dict
 
@@ -595,9 +628,10 @@ class GaussianDecomposition(object):
                 # Set lower bounds
                 p_lower_bounds_dict[key] = p_min_factor*value
 
-            # Set arc_angle parameters individually
+            # Set angle parameters individually
             p_lower_bounds_dict["arc_angle_9A"] = 1e-6
             p_lower_bounds_dict["arc_angle_5A"] = 1e-6
+            p_lower_bounds_dict["rotation_angle"] = 1e-6
 
         # Upper bounds
         if not p_upper_bounds_dict:
@@ -607,14 +641,14 @@ class GaussianDecomposition(object):
                 # Set upper bounds
                 p_upper_bounds_dict[key] = p_max_factor*value
 
-            # Set arc_angle parameters individually
+            # Set angle parameters individually
             p_upper_bounds_dict["arc_angle_9A"] = np.pi
             p_upper_bounds_dict["arc_angle_5A"] = np.pi
+            p_upper_bounds_dict["rotation_angle"] = np.pi
 
         self.p0_dict = p0_dict
         self.p_lower_bounds_dict = p_lower_bounds_dict
         self.p_upper_bounds_dict = p_upper_bounds_dict
-
 
         return p0_dict
 
@@ -658,7 +692,8 @@ class GaussianDecomposition(object):
 
         xdata = (RR_masked.ravel(), TT_masked.ravel())
         ydata = image_masked.ravel().astype(np.float64)
-        popt, pcov = curve_fit(keratin_function, xdata, ydata, p0, bounds=p_bounds)
+        popt, pcov = curve_fit(
+                keratin_function, xdata, ydata, p0, bounds=p_bounds)
 
         # Create popt_dict so we can have keys
         popt_dict = OrderedDict()
@@ -703,6 +738,7 @@ class GaussianDecomposition(object):
                 "peak_amplitude_5_4A",
                 "peak_std_bg",
                 "peak_amplitude_bg",
+                "rotation_angle",
                 ]
         return params
 
@@ -881,25 +917,71 @@ def keratin_function(
         peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, arc_angle_9A,
         peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, arc_angle_5A,
         peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
-        peak_std_bg, peak_amplitude_bg):
+        peak_std_bg, peak_amplitude_bg, rotation_angle):
     """
-    Generate entire kertain diffraction pattern at the points
-    (r, theta), with parameters as the arguements to 4 calls
-    of radial_gaussian.
+    Generate kertain diffraction pattern at the point(s) (r, theta), with
+    additional parameters as the arguments to 4 calls of ``radial_gaussian``.
+    The 4 Gaussians are 1) 9 A symmetric peaks, 2) 5 A symmetric peaks, 3) 5-4
+    A circular ring, and 4) background noise.
 
-    .. Parameters
+    Parameters
+    ----------
 
-    :param polar_point: (r, theta) where r and theta are polar coordinates
-    :type polar_point: 2-tuple of array_like
+    polar_point : 2-tuple, array-like (r, theta)
+        ``r`` and ``theta`` are polar coordinates, ``theta`` is in radians.
 
-    .. Returns
+    peak_location_radius_9A : float
+        Location of 9 A peak from center
 
-    :returns a: Returns a contiguous flattened array suitable for use
-        with ``scipy.optimize.curve_fit``.
-    :rtype: array_like
+    peak_std_9A : float
+        Standard deviation of the 9 A Gaussian
 
+    peak_amplitude_9A : float
+        Amplitude of the 9 A Gaussian
+
+    arc_angle_9A : float
+        Arc angle of the 9 A peak in radians
+
+    peak_location_radius_5A : float
+        Location of 5 A peak from center
+
+    peak_std_5A : float
+        Standard deviation of the 5 A Gaussian
+
+    peak_amplitude_5A : float
+        Amplitude of the 5 A Gaussian
+
+    arc_angle_5A : float
+        Arc angle of the 5 A peak in radians
+
+    peak_location_radius_5_4A : float
+        Location of 5-4 A peak from center
+
+    peak_std_5_4A : float
+        Standard deviation of the 5-4 A Gaussian
+
+    peak_amplitude_5_4A,
+        Amplitude of the 5-4 A Gaussian
+
+    peak_std_bg : float
+        Standard deviation of the background noise Gaussian
+
+    peak_amplitude_bg : float
+        Amplitude of the background noise Gaussian
+
+    rotation_angle : float
+        Rotation angle of the diffraction pattern in radians.
+
+    Returns
+    -------
+    a :  array_like
+        contiguous flattened array suitable for use with
+        ``scipy.optimize.curve_fit``.
     """
     r, theta = polar_point
+
+    # Rotate theta according to ``rotation_angle``
+    theta_rotated = theta - rotation_angle
 
     # Set peak position angle parameters
     peak_angle_9A = 0
@@ -909,43 +991,29 @@ def keratin_function(
     # Set peak arc angle parameters for isotropic cases
     arc_angle_5_4A = 0 # Don't care
     arc_angle_bg = 0 # Don't care
-    # Set peak location radius for background noise case (Airy disc from pinhole)
+    # Set peak location radius for background noise case
     peak_location_radius_bg = 0
 
     # 9A peaks
-    pattern_9A = radial_gaussian(r, theta, peak_location_radius_9A,
+    pattern_9A = radial_gaussian(r, theta_rotated, peak_location_radius_9A,
             peak_angle_9A, peak_std_9A, peak_amplitude_9A,
             arc_angle_9A)
     # 5A peaks
-    pattern_5A = radial_gaussian(r, theta, peak_location_radius_5A,
+    pattern_5A = radial_gaussian(r, theta_rotated, peak_location_radius_5A,
             peak_angle_5A, peak_std_5A, peak_amplitude_5A,
             arc_angle_5A)
     # 5-4 A anisotropic ring
-    pattern_5_4A = radial_gaussian(r, theta, peak_location_radius_5_4A,
+    pattern_5_4A = radial_gaussian(r, theta_rotated, peak_location_radius_5_4A,
             peak_angle_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
             arc_angle_5_4A)
     # Background noise
-    pattern_bg = radial_gaussian(r, theta, peak_location_radius_bg,
+    pattern_bg = radial_gaussian(r, theta_rotated, peak_location_radius_bg,
             peak_angle_bg, peak_std_bg, peak_amplitude_bg,
             arc_angle_bg)
     # Additive model
     pattern = pattern_9A + pattern_5A + pattern_5_4A + pattern_bg
 
     return pattern.ravel()
-
-def gen_meshgrid(shape):
-    """
-    Generate a meshgrid
-    """
-    # Generate a meshgrid the same size as the image
-    x_end = shape[1]/2 - 0.5
-    x_start = -x_end
-    y_end = x_start
-    y_start = x_end
-    YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
-    TT, RR = cart2pol(XX, YY)
-
-    return RR, TT
 
 def gaussian_iso(r, a, std):
     """

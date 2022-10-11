@@ -16,7 +16,6 @@
       estimate_background_noise
       gaussian_decomposition
       gaussian_iso
-      gen_meshgrid
       keratin_function
       radial_gaussian
    
