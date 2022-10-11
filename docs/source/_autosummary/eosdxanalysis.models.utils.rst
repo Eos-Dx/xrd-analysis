@@ -20,6 +20,7 @@
       draw_antialiased_arc
       draw_antialiased_circle
       gen_jn_zerosmatrix
+      gen_meshgrid
       l1_metric
       l1_metric_normalized
       metrics_report
