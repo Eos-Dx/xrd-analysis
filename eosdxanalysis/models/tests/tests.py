@@ -500,15 +500,14 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Set mesh size
         size = 256
         RR, TT = gen_meshgrid((size,size))
+        TTcopy = TT.copy()
 
         # Generate synthetic image
         synth_image = keratin_function((RR, TT), *p_synth_dict.values()).reshape(RR.shape)
 
         # Instantiate gauss class
-        rmin = 0
-        rmax = 128
         gauss_class = GaussianDecomposition(
-                synth_image, params_init_method="ideal", rmin=rmin, rmax=rmax)
+                synth_image, params_init_method="ideal")
 
         # Overwrite initial guess and bounds for fitting parameters
         gauss_class.p0_dict = p_guess_dict
@@ -519,6 +518,9 @@ class TestGaussianDecomposition(unittest.TestCase):
         popt_dict, pcov = gauss_class.best_fit()
         popt = np.fromiter(popt_dict.values(), dtype=np.float64)
         decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
+
+        # Ensure TT is not modified
+        self.assertTrue(np.array_equal(TTcopy, TT))
 
         # Get squared error
         error = gauss_class.fit_error(synth_image, decomp_image)
