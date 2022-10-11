@@ -981,7 +981,7 @@ def keratin_function(
     r, theta = polar_point
 
     # Rotate theta according to ``rotation_angle``
-    theta -= rotation_angle
+    theta_rotated = theta - rotation_angle
 
     # Set peak position angle parameters
     peak_angle_9A = 0
@@ -995,19 +995,19 @@ def keratin_function(
     peak_location_radius_bg = 0
 
     # 9A peaks
-    pattern_9A = radial_gaussian(r, theta, peak_location_radius_9A,
+    pattern_9A = radial_gaussian(r, theta_rotated, peak_location_radius_9A,
             peak_angle_9A, peak_std_9A, peak_amplitude_9A,
             arc_angle_9A)
     # 5A peaks
-    pattern_5A = radial_gaussian(r, theta, peak_location_radius_5A,
+    pattern_5A = radial_gaussian(r, theta_rotated, peak_location_radius_5A,
             peak_angle_5A, peak_std_5A, peak_amplitude_5A,
             arc_angle_5A)
     # 5-4 A anisotropic ring
-    pattern_5_4A = radial_gaussian(r, theta, peak_location_radius_5_4A,
+    pattern_5_4A = radial_gaussian(r, theta_rotated, peak_location_radius_5_4A,
             peak_angle_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
             arc_angle_5_4A)
     # Background noise
-    pattern_bg = radial_gaussian(r, theta, peak_location_radius_bg,
+    pattern_bg = radial_gaussian(r, theta_rotated, peak_location_radius_bg,
             peak_angle_bg, peak_std_bg, peak_amplitude_bg,
             arc_angle_bg)
     # Additive model
