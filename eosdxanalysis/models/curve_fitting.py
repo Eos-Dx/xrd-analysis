@@ -19,8 +19,6 @@ from scipy.signal import peak_widths
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
-from skimage.transform import rotate
-
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
@@ -661,7 +659,8 @@ class GaussianDecomposition(object):
 
         xdata = (RR_masked.ravel(), TT_masked.ravel())
         ydata = image_masked.ravel().astype(np.float64)
-        popt, pcov = curve_fit(keratin_function, xdata, ydata, p0, bounds=p_bounds)
+        popt, pcov = curve_fit(
+                keratin_function, xdata, ydata, p0, bounds=p_bounds)
 
         # Create popt_dict so we can have keys
         popt_dict = OrderedDict()
@@ -884,25 +883,70 @@ def keratin_function(
         peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, arc_angle_9A,
         peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, arc_angle_5A,
         peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
-        peak_std_bg, peak_amplitude_bg, rotation_angle):
+        peak_std_bg, peak_amplitude_bg, rotation_angle=0):
     """
-    Generate entire kertain diffraction pattern at the points
-    (r, theta), with parameters as the arguements to 4 calls
-    of radial_gaussian.
+    Generate kertain diffraction pattern at the point(s) (r, theta), with
+    additional parameters as the arguments to 4 calls of ``radial_gaussian``.
+    The 4 Gaussians are 1) 9 A symmetric peaks, 2) 5 A symmetric peaks, 3) 5-4
+    A circular ring, and 4) background noise.
 
-    .. Parameters
+    Parameters
+    ----------
 
-    :param polar_point: (r, theta) where r and theta are polar coordinates
-    :type polar_point: 2-tuple of array_like
+    polar_point : 2-tuple, array-like (r, theta)
+        ``r`` and ``theta`` are polar coordinates, ``theta`` is in radians.
 
-    .. Returns
+    peak_location_radius_9A : float
+        Location of 9 A peak from center
 
-    :returns a: Returns a contiguous flattened array suitable for use
-        with ``scipy.optimize.curve_fit``.
-    :rtype: array_like
+    peak_std_9A : float
+        Standard deviation of the 9 A Gaussian
 
+    peak_amplitude_9A : float
+        Amplitude of the 9 A Gaussian
+
+    arc_angle_9A,
+
+    peak_location_radius_5A : float
+        Location of 5 A peak from center
+
+    peak_std_5A : float
+        Standard deviation of the 5 A Gaussian
+
+    peak_amplitude_5A : float
+        Amplitude of the 5 A Gaussian
+
+    arc_angle_5A,
+
+    peak_location_radius_5_4A : float
+        Location of 5-4 A peak from center
+
+    peak_std_5_4A : float
+        Standard deviation of the 5-4 A Gaussian
+
+    peak_amplitude_5_4A,
+        Amplitude of the 5-4 A Gaussian
+
+    peak_std_bg : float
+        Standard deviation of the background noise Gaussian
+
+    peak_amplitude_bg : float
+        Amplitude of the background noise Gaussian
+
+    rotation_angle : float
+        Rotation angle of the diffraction pattern
+
+    Returns
+    -------
+    a :  array_like
+        contiguous flattened array suitable for use with
+        ``scipy.optimize.curve_fit``.
     """
     r, theta = polar_point
+
+    # Rotate theta according to ``rotation_angle``
+    # Since theta is in radians, we convert ``rotation_angle`` from degrees
+    theta -= np.pi/180*rotation_angle
 
     # Set peak position angle parameters
     peak_angle_9A = 0
@@ -912,7 +956,7 @@ def keratin_function(
     # Set peak arc angle parameters for isotropic cases
     arc_angle_5_4A = 0 # Don't care
     arc_angle_bg = 0 # Don't care
-    # Set peak location radius for background noise case (Airy disc from pinhole)
+    # Set peak location radius for background noise case
     peak_location_radius_bg = 0
 
     # 9A peaks
@@ -934,10 +978,7 @@ def keratin_function(
     # Additive model
     pattern = pattern_9A + pattern_5A + pattern_5_4A + pattern_bg
 
-    pattern_rotated = rotate(
-            pattern, angle=rotation_angle, preserve_range=True)
-
-    return pattern_rotated.ravel()
+    return pattern.ravel()
 
 def gaussian_iso(r, a, std):
     """
