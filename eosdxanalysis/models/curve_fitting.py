@@ -615,6 +615,8 @@ class GaussianDecomposition(object):
                 # Background noise parameters
                 "peak_std_bg":               1000,
                 "peak_amplitude_bg":         428.57,
+                # Rotation angle
+                "rotation_angle":           0,
                 })
             self.p0_dict = p0_dict
 
@@ -626,9 +628,10 @@ class GaussianDecomposition(object):
                 # Set lower bounds
                 p_lower_bounds_dict[key] = p_min_factor*value
 
-            # Set arc_angle parameters individually
+            # Set angle parameters individually
             p_lower_bounds_dict["arc_angle_9A"] = 1e-6
             p_lower_bounds_dict["arc_angle_5A"] = 1e-6
+            p_lower_bounds_dict["rotation_angle"] = 1e-6
 
         # Upper bounds
         if not p_upper_bounds_dict:
@@ -638,14 +641,14 @@ class GaussianDecomposition(object):
                 # Set upper bounds
                 p_upper_bounds_dict[key] = p_max_factor*value
 
-            # Set arc_angle parameters individually
+            # Set angle parameters individually
             p_upper_bounds_dict["arc_angle_9A"] = np.pi
             p_upper_bounds_dict["arc_angle_5A"] = np.pi
+            p_upper_bounds_dict["rotation_angle"] = np.pi
 
         self.p0_dict = p0_dict
         self.p_lower_bounds_dict = p_lower_bounds_dict
         self.p_upper_bounds_dict = p_upper_bounds_dict
-
 
         return p0_dict
 
