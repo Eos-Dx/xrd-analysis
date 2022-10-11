@@ -19,6 +19,8 @@ from scipy.signal import peak_widths
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
+from skimage.transform import warp_polar
+
 from eosdxanalysis.models.utils import cart2pol
 from eosdxanalysis.models.utils import radial_intensity_1d
 from eosdxanalysis.models.utils import angular_intensity_1d
@@ -209,6 +211,9 @@ class GaussianDecomposition(object):
                     vertical_intensity_1d, intensity_diff_1d,
                     horizontal_intensity_9A, horizontal_intensity_bg)
 
+            # Estimate rotation angle
+            rotation_angle = self.estimate_rotation_angle(image)
+
             # Set up initial parameters dictionary with None for each value
             p0_dict = OrderedDict({
                     # 9A equatorial peaks parameters
@@ -228,6 +233,8 @@ class GaussianDecomposition(object):
                     # Background noise parameters
                     "peak_std_bg":               peak_std_bg,
                     "peak_amplitude_bg":         peak_amplitude_bg,
+                    # Rotation
+                    "rotation_angle":            rotation_angle,
                 })
 
         # Lower bounds
@@ -521,6 +528,29 @@ class GaussianDecomposition(object):
             corrected_intensity_5_4A = DEFAULT_5_4A_AMPLITUDE
 
         return corrected_intensity_5_4A
+
+    def estimate_rotation_angle(self, image):
+        """
+        Estimates rotation angle using ``skimage.transform.warp_polar``
+        to find the direction with the highest intensity
+        """
+        # Get the polar image
+        radius = image.shape[1]/2
+        polar_image = warp_polar(image, radius=radius, preserve_range=True,
+                output_shape=(360, radius))
+        # Average all rows
+        profile_1d = np.mean(polar_image, axis=1)
+        # Find the peak
+        peak_index_list = find_peaks(profile_1d)
+        # Find the angle of the highest peak
+        try:
+            peak_index = peak_index_list[0]
+            rotation_angle = peak_index
+        except IndexError as err:
+            print("No peaks found for rotation angle!")
+            raise err
+
+        return rotation_angle
 
     def parameter_init(self, params_init_method="estimation"):
         """
