@@ -738,6 +738,7 @@ class GaussianDecomposition(object):
                 "peak_amplitude_5_4A",
                 "peak_std_bg",
                 "peak_amplitude_bg",
+                "rotation_angle",
                 ]
         return params
 
@@ -916,7 +917,7 @@ def keratin_function(
         peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, arc_angle_9A,
         peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, arc_angle_5A,
         peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
-        peak_std_bg, peak_amplitude_bg, rotation_angle=0):
+        peak_std_bg, peak_amplitude_bg, rotation_angle):
     """
     Generate kertain diffraction pattern at the point(s) (r, theta), with
     additional parameters as the arguments to 4 calls of ``radial_gaussian``.
@@ -938,7 +939,8 @@ def keratin_function(
     peak_amplitude_9A : float
         Amplitude of the 9 A Gaussian
 
-    arc_angle_9A,
+    arc_angle_9A : float
+        Arc angle of the 9 A peak in radians
 
     peak_location_radius_5A : float
         Location of 5 A peak from center
@@ -949,7 +951,8 @@ def keratin_function(
     peak_amplitude_5A : float
         Amplitude of the 5 A Gaussian
 
-    arc_angle_5A,
+    arc_angle_5A : float
+        Arc angle of the 5 A peak in radians
 
     peak_location_radius_5_4A : float
         Location of 5-4 A peak from center
@@ -967,7 +970,7 @@ def keratin_function(
         Amplitude of the background noise Gaussian
 
     rotation_angle : float
-        Rotation angle of the diffraction pattern
+        Rotation angle of the diffraction pattern in radians.
 
     Returns
     -------
@@ -978,8 +981,7 @@ def keratin_function(
     r, theta = polar_point
 
     # Rotate theta according to ``rotation_angle``
-    # Since theta is in radians, we convert ``rotation_angle`` from degrees
-    theta -= np.pi/180*rotation_angle
+    theta -= rotation_angle
 
     # Set peak position angle parameters
     peak_angle_9A = 0
