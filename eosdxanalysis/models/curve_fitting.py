@@ -66,14 +66,12 @@ class GaussianDecomposition(object):
     """
 
     def __init__(
-            self, image, rmin=25, rmax=90, params_init_method="estimation",
+            self, image, params_init_method="estimation",
             p0_dict=None, p_lower_bounds_dict=None, p_upper_bounds_dict=None):
         """
         Initialize `GaussianDecomposition` class.
         """
         self.image = image
-        self.rmin = rmin
-        self.rmax = rmax
         self.p0_dict = p0_dict
         self.p_lower_bounds_dict = p_lower_bounds_dict
         self.p_upper_bounds_dict = p_upper_bounds_dict
@@ -660,8 +658,6 @@ class GaussianDecomposition(object):
         Function to optimize: `self.keratin_function`
         """
         image = self.image
-        rmin = self.rmin
-        rmax = self.rmax
         # Get parameters and bounds
         p0 = np.fromiter(self.p0_dict.values(), dtype=np.float64)
 
@@ -683,12 +679,11 @@ class GaussianDecomposition(object):
             RR, TT = self.meshgrid
 
         # Remove meshgrid components that are in the beam center
-        mask = create_circular_mask(
-                image.shape[0], image.shape[1], rmin=rmin, rmax=rmax)
+        mask = image == 0
 
-        RR_masked = RR[mask].astype(np.float64)
-        TT_masked = TT[mask].astype(np.float64)
-        image_masked = image[mask].astype(np.float64)
+        RR_masked = RR[~mask].astype(np.float64)
+        TT_masked = TT[~mask].astype(np.float64)
+        image_masked = image[~mask].astype(np.float64)
 
         xdata = (RR_masked.ravel(), TT_masked.ravel())
         ydata = image_masked.ravel().astype(np.float64)
@@ -1135,12 +1130,9 @@ def gaussian_decomposition(
         decomp_image  = keratin_function((RR, TT), *popt).reshape(*image.shape)
 
         # Mask the gaussian image for comparison purposes
-        rmin = 25
-        rmax = 90
-        mask = create_circular_mask(
-                image.shape[0], image.shape[1], rmin=rmin, rmax=rmax)
+        mask = image == 0
         decomp_image_masked = decomp_image.copy()
-        decomp_image_masked[~mask] = 0
+        decomp_image_masked[mask] = 0
 
         # Get squared error for best fit image
         error = gauss_class.fit_error(image, decomp_image_masked)
