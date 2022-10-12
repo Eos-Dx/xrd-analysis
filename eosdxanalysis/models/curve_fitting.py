@@ -548,6 +548,11 @@ class GaussianDecomposition(object):
             print("No peaks found for rotation angle!")
             raise err
 
+        # Ensure rotation angle is not exactly zero to avoid
+        # being the same as the lower bound
+        if np.isclose(rotation_angle, 0):
+            rotation_angle = 1e-6
+
         return rotation_angle
 
     def parameter_init(self, params_init_method="estimation"):
@@ -614,7 +619,7 @@ class GaussianDecomposition(object):
                 "peak_std_bg":               1000,
                 "peak_amplitude_bg":         428.57,
                 # Rotation angle
-                "rotation_angle":           0,
+                "rotation_angle":           1e-6,
                 })
             self.p0_dict = p0_dict
 
@@ -687,6 +692,7 @@ class GaussianDecomposition(object):
 
         xdata = (RR_masked.ravel(), TT_masked.ravel())
         ydata = image_masked.ravel().astype(np.float64)
+
         popt, pcov = curve_fit(
                 keratin_function, xdata, ydata, p0, bounds=p_bounds)
 
