@@ -1083,7 +1083,7 @@ def estimate_background_noise(image):
 def gaussian_decomposition(
         input_path, output_path=None, params_init_method=None):
     """
-    Runs batch gaussian decomposition
+    Runs batch gaussian decomposition. Provide centered and rotated images.
     """
     # Get full paths to files and created sorted list
     file_path_list = glob.glob(os.path.join(input_path,"*.txt"))
@@ -1178,7 +1178,8 @@ def gaussian_decomposition(
 
 if __name__ == '__main__':
     """
-    Run curve_fitting on a file or entire folder.
+    Run curve_fitting on a file or entire folder. Provide centered and rotated
+    images.
     """
     # Set up argument parser
     parser = argparse.ArgumentParser()
