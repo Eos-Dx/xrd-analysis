@@ -246,6 +246,7 @@ class GaussianDecomposition(object):
             # Set arc_angle parameters individually
             p_lower_bounds_dict["arc_angle_9A"] = 1e-6
             p_lower_bounds_dict["arc_angle_5A"] = 1e-6
+            p_lower_bounds_dict["rotation_angle"] = -np.pi/2
 
         # Upper bounds
         if not p_upper_bounds_dict:
@@ -258,6 +259,7 @@ class GaussianDecomposition(object):
             # Set arc_angle parameters individually
             p_upper_bounds_dict["arc_angle_9A"] = np.pi
             p_upper_bounds_dict["arc_angle_5A"] = np.pi
+            p_upper_bounds_dict["rotation_angle"] = np.pi/2
 
         self.p0_dict = p0_dict
         self.p_lower_bounds_dict = p_lower_bounds_dict
@@ -634,7 +636,7 @@ class GaussianDecomposition(object):
             # Set angle parameters individually
             p_lower_bounds_dict["arc_angle_9A"] = 1e-6
             p_lower_bounds_dict["arc_angle_5A"] = 1e-6
-            p_lower_bounds_dict["rotation_angle"] = 1e-6
+            p_lower_bounds_dict["rotation_angle"] = -np.pi/2
 
         # Upper bounds
         if not p_upper_bounds_dict:
@@ -647,7 +649,7 @@ class GaussianDecomposition(object):
             # Set angle parameters individually
             p_upper_bounds_dict["arc_angle_9A"] = np.pi
             p_upper_bounds_dict["arc_angle_5A"] = np.pi
-            p_upper_bounds_dict["rotation_angle"] = np.pi
+            p_upper_bounds_dict["rotation_angle"] = np.pi/2
 
         self.p0_dict = p0_dict
         self.p_lower_bounds_dict = p_lower_bounds_dict
