@@ -21,8 +21,6 @@ from scipy.signal import peak_widths
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 
-from skimage.transform import rotate
-
 from eosdxanalysis.models.curve_fitting import PolynomialFit
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 from eosdxanalysis.models.curve_fitting import estimate_background_noise
@@ -401,8 +399,6 @@ class TestGaussianDecomposition(unittest.TestCase):
                 # Background noise parameters
                 "peak_std_bg":              200, # Width
                 "peak_amplitude_bg":        200, # Amplitude
-                # Rotation angle
-                "rotation_angle":           25*np.pi/180, # Rotation
             })
 
         # Set mesh size
@@ -444,89 +440,6 @@ class TestGaussianDecomposition(unittest.TestCase):
         # Get squared error for best fit image
         error = gauss_class.fit_error(image, decomp_image_masked)
         error_ratio = error/np.sum(np.square(image))
-
-        p_lower_bounds = np.fromiter(
-                gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
-        p_upper_bounds = np.fromiter(
-                gauss_class.p_upper_bounds_dict.values(), dtype=np.float64)
-
-        self.assertFalse(np.isclose(popt, p_lower_bounds).all())
-        self.assertFalse(np.isclose(popt, p_upper_bounds).all())
-
-        # Ensure that error ratio is below 1%
-        self.assertTrue(error_ratio < 0.01)
-
-    def test_gaussian_decomposition_negative_rotation_good_sample_manual_guess(self):
-        """
-        Evaluate performance of automatic parameter estimation
-        """
-        # Set manual parameter guess
-        p0_guess_dict = OrderedDict({
-                # 9A equatorial peaks parameters
-                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
-                "peak_std_9A":              8, # Width
-                "peak_amplitude_9A":        400, # Amplitude
-                "arc_angle_9A":             1e-1, # Arc angle
-                # 5A meridional peaks parameters
-                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
-                "peak_std_5A":              2, # Width
-                "peak_amplitude_5A":        100, # Amplitude
-                "arc_angle_5A":             np.pi/4, # Arc angle
-                # 5-4A isotropic region parameters
-                "peak_location_radius_5_4A":feature_pixel_location(4.15e-10), # Peak pixel radius
-                "peak_std_5_4A":            15, # Width
-                "peak_amplitude_5_4A":      100, # Amplitude
-                # Background noise parameters
-                "peak_std_bg":              200, # Width
-                "peak_amplitude_bg":        200, # Amplitude
-                # Rotation angle
-                "rotation_angle":           1e-5, # Rotation
-            })
-
-        # Set mesh size
-        size = 256
-        RR, TT = gen_meshgrid((size,size))
-
-        # Generate synthetic guess image
-        synth_image = keratin_function(
-                (RR, TT), *p0_guess_dict.values()).reshape(RR.shape)
-
-        # Set input filepath
-        # input_filename = "CRQF_AA00832.txt"
-        input_filename = "CRQF_AA00730-4.txt"
-        input_filepath = os.path.join(self.TEST_DATA_PATH, "input", input_filename)
-
-        # Load input image
-        image = np.loadtxt(input_filepath, dtype=np.float64)
-
-        # Rotate image
-        rotation_angle_degrees = -10
-        rotated_image = rotate(image, rotation_angle_degrees, preserve_range=True)
-
-        gauss_class = GaussianDecomposition(
-                rotated_image, p0_dict=p0_guess_dict, params_init_method="estimation")
-
-        # Find Gaussian fit
-        popt_dict, pcov = gauss_class.best_fit()
-        popt = np.fromiter(popt_dict.values(), dtype=np.float64)
-        decomp_image  = keratin_function((RR, TT), *popt).reshape(RR.shape)
-
-
-        # Mask the gaussian image for comparison purposes
-        rmin = 25
-        rmax = 90
-        mask = create_circular_mask(
-                image.shape[0], image.shape[1], rmin=rmin, rmax=rmax)
-        decomp_image_masked = decomp_image.copy()
-        decomp_image_masked[~mask] = 0
-
-        # Ensure the decomp_image and synth_image are different
-        self.assertFalse(np.isclose(decomp_image, synth_image).all())
-        self.assertFalse(np.array_equal(decomp_image, synth_image))
-
-        # Get squared error for best fit image
-        error = gauss_class.fit_error(rotated_image, decomp_image_masked)
-        error_ratio = error/np.sum(np.square(rotated_image))
 
         p_lower_bounds = np.fromiter(
                 gauss_class.p_lower_bounds_dict.values(), dtype=np.float64)
