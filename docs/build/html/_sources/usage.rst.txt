@@ -97,7 +97,7 @@ A sample preprocessing parameters text file would containg the following content
 Gaussian Fitting
 ----------------
 
-In the conda envirnoment, run the following shell command from the ``xrd-analysis`` directory to perform Gaussian fitting on preprocessed data,
+In the conda envirnoment, run the following shell command from the ``xrd-analysis`` directory to perform Gaussian fitting on centered and rotated preprocessed data:
 
 .. code-block:: console
 
