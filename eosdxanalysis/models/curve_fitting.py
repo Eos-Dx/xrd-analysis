@@ -723,11 +723,11 @@ class GaussianDecomposition(object):
         return fit_error(p, image, fit, r, theta)
 
     @classmethod
-    def parameter_list(self):
+    def feature_list(self):
         """
-        Returns the list of parameter names
+        Returns the list of feature names
         """
-        params = [
+        features = [
                 "peak_location_radius_9A",
                 "peak_std_9A",
                 "peak_amplitude_9A",
@@ -741,8 +741,16 @@ class GaussianDecomposition(object):
                 "peak_amplitude_5_4A",
                 "peak_std_bg",
                 "peak_amplitude_bg",
-                "rotation_angle",
                 ]
+        return features
+
+    @classmethod
+    def parameter_list(self):
+        """
+        Returns the list of parameter names
+        """
+        params = self.feature_list()
+        params += ["rotation_angle"]
         return params
 
 
