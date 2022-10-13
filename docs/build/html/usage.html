@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>Usage &#8212; Eos Dx Analysis 2.8.2 documentation</title>
+    <title>Usage &#8212; Eos Dx Analysis 2.9.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -91,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.8.2 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.9.0 documentation</p>
   
 </a>
     
@@ -357,6 +357,33 @@
 </pre></div>
 </div>
 </section>
+<section id="training-on-gaussian-fitting-parameters">
+<h2>Training on Gaussian Fitting Parameters<a class="headerlink" href="#training-on-gaussian-fitting-parameters" title="Permalink to this heading">#</a></h2>
+<p>After Gaussian fitting, combine all training data into a single csv file.</p>
+<p>Then, place exclusion criteria (Note: Only one exclusion criterion can currently be handled) in a JSON-encoded file with the following structure:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;feature1&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="w">        </span><span class="nx">upper_bound</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="nx">lower_bound</span><span class="w"></span>
+<span class="w">    </span><span class="p">]</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">upper_bound</span></code> and <code class="docutils literal notranslate"><span class="pre">lower_bound</span></code> are numbers. For example, to exclude data with <code class="docutils literal notranslate"><span class="pre">peak_location_radius_9A</span></code> not within 20-30 Angstroms, the exclusion file would contain the following content:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;peak_location_radius_9A&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="w">        </span><span class="mf">20</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="mf">40</span><span class="w"></span>
+<span class="w">    </span><span class="p">]</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Finally, run the exclusion list code as follows:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(eos)</span> <span class="gp">$ </span>python examples/exclusion_list.py --data_filepath DATA_FILEPATH --output_filepath OUTPUT_FILEPATH --criteria_file EXCLUSION_CRITERIA_FILE --add_column
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">DATA_FILEPATH</span></code> is the full path to the csv training data file, <code class="docutils literal notranslate"><span class="pre">OUTPUT_FILEPATH</span></code> is the full path to the csv training data file. If the <code class="docutils literal notranslate"><span class="pre">add_column</span></code> flag is used, the output file will contain a copy of the input data with an extra <code class="docutils literal notranslate"><span class="pre">Exclude</span></code> column (1 = exclude, 0 = do not exclude). Otherwise, the output file will be a single column with the <code class="docutils literal notranslate"><span class="pre">Filename</span></code>.</p>
+</section>
 </section>
 
 
@@ -410,6 +437,11 @@
  <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#gaussian-fitting">
    Gaussian Fitting
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#training-on-gaussian-fitting-parameters">
+   Training on Gaussian Fitting Parameters
   </a>
  </li>
 </ul>
