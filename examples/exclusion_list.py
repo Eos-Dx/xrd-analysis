@@ -23,10 +23,10 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
 
     Notes
     -----
+    Only one exclusion criterion can be handled.
+
         exclusion_criteria = {
-            "field1": [lower_bound, upper bound],
-            "field2": [lower_bound, upper bound],
-            ...
+            "field1": [lower_bound, upper bound]
         }
 
 
