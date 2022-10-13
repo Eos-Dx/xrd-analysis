@@ -102,3 +102,38 @@ In the conda envirnoment, run the following shell command from the ``xrd-analysi
 .. code-block:: console
 
     (eos) $ python examples/gaussian_fit.py --run_gauss_fit --input_path "INPUT_PATH"
+
+Training on Gaussian Fitting Parameters
+---------------------------------------
+
+After Gaussian fitting, combine all training data into a single csv file.
+
+Then, place exclusion criteria (Note: Only one exclusion criterion can currently be handled) in a JSON-encoded file with the following structure:
+
+.. code-block:: javascript
+
+    {
+        "feature1": [
+            upper_bound,
+            lower_bound
+        ]
+    }
+
+where ``upper_bound`` and ``lower_bound`` are numbers. For example, to exclude data with ``peak_location_radius_9A`` not within 20-30 Angstroms, the exclusion file would contain the following content:
+
+.. code-block:: javascript
+
+    {
+        "peak_location_radius_9A": [
+            20,
+            40
+        ]
+    }
+
+Finally, run the exclusion list code as follows:
+
+.. code-block:: console
+
+   (eos) $ python examples/exclusion_list.py --data_filepath DATA_FILEPATH --output_filepath OUTPUT_FILEPATH --criteria_file EXCLUSION_CRITERIA_FILE --add_column
+
+where ``DATA_FILEPATH`` is the full path to the csv training data file, ``OUTPUT_FILEPATH`` is the full path to the csv training data file. If the ``add_column`` flag is used, the output file will contain a copy of the input data with an extra ``Exclude`` column (1 = exclude, 0 = do not exclude). Otherwise, the output file will be a single column with the ``Filename``.
