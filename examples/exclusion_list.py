@@ -55,7 +55,7 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
         if add_column:
             df.to_csv(output_filepath, index=False)
         else:
-            df[exclusion_series]["Filename"].to_csv(
+            df[exclusion_series.astype(bool)]["Filename"].to_csv(
                     output_filepath, index=False)
 
         # Print statistics
