@@ -69,7 +69,7 @@ def main(
         # Data
 
         if not feature_list:
-            feature_list = GaussianDecomposition.parameter_list()
+            feature_list = GaussianDecomposition.feature_list()
 
         Xlinear = df[[*feature_list]].astype(float).values
         # Create a polynomial
@@ -166,6 +166,9 @@ def main(
         # Run blind data through trained model and assess performance
         # Load dataframe
         df_blind = pd.read_csv(blind_data_filepath)
+
+        if not feature_list:
+            feature_list = GaussianDecomposition.feature_list()
 
         X_blind_linear = df_blind[[*feature_list]].astype(float).values
         # Create a polynomial
