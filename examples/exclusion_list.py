@@ -37,11 +37,13 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
     sample_size = df.index.size
     print("Input data size:", sample_size)
 
-    cancer_total = (df["Cancer"] == 1).sum()
-    normal_total = (df["Cancer"] == 0).sum()
+    columns = df.columns
+    if "Cancer" in columns:
+        cancer_total = (df["Cancer"] == 1).sum()
+        normal_total = (df["Cancer"] == 0).sum()
 
-    print("Cancer total:", cancer_total)
-    print("Normal total:", normal_total)
+        print("Cancer total:", cancer_total)
+        print("Normal total:", normal_total)
 
     for key, value in exclusion_criteria.items():
 
@@ -63,16 +65,17 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
         print("Exclude:", exclusion_total)
         print("Exclusion ratio:", exclusion_total/sample_size)
 
-        cancer_excluded = ((df["Cancer"] == 1) & (df["Exclude"] == 1)).sum()
-        normal_excluded = ((df["Cancer"] == 0) & (df["Exclude"] == 1)).sum()
+        if "Cancer" in columns:
+            cancer_excluded = ((df["Cancer"] == 1) & (df["Exclude"] == 1)).sum()
+            normal_excluded = ((df["Cancer"] == 0) & (df["Exclude"] == 1)).sum()
 
-        print("Cancer excluded:", cancer_excluded)
-        print("Normal excluded:", normal_excluded)
+            print("Cancer excluded:", cancer_excluded)
+            print("Normal excluded:", normal_excluded)
 
-        cancer_excluded_ratio = cancer_excluded/cancer_total
-        normal_excluded_ratio = normal_excluded/normal_total
-        print("Cancer exclusion ratio:", cancer_excluded_ratio)
-        print("Normal exclusion ratio:", normal_excluded_ratio)
+            cancer_excluded_ratio = cancer_excluded/cancer_total
+            normal_excluded_ratio = normal_excluded/normal_total
+            print("Cancer exclusion ratio:", cancer_excluded_ratio)
+            print("Normal exclusion ratio:", normal_excluded_ratio)
 
 
 if __name__ == '__main__':
