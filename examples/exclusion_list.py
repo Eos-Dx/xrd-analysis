@@ -4,6 +4,7 @@ Creates an exclusion list based on criteria
 import argparse
 import json
 
+import numpy as np
 import pandas as pd
 
 def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
@@ -45,14 +46,21 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
         print("Cancer total:", cancer_total)
         print("Normal total:", normal_total)
 
+    # Create the exclusion column set to zeros (no exclusions yet)
+    df["Exclude"] = np.zeros(df.shape[0]).reshape(-1,1).astype(int)
+
     for key, value in exclusion_criteria.items():
+        exclusion_parameter = key
+        lower_bound = value[0]
+        upper_bound = value[1]
 
-        print("Exclusion criteria:",key)
-        print("Lower bound:",value[0])
-        print("Upper bound:",value[1])
+        print("Exclusion criterion parameter:", exclusion_parameter)
+        print("Lower bound:", lower_bound)
+        print("Upper bound:", upper_bound)
 
-        exclusion_series = ((df[key] < value[0]) | (df[key] > value[1])).astype(int)
-        df["Exclude"] = exclusion_series
+        exclusion_series = ((df[exclusion_parameter] < lower_bound) | \
+                (df[exclusion_parameter] > upper_bound)).astype(int)
+        df["Exclude"] = df["Exclude"] | exclusion_series
 
         if add_column:
             df.to_csv(output_filepath, index=False)
@@ -61,9 +69,9 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
                     output_filepath, index=False)
 
         # Print statistics
-        exclusion_total = exclusion_series.sum()
-        print("Exclude:", exclusion_total)
-        print("Exclusion ratio:", exclusion_total/sample_size)
+        parameter_exclusion_total = exclusion_series.sum()
+        print("Exclude:", parameter_exclusion_total)
+        print("Exclusion ratio:", parameter_exclusion_total/sample_size)
 
         if "Cancer" in columns:
             cancer_excluded = ((df["Cancer"] == 1) & (df["Exclude"] == 1)).sum()
@@ -76,6 +84,16 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
             normal_excluded_ratio = normal_excluded/normal_total
             print("Cancer exclusion ratio:", cancer_excluded_ratio)
             print("Normal exclusion ratio:", normal_excluded_ratio)
+
+    exclusion_total = df["Exclude"].sum()
+    print("Total excluded:", exclusion_total)
+    exclusion_total_ratio = exclusion_total / sample_size
+    print("Total exclusion ratio:", exclusion_total_ratio)
+
+    remaining_total = sample_size - exclusion_total
+    print("Total remaining:", remaining_total)
+    remaining_total_ratio = remaining_total / sample_size
+    print("Total remaining ratio:", remaining_total_ratio)
 
 
 if __name__ == '__main__':
