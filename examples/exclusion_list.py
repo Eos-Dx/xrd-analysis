@@ -74,8 +74,10 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
         print("Exclusion ratio:", parameter_exclusion_total/sample_size)
 
         if "Cancer" in columns:
-            cancer_excluded = ((df["Cancer"] == 1) & (df["Exclude"] == 1)).sum()
-            normal_excluded = ((df["Cancer"] == 0) & (df["Exclude"] == 1)).sum()
+            # Cancer (=1) and is excluded (=1)
+            cancer_excluded = ((df["Cancer"] == 1) & (exclusion_series == 1)).sum()
+            # Normal (=0) and is excluded (=1)
+            normal_excluded = ((df["Cancer"] == 0) & (exclusion_series == 1)).sum()
 
             print("Cancer excluded:", cancer_excluded)
             print("Normal excluded:", normal_excluded)
