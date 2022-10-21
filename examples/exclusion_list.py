@@ -36,27 +36,25 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
     df = pd.read_csv(data_filepath)
     # Print statistics
     sample_size = df.index.size
-    print("Input data size:", sample_size)
 
     columns = df.columns
-    if "Cancer" in columns:
-        cancer_total = (df["Cancer"] == 1).sum()
-        normal_total = (df["Cancer"] == 0).sum()
-
-        print("Cancer total:", cancer_total)
-        print("Normal total:", normal_total)
 
     # Create the exclusion column set to zeros (no exclusions yet)
     df["Exclude"] = np.zeros(df.shape[0]).reshape(-1,1).astype(int)
+
+    if "Cancer" in columns:
+        # Total cancer and normal statistics
+        cancer_total = (df["Cancer"] == 1).sum()
+        normal_total = (df["Cancer"] == 0).sum()
 
     for key, value in exclusion_criteria.items():
         exclusion_parameter = key
         lower_bound = value[0]
         upper_bound = value[1]
 
-        print("Exclusion criterion parameter:", exclusion_parameter)
-        print("Lower bound:", lower_bound)
-        print("Upper bound:", upper_bound)
+        print("Exclusion criterion parameter: {}".format(exclusion_parameter))
+        print("Lower bound: {}".format(lower_bound))
+        print("Upper bound: {}".format(upper_bound))
 
         exclusion_series = ((df[exclusion_parameter] < lower_bound) | \
                 (df[exclusion_parameter] > upper_bound)).astype(int)
@@ -68,34 +66,95 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
             df[exclusion_series.astype(bool)]["Filename"].to_csv(
                     output_filepath, index=False)
 
-        # Print statistics
+        # Calculate parameter exclusion statistics
         parameter_exclusion_total = exclusion_series.sum()
-        print("Exclude:", parameter_exclusion_total)
-        print("Exclusion ratio:", parameter_exclusion_total/sample_size)
+        parameter_exclusion_ratio = parameter_exclusion_total/sample_size
+        print("Exclude: {}".format(parameter_exclusion_total))
+        print("Exclusion percentage: {:.1f}%".format(
+            100*parameter_exclusion_ratio))
 
+        # Calculate normal vs. cancer parameter exclusion statistics
         if "Cancer" in columns:
             # Cancer (=1) and is excluded (=1)
             cancer_excluded = ((df["Cancer"] == 1) & (exclusion_series == 1)).sum()
             # Normal (=0) and is excluded (=1)
             normal_excluded = ((df["Cancer"] == 0) & (exclusion_series == 1)).sum()
 
-            print("Cancer excluded:", cancer_excluded)
-            print("Normal excluded:", normal_excluded)
+            print("Cancer excluded: {}".format(cancer_excluded))
+            print("Normal excluded: {}".format(normal_excluded))
 
             cancer_excluded_ratio = cancer_excluded/cancer_total
             normal_excluded_ratio = normal_excluded/normal_total
-            print("Cancer exclusion ratio:", cancer_excluded_ratio)
-            print("Normal exclusion ratio:", normal_excluded_ratio)
+            print("Cancer exclusion percentage: {:.1f}%".format(
+                100*cancer_excluded_ratio))
+            print("Normal exclusion percentage: {:.1f}%".format(
+                100*normal_excluded_ratio))
 
+    print("##########################")
+    print("Total exclusion statistics")
+    print("##########################")
+
+    # Total data set size
+    print("Input data size:", sample_size)
+
+    # Calculate total data set statistics
     exclusion_total = df["Exclude"].sum()
-    print("Total excluded:", exclusion_total)
+    print("Total excluded: {}".format(exclusion_total))
     exclusion_total_ratio = exclusion_total / sample_size
-    print("Total exclusion ratio:", exclusion_total_ratio)
+    print("Total exclusion percentage: {:.1f}%".format(
+        100*exclusion_total_ratio))
 
     remaining_total = sample_size - exclusion_total
-    print("Total remaining:", remaining_total)
+    print("Total remaining: {}".format(remaining_total))
     remaining_total_ratio = remaining_total / sample_size
-    print("Total remaining ratio:", remaining_total_ratio)
+    print("Total remaining percentage: {:.1f}%".format(
+        100*remaining_total_ratio))
+
+    # Calculate training (A) vs. blind (B) statistics
+    measurement_series = df["Filename"].str.extract(r"CR_(.)", expand=False)
+
+    training_total = (measurement_series == "A").sum()
+    blind_total = (measurement_series == "B").sum()
+
+    # Excluded (exclude=1)
+    training_excluded = ((measurement_series == "A") & (df["Exclude"] == 1)).sum()
+    blind_excluded = ((measurement_series == "B") & (df["Exclude"] == 1)).sum()
+
+    training_excluded_ratio = training_excluded/training_total
+    blind_excluded_ratio = blind_excluded/blind_total
+
+    # Reamining (exclude=0)
+    training_remaining = ((measurement_series == "A") & (df["Exclude"] == 0)).sum()
+    blind_remaining = ((measurement_series == "B") & (df["Exclude"] == 0)).sum()
+
+    print("Training excluded: {}".format(training_excluded))
+    print("Blind excluded: {}".format(blind_excluded))
+
+    print("Training exclusion percentage: {:.1f}%".format(
+        100*training_excluded_ratio))
+    print("Blind exclusion percentage: {:.1f}%".format(
+        100*blind_excluded_ratio))
+
+    if "Cancer" in columns:
+        # Total cancer and normal statistics
+        print("Cancer total: {}".format(cancer_total))
+        print("Normal total: {}".format(normal_total))
+
+        # Normal vs. cancer
+        # Cancer (=1) and is excluded (=1)
+        cancer_total_excluded = ((df["Cancer"] == 1) & (df["Exclude"] == 1)).sum()
+        # Normal (=0) and is excluded (=1)
+        normal_total_excluded = ((df["Cancer"] == 0) & (df["Exclude"] == 1)).sum()
+
+        print("Total cancer excluded: {}".format(cancer_total_excluded))
+        print("Total normal excluded: {}".format(normal_total_excluded))
+
+        cancer_total_excluded_ratio = cancer_total_excluded/cancer_total
+        normal_total_excluded_ratio = normal_total_excluded/normal_total
+        print("Total cancer exclusion percentage: {:.1f}%".format(
+            100*cancer_total_excluded_ratio))
+        print("Total normal exclusion percentage: {:.1f}%".format(
+            100*normal_total_excluded_ratio))
 
 
 if __name__ == '__main__':
