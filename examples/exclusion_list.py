@@ -42,6 +42,13 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
     # Create the exclusion column set to zeros (no exclusions yet)
     df["Exclude"] = np.zeros(df.shape[0]).reshape(-1,1).astype(int)
 
+    # Extract the measurement series info (barcode letter)
+    measurement_series = df["Filename"].str.extract(r"CR_(.)", expand=False)
+
+    # Calculate the training and blind totals
+    training_total = (measurement_series == "A").sum()
+    blind_total = (measurement_series == "B").sum()
+
     if "Cancer" in columns:
         # Total cancer and normal statistics
         cancer_total = (df["Cancer"] == 1).sum()
@@ -90,6 +97,11 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
             print("Normal exclusion percentage: {:.1f}%".format(
                 100*normal_excluded_ratio))
 
+            training_excluded = normal_excluded + cancer_excluded
+            training_excluded_ratio = training_excluded / training_total
+            print("Training exclusion percentage: {:.1f}%".format(
+                100*training_excluded_ratio))
+
     print("##########################")
     print("Total exclusion statistics")
     print("##########################")
@@ -111,10 +123,9 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
         100*remaining_total_ratio))
 
     # Calculate training (A) vs. blind (B) statistics
-    measurement_series = df["Filename"].str.extract(r"CR_(.)", expand=False)
 
-    training_total = (measurement_series == "A").sum()
-    blind_total = (measurement_series == "B").sum()
+    print("Training total: {}".format(training_total))
+    print("Blind total: {}".format(blind_total))
 
     # Excluded (exclude=1)
     training_excluded = ((measurement_series == "A") & (df["Exclude"] == 1)).sum()
@@ -146,8 +157,11 @@ def main(data_filepath, output_filepath, exclusion_criteria, add_column=False):
         # Normal (=0) and is excluded (=1)
         normal_total_excluded = ((df["Cancer"] == 0) & (df["Exclude"] == 1)).sum()
 
-        print("Total cancer excluded: {}".format(cancer_total_excluded))
         print("Total normal excluded: {}".format(normal_total_excluded))
+        print("Total cancer excluded: {}".format(cancer_total_excluded))
+
+        print("Total normal remaining: {}".format(normal_total - normal_total_excluded))
+        print("Total cancer remaining: {}".format(cancer_total - cancer_total_excluded))
 
         cancer_total_excluded_ratio = cancer_total_excluded/cancer_total
         normal_total_excluded_ratio = normal_total_excluded/normal_total
