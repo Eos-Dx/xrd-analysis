@@ -146,11 +146,11 @@ class GaussianDecomposition(object):
             # of other estimator functions
 
             # Estimate background intensity parameters
-            peak_amplitude_bg, peak_std_bg = estimate_background_noise(image)
+            constant_bg = estimate_background_noise(image)
 
             # Create a radial gaussian estimate based on the bg parameters
             radial_gaussian_estimate_bg = radial_gaussian(
-                    RR, TT,  0, 0, peak_std_bg, peak_amplitude_bg, np.pi)
+                    RR, TT,  0, 0, constant_bg, np.pi)
             horizontal_intensity_bg = radial_intensity_1d(
                     radial_gaussian_estimate_bg)
 
@@ -229,8 +229,7 @@ class GaussianDecomposition(object):
                     "peak_std_5_4A":             peak_std_5_4A,
                     "peak_amplitude_5_4A":       peak_amplitude_5_4A,
                     # Background noise parameters
-                    "peak_std_bg":               peak_std_bg,
-                    "peak_amplitude_bg":         peak_amplitude_bg,
+                    "constant_bg":         constant_bg,
                     # Rotation
                     "rotation_angle":            rotation_angle,
                 })
@@ -618,8 +617,7 @@ class GaussianDecomposition(object):
                 "peak_std_5_4A":             9.95,
                 "peak_amplitude_5_4A":       272.76,
                 # Background noise parameters
-                "peak_std_bg":               1000,
-                "peak_amplitude_bg":         428.57,
+                "constant_bg":         428.57,
                 # Rotation angle
                 "rotation_angle":           1e-6,
                 })
@@ -739,8 +737,7 @@ class GaussianDecomposition(object):
                 "peak_location_radius_5_4A",
                 "peak_std_5_4A",
                 "peak_amplitude_5_4A",
-                "peak_std_bg",
-                "peak_amplitude_bg",
+                "constant_bg",
                 ]
         return features
 
@@ -928,7 +925,7 @@ def keratin_function(
         peak_location_radius_9A, peak_std_9A, peak_amplitude_9A, arc_angle_9A,
         peak_location_radius_5A, peak_std_5A, peak_amplitude_5A, arc_angle_5A,
         peak_location_radius_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
-        peak_std_bg, peak_amplitude_bg, rotation_angle):
+        constant_bg, rotation_angle):
     """
     Generate kertain diffraction pattern at the point(s) (r, theta), with
     additional parameters as the arguments to 4 calls of ``radial_gaussian``.
@@ -977,7 +974,7 @@ def keratin_function(
     peak_std_bg : float
         Standard deviation of the background noise Gaussian
 
-    peak_amplitude_bg : float
+    constant_bg : float
         Amplitude of the background noise Gaussian
 
     rotation_angle : float
@@ -1018,9 +1015,7 @@ def keratin_function(
             peak_angle_5_4A, peak_std_5_4A, peak_amplitude_5_4A,
             arc_angle_5_4A)
     # Background noise
-    pattern_bg = radial_gaussian(r, theta_rotated, peak_location_radius_bg,
-            peak_angle_bg, peak_std_bg, peak_amplitude_bg,
-            arc_angle_bg)
+    pattern_bg = constant_bg
     # Additive model
     pattern = pattern_9A + pattern_5A + pattern_5_4A + pattern_bg
 
