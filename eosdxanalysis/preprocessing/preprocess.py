@@ -29,7 +29,7 @@ from eosdxanalysis.preprocessing.center_finding import find_centroid
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import find_maxima
-from eosdxanalysis.preprocessing.denoising import filter_strays
+from eosdxanalysis.preprocessing.denoising import filter_hot_spots
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 from eosdxanalysis.preprocessing.beam_utils import beam_radius
@@ -301,6 +301,8 @@ class PreprocessData(object):
                 # Mask
                 if mask_style:
                     output = self.mask(output, style=mask_style)
+                    # Hot spot filtering
+                    output = filter_hot_spots(output, 5000)
 
                 # Save the file
                 output_filename = "{}_{}".format(output_style_abbreviation,
