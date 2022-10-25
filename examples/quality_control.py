@@ -46,7 +46,7 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
     columns = df.columns
 
     # Create the exclusion column set to zeros (no passes yet)
-    df["qc_pass"] = np.zeros(df.shape[0]).reshape(-1,1).astype(int)
+    df["qc_pass"] = np.ones(df.shape[0]).reshape(-1,1).astype(int)
 
     # Extract the measurement series info (barcode letter)
     measurement_series = df["Filename"].str.extract(r"CR_(.)", expand=False)
@@ -72,10 +72,12 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
         print("Upper bound: {}".format(upper_bound))
 
         # Perform quality control using the current criterion
-        control_series = ((df[control_parameter] > lower_bound) | \
-                (df[control_parameter] < upper_bound)).astype(int)
+        control_series = ((df[control_parameter] >= lower_bound) & \
+                (df[control_parameter] <= upper_bound)).astype(int)
         # Merge current criterion results with prior results
-        df["qc_pass"] = df["qc_pass"] | control_series
+        df["qc_pass"] = df["qc_pass"] & control_series
+        criterion_column = "criterion_{}".format(control_parameter)
+        df[criterion_column] = control_series
 
         if add_column:
             df.to_csv(output_filepath, index=False)
@@ -167,17 +169,18 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
     print("Input data size:", dataset_size)
 
     # Calculate total data set statistics
-    fail_total = df["qc_pass"].sum()
+    pass_total = df["qc_pass"].sum()
+    print("Total pass: {}".format(pass_total))
+    pass_total_ratio = pass_total / dataset_size
+    print("Total pass (%): {:.1f}%".format(
+        100*pass_total_ratio))
+
+    fail_total = dataset_size - pass_total
     print("Total fail: {}".format(fail_total))
     fail_total_ratio = fail_total / dataset_size
     print("Total fail (%): {:.1f}%".format(
         100*fail_total_ratio))
 
-    pass_total = dataset_size - fail_total
-    print("Total pass: {}".format(pass_total))
-    pass_total_ratio = pass_total / dataset_size
-    print("Total pass (%): {:.1f}%".format(
-        100*pass_total_ratio))
 
     # Calculate training (A) vs. blind (B) statistics
 
@@ -241,13 +244,17 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
         # Passed
         print("Total normal pass: {}".format(normal_total_pass_count))
         print("Total cancer pass: {}".format(cancer_total_pass_count))
-        print("Total normal pass (%): {}".format(normal_total_pass_ratio))
-        print("Total cancer pass (%): {}".format(cancer_total_pass_ratio))
+        print("Total normal pass (%): {:.1f}".format(
+            100*normal_total_pass_ratio))
+        print("Total cancer pass (%): {:.1f}".format(
+            100*cancer_total_pass_ratio))
         # Failed
         print("Total normal fail: {}".format(normal_total_fail_count))
         print("Total cancer fail: {}".format(cancer_total_fail_count))
-        print("Total normal fail (%): {}".format(normal_total_fail_ratio))
-        print("Total cancer fail (%): {}".format(cancer_total_fail_ratio))
+        print("Total normal fail (%): {:.1f}%".format(
+            100*normal_total_fail_ratio))
+        print("Total cancer fail (%): {:.1f}%".format(
+            100*cancer_total_fail_ratio))
 
 
 if __name__ == '__main__':
