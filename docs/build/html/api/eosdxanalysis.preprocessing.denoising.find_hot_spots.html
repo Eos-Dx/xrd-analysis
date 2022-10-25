@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>eosdxanalysis.models.feature_engineering &#8212; Eos Dx Analysis 2.12.0 documentation</title>
+    <title>find_hot_spots &#8212; Eos Dx Analysis 2.12.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -35,9 +35,11 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/eosdxanalysis.models.feature_engineering';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.denoising.find_hot_spots';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="crop_image" href="eosdxanalysis.preprocessing.image_processing.crop_image.html" />
+    <link rel="prev" title="filter_hot_spots" href="eosdxanalysis.preprocessing.denoising.filter_hot_spots.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
   </head>
@@ -120,7 +122,7 @@
                 </li>
                 
 
-                <li class="nav-item">
+                <li class="nav-item current active">
                     <a class="nav-link" href="../api.html">
                         API
                     </a>
@@ -177,7 +179,7 @@
   <div class="bd-container">
     <div class="bd-container__inner bd-page-width">
       
-      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+      <div class="bd-sidebar-primary bd-sidebar">
         
   
   <div class="sidebar-header-items sidebar-primary__section">
@@ -206,7 +208,7 @@
                 </li>
                 
 
-                <li class="nav-item">
+                <li class="nav-item current active">
                     <a class="nav-link" href="../api.html">
                         API
                     </a>
@@ -241,6 +243,166 @@
   </div>
 
   
+  <div class="sidebar-start-items sidebar-primary__section">
+    <div class="sidebar-start-items__item"><nav class="bd-links" id="bd-docs-nav" aria-label="Section navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">
+    Section Navigation
+  </p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.PreprocessData.html">
+   PreprocessData
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.ABBREVIATIONS.html">
+   ABBREVIATIONS
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.INVERSE_OUTPUT_MAP.html">
+   INVERSE_OUTPUT_MAP
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.OUTPUT_MAP.html">
+   OUTPUT_MAP
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.circular_average.html">
+   circular_average
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.find_center.html">
+   find_center
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.find_centroid.html">
+   find_centroid
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.radial_histogram.html">
+   radial_histogram
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.RMAX_BEAM.html">
+   RMAX_BEAM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.RMIN_BEAM.html">
+   RMIN_BEAM
+  </a>
+ </li>
+</ul>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.filter_hot_spots.html">
+   filter_hot_spots
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   find_hot_spots
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.crop_image.html">
+   crop_image
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.pad_image.html">
+   pad_image
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.quadrant_fold.html">
+   quadrant_fold
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.unwarp_polar.html">
+   unwarp_polar
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.find_1d_peaks.html">
+   find_1d_peaks
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.find_2d_peak.html">
+   find_2d_peak
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.multivariate_normal.html">
+   multivariate_normal
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.norm.html">
+   norm
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.count_intervals.html">
+   count_intervals
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.create_circular_mask.html">
+   create_circular_mask
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.find_maxima.html">
+   find_maxima
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.gen_rotation_line.html">
+   gen_rotation_line
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.get_angle.html">
+   get_angle
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.zerocross1d.html">
+   zerocross1d
+  </a>
+ </li>
+</ul>
+
+  </div>
+</nav>
+    </div>
+  </div>
+  
 
   
   <div class="sidebar-end-items sidebar-primary__section">
@@ -262,28 +424,22 @@
             
             <article class="bd-article" role="main">
               
-  <section id="module-eosdxanalysis.models.feature_engineering">
-<span id="eosdxanalysis-models-feature-engineering"></span><h1>eosdxanalysis.models.feature_engineering<a class="headerlink" href="#module-eosdxanalysis.models.feature_engineering" title="Permalink to this heading">#</a></h1>
-<p>Calculate features using preprocessing functions</p>
-<p class="rubric">Functions</p>
-<table class="autosummary longtable table autosummary">
-<tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">shoulder_analysis</span></code>(input_path[, output_path, ...])</p></td>
-<td><p>Runs batch shoulder analysis</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">shoulder_pattern</span></code>(amplitude_5A, std_5A, ...)</p></td>
-<td><p>Shoulder pattern as a sum of two 1D Gaussians</p></td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Classes</p>
-<table class="autosummary longtable table autosummary">
-<tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EngineeredFeatures</span></code>(image[, params])</p></td>
-<td><p>Class to calculate engineered features.</p></td>
-</tr>
-</tbody>
-</table>
+  <section id="find-hot-spots">
+<h1>find_hot_spots<a class="headerlink" href="#find-hot-spots" title="Permalink to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.denoising.find_hot_spots">
+<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">find_hot_spots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masked_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.find_hot_spots" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>masked_image</strong> (<em>ndarray</em>) – Image with beam removed (zeroed)</p></li>
+<li><p><strong>threshold</strong> (<em>int</em>) – Any pixels with photon count greater than <code class="docutils literal notranslate"><span class="pre">threshold</span></code> are
+considered hot spots.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 
@@ -294,6 +450,20 @@
             <footer class="bd-footer-article">
                 <!-- Previous / next buttons -->
 <div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.denoising.filter_hot_spots.html" title="previous page">
+      <i class="fas fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">filter_hot_spots</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.image_processing.crop_image.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">crop_image</p>
+  </div>
+  <i class="fas fa-angle-right"></i>
+  </a>
 </div>
             </footer>
             
@@ -310,7 +480,7 @@
 <div class="toc-item">
   
 <div class="tocsection sourcelink">
-    <a href="../_sources/generated/eosdxanalysis.models.feature_engineering.rst.txt">
+    <a href="../_sources/api/eosdxanalysis.preprocessing.denoising.find_hot_spots.rst.txt">
         <i class="fas fa-file-alt"></i> Show Source
     </a>
 </div>

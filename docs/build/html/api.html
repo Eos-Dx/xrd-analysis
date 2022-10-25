@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>API &#8212; Eos Dx Analysis 2.11.0 documentation</title>
+    <title>API &#8212; Eos Dx Analysis 2.12.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -91,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.11.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.12.0 documentation</p>
   
 </a>
     
@@ -309,13 +309,13 @@
 </ul>
 <ul class="nav bd-sidenav">
  <li class="toctree-l1">
-  <a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.filter_strays.html">
-   filter_strays
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.filter_hot_spots.html">
+   filter_hot_spots
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.stray_filter.html">
-   stray_filter
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.find_hot_spots.html">
+   find_hot_spots
   </a>
  </li>
 </ul>
@@ -515,6 +515,7 @@
 </section>
 <section id="module-eosdxanalysis.preprocessing.denoising">
 <span id="eosdxanalysis-preprocessing-denoising-module"></span><h2>eosdxanalysis.preprocessing.denoising Module<a class="headerlink" href="#module-eosdxanalysis.preprocessing.denoising" title="Permalink to this heading">#</a></h2>
+<p>Methods for denoising the diffraction pattern</p>
 <section id="id2">
 <h3>Functions<a class="headerlink" href="#id2" title="Permalink to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
@@ -522,14 +523,24 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_circular_mask</span></code>(nrows, ncols[, center, ...])</p></td>
 <td><p>Creates a circular mask for a pixel array with shape (nrows,ncols) Center can be specified as float tuple (row_center, col_center) rmin and rmax can be float Mask elements are True when distance from center is between rmin and rmax (inclusive)</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.filter_strays.html#eosdxanalysis.preprocessing.denoising.filter_strays" title="eosdxanalysis.preprocessing.denoising.filter_strays"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_strays</span></code></a>(img[, block_size, factor, ...])</p></td>
-<td><p>Remove stray high-intensity pixels Block size must be odd</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.filter_hot_spots.html#eosdxanalysis.preprocessing.denoising.filter_hot_spots" title="eosdxanalysis.preprocessing.denoising.filter_hot_spots"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_hot_spots</span></code></a>(masked_image, threshold[, ...])</p></td>
+<td><p><dl class="field-list simple">
+<dt class="field-odd">param masked_image<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Image with beam removed (zeroed)</p>
+</dd>
+</dl>
+</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">generic_filter</span></code>(input, function[, size, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.find_hot_spots.html#eosdxanalysis.preprocessing.denoising.find_hot_spots" title="eosdxanalysis.preprocessing.denoising.find_hot_spots"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_hot_spots</span></code></a>(masked_image, threshold)</p></td>
+<td><p><dl class="field-list simple">
+<dt class="field-odd">param masked_image<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Image with beam removed (zeroed)</p>
+</dd>
+</dl>
+</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">generic_filter</span></code>(input, function[, size, ...])</p></td>
 <td><p>Calculate a multidimensional filter using the given function.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.denoising.stray_filter.html#eosdxanalysis.preprocessing.denoising.stray_filter" title="eosdxanalysis.preprocessing.denoising.stray_filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stray_filter</span></code></a>(img[, factor, filter_mask, ...])</p></td>
-<td><p>Custom noise filter</p></td>
 </tr>
 </tbody>
 </table>
