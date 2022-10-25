@@ -20,8 +20,7 @@ from eosdxanalysis.preprocessing.center_finding import circular_average
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
 
-from eosdxanalysis.preprocessing.denoising import stray_filter
-from eosdxanalysis.preprocessing.denoising import filter_strays
+from eosdxanalysis.preprocessing.denoising import filter_hot_spots
 
 from eosdxanalysis.preprocessing.utils import count_intervals
 from eosdxanalysis.preprocessing.utils import create_circular_mask
@@ -640,27 +639,55 @@ class TestUtils(unittest.TestCase):
 
 class TestDenoising(unittest.TestCase):
 
-    def test_stray_detector_high_intensity(self):
-        # Create a test array where center value is much higher
-        # than neighborhood average
-        test_array = np.array([[1,2,3],[1,105,0],[2,25,2]])
-        center_value = test_array[1,1]
-        # Apply filter to center value
-        filtered_center = stray_filter(test_array, factor=5.0)
+    def test_filter_hot_spots_median_method(self):
+        """
+        Test hot spot filter using the median method
+        """
+        size = 256
+        test_image = np.ones((size,size))
+        hot_spot_coords = (20,40)
+        hot_spot_value = 10
+        test_image[hot_spot_coords] = hot_spot_value
 
-        # Ensure filter changed value to mean of neighbors
-        self.assertFalse(center_value == filtered_center)
+        self.assertEqual(np.max(test_image), hot_spot_value)
 
-    def test_stray_detector_low_intensity(self):
-        # Create a test array where center value is close to
-        # neighborhood average
-        test_array = np.array([[1,2,3],[1,20,0],[2,25,2]])
-        center_value = test_array[1,1]
-        # Apply filter to center value
-        filtered_center = stray_filter(test_array, factor=5.0)
+        threshold = 5
+        filtered_image = filter_hot_spots(test_image, threshold, method="median")
 
-        # Ensure filter did not change center value
-        self.assertTrue(center_value == filtered_center)
+        self.assertTrue(np.array_equal(filtered_image, np.ones((size,size))))
+
+    def test_filter_hot_spots_ignore_method(self):
+        """
+        Test hot spot filter using the ignore method
+        """
+        size = 256
+        filter_size = 5
+        test_image = np.ones((size,size))
+        hot_spot_coords = (20,40)
+        hot_spot_value = 10
+        test_image[hot_spot_coords] = hot_spot_value
+
+        # Set the known result which has the 5x5 neighborhood of the hot spot
+        # set to zero
+        known_result = test_image.copy()
+        hot_spot_roi_rows = slice(
+                hot_spot_coords[0]-filter_size//2,
+                hot_spot_coords[0]+filter_size//2+1)
+        hot_spot_roi_cols = slice(
+                hot_spot_coords[1]-filter_size//2,
+                hot_spot_coords[1]+filter_size//2+1)
+        hot_spot_roi = test_image[hot_spot_roi_rows, hot_spot_roi_cols]
+
+        self.assertEqual(np.max(test_image), hot_spot_value)
+
+        threshold = 5
+        filtered_image = filter_hot_spots(
+                test_image, threshold, filter_size=filter_size,
+                method="ignore")
+
+        self.assertFalse(np.array_equal(filtered_image, test_image))
+
+        self.assertTrue(np.array_equal(filtered_image, known_result))
 
 
 class TestImageProcessing(unittest.TestCase):
