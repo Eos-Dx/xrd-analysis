@@ -604,20 +604,20 @@ class GaussianDecomposition(object):
             p0_dict = OrderedDict({
                 # 9A equatorial peaks parameters
                 "peak_location_radius_9A":   feature_pixel_location(9.8e-10),
-                "peak_std_9A":               10.32,
-                "peak_amplitude_9A":         673.81,
-                "arc_angle_9A":              0.035,
+                "peak_std_9A":               8,
+                "peak_amplitude_9A":         800,
+                "arc_angle_9A":              0.5,
                 # 5A meridional peaks parameters
                 "peak_location_radius_5A":   feature_pixel_location(5.1e-10),
-                "peak_std_5A":               2.37,
-                "peak_amplitude_5A":         155.75,
-                "arc_angle_5A":              1.130,
+                "peak_std_5A":               2.5,
+                "peak_amplitude_5A":         300,
+                "arc_angle_5A":              1.5,
                 # 5-4A isotropic region parameters
-                "peak_location_radius_5_4A": feature_pixel_location(4.15e-10),
-                "peak_std_5_4A":             9.95,
-                "peak_amplitude_5_4A":       272.76,
+                "peak_location_radius_5_4A": feature_pixel_location(4.5e-10),
+                "peak_std_5_4A":             10,
+                "peak_amplitude_5_4A":       800,
                 # Background noise parameters
-                "constant_bg":         428.57,
+                "constant_bg":              800,
                 # Rotation angle
                 "rotation_angle":           1e-6,
                 })
