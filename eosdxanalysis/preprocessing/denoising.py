@@ -1,58 +1,63 @@
-import numpy as np
-from scipy.ndimage import generic_filter
-from eosdxanalysis.preprocessing.utils import create_circular_mask
-
 """
 Methods for denoising the diffraction pattern
 """
 
-def stray_filter(img, factor=10.0, filter_mask=np.array([]), rmin=2, rmax=3):
+import numpy as np
+from scipy.ndimage import generic_filter
+from eosdxanalysis.preprocessing.utils import create_circular_mask
+
+
+def find_hot_spots(masked_image, threshold):
     """
-    Custom noise filter
+    Parameters
+    ----------
 
-    Given an nxn image (odd) return mean of surrounding area
-    if the center pixel intensity is stray (much greater than neighborhood intensity)
+    masked_image : ndarray
+        Image with beam removed (zeroed)
+
+    threshold : int
+        Any pixels with photon count greater than ``threshold`` are
+        considered hot spots.
     """
-    # Calculate 1D index of center value
-    center_index = img.size//2
-    # Store center value
-    center_value = img.flatten()[center_index]
-    
-    if filter_mask.size == 0:
-        # Get neighbors between 2 and 3 pixels away
-        filter_mask = create_circular_mask(img.shape[0],img.shape[1],rmin=rmin,rmax=rmax)
+    hot_spot_coords_array= np.array(np.where(masked_image > threshold)).reshape(-1,2)
+    return hot_spot_coords_array
 
-    neighbors = np.copy(img)
-    
-    # Take mean of neighbors within the mask region
-    neighbors_mean = np.mean(neighbors[filter_mask])
-    
-    # If center is greater than the mean multiplied by a factor,
-    # it's stray, return neighborhood mean
-    if center_value > neighbors_mean*factor:
-        return neighbors_mean
-    # Not a stray, return original value
-    else:
-        return center_value
-
-def filter_strays(img, block_size=7, factor=10.0, rmin=2, rmax=3):
+def filter_hot_spots(masked_image, threshold, filter_size=5, method="ignore"):
     """
-    Remove stray high-intensity pixels
-    Block size must be odd
+    Parameters
+    ----------
 
-    Alternative: can specify percentile instead of mean factor
+    masked_image : ndarray
+        Image with beam removed (zeroed)
+
+    threshold : int
+        Any pixels with photon count greater than ``threshold`` are
+        considered hot spots.
+
+    filter_size : int
+        Size of filter ``filter_size`` by ``filter_size``.
+
+    method : str
+        Choice of ``ignore`` which sets all pixels near the hot spot to zero,
+        which gets ignored by Gaussian filtering, or ``median``, which sets
+        all pixels near the hot spot to the median value.
     """
-    if block_size % 2 != 1.0:
-        raise ValueError("Block size must be odd!")
-    cleaned_img = np.copy(img)
+    hot_spot_coords_array = find_hot_spots(masked_image, threshold)
+    filtered_image = masked_image.copy()
 
-    filter_mask = create_circular_mask(block_size,block_size,rmin=rmin,rmax=rmax)
+    for hot_spot_coords in hot_spot_coords_array:
+        hot_spot_roi_rows = slice(
+                hot_spot_coords[0]-filter_size//2,
+                hot_spot_coords[0]+filter_size//2+1)
+        hot_spot_roi_cols = slice(
+                hot_spot_coords[1]-filter_size//2,
+                hot_spot_coords[1]+filter_size//2+1)
 
-    # Apply the stray_detector as a custom filter
-    generic_filter(img, stray_filter, size=block_size,
-                                 output=cleaned_img, mode='reflect',
-                                 extra_keywords={
-                                     "filter_mask": filter_mask,
-                                     })
-    
-    return cleaned_img
+        hot_spot_roi = filtered_image[hot_spot_roi_rows, hot_spot_roi_cols]
+        if method == "ignore":
+            filtered_image[hot_spot_roi_rows, hot_spot_roi_cols] = 0
+        elif method == "median":
+            filtered_image[hot_spot_roi_rows, hot_spot_roi_cols] = np.median(
+                    hot_spot_roi)
+
+    return filtered_image

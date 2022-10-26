@@ -20,8 +20,7 @@ from eosdxanalysis.preprocessing.center_finding import circular_average
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
 
-from eosdxanalysis.preprocessing.denoising import stray_filter
-from eosdxanalysis.preprocessing.denoising import filter_strays
+from eosdxanalysis.preprocessing.denoising import filter_hot_spots
 
 from eosdxanalysis.preprocessing.utils import count_intervals
 from eosdxanalysis.preprocessing.utils import create_circular_mask
@@ -640,27 +639,55 @@ class TestUtils(unittest.TestCase):
 
 class TestDenoising(unittest.TestCase):
 
-    def test_stray_detector_high_intensity(self):
-        # Create a test array where center value is much higher
-        # than neighborhood average
-        test_array = np.array([[1,2,3],[1,105,0],[2,25,2]])
-        center_value = test_array[1,1]
-        # Apply filter to center value
-        filtered_center = stray_filter(test_array, factor=5.0)
+    def test_filter_hot_spots_median_method(self):
+        """
+        Test hot spot filter using the median method
+        """
+        size = 256
+        test_image = np.ones((size,size))
+        hot_spot_coords = (20,40)
+        hot_spot_value = 10
+        test_image[hot_spot_coords] = hot_spot_value
 
-        # Ensure filter changed value to mean of neighbors
-        self.assertFalse(center_value == filtered_center)
+        self.assertEqual(np.max(test_image), hot_spot_value)
 
-    def test_stray_detector_low_intensity(self):
-        # Create a test array where center value is close to
-        # neighborhood average
-        test_array = np.array([[1,2,3],[1,20,0],[2,25,2]])
-        center_value = test_array[1,1]
-        # Apply filter to center value
-        filtered_center = stray_filter(test_array, factor=5.0)
+        threshold = 5
+        filtered_image = filter_hot_spots(test_image, threshold, method="median")
 
-        # Ensure filter did not change center value
-        self.assertTrue(center_value == filtered_center)
+        self.assertTrue(np.array_equal(filtered_image, np.ones((size,size))))
+
+    def test_filter_hot_spots_ignore_method(self):
+        """
+        Test hot spot filter using the ignore method
+        """
+        size = 256
+        filter_size = 5
+        test_image = np.ones((size,size))
+        hot_spot_coords = (20,40)
+        hot_spot_value = 10
+        test_image[hot_spot_coords] = hot_spot_value
+
+        # Set the known result which has the 5x5 neighborhood of the hot spot
+        # set to zero
+        known_result = test_image.copy()
+        hot_spot_roi_rows = slice(
+                hot_spot_coords[0]-filter_size//2,
+                hot_spot_coords[0]+filter_size//2+1)
+        hot_spot_roi_cols = slice(
+                hot_spot_coords[1]-filter_size//2,
+                hot_spot_coords[1]+filter_size//2+1)
+        hot_spot_roi = test_image[hot_spot_roi_rows, hot_spot_roi_cols]
+
+        self.assertEqual(np.max(test_image), hot_spot_value)
+
+        threshold = 5
+        filtered_image = filter_hot_spots(
+                test_image, threshold, filter_size=filter_size,
+                method="ignore")
+
+        self.assertFalse(np.array_equal(filtered_image, test_image))
+
+        self.assertTrue(np.array_equal(filtered_image, known_result))
 
 
 class TestImageProcessing(unittest.TestCase):
@@ -1299,6 +1326,30 @@ class TestBeamUtils(unittest.TestCase):
 
         self.fail("Finish writing test.")
 
+    def test_azimuthal_integration_scaling(self):
+        """
+        Ensure azimuthal integration scales properly
+        """
+        # Create test image such that the inner annulus is 1
+        # and the outer annulus is 0
+        # The resulting azimuthal integration profile should
+        # be a step function
+        size = 256
+        test_image = np.zeros((size, size))
+        mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
+        test_image[mask] = 1
+
+        profile_1d = azimuthal_integration(test_image)
+        profile_size = profile_1d.size
+        step_function = np.zeros(profile_size)
+        step_function[:profile_size//2] = 1
+
+        # Take the difference
+        diff = abs(step_function - profile_1d)
+
+        # Test that the 1-D integrated profile is close to a step function
+        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
+
     def test_beam_radius_924_measurements(self):
         """
         Test dynamic beam detection on remeasurements data
@@ -1322,6 +1373,7 @@ class TestBeamUtils(unittest.TestCase):
 
             # Check if the beam radius is accurate to within 1 pixel
             self.assertTrue(np.isclose(calculated_radius, known_radius, atol=1))
+
 
     def test_beam_radius(self):
         """
