@@ -1326,6 +1326,30 @@ class TestBeamUtils(unittest.TestCase):
 
         self.fail("Finish writing test.")
 
+    def test_azimuthal_integration_scaling(self):
+        """
+        Ensure azimuthal integration scales properly
+        """
+        # Create test image such that the inner annulus is 1
+        # and the outer annulus is 0
+        # The resulting azimuthal integration profile should
+        # be a step function
+        size = 256
+        test_image = np.zeros((size, size))
+        mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
+        test_image[mask] = 1
+
+        profile_1d = azimuthal_integration(test_image)
+        profile_size = profile_1d.size
+        step_function = np.zeros(profile_size)
+        step_function[:profile_size//2] = 1
+
+        # Take the difference
+        diff = abs(step_function - profile_1d)
+
+        # Test that the 1-D integrated profile is close to a step function
+        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
+
     def test_beam_radius_924_measurements(self):
         """
         Test dynamic beam detection on remeasurements data
@@ -1349,6 +1373,7 @@ class TestBeamUtils(unittest.TestCase):
 
             # Check if the beam radius is accurate to within 1 pixel
             self.assertTrue(np.isclose(calculated_radius, known_radius, atol=1))
+
 
     def test_beam_radius(self):
         """
