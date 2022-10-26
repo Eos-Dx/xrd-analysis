@@ -664,6 +664,6 @@ if __name__ == "__main__":
 
         # Run preprocessing
         preprocessor.preprocess(plans=plans, mask_style=params.get("crop_style"),
-                uniform_filter_size=uniform_filter_size, scaling=scaling)
+                uniform_filter_size=int(uniform_filter_size), scaling=scaling)
 
     print("Done preprocessing.")
