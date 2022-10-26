@@ -31,9 +31,9 @@ def azimuthal_integration(image, center=None, output_shape=(360,128)):
     profile_1d : (n,1)-array float 
     """
     polar_image = warp_polar(
-            image, radius=output_shape[1], output_shape=output_shape,
-            preserve_range=True)
-    profile_1d = np.sum(polar_image, axis=0)
+            image, center=center, radius=output_shape[1],
+            output_shape=output_shape, preserve_range=True)
+    profile_1d = np.mean(polar_image, axis=0)
     return profile_1d
 
 def beam_radius(image, center=None, bounds=None):
