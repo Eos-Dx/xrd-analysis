@@ -676,7 +676,7 @@ class TestDenoising(unittest.TestCase):
         hot_spot_roi_cols = slice(
                 hot_spot_coords[1]-filter_size//2,
                 hot_spot_coords[1]+filter_size//2+1)
-        hot_spot_roi = test_image[hot_spot_roi_rows, hot_spot_roi_cols]
+        known_result[hot_spot_roi_rows, hot_spot_roi_cols] = 0
 
         self.assertEqual(np.max(test_image), hot_spot_value)
 
