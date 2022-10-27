@@ -188,6 +188,7 @@ class PreprocessData(object):
         local_thresh_block_size = params.get("local_thresh_block_size")
         beam_detection = params.get("beam_detection")
         cmap = params.get("cmap", "hot")
+        hot_spot_filtering = params.get("hot_spot_filtering")
 
         # Get plans from from parameters or keyword argument
         plans = params.get("plans", plans)
@@ -245,33 +246,37 @@ class PreprocessData(object):
             # Loop over files
             for file_path in file_path_list:
                 # Load file
-                sample = np.loadtxt(file_path)
+                output = np.loadtxt(file_path)
 
                 # Calculate array center
-                array_center = np.array(sample.shape)/2-0.5
+                array_center = np.array(output.shape)/2-0.5
                 self.array_center = array_center
 
                 filename = os.path.basename(file_path)
 
+                if hot_spot_filtering:
+                    # Hot spot filtering
+                    output = filter_hot_spots(output, 5000)
+
                 # Set the output based on output specifications
                 if plan == "original":
-                    output = sample
+                    pass
 
                 if plan == "centerize":
                     # Centerize and rotate
-                    centered_image, center = self.centerize(sample)
+                    centered_image, center = self.centerize(output)
                     # Set output
                     output = centered_image
 
                 if plan == "centerize_rotate":
                     # Centerize and rotate
-                    centered_rotated_image, center, angle = self.centerize_and_rotate(sample)
+                    centered_rotated_image, center, angle = self.centerize_and_rotate(output)
                     # Set output
                     output = centered_rotated_image
 
                 if plan == "centerize_rotate_quad_fold":
                     # Centerize and rotate
-                    centered_rotated_image, center, angle = self.centerize_and_rotate(sample)
+                    centered_rotated_image, center, angle = self.centerize_and_rotate(output)
                     # Quad fold
                     centered_rotated_quad_folded_image = quadrant_fold(centered_rotated_image)
                     # Set output
@@ -279,7 +284,7 @@ class PreprocessData(object):
 
                 if plan == "local_thresh_centerize_rotate":
                     # Take local threshold
-                    local_thresh_image = threshold_local(sample, local_thresh_block_size)
+                    local_thresh_image = threshold_local(output, local_thresh_block_size)
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Set output
@@ -287,7 +292,7 @@ class PreprocessData(object):
 
                 if plan == "local_thresh_centerize_rotate_quad_fold":
                     # Take local threshold
-                    local_thresh_image = threshold_local(sample, local_thresh_block_size)
+                    local_thresh_image = threshold_local(output, local_thresh_block_size)
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Quad fold
@@ -301,8 +306,6 @@ class PreprocessData(object):
                 # Mask
                 if mask_style:
                     output = self.mask(output, style=mask_style)
-                    # Hot spot filtering
-                    output = filter_hot_spots(output, 5000)
 
                 # Save the file
                 output_filename = "{}_{}".format(output_style_abbreviation,
