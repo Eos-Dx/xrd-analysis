@@ -1350,6 +1350,14 @@ class TestBeamUtils(unittest.TestCase):
         # Test that the 1-D integrated profile is close to a step function
         self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
 
+    #     In this test we receive only 4 values (0, 1, 0.003, 0.77)
+        values = np.unique(profile_1d)
+        self.assertEqual(values.size, 4)
+
+    #     Ensure we do not receive the value arround 0.5
+        self.assertFalse(np.isclose(values, 0.5, atol=0.1).any())
+
+
     def test_beam_radius_924_measurements(self):
         """
         Test dynamic beam detection on remeasurements data
