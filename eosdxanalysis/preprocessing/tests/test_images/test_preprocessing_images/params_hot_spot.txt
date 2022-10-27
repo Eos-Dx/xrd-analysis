@@ -1,0 +1,17 @@
+{
+    "h": 256,
+    "w": 256,
+    "beam_rmax": 25,
+    "rmin": 25,
+    "rmax": 90,
+    "eyes_rmin": 30,
+    "eyes_rmax": 45,
+    "eyes_blob_rmax": 20,
+    "eyes_percentile": 99,
+    "local_thresh_block_size": 21,
+    "crop_style": "both",
+    "hot_spot_filter": true,				
+    "plans": [
+        "original"
+    ]
+}
