@@ -21,6 +21,7 @@ from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
 
 from eosdxanalysis.preprocessing.denoising import filter_hot_spots
+from eosdxanalysis.preprocessing.denoising import find_hot_spots
 
 from eosdxanalysis.preprocessing.utils import count_intervals
 from eosdxanalysis.preprocessing.utils import create_circular_mask
@@ -395,6 +396,14 @@ class TestPreprocessData(unittest.TestCase):
             params_centerize_rotate = param_fp.read()
         self.params_centerize_rotate = params_centerize_rotate
 
+        # Specify parameters file with hot spot filtering
+        params_hot_spot_file = os.path.join(test_path, "params_hot_spot.txt")
+        self.params_hot_spot_file = params_hot_spot_file
+
+        with open(params_hot_spot_file, "r") as param_fp:
+            params_hot_spot = param_fp.read()
+        self.params_hot_spot = params_hot_spot
+
         # Create test images
         INPUT_DIR="input"
 
@@ -501,6 +510,42 @@ class TestPreprocessData(unittest.TestCase):
         for idx in range(len(angles)):
             self.assertTrue(np.isclose(angles[idx], angles[0], rtol=0.05))
             self.assertTrue(np.isclose(centers[idx], centers[0], rtol=0.01).all())
+
+    def test_preprocess_hot_spot_filter(self):
+        params_hot_spot = self.params_hot_spot
+        test_input_path = self.test_input_path
+        test_output_path = self.test_output_path
+        input_file_path_list = self.input_file_path_list
+
+        input_filename = "AA00950.txt"
+        input_filename_fullpath = os.path.join(test_input_path, input_filename)
+        output_filename_fullpath = os.path.join(test_output_path,
+                "original", "O_" + input_filename)
+
+        params = json.loads(params_hot_spot)
+
+        preprocessor = PreprocessData(filename=input_filename,
+                input_path=test_input_path, output_path=test_output_path, params=params)
+
+        # Preprocess data, saving to a file
+        preprocessor.preprocess()
+
+        # Load data
+        input_image = np.loadtxt(input_filename_fullpath)
+
+        preprocessed_image = np.loadtxt(output_filename_fullpath)
+
+        # Check if image is non-zero
+        self.assertFalse(np.array_equal(preprocessed_image, np.zeros(preprocessed_image.shape)))
+
+        # Finding the hot spots
+        threshold = 5000
+        input_hot_spot_coords = find_hot_spots(input_image, threshold)
+
+        # Find hot spots in the preprocesed image
+        preprocessed_hot_spot_coords = find_hot_spots(preprocessed_image, threshold)
+
+        self.fail("finish writing test")
 
     def tearDown(self):
         # Delete the output folder
