@@ -19,7 +19,7 @@ def find_hot_spots(masked_image, threshold):
         Any pixels with photon count greater than ``threshold`` are
         considered hot spots.
     """
-    hot_spot_coords_array= np.array(np.where(masked_image > threshold)).reshape(-1,2)
+    hot_spot_coords_array = np.array(np.where(masked_image > threshold)).reshape(-1,2)
     return hot_spot_coords_array
 
 def filter_hot_spots(masked_image, threshold, filter_size=5, method="ignore"):
