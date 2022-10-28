@@ -10,7 +10,7 @@
     "eyes_percentile": 99,
     "local_thresh_block_size": 21,
     "crop_style": "both",
-    "hot_spot_threshold": 5000,				
+    "hot_spot_threshold": 400,
     "plans": [
         "original"
     ]
