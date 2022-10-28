@@ -560,8 +560,18 @@ class TestPreprocessData(unittest.TestCase):
         preprocessed_unfiltered_image = np.loadtxt(output_unfiltered_filename_fullpath)
 
         # Check if image is non-zero
-        self.assertFalse(np.array_equal(preprocessed_filtered_image, np.zeros(preprocessed_filtered_image.shape)))
-        self.assertFalse(np.array_equal(preprocessed_unfiltered_image, np.zeros(preprocessed_unfiltered_image.shape)))
+        self.assertFalse(
+                np.array_equal(
+                    preprocessed_filtered_image,
+                    np.zeros(preprocessed_filtered_image.shape)))
+        self.assertFalse(
+                np.array_equal(
+                    preprocessed_unfiltered_image,
+                    np.zeros(preprocessed_unfiltered_image.shape)))
+
+        # Check if images are the same
+        self.assertFalse(
+                np.array_equal(preprocessed_filtered_image, preprocessed_unfiltered_image))
 
         # Finding the hot spots
         threshold = 400
@@ -570,6 +580,7 @@ class TestPreprocessData(unittest.TestCase):
 
         self.assertTrue(unfiltered_hot_spot_coords.size > 0)
         self.assertTrue(filtered_hot_spot_coords.size == 0)
+
 
     def tearDown(self):
         # Delete the output folder
