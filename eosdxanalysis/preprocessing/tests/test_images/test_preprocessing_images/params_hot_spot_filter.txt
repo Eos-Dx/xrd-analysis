@@ -1,8 +1,8 @@
 {
     "h": 256,
     "w": 256,
-    "beam_rmax": 25,
-    "rmin": 25,
+    "beam_rmax": 30,
+    "rmin": 30,
     "rmax": 90,
     "eyes_rmin": 30,
     "eyes_rmax": 45,
