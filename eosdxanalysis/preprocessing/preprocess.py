@@ -188,7 +188,7 @@ class PreprocessData(object):
         local_thresh_block_size = params.get("local_thresh_block_size")
         beam_detection = params.get("beam_detection")
         cmap = params.get("cmap", "hot")
-        hot_spot_filtering = params.get("hot_spot_filtering")
+        hot_spot_threshold = params.get("hot_spot_threshold", None)
 
         # Get plans from from parameters or keyword argument
         plans = params.get("plans", plans)
@@ -254,9 +254,14 @@ class PreprocessData(object):
 
                 filename = os.path.basename(file_path)
 
-                if hot_spot_filtering:
+                if hot_spot_threshold:
+                    # Mask beam
+                    center = find_center(output, method="max_centroid", rmax=beam_rmax)
+                    mask = create_circular_mask(h, w, center=center, rmin=rmin)
+                    masked_image = output.copy()
+                    masked_image[mask] = 0
                     # Hot spot filtering
-                    output = filter_hot_spots(output, 5000)
+                    output = filter_hot_spots(masked_image, hot_spot_threshold)
 
                 # Set the output based on output specifications
                 if plan == "original":
