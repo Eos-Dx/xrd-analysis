@@ -397,18 +397,26 @@ class TestPreprocessData(unittest.TestCase):
         self.params_centerize_rotate = params_centerize_rotate
 
         # Specify parameters file with hot spot filtering
-        params_hot_spot_file = os.path.join(test_path, "params_hot_spot.txt")
-        self.params_hot_spot_file = params_hot_spot_file
+        params_hot_spot_filter_file = os.path.join(test_path, "params_hot_spot_filter.txt")
+        self.params_hot_spot_filter_file = params_hot_spot_filter_file
 
-        with open(params_hot_spot_file, "r") as param_fp:
-            params_hot_spot = param_fp.read()
-        self.params_hot_spot = params_hot_spot
+        with open(params_hot_spot_filter_file, "r") as param_fp:
+            params_hot_spot_filter = param_fp.read()
+        self.params_hot_spot_filter = params_hot_spot_filter
+
+        # Specify parameters file with hot spot filtering
+        params_hot_spot_no_filter_file = os.path.join(test_path, "params_hot_spot_no_filter.txt")
+        self.params_hot_spot_no_filter_file = params_hot_spot_no_filter_file
+
+        with open(params_hot_spot_no_filter_file, "r") as param_fp:
+            params_hot_spot_no_filter = param_fp.read()
+        self.params_hot_spot_no_filter = params_hot_spot_no_filter
 
         # Create test images
         INPUT_DIR="input"
 
         # Set up test image
-        test_image = np.zeros((256,256), dtype=np.uint16)
+        test_image = np.zeros((256, 256), dtype=np.uint16)
         center = (test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5)
         test_image[127:129, 127:129] = 9
         test_image[92, 163] = 5
@@ -512,40 +520,56 @@ class TestPreprocessData(unittest.TestCase):
             self.assertTrue(np.isclose(centers[idx], centers[0], rtol=0.01).all())
 
     def test_preprocess_hot_spot_filter(self):
-        params_hot_spot = self.params_hot_spot
+        params_hot_spot_filter = self.params_hot_spot_filter
+        params_hot_spot_no_filter = self.params_hot_spot_no_filter
         test_input_path = self.test_input_path
-        test_output_path = self.test_output_path
+        test_output_parent_path = self.test_output_path
         input_file_path_list = self.input_file_path_list
+
+        # Set output paths
+        test_output_filtered_path = os.path.join(test_output_parent_path, "filtered")
+        test_output_unfiltered_path = os.path.join(test_output_parent_path, "unfiltered")
+
+        # Create output paths
+        os.makedirs(test_output_filtered_path, exist_ok=True)
+        os.makedirs(test_output_unfiltered_path, exist_ok=True)
 
         input_filename = "AA00950.txt"
         input_filename_fullpath = os.path.join(test_input_path, input_filename)
-        output_filename_fullpath = os.path.join(test_output_path,
+        output_filtered_filename_fullpath = os.path.join(test_output_filtered_path,
+                "original", "O_" + input_filename)
+        output_unfiltered_filename_fullpath = os.path.join(test_output_unfiltered_path,
                 "original", "O_" + input_filename)
 
-        params = json.loads(params_hot_spot)
+        params_filter = json.loads(params_hot_spot_filter)
+        params_no_filter = json.loads(params_hot_spot_no_filter)
 
-        preprocessor = PreprocessData(filename=input_filename,
-                input_path=test_input_path, output_path=test_output_path, params=params)
+        preprocessor_filter = PreprocessData(filename=input_filename,
+                input_path=test_input_path, output_path=test_output_filtered_path, params=params_filter)
+        preprocessor_no_filter = PreprocessData(filename=input_filename,
+                                      input_path=test_input_path, output_path=test_output_unfiltered_path, params=params_no_filter)
 
         # Preprocess data, saving to a file
-        preprocessor.preprocess()
+        preprocessor_filter.preprocess()
+        preprocessor_no_filter.preprocess()
 
         # Load data
         input_image = np.loadtxt(input_filename_fullpath)
 
-        preprocessed_image = np.loadtxt(output_filename_fullpath)
+        preprocessed_filtered_image = np.loadtxt(output_filtered_filename_fullpath)
+        preprocessed_unfiltered_image = np.loadtxt(output_unfiltered_filename_fullpath)
 
         # Check if image is non-zero
-        self.assertFalse(np.array_equal(preprocessed_image, np.zeros(preprocessed_image.shape)))
+        self.assertFalse(np.array_equal(preprocessed_filtered_image, np.zeros(preprocessed_filtered_image.shape)))
+        self.assertFalse(np.array_equal(preprocessed_unfiltered_image, np.zeros(preprocessed_unfiltered_image.shape)))
 
         # Finding the hot spots
-        threshold = 5000
-        input_hot_spot_coords = find_hot_spots(input_image, threshold)
+        threshold = 400
+        filtered_hot_spot_coords = find_hot_spots(preprocessed_filtered_image, threshold)
+        unfiltered_hot_spot_coords = find_hot_spots(preprocessed_unfiltered_image, threshold)
 
-        # Find hot spots in the preprocesed image
-        preprocessed_hot_spot_coords = find_hot_spots(preprocessed_image, threshold)
-
-        self.fail("finish writing test")
+        self.assertTrue(unfiltered_hot_spot_coords.size > 0)
+        self.assertTrue(filtered_hot_spot_coords.size == 0)
 
     def tearDown(self):
         # Delete the output folder
