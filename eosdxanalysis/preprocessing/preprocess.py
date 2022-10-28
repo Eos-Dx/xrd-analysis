@@ -259,9 +259,9 @@ class PreprocessData(object):
                 if hot_spot_threshold:
                     # Use a beam-masked image to filter hot spots
                     center = find_center(image, method="max_centroid", rmax=beam_rmax)
-                    mask = create_circular_mask(h, w, center=center, rmin=rmin)
+                    mask = create_circular_mask(h, w, center=center, rmin=beam_rmax)
                     masked_image = image.copy()
-                    masked_image[mask] = 0
+                    masked_image[~mask] = 0
                     hot_spot_coords_array = find_hot_spots(masked_image, hot_spot_threshold)
                     # Filter hot spots on original image, not masked image
                     output = filter_hot_spots(
