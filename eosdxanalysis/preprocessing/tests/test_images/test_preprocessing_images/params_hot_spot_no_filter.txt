@@ -1,0 +1,16 @@
+{
+    "h": 256,
+    "w": 256,
+    "beam_rmax": 30,
+    "rmin": 30,
+    "rmax": 90,
+    "eyes_rmin": 30,
+    "eyes_rmax": 45,
+    "eyes_blob_rmax": 20,
+    "eyes_percentile": 99,
+    "local_thresh_block_size": 21,
+    "crop_style": "both",				
+    "plans": [
+        "original"
+    ]
+}
