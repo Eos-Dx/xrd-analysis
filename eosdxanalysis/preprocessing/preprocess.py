@@ -247,10 +247,10 @@ class PreprocessData(object):
             # Loop over files
             for file_path in file_path_list:
                 # Load file
-                image = np.loadtxt(file_path)
+                plan_image = np.loadtxt(file_path)
 
                 # Calculate array center
-                array_center = np.array(image.shape)/2-0.5
+                array_center = np.array(plan_image.shape)/2-0.5
                 self.array_center = array_center
                 center = None
 
@@ -258,35 +258,35 @@ class PreprocessData(object):
 
                 if hot_spot_threshold:
                     # Use a beam-masked image to filter hot spots
-                    center = find_center(image, method="max_centroid", rmax=beam_rmax)
+                    center = find_center(plan_image, method="max_centroid", rmax=beam_rmax)
                     mask = create_circular_mask(h, w, center=center, rmin=beam_rmax)
-                    masked_image = image.copy()
+                    masked_image = plan_image.copy()
                     masked_image[~mask] = 0
                     hot_spot_coords_array = find_hot_spots(masked_image, hot_spot_threshold)
                     # Filter hot spots on original image, not masked image
-                    output = filter_hot_spots(
-                            image, threshold=hot_spot_threshold,
+                    plan_image = filter_hot_spots(
+                            plan_image, threshold=hot_spot_threshold,
                             hot_spot_coords_array=hot_spot_coords_array)
 
                 # Set the output based on output specifications
                 if plan == "original":
-                    output = image
+                    output = plan_image
 
                 elif plan == "centerize":
                     # Centerize and rotate
-                    centered_image, center = self.centerize(image)
+                    centered_image, center = self.centerize(plan_image)
                     # Set output
                     output = centered_image
 
                 elif plan == "centerize_rotate":
                     # Centerize and rotate
-                    centered_rotated_image, center, angle = self.centerize_and_rotate(image)
+                    centered_rotated_image, center, angle = self.centerize_and_rotate(plan_image)
                     # Set output
                     output = centered_rotated_image
 
                 elif plan == "centerize_rotate_quad_fold":
                     # Centerize and rotate
-                    centered_rotated_image, center, angle = self.centerize_and_rotate(image)
+                    centered_rotated_image, center, angle = self.centerize_and_rotate(plan_image)
                     # Quad fold
                     centered_rotated_quad_folded_image = quadrant_fold(centered_rotated_image)
                     # Set output
@@ -294,7 +294,7 @@ class PreprocessData(object):
 
                 elif plan == "local_thresh_centerize_rotate":
                     # Take local threshold
-                    local_thresh_image = threshold_local(image, local_thresh_block_size)
+                    local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Set output
@@ -302,7 +302,7 @@ class PreprocessData(object):
 
                 elif plan == "local_thresh_centerize_rotate_quad_fold":
                     # Take local threshold
-                    local_thresh_image = threshold_local(image, local_thresh_block_size)
+                    local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Quad fold
@@ -317,7 +317,7 @@ class PreprocessData(object):
                 # Mask
                 if mask_style:
                     if not center:
-                        center = find_center(image, method="max_centroid", rmax=beam_rmax)
+                        center = find_center(plan_image, method="max_centroid", rmax=beam_rmax)
                     output = self.mask(output, center=center, style=mask_style)
 
                 # Save the file
