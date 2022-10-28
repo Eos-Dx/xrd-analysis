@@ -29,6 +29,7 @@ from eosdxanalysis.preprocessing.center_finding import find_centroid
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import find_maxima
+from eosdxanalysis.preprocessing.denoising import find_hot_spots
 from eosdxanalysis.preprocessing.denoising import filter_hot_spots
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
@@ -188,6 +189,7 @@ class PreprocessData(object):
         local_thresh_block_size = params.get("local_thresh_block_size")
         beam_detection = params.get("beam_detection")
         cmap = params.get("cmap", "hot")
+        hot_spot_threshold = params.get("hot_spot_threshold", None)
 
         # Get plans from from parameters or keyword argument
         plans = params.get("plans", plans)
@@ -245,49 +247,62 @@ class PreprocessData(object):
             # Loop over files
             for file_path in file_path_list:
                 # Load file
-                sample = np.loadtxt(file_path)
+                plan_image = np.loadtxt(file_path)
 
                 # Calculate array center
-                array_center = np.array(sample.shape)/2-0.5
+                array_center = np.array(plan_image.shape)/2-0.5
                 self.array_center = array_center
+                center = None
 
                 filename = os.path.basename(file_path)
 
+                if hot_spot_threshold:
+                    # Use a beam-masked image to filter hot spots
+                    center = find_center(plan_image, method="max_centroid", rmax=beam_rmax)
+                    mask = create_circular_mask(h, w, center=center, rmin=beam_rmax)
+                    masked_image = plan_image.copy()
+                    masked_image[~mask] = 0
+                    hot_spot_coords_array = find_hot_spots(masked_image, hot_spot_threshold)
+                    # Filter hot spots on original image, not masked image
+                    plan_image = filter_hot_spots(
+                            plan_image, threshold=hot_spot_threshold,
+                            hot_spot_coords_array=hot_spot_coords_array)
+
                 # Set the output based on output specifications
                 if plan == "original":
-                    output = sample
+                    output = plan_image
 
-                if plan == "centerize":
+                elif plan == "centerize":
                     # Centerize and rotate
-                    centered_image, center = self.centerize(sample)
+                    centered_image, center = self.centerize(plan_image)
                     # Set output
                     output = centered_image
 
-                if plan == "centerize_rotate":
+                elif plan == "centerize_rotate":
                     # Centerize and rotate
-                    centered_rotated_image, center, angle = self.centerize_and_rotate(sample)
+                    centered_rotated_image, center, angle = self.centerize_and_rotate(plan_image)
                     # Set output
                     output = centered_rotated_image
 
-                if plan == "centerize_rotate_quad_fold":
+                elif plan == "centerize_rotate_quad_fold":
                     # Centerize and rotate
-                    centered_rotated_image, center, angle = self.centerize_and_rotate(sample)
+                    centered_rotated_image, center, angle = self.centerize_and_rotate(plan_image)
                     # Quad fold
                     centered_rotated_quad_folded_image = quadrant_fold(centered_rotated_image)
                     # Set output
                     output = centered_rotated_quad_folded_image
 
-                if plan == "local_thresh_centerize_rotate":
+                elif plan == "local_thresh_centerize_rotate":
                     # Take local threshold
-                    local_thresh_image = threshold_local(sample, local_thresh_block_size)
+                    local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Set output
                     output = local_thresh_centered_rotated_image
 
-                if plan == "local_thresh_centerize_rotate_quad_fold":
+                elif plan == "local_thresh_centerize_rotate_quad_fold":
                     # Take local threshold
-                    local_thresh_image = threshold_local(sample, local_thresh_block_size)
+                    local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Quad fold
@@ -298,11 +313,12 @@ class PreprocessData(object):
                 # Uniform filter
                 if uniform_filter_size > 1:
                     output = ndimage.uniform_filter(output, size=uniform_filter_size)
+
                 # Mask
                 if mask_style:
-                    output = self.mask(output, style=mask_style)
-                    # Hot spot filtering
-                    output = filter_hot_spots(output, 5000)
+                    if not center:
+                        center = find_center(plan_image, method="max_centroid", rmax=beam_rmax)
+                    output = self.mask(output, center=center, style=mask_style)
 
                 # Save the file
                 output_filename = "{}_{}".format(output_style_abbreviation,
@@ -473,7 +489,7 @@ class PreprocessData(object):
         # the calculated center of the original image, and the rotation angle in degrees
         return centered_rotated_image, center, angle_degrees
 
-    def mask(self, image, style="both"):
+    def mask(self, image, center=None, style="both"):
         """
         Mask an image according to style:
         - "beam" means beam mask only
@@ -487,6 +503,9 @@ class PreprocessData(object):
         rmax = params.get("rmax")
         beam_detection = params.get("beam_detection")
 
+        if not center:
+            center = self.array_center
+
         # Mask
         if style == "both":
             # Mask out beam and area outside outer ring
@@ -495,7 +514,7 @@ class PreprocessData(object):
                     rmin = beam_radius(image)
                 except:
                     pass
-            roi_mask = create_circular_mask(h,w,rmin=rmin,rmax=rmax)
+            roi_mask = create_circular_mask(h,w,center=center,rmin=rmin,rmax=rmax)
             image[~roi_mask] = 0
         elif style == "beam":
             # Mask out beam
@@ -504,12 +523,12 @@ class PreprocessData(object):
                     rmin = beam_radius(image)
                 except:
                     pass
-            roi_mask = create_circular_mask(h,w,rmin=rmin, rmax=h)
+            roi_mask = create_circular_mask(h,w,center=center,rmin=rmin, rmax=h)
             image[~roi_mask] = 0
         elif style == "outside":
             # Mask area outside outer ring
             outside = np.max(image.shape)
-            inv_roi_mask = create_circular_mask(h,w,rmin=rmax, rmax=outside)
+            inv_roi_mask = create_circular_mask(h,w,center=center,rmin=rmax,rmax=outside)
             image[inv_roi_mask] = 0
 
         return image

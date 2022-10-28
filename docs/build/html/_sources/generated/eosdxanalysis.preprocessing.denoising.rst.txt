@@ -1,4 +1,4 @@
-eosdxanalysis.preprocessing.denoising
+﻿eosdxanalysis.preprocessing.denoising
 =====================================
 
 .. automodule:: eosdxanalysis.preprocessing.denoising
@@ -13,8 +13,8 @@ eosdxanalysis.preprocessing.denoising
 
    .. autosummary::
    
-      filter_strays
-      stray_filter
+      filter_hot_spots
+      find_hot_spots
    
    
 
