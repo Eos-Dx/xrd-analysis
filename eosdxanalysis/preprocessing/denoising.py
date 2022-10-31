@@ -7,7 +7,7 @@ from scipy.ndimage import generic_filter
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 
 
-def find_hot_spots(masked_image, threshold):
+def find_hot_spots(masked_image, threshold=None):
     """
     Parameters
     ----------
@@ -19,10 +19,12 @@ def find_hot_spots(masked_image, threshold):
         Any pixels with photon count greater than ``threshold`` are
         considered hot spots.
     """
-    hot_spot_coords_array= np.array(np.where(masked_image > threshold)).reshape(-1,2)
+    hot_spot_coords_array = np.array(np.where(masked_image > threshold)).reshape(-1,2)
     return hot_spot_coords_array
 
-def filter_hot_spots(masked_image, threshold, filter_size=5, method="ignore"):
+def filter_hot_spots(
+        masked_image, threshold=None, hot_spot_coords_array=None, filter_size=5,
+        method="ignore"):
     """
     Parameters
     ----------
@@ -42,7 +44,8 @@ def filter_hot_spots(masked_image, threshold, filter_size=5, method="ignore"):
         which gets ignored by Gaussian filtering, or ``median``, which sets
         all pixels near the hot spot to the median value.
     """
-    hot_spot_coords_array = find_hot_spots(masked_image, threshold)
+    if hot_spot_coords_array is None:
+        hot_spot_coords_array = find_hot_spots(masked_image, threshold=threshold)
     filtered_image = masked_image.copy()
 
     for hot_spot_coords in hot_spot_coords_array:

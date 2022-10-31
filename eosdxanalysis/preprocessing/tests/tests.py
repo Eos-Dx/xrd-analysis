@@ -21,6 +21,7 @@ from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
 
 from eosdxanalysis.preprocessing.denoising import filter_hot_spots
+from eosdxanalysis.preprocessing.denoising import find_hot_spots
 
 from eosdxanalysis.preprocessing.utils import count_intervals
 from eosdxanalysis.preprocessing.utils import create_circular_mask
@@ -395,11 +396,27 @@ class TestPreprocessData(unittest.TestCase):
             params_centerize_rotate = param_fp.read()
         self.params_centerize_rotate = params_centerize_rotate
 
+        # Specify parameters file with hot spot filtering
+        params_hot_spot_filter_file = os.path.join(test_path, "params_hot_spot_filter.txt")
+        self.params_hot_spot_filter_file = params_hot_spot_filter_file
+
+        with open(params_hot_spot_filter_file, "r") as param_fp:
+            params_hot_spot_filter = param_fp.read()
+        self.params_hot_spot_filter = params_hot_spot_filter
+
+        # Specify parameters file with hot spot filtering
+        params_hot_spot_no_filter_file = os.path.join(test_path, "params_hot_spot_no_filter.txt")
+        self.params_hot_spot_no_filter_file = params_hot_spot_no_filter_file
+
+        with open(params_hot_spot_no_filter_file, "r") as param_fp:
+            params_hot_spot_no_filter = param_fp.read()
+        self.params_hot_spot_no_filter = params_hot_spot_no_filter
+
         # Create test images
         INPUT_DIR="input"
 
         # Set up test image
-        test_image = np.zeros((256,256), dtype=np.uint16)
+        test_image = np.zeros((256, 256), dtype=np.uint16)
         center = (test_image.shape[0]/2-0.5, test_image.shape[1]/2-0.5)
         test_image[127:129, 127:129] = 9
         test_image[92, 163] = 5
@@ -501,6 +518,69 @@ class TestPreprocessData(unittest.TestCase):
         for idx in range(len(angles)):
             self.assertTrue(np.isclose(angles[idx], angles[0], rtol=0.05))
             self.assertTrue(np.isclose(centers[idx], centers[0], rtol=0.01).all())
+
+    def test_preprocess_hot_spot_filter(self):
+        params_hot_spot_filter = self.params_hot_spot_filter
+        params_hot_spot_no_filter = self.params_hot_spot_no_filter
+        test_input_path = self.test_input_path
+        test_output_parent_path = self.test_output_path
+        input_file_path_list = self.input_file_path_list
+
+        # Set output paths
+        test_output_filtered_path = os.path.join(test_output_parent_path, "filtered")
+        test_output_unfiltered_path = os.path.join(test_output_parent_path, "unfiltered")
+
+        # Create output paths
+        os.makedirs(test_output_filtered_path, exist_ok=True)
+        os.makedirs(test_output_unfiltered_path, exist_ok=True)
+
+        input_filename = "AA00950.txt"
+        input_filename_fullpath = os.path.join(test_input_path, input_filename)
+        output_filtered_filename_fullpath = os.path.join(test_output_filtered_path,
+                "original", "O_" + input_filename)
+        output_unfiltered_filename_fullpath = os.path.join(test_output_unfiltered_path,
+                "original", "O_" + input_filename)
+
+        params_filter = json.loads(params_hot_spot_filter)
+        params_no_filter = json.loads(params_hot_spot_no_filter)
+
+        preprocessor_filter = PreprocessData(filename=input_filename,
+                input_path=test_input_path, output_path=test_output_filtered_path, params=params_filter)
+        preprocessor_no_filter = PreprocessData(filename=input_filename,
+                                      input_path=test_input_path, output_path=test_output_unfiltered_path, params=params_no_filter)
+
+        # Preprocess data, saving to a file
+        preprocessor_filter.preprocess()
+        preprocessor_no_filter.preprocess()
+
+        # Load data
+        input_image = np.loadtxt(input_filename_fullpath)
+
+        preprocessed_filtered_image = np.loadtxt(output_filtered_filename_fullpath)
+        preprocessed_unfiltered_image = np.loadtxt(output_unfiltered_filename_fullpath)
+
+        # Check if image is non-zero
+        self.assertFalse(
+                np.array_equal(
+                    preprocessed_filtered_image,
+                    np.zeros(preprocessed_filtered_image.shape)))
+        self.assertFalse(
+                np.array_equal(
+                    preprocessed_unfiltered_image,
+                    np.zeros(preprocessed_unfiltered_image.shape)))
+
+        # Check if images are the same
+        self.assertFalse(
+                np.array_equal(preprocessed_filtered_image, preprocessed_unfiltered_image))
+
+        # Finding the hot spots
+        threshold = 400
+        filtered_hot_spot_coords = find_hot_spots(preprocessed_filtered_image, threshold)
+        unfiltered_hot_spot_coords = find_hot_spots(preprocessed_unfiltered_image, threshold)
+
+        self.assertTrue(unfiltered_hot_spot_coords.size > 0)
+        self.assertTrue(filtered_hot_spot_coords.size == 0)
+
 
     def tearDown(self):
         # Delete the output folder
@@ -676,7 +756,7 @@ class TestDenoising(unittest.TestCase):
         hot_spot_roi_cols = slice(
                 hot_spot_coords[1]-filter_size//2,
                 hot_spot_coords[1]+filter_size//2+1)
-        hot_spot_roi = test_image[hot_spot_roi_rows, hot_spot_roi_cols]
+        known_result[hot_spot_roi_rows, hot_spot_roi_cols] = 0
 
         self.assertEqual(np.max(test_image), hot_spot_value)
 
@@ -1349,6 +1429,14 @@ class TestBeamUtils(unittest.TestCase):
 
         # Test that the 1-D integrated profile is close to a step function
         self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
+
+    #     In this test we receive only 4 values (0, 1, 0.003, 0.77)
+        values = np.unique(profile_1d)
+        self.assertEqual(values.size, 4)
+
+    #     Ensure we do not receive the value arround 0.5
+        self.assertFalse(np.isclose(values, 0.5, atol=0.1).any())
+
 
     def test_beam_radius_924_measurements(self):
         """
