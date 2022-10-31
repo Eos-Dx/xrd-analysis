@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>filter_strays &#8212; Eos Dx Analysis 2.11.0 documentation</title>
+    <title>filter_strays &#8212; Eos Dx Analysis 2.12.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -38,8 +38,6 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.denoising.filter_strays';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="stray_filter" href="eosdxanalysis.preprocessing.denoising.stray_filter.html" />
-    <link rel="prev" title="RMIN_BEAM" href="eosdxanalysis.preprocessing.center_finding.RMIN_BEAM.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
   </head>
@@ -91,7 +89,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.11.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.12.0 documentation</p>
   
 </a>
     
@@ -122,7 +120,7 @@
                 </li>
                 
 
-                <li class="nav-item current active">
+                <li class="nav-item">
                     <a class="nav-link" href="../api.html">
                         API
                     </a>
@@ -179,7 +177,7 @@
   <div class="bd-container">
     <div class="bd-container__inner bd-page-width">
       
-      <div class="bd-sidebar-primary bd-sidebar">
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
         
   
   <div class="sidebar-header-items sidebar-primary__section">
@@ -208,7 +206,7 @@
                 </li>
                 
 
-                <li class="nav-item current active">
+                <li class="nav-item">
                     <a class="nav-link" href="../api.html">
                         API
                     </a>
@@ -243,166 +241,6 @@
   </div>
 
   
-  <div class="sidebar-start-items sidebar-primary__section">
-    <div class="sidebar-start-items__item"><nav class="bd-links" id="bd-docs-nav" aria-label="Section navigation">
-  <p class="bd-links__title" role="heading" aria-level="1">
-    Section Navigation
-  </p>
-  <div class="bd-toc-item navbar-nav">
-    <ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.PreprocessData.html">
-   PreprocessData
-  </a>
- </li>
-</ul>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.ABBREVIATIONS.html">
-   ABBREVIATIONS
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.INVERSE_OUTPUT_MAP.html">
-   INVERSE_OUTPUT_MAP
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.OUTPUT_MAP.html">
-   OUTPUT_MAP
-  </a>
- </li>
-</ul>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.circular_average.html">
-   circular_average
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.find_center.html">
-   find_center
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.find_centroid.html">
-   find_centroid
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.radial_histogram.html">
-   radial_histogram
-  </a>
- </li>
-</ul>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.RMAX_BEAM.html">
-   RMAX_BEAM
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.RMIN_BEAM.html">
-   RMIN_BEAM
-  </a>
- </li>
-</ul>
-<ul class="current nav bd-sidenav">
- <li class="toctree-l1 current active">
-  <a class="current reference internal" href="#">
-   filter_strays
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.stray_filter.html">
-   stray_filter
-  </a>
- </li>
-</ul>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.crop_image.html">
-   crop_image
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.pad_image.html">
-   pad_image
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.quadrant_fold.html">
-   quadrant_fold
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.unwarp_polar.html">
-   unwarp_polar
-  </a>
- </li>
-</ul>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.find_1d_peaks.html">
-   find_1d_peaks
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.find_2d_peak.html">
-   find_2d_peak
-  </a>
- </li>
-</ul>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.multivariate_normal.html">
-   multivariate_normal
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.norm.html">
-   norm
-  </a>
- </li>
-</ul>
-<ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.count_intervals.html">
-   count_intervals
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.create_circular_mask.html">
-   create_circular_mask
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.find_maxima.html">
-   find_maxima
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.gen_rotation_line.html">
-   gen_rotation_line
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.get_angle.html">
-   get_angle
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.zerocross1d.html">
-   zerocross1d
-  </a>
- </li>
-</ul>
-
-  </div>
-</nav>
-    </div>
-  </div>
-  
 
   
   <div class="sidebar-end-items sidebar-primary__section">
@@ -426,14 +264,6 @@
               
   <section id="filter-strays">
 <h1>filter_strays<a class="headerlink" href="#filter-strays" title="Permalink to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.denoising.filter_strays">
-<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">filter_strays</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.filter_strays" title="Permalink to this definition">#</a></dt>
-<dd><p>Remove stray high-intensity pixels
-Block size must be odd</p>
-<p>Alternative: can specify percentile instead of mean factor</p>
-</dd></dl>
-
 </section>
 
 
@@ -444,20 +274,6 @@ Block size must be odd</p>
             <footer class="bd-footer-article">
                 <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.center_finding.RMIN_BEAM.html" title="previous page">
-      <i class="fas fa-angle-left"></i>
-      <div class="prev-next-info">
-          <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">RMIN_BEAM</p>
-      </div>
-  </a>
-  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.denoising.stray_filter.html" title="next page">
-  <div class="prev-next-info">
-      <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">stray_filter</p>
-  </div>
-  <i class="fas fa-angle-right"></i>
-  </a>
 </div>
             </footer>
             
