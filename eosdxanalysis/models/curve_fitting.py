@@ -66,7 +66,7 @@ class GaussianDecomposition(object):
     """
 
     def __init__(
-            self, image, params_init_method="estimation",
+            self, image, params_init_method="estimation", fitting_params=None,
             p0_dict=None, p_lower_bounds_dict=None, p_upper_bounds_dict=None):
         """
         Initialize `GaussianDecomposition` class.
@@ -80,7 +80,7 @@ class GaussianDecomposition(object):
         center = image.shape[0]/2-0.5, image.shape[1]/2-0.5
         self.center = center
         # Initialize parameters
-        self.parameter_init(params_init_method)
+        self.parameter_init(params_init_method, fitting_params)
         return super().__init__()
 
     def estimate_parameters(self, width=4, position_tol=0.2):
@@ -556,7 +556,8 @@ class GaussianDecomposition(object):
 
         return rotation_angle
 
-    def parameter_init(self, params_init_method="estimation"):
+    def parameter_init(
+            self, params_init_method="estimation", fitting_params=None):
         """
         Initialize parameter estimates for curve fitting optimization
 
@@ -584,6 +585,40 @@ class GaussianDecomposition(object):
                 return self.ideal_parameters()
             if params_init_method == "estimation":
                 return self.estimate_parameters()
+            if params_init_method == "manual":
+                return self.manual_parameters(fitting_params)
+
+    def manual_parameters(self, fitting_params):
+        """
+        """
+        p0_dict = OrderedDict()
+        p_lower_bounds_dict = OrderedDict()
+        p_upper_bounds_dict = OrderedDict()
+
+        for parameter, values in fitting_params.items():
+            # Get initial guess and bounds
+            initial_guess = values[0]
+            lower_bound = values[1]
+            upper_bound = values[2]
+
+            # Set initial guess
+            p0_dict[parameter] = initial_guess
+            # Set lower bound
+            p_lower_bounds_dict[parameter] = lower_bound
+            # Set upper bound
+            p_upper_bounds_dict[parameter] = upper_bound
+
+
+        # Set rotation angle initial guess and bounds
+        p0_dict["rotation_angle"] = 1e-6
+        p_lower_bounds_dict["rotation_angle"] = -np.pi/2
+        p_upper_bounds_dict["rotation_angle"] = +np.pi/2
+
+        self.p0_dict = p0_dict
+        self.p_lower_bounds_dict = p_lower_bounds_dict
+        self.p_upper_bounds_dict = p_upper_bounds_dict
+
+        return p0_dict
 
     def ideal_parameters(self):
         """
@@ -604,20 +639,20 @@ class GaussianDecomposition(object):
             p0_dict = OrderedDict({
                 # 9A equatorial peaks parameters
                 "peak_location_radius_9A":   feature_pixel_location(9.8e-10),
-                "peak_std_9A":               10.32,
-                "peak_amplitude_9A":         673.81,
-                "arc_angle_9A":              0.035,
+                "peak_std_9A":               8,
+                "peak_amplitude_9A":         800,
+                "arc_angle_9A":              0.5,
                 # 5A meridional peaks parameters
                 "peak_location_radius_5A":   feature_pixel_location(5.1e-10),
-                "peak_std_5A":               2.37,
-                "peak_amplitude_5A":         155.75,
-                "arc_angle_5A":              1.130,
+                "peak_std_5A":               2.5,
+                "peak_amplitude_5A":         300,
+                "arc_angle_5A":              1.5,
                 # 5-4A isotropic region parameters
-                "peak_location_radius_5_4A": feature_pixel_location(4.15e-10),
-                "peak_std_5_4A":             9.95,
-                "peak_amplitude_5_4A":       272.76,
+                "peak_location_radius_5_4A": feature_pixel_location(4.5e-10),
+                "peak_std_5_4A":             10,
+                "peak_amplitude_5_4A":       800,
                 # Background noise parameters
-                "constant_bg":         428.57,
+                "constant_bg":              800,
                 # Rotation angle
                 "rotation_angle":           1e-6,
                 })
@@ -1086,7 +1121,8 @@ def estimate_background_noise(image):
 
 
 def gaussian_decomposition(
-        input_path, output_path=None, params_init_method=None):
+        input_path, output_path=None, params_init_method=None,
+        fitting_params=None):
     """
     Runs batch gaussian decomposition. Provide centered and rotated images.
     """
@@ -1127,7 +1163,8 @@ def gaussian_decomposition(
 
         # Now get ``best-fit`` diffraction pattern
         gauss_class = GaussianDecomposition(
-                image, params_init_method=params_init_method)
+                image, params_init_method=params_init_method,
+                fitting_params=fitting_params)
         try:
             popt_dict, pcov = gauss_class.best_fit()
             popt = np.fromiter(popt_dict.values(), dtype=np.float64)
@@ -1202,7 +1239,10 @@ if __name__ == '__main__':
     parser.add_argument(
             "--params_init_method", default="ideal", required=False,
             help="The default method to initialize the parameters"
-            " Options are: ``ideal`` and ``estimation``.")
+            " Options are: ``ideal``, ``manual``, and ``estimation``.")
+    parser.add_argument(
+            "--fitting_params_filepath", required=False,
+            help="The initial guess and parameter bounds for fitting")
 
     # Collect arguments
     args = parser.parse_args()
@@ -1210,9 +1250,15 @@ if __name__ == '__main__':
     output_path = args.output_path
     fitting_method = args.fitting_method
     params_init_method = args.params_init_method
+    fitting_params_filepath = args.fitting_params_filepath
+
+    if fitting_params_filepath:
+        with open(fitting_params_filepath,"r") as params_fp:
+            fitting_params = json.loads(params_fp.read())
 
     if fitting_method == "gaussian-decomposition":
-        gaussian_decomposition(input_path, output_path, params_init_method)
+        gaussian_decomposition(input_path, output_path, params_init_method,
+                fitting_params)
 
     if fitting_method == "polynomial":
         raise NotImplementedError("Not fully implemeneted yet.")
