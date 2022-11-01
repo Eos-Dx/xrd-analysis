@@ -1525,7 +1525,7 @@ class TestBeamUtils(unittest.TestCase):
         YY, XX = np.meshgrid(y, x)
         RR = np.sqrt(YY**2 + XX**2)
 
-        # Set the test function as sin(r)^2
+        # Set the test function as sin(r)^2 with some scaling
         test_image = np.sin(np.pi*RR/20)**2
 
         # The period is 40
