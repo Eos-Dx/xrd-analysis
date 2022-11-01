@@ -36,11 +36,12 @@ def azimuthal_integration(image, center=None, output_shape=(360,128)):
     profile_1d = np.mean(polar_image, axis=0)
     return profile_1d
 
-def beam_radius(image, center=None, bounds=None):
+
+def beam_extent(image, center=None, bounds=None):
     """
-    Calculate the beam radius by finding the first location where the first
-    derivative is positive and the second derivative crosses zero
-    (positive to negative).
+    Calculate the beam extent by finding the first valley location
+    and the subsequent inflection point.
+    The inflection point is used to indicate the extent of the beam.
 
     Parameters
     ----------
@@ -54,7 +55,10 @@ def beam_radius(image, center=None, bounds=None):
     Returns
     -------
 
-    radius : int
+    first_inflection_point, first_valley : (int, int)
+        Returns the inflection point after the first valley.
+        If first valley or inflection point are not found then their values will be ``None``.
+
     """
     # Calculate the azimuthal integration profile
     profile_1d = azimuthal_integration(image, center)
@@ -69,8 +73,7 @@ def beam_radius(image, center=None, bounds=None):
     try:
         first_valley = valleys[0][0]
     except IndexError as err:
-        print("No valleys found!")
-        raise err
+        return None, None
 
     grad1_positive = np.where(grad1 > 0)
 
@@ -87,9 +90,9 @@ def beam_radius(image, center=None, bounds=None):
 
         # Add 1 to the index to get the start of the diffraction pattern
         # since zerocross1d returns the indx preceding the zero-crossing event
-        first_inflection_poi = \
+        first_inflection_point = \
                 inflection_point_indices[past_first_valley][0] + 1
 
-        return first_inflection_poi 
+        return first_inflection_point, first_valley
     except:
-        raise ValueError("Beam radius not found!")
+        return None, first_valley
