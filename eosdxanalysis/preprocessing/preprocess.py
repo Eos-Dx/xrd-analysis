@@ -275,7 +275,8 @@ class PreprocessData(object):
                     # Filter hot spots on original image, not masked image
                     plan_image = filter_hot_spots(
                             plan_image, threshold=hot_spot_threshold,
-                            hot_spot_coords_array=hot_spot_coords_array)
+                            hot_spot_coords_array=hot_spot_coords_array,
+                            method="median")
 
                 # Set the output based on output specifications
                 if plan == "original":
