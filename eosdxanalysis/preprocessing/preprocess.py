@@ -33,7 +33,7 @@ from eosdxanalysis.preprocessing.denoising import find_hot_spots
 from eosdxanalysis.preprocessing.denoising import filter_hot_spots
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
-from eosdxanalysis.preprocessing.beam_utils import beam_radius
+from eosdxanalysis.preprocessing.beam_utils import beam_extent
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -506,23 +506,20 @@ class PreprocessData(object):
         if not center:
             center = self.array_center
 
+        if beam_detection and style in ["both", "beam"]:
+            try:
+                inflection_point, first_valley = beam_extent(image)
+                rmin = inflection_point
+            except:
+                pass
+
         # Mask
         if style == "both":
             # Mask out beam and area outside outer ring
-            if beam_detection:
-                try:
-                    rmin = beam_radius(image)
-                except:
-                    pass
             roi_mask = create_circular_mask(h,w,center=center,rmin=rmin,rmax=rmax)
             image[~roi_mask] = 0
         elif style == "beam":
             # Mask out beam
-            if beam_detection:
-                try:
-                    rmin = beam_radius(image)
-                except:
-                    pass
             roi_mask = create_circular_mask(h,w,center=center,rmin=rmin, rmax=h)
             image[~roi_mask] = 0
         elif style == "outside":
