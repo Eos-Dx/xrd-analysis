@@ -1463,13 +1463,23 @@ class TestBeamUtils(unittest.TestCase):
             self.assertTrue(np.isclose(calculated_radius, known_radius, atol=1))
 
 
-    def test_beam_radius(self):
+    def test_beam_radius_first_valley_location(self):
         """
+        Test first valley location.
         """
-        test_image_radius_20
+        size = 256
+        test_image_radius_20 = np.ones((size, size))
+        array_center = np.array(test_image_radius_20.shape)/2 - 0.5
+
+        x = np.linspace(-array_center[1], array_center[1], num=size)
+        y = np.linspace(-array_center[0], array_center[0], num=size)
+
+        YY, XX = np.meshgrid(y, x)
+        RR = np.sqrt(YY**2 + XX**2)
 
         known_radius = 20
-        calculated_radius = beam_radius(test_image_radius_20)
+        test_image_radius_20[(RR < (known_radius + 0.5)) & (RR > (known_radius - 0.5))] = 0
+        inflection_point, calculated_radius = beam_radius(test_image_radius_20)
 
         self.assertTrue(np.isclose(calculated_radius, known_radius))
 
