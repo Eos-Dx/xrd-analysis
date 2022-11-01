@@ -13,6 +13,7 @@ import glob
 import argparse
 from collections import OrderedDict
 import time
+import json
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,8 +46,8 @@ from eosdxanalysis.simulations.utils import feature_pixel_location
 
 def main(
         input_path, output_path=None, params_init_method=None,
-        run_gauss_fit=False, run_pca=False, run_kmeans=False,
-        run_logreg=False):
+        run_gauss_fit=False, fitting_params=None,
+        run_pca=False, run_kmeans=False, run_logreg=False):
     t0 = time.time()
 
     cmap="hot"
@@ -55,7 +56,8 @@ def main(
     # --------------------------------------
     if run_gauss_fit:
         # Run Gaussian decomposition
-        gaussian_decomposition(input_path, output_path, params_init_method)
+        gaussian_decomposition(
+                input_path, output_path, params_init_method, fitting_params)
 
     # Run Principal Component Analysis
     if run_pca:
@@ -92,6 +94,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--run_gauss_fit", default=False, required=False,
             action='store_true', help="Run Gaussian fit algorithm.")
+    parser.add_argument(
+            "--fitting_params_filepath", required=False,
+            help="The initial guess and parameter bounds for fitting")
 
     # Collect arguments
     args = parser.parse_args()
@@ -99,5 +104,12 @@ if __name__ == '__main__':
     output_path = args.output_path
     params_init_method = args.params_init_method
     run_gauss_fit = args.run_gauss_fit
+    fitting_params_filepath = args.fitting_params_filepath
 
-    main(input_path, output_path, params_init_method, run_gauss_fit)
+    if fitting_params_filepath:
+        with open(fitting_params_filepath,"r") as params_fp:
+            fitting_params = json.loads(params_fp.read())
+
+    main(
+            input_path, output_path, params_init_method, run_gauss_fit,
+            fitting_params)
