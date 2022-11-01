@@ -230,6 +230,7 @@ class PreprocessData(object):
         with open(os.path.join(output_path,"params.txt"),"w") as paramsfile:
             paramsfile.write(json.dumps(params,indent=4))
 
+
         # Loop over plans
         for plan in plans:
 
@@ -243,6 +244,14 @@ class PreprocessData(object):
             # Create output directory for images
             plan_output_images_path = os.path.join(output_path, output_style + "_images")
             os.makedirs(plan_output_images_path, exist_ok=True)
+
+
+            # Create dataframe for plan
+            df_columns = ["Input_Filename", "Output_Filename"]
+            if beam_detection:
+                df_columns += ["Beam_Extent", "First_Valley"]
+
+            plan_df = pd.DataFrame(data={}, columns=df_columns)
 
             # Loop over files
             for file_path in file_path_list:
@@ -335,6 +344,22 @@ class PreprocessData(object):
                 if scaling == "dB1":
                     output = 20*np.log10(output+1)
                 plt.imsave(output_image_path, output, cmap=cmap)
+
+                # Save data to dataframe
+                # Set the new row contents
+                row = [filename, output_filename]
+                if beam_detection:
+                    inflection_point = self.inflection_point
+                    first_valley = self.first_valley
+                    row += [inflection_point, first_valley]
+
+                # Add the new row to the dataframe
+                plan_df.loc[len(plan_df)] = row
+
+            # Save plan dataframe
+            plan_dataframe_filename = "{}_dataframe.csv".format(output_style)
+            plan_dataframe_filepath = os.path.join(output_path, plan_dataframe_filename)
+            plan_df.to_csv(plan_dataframe_filepath, index=False)
 
 
     def find_eye_rotation_angle(self, image, center):
@@ -506,10 +531,13 @@ class PreprocessData(object):
         if not center:
             center = self.array_center
 
-        if beam_detection and style in ["both", "beam"]:
+        if beam_detection:
             try:
-                inflection_point, _, _ = beam_extent(image)
-                rmin = inflection_point
+                inflection_point, first_valley, profile_1d = beam_extent(image)
+                self.inflection_point = inflection_point
+                self.first_valley = first_valley
+                if style in ["both", "beam"] and inflection_point:
+                    rmin = inflection_point
             except:
                 pass
 
