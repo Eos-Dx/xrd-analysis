@@ -1490,10 +1490,26 @@ class TestBeamUtils(unittest.TestCase):
                 np.isclose(
                     calculated_first_valley_location, known_first_valley_location))
 
-    def test_beam_radius_no_valley(self):
+    def test_first_valley_location_no_valley(self):
         """
+        Test first valley location function against a test image with no
+        vallies.
         """
-        self.fail("Finish writing test.")
+        size = 256
+        array_center = np.array([size]*2)/2 - 0.5
+
+        x = np.linspace(-array_center[1], array_center[1], num=size)
+        y = np.linspace(-array_center[0], array_center[0], num=size)
+
+        YY, XX = np.meshgrid(y, x)
+        RR = np.sqrt(YY**2 + XX**2)
+
+        test_image = np.exp(RR)
+
+        first_valley, _ = first_valley_location(test_image)
+
+        # Ensure the first valley is ``None``
+        self.assertIsNone(first_valley)
 
     def test_azimuthal_integration_linear_radial_function(self):
         """
