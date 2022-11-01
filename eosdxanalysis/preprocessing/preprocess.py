@@ -508,7 +508,7 @@ class PreprocessData(object):
 
         if beam_detection and style in ["both", "beam"]:
             try:
-                inflection_point, first_valley = beam_extent(image)
+                inflection_point, _, _ = beam_extent(image)
                 rmin = inflection_point
             except:
                 pass
