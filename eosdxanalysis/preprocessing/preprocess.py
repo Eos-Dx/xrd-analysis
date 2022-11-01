@@ -284,18 +284,21 @@ class PreprocessData(object):
                 elif plan == "centerize":
                     # Centerize and rotate
                     centered_image, center = self.centerize(plan_image)
+                    center = self.array_center
                     # Set output
                     output = centered_image
 
                 elif plan == "centerize_rotate":
                     # Centerize and rotate
                     centered_rotated_image, center, angle = self.centerize_and_rotate(plan_image)
+                    center = self.array_center
                     # Set output
                     output = centered_rotated_image
 
                 elif plan == "centerize_rotate_quad_fold":
                     # Centerize and rotate
                     centered_rotated_image, center, angle = self.centerize_and_rotate(plan_image)
+                    center = self.array_center
                     # Quad fold
                     centered_rotated_quad_folded_image = quadrant_fold(centered_rotated_image)
                     # Set output
@@ -304,6 +307,7 @@ class PreprocessData(object):
                 elif plan == "local_thresh_centerize_rotate":
                     # Take local threshold
                     local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
+                    center = self.array_center
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Set output
@@ -312,6 +316,7 @@ class PreprocessData(object):
                 elif plan == "local_thresh_centerize_rotate_quad_fold":
                     # Take local threshold
                     local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
+                    center = self.array_center
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Quad fold
@@ -325,7 +330,7 @@ class PreprocessData(object):
 
                 # Mask
                 if mask_style:
-                    if not center:
+                    if not tuple(center):
                         center = find_center(plan_image, method="max_centroid", rmax=beam_rmax)
                     output = self.mask(output, center=center, style=mask_style)
 
@@ -528,7 +533,7 @@ class PreprocessData(object):
         rmax = params.get("rmax")
         beam_detection = params.get("beam_detection")
 
-        if not center:
+        if not tuple(center):
             center = self.array_center
 
         if beam_detection:
