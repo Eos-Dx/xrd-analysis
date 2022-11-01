@@ -1504,7 +1504,7 @@ class TestBeamUtils(unittest.TestCase):
         YY, XX = np.meshgrid(y, x)
         RR = np.sqrt(YY**2 + XX**2)
 
-        test_image = np.exp(RR)
+        test_image = np.exp(-(RR**2))
 
         first_valley, _ = first_valley_location(test_image)
 
