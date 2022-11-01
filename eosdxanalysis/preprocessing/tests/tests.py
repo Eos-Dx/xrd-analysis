@@ -1511,6 +1511,32 @@ class TestBeamUtils(unittest.TestCase):
         # Ensure the first valley is ``None``
         self.assertIsNone(first_valley)
 
+    def test_beam_extent(self):
+        """
+        Test beam extent function against a test image with a known valley and
+        inflection point.
+        """
+        size = 256
+        array_center = np.array([size]*2)/2 - 0.5
+
+        x = np.linspace(-array_center[1], array_center[1], num=size)
+        y = np.linspace(-array_center[0], array_center[0], num=size)
+
+        YY, XX = np.meshgrid(y, x)
+        RR = np.sqrt(YY**2 + XX**2)
+
+        # Set the test function as sin(r)^2
+        test_image = np.sin(np.pi*RR/20)**2
+
+        # The period is 40
+        # The first valley is at 20
+        # The subsequent inflection point is at 25
+        known_inflection_point = 25
+
+        inflection_point, _, _ = beam_extent(test_image)
+
+        self.assertEqual(inflection_point, known_inflection_point)
+
     def test_azimuthal_integration_linear_radial_function(self):
         """
         """
