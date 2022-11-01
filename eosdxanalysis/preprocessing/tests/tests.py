@@ -39,7 +39,8 @@ from eosdxanalysis.preprocessing.peak_finding import find_1d_peaks
 from eosdxanalysis.preprocessing.angle_finding import find_rotation_angle
 
 from eosdxanalysis.preprocessing.beam_utils import azimuthal_integration
-from eosdxanalysis.preprocessing.beam_utils import beam_radius
+from eosdxanalysis.preprocessing.beam_utils import first_valley_location
+from eosdxanalysis.preprocessing.beam_utils import beam_extent
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -1463,20 +1464,78 @@ class TestBeamUtils(unittest.TestCase):
             self.assertTrue(np.isclose(calculated_radius, known_radius, atol=1))
 
 
-    def test_beam_radius(self):
+    def test_first_valley_location(self):
         """
+        Test first valley location function against a test image with known
+        first valley location.
         """
-        test_image_radius_20
+        size = 256
+        test_image_radius_20 = np.ones((size, size))
+        array_center = np.array(test_image_radius_20.shape)/2 - 0.5
 
-        known_radius = 20
-        calculated_radius = beam_radius(test_image_radius_20)
+        x = np.linspace(-array_center[1], array_center[1], num=size)
+        y = np.linspace(-array_center[0], array_center[0], num=size)
 
-        self.assertTrue(np.isclose(calculated_radius, known_radius))
+        YY, XX = np.meshgrid(y, x)
+        RR = np.sqrt(YY**2 + XX**2)
 
-    def test_beam_radius_no_valley(self):
+        known_first_valley_location = 20
+        test_image_radius_20[
+                (RR < (known_first_valley_location + 0.5)) & \
+                        (RR > (known_first_valley_location - 0.5))] = 0
+        calculated_first_valley_location, profile_1d = first_valley_location(
+                test_image_radius_20)
+
+        self.assertTrue(
+                np.isclose(
+                    calculated_first_valley_location, known_first_valley_location))
+
+    def test_first_valley_location_no_valley(self):
         """
+        Test first valley location function against a test image with no
+        vallies.
         """
-        self.fail("Finish writing test.")
+        size = 256
+        array_center = np.array([size]*2)/2 - 0.5
+
+        x = np.linspace(-array_center[1], array_center[1], num=size)
+        y = np.linspace(-array_center[0], array_center[0], num=size)
+
+        YY, XX = np.meshgrid(y, x)
+        RR = np.sqrt(YY**2 + XX**2)
+
+        test_image = np.exp(-(RR**2))
+
+        first_valley, _ = first_valley_location(test_image)
+
+        # Ensure the first valley is ``None``
+        self.assertIsNone(first_valley)
+
+    def test_beam_extent(self):
+        """
+        Test beam extent function against a test image with a known valley and
+        inflection point.
+        """
+        size = 256
+        array_center = np.array([size]*2)/2 - 0.5
+
+        x = np.linspace(-array_center[1], array_center[1], num=size)
+        y = np.linspace(-array_center[0], array_center[0], num=size)
+
+        YY, XX = np.meshgrid(y, x)
+        RR = np.sqrt(YY**2 + XX**2)
+
+        # Set the test function as sin(r)^2 with some scaling
+        test_image = np.sin(np.pi*RR/20)**2
+
+        # The period is 40
+        # The first valley is at 20
+        # The subsequent inflection point is at 25
+        known_inflection_point = 25
+
+        inflection_point, _, _ = beam_extent(test_image)
+
+        self.assertEqual(inflection_point, known_inflection_point)
 
     def test_azimuthal_integration_linear_radial_function(self):
         """

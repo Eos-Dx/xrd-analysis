@@ -33,7 +33,7 @@ from eosdxanalysis.preprocessing.denoising import find_hot_spots
 from eosdxanalysis.preprocessing.denoising import filter_hot_spots
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
-from eosdxanalysis.preprocessing.beam_utils import beam_radius
+from eosdxanalysis.preprocessing.beam_utils import beam_extent
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -230,6 +230,7 @@ class PreprocessData(object):
         with open(os.path.join(output_path,"params.txt"),"w") as paramsfile:
             paramsfile.write(json.dumps(params,indent=4))
 
+
         # Loop over plans
         for plan in plans:
 
@@ -243,6 +244,14 @@ class PreprocessData(object):
             # Create output directory for images
             plan_output_images_path = os.path.join(output_path, output_style + "_images")
             os.makedirs(plan_output_images_path, exist_ok=True)
+
+
+            # Create dataframe for plan
+            df_columns = ["Input_Filename", "Output_Filename"]
+            if beam_detection:
+                df_columns += ["Beam_Extent", "First_Valley"]
+
+            plan_df = pd.DataFrame(data={}, columns=df_columns)
 
             # Loop over files
             for file_path in file_path_list:
@@ -266,7 +275,8 @@ class PreprocessData(object):
                     # Filter hot spots on original image, not masked image
                     plan_image = filter_hot_spots(
                             plan_image, threshold=hot_spot_threshold,
-                            hot_spot_coords_array=hot_spot_coords_array)
+                            hot_spot_coords_array=hot_spot_coords_array,
+                            method="median")
 
                 # Set the output based on output specifications
                 if plan == "original":
@@ -275,18 +285,21 @@ class PreprocessData(object):
                 elif plan == "centerize":
                     # Centerize and rotate
                     centered_image, center = self.centerize(plan_image)
+                    center = self.array_center
                     # Set output
                     output = centered_image
 
                 elif plan == "centerize_rotate":
                     # Centerize and rotate
                     centered_rotated_image, center, angle = self.centerize_and_rotate(plan_image)
+                    center = self.array_center
                     # Set output
                     output = centered_rotated_image
 
                 elif plan == "centerize_rotate_quad_fold":
                     # Centerize and rotate
                     centered_rotated_image, center, angle = self.centerize_and_rotate(plan_image)
+                    center = self.array_center
                     # Quad fold
                     centered_rotated_quad_folded_image = quadrant_fold(centered_rotated_image)
                     # Set output
@@ -295,6 +308,7 @@ class PreprocessData(object):
                 elif plan == "local_thresh_centerize_rotate":
                     # Take local threshold
                     local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
+                    center = self.array_center
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Set output
@@ -303,6 +317,7 @@ class PreprocessData(object):
                 elif plan == "local_thresh_centerize_rotate_quad_fold":
                     # Take local threshold
                     local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
+                    center = self.array_center
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
                     # Quad fold
@@ -316,7 +331,7 @@ class PreprocessData(object):
 
                 # Mask
                 if mask_style:
-                    if not center:
+                    if not tuple(center):
                         center = find_center(plan_image, method="max_centroid", rmax=beam_rmax)
                     output = self.mask(output, center=center, style=mask_style)
 
@@ -335,6 +350,22 @@ class PreprocessData(object):
                 if scaling == "dB1":
                     output = 20*np.log10(output+1)
                 plt.imsave(output_image_path, output, cmap=cmap)
+
+                # Save data to dataframe
+                # Set the new row contents
+                row = [filename, output_filename]
+                if beam_detection:
+                    inflection_point = self.inflection_point
+                    first_valley = self.first_valley
+                    row += [inflection_point, first_valley]
+
+                # Add the new row to the dataframe
+                plan_df.loc[len(plan_df)] = row
+
+            # Save plan dataframe
+            plan_dataframe_filename = "{}_dataframe.csv".format(output_style)
+            plan_dataframe_filepath = os.path.join(output_path, plan_dataframe_filename)
+            plan_df.to_csv(plan_dataframe_filepath, index=False)
 
 
     def find_eye_rotation_angle(self, image, center):
@@ -503,26 +534,26 @@ class PreprocessData(object):
         rmax = params.get("rmax")
         beam_detection = params.get("beam_detection")
 
-        if not center:
+        if not tuple(center):
             center = self.array_center
+
+        if beam_detection:
+            try:
+                inflection_point, first_valley, profile_1d = beam_extent(image)
+                self.inflection_point = inflection_point
+                self.first_valley = first_valley
+                if style in ["both", "beam"] and inflection_point:
+                    rmin = inflection_point
+            except:
+                pass
 
         # Mask
         if style == "both":
             # Mask out beam and area outside outer ring
-            if beam_detection:
-                try:
-                    rmin = beam_radius(image)
-                except:
-                    pass
             roi_mask = create_circular_mask(h,w,center=center,rmin=rmin,rmax=rmax)
             image[~roi_mask] = 0
         elif style == "beam":
             # Mask out beam
-            if beam_detection:
-                try:
-                    rmin = beam_radius(image)
-                except:
-                    pass
             roi_mask = create_circular_mask(h,w,center=center,rmin=rmin, rmax=h)
             image[~roi_mask] = 0
         elif style == "outside":

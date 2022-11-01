@@ -150,9 +150,9 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
         # Calculate blind pass/fail statistics
         # Note: blind data has no "Cancer" value 
         blind_pass_count = (
-                (df["Cancer"] == 1) & (control_series == 1)).sum()
+                (df["Cancer"].isnull()) & (control_series == 1)).sum()
         blind_fail_count = (
-                (df["Cancer"] == 1) & (control_series == 1)).sum()
+                (df["Cancer"].isnull()) & (control_series == 0)).sum()
         blind_pass_ratio = blind_pass_count / blind_total
         blind_fail_ratio = blind_fail_count / blind_total
 
