@@ -267,8 +267,8 @@ class PreprocessData(object):
                 # Calculate array center
                 array_center = np.array(plan_image.shape)/2-0.5
                 self.array_center = array_center
-                center = None
-                calculated_center = None
+                center = tuple()
+                calculated_center = tuple()
                 angle = None
 
                 filename = os.path.basename(file_path)
@@ -297,7 +297,7 @@ class PreprocessData(object):
                     # Centerize and rotate
                     centered_image, calculated_center = \
                             self.centerize(plan_image)
-                    center = self.array_center
+                    center = tuple(self.array_center)
                     # Set output
                     output = centered_image
 
@@ -305,7 +305,7 @@ class PreprocessData(object):
                     # Centerize and rotate
                     centered_rotated_image, calculated_center, angle = \
                             self.centerize_and_rotate(plan_image)
-                    center = self.array_center
+                    center = tuple(self.array_center)
                     # Set output
                     output = centered_rotated_image
 
@@ -313,7 +313,7 @@ class PreprocessData(object):
                     # Centerize and rotate
                     centered_rotated_image, calculated_center, angle = \
                             self.centerize_and_rotate(plan_image)
-                    center = self.array_center
+                    center = tuple(self.array_center)
                     # Quad fold
                     centered_rotated_quad_folded_image = quadrant_fold(centered_rotated_image)
                     # Set output
@@ -322,7 +322,7 @@ class PreprocessData(object):
                 elif plan == "local_thresh_centerize_rotate":
                     # Take local threshold
                     local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
-                    center = self.array_center
+                    center = tuple(self.array_center)
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, calculated_center, angle = \
                             self.centerize_and_rotate(local_thresh_image)
@@ -332,7 +332,7 @@ class PreprocessData(object):
                 elif plan == "local_thresh_centerize_rotate_quad_fold":
                     # Take local threshold
                     local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
-                    center = self.array_center
+                    center = tuple(self.array_center)
                     # Centerize and rotate
                     local_thresh_centered_rotated_image, calculated_center, angle = \
                             self.centerize_and_rotate(local_thresh_image)
@@ -347,7 +347,7 @@ class PreprocessData(object):
 
                 # Mask
                 if mask_style:
-                    if not tuple(center):
+                    if not center:
                         center = find_center(
                                 plan_image, method="max_centroid", rmax=beam_rmax)
                     output = self.mask(output, center=center, style=mask_style)
@@ -375,8 +375,11 @@ class PreprocessData(object):
                 #   Rotation_Angle_Guess
                 #   First_Valley
                 #   Beam_Extent
-                first_valley = self.first_valley
-                inflection_point = self.inflection_point
+                first_valley = getattr(self, "first_valley", None)
+                inflection_point = getattr(self, "inflection_point", None)
+
+                if not tuple(calculated_center):
+                    calculated_center = array_center
 
                 # Set the new row contents
                 row = [
