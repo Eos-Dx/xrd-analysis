@@ -247,9 +247,15 @@ class PreprocessData(object):
 
 
             # Create dataframe for plan
-            df_columns = ["Input_Filename", "Output_Filename"]
-            if beam_detection:
-                df_columns += ["Beam_Extent", "First_Valley"]
+            df_columns = [
+                    "Input_Filename",
+                    "Output_Filename",
+                    "Center_Row",
+                    "Center_Column",
+                    "Rotation_Angle_Guess",
+                    "First_Valley",
+                    "Beam_Extent",
+                    ]
 
             plan_df = pd.DataFrame(data={}, columns=df_columns)
 
@@ -262,13 +268,18 @@ class PreprocessData(object):
                 array_center = np.array(plan_image.shape)/2-0.5
                 self.array_center = array_center
                 center = None
+                calculated_center = None
+                angle = None
 
                 filename = os.path.basename(file_path)
 
                 if hot_spot_threshold:
                     # Use a beam-masked image to filter hot spots
-                    center = find_center(plan_image, method="max_centroid", rmax=beam_rmax)
-                    mask = create_circular_mask(h, w, center=center, rmin=beam_rmax)
+                    calculated_center = find_center(
+                            plan_image, method="max_centroid", rmax=beam_rmax)
+                    self.calculated_center = calculated_center
+                    mask = create_circular_mask(
+                            h, w, center=calculated_center, rmin=beam_rmax)
                     masked_image = plan_image.copy()
                     masked_image[~mask] = 0
                     hot_spot_coords_array = find_hot_spots(masked_image, hot_spot_threshold)
@@ -284,21 +295,24 @@ class PreprocessData(object):
 
                 elif plan == "centerize":
                     # Centerize and rotate
-                    centered_image, center = self.centerize(plan_image)
+                    centered_image, calculated_center = \
+                            self.centerize(plan_image)
                     center = self.array_center
                     # Set output
                     output = centered_image
 
                 elif plan == "centerize_rotate":
                     # Centerize and rotate
-                    centered_rotated_image, center, angle = self.centerize_and_rotate(plan_image)
+                    centered_rotated_image, calculated_center, angle = \
+                            self.centerize_and_rotate(plan_image)
                     center = self.array_center
                     # Set output
                     output = centered_rotated_image
 
                 elif plan == "centerize_rotate_quad_fold":
                     # Centerize and rotate
-                    centered_rotated_image, center, angle = self.centerize_and_rotate(plan_image)
+                    centered_rotated_image, calculated_center, angle = \
+                            self.centerize_and_rotate(plan_image)
                     center = self.array_center
                     # Quad fold
                     centered_rotated_quad_folded_image = quadrant_fold(centered_rotated_image)
@@ -310,7 +324,8 @@ class PreprocessData(object):
                     local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
                     center = self.array_center
                     # Centerize and rotate
-                    local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
+                    local_thresh_centered_rotated_image, calculated_center, angle = \
+                            self.centerize_and_rotate(local_thresh_image)
                     # Set output
                     output = local_thresh_centered_rotated_image
 
@@ -319,7 +334,8 @@ class PreprocessData(object):
                     local_thresh_image = threshold_local(plan_image, local_thresh_block_size)
                     center = self.array_center
                     # Centerize and rotate
-                    local_thresh_centered_rotated_image, center, angle = self.centerize_and_rotate(local_thresh_image)
+                    local_thresh_centered_rotated_image, calculated_center, angle = \
+                            self.centerize_and_rotate(local_thresh_image)
                     # Quad fold
                     local_thresh_centered_rotated_quad_folded_image = quadrant_fold(local_thresh_centered_rotated_image)
                     # Set output
@@ -332,7 +348,8 @@ class PreprocessData(object):
                 # Mask
                 if mask_style:
                     if not tuple(center):
-                        center = find_center(plan_image, method="max_centroid", rmax=beam_rmax)
+                        center = find_center(
+                                plan_image, method="max_centroid", rmax=beam_rmax)
                     output = self.mask(output, center=center, style=mask_style)
 
                 # Save the file
@@ -352,12 +369,25 @@ class PreprocessData(object):
                 plt.imsave(output_image_path, output, cmap=cmap)
 
                 # Save data to dataframe
+                #   Input_Filename
+                #   Output_Filename
+                #   Center
+                #   Rotation_Angle_Guess
+                #   First_Valley
+                #   Beam_Extent
+                first_valley = self.first_valley
+                inflection_point = self.inflection_point
+
                 # Set the new row contents
-                row = [filename, output_filename]
-                if beam_detection:
-                    inflection_point = self.inflection_point
-                    first_valley = self.first_valley
-                    row += [inflection_point, first_valley]
+                row = [
+                        filename,
+                        output_filename,
+                        calculated_center[0], # row
+                        calculated_center[1], # column
+                        angle,
+                        first_valley,
+                        inflection_point,
+                        ]
 
                 # Add the new row to the dataframe
                 plan_df.loc[len(plan_df)] = row
@@ -468,23 +498,27 @@ class PreprocessData(object):
         beam_rmax = params.get("beam_rmax")
         rmin = params.get("rmin")
         rmax = params.get("rmax")
+        calculated_center = getattr(self, "calculated_center", None)
 
         # Calculate array center
         array_center = np.array(image.shape)/2-0.5
         self.array_center = array_center
 
         # Find center using original image
-        center = find_center(image,method="max_centroid",rmax=beam_rmax)
-        translation = (array_center[1] - center[1], array_center[0] - center[0])
+        if not calculated_center:
+            calculated_center = find_center(image,method="max_centroid",rmax=beam_rmax)
+            self.calculated_center = calculated_center
+        translation = (array_center[1] - calculated_center[1],
+                array_center[0] - calculated_center[0])
 
         # Center the image if need be
-        if np.array_equal(center, array_center):
+        if np.array_equal(calculated_center, array_center):
             centered_image = image
         else:
             translation_tform = EuclideanTransform(translation=translation)
             centered_image = warp(image, translation_tform.inverse)
 
-        return centered_image, center
+        return centered_image, calculated_center
 
     def centerize_and_rotate(self, image):
         """
@@ -505,20 +539,22 @@ class PreprocessData(object):
         array_center = np.array(image.shape)/2-0.5
         self.array_center = array_center
 
-        centered_image, center = self.centerize(image)
+        centered_image, calculated_center = self.centerize(image)
 
         # Find eye rotation using original image
-        angle_degrees = self.find_eye_rotation_angle(image, center)
+        angle_degrees = self.find_eye_rotation_angle(
+                image, calculated_center)
 
         # Rotate the image
         if np.isclose(angle_degrees, 0):
             centered_rotated_image = centered_image
         else:
-            centered_rotated_image = rotate(centered_image, -angle_degrees, preserve_range=True)
+            centered_rotated_image = rotate(
+                    centered_image, -angle_degrees, preserve_range=True)
 
         # Returned the centerized and rotated image,
         # the calculated center of the original image, and the rotation angle in degrees
-        return centered_rotated_image, center, angle_degrees
+        return centered_rotated_image, calculated_center, angle_degrees
 
     def mask(self, image, center=None, style="both"):
         """
