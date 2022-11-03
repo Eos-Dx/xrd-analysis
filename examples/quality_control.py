@@ -122,10 +122,10 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
             print("Cancer fail: {}".format(cancer_fail_count))
 
             # Calculate ratios
-            normal_pass_ratio = normal_pass_count/normal_total
-            cancer_pass_ratio = cancer_pass_count/cancer_total
-            normal_fail_ratio = normal_fail_count/normal_total
-            cancer_fail_ratio = cancer_fail_count/cancer_total
+            normal_pass_ratio = np.nan_to_num(normal_pass_count/normal_total)
+            cancer_pass_ratio = np.nan_to_num(cancer_pass_count/cancer_total)
+            normal_fail_ratio = np.nan_to_num(normal_fail_count/normal_total)
+            cancer_fail_ratio = np.nan_to_num(cancer_fail_count/cancer_total)
 
             # Report ratios
             print("Normal pass (%): {:.1f}%".format(
@@ -137,24 +137,28 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
             print("Cancer fail (%): {:.1f}%".format(
                 100*cancer_fail_ratio))
 
-            # Calculate training pass/fail statistics
-            training_pass_count = normal_pass_count + cancer_pass_count
-            training_pass_ratio = training_pass_count / training_total
-            training_fail_count = normal_fail_count + cancer_fail_count
-            training_fail_ratio = training_fail_count / training_total
-            print("Training pass (%): {:.1f}%".format(
-                100*training_pass_ratio))
-            print("Training fail (%): {:.1f}%".format(
-                100*training_fail_ratio))
+        # Calculate training pass/fail statistics
+        training_pass_count = (
+                measurement_series == "A") & (control_series == 1)).sum()
+        training_fail_count = (
+                measurement_series == "A") & (control_series == 0)).sum()
+        training_pass_ratio = np.nan_to_num(
+                training_pass_count / training_total)
+        training_fail_ratio = np.nan_to_num(
+                training_fail_count / training_total)
+        print("Training pass (%): {:.1f}%".format(
+            100*training_pass_ratio))
+        print("Training fail (%): {:.1f}%".format(
+            100*training_fail_ratio))
 
         # Calculate blind pass/fail statistics
         # Note: blind data has no "Cancer" value 
         blind_pass_count = (
-                (df["Cancer"].isnull()) & (control_series == 1)).sum()
+                (measurement_series == "B") & (control_series == 1)).sum()
         blind_fail_count = (
-                (df["Cancer"].isnull()) & (control_series == 0)).sum()
-        blind_pass_ratio = blind_pass_count / blind_total
-        blind_fail_ratio = blind_fail_count / blind_total
+                (measurement_series == "B") & (control_series == 0)).sum()
+        blind_pass_ratio = np.nan_to_num(blind_pass_count / blind_total)
+        blind_fail_ratio = np.nan_to_num(blind_fail_count / blind_total)
 
         print("Blind pass: {}".format(blind_pass_count))
         print("Blind fail: {}".format(blind_fail_count))
@@ -171,13 +175,13 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
     # Calculate total data set statistics
     pass_total = df["qc_pass"].sum()
     print("Total pass: {}".format(pass_total))
-    pass_total_ratio = pass_total / dataset_size
+    pass_total_ratio = np.nan_to_num(pass_total / dataset_size)
     print("Total pass (%): {:.1f}%".format(
         100*pass_total_ratio))
 
     fail_total = dataset_size - pass_total
     print("Total fail: {}".format(fail_total))
-    fail_total_ratio = fail_total / dataset_size
+    fail_total_ratio = np.nan_to_num(fail_total / dataset_size)
     print("Total fail (%): {:.1f}%".format(
         100*fail_total_ratio))
 
@@ -193,8 +197,8 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
     blind_pass_count = (
         (measurement_series == "B") & (df["qc_pass"] == 1)).sum()
 
-    training_pass_ratio = training_pass_count / training_total
-    blind_pass_ratio = blind_pass_count / blind_total
+    training_pass_ratio = np.nan_to_num(training_pass_count / training_total)
+    blind_pass_ratio = np.nan_to_num(blind_pass_count / blind_total)
 
     print("Training pass: {}".format(training_pass_count))
     print("Blind pass: {}".format(blind_pass_count))
