@@ -21,7 +21,8 @@ from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 
-PIXEL_WIDTH_M = 55e-6 # Pixel width in meters (it is 55 um)
+PIXEL_WIDTH = 55e-6 # Pixel width in meters (it is 55 um)
+WAVELENGTH = 1.5418E-10 # Wavelength in meters (1.5418 Angstroms)
 
 
 class Calibration(object):
@@ -31,12 +32,13 @@ class Calibration(object):
     q units are per Angstrom
     """
 
-    def __init__(self, calibration_material, wavelen_angstrom=1.5418):
+    def __init__(self, calibration_material, wavelength=1.5418e-10,
+            pixel_width=PIXEL_WIDTH):
         """
         Initialize Calibration class
         """
         # Store source wavelength
-        self.wavelen_angstrom = wavelen_angstrom
+        self.wavelength = wavelength
 
         # Store calibration material name
         self.calibration_material = calibration_material
@@ -64,7 +66,7 @@ class Calibration(object):
         - Return the mean, standard deviation, and values
 
         """
-        wavelen_angstrom = self.wavelen_angstrom
+        wavelength = self.wavelength
         q_peaks_ref = self.q_peaks_ref
 
         # Centerize the image
@@ -175,7 +177,7 @@ class Calibration(object):
 
         # Set up linear regression inputs
         # Set y values based on derviations
-        theta_n = np.arcsin(q_peaks_avg_subset*wavelen_angstrom/(4*np.pi))
+        theta_n = np.arcsin(q_peaks_avg_subset*wavelength/(4*np.pi))
         Y = np.tan(2*theta_n).reshape(-1,1)
         # Set x values as the measured r peaks
         X = r_space_pixel[radial_peak_indices].reshape(-1,1)
@@ -192,7 +194,7 @@ class Calibration(object):
         # The slope is the inverse of the sample-to-detector distance
         distance_pixel = 1/slope
 
-        distance_m = distance_pixel * PIXEL_WIDTH_M
+        distance_m = distance_pixel * PIXEL_WIDTH
 
         return distance_m, linreg, score
 
@@ -228,6 +230,12 @@ if __name__ == "__main__":
             "--material", default="silver_behenate",
             help="The calibration material")
     parser.add_argument(
+            "--pixel_width", default=PIXEL_WIDTH,
+            help="The physical pixel size in meters.")
+    parser.add_argument(
+            "--wavelength", default=WAVELENGTH,
+            help="The wavelength meters.")
+    parser.add_argument(
             "--visualize", action="store_true",
             help="Plot calibration results to screen")
 
@@ -241,11 +249,16 @@ if __name__ == "__main__":
 
     # Set material info
     material = args.material
+    # Set wavelength
+    wavelength = args.wavelength
+    # Set pixel width
+    pixel_width = args.pixel_width
     # Set visualization option
     visualize = args.visualize
 
     # Instantiate Calibration class
-    calibrator = Calibration(calibration_material=material)
+    calibrator = Calibration(calibration_material=material,
+            wavelength=wavelength, pixel_width=pixel_width)
 
     # Load image
     image = np.loadtxt(image_fullpath, dtype=np.uint32)
