@@ -71,7 +71,7 @@ class Calibration(object):
         center = find_center(image)
         array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
         # Find eye rotation using original image
-        translation = (array_center[0] - center[0], array_center[1] - center[1])
+        translation = (array_center[1] - center[1], array_center[0] - center[0])
 
         # Center the image
         translation_tform = EuclideanTransform(translation=translation)
