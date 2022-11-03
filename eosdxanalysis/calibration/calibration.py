@@ -16,6 +16,7 @@ from scipy.signal import find_peaks
 from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
+from eosdxanalysis.preprocessing.beam_utils import azimuthal_integration
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
@@ -51,9 +52,9 @@ class Calibration(object):
                                             calibration_material))
         return super().__init__()
 
-    def single_sample_detector_distance(self, image, r_min=0, r_max=None,
-                                        distance_approx=10e-3, oversample=2,
-                                        visualize=False):
+    def single_sample_detector_distance(
+            self, image, beam_rmax=10, r_max=None, distance_approx=10e-3,
+            output_shape=(360, 128), visualize=False):
         """
         Calculate the sample-to-detector distance for a single sample
 
@@ -69,45 +70,32 @@ class Calibration(object):
         wavelength = self.wavelength
         q_peaks_ref = self.q_peaks_ref
 
-        # Centerize the image
+        # Find the image center
         center = find_center(image)
         array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
-        # Find eye rotation using original image
-        translation = (array_center[1] - center[1], array_center[0] - center[0])
 
-        # Center the image
-        translation_tform = EuclideanTransform(translation=translation)
-        centered_image = warp(
-                image, translation_tform.inverse, preserve_range=True)
+        radial_intensity = azimuthal_integration(
+                image, center=center, output_shape=output_shape)
 
-        # Warp to polar
-        # Set a maximum radius which we are interested in
-        if r_max is None:
-            raise ValueError("Must specify maximum radius.")
-        final_r_pixel = int(r_max)
 
-        # Set a minimum radius which we are interested in
-        start_r_pixel = int(r_min) if r_min else 0
+#        # Set a maximum radius which we are interested in
+#        if r_max is None:
+#            raise ValueError("Must specify maximum radius.")
+#        final_r_pixel = int(r_max)
+# -
+#        # Set a minimum radius which we are interested in
+#        start_r_pixel = int(r_min) if r_min else 0
 
-        # Oversample output image for better interpolation
-        output_shape = (oversample*centered_image.shape[0], oversample*centered_image.shape[1])
-        # Convert to 2D polar image
-        polar_image = warp_polar(centered_image, radius=final_r_pixel,
-                                output_shape=output_shape, preserve_range=True)
-
-        # Crop image based on start_r_pixel (rows is theta, cols is radius)
-        polar_image_cropped = polar_image[:, oversample*start_r_pixel:]
-
-        # Convert to 1D intensity vs. radius (pixel) and rescale by shape
-        radial_intensity = np.sum(polar_image_cropped, axis=0)/output_shape[0]
         # Set up radius linspace, where r is in pixels
-        r_space_pixel = np.linspace(start_r_pixel, final_r_pixel,
-                                                len(radial_intensity))
+        r_space_pixel = np.arange(radial_intensity.size)
+
+        # Idea: Find the widest peak
 
         # Find the radial peaks
         # Find the peak of the first doublet
         # First, get a list of possible doublets with a width of oversample*8
-        test_doublet_peak_indices, properties = find_peaks(radial_intensity, width=oversample*8)
+        test_doublet_peak_indices, properties = find_peaks(
+                radial_intensity, width=6)
         prominences = properties.get("prominences")
         if len(prominences) > 2:
             prominent_max = np.max(prominences)
@@ -148,30 +136,25 @@ class Calibration(object):
         if visualize:
             import matplotlib.pyplot as plt
 
-            title = "Polar warped image"
-            fig = plt.figure(title)
-            plt.title(title)
-            plt.imshow(20*np.log10(polar_image+1), cmap="gray")
-
-
             title = "Beam masked image"
             fig = plt.figure(title)
             plt.title(title)
-            beam_mask = create_circular_mask(
-                    centered_image.shape[1],centered_image.shape[0],rmax=r_min)
-            beam_masked_img = np.copy(centered_image)
-            beam_masked_img[beam_mask] = 0
+            mask = create_circular_mask(
+                    image.shape[1], image.shape[0], center=center,
+                    rmax=beam_rmax)
+            masked_image = np.copy(image)
+            masked_image[mask] = 0
 
-            plt.imshow(20*np.log10(beam_masked_img.astype(np.float64)+1), cmap="gray")
-            plt.scatter(beam_masked_img.shape[1]/2-0.5, beam_masked_img.shape[0]/2-0.5, color="green")
+            plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
+            plt.scatter(center[1], center[0], color="green")
 
             title = "Azimuthal integrated 1-d profile"
             fig = plt.figure(title)
             plt.title(title)
 
-            plt.scatter(r_space_pixel, 20*np.log10(radial_intensity+1))
-            plt.scatter(r_space_pixel[all_radial_peak_indices],
-                        20*np.log10(radial_intensity[all_radial_peak_indices]+1),
+            plt.plot(20*np.log10(radial_intensity+1))
+            plt.scatter(r_space_pixel[all_radial_peak_indices].ravel(),
+                        20*np.log10(radial_intensity[all_radial_peak_indices]+1).ravel(),
                         color="green", marker="+", s=500)
             plt.scatter(r_space_pixel[prominent_peak_index],
                     20*np.log10(radial_intensity[prominent_peak_index]+1),
@@ -271,7 +254,7 @@ if __name__ == "__main__":
 
     # Run calibration procedure
     detector_distance_m, linreg, score  = calibrator.single_sample_detector_distance(
-            image, r_min=0, r_max=90, distance_approx=10e-3, visualize=visualize)
+            image, beam_rmax=10, r_max=90, distance_approx=10e-3, visualize=visualize)
 
     detector_distance_mm = detector_distance_m * 1e3
 
