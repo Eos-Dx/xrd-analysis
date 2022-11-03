@@ -183,9 +183,9 @@ class Calibration(object):
         # The slope is the inverse of the sample-to-detector distance
         distance_pixel = 1/slope
 
-        distance_m = distance_pixel * PIXEL_WIDTH
+        distance = distance_pixel * PIXEL_WIDTH
 
-        return distance_m, linreg, score
+        return distance, linreg, score
 
 
     def sample_set_detector_distance(self):
@@ -253,10 +253,10 @@ if __name__ == "__main__":
     image = np.loadtxt(image_fullpath, dtype=np.uint32)
 
     # Run calibration procedure
-    detector_distance_m, linreg, score  = calibrator.single_sample_detector_distance(
+    detector_distance, linreg, score  = calibrator.single_sample_detector_distance(
             image, beam_rmax=10, r_max=90, distance_approx=10e-3, visualize=visualize)
 
-    detector_distance_mm = detector_distance_m * 1e3
+    detector_distance_mm = detector_distance * 1e3
 
     print("Detector distance:", detector_distance_mm, "[mm]")
     print("R^2:", score)
