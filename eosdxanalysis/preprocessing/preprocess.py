@@ -248,8 +248,8 @@ class PreprocessData(object):
 
             # Create dataframe for plan
             df_columns = [
-                    "Input_Filename",
-                    "Output_Filename",
+                    "Filename",
+                    "Preprocessed_Filename",
                     "Center_Row",
                     "Center_Column",
                     "Rotation_Angle_Guess",
