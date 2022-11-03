@@ -130,8 +130,8 @@ class Calibration(object):
             # Take subset
             # Note: need to do :final_index+1 since slicing is right-exclusive,
             # and num_missing-1: since slicing is left-inclusive
-            radial_peak_indices = all_radial_peak_indices[num_missing-1:final_index+1]
-            q_peaks_avg_subset = q_peaks_avg[num_missing-1:final_index+1]
+            radial_peak_indices = all_radial_peak_indices[num_missing:final_index+1]
+            q_peaks_avg_subset = q_peaks_avg[num_missing:final_index+1]
 
         if visualize:
             import matplotlib.pyplot as plt
@@ -166,7 +166,9 @@ class Calibration(object):
 
         # Set up linear regression inputs
         # Set y values based on derviations
-        theta_n = np.arcsin(q_peaks_avg_subset*wavelength/(4*np.pi))
+        # Convert wavelength to angstroms, same units as q_peaks
+        wavelength_angstroms = wavelength*1e10
+        theta_n = np.arcsin(q_peaks_avg_subset*wavelength_angstroms/(4*np.pi))
         Y = np.tan(2*theta_n).reshape(-1,1)
         # Set x values as the measured r peaks
         X = r_space_pixel[radial_peak_indices].reshape(-1,1)
@@ -182,7 +184,6 @@ class Calibration(object):
         slope = coef[0][0]
         # The slope is the inverse of the sample-to-detector distance
         distance_pixel = 1/slope
-
         distance = distance_pixel * PIXEL_WIDTH
 
         return distance, linreg, score
