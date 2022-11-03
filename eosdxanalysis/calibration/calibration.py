@@ -148,11 +148,15 @@ class Calibration(object):
         if visualize:
             import matplotlib.pyplot as plt
 
-            fig = plt.figure()
+            title = "Polar warped image"
+            fig = plt.figure(title)
+            plt.title(title)
             plt.imshow(20*np.log10(polar_image+1), cmap="gray")
 
 
-            fig = plt.figure()
+            title = "Beam masked image"
+            fig = plt.figure(title)
+            plt.title(title)
             beam_mask = create_circular_mask(
                     centered_image.shape[1],centered_image.shape[0],rmax=r_min)
             beam_masked_img = np.copy(centered_image)
@@ -161,7 +165,9 @@ class Calibration(object):
             plt.imshow(20*np.log10(beam_masked_img.astype(np.float64)+1), cmap="gray")
             plt.scatter(beam_masked_img.shape[1]/2-0.5, beam_masked_img.shape[0]/2-0.5, color="green")
 
-            fig = plt.figure()
+            title = "Azimuthal integrated 1-d profile"
+            fig = plt.figure(title)
+            plt.title(title)
 
             plt.scatter(r_space_pixel, 20*np.log10(radial_intensity+1))
             plt.scatter(r_space_pixel[all_radial_peak_indices],
