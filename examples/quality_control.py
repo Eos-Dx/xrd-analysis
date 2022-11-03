@@ -43,6 +43,9 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
     # Print statistics
     dataset_size = df.index.size
 
+    if dataset_size == 0:
+        raise ValueError("Dataset is empty!")
+
     columns = df.columns
 
     # Create the exclusion column set to zeros (no passes yet)
@@ -121,45 +124,50 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
             print("Normal fail: {}".format(normal_fail_count))
             print("Cancer fail: {}".format(cancer_fail_count))
 
-            # Calculate ratios
-            normal_pass_ratio = normal_pass_count/normal_total
-            cancer_pass_ratio = cancer_pass_count/cancer_total
-            normal_fail_ratio = normal_fail_count/normal_total
-            cancer_fail_ratio = cancer_fail_count/cancer_total
+            # Calculate normal and cancer statistics
+            if normal_total:
+                normal_pass_ratio = normal_pass_count/normal_total
+                normal_fail_ratio = normal_fail_count/normal_total
 
-            # Report ratios
-            print("Normal pass (%): {:.1f}%".format(
-                100*normal_pass_ratio))
-            print("Cancer pass (%): {:.1f}%".format(
-                100*cancer_pass_ratio))
-            print("Normal fail (%): {:.1f}%".format(
-                100*normal_fail_ratio))
-            print("Cancer fail (%): {:.1f}%".format(
-                100*cancer_fail_ratio))
+                print("Normal pass (%): {:.1f}%".format(
+                    100*normal_pass_ratio))
+                print("Normal fail (%): {:.1f}%".format(
+                    100*normal_fail_ratio))
 
-            # Calculate training pass/fail statistics
-            training_pass_count = normal_pass_count + cancer_pass_count
+            if cancer_total:
+                cancer_pass_ratio = cancer_pass_count/cancer_total
+                cancer_fail_ratio = cancer_fail_count/cancer_total
+
+                print("Cancer pass (%): {:.1f}%".format(
+                    100*cancer_pass_ratio))
+                print("Cancer fail (%): {:.1f}%".format(
+                    100*cancer_fail_ratio))
+
+        # Calculate training and blind statistics
+        if training_total:
+            training_pass_count = (
+                    (measurement_series == "A") & (control_series == 1)).sum()
+            training_fail_count = (
+                    (measurement_series == "A") & (control_series == 0)).sum()
             training_pass_ratio = training_pass_count / training_total
-            training_fail_count = normal_fail_count + cancer_fail_count
             training_fail_ratio = training_fail_count / training_total
             print("Training pass (%): {:.1f}%".format(
                 100*training_pass_ratio))
             print("Training fail (%): {:.1f}%".format(
                 100*training_fail_ratio))
 
-        # Calculate blind pass/fail statistics
-        # Note: blind data has no "Cancer" value 
-        blind_pass_count = (
-                (df["Cancer"].isnull()) & (control_series == 1)).sum()
-        blind_fail_count = (
-                (df["Cancer"].isnull()) & (control_series == 0)).sum()
-        blind_pass_ratio = blind_pass_count / blind_total
-        blind_fail_ratio = blind_fail_count / blind_total
+        if blind_total:
+            blind_pass_count = (
+                    (measurement_series == "B") & (control_series == 1)).sum()
+            blind_fail_count = (
+                    (measurement_series == "B") & (control_series == 0)).sum()
+            blind_pass_ratio = blind_pass_count / blind_total
+            blind_fail_ratio = blind_fail_count / blind_total
 
-        print("Blind pass: {}".format(blind_pass_count))
-        print("Blind fail: {}".format(blind_fail_count))
-        print("Blind pass (%): {:.1f}%".format(100*blind_pass_ratio))
-        print("Blind fail (%): {:.1f}%".format(100*blind_fail_ratio))
+            print("Blind pass: {}".format(blind_pass_count))
+            print("Blind fail: {}".format(blind_fail_count))
+            print("Blind pass (%): {:.1f}%".format(100*blind_pass_ratio))
+            print("Blind fail (%): {:.1f}%".format(100*blind_fail_ratio))
 
     print("##########################")
     print("Total data set statistics")
@@ -184,77 +192,87 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
 
     # Calculate training (A) vs. blind (B) statistics
 
-    print("Training total: {}".format(training_total))
-    print("Blind total: {}".format(blind_total))
+    if training_total or blind_total:
 
-    # Passed
-    training_pass_count = (
-        (measurement_series == "A") & (df["qc_pass"] == 1)).sum()
-    blind_pass_count = (
-        (measurement_series == "B") & (df["qc_pass"] == 1)).sum()
+        print("Training total: {}".format(training_total))
+        print("Blind total: {}".format(blind_total))
 
-    training_pass_ratio = training_pass_count / training_total
-    blind_pass_ratio = blind_pass_count / blind_total
+        # Passed
+        training_pass_count = (
+            (measurement_series == "A") & (df["qc_pass"] == 1)).sum()
+        blind_pass_count = (
+            (measurement_series == "B") & (df["qc_pass"] == 1)).sum()
 
-    print("Training pass: {}".format(training_pass_count))
-    print("Blind pass: {}".format(blind_pass_count))
+        training_pass_ratio = training_pass_count / training_total if \
+                training_total else 0
+        blind_pass_ratio = blind_pass_count / blind_total if blind_total else 0
 
-    print("Training pass (%): {:.1f}%".format(
-        100*training_pass_ratio))
-    print("Blind pass (%): {:.1f}%".format(
-        100*blind_pass_ratio))
+        print("Training pass: {}".format(training_pass_count))
+        print("Blind pass: {}".format(blind_pass_count))
 
-    # Failed
-    training_fail_count = (
-        (measurement_series == "A") & (df["qc_pass"] == 0)).sum()
-    blind_fail_count = (
-        (measurement_series == "B") & (df["qc_pass"] == 0)).sum()
+        print("Training pass (%): {:.1f}%".format(
+            100*training_pass_ratio))
+        print("Blind pass (%): {:.1f}%".format(
+            100*blind_pass_ratio))
 
-    training_fail_ratio = training_fail_count / training_total
-    blind_fail_ratio = blind_fail_count / blind_total
+        # Failed
+        training_fail_count = (
+            (measurement_series == "A") & (df["qc_pass"] == 0)).sum()
+        blind_fail_count = (
+            (measurement_series == "B") & (df["qc_pass"] == 0)).sum()
 
-    print("Training fail: {}".format(training_fail_count))
-    print("Blind fail: {}".format(blind_fail_count))
+        training_fail_ratio = training_fail_count / training_total if \
+                training_total else 0
+        blind_fail_ratio = blind_fail_count / blind_total if blind_total else 0
 
-    print("Training fail (%): {:.1f}%".format(
-        100*training_fail_ratio))
-    print("Blind fail (%): {:.1f}%".format(
-        100*blind_fail_ratio))
+        print("Training fail: {}".format(training_fail_count))
+        print("Blind fail: {}".format(blind_fail_count))
+
+        print("Training fail (%): {:.1f}%".format(
+            100*training_fail_ratio))
+        print("Blind fail (%): {:.1f}%".format(
+            100*blind_fail_ratio))
 
     if "Cancer" in columns:
         # Total normal and cancer statistics
         print("Normal total: {}".format(normal_total))
         print("Cancer total: {}".format(cancer_total))
 
-        # Passed
-        normal_total_pass_count = (
-                (df["Cancer"] == 0) & (df["qc_pass"] == 1)).sum()
-        cancer_total_pass_count = (
-                (df["Cancer"] == 1) & (df["qc_pass"] == 1)).sum()
-        normal_total_pass_ratio = normal_total_pass_count/normal_total
-        cancer_total_pass_ratio = cancer_total_pass_count/cancer_total
-        # Failed
-        normal_total_fail_count = (
-                (df["Cancer"] == 0) & (df["qc_pass"] == 0)).sum()
-        cancer_total_fail_count = (
-                (df["Cancer"] == 1) & (df["qc_pass"] == 0)).sum()
-        normal_total_fail_ratio = normal_total_fail_count/normal_total
-        cancer_total_fail_ratio = cancer_total_fail_count/cancer_total
+        if normal_total:
+            # Normal statistics
+            normal_total_pass_count = (
+                    (df["Cancer"] == 0) & (df["qc_pass"] == 1)).sum()
+            normal_total_pass_ratio = normal_total_pass_count/normal_total
 
-        # Passed
-        print("Total normal pass: {}".format(normal_total_pass_count))
-        print("Total cancer pass: {}".format(cancer_total_pass_count))
-        print("Total normal pass (%): {:.1f}".format(
-            100*normal_total_pass_ratio))
-        print("Total cancer pass (%): {:.1f}".format(
-            100*cancer_total_pass_ratio))
-        # Failed
-        print("Total normal fail: {}".format(normal_total_fail_count))
-        print("Total cancer fail: {}".format(cancer_total_fail_count))
-        print("Total normal fail (%): {:.1f}%".format(
-            100*normal_total_fail_ratio))
-        print("Total cancer fail (%): {:.1f}%".format(
-            100*cancer_total_fail_ratio))
+            normal_total_fail_count = (
+                    (df["Cancer"] == 0) & (df["qc_pass"] == 0)).sum()
+            normal_total_fail_ratio = normal_total_fail_count/normal_total
+
+            print("Total normal pass: {}".format(normal_total_pass_count))
+            print("Total normal pass (%): {:.1f}".format(
+                100*normal_total_pass_ratio))
+
+            print("Total normal fail: {}".format(normal_total_fail_count))
+            print("Total normal fail (%): {:.1f}%".format(
+                100*normal_total_fail_ratio))
+
+        if cancer_total:
+            # Cancer statistics
+            cancer_total_pass_count = (
+                    (df["Cancer"] == 1) & (df["qc_pass"] == 1)).sum()
+            cancer_total_pass_ratio = cancer_total_pass_count/cancer_total
+
+            cancer_total_fail_ratio = cancer_total_fail_count/cancer_total
+            cancer_total_fail_count = (
+                    (df["Cancer"] == 1) & (df["qc_pass"] == 0)).sum()
+
+            print("Total cancer pass: {}".format(cancer_total_pass_count))
+            print("Total cancer pass (%): {:.1f}".format(
+                100*cancer_total_pass_ratio))
+            # Failed
+            print("Total cancer fail: {}".format(cancer_total_fail_count))
+            print("Total cancer fail (%): {:.1f}%".format(
+                100*cancer_total_fail_ratio))
 
 
 if __name__ == '__main__':
