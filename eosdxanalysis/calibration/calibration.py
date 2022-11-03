@@ -75,7 +75,8 @@ class Calibration(object):
 
         # Center the image
         translation_tform = EuclideanTransform(translation=translation)
-        centered_image = warp(image, translation_tform.inverse)
+        centered_image = warp(
+                image, translation_tform.inverse, preserve_range=True)
 
         # Warp to polar
         # Set a maximum radius which we are interested in
