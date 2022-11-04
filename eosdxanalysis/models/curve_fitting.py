@@ -638,21 +638,21 @@ class GaussianDecomposition(object):
             # Set up initial ideal parameters dictionary
             p0_dict = OrderedDict({
                 # 9A equatorial peaks parameters
-                "peak_location_radius_9A":   feature_pixel_location(9.8e-10),
+                "peak_location_radius_9A":   feature_pixel_location(9.8e-10, 14.32e-3),
                 "peak_std_9A":               8,
-                "peak_amplitude_9A":         800,
+                "peak_amplitude_9A":         300,
                 "arc_angle_9A":              0.5,
                 # 5A meridional peaks parameters
-                "peak_location_radius_5A":   feature_pixel_location(5.1e-10),
+                "peak_location_radius_5A":   feature_pixel_location(5.1e-10, 14.32e-3),
                 "peak_std_5A":               2.5,
-                "peak_amplitude_5A":         300,
+                "peak_amplitude_5A":         215,
                 "arc_angle_5A":              1.5,
                 # 5-4A isotropic region parameters
-                "peak_location_radius_5_4A": feature_pixel_location(4.5e-10),
+                "peak_location_radius_5_4A": feature_pixel_location(4.5e-10, 14.32e-3),
                 "peak_std_5_4A":             10,
-                "peak_amplitude_5_4A":       800,
+                "peak_amplitude_5_4A":       190,
                 # Background noise parameters
-                "constant_bg":              800,
+                "constant_bg":              100,
                 # Rotation angle
                 "rotation_angle":           1e-6,
                 })
@@ -1137,7 +1137,9 @@ def gaussian_decomposition(
     # Set output path with a timestamp if not specified
     if not output_path:
         output_dir = "gaussian_decomposition_{}".format(timestamp)
-        output_path = os.path.join(input_path, "..", output_dir)
+        # output_path = os.path.join(input_path, "..", output_dir)
+        input_parent_path = os.path.dirname(input_path)
+        output_path = os.path.join(input_parent_path, output_dir)
 
     output_data_dir = "decomp"
     output_data_path = os.path.join(output_path, output_data_dir)
