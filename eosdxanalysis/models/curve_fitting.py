@@ -1255,6 +1255,7 @@ if __name__ == '__main__':
     if fitting_params_filepath:
         with open(fitting_params_filepath,"r") as params_fp:
             fitting_params = json.loads(params_fp.read())
+            params_init_method = "manual"
 
     if fitting_method == "gaussian-decomposition":
         gaussian_decomposition(input_path, output_path, params_init_method,
