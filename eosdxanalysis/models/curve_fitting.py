@@ -1137,7 +1137,6 @@ def gaussian_decomposition(
     # Set output path with a timestamp if not specified
     if not output_path:
         output_dir = "gaussian_decomposition_{}".format(timestamp)
-        # output_path = os.path.join(input_path, "..", output_dir)
         input_parent_path = os.path.dirname(input_path)
         output_path = os.path.join(input_parent_path, output_dir)
 
