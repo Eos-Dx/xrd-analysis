@@ -262,9 +262,9 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
                     (df["Cancer"] == 1) & (df["qc_pass"] == 1)).sum()
             cancer_total_pass_ratio = cancer_total_pass_count/cancer_total
 
-            cancer_total_fail_ratio = cancer_total_fail_count/cancer_total
             cancer_total_fail_count = (
                     (df["Cancer"] == 1) & (df["qc_pass"] == 0)).sum()
+            cancer_total_fail_ratio = cancer_total_fail_count/cancer_total
 
             print("Total cancer pass: {}".format(cancer_total_pass_count))
             print("Total cancer pass (%): {:.1f}".format(
