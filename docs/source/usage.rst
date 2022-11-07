@@ -46,8 +46,7 @@ In the conda environment, run the following shell command from the ``xrd-analysi
 
 .. code-block:: console
 
-    (eos) $ python eosdxanalysis/preprocessing/preprocess.py --input_path "INPUT_PATH" \
-        --data_dir "DATA_DIR" --params_file "PARAMETERS_FILE_PATH"
+    (eos) $ python eosdxanalysis/preprocessing/preprocess.py --input_path "INPUT_PATH" --data_dir "DATA_DIR" --params_file "PARAMETERS_FILE_PATH"
 
 where ``INPUT_PATH`` contains the directory ``DATA_DIR``, and the parameters file path can be anywhere. See existing parameters files for details.
 
@@ -86,6 +85,7 @@ A sample preprocessing parameters text file would containg the following content
         "local_thresh_block_size": 21,
         "crop_style": "both",
         "beam_detection": true,
+        "hot_spot_threshold": 1000,
         "plans": [
             "centerize",
             "centerize_rotate",
@@ -101,14 +101,14 @@ In the conda envirnoment, run the following shell command from the ``xrd-analysi
 
 .. code-block:: console
 
-    (eos) $ python examples/gaussian_fit.py --run_gauss_fit --input_path "INPUT_PATH"
+    (eos) $ python examples/gaussian_fit.py --run_gauss_fit --input_path "INPUT_PATH" --params_init_method "ideal" --fitting_params_filepath $FITTING_PARAMS_PATH
 
 Training on Gaussian Fitting Parameters
 ---------------------------------------
 
 After Gaussian fitting, combine all training data into a single csv file.
 
-Then, place exclusion criteria (Note: Only one exclusion criterion can currently be handled) in a JSON-encoded file with the following structure:
+Then, place quality control criteria in a JSON-encoded file with the following structure:
 
 .. code-block:: javascript
 
@@ -119,7 +119,7 @@ Then, place exclusion criteria (Note: Only one exclusion criterion can currently
         ]
     }
 
-where ``upper_bound`` and ``lower_bound`` are numbers. For example, to exclude data with ``peak_location_radius_9A`` not within 20-30 Angstroms, the exclusion file would contain the following content:
+where ``upper_bound`` and ``lower_bound`` are numbers. For example, to constrain data with ``peak_location_radius_9A`` to within 20-30 pixels radius from the center, the control criteria file would contain the following content:
 
 .. code-block:: javascript
 
@@ -130,10 +130,10 @@ where ``upper_bound`` and ``lower_bound`` are numbers. For example, to exclude d
         ]
     }
 
-Finally, run the exclusion list code as follows:
+Finally, run the quality control code as follows:
 
 .. code-block:: console
 
-   (eos) $ python examples/exclusion_list.py --data_filepath DATA_FILEPATH --output_filepath OUTPUT_FILEPATH --criteria_file EXCLUSION_CRITERIA_FILE --add_column
+   (eos) $ python examples/quality_control.py --data_filepath DATA_FILEPATH --output_filepath OUTPUT_FILEPATH --criteria_file EXCLUSION_CRITERIA_FILE --add_column
 
-where ``DATA_FILEPATH`` is the full path to the csv training data file, ``OUTPUT_FILEPATH`` is the full path to the csv training data file. If the ``add_column`` flag is used, the output file will contain a copy of the input data with an extra ``Exclude`` column (1 = exclude, 0 = do not exclude). Otherwise, the output file will be a single column with the ``Filename``.
+where ``DATA_FILEPATH`` is the full path to the dimensionality-reduced csv file, ``OUTPUT_FILEPATH`` is the full path to the output file. If the ``add_column`` flag is used, the output file will contain a copy of the input data with an extra ``Exclude`` column (1 = pass, 0 = fail). Otherwise, the output file will be a single column with the ``Filename``.
