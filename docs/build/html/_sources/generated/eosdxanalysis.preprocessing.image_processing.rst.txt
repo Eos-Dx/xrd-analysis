@@ -1,4 +1,4 @@
-eosdxanalysis.preprocessing.image\_processing
+﻿eosdxanalysis.preprocessing.image\_processing
 =============================================
 
 .. automodule:: eosdxanalysis.preprocessing.image_processing
@@ -16,6 +16,7 @@ eosdxanalysis.preprocessing.image\_processing
       crop_image
       pad_image
       quadrant_fold
+      quantile_count
       unwarp_polar
    
    
