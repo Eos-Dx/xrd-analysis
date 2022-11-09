@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>unwarp_polar &#8212; Eos Dx Analysis 2.16.0 documentation</title>
+    <title>quantile_count &#8212; Eos Dx Analysis 2.16.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -35,11 +35,11 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.image_processing.unwarp_polar';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.image_processing.quantile_count';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="find_1d_peaks" href="eosdxanalysis.preprocessing.peak_finding.find_1d_peaks.html" />
-    <link rel="prev" title="quantile_count" href="eosdxanalysis.preprocessing.image_processing.quantile_count.html" />
+    <link rel="next" title="unwarp_polar" href="eosdxanalysis.preprocessing.image_processing.unwarp_polar.html" />
+    <link rel="prev" title="quadrant_fold" href="eosdxanalysis.preprocessing.image_processing.quadrant_fold.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
   </head>
@@ -335,13 +335,13 @@
    quadrant_fold
   </a>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.quantile_count.html">
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
    quantile_count
   </a>
  </li>
- <li class="toctree-l1 current active">
-  <a class="current reference internal" href="#">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.unwarp_polar.html">
    unwarp_polar
   </a>
  </li>
@@ -434,18 +434,12 @@
             
             <article class="bd-article" role="main">
               
-  <section id="unwarp-polar">
-<h1>unwarp_polar<a class="headerlink" href="#unwarp-polar" title="Permalink to this heading">#</a></h1>
+  <section id="quantile-count">
+<h1>quantile_count<a class="headerlink" href="#quantile-count" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.image_processing.unwarp_polar">
-<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.image_processing.</span></span><span class="sig-name descname"><span class="pre">unwarp_polar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.image_processing.unwarp_polar" title="Permalink to this definition">#</a></dt>
-<dd><p>Convert image from polar to cartesian.
-Reverse of <cite>skimage.transform.warp_polar</cite></p>
-<p>Cartesian origin is upper-left corner.
-- Y is height (rows)
-- X is width (columns)</p>
-<p>Adapted from:
-<a class="reference external" href="https://forum.image.sc/t/polar-transform-and-inverse-transform/40547/3">https://forum.image.sc/t/polar-transform-and-inverse-transform/40547/3</a></p>
+<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.image_processing.quantile_count">
+<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.image_processing.</span></span><span class="sig-name descname"><span class="pre">quantile_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.image_processing.quantile_count" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the number of pixels between qmin and qmax</p>
 </dd></dl>
 
 </section>
@@ -458,17 +452,17 @@ Reverse of <cite>skimage.transform.warp_polar</cite></p>
             <footer class="bd-footer-article">
                 <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.image_processing.quantile_count.html" title="previous page">
+  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.image_processing.quadrant_fold.html" title="previous page">
       <i class="fas fa-angle-left"></i>
       <div class="prev-next-info">
           <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">quantile_count</p>
+          <p class="prev-next-title">quadrant_fold</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.peak_finding.find_1d_peaks.html" title="next page">
+  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.image_processing.unwarp_polar.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">find_1d_peaks</p>
+      <p class="prev-next-title">unwarp_polar</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>
@@ -488,7 +482,7 @@ Reverse of <cite>skimage.transform.warp_polar</cite></p>
 <div class="toc-item">
   
 <div class="tocsection sourcelink">
-    <a href="../_sources/api/eosdxanalysis.preprocessing.image_processing.unwarp_polar.rst.txt">
+    <a href="../_sources/api/eosdxanalysis.preprocessing.image_processing.quantile_count.rst.txt">
         <i class="fas fa-file-alt"></i> Show Source
     </a>
 </div>
