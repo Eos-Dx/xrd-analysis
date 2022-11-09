@@ -124,3 +124,30 @@ def unwarp_polar(img, origin=None, output_shape=None, rmax=None, order=1):
     map_coordinates(img, (RR, TT), order=order, output=output)
 
     return output
+
+def quantile_count(image, qmin=0, qmax=1, offset=0):
+    """
+    Return the number of pixels between qmin and qmax
+    """
+    # Validate inputs
+    if qmin > qmax:
+        raise ValueError("qmin must be less than qmax")
+    if qmin < 0 or qmin > 1 or qmax < 0 or qmax > 1:
+        raise ValueError("qmin and qmax must be between 0 and 1 inclusive")
+
+    image_max = image.max()
+    image_min = image.min()
+
+    # Rescale image to be between 0 and 1
+    image_rescaled = (image - offset) / (image_max - offset)
+
+    if qmin == 0 and qmax == 1:
+        qcount = image_rescaled.size
+    elif qmin == 0 and qmax != 1:
+        qcount = (image_rescaled <= qmax).sum()
+    elif qmin != 0 and qmax != 1:
+        qcount = ((image_rescaled >= qmin) & (image_rescaled <= qmax)).sum()
+    elif qmin != 0 and qmax == 1:
+        qcount = (image_rescaled >= qmin).sum()
+
+    return qcount
