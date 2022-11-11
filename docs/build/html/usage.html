@@ -270,32 +270,36 @@
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
 <ol class="arabic simple">
 <li><p>Install <code class="docutils literal notranslate"><span class="pre">conda</span></code> using <a class="reference external" href="https://github.com/conda-forge/miniforge">miniforge</a>.</p></li>
+<li><p>Restart terminal.</p></li>
+<li><p>Disable auto activate base:</p></li>
+</ol>
+<ol class="arabic simple" start="4">
 <li><p>Follow all steps in <a class="reference external" href="https://docs.github.com/en/authentication/connecting-to-github-with-ssh">Connecting to GitHub with SSH</a>.</p></li>
 <li><p>Clone the repository from GitHub</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git clone https://github.com/Eos-Dx/xrd-analysis
 </pre></div>
 </div>
-<ol class="arabic simple" start="3">
+<ol class="arabic simple" start="6">
 <li><p>Change into the local repository directory</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span><span class="nb">cd</span> xrd-analysis
 </pre></div>
 </div>
-<ol class="arabic simple" start="4">
+<ol class="arabic simple" start="7">
 <li><p>Set up a <code class="docutils literal notranslate"><span class="pre">conda</span></code> environment and activate (Note: very large download and high CPU usage)</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>conda env create --name eos --file environment.yaml
 <span class="gp">$ </span>conda activate eos
 </pre></div>
 </div>
-<ol class="arabic simple" start="4">
+<ol class="arabic simple" start="8">
 <li><p>The prompt should look like</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(eos)</span> <span class="gp">$</span>
 </pre></div>
 </div>
-<ol class="arabic simple" start="5">
+<ol class="arabic simple" start="9">
 <li><p>Finally, install the <code class="docutils literal notranslate"><span class="pre">eosdxanalysis</span></code> Python library</p></li>
 </ol>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(eos)</span> <span class="gp">$ </span>pip install -e .
