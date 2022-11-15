@@ -95,7 +95,7 @@ class FeatureExtraction(object):
         return annulus_intensity
 
     def feature_annulus_intensity_angstrom(
-            self, distance=None, center=None, amin=None, mmax=None):
+            self, distance_to_detector=None, center=None, amin=None, amax=None):
         """
         Calculate the intensity of an annulus specified by start and end radii
         in Angstrom units.
@@ -103,7 +103,7 @@ class FeatureExtraction(object):
         Parameters
         ----------
 
-        distance : number
+        distance_to_detector : number
             Distance from sample to detector
 
         center : 2-tuple (number)
@@ -135,8 +135,8 @@ class FeatureExtraction(object):
         # Get the image shape
         shape = image.shape
 
-        rmin = somefunction(amax)
-        rmax = somefunction(amin)
+        rmin = somefunction(amax, distance_to_detector)
+        rmax = somefunction(amin, distance_to_detector)
 
         # Create a mask for the annulus
         annulus_mask = create_circular_mask(shape[0], shape[1], center=center,
