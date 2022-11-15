@@ -1,3 +1,6 @@
+"""
+Feature extraction functions
+"""
 import numpy as np
 
 
