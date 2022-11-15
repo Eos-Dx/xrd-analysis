@@ -4,29 +4,27 @@ Feature extraction functions
 import numpy as np
 
 
-def dia_features_global(data):
+def feature_image_intensity(image):
     """
-    The function collects the features for the total picture
+    Compute the intensity of the imagew
 
-    Input parameters:
-    ----------------
+    Parameters
+    ----------
 
-    data - str
-        the data picture
+    image : ndarray
+        The measurement image data
 
-    Output:
+    Output
     ------
 
-    features - list
-         features later used in analysis
+    image_intensity : number
+        the total intensity
 
     """
 
-    total_brightness = np.sum(data)
+    image_intensity = np.sum(image)
 
-    features = [total_brightness]
-
-    return features
+    return image_intensity
 
 def dia_features_region_9A(data):
     """
