@@ -35,21 +35,21 @@ from eosdxanalysis.simulations.utils import feature_pixel_location
 
 def dia_features_global(data):
     """
-        The function collects the features for the total picture
+    The function collects the features for the total picture
 
-        Input parameters:
-        ----------------
+    Input parameters:
+    ----------------
 
-        data - str
-            the data picture
+    data - str
+        the data picture
 
-        Output:
-        ------
+    Output:
+    ------
 
-        features - list
-             features later used in analysis
+    features - list
+         features later used in analysis
 
-        """
+    """
 
     total_brightness = np.sum(data)
 
