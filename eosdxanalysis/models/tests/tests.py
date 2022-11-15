@@ -46,6 +46,7 @@ from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 from eosdxanalysis.models.stats import plot_feature_histograms
+from eosdxanalysis.models.polar_gaussian import polar_gaussian
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 
@@ -167,9 +168,8 @@ class TestGaussianDecomposition(unittest.TestCase):
                 "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
                 "peak_std_5_4A":            17, # Width
                 "peak_amplitude_5_4A":      113, # Amplitude
-                # Background noise parameters
-                "peak_std_bg":              211, # Width
-                "peak_amplitude_bg":        223, # Amplitude
+                # Background noise
+                "constant_bg":              223, # Amplitude
                 # Rotation
                 "rotation_angle":           45, # Angle degrees
             })
@@ -474,8 +474,7 @@ class TestGaussianDecomposition(unittest.TestCase):
                 "peak_std_5_4A":            15, # Width
                 "peak_amplitude_5_4A":      100, # Amplitude
                 # Background noise parameters
-                "peak_std_bg":              200, # Width
-                "peak_amplitude_bg":        200, # Amplitude
+                "contant_bg":        200, # Amplitude
                 # Rotation
                 "rotation_angle":           10*np.pi/180, # Pattern rotation angle
             })
@@ -549,6 +548,37 @@ class TestGaussianDecomposition(unittest.TestCase):
 
         # Ensure that popt values are close to p_dict values
         self.assertTrue(np.isclose(popt, p_synth).all())
+
+    def test_synthetic_keratin_pattern_9A_zero_arc_angle(self):
+        """
+        Generate a synthetic diffraction pattern
+        and ensure the Gaussian fit error is small
+        """
+        # Set parameters for a synthetic keratin diffraction pattern
+        p_synth_dict = OrderedDict({
+                # 9A equatorial peaks parameters
+                "peak_location_radius_9A":  feature_pixel_location(9.8e-10), # Peak pixel radius
+                "peak_std_9A":              8, # Width
+                "peak_amplitude_9A":        400, # Amplitude
+                "arc_angle_9A":             0, # Arc angle
+                # 5A meridional peaks parameters
+                "peak_location_radius_5A":  feature_pixel_location(5.1e-10), # Peak pixel radius
+                "peak_std_5A":              2, # Width
+                "peak_amplitude_5A":        100, # Amplitude
+                "arc_angle_5A":             np.pi/4, # Arc angle
+                # 5-4A isotropic region parameters
+                "peak_location_radius_5_4A":feature_pixel_location(4.5e-10), # Peak pixel radius
+                "peak_std_5_4A":            15, # Width
+                "peak_amplitude_5_4A":      100, # Amplitude
+                # Background noise parameters
+                "contant_bg":        200, # Amplitude
+                # Rotation
+                "rotation_angle":           10*np.pi/180, # Pattern rotation angle
+            })
+
+        # Test that the synthetic 9.8 A peaks are not circular
+
+        self.fail("Finish writing test.")
 
     def test_synthetic_keratin_pattern_auto_guess(self):
         """
@@ -1455,6 +1485,38 @@ class TestFourierAnalysis(unittest.TestCase):
         idft_gaussian = loadmat(idft_gaussian_fullpath).get("idft_gaussian")
 
         self.assertTrue(np.isclose(idft, idft_gaussian).all())
+
+
+class TestPolarGaussian(unittest.TestCase):
+    """
+    Tests of the polar_gaussian function
+    """
+
+    def test_polar_gaussian(self):
+        """
+        Test
+        """
+        size = 256
+        shape = size, size
+        RR, TT = gen_meshgrid(shape)
+
+        # Set function parameters
+        peak_radius = 0
+        peak_angle = 0
+        peak_radial_std = 5
+        peak_azimuthal_std = 5
+        peak_amplitude = 100
+
+        gau = polar_gaussian(RR, TT, peak_radius, peak_angle, peak_radial_std,
+                peak_azimuthal_std, peak_amplitude)
+
+        import matplotlib.pyplot as plt
+        plt.imshow(gau)
+        plt.show()
+        import ipdb
+        ipdb.set_trace()
+
+        self.fail("Finish writing test")
 
 
 if __name__ == '__main__':
