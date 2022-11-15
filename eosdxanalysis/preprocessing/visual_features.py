@@ -3,69 +3,87 @@ Feature extraction functions
 """
 import numpy as np
 
+from eosdxanalysis.preprocessing.utils import create_circular_mask
 
-def feature_image_intensity(image):
+
+class FeatureExtraction(object):
     """
-    Compute the intensity of the imagew
-
-    Parameters
-    ----------
-
-    image : ndarray
-        The measurement image data
-
-    Output
-    ------
-
-    image_intensity : number
-        the total intensity
-
+    Class to handle feature extraction
     """
 
-    image_intensity = np.sum(image)
+    def __init__(self, image, distance=None):
+        """
+        Initializes the FeatureExtraction class with image path and
+        sample-to-detector distance.
 
-    return image_intensity
+        Parameters
+        ----------
 
-def dia_features_region_9A(data):
-    """
-    The function collects the features for the 9A region
+        image_path : str
+            Path to the image file
 
-    Input parameters:
-    ----------------
+        distance : number
+            Sample-to-detector distance
+        """
+        # Store the inputs
+        self.image = image
+        self.distance = distance
 
-    data - str
-        the data picture
+        return super().__init__()
 
-    Output:
-    ------
+    def feature_image_intensity(self):
+        """
+        Computes the intensity of the image
 
-    features - list
-         features later used in analysis
+        Parameters
+        ----------
 
-    """
+        image : ndarray
+            The measurement image data
 
-    features = 0
+        Output
+        ------
 
-    return features
+        image_intensity : number
+            The total intensity
 
-def dia_features_region_5A(data):
-    """
-    The function collects the features for the 9A region
+        """
+        # Reference the stored image
+        image = self.image
 
-    Input parameters:
-    ----------------
+        # Compute the total image intensity
+        image_intensity = np.sum(image)
+        self.image_intensity = image_intensity
 
-    data - str
-        the data picture
+        return image_intensity
 
-    Output:
-    ------
+    def feature_annulus_intensity(self, center=None, rmin=None, rmax=None):
+        """
+        Computes the total intensity of an annulus
 
-    features - list
-         features later used in analysis
+        Parameters
+        ----------
 
-    """
+        image : ndarray
+            The measurement image data
 
-    features = 0
+        Output
+        ------
 
-    return features
+        intensity : number
+            The total intensity
+        """
+        # Reference the stored image
+        image = self.image
+
+        # Get the image shape
+        shape = image.shape
+
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(shape[0], shape[1], center=center,
+                rmin=rmin, rmax=rmax)
+
+        # Compute the annulus intensity
+        annulus_intensity = np.sum(image[annulus_mask])
+
+        return annulus_intensity
