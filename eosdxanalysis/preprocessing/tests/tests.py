@@ -43,6 +43,8 @@ from eosdxanalysis.preprocessing.beam_utils import azimuthal_integration
 from eosdxanalysis.preprocessing.beam_utils import first_valley_location
 from eosdxanalysis.preprocessing.beam_utils import beam_extent
 
+from eosdxanalysis.preprocessing.visual_features import FeatureExtraction
+
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 TEST_PATH = os.path.dirname(__file__)
@@ -1564,6 +1566,21 @@ class TestBeamUtils(unittest.TestCase):
         """
 
         self.fail("Finish writing test.")
+
+class TestFeatureExtraction(unittest.TestCase):
+
+    def test_feature_extraction_init(self):
+        """
+        Test FeatureExtraction for a test image of ones
+        Test passes if it no error raised.
+        """
+        size = 256
+        shape = size, size
+        test_image = np.ones(shape)
+        distance = 10e-3 # 10 mm
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
 
 
 if __name__ == '__main__':
