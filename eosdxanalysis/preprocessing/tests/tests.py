@@ -43,7 +43,7 @@ from eosdxanalysis.preprocessing.beam_utils import azimuthal_integration
 from eosdxanalysis.preprocessing.beam_utils import first_valley_location
 from eosdxanalysis.preprocessing.beam_utils import beam_extent
 
-from eosdxanalysis.preprocessing.visual_features import FeatureExtraction
+from eosdxanalysis.preprocessing.feature_extraction import FeatureExtraction
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -1571,16 +1571,35 @@ class TestFeatureExtraction(unittest.TestCase):
 
     def test_feature_extraction_init(self):
         """
-        Test FeatureExtraction for a test image of ones
+        Test FeatureExtraction for a test image of ones.
         Test passes if it no error raised.
         """
         size = 256
         shape = size, size
         test_image = np.ones(shape)
-        distance = 10e-3 # 10 mm
 
         # Initiate the class
         feature_extraction = FeatureExtraction(test_image)
+
+    def test_feature_extraction_image_intensity(self):
+        """
+        Test FeatureExtraction for a test image of ones.
+        Ensure the calculated image intensity is correct.
+        """
+        size = 256
+        shape = size, size
+        test_image = np.ones(shape)
+        # Calculate the known intensity
+        known_intensity = size*size
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the intensit
+        calculated_intensity = feature_extraction.feature_image_intensity()
+
+        # Ensure the calculated intensity is correct
+        self.assertEqual(calculated_intensity, known_intensity)
 
 
 if __name__ == '__main__':
