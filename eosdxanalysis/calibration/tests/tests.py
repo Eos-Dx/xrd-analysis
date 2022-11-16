@@ -94,5 +94,32 @@ class TestDiffractionUnitsConversion(unittest.TestCase):
 
         self.assertEqual(two_theta, known_two_theta)
 
+    def test_bragg_peak_pixel_location_from_molecular_spacing(self):
+        """
+        Test Bragg peak pixel location function
+        """
+        # Set parameters
+        source_wavelength = 1.5418e-10
+        pixel_length = 55e-6
+        distance = 10e-3
+        molecular_spacing = 9.8e-10
+
+        # Set known location
+        known_pixel_location = 29
+
+        # Initialize diffraction units class
+        units_class = DiffractionUnitsConversion(
+                source_wavelength=source_wavelength, pixel_length=pixel_length,
+                sample_to_detector_distance=distance)
+
+        bragg_peak_pixel_location = \
+                units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                        molecular_spacing)
+
+        self.assertTrue(
+                np.isclose(
+                    bragg_peak_pixel_location, known_pixel_location, atol=0.5))
+
+
 if __name__ == '__main__':
     unittest.main()
