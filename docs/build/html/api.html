@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>API &#8212; Eos Dx Analysis 2.16.0 documentation</title>
+    <title>API &#8212; Eos Dx Analysis 2.17.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -91,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.16.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.17.0 documentation</p>
   
 </a>
     
@@ -321,6 +321,11 @@
 </ul>
 <ul class="nav bd-sidenav">
  <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.bright_pixel_count.html">
+   bright_pixel_count
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.crop_image.html">
    crop_image
   </a>
@@ -333,11 +338,6 @@
  <li class="toctree-l1">
   <a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.quadrant_fold.html">
    quadrant_fold
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.quantile_count.html">
-   quantile_count
   </a>
  </li>
  <li class="toctree-l1">
@@ -562,20 +562,20 @@
 <h3>Functions<a class="headerlink" href="#id3" title="Permalink to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.crop_image.html#eosdxanalysis.preprocessing.image_processing.crop_image" title="eosdxanalysis.preprocessing.image_processing.crop_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">crop_image</span></code></a>(img, height, width[, center])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.bright_pixel_count.html#eosdxanalysis.preprocessing.image_processing.bright_pixel_count" title="eosdxanalysis.preprocessing.image_processing.bright_pixel_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bright_pixel_count</span></code></a>(image[, qmin, qmax, offset])</p></td>
+<td><p>Return the number of pixels between qmin and qmax</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.crop_image.html#eosdxanalysis.preprocessing.image_processing.crop_image" title="eosdxanalysis.preprocessing.image_processing.crop_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">crop_image</span></code></a>(img, height, width[, center])</p></td>
 <td><p>Crops an image to a given height and width about a center</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_coordinates</span></code>(input, coordinates[, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_coordinates</span></code>(input, coordinates[, ...])</p></td>
 <td><p>Map the input array to new coordinates by interpolation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.pad_image.html#eosdxanalysis.preprocessing.image_processing.pad_image" title="eosdxanalysis.preprocessing.image_processing.pad_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pad_image</span></code></a>(img[, method, padding])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.pad_image.html#eosdxanalysis.preprocessing.image_processing.pad_image" title="eosdxanalysis.preprocessing.image_processing.pad_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pad_image</span></code></a>(img[, method, padding])</p></td>
 <td><p>Add zeros to image Default behavior is if padding is not specified, then pad image symmetrically to prevent image loss in case of rotation and cropping to original size.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.quadrant_fold.html#eosdxanalysis.preprocessing.image_processing.quadrant_fold" title="eosdxanalysis.preprocessing.image_processing.quadrant_fold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quadrant_fold</span></code></a>(image)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.quadrant_fold.html#eosdxanalysis.preprocessing.image_processing.quadrant_fold" title="eosdxanalysis.preprocessing.image_processing.quadrant_fold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quadrant_fold</span></code></a>(image)</p></td>
 <td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.quantile_count.html#eosdxanalysis.preprocessing.image_processing.quantile_count" title="eosdxanalysis.preprocessing.image_processing.quantile_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quantile_count</span></code></a>(image[, qmin, qmax, offset])</p></td>
-<td><p>Return the number of pixels between qmin and qmax</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.image_processing.unwarp_polar.html#eosdxanalysis.preprocessing.image_processing.unwarp_polar" title="eosdxanalysis.preprocessing.image_processing.unwarp_polar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unwarp_polar</span></code></a>(img[, origin, output_shape, ...])</p></td>
 <td><p>Convert image from polar to cartesian.</p></td>
