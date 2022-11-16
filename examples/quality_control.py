@@ -1,30 +1,41 @@
 """
 Apply quality control based on criteria
 """
+import os
+import shutil
+
 import argparse
 import json
 
 import numpy as np
 import pandas as pd
 
-def main(data_filepath, output_filepath, control_criteria, add_column=False):
+def main(
+        csv_input_filepath, csv_output_filepath, control_criteria,
+        no_add_columns=False, no_qc_pass_fail_output_folders=False,
+        preprocessed_data_path=None):
     """
     Performs quality control based on criteria. Adds a ``qc_pass`` column
-    if ``add_column=True``.
+    unless ``no_add_columns=True``. Copies data to pass/fail subfolders unless
+    ``no_qc_pass_fail_output_folders=True``.
 
     Parameters
     ----------
-    data_filepath : str
+    csv_input_filepath : str
         Full path to the input csv file containing data for quality control.
 
-    output_filepath : str
-        Full path to the output csv file.
+    csv_output_filepath : str
+        Full path to the output csv file containing quality control data.
 
     control_criteria : dict
         Dictionary for specifying quality control parameters and ranges.
 
-    add_column : bool
-        Adds a ``qc_pass`` column if ``True``.
+    no_add_columns : bool
+        Does not add a ``qc_pass`` column if ``True``. Default is ``False``.
+
+    no_qc_pass_fail_output_folders : bool
+        Does not copy data to pass/fail subfolders if ``True``. Default is
+        ``False``.
 
     Notes
     -----
@@ -37,8 +48,8 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
 
     """
 
-    # Load the 
-    df = pd.read_csv(data_filepath)
+    # Load the data
+    df = pd.read_csv(csv_input_filepath)
 
     # Print statistics
     dataset_size = df.index.size
@@ -82,11 +93,16 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
         criterion_column = "criterion_{}".format(control_parameter)
         df[criterion_column] = control_series
 
-        if add_column:
-            df.to_csv(output_filepath, index=False)
+        # Save quality control data to csv file
+        if no_add_columns:
+            # Save the quality control data only
+#            df[control_series.astype(bool)]["Filename"].to_csv(
+#                    csv_output_filepath, index=False)
+            df[control_series.astype(bool)].to_csv(
+                    csv_output_filepath, index=False)
         else:
-            df[control_series.astype(bool)]["Filename"].to_csv(
-                    output_filepath, index=False)
+            # Save original data with quality control data
+            df.to_csv(csv_output_filepath, index=False)
 
         # Calculate parameter control statistics
         parameter_pass_count = control_series.sum()
@@ -274,6 +290,74 @@ def main(data_filepath, output_filepath, control_criteria, add_column=False):
             print("Total cancer fail (%): {:.1f}%".format(
                 100*cancer_total_fail_ratio))
 
+    # Copy data and image previews to pass/fail folders
+    if not no_qc_pass_fail_output_folders:
+        # Check if preprocessed path was specified
+        if not preprocessed_data_path:
+            raise ValueError("Must specify preprocessed path to copy data.")
+
+        # Set preprocessed images path
+        preprocessed_images_path = preprocessed_data_path + "_images"
+
+        # Get the parent folder of the output csv file
+        output_path = os.path.dirname(csv_output_filepath)
+
+        # Get the directory name of the input data
+        preprocessed_data_dir = os.path.basename(preprocessed_data_path)
+        preprocessed_images_dir = preprocessed_data_dir + "_images"
+
+        # Construct output directory names
+        data_pass_output_dir = "{}_qc_pass".format(preprocessed_data_dir)
+        data_fail_output_dir = "{}_qc_fail".format(preprocessed_data_dir)
+        image_pass_output_dir = "{}_qc_pass".format(
+                preprocessed_images_dir)
+        image_fail_output_dir = "{}_qc_fail".format(
+                preprocessed_images_dir)
+
+        # Construct output paths
+        data_pass_output_path = os.path.join(
+                output_path, data_pass_output_dir)
+        data_fail_output_path = os.path.join(
+                output_path, data_fail_output_dir)
+        image_pass_output_path = os.path.join(
+            output_path, image_pass_output_dir)
+        image_fail_output_path = os.path.join(
+            output_path, image_fail_output_dir)
+
+        # Create the directories
+        os.makedirs(data_pass_output_path, exist_ok=True)
+        os.makedirs(data_fail_output_path, exist_ok=True)
+        os.makedirs(image_pass_output_path, exist_ok=True)
+        os.makedirs(image_fail_output_path, exist_ok=True)
+
+        # Copy data into appropriate folders
+        for idx in df.index:
+            # Get data and preprocessed image filenames
+            preprocessed_data_filename = df["Preprocessed_Filename"][idx]
+            preprocessed_image_filename = df["Preprocessed_Filename"][idx] + \
+                    ".png"
+
+            # Get quality control pass/fail data
+            qc_pass = df["qc_pass"][idx]
+
+            # Get data and image filepaths
+            data_filepath = os.path.join(preprocessed_data_path,
+                    preprocessed_data_filename)
+            image_filepath = os.path.join(preprocessed_images_path,
+                    preprocessed_image_filename)
+
+            # Copy to appropriate folder
+            if qc_pass:
+                # Copy data to qc pass data folder
+                shutil.copy(data_filepath, data_pass_output_path)
+                # Copy image to qc pass image folder
+                shutil.copy(image_filepath, image_pass_output_path)
+            else:
+                # Copy data to qc fail data folder
+                shutil.copy(data_filepath, data_fail_output_path)
+                # Copy image to qc fail image folder
+                shutil.copy(image_filepath, image_fail_output_path)
+
 
 if __name__ == '__main__':
     """
@@ -284,24 +368,37 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--data_filepath", default=None, required=True,
-            help="The file path containing 2D Gaussian fit results.")
+            "--csv_input_filepath", default=None, required=True,
+            help="The csv input file containing data to perform quality"
+                " control on.")
     parser.add_argument(
-            "--output_filepath", default=None, required=True,
-            help="The output file path to store the exclusion list.")
+            "--csv_output_filepath", default=None, required=True,
+            help="The csv output file path to store the quality control data.")
     parser.add_argument(
             "--criteria_file", default=None, required=True,
             help="A file containing JSON-formatted quality control criteria.")
     parser.add_argument(
-            "--add_column", required=False, action="store_true",
-            help="Adds a exclusion column to the data set.")
+            "--no_add_columns", required=False, action="store_true",
+            help="Does not add quality control columns to the"
+                " data set.")
+    parser.add_argument(
+            "--no_qc_pass_fail_output_folders", required=False,
+            action="store_true",
+            help="Does not copy data and image previews to pass/fail folders.")
+    parser.add_argument(
+            "--preprocessed_data_path", default=None, required=False,
+            help="The csv input file containing data to perform quality"
+                " control on.")
 
     args = parser.parse_args()
 
-    data_filepath = args.data_filepath
-    output_filepath = args.output_filepath
+    csv_input_filepath = args.csv_input_filepath
+    csv_output_filepath = args.csv_output_filepath
 
-    add_column = args.add_column
+    no_add_columns = args.no_add_columns
+    no_qc_pass_fail_output_folders = args.no_qc_pass_fail_output_folders
+    preprocessed_data_path = args.preprocessed_data_path
+
 
     # Get exclusion criteria from file
     criteria_file = args.criteria_file
@@ -311,4 +408,6 @@ if __name__ == '__main__':
     else:
         raise ValueError("Control criteria file required.")
 
-    main(data_filepath, output_filepath, criteria, add_column)
+    main(
+            csv_input_filepath, csv_output_filepath, criteria, no_add_columns,
+            no_qc_pass_fail_output_folders, preprocessed_data_path)
