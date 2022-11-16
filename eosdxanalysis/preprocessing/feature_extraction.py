@@ -219,14 +219,9 @@ class FeatureExtraction(object):
         Angles are measured in radians. The x > 0 axis is zero degrees. The
         direction of positive theta is counter-clockwise.
         """
-        thetas = theta_min, theta_max
-        for theta in thetas:
-            # Convert angles to the range (-pi, pi)
-            theta %= np.pi
-            # Force theta to be between -pi and pi
-            theta += np.pi
-            theta %= 2*np.pi
-            theta -= np.pi
+        if theta_min < -np.pi or theta_max > np.pi:
+            raise ValueError(
+                    "Sector angle bounds must be between -pi and +pi.")
 
         # Reference the stored image
         image = self.image
