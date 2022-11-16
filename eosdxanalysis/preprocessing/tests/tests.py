@@ -47,6 +47,8 @@ from eosdxanalysis.preprocessing.feature_extraction import FeatureExtraction
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
+from eosdxanalysis.calibration.utils import DiffractionUnitsConversion
+
 TEST_PATH = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(TEST_PATH, "..")
 TEST_IMAGE_DIR = "test_images"
@@ -1621,6 +1623,78 @@ class TestFeatureExtraction(unittest.TestCase):
         # Ensure the calculated intensity is correct
         self.assertEqual(calculated_intensity, known_intensity)
 
+    def test_feature_extraction_annulus_intensity_ones(self):
+        """
+        """
+        self.fail("Finish writing test.")
+
+    def test_feature_extraction_annulus_intensity_zeros(self):
+        """
+        """
+        self.fail("Finish writing test.")
+
+    def test_feature_extraction_annulus_intensity_angstrom_ones(self):
+        """
+        """
+        self.fail("Finish writing test.")
+
+    def test_feature_extraction_annulus_intensity_angstrom_zeros(self):
+        """
+        Test FeatureExtraction for a test image with an annulus of ones.
+        Ensure the calculated annulus intensity is correct.
+        """
+        # Generate the test image
+        size = 256
+        shape = size, size
+        test_image = np.zeros(shape)
+
+        # Set annulus properties
+        amin = 8.8e-10
+        amax = 10.8e-10
+
+        # Convert from molecular spacings in angstroms to pixel lengths in
+        # detector space (recpiprocal units)
+
+        # Set machine parameters
+        source_wavelength = 1.5418e-10
+        pixel_length = 55e-6
+        sample_to_detector_distance = 10e-3
+
+        # Initialize the units class
+        units_class = DiffractionUnitsConversion(
+                source_wavelength=source_wavelength, pixel_length=pixel_length,
+                sample_to_detector_distance=sample_to_detector_distance)
+
+        # Calculate rmin and rmax
+        rmin = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amax)
+        rmax = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amin)
+
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(
+                shape[0], shape[1], rmin=rmin, rmax=rmax)
+
+        # Set the annulus values equal to 1
+        test_image[annulus_mask] = 1
+
+        # Calculate the known intensity based on area
+        area = np.pi*(rmax**2 - rmin**2)
+        known_intensity = area
+
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(
+                test_image, source_wavelength=source_wavelength,
+                sample_to_detector_distance=sample_to_detector_distance)
+
+        # Calculate the annulus intensity
+        calculated_intensity = \
+                feature_extraction.feature_annulus_intensity_angstrom(
+                        pixel_length=pixel_length, amin=amin, amax=amax)
+
+        # Ensure the calculated intensity is correct
+        self.assertEqual(calculated_intensity, known_intensity)
 
 if __name__ == '__main__':
     unittest.main()
