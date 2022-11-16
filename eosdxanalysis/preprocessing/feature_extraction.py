@@ -5,29 +5,47 @@ import numpy as np
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 
+from eosdxanalysis.calibration.utils import DiffractionUnitsConversion
+
 
 class FeatureExtraction(object):
     """
     Class to handle feature extraction
     """
 
-    def __init__(self, image, distance=None):
+    def __init__(
+            self, image, source_wavelength=None, pixel_length=None,
+            sample_to_detector_distance=None):
+
         """
         Initializes the FeatureExtraction class with image path and
-        sample-to-detector distance.
+        machine parameters.
 
         Parameters
         ----------
 
-        image_path : str
-            Path to the image file
+        image : (n,2)-ndarray
+            Image data
 
-        distance : number
-            Sample-to-detector distance
+        source_wavelength: number
+
+        pixel_length : number
+
+        sample_to_detector_distance : number
+
+        Notes
+        -----
+        See ``eosdxanalysis.calibration.utils.DiffractionUnitsConversion`` for
+        explanation of machine parameters.
+
         """
-        # Store the inputs
+        # Store input image
         self.image = image
-        self.distance = distance
+
+        # Store machine parameters
+        self.source_wavelength = source_wavelength
+        self.pixel_length = pixel_length
+        self.sample_to_detector_distance = sample_to_detector_distance
 
         return super().__init__()
 
@@ -53,7 +71,6 @@ class FeatureExtraction(object):
 
         # Compute the total image intensity
         image_intensity = np.sum(image)
-        self.image_intensity = image_intensity
 
         return image_intensity
 
@@ -95,7 +112,7 @@ class FeatureExtraction(object):
         return annulus_intensity
 
     def feature_annulus_intensity_angstrom(
-            self, distance_to_detector=None, center=None, amin=None, amax=None):
+            self, pixel_length=None, center=None, amin=None, amax=None):
         """
         Calculate the intensity of an annulus specified by start and end radii
         in Angstrom units.
@@ -129,14 +146,32 @@ class FeatureExtraction(object):
         are in reciprocal space.
 
         """
+        # Get machine parameters
+        source_wavelength = self.source_wavelength
+        sample_to_detector_distance = self.sample_to_detector_distance
+
+        # Check if required machine parameters were provided
+        if not all([self.source_wavelength, self.sample_to_detector_distance]):
+            raise ValueError("You must initialize the units class with machine"
+                    " parameters for this method!")
+
         # Reference the stored image
         image = self.image
 
         # Get the image shape
         shape = image.shape
 
-        rmin = somefunction(amax, distance_to_detector)
-        rmax = somefunction(amin, distance_to_detector)
+        # Initialize the units class
+        units_class = DiffractionUnitsConversion(
+                source_wavelength=source_wavelength, pixel_length=pixel_length,
+                sample_to_detector_distance=sample_to_detector_distance)
+
+        # Set rmin to the larger angstrom spacing (reciprocal space)
+        rmin = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amax)
+        # Set rmax to the smaller angstrom spacing (repciprocal space)
+        rmax = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amin)
 
         # Create a mask for the annulus
         annulus_mask = create_circular_mask(shape[0], shape[1], center=center,
