@@ -1748,6 +1748,84 @@ class TestFeatureExtraction(unittest.TestCase):
         self.assertTrue(
                 np.isclose(calculated_intensity, known_intensity, rtol=0.05))
 
+    def test_feature_sector_intensity_angstrom_ones(self):
+        """
+        Test FeatureExtraction for a test image with an annulus of ones.
+        Ensure the calculated annulus intensity is correct.
+        """
+        # Generate the test image
+        size = 256
+        shape = size, size
+
+        # Set annulus properties
+        amin = 8.8e-10
+        amax = 10.8e-10
+        theta_min = -np.pi/4
+        theta_max = np.pi/4
+
+        # Convert from molecular spacings in angstroms to pixel lengths in
+        # detector space (recpiprocal units)
+
+        # Set machine parameters
+        source_wavelength = 1.5418e-10
+        pixel_length = 55e-6
+        sample_to_detector_distance = 10e-3
+
+        # Initialize the units class
+        units_class = DiffractionUnitsConversion(
+                source_wavelength=source_wavelength, pixel_length=pixel_length,
+                sample_to_detector_distance=sample_to_detector_distance)
+
+        # Calculate rmin and rmax
+        rmin = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amax)
+        rmax = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amin)
+
+        # Generate sector mask
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(
+                shape[0], shape[1], rmin=rmin, rmax=rmax)
+
+        # Generate a meshgrid the same size as the image
+        x_end = shape[1]/2 - 0.5
+        x_start = -x_end
+        y_end = x_start
+        y_start = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        TT = np.arctan2(YY, XX)
+
+        # Get sector indices
+        sector_indices = (TT > theta_min) & (TT < theta_max) & annulus_mask
+
+        # Create test image
+        test_image = np.zeros(shape)
+        # Set sector pixels to one
+        test_image[sector_indices] = 1
+
+        # Calculate the known intensity based on area
+        area = np.pi*(rmax**2 - rmin**2)*(theta_max - theta_min)/(2*np.pi)
+        known_intensity = area
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the annulus intensity
+        calculated_intensity = \
+                feature_extraction.feature_sector_intensity(
+                        rmin=rmin, rmax=rmax, theta_min=theta_min,
+                        theta_max=theta_max)
+
+        # Ensure calculated intensity is non-zero
+        self.assertTrue(calculated_intensity > 0)
+
+        # Ensure known intensity is non-zero
+        self.assertTrue(known_intensity > 0)
+
+        # Ensure the calculated intensity is correct
+        self.assertTrue(
+                np.isclose(calculated_intensity, known_intensity, rtol=0.05))
+
 
 if __name__ == '__main__':
     unittest.main()
