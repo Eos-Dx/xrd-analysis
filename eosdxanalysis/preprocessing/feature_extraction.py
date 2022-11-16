@@ -181,3 +181,73 @@ class FeatureExtraction(object):
         annulus_intensity = np.sum(image[annulus_mask])
 
         return annulus_intensity
+
+    def feature_sector_intensity(
+            self, center=None, rmin=None, rmax=None, theta_min=-np.pi/4,
+            theta_max=np.pi/4):
+        """
+        Computes the total intensity of a sector
+
+        Parameters
+        ----------
+
+        center : 2-tuple (number)
+            Row and column location of the annulus center
+
+        rmin : number
+            Minimum annulus radius in pixel units
+
+        rmax : number
+            Maximum annulus radius in pixel units
+
+        theta_min : number
+            Start angle of sector in radians. 0 degrees is x > 0 axis. The
+            direction of positive theta is counter-clockwise.
+
+        theta_max : number
+            End angle of sector in radians. 0 degrees is x > 0 axis. The
+            direction of positive theta is counter-clockwise.
+
+        Output
+        ------
+
+        sector_intensity : number
+            The intensity of the sector
+
+        Notes
+        -----
+        Angles are measured in radians. The x > 0 axis is zero degrees. The
+        direction of positive theta is counter-clockwise.
+        """
+        thetas = theta_min, theta_max
+        for theta in thetas:
+            # Convert angles to the range (-pi, pi)
+            theta %= np.pi
+            # Force theta to be between -pi and pi
+            theta += np.pi
+            theta %= 2*np.pi
+            theta -= np.pi
+
+        # Reference the stored image
+        image = self.image
+
+        # Get the image shape
+        shape = image.shape
+
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(shape[0], shape[1], center=center,
+                rmin=rmin, rmax=rmax)
+
+        # Generate a meshgrid the same size as the image
+        x_end = shape[1]/2 - 0.5
+        x_start = -x_end
+        y_end = x_start
+        y_start = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        TT = np.arctan2(YY, XX)
+
+        sector_indices = (TT > theta_min) & (TT < theta_max)
+
+        sector_intensity = np.sum(annulus_mask[sector_indices])
+
+        return sector_intensity
