@@ -1,7 +1,13 @@
 """
 Feature extraction functions
 """
+import os
+import glob
+import argparse
+import json
+
 import numpy as np
+import pandas as pd
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 
@@ -111,7 +117,7 @@ class FeatureExtraction(object):
 
         return annulus_intensity
 
-    def feature_annulus_intensity_angstrom(
+    def feature_annulus_intensity_angstroms(
             self, pixel_length=None, center=None, amin=None, amax=None):
         """
         Calculate the intensity of an annulus specified by start and end radii
@@ -248,8 +254,8 @@ class FeatureExtraction(object):
         return sector_intensity
 
     def feature_sector_intensity_angstroms(
-            self, center=None, amin=None, amax=None, theta_min=-np.pi/4,
-            theta_max=np.pi/4):
+            self, pixel_length=None, center=None, amin=None, amax=None,
+            theta_min=-np.pi/4, theta_max=np.pi/4):
         """
         Computes the total intensity of a sector
 
@@ -316,3 +322,149 @@ class FeatureExtraction(object):
                 theta_max=theta_max)
 
         return sector_intensity
+
+def feature_extraction(input_path, output_filepath, params):
+    """
+    Extracts features on dataset and writes output to csv file.
+
+
+    Parameters
+    ----------
+
+    input_path : str
+        Path to centered, rotated data
+
+    output_filepath : str
+        Saves extracted features to this file.
+
+    params : str
+        JSON-encoded string specifying machine parameters and features to
+        extract. See Notes below.
+
+    Notes
+    -----
+    Assume we are using angstroms for annulus and sector bounds.
+
+    Params JSON-encoded file example, extracted three features:
+        1. total intensity
+        2. 9 A annulus intensity
+        3. 9 A equator sector intensities
+
+        {
+            "machine_parameters": [
+                "source_wavelength": 1.5418E-10,
+                "pixel_length": 55E-6,
+                "sample_to_detector_distance": 10E-3
+            ],  
+            "features": [
+                "total_intensity": true,
+                "annulus_intensity": [
+                    "9A": [
+                        8.8E-10,
+                        10.8E-10
+                    ]
+                ],  
+                "sector_intensity": [
+                    "equator_intensity": [
+                        "9A": [
+                            8.8E-10,
+                            10.8E-10,
+                            -0.7853981633974483,
+                            0.7853981633974483
+                        ]
+                    ]
+                ]   
+            ]   
+        }
+    """
+    # Load machine parameters
+    machine_parameters = params["machine_parameters"]
+    source_wavelength = machine_parameters["source_wavelength"]
+    pixel_length = machine_parameters["pixel_length"]
+    sample_to_detector_distance = machine_parameters[
+            "sample_to_detector_distance"]
+
+    # Get filepath list
+    filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
+    # Sort files list
+    filepath_list.sort()
+
+    # Get list of features to extract
+    features = params["features"]
+    feature_list = list(features.keys())
+
+    # Create dataframe to collect extracted features
+    columns = ["Filename"] + feature_list
+    df = pd.DataFrame(data={}, columns=columns)
+
+    # Loop over files list
+    for filepath in filepath_list:
+        filename = os.path.basename(filepath)
+        image = np.loadtxt(filepath, dtype=np.uint32)
+
+        # Initialize feature extraction class
+        feature_extraction = FeatureExtraction(
+                image, source_wavelength=source_wavelength,
+                sample_to_detector_distance=sample_to_detector_distance)
+
+        extracted_feature_list = []
+        for feature in feature_list:
+            if "total_intensity" in feature:
+                # Compute total intensity
+                total_intensity = feature_extraction.feature_image_intensity()
+                extracted_feature_list.append(total_intensity)
+            elif "annulus_intensity" in feature:
+                # Compute annulus intensity
+                annulus_bounds = features[feature]
+                amin, amax = annulus_bounds
+                annulus_intensity = \
+                        feature_extraction.feature_annulus_intensity_angstroms(
+                            pixel_length=pixel_length, amin=amin, amax=amax)
+                extracted_feature_list.append(annulus_intensity)
+            elif "sector_intensity" in feature:
+                # Compute sector intensity
+                sector_bounds = features[feature]
+                amin, amax, theta_min, theta_max = sector_bounds
+                sector_intensity = \
+                        feature_extraction.feature_sector_intensity_angstroms(
+                            pixel_length, amin=amin, amax=amax,
+                            theta_min=theta_min, theta_max=theta_max)
+                extracted_feature_list.append(sector_intensity)
+
+        # Add extracted features to dataframe
+        df.loc[len(df.index)+1] = [filename] + extracted_feature_list
+
+    # Save dataframe to csv
+    df.to_csv(output_filepath, index=False)
+
+if __name__ == '__main__':
+    """
+    Run feature extraction on a file or entire folder. Provide centered and
+    rotated images.
+    """
+    # Set up argument parser
+    parser = argparse.ArgumentParser()
+    # Set up parser arguments
+    parser.add_argument(
+            "--input_path", default=None, required=True,
+            help="The path containing raw files to perform feature extraction"
+            " on")
+    parser.add_argument(
+            "--output_filepath", default=None, required=True,
+            help="The output filepath to store extracted features")
+    parser.add_argument(
+            "--params_filepath", default=None, required=True,
+           help="Path to file with parameters for feature extraction")
+
+    args = parser.parse_args()
+
+    input_path = args.input_path
+    output_filepath = args.output_filepath
+
+    # Get parameters from file or from JSON string commandline argument
+    params_filepath = args.params_filepath
+    with open(params_filepath,"r") as params_fp:
+        params = json.loads(params_fp.read())
+
+    # Run feature extraction
+    feature_extraction(input_path, output_filepath, params)
