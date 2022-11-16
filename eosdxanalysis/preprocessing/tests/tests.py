@@ -1696,5 +1696,58 @@ class TestFeatureExtraction(unittest.TestCase):
         # Ensure the calculated intensity is correct
         self.assertEqual(calculated_intensity, known_intensity)
 
+    def test_feature_sector_intensity_ones_90_degrees(self):
+        """
+        Test feature sector intensity with all ones
+        """
+        # Set test image properties
+        size = 256
+        shape = size, size
+
+        # Set annulus properties
+        rmin = size/4
+        rmax = size/2
+        theta_min = -np.pi/4
+        theta_max = np.pi/4
+
+        # Generate sector mask
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(
+                shape[0], shape[1], rmin=rmin, rmax=rmax)
+
+        # Generate a meshgrid the same size as the image
+        x_end = shape[1]/2 - 0.5
+        x_start = -x_end
+        y_end = x_start
+        y_start = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        TT = np.arctan2(YY, XX)
+
+        # Get sector indices
+        sector_indices = (TT > theta_min) & (TT < theta_max) & annulus_mask
+
+        # Create test image
+        test_image = np.zeros(shape)
+        # Set sector pixels to one
+        test_image[sector_indices] = 1
+
+        # Calculate the known intensity based on area
+        area = np.pi*(rmax**2 - rmin**2)*(theta_max - theta_min)/(2*np.pi)
+        known_intensity = area
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the annulus intensity
+        calculated_intensity = \
+                feature_extraction.feature_sector_intensity(
+                        rmin=rmin, rmax=rmax, theta_min=theta_min,
+                        theta_max=theta_max)
+
+        # Ensure the calculated intensity is correct
+        self.assertTrue(
+                np.isclose(calculated_intensity, known_intensity, rtol=0.05))
+
+
 if __name__ == '__main__':
     unittest.main()
