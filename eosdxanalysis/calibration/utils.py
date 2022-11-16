@@ -94,10 +94,7 @@ class DiffractionUnitsConversion(object):
         peak on a diffraction pattern.
         """
         # Get or calculate theta
-        try:
-            theta = self.theta
-        except AttributeError:
-            theta = self.theta_from_molecular_spacing(molecular_spacing, n)
+        theta = self.theta_from_molecular_spacing(molecular_spacing, n)
 
         # Calculate two*theta
         two_theta = 2*theta
