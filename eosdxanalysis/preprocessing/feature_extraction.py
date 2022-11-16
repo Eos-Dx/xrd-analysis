@@ -358,21 +358,15 @@ def feature_extraction(input_path, output_filepath, params):
             ],  
             "features": [
                 "total_intensity": true,
-                "annulus_intensity": [
-                    "9A": [
-                        8.8E-10,
-                        10.8E-10
-                    ]
+                "annulus_intensity_9A": [
+                    8.8E-10,
+                    10.8E-10
                 ],  
-                "sector_intensity": [
-                    "equator_intensity": [
-                        "9A": [
-                            8.8E-10,
-                            10.8E-10,
-                            -0.7853981633974483,
-                            0.7853981633974483
-                        ]
-                    ]
+                "sector_intensity_equator_9A": [
+                    8.8E-10,
+                    10.8E-10,
+                    -0.7853981633974483,
+                    0.7853981633974483
                 ]   
             ]   
         }
