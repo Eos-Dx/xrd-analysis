@@ -15,7 +15,7 @@ from scipy.ndimage import center_of_mass
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
-from eosdxanalysis.preprocessing.image_processing import quantile_count
+from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
 from eosdxanalysis.preprocessing.center_finding import circular_average
 from eosdxanalysis.preprocessing.center_finding import find_center
@@ -994,9 +994,9 @@ class TestImageProcessing(unittest.TestCase):
             # Crop image
             cropped_odd_image = crop_image(odd_image, side//2, side//2)
 
-    def test_quantile_count(self):
+    def test_bright_pixel_count(self):
         """
-        Test that quantile count returns the correct
+        Test that bright pixel count returns the correct
         number of pixels for each color
         """
         test_image = np.array([
@@ -1009,8 +1009,8 @@ class TestImageProcessing(unittest.TestCase):
         known_black_count = 12
         known_yellow_count = 4
 
-        calculated_black_count = quantile_count(test_image, qmax=0.5)
-        calculated_yellow_count = quantile_count(test_image, qmin=0.5)
+        calculated_black_count = bright_pixel_count(test_image, qmax=0.5)
+        calculated_yellow_count = bright_pixel_count(test_image, qmin=0.5)
 
         self.assertEqual(calculated_black_count, known_black_count)
         self.assertEqual(calculated_yellow_count, known_yellow_count)
