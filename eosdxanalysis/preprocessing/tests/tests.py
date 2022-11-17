@@ -2396,15 +2396,12 @@ class TestFeatureExtractionCLI(unittest.TestCase):
     FeatureExtraction commandline interface tests
     """
 
-    def test_feature_extraction_cli_ones_test_image(self):
-        """
-        Test feature extraction commandline interface for a test image with
-        ones.
-        """
+    def setUp(self):
+
         # Generate the test image
         size = 256
         shape = size, size
-        test_image = np.zeros(shape)
+        test_image = np.zeros(shape, dtype=np.uint32)
 
         # Set equator sector pair properties
         equator_rmin = size/8
@@ -2473,7 +2470,43 @@ class TestFeatureExtractionCLI(unittest.TestCase):
 
         test_image[ring_annulus_mask] = 1
 
+        # Create test directory
+        feature_extraction_test_dir = "test_feature_extraction"
+        feature_extraction_test_path = os.path.join(
+                TEST_IMAGE_PATH, feature_extraction_test_dir)
+        os.makedirs(feature_extraction_test_path, exist_ok=True)
+
+        # Store test directory
+        self.test_path = feature_extraction_test_path
+
+        test_image_filename = "test_image.txt"
+        test_image_filepath = os.path.join(feature_extraction_test_path,
+                test_image_filename)
+
+        # Save test image to file
+        np.savetxt(test_image_filepath, test_image, fmt="%d")
+
+    def test_feature_extraction_cli_ones_test_image(self):
+        """
+        Test feature extraction commandline interface for a test image with
+        ones.
+        """
         self.fail("Finish writing test.")
+
+    def tearDown(self):
+        # Construct test directory
+        feature_extraction_test_dir = "test_feature_extraction"
+        feature_extraction_test_path = os.path.join(
+                TEST_PATH, feature_extraction_test_dir)
+        os.makedirs(feature_extraction_test_path, exist_ok=True)
+
+        test_image_filename = "test_image.txt"
+        test_image_filepath = os.path.join(feature_extraction_test_path,
+                test_image_filename)
+
+        # Delete test directory
+        test_path = self.test_path
+        shutil.rmtree(test_path)
 
 if __name__ == '__main__':
     unittest.main()
