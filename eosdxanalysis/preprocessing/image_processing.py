@@ -125,7 +125,7 @@ def unwarp_polar(img, origin=None, output_shape=None, rmax=None, order=1):
 
     return output
 
-def quantile_count(image, qmin=0, qmax=1, offset=0):
+def bright_pixel_count(image, qmin=0, qmax=1, offset=0):
     """
     Return the number of pixels between qmin and qmax
     """
