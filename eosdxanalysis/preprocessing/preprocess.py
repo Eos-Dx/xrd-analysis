@@ -572,6 +572,7 @@ class PreprocessData(object):
         rmin = params.get("rmin")
         rmax = params.get("rmax")
         beam_detection = params.get("beam_detection")
+        beam_max_cutout = params.get("beam_max_cutout")
 
         if not tuple(center):
             center = self.array_center
@@ -589,17 +590,22 @@ class PreprocessData(object):
         # Mask
         if style == "both":
             # Mask out beam and area outside outer ring
-            roi_mask = create_circular_mask(h,w,center=center,rmin=rmin,rmax=rmax)
+            if beam_max_cutout:
+                rmin = beam_max_cutout if rmin > beam_max_cutout else rmin
+            roi_mask = create_circular_mask(h, w, center=center, rmin=rmin, rmax=rmax)
             image[~roi_mask] = 0
         elif style == "beam":
             # Mask out beam
-            roi_mask = create_circular_mask(h,w,center=center,rmin=rmin, rmax=h)
+            if beam_max_cutout:
+                rmin = beam_max_cutout if rmin > beam_max_cutout else rmin
+            roi_mask = create_circular_mask(h, w, center=center, rmin=rmin, rmax=h)
             image[~roi_mask] = 0
         elif style == "outside":
             # Mask area outside outer ring
             outside = np.max(image.shape)
-            inv_roi_mask = create_circular_mask(h,w,center=center,rmin=rmax,rmax=outside)
+            inv_roi_mask = create_circular_mask(h, w, center=center, rmin=rmax, rmax=outside)
             image[inv_roi_mask] = 0
+
 
         return image
 
@@ -673,7 +679,7 @@ if __name__ == "__main__":
     params_file = args.params_file
     params_json = args.params
     if params_file:
-        with open(params_file,"r") as params_fp:
+        with open(params_file, "r") as params_fp:
             params = json.loads(params_fp.read())
     elif args.params:
         params = json.loads(params_json)
