@@ -7,7 +7,7 @@ import glob
 
 import numpy as np
 
-from eosdxanalysis.preprocessing.image_processing import quantile_count
+from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
 # Set the minimum brightness threshold
 qmin = 0.75
@@ -19,6 +19,6 @@ files_list.sort()
 
 for filepath in files_list:
     image = np.loadtxt(filepath, dtype=np.uint32)
-    yellow_count = quantile_count(image, qmin=qmin)
+    yellow_count = bright_pixel_count(image, qmin=qmin)
     filename = os.path.basename(filepath)
     print("{},{}".format(filename, yellow_count))
