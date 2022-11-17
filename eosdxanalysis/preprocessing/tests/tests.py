@@ -2123,8 +2123,85 @@ class TestFeatureExtractionCLI(unittest.TestCase):
     """
     FeatureExtraction commandline interface tests
     """
-    pass
 
+    def test_feature_extraction_cli_ones_test_image(self):
+        """
+        Test feature extraction commandline interface for a test image with
+        ones.
+        """
+        # Generate the test image
+        size = 256
+        shape = size, size
+        test_image = np.zeros(shape)
+
+        # Set equator sector pair properties
+        equator_rmin = size/8
+        equator_rmax = size/6
+        equator_sector_angle = np.pi/4
+
+        # Create a mask for the annulus
+        equator_annulus_mask = create_circular_mask(
+                shape[0], shape[1], rmin=equator_rmin, rmax=equator_rmax)
+
+        # Set the sector pixel values to 1
+        # Generate a meshgrid the same size as the image
+        x_end = shape[1]/2 - 0.5
+        x_start = -x_end
+        y_end = x_start
+        y_start = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        TT = np.arctan2(YY, XX)
+
+        # Calculate sector start and end angles based on symmetric sector angle
+        equator_theta_min = -equator_sector_angle/2
+        equator_theta_max = equator_sector_angle/2
+
+        # Get right sector indices
+        right_sector_indices = \
+                (TT > equator_theta_min) & (TT < equator_theta_max) \
+                & equator_annulus_mask
+        # Get left sector indices based on left-right symmetry
+        left_sector_indices = np.fliplr(right_sector_indices)
+
+        # Set equator sectors to 10
+        test_image[right_sector_indices] = 10
+        test_image[left_sector_indices] = 10
+
+        # Set meridian sector properties
+        meridian_rmin = size/4
+        meridian_rmax = size/3
+        meridian_sector_angle = np.pi/3
+
+        # Calculate sector start and end angles based on symmetric sector angle
+        meridian_theta_min = -meridian_sector_angle/2 + np.pi/2
+        meridian_theta_max = meridian_sector_angle/2 + np.pi/2
+
+        # Create a mask for the annulus
+        meridian_annulus_mask = create_circular_mask(
+                shape[0], shape[1], rmin=meridian_rmin, rmax=meridian_rmax)
+
+        # Get top sector indices
+        top_sector_indices = \
+                (TT > meridian_theta_min) & (TT < meridian_theta_max) \
+                & meridian_annulus_mask
+        # Get bottom sector indices based on left-right symmetry
+        bottom_sector_indices = np.flipud(top_sector_indices)
+
+        # Set equator sectors to 10
+        test_image[top_sector_indices] = 5
+        test_image[bottom_sector_indices] = 5
+
+        # Set ring properties
+        ring_rmin = size/3
+        ring_rmax = 4*size/9
+
+        # Create a mask for the annulus
+        ring_annulus_mask = create_circular_mask(
+                shape[0], shape[1], rmin=ring_rmin, rmax=ring_rmax)
+
+        test_image[ring_annulus_mask] = 1
+
+        self.fail("Finish writing test.")
 
 if __name__ == '__main__':
     unittest.main()
