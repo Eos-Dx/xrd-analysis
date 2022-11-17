@@ -224,6 +224,8 @@ class PreprocessData(object):
             output_path = self.output_path
             os.makedirs(output_path, exist_ok=True)
 
+        print("Preprocessing {} file(s) ...".format(len(file_path_list)))
+
         print("Saving to", output_path, "...")
 
         # Write params to file
