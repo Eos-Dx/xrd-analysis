@@ -1625,20 +1625,122 @@ class TestFeatureExtraction(unittest.TestCase):
 
     def test_feature_extraction_annulus_intensity_ones(self):
         """
+        Test FeatureExtraction for a test image with an annulus of ones.
+        Ensure the calculated annulus intensity is correct.
         """
-        self.fail("Finish writing test.")
+        # Generate the test image
+        size = 256
+        shape = size, size
+        test_image = np.zeros(shape)
+
+        # Set annulus properties
+        rmin = size/4
+        rmax = size/2
+
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(
+                shape[0], shape[1], rmin=rmin, rmax=rmax)
+
+        # Set the annulus values equal to 1
+        test_image[annulus_mask] = 1
+
+        # Calculate the known intensity based on area
+        area = np.pi*(rmax**2 - rmin**2)
+        known_intensity = area
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the annulus intensity
+        calculated_intensity = feature_extraction.feature_annulus_intensity(
+                rmin=rmin, rmax=rmax)
+
+        # Ensure the calculated intensity is correct
+        self.assertTrue(
+                np.isclose(calculated_intensity, known_intensity, rtol=0.05))
 
     def test_feature_extraction_annulus_intensity_zeros(self):
         """
+        Test FeatureExtraction for a test image with an annulus of zeros.
+        Ensure the calculated annulus intensity is correct.
         """
-        self.fail("Finish writing test.")
+        # Generate the test image
+        size = 256
+        shape = size, size
+        test_image = np.zeros(shape)
 
-    def test_feature_extraction_annulus_intensity_angstrom_ones(self):
-        """
-        """
-        self.fail("Finish writing test.")
+        # Set annulus properties
+        rmin = size/4
+        rmax = size/2
+
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(
+                shape[0], shape[1], rmin=rmin, rmax=rmax)
+
+        # Set the known intensity to zero
+        known_intensity = 0
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the annulus intensity
+        calculated_intensity = feature_extraction.feature_annulus_intensity(
+                rmin=rmin, rmax=rmax)
+
+        # Ensure the calculated intensity is correct
+        self.assertTrue(
+                np.isclose(calculated_intensity, known_intensity, rtol=0.05))
 
     def test_feature_extraction_annulus_intensity_angstrom_zeros(self):
+        """
+        Test FeatureExtraction for a test image with an annulus of zeros.
+        Ensure the calculated annulus intensity is correct.
+        """
+        # Generate the test image
+        size = 256
+        shape = size, size
+        test_image = np.zeros(shape)
+
+        # Set annulus properties
+        amin = 8.8e-10
+        amax = 10.8e-10
+
+        # Convert from molecular spacings in angstroms to pixel lengths in
+        # detector space (recpiprocal units)
+
+        # Set machine parameters
+        source_wavelength = 1.5418e-10
+        pixel_length = 55e-6
+        sample_to_detector_distance = 10e-3
+
+        # Initialize the units class
+        units_class = DiffractionUnitsConversion(
+                source_wavelength=source_wavelength, pixel_length=pixel_length,
+                sample_to_detector_distance=sample_to_detector_distance)
+
+        # Calculate rmin and rmax
+        rmin = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amax)
+        rmax = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amin)
+
+        # Set the known intensity to zero
+        known_intensity = 0
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(
+                test_image, source_wavelength=source_wavelength,
+                sample_to_detector_distance=sample_to_detector_distance)
+
+        # Calculate the annulus intensity
+        calculated_intensity = \
+                feature_extraction.feature_annulus_intensity_angstroms(
+                        pixel_length=pixel_length, amin=amin, amax=amax)
+
+        # Ensure the calculated intensity is correct
+        self.assertEqual(calculated_intensity, known_intensity)
+
+    def test_feature_extraction_annulus_intensity_angstrom_ones(self):
         """
         Test FeatureExtraction for a test image with an annulus of ones.
         Ensure the calculated annulus intensity is correct.
@@ -1690,11 +1792,12 @@ class TestFeatureExtraction(unittest.TestCase):
 
         # Calculate the annulus intensity
         calculated_intensity = \
-                feature_extraction.feature_annulus_intensity_angstrom(
+                feature_extraction.feature_annulus_intensity_angstroms(
                         pixel_length=pixel_length, amin=amin, amax=amax)
 
         # Ensure the calculated intensity is correct
-        self.assertEqual(calculated_intensity, known_intensity)
+        self.assertTrue(
+                np.isclose(calculated_intensity, known_intensity, rtol=0.05))
 
     def test_feature_sector_intensity_ones_90_degrees(self):
         """
