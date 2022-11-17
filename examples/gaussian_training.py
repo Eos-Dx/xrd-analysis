@@ -156,7 +156,7 @@ def main(
         tn, fp, fn, tp = confusion_matrix(y, y_predict).ravel()
 
         # Print scores
-        metrics_report(TN=tn, FP=tp, FN=fn, TP=tp, degree=degree, printout=True)
+        metrics_report(TN=tn, FP=fp, FN=fn, TP=tp, degree=degree, printout=True)
 
     # Blind data predictions
     # ----------------------
