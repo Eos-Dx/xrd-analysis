@@ -1,4 +1,4 @@
-eosdxanalysis.preprocessing.tests.tests
+﻿eosdxanalysis.preprocessing.tests.tests
 =======================================
 
 .. automodule:: eosdxanalysis.preprocessing.tests.tests
@@ -30,6 +30,8 @@ eosdxanalysis.preprocessing.tests.tests
       TestCenterFinding
       TestCreateCircularMask
       TestDenoising
+      TestFeatureExtraction
+      TestFeatureExtractionCLI
       TestImageProcessing
       TestOutputSaturationBugFix
       TestPeakFinding
