@@ -247,7 +247,7 @@ class FeatureExtraction(object):
         YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
         TT = np.arctan2(YY, XX)
 
-        sector_indices = (TT > theta_min) & (TT < theta_max)
+        sector_indices = (TT > theta_min) & (TT < theta_max) & annulus_mask
 
         sector_intensity = np.sum(annulus_mask[sector_indices])
 
@@ -258,6 +258,288 @@ class FeatureExtraction(object):
             theta_min=-np.pi/4, theta_max=np.pi/4):
         """
         Computes the total intensity of a sector
+
+        Parameters
+        ----------
+
+        center : 2-tuple (number)
+            Row and column location of the annulus center
+
+        amin : number
+            Minimum annulus radius in pixel units
+
+        amax : number
+            Maximum annulus radius in pixel units
+
+        theta_min : number
+            Start angle of sector in radians. 0 degrees is x > 0 axis. The
+            direction of positive theta is counter-clockwise.
+
+        theta_max : number
+            End angle of sector in radians. 0 degrees is x > 0 axis. The
+            direction of positive theta is counter-clockwise.
+
+        Output
+        ------
+
+        sector_intensity : number
+            The intensity of the sector
+
+        Notes
+        -----
+        Angles are measured in radians. The x > 0 axis is zero degrees. The
+        direction of positive theta is counter-clockwise.
+        """
+        # Get machine parameters
+        source_wavelength = self.source_wavelength
+        sample_to_detector_distance = self.sample_to_detector_distance
+
+        # Check if required machine parameters were provided
+        if not all([self.source_wavelength, self.sample_to_detector_distance]):
+            raise ValueError("You must initialize the units class with machine"
+                    " parameters for this method!")
+
+        # Reference the stored image
+        image = self.image
+
+        # Get the image shape
+        shape = image.shape
+
+        # Initialize the units class
+        units_class = DiffractionUnitsConversion(
+                source_wavelength=source_wavelength, pixel_length=pixel_length,
+                sample_to_detector_distance=sample_to_detector_distance)
+
+        # Set rmin to the larger angstrom spacing (reciprocal space)
+        rmin = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amax)
+        # Set rmax to the smaller angstrom spacing (repciprocal space)
+        rmax = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amin)
+
+        sector_intensity = self.feature_sector_intensity(
+                center=center, rmin=rmin, rmax=rmin, theta_min=theta_min,
+                theta_max=theta_max)
+
+        return sector_intensity
+
+    def feature_sector_intensity_equator_pair(
+            self, center=None, rmin=None, rmax=None,
+            sector_angle=None):
+        """
+        Computes the total intensity of a pair of equator sectors
+
+        Parameters
+        ----------
+
+        center : 2-tuple (number)
+            Row and column location of the annulus center
+
+        rmin : number
+            Minimum annulus radius in pixel units
+
+        rmax : number
+            Maximum annulus radius in pixel units
+
+        sector_angle : number
+            Angle of sector in radians. Sector is symmetric about equator.
+            0 degrees is x > 0 axis. The direction of positive theta is
+            counter-clockwise.
+
+        Output
+        ------
+
+        equator_pair_intensity : number
+            The combined intensity of the equator sector pairs
+
+        Notes
+        -----
+        Angles are measured in radians. The x > 0 axis is zero degrees. The
+        direction of positive theta is counter-clockwise.
+        """
+        if sector_angle < 0 or sector_angle > np.pi:
+            raise ValueError(
+                    "Sector angle bounds must be between 0 and +pi.")
+
+        # Reference the stored image
+        image = self.image
+
+        # Get the image shape
+        shape = image.shape
+
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(shape[0], shape[1], center=center,
+                rmin=rmin, rmax=rmax)
+
+        # Generate a meshgrid the same size as the image
+        x_end = shape[1]/2 - 0.5
+        x_start = -x_end
+        y_end = x_start
+        y_start = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        TT = np.arctan2(YY, XX)
+
+        # Calculate sector start and end angles based on symmetric sector angle
+        theta_min = -sector_angle/2
+        theta_max = sector_angle/2
+
+        # Get right sector indices
+        right_sector_indices = \
+                (TT > theta_min) & (TT < theta_max) & annulus_mask
+        # Get left sector indices based on left-right symmetry
+        left_sector_indices = np.fliplr(right_sector_indices)
+
+        # Compute right and left sector intensities
+        right_sector_intensity = np.sum(annulus_mask[right_sector_indices])
+        left_sector_intensity = np.sum(annulus_mask[left_sector_indices])
+
+        # Compute total equator pair intensity
+        equator_pair_intensity = right_sector_intensity + left_sector_intensity
+
+        return equator_pair_intensity
+
+    def feature_sector_intensity_equator_pair_angstroms(
+            self, pixel_length=None, center=None, amin=None, amax=None,
+            sector_angle=None):
+        """
+        Computes the total intensity of a pair of equator sectors specified by
+        angstrom bounds.
+
+        Parameters
+        ----------
+
+        center : 2-tuple (number)
+            Row and column location of the annulus center
+
+        amin : number
+            Minimum annulus radius in pixel units
+
+        amax : number
+            Maximum annulus radius in pixel units
+
+        theta_min : number
+            Start angle of sector in radians. 0 degrees is x > 0 axis. The
+            direction of positive theta is counter-clockwise.
+
+        theta_max : number
+            End angle of sector in radians. 0 degrees is x > 0 axis. The
+            direction of positive theta is counter-clockwise.
+
+        Output
+        ------
+
+        sector_intensity : number
+            The intensity of the sector
+
+        Notes
+        -----
+        Angles are measured in radians. The x > 0 axis is zero degrees. The
+        direction of positive theta is counter-clockwise.
+        """
+        # Get machine parameters
+        source_wavelength = self.source_wavelength
+        sample_to_detector_distance = self.sample_to_detector_distance
+
+        # Check if required machine parameters were provided
+        if not all([self.source_wavelength, self.sample_to_detector_distance]):
+            raise ValueError("You must initialize the units class with machine"
+                    " parameters for this method!")
+
+        # Reference the stored image
+        image = self.image
+
+        # Get the image shape
+        shape = image.shape
+
+        # Initialize the units class
+        units_class = DiffractionUnitsConversion(
+                source_wavelength=source_wavelength, pixel_length=pixel_length,
+                sample_to_detector_distance=sample_to_detector_distance)
+
+        # Set rmin to the larger angstrom spacing (reciprocal space)
+        rmin = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amax)
+        # Set rmax to the smaller angstrom spacing (repciprocal space)
+        rmax = units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                amin)
+
+        sector_intensity = self.feature_sector_intensity(
+                center=center, rmin=rmin, rmax=rmin, theta_min=theta_min,
+                theta_max=theta_max)
+
+        return sector_intensity
+
+    def feature_sector_intensity_meridian_pair(
+            self, center=None, rmin=None, rmax=None,
+            sector_angle=None):
+        """
+        Computes the total intensity of a pair of meridian sectors
+
+        Parameters
+        ----------
+
+        center : 2-tuple (number)
+            Row and column location of the annulus center
+
+        rmin : number
+            Minimum annulus radius in pixel units
+
+        rmax : number
+            Maximum annulus radius in pixel units
+
+        theta_min : number
+            Start angle of sector in radians. 0 degrees is x > 0 axis. The
+            direction of positive theta is counter-clockwise.
+
+        theta_max : number
+            End angle of sector in radians. 0 degrees is x > 0 axis. The
+            direction of positive theta is counter-clockwise.
+
+        Output
+        ------
+
+        sector_intensity : number
+            The intensity of the sector
+
+        Notes
+        -----
+        Angles are measured in radians. The x > 0 axis is zero degrees. The
+        direction of positive theta is counter-clockwise.
+        """
+        if theta_min < -np.pi or theta_max > np.pi:
+            raise ValueError(
+                    "Sector angle bounds must be between -pi and +pi.")
+
+        # Reference the stored image
+        image = self.image
+
+        # Get the image shape
+        shape = image.shape
+
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(shape[0], shape[1], center=center,
+                rmin=rmin, rmax=rmax)
+
+        # Generate a meshgrid the same size as the image
+        x_end = shape[1]/2 - 0.5
+        x_start = -x_end
+        y_end = x_start
+        y_start = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        TT = np.arctan2(YY, XX)
+
+        sector_indices = (TT > theta_min) & (TT < theta_max) & annulus_mask
+
+        sector_intensity = np.sum(annulus_mask[sector_indices])
+
+        return sector_intensity
+
+    def feature_sector_intensity_meridian_pair_angstroms(
+            self, pixel_length=None, center=None, amin=None, amax=None,
+            sector_angle=None):
+        """
+        Computes the total intensity of a pair of meridian sectors specified by
+        angstrom bounds.
 
         Parameters
         ----------
@@ -415,14 +697,23 @@ def feature_extraction(input_path, output_filepath, params):
                         feature_extraction.feature_annulus_intensity_angstroms(
                             pixel_length=pixel_length, amin=amin, amax=amax)
                 extracted_feature_list.append(annulus_intensity)
-            elif "sector_intensity" in feature:
+            elif "sector_intensity_equator_pair" in feature:
                 # Compute sector intensity
                 sector_bounds = features[feature]
-                amin, amax, theta_min, theta_max = sector_bounds
+                amin, amax, sector_angle = sector_bounds
                 sector_intensity = \
-                        feature_extraction.feature_sector_intensity_angstroms(
+                        feature_extraction.feature_sector_intensity_equator_pair_angstroms(
                             pixel_length, amin=amin, amax=amax,
-                            theta_min=theta_min, theta_max=theta_max)
+                            sector_angle=sector_angle)
+                extracted_feature_list.append(sector_intensity)
+            elif "sector_intensity_meridian_pair" in feature:
+                # Compute sector intensity
+                sector_bounds = features[feature]
+                amin, amax, sector_angle = sector_bounds
+                sector_intensity = \
+                        feature_extraction.feature_sector_intensity_meridian_pair_angstroms(
+                            pixel_length, amin=amin, amax=amax,
+                            sector_angle=sector_angle)
                 extracted_feature_list.append(sector_intensity)
 
         # Add extracted features to dataframe
