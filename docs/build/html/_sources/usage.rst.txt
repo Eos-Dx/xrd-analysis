@@ -72,6 +72,8 @@ The preprocessing parameters are as follows:
 * ``local_thresh_block_size``: no longer used (future: specify filter type and size)
 * ``crop_style``: choice of ``"both"``, ``"beam"``, or ``"outside"``. ``"beam"`` sets the inner circle of radius ``rmin`` to zero. ``"outside"`` sets values outside ``rmax`` to zero. ``"both"`` does both.
 * ``beam_detection``: Uses beam detection if true, otherwise uses ``rmin`` for beam radius.
+* ``beam_max_cutout``: Uses a maximum beam cutout radius if specified.
+* ``hot_spot_threshold``: Uses hot spot filtering based on specified intensity threshold.
 * ``plans``: a list of strings denoting the preprocessing plan(s) to perform. Choice of ``"original"``, ``"centerize"``, ``"centerize_rotate"``, and ``"centerize_rotate_quad_fold"``. (Note: JSON syntax does not allow for a spare comma at the end of a list, whereas Python does.)
 
 A sample preprocessing parameters text file would containg the following content:
@@ -91,6 +93,7 @@ A sample preprocessing parameters text file would containg the following content
         "local_thresh_block_size": 21,
         "crop_style": "both",
         "beam_detection": true,
+        "beam_max_cutout": 25,
         "hot_spot_threshold": 1000,
         "plans": [
             "centerize",
