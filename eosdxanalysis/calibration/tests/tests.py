@@ -12,6 +12,8 @@ from eosdxanalysis.preprocessing.center_finding import find_center
 
 from eosdxanalysis.calibration.calibration import Calibration
 
+from eosdxanalysis.calibration.utils import DiffractionUnitsConversion
+
 
 TEST_IMAGE_PATH = os.path.join("eosdxanalysis","calibration","tests","test_images")
 
@@ -64,6 +66,60 @@ class TestCalibration(unittest.TestCase):
                 msg=f"Calibration distance incorrect! "
                     f"Calculated distance {np.round(detector_distance_mm, decimals=2)} mm "
                         f"!= {known_distance_mm} mm")
+
+
+class TestDiffractionUnitsConversion(unittest.TestCase):
+
+    def test_two_theta_from_molecular_spacing(self):
+        """
+        Test 2*theta is correct for some chosen values
+        """
+
+        # Set machine parameters
+        source_wavelength = 1
+        sample_to_detector_distance = 1e-3
+
+        # Set molecular spacing
+        molecular_spacing = 2.3
+
+        # Set known 2*theta
+        known_two_theta = 2*np.arcsin(source_wavelength/(2*molecular_spacing))
+
+        conversion_class = DiffractionUnitsConversion(
+                source_wavelength=source_wavelength,
+                sample_to_detector_distance=sample_to_detector_distance)
+
+        two_theta = conversion_class.two_theta_from_molecular_spacing(
+                molecular_spacing)
+
+        self.assertEqual(two_theta, known_two_theta)
+
+    def test_bragg_peak_pixel_location_from_molecular_spacing(self):
+        """
+        Test Bragg peak pixel location function
+        """
+        # Set parameters
+        source_wavelength = 1.5418e-10
+        pixel_length = 55e-6
+        distance = 10e-3
+        molecular_spacing = 9.8e-10
+
+        # Set known location
+        known_pixel_location = 29
+
+        # Initialize diffraction units class
+        units_class = DiffractionUnitsConversion(
+                source_wavelength=source_wavelength, pixel_length=pixel_length,
+                sample_to_detector_distance=distance)
+
+        bragg_peak_pixel_location = \
+                units_class.bragg_peak_pixel_location_from_molecular_spacing(
+                        molecular_spacing)
+
+        self.assertTrue(
+                np.isclose(
+                    bragg_peak_pixel_location, known_pixel_location, atol=0.5))
+
 
 if __name__ == '__main__':
     unittest.main()
