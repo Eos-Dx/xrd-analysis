@@ -2133,7 +2133,29 @@ class TestFeatureExtraction(unittest.TestCase):
         of zeros.
         Ensure the calculated intensity of the sector pairs is correct.
         """
-        self.fail("Finish writing test.")
+        # Generate the test image
+        size = 256
+        shape = size, size
+        test_image = np.zeros(shape)
+
+        # Set equator sector pair properties
+        rmin = size/4
+        rmax = size/2
+        sector_angle = np.pi/4
+
+        # Set the known intensity
+        known_intensity = 0
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the annulus intensity
+        calculated_intensity = feature_extraction.feature_sector_intensity_meridian_pair(
+                rmin=rmin, rmax=rmax, sector_angle=sector_angle)
+
+        # Ensure the calculated intensity is correct
+        self.assertTrue(
+                np.isclose(calculated_intensity, known_intensity, rtol=0.05))
 
     def test_feature_sector_intensity_equator_pair_angstrom_ones(self):
         """
