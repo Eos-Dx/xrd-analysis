@@ -390,8 +390,8 @@ class FeatureExtraction(object):
         left_sector_indices = np.fliplr(right_sector_indices)
 
         # Compute right and left sector intensities
-        right_sector_intensity = np.sum(annulus_mask[right_sector_indices])
-        left_sector_intensity = np.sum(annulus_mask[left_sector_indices])
+        right_sector_intensity = np.sum(image[right_sector_indices])
+        left_sector_intensity = np.sum(image[left_sector_indices])
 
         # Compute total equator pair intensity
         equator_pair_intensity = right_sector_intensity + left_sector_intensity
