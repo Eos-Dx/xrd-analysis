@@ -1981,23 +1981,140 @@ class TestFeatureExtraction(unittest.TestCase):
         self.assertTrue(
                 np.isclose(calculated_intensity, known_intensity, rtol=0.05))
 
-    def test_feature_sector_intensity_equator_angstrom_ones(self):
+    def test_feature_sector_intensity_equator_pair_ones(self):
         """
+        Test FeatureExtraction for a test image with a pair of equator sectors
+        of ones.
+        Ensure the calculated intensity of the sector pairs is correct.
+        """
+        # Generate the test image
+        size = 256
+        shape = size, size
+        test_image = np.zeros(shape)
+
+        # Set equator sector pair properties
+        rmin = size/4
+        rmax = size/2
+        sector_angle = np.pi/4
+
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(
+                shape[0], shape[1], rmin=rmin, rmax=rmax)
+
+        # Set the sector pixel values to 1
+        # Generate a meshgrid the same size as the image
+        x_end = shape[1]/2 - 0.5
+        x_start = -x_end
+        y_end = x_start
+        y_start = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        TT = np.arctan2(YY, XX)
+
+        # Calculate sector start and end angles based on symmetric sector angle
+        theta_min = -sector_angle/2
+        theta_max = sector_angle/2
+
+        # Get right sector indices
+        right_sector_indices = \
+                (TT > theta_min) & (TT < theta_max) & annulus_mask
+        # Get left sector indices based on left-right symmetry
+        left_sector_indices = np.fliplr(right_sector_indices)
+
+        test_image[right_sector_indices] = 1
+        test_image[left_sector_indices] = 1
+
+        # Calculate the known intensity based on sector areas
+        area_right_sector = np.pi*(rmax**2-rmin**2)*sector_angle/(2*np.pi)
+        area_left_sector = area_right_sector
+        known_intensity = area_right_sector + area_left_sector
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the annulus intensity
+        calculated_intensity = feature_extraction.feature_sector_intensity_equator_pair(
+                rmin=rmin, rmax=rmax, sector_angle=sector_angle)
+
+        # Ensure the calculated intensity is correct
+        self.assertTrue(
+                np.isclose(calculated_intensity, known_intensity, rtol=0.05))
+
+    def test_feature_sector_intensity_equator_pair_zeros(self):
+        """
+        Test FeatureExtraction for a test image with a pair of equator sectors
+        of zeros.
+        Ensure the calculated intensity of the sector pairs is correct.
+        """
+        # Generate the test image
+        size = 256
+        shape = size, size
+        test_image = np.zeros(shape)
+
+        # Set equator sector pair properties
+        rmin = size/4
+        rmax = size/2
+        sector_angle = np.pi/4
+
+        # Calculate the known intensity based on area
+        area = np.pi*(rmax**2 - rmin**2)
+        known_intensity = area
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the annulus intensity
+        calculated_intensity = feature_extraction.feature_sector_intensity_equator_pair(
+                rmin=rmin, rmax=rmax, sector_angle=sector_angle)
+
+        # Ensure the calculated intensity is correct
+        self.assertTrue(
+                np.isclose(calculated_intensity, known_intensity, rtol=0.05))
+
+    def test_feature_sector_intensity_meridian_pair_ones(self):
+        """
+        Test FeatureExtraction for a test image with a pair of meridian sectors
+        of ones.
+        Ensure the calculated intensity of the sector pairs is correct.
         """
         self.fail("Finish writing test.")
 
-    def test_feature_sector_intensity_equator_angstrom_zeros(self):
+    def test_feature_sector_intensity_meridian_pair_zeros(self):
         """
-        """
-        self.fail("Finish writing test.")
-
-    def test_feature_sector_intensity_meridian_angstrom_ones(self):
-        """
+        Test FeatureExtraction for a test image with a pair of meridian sectors
+        of zeros.
+        Ensure the calculated intensity of the sector pairs is correct.
         """
         self.fail("Finish writing test.")
 
-    def test_feature_sector_intensity_meridian_angstrom_zeros(self):
+    def test_feature_sector_intensity_equator_pair_angstrom_ones(self):
         """
+        Test FeatureExtraction for a test image with a pair of equator sectors
+        of ones, given sector bounds in angstroms.
+        Ensure the calculated intensity of the sector pairs is correct.
+        """
+        self.fail("Finish writing test.")
+
+    def test_feature_sector_intensity_equator_pair_angstrom_zeros(self):
+        """
+        Test FeatureExtraction for a test image with a pair of equator sectors
+        of zeros, given sector bounds in angstroms.
+        Ensure the calculated intensity of the sector pairs is correct.
+        """
+        self.fail("Finish writing test.")
+
+    def test_feature_sector_intensity_meridian_pair_angstrom_ones(self):
+        """
+        Test FeatureExtraction for a test image with a pair of meridian sectors
+        of ones, given sector bounds in angstroms.
+        Ensure the calculated intensity of the sector pairs is correct.
+        """
+        self.fail("Finish writing test.")
+
+    def test_feature_sector_intensity_meridian_pair_angstrom_zeros(self):
+        """
+        Test FeatureExtraction for a test image with a pair of meridian sectors
+        of zeros, given sector bounds in angstroms.
+        Ensure the calculated intensity of the sector pairs is correct.
         """
         self.fail("Finish writing test.")
 
