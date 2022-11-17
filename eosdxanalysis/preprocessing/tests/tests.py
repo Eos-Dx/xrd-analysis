@@ -2055,9 +2055,8 @@ class TestFeatureExtraction(unittest.TestCase):
         rmax = size/2
         sector_angle = np.pi/4
 
-        # Calculate the known intensity based on area
-        area = np.pi*(rmax**2 - rmin**2)
-        known_intensity = area
+        # Set the known intensity to zero
+        known_intensity = 0
 
         # Initiate the class
         feature_extraction = FeatureExtraction(test_image)
