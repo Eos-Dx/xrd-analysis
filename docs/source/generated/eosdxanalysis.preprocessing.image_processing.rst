@@ -13,10 +13,10 @@
 
    .. autosummary::
    
+      bright_pixel_count
       crop_image
       pad_image
       quadrant_fold
-      quantile_count
       unwarp_polar
    
    
