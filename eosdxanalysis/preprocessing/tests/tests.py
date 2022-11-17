@@ -1570,6 +1570,9 @@ class TestBeamUtils(unittest.TestCase):
         self.fail("Finish writing test.")
 
 class TestFeatureExtraction(unittest.TestCase):
+    """
+    FeatureExtraction tests
+    """
 
     def test_feature_extraction_init(self):
         """
@@ -1977,6 +1980,33 @@ class TestFeatureExtraction(unittest.TestCase):
         # Ensure the calculated intensity is correct
         self.assertTrue(
                 np.isclose(calculated_intensity, known_intensity, rtol=0.05))
+
+    def test_feature_sector_intensity_equator_angstrom_ones(self):
+        """
+        """
+        self.fail("Finish writing test.")
+
+    def test_feature_sector_intensity_equator_angstrom_zeros(self):
+        """
+        """
+        self.fail("Finish writing test.")
+
+    def test_feature_sector_intensity_meridian_angstrom_ones(self):
+        """
+        """
+        self.fail("Finish writing test.")
+
+    def test_feature_sector_intensity_meridian_angstrom_zeros(self):
+        """
+        """
+        self.fail("Finish writing test.")
+
+
+class TestFeatureExtractionCLI(unittest.TestCase):
+    """
+    FeatureExtraction commandline interface tests
+    """
+    pass
 
 
 if __name__ == '__main__':
