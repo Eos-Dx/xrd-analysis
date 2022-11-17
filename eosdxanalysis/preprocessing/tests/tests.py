@@ -1854,7 +1854,7 @@ class TestFeatureExtraction(unittest.TestCase):
     def test_feature_sector_intensity_ones_90_degrees_negative_x(self):
         """
         Test feature sector intensity with all ones with 90 degree sector
-        symmetric about the x < 0 axis
+        symmetric about the x < 0 axis. Should raise ValueError.
         """
         # Set test image properties
         size = 256
