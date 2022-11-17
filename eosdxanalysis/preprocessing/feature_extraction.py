@@ -506,9 +506,9 @@ class FeatureExtraction(object):
         Angles are measured in radians. The x > 0 axis is zero degrees. The
         direction of positive theta is counter-clockwise.
         """
-        if theta_min < -np.pi or theta_max > np.pi:
+        if sector_angle < 0 or sector_angle > np.pi:
             raise ValueError(
-                    "Sector angle bounds must be between -pi and +pi.")
+                    "Sector angle bounds must be between 0 and +pi.")
 
         # Reference the stored image
         image = self.image
@@ -528,11 +528,24 @@ class FeatureExtraction(object):
         YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
         TT = np.arctan2(YY, XX)
 
-        sector_indices = (TT > theta_min) & (TT < theta_max) & annulus_mask
+        # Calculate sector start and end angles based on symmetric sector angle
+        theta_min = -sector_angle/2 + np.pi/2
+        theta_max = sector_angle/2 + np.pi/2
 
-        sector_intensity = np.sum(annulus_mask[sector_indices])
+        # Get top sector indices
+        top_sector_indices = \
+                (TT > theta_min) & (TT < theta_max) & annulus_mask
+        # Get bottom sector indices based on bottom-top symmetry
+        bottom_sector_indices = np.flipud(top_sector_indices)
 
-        return sector_intensity
+        # Compute top and bottom sector intensities
+        top_sector_intensity = np.sum(image[top_sector_indices])
+        bottom_sector_intensity = np.sum(image[bottom_sector_indices])
+
+        # Compute total equator pair intensity
+        equator_pair_intensity = top_sector_intensity + bottom_sector_intensity
+
+        return equator_pair_intensity
 
     def feature_sector_intensity_meridian_pair_angstroms(
             self, pixel_length=None, center=None, amin=None, amax=None,
