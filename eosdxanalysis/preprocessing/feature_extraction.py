@@ -779,7 +779,7 @@ def feature_extraction(input_path, output_filepath, params):
                 extracted_feature_list.append(total_intensity)
             if "bright_pixel_count" in feature:
                 # Compute total intensity
-                bright_pixel_count_threshold = features[feature]
+                bright_pixel_count_threshold = features[feature][0]
                 bright_pixel_count = feature_extraction.feature_bright_pixel_count(
                         threshold=bright_pixel_count_threshold)
                 extracted_feature_list.append(bright_pixel_count)
