@@ -1,5 +1,9 @@
 # xrd-analysis
-Software for Eos Dx, Inc. sample preprocessing and analysis. Last updated for v2.18.0.
+Software for Eos Dx, Inc. sample preprocessing and analysis. Last updated for v2.18.2.
+
+## Documentation
+
+Open ``xrd-analysis/eosdxanalysis/docs/build/html/index.html`` in your web browser.
 
 # Codebase
 The python package is named ``eosdxanalysis``.
@@ -21,8 +25,10 @@ The ``eosdxanalysis`` main modules are ``calibration``, ``models``, ``preprocess
 ## Development Environment Setup
 Use miniforge (https://github.com/conda-forge/miniforge) and create environment with environment.yml file from xrd-analysis repository:
 
-``conda env create --name eos --file environment.yaml``
-``conda activate eos``
+```bash
+conda env create --name eos --file environment.yaml
+conda activate eos
+```
 
 Note: Remove the line containing ``sphinx-automodapi=0.41.1`` if install fails.
 
