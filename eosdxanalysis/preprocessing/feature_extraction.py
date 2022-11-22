@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
+from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
 from eosdxanalysis.calibration.utils import DiffractionUnitsConversion
 
@@ -79,6 +80,31 @@ class FeatureExtraction(object):
         image_intensity = np.sum(image)
 
         return image_intensity
+
+    def feature_bright_pixel_count(self, threshold=0.75):
+        """
+        Computes the intensity of the image
+
+        Parameters
+        ----------
+
+        threshold : float
+            The brightness threshold
+
+        Output
+        ------
+
+        bright_pixels : number
+            The number of bright pixels
+
+        """
+        # Reference the stored image
+        image = self.image
+
+        # Compute the bright pixel count
+        bright_pixels = bright_pixel_count(image, qmin=threshold)
+
+        return bright_pixels
 
     def feature_annulus_intensity(self, center=None, rmin=None, rmax=None):
         """
@@ -751,6 +777,12 @@ def feature_extraction(input_path, output_filepath, params):
                 # Compute total intensity
                 total_intensity = feature_extraction.feature_image_intensity()
                 extracted_feature_list.append(total_intensity)
+            if "bright_pixel_count" in feature:
+                # Compute total intensity
+                bright_pixel_count_threshold = features[feature][0]
+                bright_pixel_count = feature_extraction.feature_bright_pixel_count(
+                        threshold=bright_pixel_count_threshold)
+                extracted_feature_list.append(bright_pixel_count)
             elif "annulus_intensity" in feature:
                 # Compute annulus intensity
                 annulus_bounds = features[feature]
