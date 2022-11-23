@@ -1,141 +1,165 @@
 """
-Implements K-means clustering analysis
-See: https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
+Code to train multiple k-means unsupervised clustering models on a dataset
 """
 import os
+import shutil
 import argparse
-import glob
-import re
 
-import numpy as np
 import pandas as pd
-import scipy as sp
+import numpy as np
 
 from sklearn.cluster import KMeans
-from sklearn.metrics import classification_report
+from sklearn.preprocessing import StandardScaler
 
+from joblib import dump
 
-def read_data(input_dir, samplecsv_path, samplecsv, size=256*256, average=False):
+def run_kmeans(
+        data_filepath, output_path=None, feature_list=None, cluster_count_min=2,
+        cluster_count_max=2, image_source_path=None):
     """
-    Reads data into numpy array
+    Runs k-means on a dataset of extracted features for between
+    ``cluster_count_min`` and ``cluster_count_max`` number of clusters.
+
+    Parameters
+    ----------
+
+    data_filepath : str
+        Path to input csv file with extracted features data
+
+    output_path : str
+        Path to save k-means models and cluster image previews
+
+    feature_list : str
+        List of features to perform k-means analysis on. If blank,
+        all columns except ``Filename`` are used.
+
+    cluster_count_min : int
+        Mniimum number of clusters to use for k-means
+
+    cluster_count_max : int
+        Maximum number of clusters to use for k-means
+
+    image_source_path : str
+        Path to image previews
     """
+    # Load data into dataframe
+    df = pd.read_csv(data_filepath, usecols=feature_list, index_col="Filename")
 
-    # Get list of files from input directory
-    fileslist = glob.glob(os.path.join(input_dir,"*.txt"))
-    # Sort files list
-    fileslist.sort()
-    basenames = [os.path.splitext(os.path.basename(fname))[0] \
-                    for fname in fileslist]
-    # Remove preprocessed_ prefix if present
-    barcodes = [re.sub(r"preprocessed_","", bname) for bname in basenames]
+    # Set K-means output results path
+    kmeans_results_filename = "kmeans_results.csv"
 
-    # Get number of files
-    file_num = len(fileslist)
-    # Create numpy array to store data
-    # First index is the file, second is the size of raw data
-    data_array = np.zeros((file_num,size))
+    # Set timestamp
+    timestr = "%Y%m%dT%H%M%S.%f"
+    timestamp = datetime.utcnow().strftime(timestr)
 
-    # Read preprocessed measurments data from files into array
-    for idx in range(file_num):
-        data_array[idx,...] = np.loadtxt(fileslist[idx]).ravel()
+    # Check if output path is specified
+    if not output_path:
+        # Set output path to input file parent path
+        output_dir = "kmeans_models_{}".format(timestamp)
+        output_path = os.path.dirname(data_filepath)
 
-    # Read cancer class labels from csv
-    df = pd.read_csv(os.path.join(samplecsv_path, samplecsv), sep=",")
+    df_kmeans_path = (output_path, kmeans_results_filename)
 
-    # Now take subset of data from csv file
-    df_subset = df[df["Barcode"].isin(barcodes)].copy()
+    # Set up standard scaler
+    scaler = StandardScaler()
+    # Fit standard scaler to data
+    scaler.fit(df)
 
-    # Now add data to dataframe
-    df_subset["PreprocessedData"] = list(data_array)
+    # Transform data using standard scaler
+    X = scaler.transform(df)
 
-    if average:
+    # Train K-means models for each cluster number
+    for idx in range(cluster_min, cluster_max+1):
+        kmeans = KMeans(idx, random_state=0).fit(X)
+        # Save the labels in the dataframe
+        df["kmeans_{}".format(idx)] = kmeans.labels_
 
-        # Calculate average
-        series_mean = df_subset.groupby("Patient")["PreprocessedData"].agg('mean').copy()
-        df_mean = pd.DataFrame({'Patient':series_mean.index, 'PreprocessedData':series_mean.values})
+        # Save the model to file
+        model_filename = "kmeans_model_{}.joblib".format(timestamp)
+        model_filepath = os.path.join(output_path, model_filename)
+        shutil.makedirs(model_filepath, exist_ok=True)
+        dump(pipe, model_filepath)
 
-        # Add back in Cancer labels
-        # First, delete unnecessary data from df_subset
-        df_subset.drop(["Barcode", "PreprocessedData"], axis=1, inplace=True)
-        df_subset.drop_duplicates(inplace=True)
+    # Save K-means results to file
+    df.to_csv(df_kmeans_path, index=True)
 
-        # Now merge
-        df_merge = df_subset.merge(df_mean)
+    # Use K-means results to create cluster image preview folders
+    # Loop over files to copy the file to individual K-means cluster folders
+    if image_source_path:
+        # Create the cluster image previews directory
+        kmeans_cluster_dir = "kmeans_clusters"
+        cluster_image_path = os.path.join(output_path, kmeans_cluster_dir)
+        shutil.makedirs(cluster_image_path, exist_ok=True)
 
-        return df_merge
+        for idx in df.index:
+            filename = idx + ".png"
 
-    else:
-        return df_subset
+            image_model_dir = "kmeans_n{}".format(idx)
+            image_model_path = os.path.join(
+                    cluster_image_path, image_model_dir)
+            shutil.makedirs(image_model_path, exist_ok=True)
 
-def run_kmeans_analysis(df, clusters):
-    X = np.array(df["PreprocessedData"].tolist(), dtype=np.float64)
+            # Copy the file to the appropriate directory or directories
+            # Loop over K-means models
+            for jdx in range(cluster_min, cluster_max+1):
+                # Get the cluster label
+                cluster = df["kmeans_{}".format(jdx)][idx]
+                # Set the cluster image path
+                image_cluster_dir = "kmeans_n{}_c{}".format( jdx, cluster)
+                image_cluster_path = os.path.join(
+                        image_model_path, image_cluster_dir)
+                # Create the cluster image path
+                os.makedirs(image_cluster_path, exist_ok=True)
+                # Copy the file from the image source path to the image cluster
+                # path
+                shutil.copy(
+                        os.path.join(image_source_path, filename),
+                        os.path.join(image_cluster_path, filename))
 
-    kmeans = KMeans(n_clusters=clusters, random_state=0, ).fit(X)
-
-    print("Score: ", kmeans.score(X))
-
-    cancer_labels = df["Cancer"].tolist()
-    kmeans_labels = np.array(kmeans.labels_)
-
-    if len(kmeans_labels) == 2 and len(cancer_labels) == 2:
-        # Re-assign kmeans labels based on popularity (mode)
-        kmeans_mode = sp.stats.mode(kmeans.labels_)[0]
-        orig_mode = sp.stats.mode(cancer_labels)[0]
-
-        if kmeans_mode != orig_mode:
-            kmeans_labels[kmeans_labels == 0] = 2
-            kmeans_labels[kmeans_labels == 1] = 0
-            kmeans_labels[kmeans_labels == 0] = 1
-
-        # Print classification report
-        print(classification_report(
-            cancer_labels,
-            kmeans_labels,
-            target_names=["Normal", "Cancer"]))
-
-    # Store clusters in dataframe
-    df.insert(3, "Cluster", list(kmeans_labels))
-
-    df_ext = df.set_index("Patient").copy()
-
-    del df_ext["PreprocessedData"]
-
-    return df_ext
 
 if __name__ == '__main__':
-    print("Current directory: " + os.getcwd())
-
+    """
+    Run K-means on extracted features
+    """
     # Set up argument parser
     parser = argparse.ArgumentParser()
     # Set up parser arguments
-    parser.add_argument("clusters", type=int, help="The number of clusters to create")
-    parser.add_argument("average", type=int, help="Average data per patient")
-    parser.add_argument("filesdir", help="The files directory to analyze")
-    parser.add_argument("samplecsv_path", help="The path to the csv file with labels")
-    parser.add_argument("samplecsv", help="The filename of the csv file with labels")
-    parser.add_argument("outputdir", help="The output directory of the results")
-    parser.add_argument("outputfile", help="The output filename of the results")
+    parser.add_argument(
+            "--data_filepath", default=None, required=False,
+            help="The file path containing features to perform k-means"
+            " clustering on.")
+    parser.add_argument(
+            "--output_path", default=None, required=False,
+            help="The output path to save results in.")
+    parser.add_argument(
+            "--feature_list", default=None, required=False,
+            help="List of features to perform k-means clustering on.")
+    parser.add_argument(
+            "--cluster_count_min", default=2, required=False,
+            help="Minimum number of clusters to use for k-means.")
+    parser.add_argument(
+            "--cluster_count_max", default=2, required=False,
+            help="List of features to perform k-means clustering on.")
+    parser.add_argument(
+            "--image_source_path", default=None, required=False,
+            help="Path to image previews.")
 
+    # Collect arguments
     args = parser.parse_args()
 
-    # Set variables based on input arguments
-    filesdir = args.filesdir
-    samplecsv_path = args.samplecsv_path
-    samplecsv = args.samplecsv
-    outputdir = args.outputdir
-    outputfile = args.outputfile
-    clusters = args.clusters
-    average = args.average
+    data_filepath = args.data_filepath
+    output_path = args.output_path
+    feature_list_kwarg = args.feature_list
+    cluster_count_min = args.cluster_count_min
+    cluster_count_max = args.cluster_count_max
 
-    # Read the data
-    print("Reading input data...")
-    df = read_data(filesdir, samplecsv_path, samplecsv, average=average)
+    feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
 
-    # Perform K-means
-    print("Performing K-means clustering...")
-    df_ext = run_kmeans_analysis(df, clusters)
+    image_source_path = args.image_source_path
 
-    # Save results
-    df_ext.to_csv(os.path.join(outputdir, outputfile))
-
-    print("Done.")
+    run_kmeans(
+            data_filepath, output_path=output_path, feature_list=feature_list,
+            cluster_count_min=cluster_count_min,
+            cluster_count_max=cluster_count_max,
+            image_source_path=image_source_path,
+            )
