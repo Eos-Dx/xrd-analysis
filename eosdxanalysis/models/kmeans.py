@@ -5,6 +5,8 @@ import os
 import shutil
 import argparse
 
+from datetime import datetime
+
 import pandas as pd
 import numpy as np
 
@@ -45,12 +47,12 @@ def run_kmeans(
     # Load data into dataframe
     df = pd.read_csv(data_filepath, usecols=feature_list, index_col="Filename")
 
-    # Set K-means output results path
-    kmeans_results_filename = "kmeans_results.csv"
-
     # Set timestamp
     timestr = "%Y%m%dT%H%M%S.%f"
     timestamp = datetime.utcnow().strftime(timestr)
+
+    # Set K-means output results path
+    kmeans_results_filename = "kmeans_results_{}.csv".format(timestamp)
 
     # Check if output path is specified
     if not output_path:
@@ -58,7 +60,6 @@ def run_kmeans(
         output_dir = "kmeans_models_{}".format(timestamp)
         output_path = os.path.dirname(data_filepath)
 
-    df_kmeans_path = (output_path, kmeans_results_filename)
 
     # Set up standard scaler
     scaler = StandardScaler()
@@ -68,53 +69,69 @@ def run_kmeans(
     # Transform data using standard scaler
     X = scaler.transform(df)
 
+    # Create the k-means results directory
+    kmeans_results_dir = "kmeans_{}".format(timestamp)
+    kmeans_results_path = os.path.join(output_path, kmeans_results_dir)
+    os.makedirs(kmeans_results_path, exist_ok=True)
+
     # Train K-means models for each cluster number
-    for idx in range(cluster_min, cluster_max+1):
-        kmeans = KMeans(idx, random_state=0).fit(X)
+    for cluster_count in range(cluster_count_min, cluster_count_max+1):
+        kmeans = KMeans(cluster_count, random_state=0).fit(X)
         # Save the labels in the dataframe
-        df["kmeans_{}".format(idx)] = kmeans.labels_
+        df["kmeans_{}".format(cluster_count)] = kmeans.labels_
 
         # Save the model to file
-        model_filename = "kmeans_model_{}.joblib".format(timestamp)
-        model_filepath = os.path.join(output_path, model_filename)
-        shutil.makedirs(model_filepath, exist_ok=True)
-        dump(pipe, model_filepath)
+        model_filename = "kmeans_model_n{}_{}.joblib".format(
+                cluster_count, timestamp)
+        model_filepath = os.path.join(kmeans_results_path, model_filename)
+        dump(kmeans, model_filepath)
 
     # Save K-means results to file
+    df_kmeans_path = os.path.join(kmeans_results_path, kmeans_results_filename)
     df.to_csv(df_kmeans_path, index=True)
 
     # Use K-means results to create cluster image preview folders
     # Loop over files to copy the file to individual K-means cluster folders
     if image_source_path:
-        # Create the cluster image previews directory
-        kmeans_cluster_dir = "kmeans_clusters"
-        cluster_image_path = os.path.join(output_path, kmeans_cluster_dir)
-        shutil.makedirs(cluster_image_path, exist_ok=True)
+
+        # Create image cluster paths for all models
+        # Loop over model numbers
+        for cluster_count in range(cluster_count_min, cluster_count_max+1):
+            # Create the models paths
+            kmeans_model_dir = "kmeans_n{}".format(cluster_count)
+            kmeans_model_path = os.path.join(
+                    kmeans_results_path, kmeans_model_dir)
+            # Loop over clusters
+            for cluster_label in range(cluster_count):
+                cluster_image_dir = "kmeans_n{}_c{}".format(cluster_count, cluster_label)
+                # Create the paths
+                cluster_image_path = os.path.join(
+                        kmeans_model_path, cluster_image_dir)
+                os.makedirs(cluster_image_path, exist_ok=True)
 
         for idx in df.index:
             filename = idx + ".png"
 
-            image_model_dir = "kmeans_n{}".format(idx)
-            image_model_path = os.path.join(
-                    cluster_image_path, image_model_dir)
-            shutil.makedirs(image_model_path, exist_ok=True)
-
             # Copy the file to the appropriate directory or directories
             # Loop over K-means models
-            for jdx in range(cluster_min, cluster_max+1):
+            for cluster_count in range(cluster_count_min, cluster_count_max+1):
+                kmeans_model_dir = "kmeans_n{}".format(cluster_count)
+                kmeans_model_path = os.path.join(
+                        kmeans_results_path, kmeans_model_dir)
+
                 # Get the cluster label
-                cluster = df["kmeans_{}".format(jdx)][idx]
+                cluster_label = df["kmeans_{}".format(cluster_count)][idx]
                 # Set the cluster image path
-                image_cluster_dir = "kmeans_n{}_c{}".format( jdx, cluster)
-                image_cluster_path = os.path.join(
-                        image_model_path, image_cluster_dir)
-                # Create the cluster image path
-                os.makedirs(image_cluster_path, exist_ok=True)
+                cluster_image_dir = "kmeans_n{}_c{}".format(
+                        cluster_count, cluster_label)
+                cluster_image_path = os.path.join(
+                        kmeans_model_path, cluster_image_dir)
+
                 # Copy the file from the image source path to the image cluster
                 # path
                 shutil.copy(
                         os.path.join(image_source_path, filename),
-                        os.path.join(image_cluster_path, filename))
+                        os.path.join(cluster_image_path, filename))
 
 
 if __name__ == '__main__':
@@ -150,10 +167,10 @@ if __name__ == '__main__':
     data_filepath = args.data_filepath
     output_path = args.output_path
     feature_list_kwarg = args.feature_list
-    cluster_count_min = args.cluster_count_min
-    cluster_count_max = args.cluster_count_max
+    cluster_count_min = int(args.cluster_count_min)
+    cluster_count_max = int(args.cluster_count_max)
 
-    feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
+    feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else None
 
     image_source_path = args.image_source_path
 
