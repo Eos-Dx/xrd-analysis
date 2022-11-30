@@ -438,14 +438,22 @@
 <h1>find_hot_spots<a class="headerlink" href="#find-hot-spots" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="eosdxanalysis.preprocessing.denoising.find_hot_spots">
-<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">find_hot_spots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masked_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.find_hot_spots" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">find_hot_spots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masked_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detection_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'relative'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_hot_spots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.find_hot_spots" title="Permalink to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>masked_image</strong> (<em>ndarray</em>) – Image with beam removed (zeroed)</p></li>
-<li><p><strong>threshold</strong> (<em>int</em>) – Any pixels with photon count greater than <code class="docutils literal notranslate"><span class="pre">threshold</span></code> are
-considered hot spots.</p></li>
+<li><p><strong>threshold</strong> (<em>number</em>) – Any pixels with photon count greater than <code class="docutils literal notranslate"><span class="pre">intensity_threshold</span></code> are
+considered hot spots. If using <code class="docutils literal notranslate"><span class="pre">relative</span></code> detection method,
+<code class="docutils literal notranslate"><span class="pre">intensity_threshold</span> <span class="pre">=</span> <span class="pre">threshold</span> <span class="pre">*</span> <span class="pre">max(masked_image)</span></code>. If using
+<code class="docutils literal notranslate"><span class="pre">absolute</span></code> detection method, <code class="docutils literal notranslate"><span class="pre">intensity_threshold</span> <span class="pre">=</span> <span class="pre">threshold</span></code>.</p></li>
+<li><p><strong>detection_method</strong> (<em>str</em>) – Choice of <code class="docutils literal notranslate"><span class="pre">relative</span></code> or <code class="docutils literal notranslate"><span class="pre">absolute</span></code> threshold.</p></li>
+<li><p><strong>max_hot_spots</strong> (<em>int</em>) – If more than <code class="docutils literal notranslate"><span class="pre">max_hot_spots</span></code> are found, only the first
+<code class="docutils literal notranslate"><span class="pre">max_hot_spots</span></code> are returned.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>hot_spot_coords_array</p>
 </dd>
 </dl>
 </dd></dl>
