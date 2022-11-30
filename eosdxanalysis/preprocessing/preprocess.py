@@ -190,6 +190,8 @@ class PreprocessData(object):
         beam_detection = params.get("beam_detection")
         cmap = params.get("cmap", "hot")
         hot_spot_threshold = params.get("hot_spot_threshold", None)
+        hot_spot_detection_method = params.get(
+                "hot_spot_detection_method", "relative")
 
         # Get plans from from parameters or keyword argument
         plans = params.get("plans", plans)
@@ -284,7 +286,8 @@ class PreprocessData(object):
                             h, w, center=calculated_center, rmin=beam_rmax)
                     masked_image = plan_image.copy()
                     masked_image[~mask] = 0
-                    hot_spot_coords_array = find_hot_spots(masked_image, hot_spot_threshold)
+                    hot_spot_coords_array = find_hot_spots(masked_image, hot_spot_threshold,
+                            detection_method=hot_spot_detection_method)
                     # Filter hot spots on original image, not masked image
                     plan_image = filter_hot_spots(
                             plan_image, threshold=hot_spot_threshold,
