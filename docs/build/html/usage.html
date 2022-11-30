@@ -330,6 +330,7 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">beam_detection</span></code>: Uses beam detection if true, otherwise uses <code class="docutils literal notranslate"><span class="pre">rmin</span></code> for beam radius.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">beam_max_cutout</span></code>: The maximum beam cutout size.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">hot_spot_threshold</span></code>: Pixel values above this threshold are treated as hotspots.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hot_spot_detection_method</span></code>: Use <code class="docutils literal notranslate"><span class="pre">absolute</span></code> or <code class="docutils literal notranslate"><span class="pre">relative</span></code> to intepret the hot spot threshold value.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plans</span></code>: a list of strings denoting the preprocessing plan(s) to perform. Choice of <code class="docutils literal notranslate"><span class="pre">&quot;original&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;centerize&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;centerize_rotate&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;centerize_rotate_quad_fold&quot;</span></code>. (Note: JSON syntax does not allow for a spare comma at the end of a list, whereas Python does.)</p></li>
 </ul>
 <p>A sample preprocessing parameters text file would containg the following content:</p>
@@ -348,6 +349,7 @@
 <span class="w">    </span><span class="s2">&quot;beam_detection&quot;</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"></span>
 <span class="w">    </span><span class="s2">&quot;beam_max_cutout&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">25</span><span class="p">,</span><span class="w"></span>
 <span class="w">    </span><span class="s2">&quot;hot_spot_threshold&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">1000</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="s2">&quot;hot_spot_detection_method&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;absolute&quot;</span><span class="p">,</span><span class="w"></span>
 <span class="w">    </span><span class="s2">&quot;plans&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
 <span class="w">        </span><span class="s2">&quot;centerize&quot;</span><span class="p">,</span><span class="w"></span>
 <span class="w">        </span><span class="s2">&quot;centerize_rotate&quot;</span><span class="p">,</span><span class="w"></span>
