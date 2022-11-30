@@ -47,3 +47,19 @@ plt.ylabel("PC1")
 plt.title("2-D Subspace Projection AT Dataset")
         
 plt.show()
+
+
+# Color by cluster
+# Here, df = data + kmeans cluster labels
+
+for idx in range(2,6+1):
+    df_pca["kmeans_{}".format(idx)] = df["kmeans_{}".format(idx)]
+
+for idx in range(2,6+1):
+    fig, ax = plt.subplots()
+    fig.suptitle("Number of clusters: {}".format(idx))
+    for jdx in range(idx):
+        X_pca = df_pca[df_pca["kmeans_{}".format(idx)] == jdx]
+        plt.scatter(X_pca[0], X_pca[1])
+
+plt.show()
