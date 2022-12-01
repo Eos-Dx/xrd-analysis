@@ -75,6 +75,7 @@ The preprocessing parameters are as follows:
 * ``beam_max_cutout``: The maximum beam cutout size.
 * ``hot_spot_threshold``: Pixel values above this threshold are treated as hotspots.
 * ``hot_spot_detection_method``: Use ``absolute`` or ``relative`` to intepret the hot spot threshold value.
+* ``bright_pixel_count_threshold``: Relative threshold (from 0 to 1), anything above this is considered a "bright" pixel.
 * ``plans``: a list of strings denoting the preprocessing plan(s) to perform. Choice of ``"original"``, ``"centerize"``, ``"centerize_rotate"``, and ``"centerize_rotate_quad_fold"``. (Note: JSON syntax does not allow for a spare comma at the end of a list, whereas Python does.)
 
 A sample preprocessing parameters text file would containg the following content:
@@ -97,6 +98,7 @@ A sample preprocessing parameters text file would containg the following content
         "beam_max_cutout": 25,
         "hot_spot_threshold": 1000,
         "hot_spot_detection_method": "absolute",
+        "bright_pixel_count_threshold" : 0.75,
         "plans": [
             "centerize",
             "centerize_rotate",
