@@ -738,11 +738,44 @@ class TestDenoising(unittest.TestCase):
         self.assertEqual(np.max(test_image), hot_spot_value)
 
         threshold = 5
-        filtered_image = filter_hot_spots(test_image, threshold, method="median")
+        filtered_image = filter_hot_spots(
+                test_image, threshold, detection_method="absolute",
+                filter_method="median")
 
         self.assertTrue(np.array_equal(filtered_image, np.ones((size,size))))
 
-    def test_filter_hot_spots_ignore_method(self):
+    def test_filter_hot_spots_invalid_method(self):
+        """
+        Test hot spot filter using an invalid method
+        """
+        size = 256
+        filter_size = 5
+        test_image = np.ones((size,size))
+        hot_spot_coords = (20,40)
+        hot_spot_value = 10
+        test_image[hot_spot_coords] = hot_spot_value
+
+        # Set the known result which has the 5x5 neighborhood of the hot spot
+        # set to zero
+        known_result = test_image.copy()
+        hot_spot_roi_rows = slice(
+                hot_spot_coords[0]-filter_size//2,
+                hot_spot_coords[0]+filter_size//2+1)
+        hot_spot_roi_cols = slice(
+                hot_spot_coords[1]-filter_size//2,
+                hot_spot_coords[1]+filter_size//2+1)
+        known_result[hot_spot_roi_rows, hot_spot_roi_cols] = 0
+
+        self.assertEqual(np.max(test_image), hot_spot_value)
+
+        threshold = 5
+        with self.assertRaises(ValueError):
+            filtered_image = filter_hot_spots(
+                    test_image, threshold, detection_method="absolute",
+                    filter_size=filter_size,
+                    filter_method="invalid")
+
+    def test_filter_hot_spots_zero_method(self):
         """
         Test hot spot filter using the ignore method
         """
@@ -768,8 +801,9 @@ class TestDenoising(unittest.TestCase):
 
         threshold = 5
         filtered_image = filter_hot_spots(
-                test_image, threshold, filter_size=filter_size,
-                method="ignore")
+                test_image, threshold, detection_method="absolute",
+                filter_size=filter_size,
+                filter_method="zero")
 
         self.assertFalse(np.array_equal(filtered_image, test_image))
 
