@@ -87,6 +87,11 @@ def filter_hot_spots(
         zero (not recommended if performing subsequent image processing).
 
     """
+    filter_method_list = ["median", "zero"]
+    if filter_method not in filter_method_list:
+        raise ValueError(
+                "Invalid filter method ({})!".format(filter_method))
+
     if hot_spot_coords_array is None:
         hot_spot_coords_array = find_hot_spots(
                 masked_image, threshold=threshold, detection_method=detection_method,
