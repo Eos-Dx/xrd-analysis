@@ -1,4 +1,4 @@
-eosdxanalysis.models.kmeans
+﻿eosdxanalysis.models.kmeans
 ===========================
 
 .. automodule:: eosdxanalysis.models.kmeans
@@ -13,8 +13,7 @@ eosdxanalysis.models.kmeans
 
    .. autosummary::
    
-      read_data
-      run_kmeans_analysis
+      run_kmeans
    
    
 
