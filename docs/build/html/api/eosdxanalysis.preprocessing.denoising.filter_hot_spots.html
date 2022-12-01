@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>filter_hot_spots &#8212; Eos Dx Analysis 2.20.0 documentation</title>
+    <title>filter_hot_spots &#8212; Eos Dx Analysis 2.21.1 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -91,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.20.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.21.1 documentation</p>
   
 </a>
     
@@ -438,7 +438,7 @@
 <h1>filter_hot_spots<a class="headerlink" href="#filter-hot-spots" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="eosdxanalysis.preprocessing.denoising.filter_hot_spots">
-<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">filter_hot_spots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masked_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_spot_coords_array</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ignore'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.filter_hot_spots" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">filter_hot_spots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masked_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detection_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'relative'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_hot_spots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hot_spot_coords_array</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'median'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.filter_hot_spots" title="Permalink to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -446,9 +446,9 @@
 <li><p><strong>threshold</strong> (<em>int</em>) – Any pixels with photon count greater than <code class="docutils literal notranslate"><span class="pre">threshold</span></code> are
 considered hot spots.</p></li>
 <li><p><strong>filter_size</strong> (<em>int</em>) – Size of filter <code class="docutils literal notranslate"><span class="pre">filter_size</span></code> by <code class="docutils literal notranslate"><span class="pre">filter_size</span></code>.</p></li>
-<li><p><strong>method</strong> (<em>str</em>) – Choice of <code class="docutils literal notranslate"><span class="pre">ignore</span></code> which sets all pixels near the hot spot to zero,
-which gets ignored by Gaussian filtering, or <code class="docutils literal notranslate"><span class="pre">median</span></code>, which sets
-all pixels near the hot spot to the median value.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – Choice of <code class="docutils literal notranslate"><span class="pre">median</span></code> which sets all pixels near the hot spot to the
+median value, or <code class="docutils literal notranslate"><span class="pre">zero</span></code>, which sets all pixels near the hot spot to
+zero (not recommended if performing subsequent image processing).</p></li>
 </ul>
 </dd>
 </dl>
