@@ -33,6 +33,7 @@ from eosdxanalysis.preprocessing.denoising import find_hot_spots
 from eosdxanalysis.preprocessing.denoising import filter_hot_spots
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
+from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 from eosdxanalysis.preprocessing.beam_utils import beam_extent
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
@@ -192,6 +193,8 @@ class PreprocessData(object):
         hot_spot_threshold = params.get("hot_spot_threshold", None)
         hot_spot_detection_method = params.get(
                 "hot_spot_detection_method", "relative")
+        bright_pixel_count_threshold = params.get(
+                "bright_pixel_count_threshold", 0.75)
 
         # Get plans from from parameters or keyword argument
         plans = params.get("plans", plans)
@@ -259,6 +262,7 @@ class PreprocessData(object):
                     "Rotation_Angle_Guess",
                     "First_Valley",
                     "Beam_Extent",
+                    "Bright_Pixel_Count"
                     ]
 
             plan_df = pd.DataFrame(data={}, columns=df_columns)
@@ -277,6 +281,7 @@ class PreprocessData(object):
 
                 filename = os.path.basename(file_path)
 
+                masked_image = None
                 if hot_spot_threshold:
                     # Use a beam-masked image to filter hot spots
                     calculated_center = find_center(
@@ -380,8 +385,26 @@ class PreprocessData(object):
                 #   Rotation_Angle_Guess
                 #   First_Valley
                 #   Beam_Extent
+                #   Bright_Pixel_Count
                 first_valley = getattr(self, "first_valley", None)
                 inflection_point = getattr(self, "inflection_point", None)
+
+                # Mask original image for detecting bright pixel count
+                # before any Euclidean transformations (centering, rotating)
+                if not masked_image:
+                    # Use a beam-masked image to calculate bright pixel count
+                    calculated_center = find_center(
+                            plan_image, method="max_centroid", rmax=beam_rmax)
+                    self.calculated_center = calculated_center
+                    mask = create_circular_mask(
+                            h, w, center=calculated_center, rmin=beam_rmax)
+                    masked_image = plan_image.copy()
+                    masked_image[~mask] = 0
+
+                # Calculate bright pixel count on masked image
+                # before any Euclidean transformations (centering, rotating)
+                bright_pixels = bright_pixel_count(
+                        masked_image, qmin=bright_pixel_count_threshold)
 
                 if not tuple(calculated_center):
                     calculated_center = array_center
@@ -395,6 +418,7 @@ class PreprocessData(object):
                         angle,
                         first_valley,
                         inflection_point,
+                        bright_pixels,
                         ]
 
                 # Add the new row to the dataframe
