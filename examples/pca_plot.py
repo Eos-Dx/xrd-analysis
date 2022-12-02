@@ -12,6 +12,9 @@ from sklearn.pipeline import make_pipeline
 
 import matplotlib.pyplot as plt
 
+# Set aspect ratio for figure size
+aspect = (16,9)
+
 # Load data into dataframe
 df_path = "extracted_features.csv"
 df = pd.read_csv(df_path, index_col="Filename")
@@ -22,23 +25,46 @@ df_A = df[df.index.str.match(r"(CR_A0|CR_AA)")]
 # Set dataset to use
 df = df
 
-# Set PCA to capture 95% of variance
-pca = PCA(n_components=0.95)
+# Set PCA to 2 components
+pca = PCA(n_components=2)
 
 # Create pipeline including standard scaling
 estimator = make_pipeline(StandardScaler(), pca).fit(df)
 # kmeans = KMeans(init=estimator['pca'].components_, n_clusters=cluster_count)
 
+feature_list = [
+        'total intensity',
+        'bright_pixel_count',
+        'annulus_intensity_9A',
+        'annulus_intensity_5A',
+        'annulus_intensity_4A',
+        'sector_intensity_equator_pair_9A',
+        'sector_intensity_meridian_pair_9A',
+        'sector_intensity_meridian_pair_5A',
+        ]
+
+print("Explained variance ratios:")
 print(estimator['pca'].explained_variance_ratio_)
-print(estimator['pca'].components_)
+print(
+        "Total explained variance:",
+        np.sum(estimator['pca'].explained_variance_ratio_))
+
+# Print first two principal components
+pca_components = estimator['pca'].components_
+print(dict(zip(feature_list, pca_components[0,:])))
+print(dict(zip(feature_list, pca_components[1,:])))
 
 # Transform data using PCA
 X_pca = estimator.transform(df)
 
-# print(estimator['pca'].components_)
+################################
+# PCA subspace projection plot #
+################################
 
-# Plot results
-fig, ax = plt.subplots()
+# Plot PCA-reduced dataset with file labels
+title = "PCA-reduced Xena Dataset 2-D Subspace Projection"
+fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
+fig.suptitle(title)
 plt.scatter(X_pca[:,0], X_pca[:,1])
 
 # Set offsets
@@ -56,9 +82,12 @@ for i, filename in enumerate(filename_list):
 # Label plot axes and title
 plt.xlabel("PC0")
 plt.ylabel("PC1")
-plt.title("2-D Subspace Projection")
-        
+
 plt.show()
+
+#################
+#  Subsets plot
+#################
 
 # Collect data subsets for plotting
 series_dict = {
@@ -68,8 +97,9 @@ series_dict = {
         }
 
 # Plot all data subsets
-fig, ax = plt.subplots()
-fig.suptitle("Series Plot")
+title = "PCA-reduced Xena Data Subsets 2-D Subspace Projection"
+fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
+fig.suptitle(title)
 for series_name, df_sub in series_dict.items():
     X = estimator.transform(df_sub)
     plt.scatter(X[:,0], X[:,1], label=series_name)
@@ -81,8 +111,12 @@ plt.legend()
 plt.show()
 
 
-# Color by cluster
-# Here, df = data + kmeans cluster labels
+#################
+# K-means plots #
+#################
+
+
+# df_pca = data + kmeans cluster labels
 df_pca = pd.DataFrame(data=X_pca, index=df.index)
 
 cluster_count_min = 2
@@ -92,31 +126,62 @@ cluster_count_max = 6
 for idx in range(cluster_count_min, cluster_count_max+1):
 
     cluster_count = idx
-    kmeans = KMeans(cluster_count).fit(df_pca)
+
+    title = "K-Means on PCA-reduced Xena Dataset with {} clusters".format(idx)
+    fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
+    fig.suptitle(title)
+
+    # Run k-means
+    reduced_data = X_pca
+    kmeans = KMeans(cluster_count)
+    kmeans.fit(reduced_data)
+
     df_pca["kmeans_{}".format(idx)] = kmeans.labels_
 
-    fig, ax = plt.subplots()
-    fig.suptitle("Number of clusters: {}".format(idx))
+    # Plot decisision boundaries
+    # Step size of the mesh. Decrease to increase the quality of the VQ.
+    h = 0.01  # point in the mesh [x_min, x_max]x[y_min, y_max].
 
-    for jdx in range(idx):
-        X_pca = df_pca[df_pca["kmeans_{}".format(idx)] == jdx]
-        plt.scatter(X_pca[0], X_pca[1])
+    # Plot the decision boundary. For that, we will assign a color to each
+    x_min, x_max = reduced_data[:, 0].min() - 1, reduced_data[:, 0].max() + 1
+    y_min, y_max = reduced_data[:, 1].min() - 1, reduced_data[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
 
-        centroids = kmeans.cluster_centers_
-        plt.scatter(
-                centroids[:, 0],
-                centroids[:, 1],
-                marker="x",
-                s=169,
-                linewidths=3,
-                color="k",
-                zorder=10,
-                alpha=0.25,
-                )
+    # Obtain labels for each point in mesh. Use last trained model.
+    Z = kmeans.predict(np.c_[xx.ravel(), yy.ravel()])
+    # Put the result into a color plot
+    Z = Z.reshape(xx.shape)
 
-        plt.xlabel("PC0")
-        plt.ylabel("PC1")
+    plt.imshow(
+        Z,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(), yy.min(), yy.max()),
+        cmap=plt.cm.Paired,
+        aspect="auto",
+        origin="lower",
+    )
 
+    # Plot the data
+    plt.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=10)
+
+    # Plot the centroids
+    centroids = kmeans.cluster_centers_
+    print("Centroids:")
+    print(centroids)
+    plt.scatter(
+            centroids[:, 0],
+            centroids[:, 1],
+            marker="x",
+            s=200,
+            linewidths=3,
+            color="w",
+            zorder=10000,
+            )
+
+    plt.xlabel("PC0")
+    plt.ylabel("PC1")
+
+# Show K-means plots
 plt.show()
 
 # Save dataframe
