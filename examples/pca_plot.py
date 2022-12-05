@@ -22,6 +22,10 @@ df_AT = df[df.index.str.match(r"(CR_AT)")]
 df_B = df[df.index.str.match(r"(CR_B)")]
 df_A = df[df.index.str.match(r"(CR_A0|CR_AA)")]
 
+# Load patient data into dataframe
+df_patients_path = "AT_XRD_DATA_samples_database.xlsx"
+df_patients = pd.read_excel(df_patients_path, index_col="Column1")
+
 # Set dataset to use
 df = df
 
@@ -65,7 +69,12 @@ X_pca = estimator.transform(df)
 title = "PCA-reduced Xena Dataset 2-D Subspace Projection"
 fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
 fig.suptitle(title)
-plt.scatter(X_pca[:,0], X_pca[:,1])
+if False:
+    plt.scatter(X_pca[:,0], X_pca[:,1])
+if True:
+    X_pca_AT = estimator.transform(df_AT)
+    plt.scatter(X_pca_AT[:,0], X_pca_AT[:,1])
+
 
 # Set offsets
 x_label_offset = 0.01
@@ -73,11 +82,23 @@ y_label_offset = 0.01
 
 filename_list = df.index.to_list()
 
-for i, filename in enumerate(filename_list):
-    ax.annotate(
-        filename.replace("CR_","").replace(".txt",""),
-        (X_pca[i,0], X_pca[i,1]),
-        xytext=(X_pca[i,0]+x_label_offset, X_pca[i,1]+y_label_offset))
+if False:
+    for i, filename in enumerate(filename_list):
+        ax.annotate(
+            filename.replace("CR_","").replace(".txt",""),
+            (X_pca[i,0], X_pca[i,1]),
+            xytext=(X_pca[i,0]+x_label_offset, X_pca[i,1]+y_label_offset))
+if True:
+    X_pca = estimator.transform(df_AT)
+    df_pca_AT = pd.DataFrame(data=X_pca)
+    df_pca_AT.index = df_AT.index
+    for idx in df_AT.index:
+        filename = idx
+        ax.annotate(
+            filename.replace("CR_","").replace(".txt",""),
+            (df_pca_AT.loc[idx][0], df_pca_AT.loc[idx][1]),
+            xytext=(df_pca_AT.loc[idx][0]+x_label_offset, df_pca_AT.loc[idx][1]+y_label_offset))
+
 
 # Label plot axes and title
 plt.xlabel("PC0")
@@ -100,9 +121,27 @@ series_dict = {
 title = "PCA-reduced Xena Data Subsets 2-D Subspace Projection"
 fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
 fig.suptitle(title)
-for series_name, df_sub in series_dict.items():
-    X = estimator.transform(df_sub)
+if False:
+    for series_name, df_sub in series_dict.items():
+        X = estimator.transform(df_sub)
+        plt.scatter(X[:,0], X[:,1], label=series_name)
+if True:
+    series_name = "AT_series"
+    X = estimator.transform(df_AT)
     plt.scatter(X[:,0], X[:,1], label=series_name)
+
+    # Plot first couple of dogs
+    count = 0
+    start_count = 10
+    end_count = 16
+    for barcode in df_patients.index.str.strip():
+        if count > end_count:
+            break
+        if count > start_count:
+            X_plot = estimator.transform(df_AT[df_AT.index.str.contains(barcode)])
+            plt.scatter(X_plot[:,0], X_plot[:,1], label=barcode, s=70)
+        count += 1
+
 
 plt.xlabel("PC0")
 plt.ylabel("PC1")
@@ -110,6 +149,35 @@ plt.ylabel("PC1")
 plt.legend()
 plt.show()
 
+
+#################
+# Patients plot #
+#################
+
+# Plot all data highlighting patients
+title = "PCA-reduced Xena Dataset Patient Highlights 2-D Subspace Projection"
+fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
+fig.suptitle(title)
+
+if True:
+    count = 0
+    for barcode in df_patients.index.str.strip():
+        if count > 4:
+            break
+        X_plot = estimator.transform(df_AT[df_AT.index.str.contains(barcode)])
+        plt.scatter(X_plot[:,0], X_plot[:,1], label=barcode)
+        count += 1
+
+plt.xlabel("PC0")
+plt.ylabel("PC1")
+
+plt.legend()
+plt.show()
+
+import ipdb
+ipdb.set_trace()
+
+exit(0)
 
 #################
 # K-means plots #
