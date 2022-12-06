@@ -262,7 +262,8 @@ class PreprocessData(object):
                     "Rotation_Angle_Guess",
                     "First_Valley",
                     "Beam_Extent",
-                    "Bright_Pixel_Count"
+                    "Bright_Pixel_Count",
+                    "Total_Raw_Intensity",
                     ]
 
             plan_df = pd.DataFrame(data={}, columns=df_columns)
@@ -271,6 +272,7 @@ class PreprocessData(object):
             for file_path in file_path_list:
                 # Load file
                 plan_image = np.loadtxt(file_path)
+                total_raw_intensity = np.max(plan_image)
 
                 # Calculate array center
                 array_center = np.array(plan_image.shape)/2-0.5
@@ -386,6 +388,7 @@ class PreprocessData(object):
                 #   First_Valley
                 #   Beam_Extent
                 #   Bright_Pixel_Count
+                #   Total_Raw_Intensity
                 first_valley = getattr(self, "first_valley", None)
                 inflection_point = getattr(self, "inflection_point", None)
 
@@ -419,6 +422,7 @@ class PreprocessData(object):
                         first_valley,
                         inflection_point,
                         bright_pixels,
+                        total_raw_intensity,
                         ]
 
                 # Add the new row to the dataframe
