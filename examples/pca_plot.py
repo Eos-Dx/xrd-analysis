@@ -23,8 +23,8 @@ df_B = df[df.index.str.match(r"(CR_B)")]
 df_A = df[df.index.str.match(r"(CR_A0|CR_AA)")]
 
 # Load patient data into dataframe
-df_patients_path = "AT_XRD_DATA_samples_database.xlsx"
-df_patients = pd.read_excel(df_patients_path, index_col="Column1")
+# df_patients_path = ""
+# df_patients = pd.read_excel(df_patients_path, index_col="Column1")
 
 # Set dataset to use
 df = df
@@ -60,6 +60,7 @@ print(dict(zip(feature_list, pca_components[1,:])))
 
 # Transform data using PCA
 X_pca = estimator.transform(df)
+
 
 ################################
 # PCA subspace projection plot #
@@ -110,74 +111,81 @@ plt.show()
 #  Subsets plot
 #################
 
-# Collect data subsets for plotting
-series_dict = {
-        "AT_series": df_AT,
-        "A_series": df_A,
-        "B_series": df_B,
-        }
-
-# Plot all data subsets
-title = "PCA-reduced Xena Data Subsets 2-D Subspace Projection"
-fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
-fig.suptitle(title)
 if False:
-    for series_name, df_sub in series_dict.items():
-        X = estimator.transform(df_sub)
-        plt.scatter(X[:,0], X[:,1], label=series_name)
-if True:
-    series_name = "AT_series"
-    X = estimator.transform(df_AT)
-    plt.scatter(X[:,0], X[:,1], label=series_name)
 
-    # Plot first couple of dogs
-    count = 0
-    start_count = 10
-    end_count = 16
-    for barcode in df_patients.index.str.strip():
-        if count > end_count:
-            break
-        if count > start_count:
-            X_plot = estimator.transform(df_AT[df_AT.index.str.contains(barcode)])
-            plt.scatter(X_plot[:,0], X_plot[:,1], label=barcode, s=70)
-        count += 1
+    # Collect data subsets for plotting
+    series_dict = {
+            "AT_series": df_AT,
+            "A_series": df_A,
+            "B_series": df_B,
+            }
+
+    # Plot all data subsets
+    title = "PCA-Reduced Xena AT Dataset 2-D Subspace Projection Colored By Sex"
+    fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
+    fig.suptitle(title)
+    if False:
+        for series_name, df_sub in series_dict.items():
+            X = estimator.transform(df_sub)
+            plt.scatter(X[:,0], X[:,1], label=series_name)
+    if True:
+        series_name = "AT_series"
+        # X = estimator.transform(df_AT)
+        # plt.scatter(X[:,0], X[:,1], label=series_name)
+
+        # Color by sex
+        sex_list = df_patients["Gender"].dropna().unique()
+        pattern = "([0-9]{4})"
+        for sex in sex_list:
+            df_patients_sex_index = df_patients[df_patients["Gender"] == sex].index
+            sex_barcodes = df_patients_sex_index.str.extract(pattern)[0].tolist()
+            df_AT_sex = df_AT[df_AT.index.str.extract(pattern).isin(sex_barcodes)[0].tolist()]
+            X_plot = estimator.transform(df_AT_sex)
+            plt.scatter(X_plot[:,0], X_plot[:,1], label=sex, s=70)
 
 
-plt.xlabel("PC0")
-plt.ylabel("PC1")
+    plt.xlabel("PC0")
+    plt.ylabel("PC1")
 
-plt.legend()
-plt.show()
+    plt.legend()
+    plt.show()
+
+    import ipdb
+    ipdb.set_trace()
+
+    exit(0)
 
 
 #################
 # Patients plot #
 #################
 
-# Plot all data highlighting patients
-title = "PCA-reduced Xena Dataset Patient Highlights 2-D Subspace Projection"
-fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
-fig.suptitle(title)
+if False:
 
-if True:
-    count = 0
-    for barcode in df_patients.index.str.strip():
-        if count > 4:
-            break
-        X_plot = estimator.transform(df_AT[df_AT.index.str.contains(barcode)])
-        plt.scatter(X_plot[:,0], X_plot[:,1], label=barcode)
-        count += 1
+    # Plot all data highlighting patients
+    title = "PCA-reduced Xena Dataset Patient Highlights 2-D Subspace Projection"
+    fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
+    fig.suptitle(title)
 
-plt.xlabel("PC0")
-plt.ylabel("PC1")
+    if True:
+        count = 0
+        for barcode in df_patients.index.str.strip():
+            if count > 4:
+                break
+            X_plot = estimator.transform(df_AT[df_AT.index.str.contains(barcode)])
+            plt.scatter(X_plot[:,0], X_plot[:,1], label=barcode)
+            count += 1
 
-plt.legend()
-plt.show()
+    plt.xlabel("PC0")
+    plt.ylabel("PC1")
 
-import ipdb
-ipdb.set_trace()
+    plt.legend()
+    plt.show()
 
-exit(0)
+    import ipdb
+    ipdb.set_trace()
+
+    exit(0)
 
 #################
 # K-means plots #
