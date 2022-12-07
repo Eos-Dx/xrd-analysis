@@ -272,7 +272,7 @@ class PreprocessData(object):
             for file_path in file_path_list:
                 # Load file
                 plan_image = np.loadtxt(file_path)
-                total_raw_intensity = np.max(plan_image)
+                total_raw_intensity = np.sum(plan_image)
 
                 # Calculate array center
                 array_center = np.array(plan_image.shape)/2-0.5
