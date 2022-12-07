@@ -70,9 +70,9 @@ X_pca = estimator.transform(df)
 title = "PCA-reduced Xena Dataset 2-D Subspace Projection"
 fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
 fig.suptitle(title)
-if False:
-    plt.scatter(X_pca[:,0], X_pca[:,1])
 if True:
+    plt.scatter(X_pca[:,0], X_pca[:,1])
+if False:
     X_pca_AT = estimator.transform(df_AT)
     plt.scatter(X_pca_AT[:,0], X_pca_AT[:,1])
 
@@ -83,13 +83,13 @@ y_label_offset = 0.01
 
 filename_list = df.index.to_list()
 
-if False:
+if True:
     for i, filename in enumerate(filename_list):
         ax.annotate(
             filename.replace("CR_","").replace(".txt",""),
             (X_pca[i,0], X_pca[i,1]),
             xytext=(X_pca[i,0]+x_label_offset, X_pca[i,1]+y_label_offset))
-if True:
+if False:
     X_pca = estimator.transform(df_AT)
     df_pca_AT = pd.DataFrame(data=X_pca)
     df_pca_AT.index = df_AT.index
@@ -111,24 +111,24 @@ plt.show()
 #  Subsets plot
 #################
 
-if False:
+if True:
 
     # Collect data subsets for plotting
     series_dict = {
-            "AT_series": df_AT,
+            # "AT_series": df_AT,
             "A_series": df_A,
             "B_series": df_B,
             }
 
     # Plot all data subsets
-    title = "PCA-Reduced Xena AT Dataset 2-D Subspace Projection Colored By Sex"
+    title = "PCA-Reduced Xena Data Subsets 2-D Subspace Projection"
     fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
     fig.suptitle(title)
-    if False:
+    if True:
         for series_name, df_sub in series_dict.items():
             X = estimator.transform(df_sub)
             plt.scatter(X[:,0], X[:,1], label=series_name)
-    if True:
+    if False:
         series_name = "AT_series"
         # X = estimator.transform(df_AT)
         # plt.scatter(X[:,0], X[:,1], label=series_name)
