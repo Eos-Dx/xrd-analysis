@@ -122,6 +122,8 @@ def abnormality_test_batch(
         df.loc[filename] = int(abnormal)
 
     # Add a Barcode column to the dataframe
+    # Extract the first letter and all numbers in the filename before the subindex
+    # E.g., from filename AB12345-01.txt -> A12345 is extracted
     # Note: Issue if the Barcode format changes
     extraction = df.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
     extraction_series = extraction[0] + extraction[1]
@@ -130,75 +132,59 @@ def abnormality_test_batch(
     assert(len(extraction_list) == df.shape[0])
     df["Barcode"] = extraction_list
 
-    db_healthy = db[db["Diagnosis"] == "healthy"]
-    db_cancer = db[db["Diagnosis"] == "cancer"]
+    # Merge the databases
+    df_ext = pd.merge(df, db, left_on="Barcode", right_index=True)
 
-    healthy_barcode_list = db_healthy.index.tolist()
-    cancer_barcode_list = db_cancer.index.tolist()
-
-    df_healthy = df[df["Barcode"].isin(healthy_barcode_list)]
-    df_cancer = df[df["Barcode"].isin(cancer_barcode_list)]
 
     ###################
     # Diagnostic Rule #
     ###################
 
-    # Note: This part could be refactored, exact same code is repeated twice
-
     # If any patient has a measurement that is identified as abnormal,
     # set the Prediction column to 1
 
-    # Get active cancer barcode list
-    active_cancer_barcode_list = \
-            df_cancer[df_cancer["Barcode"].isin(
-                cancer_barcode_list)]["Barcode"].unique().tolist()
-    df_cancer_patients = pd.DataFrame(data=active_cancer_barcode_list, columns=["Barcode"])
+    # Get the list of patient Ids
+    patient_id_list = df_ext["Patient_ID"].dropna().unique().tolist()
 
-    # Make predictions
-    cancer_prediction_list = []
-    for cancer_barcode in active_cancer_barcode_list:
-        cancer_barcode_prediction_list = df_cancer[df_cancer["Barcode"] == cancer_barcode]["Abnormal"].tolist()
-        if any(cancer_barcode_prediction_list):
-            cancer_prediction_list.append(1)
+    # Create an empty patients dataframe
+    df_patients = pd.DataFrame(columns={"Prediction"})
+
+    # Fill the patients dataframe with predictions
+    for patient_id in patient_id_list:
+        patient_slice = df_ext[df_ext["Patient_ID"] == patient_id]
+        if any(patient_slice["Abnormal"] == 1):
+            df_patients.loc[patient_id] = 1
         else:
-            cancer_prediction_list.append(0)
-            
-    # Store predictions
-    df_cancer_patients["Prediction"] = cancer_prediction_list
+            df_patients.loc[patient_id] = 0
 
-    # Get active healthy barcode list
-    active_healthy_barcode_list = \
-            df_healthy[df_healthy["Barcode"].isin(
-                healthy_barcode_list)]["Barcode"].unique().tolist()
-    df_healthy_patients = pd.DataFrame(data=active_healthy_barcode_list, columns=["Barcode"])
-
-    # Make predictions
-    healthy_prediction_list = []
-    for healthy_barcode in active_healthy_barcode_list:
-        healthy_barcode_prediction_list = df_healthy[df_healthy["Barcode"] == healthy_barcode]["Abnormal"].tolist()
-        if any(healthy_barcode_prediction_list):
-            healthy_prediction_list.append(1)
-        else:
-            healthy_prediction_list.append(0)
-
-    # Store predictions
-    df_healthy_patients["Prediction"] = healthy_prediction_list
+    # Get patients and associated diagnosis
+    db_patients = db[["Patient_ID", "Diagnosis"]].drop_duplicates()
+    # Merge to get patient diagnosis and prediction in the same dataframe
+    df_patients_ext = pd.merge(
+            df_patients, db_patients, left_index=True, right_on="Patient_ID")
+    # Set patient id as index
+    df_patients_ext.index = df_patients_ext["Patient_ID"]
+    # Extract diagnosis and prediction
+    df_patients_ext = df_patients_ext[["Diagnosis", "Prediction"]]
 
     # Calculate true positives, false positives, true negatives,
     # and false negatives
-    TP = (df_cancer_patients["Prediction"] == 1).sum()
-    FP = (df_healthy_patients["Prediction"] == 1).sum()
-    TN = (df_healthy_patients["Prediction"] == 0).sum()
-    FN = (df_cancer_patients["Prediction"] == 0).sum()
+    TP = (
+            (df_patients_ext["Diagnosis"] == "cancer") & \
+                    (df_patients_ext["Prediction"] == 1)).sum()
+    FP = (
+            (df_patients_ext["Diagnosis"] == "healthy") & \
+                    (df_patients_ext["Prediction"] == 1)).sum()
+    TN = (
+            (df_patients_ext["Diagnosis"] == "healthy") & \
+                    (df_patients_ext["Prediction"] == 0)).sum()
+    FN = (
+            (df_patients_ext["Diagnosis"] == "cancer") & \
+                    (df_patients_ext["Prediction"] == 0)).sum()
 
     # Save the results
     if output_filepath:
-        df_healthy_patients["Diagnosis"] = "healthy"
-        df_cancer_patients["Diagnosis"] = "cancer"
-        df_patients = pd.concat([df_healthy_patients, df_cancer_patients])
-        # Re-order columns
-        df_patients = df_patients.reindex(columns=["Barcode", "Diagnosis", "Prediction"])
-        df_patients.to_csv(output_filepath, index=False)
+        df_patients_ext.to_csv(output_filepath, index=False)
 
     return TP, FP, TN, FN
 
