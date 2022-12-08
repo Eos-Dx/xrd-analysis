@@ -122,17 +122,22 @@ def abnormality_test_batch(
         df.loc[filename] = int(abnormal)
 
     # Add a Barcode column to the dataframe
-    df["Barcode"] = df.index.str.extract("CR_([A-Z]{1,2}[0-9]+)")[0].tolist()
+    # Note: Issue if the Barcode format changes
+    extraction = df.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
+    extraction_series = extraction[0] + extraction[1]
+    extraction_list = extraction_series.tolist()
+
+    assert(len(extraction_list) == df.shape[0])
+    df["Barcode"] = extraction_list
 
     db_healthy = db[db["Diagnosis"] == "healthy"]
     db_cancer = db[db["Diagnosis"] == "cancer"]
 
-    # Create cancer dataframe
-    df_cancer = df[df.index.str.contains("CR_AT")]
+    healthy_barcode_list = db_healthy.index.tolist()
+    cancer_barcode_list = db_cancer.index.tolist()
 
-    # Create healthy dataframe
-    # Note: Future: Use db_healthy Barcode
-    df_healthy = df[~df.index.str.contains("CR_AT|CR_B")]
+    df_healthy = df[df["Barcode"].isin(healthy_barcode_list)]
+    df_cancer = df[df["Barcode"].isin(cancer_barcode_list)]
 
     ###################
     # Diagnostic Rule #
@@ -144,7 +149,6 @@ def abnormality_test_batch(
     # set the Prediction column to 1
 
     # Get active cancer barcode list
-    cancer_barcode_list = db_cancer.index.tolist()
     active_cancer_barcode_list = \
             df_cancer[df_cancer["Barcode"].isin(
                 cancer_barcode_list)]["Barcode"].unique().tolist()
@@ -163,7 +167,6 @@ def abnormality_test_batch(
     df_cancer_patients["Prediction"] = cancer_prediction_list
 
     # Get active healthy barcode list
-    healthy_barcode_list = db_healthy.index.tolist()
     active_healthy_barcode_list = \
             df_healthy[df_healthy["Barcode"].isin(
                 healthy_barcode_list)]["Barcode"].unique().tolist()
