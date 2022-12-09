@@ -13,6 +13,46 @@ import numpy as np
 from eosdxanalysis.models.utils import metrics_report
 from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
+def image_brightness(
+        masked_image, pixel_brightness_threshold=0.75,
+        image_brightness_threshold=0.1, image_area=36220):
+    """
+    Predicts abnormality of an image based on brightness.
+
+    Parameters
+    ----------
+
+    masked_image : ndarray
+        X-ray diffraction measurement data file that has been preprocessed
+        (centered, rotated, and removal of the beam and outer areas).
+
+    pixel_brightness_threshold : float
+        Relative value to define a bright pixel. The lowest intensity pixel is
+        is mapped to ``0``, and the highest intensity pixel is mapped to ``1``.
+        All pixels that are above the relative threshold are considered bright
+        pixels.
+
+    image_brightness_threshold : float
+        Relative value to define a bright image. If the ratio of bright pixels
+        to the image area is greater than the relative threshold, the image is
+        considered bright and labeled abnormal.
+
+    image_area : int
+        The number of pixels in the image to analyze.  Default value is
+        ``36220`` which corresponds to ``rmin=24``, and ``rmax=110``.
+
+    Returns
+    -------
+
+    brightness : float
+        Relative brightness from 0 to 1.
+    """
+
+    bright_pixels = bright_pixel_count(
+            masked_image, qmin=pixel_brightness_threshold)
+
+    brightness = bright_pixels/image_area
+    return brightness
 
 def abnormality_test(
         masked_image, pixel_brightness_threshold=0.75,
@@ -49,10 +89,13 @@ def abnormality_test(
         ``True`` if image is abnormally bright.
     """
 
-    bright_pixels = bright_pixel_count(
-            masked_image, qmin=pixel_brightness_threshold)
+    brightness = image_brightness(
+                masked_image,
+                pixel_brightness_threshold=pixel_brightness_threshold,
+                image_brightness_threshold=image_brightness_threshold,
+                image_area=image_area)
 
-    abnormal = bright_pixels/image_area > image_brightness_threshold
+    abnormal = brightness > image_brightness_threshold
     return abnormal
 
 def abnormality_test_batch(
