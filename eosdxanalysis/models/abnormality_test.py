@@ -153,8 +153,8 @@ def image_brightness_batch(
     df_patients_ext = df_patients_ext[["Diagnosis", "Max_Image_Brightness"]]
 
     # Prepare outputs for ROC analysis
-    y_true = df_patients_ext["Diagnosis"].replace("cancer",1).replace("healthy",0)
-    y_score = df_patients_ext["Max_Image_Brightness"]
+    y_true = df_patients_ext["Diagnosis"].replace("cancer",1).replace("healthy",0).values
+    y_score = df_patients_ext["Max_Image_Brightness"].values
 
     return y_true, y_score
 
