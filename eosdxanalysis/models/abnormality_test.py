@@ -184,7 +184,7 @@ def abnormality_test_batch(
 
     # Save the results
     if output_filepath:
-        df_patients_ext.to_csv(output_filepath, index=False)
+        df_patients_ext.to_csv(output_filepath)
 
     return TP, FP, TN, FN
 
