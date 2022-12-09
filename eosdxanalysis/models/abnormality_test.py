@@ -202,7 +202,9 @@ def abnormality_test(
     return abnormal
 
 def abnormality_test_batch(
-        patients_db=None, source_data_path=None, output_filepath=None,
+        patients_db=None, source_data_path=None,
+        patient_predictions_filepath=None,
+        measurement_predictions_filepath=None,
         pixel_brightness_threshold=None, image_brightness_threshold=None,
         image_area=36220):
     """
@@ -220,8 +222,11 @@ def abnormality_test_batch(
         Path to preprocessed measurement files. Files should be centered,
         rotated with beam and outer areas removed.
 
-    output_filepath : str
+    patient_predictions_filepath : str
         Path to store patient predictions csv file.
+
+    measurement_predictions_filepath : str
+        Path to store measurement predictions csv file.
 
     pixel_brightness_threshold : float
         Relative value to define a bright pixel. The lowest intensity pixel is
@@ -332,8 +337,10 @@ def abnormality_test_batch(
                     (df_patients_ext["Prediction"] == 0)).sum()
 
     # Save the results
-    if output_filepath:
-        df_patients_ext.to_csv(output_filepath)
+    if patient_predictions_filepath:
+        df_patients_ext.to_csv(patient_predictions_filepath)
+    if measurement_predictions_filepath:
+        df_ext.to_csv(measurement_predictions_filepath)
 
     return TP, FP, TN, FN
 
