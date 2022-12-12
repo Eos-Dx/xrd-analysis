@@ -18,16 +18,6 @@ aspect = (16,9)
 # Load data into dataframe
 df_path = "extracted_features.csv"
 df = pd.read_csv(df_path, index_col="Filename")
-df_AT = df[df.index.str.match(r"(CR_AT)")]
-df_B = df[df.index.str.match(r"(CR_B)")]
-df_A = df[df.index.str.match(r"(CR_A0|CR_AA)")]
-
-# Load patient data into dataframe
-# df_patients_path = ""
-# df_patients = pd.read_excel(df_patients_path, index_col="Column1")
-
-# Set dataset to use
-df = df
 
 # Specify feature list
 feature_list = [
@@ -42,11 +32,26 @@ feature_list = [
         'total_flux'
         ]
 
+if False:
+    # Divide by total flux
+    divide_by = "total_flux"
+    df = df.div(df[divide_by], axis="rows")
+
+# Set features to use
+df = df[feature_list]
+
+df_AT = df[df.index.str.match(r"(CR_AT)")]
+df_B = df[df.index.str.match(r"(CR_B)")]
+df_A = df[df.index.str.match(r"(CR_A0|CR_AA)")]
+
+# Exclude B-series
+# df = df[~df.index.isin(df_B.index)]
+
 # Set PCA to 2 components
 pca = PCA(n_components=2)
 
 # Create pipeline including standard scaling
-estimator = make_pipeline(StandardScaler(), pca).fit(df[feature_list])
+estimator = make_pipeline(StandardScaler(), pca).fit(df.values)
 # kmeans = KMeans(init=estimator['pca'].components_, n_clusters=cluster_count)
 
 
@@ -110,24 +115,10 @@ if True:
     title = "PCA-Reduced Xena Data Subsets 2-D Subspace Projection"
     fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
     fig.suptitle(title)
-    if True:
-        for series_name, df_sub in series_dict.items():
-            X = estimator.transform(df_sub)
-            plt.scatter(X[:,0], X[:,1], label=series_name)
-    if False:
-        series_name = "AT_series"
-        # X = estimator.transform(df_AT)
-        # plt.scatter(X[:,0], X[:,1], label=series_name)
 
-        # Color by sex
-        sex_list = df_patients["Gender"].dropna().unique()
-        pattern = "([0-9]{4})"
-        for sex in sex_list:
-            df_patients_sex_index = df_patients[df_patients["Gender"] == sex].index
-            sex_barcodes = df_patients_sex_index.str.extract(pattern)[0].tolist()
-            df_AT_sex = df_AT[df_AT.index.str.extract(pattern).isin(sex_barcodes)[0].tolist()]
-            X_plot = estimator.transform(df_AT_sex)
-            plt.scatter(X_plot[:,0], X_plot[:,1], label=sex, s=70)
+    for series_name, df_sub in series_dict.items():
+        X = estimator.transform(df_sub.values)
+        plt.scatter(X[:,0], X[:,1], label=series_name)
 
 
     plt.xlabel("PC0")
@@ -163,10 +154,6 @@ if False:
     plt.legend()
     plt.show()
 
-    import ipdb
-    ipdb.set_trace()
-
-    exit(0)
 
 #################
 # K-means plots #
