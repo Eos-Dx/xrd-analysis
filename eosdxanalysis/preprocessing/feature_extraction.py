@@ -727,7 +727,7 @@ def feature_extraction(input_path, output_filepath, params):
                 "sample_to_detector_distance": 10E-3
             ],  
             "features": [
-                "total_intensity": true,
+                "cropped_intensity": true,
                 "annulus_intensity_9A": [
                     8.8E-10,
                     10.8E-10
@@ -773,12 +773,12 @@ def feature_extraction(input_path, output_filepath, params):
 
         extracted_feature_list = []
         for feature in feature_list:
-            if "total_intensity" in feature:
-                # Compute total intensity
-                total_intensity = feature_extraction.feature_image_intensity()
-                extracted_feature_list.append(total_intensity)
+            if "cropped_intensity" in feature:
+                # Compute cropped intensity
+                cropped_intensity = feature_extraction.feature_image_intensity()
+                extracted_feature_list.append(cropped_intensity)
             if "bright_pixel_count" in feature:
-                # Compute total intensity
+                # Compute bright pixel count
                 bright_pixel_count_threshold = features[feature][0]
                 bright_pixel_count = feature_extraction.feature_bright_pixel_count(
                         threshold=bright_pixel_count_threshold)
