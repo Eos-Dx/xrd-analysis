@@ -359,8 +359,11 @@ if __name__ == '__main__':
             "--source_data_path", default=None, required=True,
             help="The path to preprocessed data files.")
     parser.add_argument(
-            "--output_filepath", default=None, required=True,
+            "--patient_predictions_filepath", default=None, required=True,
             help="The path to store patient predictions csv file.")
+    parser.add_argument(
+            "--measurement_predictions_filepath", default=None, required=True,
+            help="The path to store measurement predictions csv file.")
     parser.add_argument(
             "--pixel_brightness_threshold", default=0.75, required=True,
             help="Relative threshold level to define a bright pixel.")
@@ -378,7 +381,8 @@ if __name__ == '__main__':
 
     patients_db = args.patients_db
     source_data_path = args.source_data_path
-    output_filepath = args.output_filepath
+    measurement_predictions_filepath = args.measurement_predictions_filepath
+    patient_predictions_filepath = args.patient_predictions_filepath
     pixel_brightness_threshold = np.float64(args.pixel_brightness_threshold)
     image_brightness_threshold = np.float64(args.image_brightness_threshold)
     image_area = np.uint32(args.image_area)
@@ -387,7 +391,8 @@ if __name__ == '__main__':
     # Run abnormality test on a dataset
     TP, FP, TN, FN = abnormality_test_batch(
             patients_db=patients_db, source_data_path=source_data_path,
-            output_filepath=output_filepath,
+            patient_predictions_filepath=patient_predictions_filepath,
+            measurement_predictions_filepath=measurement_predictions_filepath,
             pixel_brightness_threshold=pixel_brightness_threshold,
             image_brightness_threshold=image_brightness_threshold,
             image_area=image_area,
