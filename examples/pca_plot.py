@@ -29,15 +29,9 @@ df_A = df[df.index.str.match(r"(CR_A0|CR_AA)")]
 # Set dataset to use
 df = df
 
-# Set PCA to 2 components
-pca = PCA(n_components=2)
-
-# Create pipeline including standard scaling
-estimator = make_pipeline(StandardScaler(), pca).fit(df)
-# kmeans = KMeans(init=estimator['pca'].components_, n_clusters=cluster_count)
-
+# Specify feature list
 feature_list = [
-        'total intensity',
+        'total_intensity',
         'bright_pixel_count',
         'annulus_intensity_9A',
         'annulus_intensity_5A',
@@ -45,7 +39,16 @@ feature_list = [
         'sector_intensity_equator_pair_9A',
         'sector_intensity_meridian_pair_9A',
         'sector_intensity_meridian_pair_5A',
+        'total_flux'
         ]
+
+# Set PCA to 2 components
+pca = PCA(n_components=2)
+
+# Create pipeline including standard scaling
+estimator = make_pipeline(StandardScaler(), pca).fit(df[feature_list])
+# kmeans = KMeans(init=estimator['pca'].components_, n_clusters=cluster_count)
+
 
 print("Explained variance ratios:")
 print(estimator['pca'].explained_variance_ratio_)
@@ -59,8 +62,7 @@ print(dict(zip(feature_list, pca_components[0,:])))
 print(dict(zip(feature_list, pca_components[1,:])))
 
 # Transform data using PCA
-X_pca = estimator.transform(df)
-
+X_pca = estimator.transform(df.values)
 
 ################################
 # PCA subspace projection plot #
@@ -70,12 +72,7 @@ X_pca = estimator.transform(df)
 title = "PCA-reduced Xena Dataset 2-D Subspace Projection"
 fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
 fig.suptitle(title)
-if True:
-    plt.scatter(X_pca[:,0], X_pca[:,1])
-if False:
-    X_pca_AT = estimator.transform(df_AT)
-    plt.scatter(X_pca_AT[:,0], X_pca_AT[:,1])
-
+plt.scatter(X_pca[:,0], X_pca[:,1])
 
 # Set offsets
 x_label_offset = 0.01
@@ -83,23 +80,12 @@ y_label_offset = 0.01
 
 filename_list = df.index.to_list()
 
-if True:
-    for i, filename in enumerate(filename_list):
-        ax.annotate(
-            filename.replace("CR_","").replace(".txt",""),
-            (X_pca[i,0], X_pca[i,1]),
-            xytext=(X_pca[i,0]+x_label_offset, X_pca[i,1]+y_label_offset))
-if False:
-    X_pca = estimator.transform(df_AT)
-    df_pca_AT = pd.DataFrame(data=X_pca)
-    df_pca_AT.index = df_AT.index
-    for idx in df_AT.index:
-        filename = idx
-        ax.annotate(
-            filename.replace("CR_","").replace(".txt",""),
-            (df_pca_AT.loc[idx][0], df_pca_AT.loc[idx][1]),
-            xytext=(df_pca_AT.loc[idx][0]+x_label_offset, df_pca_AT.loc[idx][1]+y_label_offset))
-
+# Annotate data points with filenames
+for i, filename in enumerate(filename_list):
+    ax.annotate(
+        filename.replace("CR_","").replace(".txt",""),
+        (X_pca[i,0], X_pca[i,1]),
+        xytext=(X_pca[i,0]+x_label_offset, X_pca[i,1]+y_label_offset))
 
 # Label plot axes and title
 plt.xlabel("PC0")
@@ -115,7 +101,7 @@ if True:
 
     # Collect data subsets for plotting
     series_dict = {
-            # "AT_series": df_AT,
+            "AT_series": df_AT,
             "A_series": df_A,
             "B_series": df_B,
             }
@@ -149,11 +135,6 @@ if True:
 
     plt.legend()
     plt.show()
-
-    import ipdb
-    ipdb.set_trace()
-
-    exit(0)
 
 
 #################
@@ -198,7 +179,7 @@ df_pca = pd.DataFrame(data=X_pca, index=df.index)
 cluster_count_min = 2
 cluster_count_max = 6
 
-# Run K-means on original features and plot pca-reduced version
+# Run K-means on pca-reduced features
 for idx in range(cluster_count_min, cluster_count_max+1):
 
     cluster_count = idx
