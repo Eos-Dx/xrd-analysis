@@ -19,21 +19,29 @@ aspect = (16,9)
 df_path = "extracted_features.csv"
 df = pd.read_csv(df_path, index_col="Filename")
 
+# Load patients database
+db_path = "patients_database.csv"
+db = pd.read_csv(db_path, index_col="Barcode")
+
+# Set kmeans csv output filepath
+kmeans_filepath="kmeans_pca.csv"
+
 # Specify feature list
 feature_list = [
-        'total_intensity',
-        'bright_pixel_count',
+        # 'cropped_intensity',
+        # 'total_flux',
+        # 'bright_pixel_count',
         'annulus_intensity_9A',
         'annulus_intensity_5A',
         'annulus_intensity_4A',
         'sector_intensity_equator_pair_9A',
         'sector_intensity_meridian_pair_9A',
         'sector_intensity_meridian_pair_5A',
-        'total_flux'
         ]
 
-if False:
-    # Divide by total flux
+if True:
+    # Divide
+    # divide_by = "cropped_intensity"
     divide_by = "total_flux"
     df = df.div(df[divide_by], axis="rows")
 
@@ -108,17 +116,24 @@ if True:
     series_dict = {
             "AT_series": df_AT,
             "A_series": df_A,
-            "B_series": df_B,
+            # "B_series": df_B,
             }
 
     # Plot all data subsets
-    title = "PCA-Reduced Xena Data Subsets 2-D Subspace Projection"
+    title = "PCA-Reduced Xena Dataset 2-D Subspace Projection, color by subset"
     fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
     fig.suptitle(title)
 
+    colors = {
+            "AT_series": "#17becf",
+            "A_series": "#bcbd22",
+            "B_series": "#7f7f7f",
+            }
+
     for series_name, df_sub in series_dict.items():
         X = estimator.transform(df_sub.values)
-        plt.scatter(X[:,0], X[:,1], label=series_name)
+        plt.scatter(
+                X[:,0], X[:,1], label=series_name, c=colors[series_name])
 
 
     plt.xlabel("PC0")
@@ -144,9 +159,53 @@ if False:
         for barcode in df_patients.index.str.strip():
             if count > 4:
                 break
-            X_plot = estimator.transform(df_AT[df_AT.index.str.contains(barcode)])
+            X_plot = estimator.transform(df[df.index.str.contains(barcode)])
             plt.scatter(X_plot[:,0], X_plot[:,1], label=barcode)
             count += 1
+
+    plt.xlabel("PC0")
+    plt.ylabel("PC1")
+
+    plt.legend()
+    plt.show()
+
+
+##################
+# Diagnosis plot #
+##################
+
+if True:
+
+    # Plot all data highlighting patient diagnosis
+    title = "PCA-reduced Xena Dataset 2-D Subspace Projection, color by diagnosis"
+    fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
+    fig.suptitle(title)
+
+    # Add a Barcode column to the dataframe
+    # Extract the first letter and all numbers in the filename before the subindex
+    # E.g., from filename AB12345-01.txt -> A12345 is extracted
+    # Note: Issue if the Barcode format changes
+    extraction = df.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
+    extraction_series = extraction[0] + extraction[1]
+    extraction_list = extraction_series.tolist()
+
+    assert(len(extraction_list) == df.shape[0])
+    df_ext = df.copy()
+    df_ext["Barcode"] = extraction_list
+
+    df_ext = pd.merge(df_ext, db, left_on="Barcode", right_index=True)
+
+    colors = {
+            "cancer": "red",
+            "healthy": "blue",
+            }
+
+    # Loop over series
+    for diagnosis in df_ext["Diagnosis"].dropna().unique():
+        df_diagnosis = df_ext[df_ext["Diagnosis"] == diagnosis]
+        X_plot = estimator.transform(df_diagnosis[feature_list])
+        plt.scatter(
+                X_plot[:,0], X_plot[:,1], label=diagnosis, c=colors[diagnosis])
 
     plt.xlabel("PC0")
     plt.ylabel("PC1")
@@ -229,4 +288,4 @@ for idx in range(cluster_count_min, cluster_count_max+1):
 plt.show()
 
 # Save dataframe
-df_pca.to_csv("kmeans_pca.csv")
+df_pca.to_csv(kmeans_filepath)
