@@ -15,7 +15,7 @@ from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
 def image_brightness(
         masked_image, pixel_brightness_threshold=0.75,
-        image_area=36220):
+        image_area=36220, image_mask=None):
     """
     Predicts abnormality of an image based on brightness.
 
@@ -36,22 +36,33 @@ def image_brightness(
         The number of pixels in the image to analyze.  Default value is
         ``36220`` which corresponds to ``rmin=24``, and ``rmax=110``.
 
+    image_mask : array-like
+        Boolean mask defining areas of the image to analyze.
+
     Returns
     -------
 
     brightness : float
         Relative brightness from 0 to 1.
     """
+    # If an image mask is provided, set areas outside the mask to zero
+    if type(image_mask) is np.ndarray:
+        image = masked_image.copy()
+        image[~image_mask] = 0
+    # Otherwise use the provided image
+    else:
+        image = masked_image
 
+    # Calculate the bright pixel count
     bright_pixels = bright_pixel_count(
-            masked_image, qmin=pixel_brightness_threshold)
+            image, qmin=pixel_brightness_threshold)
 
     brightness = bright_pixels/image_area
     return brightness
 
 def image_brightness_batch(
         patients_db=None, source_data_path=None,
-        pixel_brightness_threshold=None, image_area=36220):
+        pixel_brightness_threshold=None, image_area=36220, image_mask=None):
     """
     Calculates relative image brightness for a dataset.
 
@@ -76,6 +87,9 @@ def image_brightness_batch(
     image_area : int
         The number of pixels in the image to analyze.  Default value is
         ``36220`` which corresponds to ``rmin=24``, and ``rmax=110``.
+
+    image_mask : array-like
+        Boolean mask defining areas of the image to analyze.
 
     Returns
     -------
@@ -104,7 +118,9 @@ def image_brightness_batch(
         brightness = image_brightness(
                 masked_image,
                 pixel_brightness_threshold=pixel_brightness_threshold,
-                image_area=image_area)
+                image_area=image_area,
+                image_mask=image_mask,
+                )
         # Add row to dataframe
         df.loc[filename] = brightness
 
@@ -160,7 +176,7 @@ def image_brightness_batch(
 
 def abnormality_test(
         masked_image, pixel_brightness_threshold=0.75,
-        image_brightness_threshold=0.1, image_area=36220):
+        image_brightness_threshold=0.1, image_area=36220, image_mask=None):
     """
     Predicts abnormality of an image based on brightness.
 
@@ -186,6 +202,9 @@ def abnormality_test(
         The number of pixels in the image to analyze.  Default value is
         ``36220`` which corresponds to ``rmin=24``, and ``rmax=110``.
 
+    image_mask : array-like
+        Boolean mask defining areas of the image to analyze.
+
     Returns
     -------
 
@@ -196,7 +215,9 @@ def abnormality_test(
     brightness = image_brightness(
                 masked_image,
                 pixel_brightness_threshold=pixel_brightness_threshold,
-                image_area=image_area)
+                image_area=image_area,
+                image_mask=image_mask,
+                )
 
     abnormal = brightness > image_brightness_threshold
     return abnormal
@@ -206,7 +227,7 @@ def abnormality_test_batch(
         patient_predictions_filepath=None,
         measurement_predictions_filepath=None,
         pixel_brightness_threshold=None, image_brightness_threshold=None,
-        image_area=36220):
+        image_area=36220, image_mask=None):
     """
     Predicts abnormality of a dataset based on image brightness.
 
@@ -243,6 +264,9 @@ def abnormality_test_batch(
         The number of pixels in the image to analyze.  Default value is
         ``36220`` which corresponds to ``rmin=24``, and ``rmax=110``.
 
+    image_mask : array-like
+        Boolean mask defining areas of the image to analyze.
+
     Returns
     -------
 
@@ -271,7 +295,9 @@ def abnormality_test_batch(
                 masked_image,
                 pixel_brightness_threshold=pixel_brightness_threshold,
                 image_brightness_threshold=image_brightness_threshold,
-                image_area=image_area)
+                image_area=image_area,
+                image_mask=image_mask,
+                )
         # Add row to dataframe
         df.loc[filename] = int(abnormal)
 
@@ -359,8 +385,11 @@ if __name__ == '__main__':
             "--source_data_path", default=None, required=True,
             help="The path to preprocessed data files.")
     parser.add_argument(
-            "--output_filepath", default=None, required=True,
+            "--patient_predictions_filepath", default=None, required=True,
             help="The path to store patient predictions csv file.")
+    parser.add_argument(
+            "--measurement_predictions_filepath", default=None, required=True,
+            help="The path to store measurement predictions csv file.")
     parser.add_argument(
             "--pixel_brightness_threshold", default=0.75, required=True,
             help="Relative threshold level to define a bright pixel.")
@@ -371,6 +400,9 @@ if __name__ == '__main__':
             "--image_area", default=36220, required=False,
             help="Number of pixels in image to analyze.")
     parser.add_argument(
+            "--image_mask", default=36220, required=True,
+            help="Mask defining image areas to analyze.")
+    parser.add_argument(
             "--print", action="store_true", help="Flag to print metrics.")
 
     # Collect arguments
@@ -378,19 +410,22 @@ if __name__ == '__main__':
 
     patients_db = args.patients_db
     source_data_path = args.source_data_path
-    output_filepath = args.output_filepath
+    measurement_predictions_filepath = args.measurement_predictions_filepath
+    patient_predictions_filepath = args.patient_predictions_filepath
     pixel_brightness_threshold = np.float64(args.pixel_brightness_threshold)
     image_brightness_threshold = np.float64(args.image_brightness_threshold)
     image_area = np.uint32(args.image_area)
     print_metrics = args.print
+    image_mask = np.loadtxt(args.image_mask, dtype=bool)
 
     # Run abnormality test on a dataset
     TP, FP, TN, FN = abnormality_test_batch(
             patients_db=patients_db, source_data_path=source_data_path,
-            output_filepath=output_filepath,
+            patient_predictions_filepath=patient_predictions_filepath,
+            measurement_predictions_filepath=measurement_predictions_filepath,
             pixel_brightness_threshold=pixel_brightness_threshold,
             image_brightness_threshold=image_brightness_threshold,
-            image_area=image_area,
+            image_area=image_area, image_mask=image_mask,
             )
 
     # Calculate performance metrics using per-patient predictions
