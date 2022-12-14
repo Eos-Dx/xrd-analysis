@@ -28,7 +28,7 @@ kmeans_filepath="kmeans_pca.csv"
 
 # Specify feature list
 feature_list = [
-        # 'cropped_intensity',
+        # 'total_intensity',
         # 'total_flux',
         # 'bright_pixel_count',
         'annulus_intensity_9A',
@@ -42,8 +42,12 @@ feature_list = [
 if True:
     # Divide
     # divide_by = "cropped_intensity"
-    divide_by = "total_flux"
+    divide_by = "total_intensity"
+    # divide_by = "total_flux"
     df = df.div(df[divide_by], axis="rows")
+    title = "PCA-Reduced Xena Dataset 2-D Subspace Projection, divide by {}".format(divide_by)
+else:
+    title = "PCA-Reduced Xena Dataset 2-D Subspace Projection"
 
 # Set features to use
 df = df[feature_list]
@@ -82,8 +86,8 @@ X_pca = estimator.transform(df.values)
 ################################
 
 # Plot PCA-reduced dataset with file labels
-title = "PCA-reduced Xena Dataset 2-D Subspace Projection"
-fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
+plot_title = title
+fig, ax = plt.subplots(figsize=aspect, num=plot_title, tight_layout=True)
 fig.suptitle(title)
 plt.scatter(X_pca[:,0], X_pca[:,1])
 
@@ -116,13 +120,13 @@ if True:
     series_dict = {
             "AT_series": df_AT,
             "A_series": df_A,
-            # "B_series": df_B,
+            "B_series": df_B,
             }
 
     # Plot all data subsets
-    title = "PCA-Reduced Xena Dataset 2-D Subspace Projection, color by subset"
-    fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
-    fig.suptitle(title)
+    plot_title="{}, color by subset".format(title)
+    fig, ax = plt.subplots(figsize=aspect, num=plot_title, tight_layout=True)
+    fig.suptitle(plot_title)
 
     colors = {
             "AT_series": "#17becf",
@@ -133,7 +137,8 @@ if True:
     for series_name, df_sub in series_dict.items():
         X = estimator.transform(df_sub.values)
         plt.scatter(
-                X[:,0], X[:,1], label=series_name, c=colors[series_name])
+                X[:,0], X[:,1], label=series_name)
+                # X[:,0], X[:,1], label=series_name, c=colors[series_name])
 
 
     plt.xlabel("PC0")
@@ -150,9 +155,9 @@ if True:
 if False:
 
     # Plot all data highlighting patients
-    title = "PCA-reduced Xena Dataset Patient Highlights 2-D Subspace Projection"
-    fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
-    fig.suptitle(title)
+    plot_title="{}, color by patient".format(title)
+    fig, ax = plt.subplots(figsize=aspect, num=plot_title, tight_layout=True)
+    fig.suptitle(plot_title)
 
     if True:
         count = 0
@@ -177,16 +182,16 @@ if False:
 if True:
 
     # Plot all data highlighting patient diagnosis
-    title = "PCA-reduced Xena Dataset 2-D Subspace Projection, color by diagnosis"
-    fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
-    fig.suptitle(title)
+    plot_title="{}, color by diagnosis".format(title)
+    fig, ax = plt.subplots(figsize=aspect, num=plot_title, tight_layout=True)
+    fig.suptitle(plot_title)
 
     # Add a Barcode column to the dataframe
     # Extract the first letter and all numbers in the filename before the subindex
     # E.g., from filename AB12345-01.txt -> A12345 is extracted
     # Note: Issue if the Barcode format changes
     extraction = df.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
-    extraction_series = extraction[0] + extraction[1]
+    extraction_series = extraction[0] + extraction[1].str.zfill(5)
     extraction_list = extraction_series.tolist()
 
     assert(len(extraction_list) == df.shape[0])
@@ -198,6 +203,7 @@ if True:
     colors = {
             "cancer": "red",
             "healthy": "blue",
+            "blind": "green",
             }
 
     # Loop over series
@@ -231,7 +237,7 @@ for idx in range(cluster_count_min, cluster_count_max+1):
     cluster_count = idx
 
     title = "K-Means on PCA-reduced Xena Dataset with {} clusters".format(idx)
-    fig, ax = plt.subplots(figsize=aspect, num=title, tight_layout=True)
+    fig, ax = plt.subplots(figsize=aspect, num=plot_title, tight_layout=True)
     fig.suptitle(title)
 
     # Run k-means
@@ -287,5 +293,10 @@ for idx in range(cluster_count_min, cluster_count_max+1):
 # Show K-means plots
 plt.show()
 
+df_pca_ext = df_pca.copy()
+df_pca_ext["Barcode"] = extraction_list
+df_pca_ext = pd.merge(df_pca_ext, db, left_on="Barcode", right_index=True)
+df_pca_ext = df_pca_ext.rename(columns={0: "PC0", 1: "PC1"})
+
 # Save dataframe
-df_pca.to_csv(kmeans_filepath)
+df_pca_ext.to_csv(kmeans_filepath)
