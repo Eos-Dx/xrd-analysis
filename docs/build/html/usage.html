@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>Usage &#8212; Eos Dx Analysis 2.23.3 documentation</title>
+    <title>Usage &#8212; Eos Dx Analysis 2.24.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -91,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.23.3 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.24.0 documentation</p>
   
 </a>
     
@@ -395,6 +395,23 @@
 </div>
 <p>where <code class="docutils literal notranslate"><span class="pre">DATA_FILEPATH</span></code> is the full path to the dimensionality-reduced csv file, <code class="docutils literal notranslate"><span class="pre">OUTPUT_FILEPATH</span></code> is the full path to the output file. If the <code class="docutils literal notranslate"><span class="pre">add_column</span></code> flag is used, the output file will contain a copy of the input data with an extra <code class="docutils literal notranslate"><span class="pre">Exclude</span></code> column (1 = pass, 0 = fail). Otherwise, the output file will be a single column with the <code class="docutils literal notranslate"><span class="pre">Filename</span></code>.</p>
 </section>
+<section id="abnormality-test">
+<h2>Abnormality Test<a class="headerlink" href="#abnormality-test" title="Permalink to this heading">#</a></h2>
+<p>The abnormality test is based on image brightness of preprocessed images.</p>
+<p>The abnormality test takes two parameters:
+1. pixel brightness threshold
+2. image brightness threshold</p>
+<section id="definition-bright-pixel">
+<h3>Definition: Bright pixel<a class="headerlink" href="#definition-bright-pixel" title="Permalink to this heading">#</a></h3>
+<p>The image is normalized from 0 to 1, with 0 corresponding to the lowest intensity pixel value, and 1 corresponding to the highest intensity pixel value.</p>
+<p>A pixel is considered “bright” if it is greater than a specified threshold. For example, if the bright pixel threshold is 0.7, then any normalized pixel values greater than 0.7 are considered bright pixels.</p>
+</section>
+<section id="definition-bright-image">
+<h3>Definition: Bright image<a class="headerlink" href="#definition-bright-image" title="Permalink to this heading">#</a></h3>
+<p>The image is normalized from 0 to 1, with 0 corresponding to the lowest intensity pixel value, and 1 corresponding to the highest intensity pixel value.</p>
+<p>An image is considered “bright” if the number of bright pixels is greater than a specified threshold. For example, if the bright image threshold is 0.5, then if more than 50% of the pixels are “bright”, then the image is considered “bright.”</p>
+</section>
+</section>
 </section>
 
 
@@ -454,6 +471,23 @@
   <a class="reference internal nav-link" href="#training-on-gaussian-fitting-parameters">
    Training on Gaussian Fitting Parameters
   </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#abnormality-test">
+   Abnormality Test
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#definition-bright-pixel">
+     Definition: Bright pixel
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#definition-bright-image">
+     Definition: Bright image
+    </a>
+   </li>
+  </ul>
  </li>
 </ul>
 
