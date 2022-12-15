@@ -150,3 +150,26 @@ Finally, run the quality control code as follows:
    (eos) $ python examples/quality_control.py --data_filepath DATA_FILEPATH --output_filepath OUTPUT_FILEPATH --criteria_file EXCLUSION_CRITERIA_FILE --add_column
 
 where ``DATA_FILEPATH`` is the full path to the dimensionality-reduced csv file, ``OUTPUT_FILEPATH`` is the full path to the output file. If the ``add_column`` flag is used, the output file will contain a copy of the input data with an extra ``Exclude`` column (1 = pass, 0 = fail). Otherwise, the output file will be a single column with the ``Filename``.
+
+Abnormality Test
+----------------
+
+The abnormality test is based on image brightness of preprocessed images.
+
+The abnormality test takes two parameters:
+1. pixel brightness threshold
+2. image brightness threshold
+
+Definition: Bright pixel 
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+The image is normalized from 0 to 1, with 0 corresponding to the lowest intensity pixel value, and 1 corresponding to the highest intensity pixel value. 
+
+A pixel is considered “bright” if it is greater than a specified threshold. For example, if the bright pixel threshold is 0.7, then any normalized pixel values greater than 0.7 are considered bright pixels. 
+
+Definition: Bright image
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+The image is normalized from 0 to 1, with 0 corresponding to the lowest intensity pixel value, and 1 corresponding to the highest intensity pixel value. 
+
+An image is considered “bright” if the number of bright pixels is greater than a specified threshold. For example, if the bright image threshold is 0.5, then if more than 50% of the pixels are “bright”, then the image is considered “bright.” 
