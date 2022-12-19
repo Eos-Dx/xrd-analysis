@@ -56,6 +56,31 @@ class FeatureExtraction(object):
 
         return super().__init__()
 
+    def feature_max_intensity(self):
+        """
+        Computes the max intensity of the image
+
+        Parameters
+        ----------
+
+        image : ndarray
+            The measurement image data
+
+        Output
+        ------
+
+        max_intensity : number
+            The maximum intensity
+
+        """
+        # Reference the stored image
+        image = self.image
+
+        # Compute the maximum image intensity
+        max_intensity = np.max(image)
+
+        return max_intensity
+
     def feature_image_intensity(self):
         """
         Computes the intensity of the image
@@ -773,6 +798,10 @@ def feature_extraction(input_path, output_filepath, params):
 
         extracted_feature_list = []
         for feature in feature_list:
+            if "max_intensity" in feature:
+                # Compute max intensity
+                max_intensity = feature_extraction.feature_max_intensity()
+                extracted_feature_list.append(max_intensity)
             if "cropped_intensity" in feature:
                 # Compute cropped intensity
                 cropped_intensity = feature_extraction.feature_image_intensity()
