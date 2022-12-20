@@ -368,7 +368,7 @@ def abnormality_test_batch(
     if measurement_predictions_filepath:
         df_ext.to_csv(measurement_predictions_filepath)
 
-    return TP, FP, TN, FN
+    return TN, FP, FN, TP
 
 
 if __name__ == '__main__':
