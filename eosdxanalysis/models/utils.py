@@ -381,7 +381,7 @@ def calculate_min_distance(image1_post, image2_post_unmasked, mask, scale=1.0,
                 scale=new_scale, tol=tol, iterations=iterations)
 
 def metrics_report(
-        TP=0, FP=0, TN=0, FN=0, csv=True, printout=False):
+        TP=0, FP=0, TN=0, FN=0, print_csv=True, print_table=False):
     """
     Generate a metrics report from blind test results
 
@@ -431,14 +431,14 @@ def metrics_report(
             "F1": [F1, ".2f"],
             })
 
-    if printout:
+    if print_table:
         data = np.array(tuple(metrics_dict.values()))
         df = pd.DataFrame(data,
                 index=metrics_dict.keys())
 
         print(df.to_markdown(index=False,floatfmt=format_list))
 
-    if csv:
+    if print_csv:
         metric_names = tuple(metrics_dict.keys())
         metric_data = np.array(tuple(metrics_dict.values()), dtype=object)
         for idx in range(len(metric_names)):
