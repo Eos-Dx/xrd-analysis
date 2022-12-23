@@ -17,7 +17,7 @@ from joblib import dump
 
 def run_kmeans(
         data_filepath, output_path=None, feature_list=None, cluster_count_min=2,
-        cluster_count_max=2, image_source_path=None):
+        cluster_count_max=2, image_source_path=None, divide_by=None):
     """
     Runs k-means on a dataset of extracted features for between
     ``cluster_count_min`` and ``cluster_count_max`` number of clusters.
@@ -45,7 +45,22 @@ def run_kmeans(
         Path to image previews
     """
     # Load data into dataframe
-    df = pd.read_csv(data_filepath, usecols=feature_list, index_col="Filename")
+    df = pd.read_csv(data_filepath, index_col="Filename")
+
+    # Get list of features
+    if feature_list is None:
+        feature_list = df.columns.tolist()
+
+    # Scale all features
+    if divide_by:
+        df = df.div(df[divide_by], axis="rows")
+        df = df[feature_list]
+        if divide_by in feature_list:
+            # Drop divide_by column
+            df = df.drop(columns=[divide_by])
+    else:
+        # Get features
+        df = df[feature_list]
 
     # Set timestamp
     timestr = "%Y%m%dT%H%M%S.%f"
@@ -160,6 +175,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--image_source_path", default=None, required=False,
             help="Path to image previews.")
+    parser.add_argument(
+            "--divide_by", default=None, required=False,
+            help="Input feature to scale by. This feature is not used for clustering.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -174,9 +192,12 @@ if __name__ == '__main__':
 
     image_source_path = args.image_source_path
 
+    divide_by = args.divide_by
+
     run_kmeans(
             data_filepath, output_path=output_path, feature_list=feature_list,
             cluster_count_min=cluster_count_min,
             cluster_count_max=cluster_count_max,
             image_source_path=image_source_path,
+            divide_by=divide_by,
             )

@@ -380,7 +380,8 @@ def calculate_min_distance(image1_post, image2_post_unmasked, mask, scale=1.0,
                 image1_post, image2_largescale_unmasked, mask,
                 scale=new_scale, tol=tol, iterations=iterations)
 
-def metrics_report(TP=0, FP=0, TN=0, FN=0, degree=None, printout=True):
+def metrics_report(
+        TP=0, FP=0, TN=0, FN=0, print_csv=True, print_table=False):
     """
     Generate a metrics report from blind test results
 
@@ -410,49 +411,40 @@ def metrics_report(TP=0, FP=0, TN=0, FN=0, degree=None, printout=True):
     # Calculate precision
     precision = TP / (TP + FP)
     # Calculate recall (sensitivity)
-    recall = TP / (TP + FN)
+    sensitivity = TP / (TP + FN)
     # Specificity
     specificity = TN / (TN + FP)
     # Calculate F1 score
-    F1 = 2 * precision * recall / (precision + recall)
+    F1 = 2 * precision * sensitivity / (precision + sensitivity)
 
     metrics_dict = OrderedDict({
-            "TP": [TP],
-            "FP": [FP],
-            "TN": [TN],
-            "FN": [FN],
-            "FPR": [FPR],
-            "FNR": [FNR],
-            "Accuracy": [accuracy],
-            "Precision": [precision],
-            "Recall": [recall],
-            "Specificity": [specificity],
-            "F1": [F1],
+            "TN": [TN, ".0f"],
+            "FP": [FP, ".0f"],
+            "FN": [FN, ".0f"],
+            "TP": [TP, ".0f"],
+            "FPR": [FPR, ".2f"],
+            "FNR": [FNR, ".2f"],
+            "Accuracy": [accuracy, ".2f"],
+            "Precision": [precision, ".2f"],
+            "Sensitivity": [sensitivity, ".2f"],
+            "Specificity": [specificity, ".2f"],
+            "F1": [F1, ".2f"],
             })
 
-    format_list = [
-            ".0f",
-            ".0f",
-            ".0f",
-            ".0f",
-            ".2f",
-            ".2f",
-            ".2f",
-            ".2f",
-            ".2f",
-            ".2f",
-            ".2f",
-            ]
+    if print_table:
+        data = np.array(tuple(metrics_dict.values()))
+        df = pd.DataFrame(data,
+                index=metrics_dict.keys())
 
-    if degree:
-        metrics_dict["Degree"] = [degree]
-        metrics_dict.move_to_end("Degree", last=False)
-        format_list = [".0f"] + format_list
+        print(df.to_markdown(index=False,floatfmt=format_list))
 
-    df = pd.DataFrame(metrics_dict,
-            columns=metrics_dict.keys())
-
-    print(df.to_markdown(index=False,floatfmt=format_list))
+    if print_csv:
+        metric_names = tuple(metrics_dict.keys())
+        metric_data = np.array(tuple(metrics_dict.values()), dtype=object)
+        for idx in range(len(metric_names)):
+            metric_name = metric_names[idx]
+            metric_value, format_string = metric_data[idx]
+            print(f"{metric_name},{metric_value:{format_string}}")
 
 def gen_meshgrid(shape):
     """

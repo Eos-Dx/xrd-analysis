@@ -10,6 +10,8 @@ import argparse
 import pandas as pd
 import numpy as np
 
+from sklearn.metrics import confusion_matrix
+
 from eosdxanalysis.models.utils import metrics_report
 from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
@@ -346,21 +348,19 @@ def abnormality_test_batch(
     df_patients_ext.index = df_patients_ext["Patient_ID"]
     # Extract diagnosis and prediction
     df_patients_ext = df_patients_ext[["Diagnosis", "Prediction"]]
+    # Replace cancer diagnosis with 1, healthy diagnosis with 0
+    df_patients_ext.loc[df_patients_ext["Diagnosis"] == "cancer",
+            "Diagnosis"] = 1
+    df_patients_ext.loc[df_patients_ext["Diagnosis"] == "healthy",
+            "Diagnosis"] = 0
 
     # Calculate true positives, false positives, true negatives,
     # and false negatives
-    TP = (
-            (df_patients_ext["Diagnosis"] == "cancer") & \
-                    (df_patients_ext["Prediction"] == 1)).sum()
-    FP = (
-            (df_patients_ext["Diagnosis"] == "healthy") & \
-                    (df_patients_ext["Prediction"] == 1)).sum()
-    TN = (
-            (df_patients_ext["Diagnosis"] == "healthy") & \
-                    (df_patients_ext["Prediction"] == 0)).sum()
-    FN = (
-            (df_patients_ext["Diagnosis"] == "cancer") & \
-                    (df_patients_ext["Prediction"] == 0)).sum()
+    df_patients_with_diagnosis = df_patients_ext[~df_patients_ext["Diagnosis"].isna()]
+    y_true = df_patients_with_diagnosis["Diagnosis"].astype(int)
+    y_pred = df_patients_with_diagnosis["Prediction"].astype(int)
+
+    TN, FP, FN, TP = confusion_matrix(y_true.values, y_pred.values).ravel()
 
     # Save the results
     if patient_predictions_filepath:
@@ -368,7 +368,7 @@ def abnormality_test_batch(
     if measurement_predictions_filepath:
         df_ext.to_csv(measurement_predictions_filepath)
 
-    return TP, FP, TN, FN
+    return TN, FP, FN, TP
 
 
 if __name__ == '__main__':
