@@ -22,7 +22,7 @@ class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
     """
     Estimator based on cancer cluster definition
     Cancer clusters must have label 1.
-    All other clusters have label 0 or 2, 3, etc.
+    All other clusters may have label 0 or 2, 3, etc.
     """
 
     def __init__(self, distance_threshold=0, cancer_label=1):
@@ -36,8 +36,13 @@ class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
 
         # Check that X and y have correct shape
         X, y = check_X_y(X, y)
+        labels = unique_labels(y)
+        # Check if label types are numbers
+        if not np.issubdtype(labels.dtype, np.number):
+            raise ValueError("Labels must be digits.")
+
         # Store the classes seen during fit
-        self.classes_ = unique_labels(y)
+        self.classes_ = labels
 
         self.X_ = X
         self.y_ = y
