@@ -45,8 +45,7 @@ class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
         # TODO: Insert code to train the model
         # Store the data belonging to cancer clusters
         # We could use cancer cluster centers
-        cancer_indices = (y == cancer_label)
-        cancer_data = X[cancer_indices]
+        cancer_data = X[y == cancer_label]
         self.cancer_data_ = cancer_data
 
         # Return the classifier
@@ -74,7 +73,7 @@ class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
         closest_distances = np.min(distances, axis=1)
 
         # If sample is close enough to any cancer cluster, predict cancer
-        predictions = (closest_distances <= distance_threshold).astype(int)
-        predictions[predictions] = cancer_label
+        cancer_predictions = closest_distances <= distance_threshold
+        cancer_predictions[cancer_predictions] = cancer_label
 
-        return predictions
+        return cancer_predictions.astype(int)
