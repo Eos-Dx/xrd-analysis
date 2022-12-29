@@ -77,6 +77,7 @@ def run_pca_plot(
 
     used_feature_list = df_train.columns
 
+
     # Set title based on feature scaling
     if scale_by:
         title = "PCA-Reduced Xena Dataset 2-D Subspace Projection, divide by {}".format(scale_by)
@@ -121,6 +122,31 @@ def run_pca_plot(
         df_all = pd.concat([df_train, df_blind])
     else:
         df_all = df_train
+
+    # Add a Barcode column to the dataframe
+    # Extract the first letter and all numbers in the filename before the subindex
+    # E.g., from filename AB12345-01.txt -> A12345 is extracted
+    # Note: Issue if the Barcode format changes
+    extraction = df_all.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
+    extraction_series = extraction[0] + extraction[1].str.zfill(5)
+    extraction_list = extraction_series.tolist()
+
+    assert(len(extraction_list) == df_all.shape[0])
+    df_ext = df_all.copy()
+    df_ext["Barcode"] = extraction_list
+
+    df_ext = pd.merge(df_ext, db, left_on="Barcode", right_index=True)
+
+    # Save dataframe to file
+    df_ext_filename = "extrated_features_pca_{}.csv".format(timestamp)
+    df_ext_filepath = os.path.join(output_path, df_ext_filename)
+    # Transform df_ext using estimator
+    data_pca_ext = data=estimator.transform(df_ext[used_feature_list])
+    columns = ["PC{}".format(idx) for idx in range(n_components)]
+    # Create dataframe
+    df_pca_ext = pd.DataFrame(data=data_pca_ext,
+            columns=columns, index=df_ext.index)
+    df_pca_ext.to_csv(df_ext_filepath)
 
     # Set offsets
     x_label_offset = 0.01
@@ -177,10 +203,28 @@ def run_pca_plot(
         clusters_pca = pca_model.transform(kmeans_model.cluster_centers_)
 
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
-        ax.scatter(kmeans_pca[:,0], kmeans_pca[:,1], kmeans_pca[:,2])
-        # Cluster centers
-        ax.scatter(clusters_pca[:,0], clusters_pca[:,1], clusters_pca[:,2], marker="^", s=200, alpha=0.5)
-        # Annotate data points with filenames
+
+        colors = {
+                "cancer": "red",
+                "healthy": "blue",
+                "blind": "green",
+                }
+
+        # Loop over measurements according to patient diagnosis
+        for diagnosis in df_ext["Diagnosis"].dropna().unique():
+            df_diagnosis = df_ext[df_ext["Diagnosis"] == diagnosis]
+            X_scaled = scaler.transform(df_diagnosis[used_feature_list].values)
+            X_plot = pca_model.transform(X_scaled)
+            ax.scatter(
+                    X_plot[:,0], X_plot[:,1], X_plot[:,2],
+                    c=colors[diagnosis], label=diagnosis)
+
+        # Plot cluster centers
+        ax.scatter(
+                clusters_pca[:,0], clusters_pca[:,1], clusters_pca[:,2],
+                marker="^", s=200, alpha=0.5, c="orange", label="cluster centers")
+
+        # Annotate cluster centers with cluster labels
         for idx in range(n_clusters):
             ax.text(
                 clusters_pca[idx,0], clusters_pca[idx,1], clusters_pca[idx,2],
@@ -195,6 +239,7 @@ def run_pca_plot(
         # ax.set_zlim([-1, 1])
 
         ax.set_title(plot_title)
+        ax.legend()
 
         fig.tight_layout()
 
@@ -341,19 +386,6 @@ def run_pca_plot(
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, tight_layout=True)
         fig.suptitle(plot_title)
 
-        # Add a Barcode column to the dataframe
-        # Extract the first letter and all numbers in the filename before the subindex
-        # E.g., from filename AB12345-01.txt -> A12345 is extracted
-        # Note: Issue if the Barcode format changes
-        extraction = df_all.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
-        extraction_series = extraction[0] + extraction[1].str.zfill(5)
-        extraction_list = extraction_series.tolist()
-
-        assert(len(extraction_list) == df_all.shape[0])
-        df_ext = df_all.copy()
-        df_ext["Barcode"] = extraction_list
-
-        df_ext = pd.merge(df_ext, db, left_on="Barcode", right_index=True)
 
         colors = {
                 "cancer": "red",
