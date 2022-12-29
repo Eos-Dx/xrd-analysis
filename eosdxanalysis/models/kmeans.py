@@ -10,6 +10,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
+from sklearn.pipeline import make_pipeline
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
@@ -75,35 +76,41 @@ def run_kmeans(
         output_dir = "kmeans_models_{}".format(timestamp)
         output_path = os.path.dirname(data_filepath)
 
-
-    # Set up standard scaler
-    scaler = StandardScaler()
-    # Fit standard scaler to data
-    scaler.fit(df)
-
-    # Transform data using standard scaler
-    X = scaler.transform(df)
-
     # Create the k-means results directory
     kmeans_results_dir = "kmeans_{}".format(timestamp)
     kmeans_results_path = os.path.join(output_path, kmeans_results_dir)
     os.makedirs(kmeans_results_path, exist_ok=True)
 
+    # Fit the standard scaler
+    scaler = StandardScaler()
+    scaler.fit(df)
+    # Create dataframe with transformed features
+    transformed_features = scaler.transform(df)
+    df_transformed = pd.DataFrame(
+            data=transformed_features,
+            columns=feature_list,
+            index=df.index)
+
     # Train K-means models for each cluster number
     for cluster_count in range(cluster_count_min, cluster_count_max+1):
-        kmeans = KMeans(cluster_count, random_state=0).fit(X)
-        # Save the labels in the dataframe
-        df["kmeans_{}".format(cluster_count)] = kmeans.labels_
+        kmeans = KMeans(cluster_count, random_state=0)
+        kmeans.fit(df_transformed)
 
+        # Save the labels in a new dataframe
+        df_transformed["kmeans_{}".format(cluster_count)] = kmeans.labels_
+
+        estimator = make_pipeline(scaler, kmeans)
         # Save the model to file
         model_filename = "kmeans_model_n{}_{}.joblib".format(
                 cluster_count, timestamp)
         model_filepath = os.path.join(kmeans_results_path, model_filename)
-        dump(kmeans, model_filepath)
+        dump(estimator, model_filepath)
 
-    # Save K-means results to file
-    df_kmeans_path = os.path.join(kmeans_results_path, kmeans_results_filename)
-    df.to_csv(df_kmeans_path, index=True)
+    # Save the transformed data with k-means labels
+    kmeans_results_filename = "kmeans_results_{}.csv".format(timestamp)
+    kmeans_results_filepath = os.path.join(
+            kmeans_results_path, kmeans_results_filename)
+    df_transformed.to_csv(kmeans_results_filepath)
 
     # Use K-means results to create cluster image preview folders
     # Loop over files to copy the file to individual K-means cluster folders
@@ -124,7 +131,7 @@ def run_kmeans(
                         kmeans_model_path, cluster_image_dir)
                 os.makedirs(cluster_image_path, exist_ok=True)
 
-        for idx in df.index:
+        for idx in df_transformed.index:
             filename = idx + ".png"
 
             # Copy the file to the appropriate directory or directories
@@ -135,7 +142,7 @@ def run_kmeans(
                         kmeans_results_path, kmeans_model_dir)
 
                 # Get the cluster label
-                cluster_label = df["kmeans_{}".format(cluster_count)][idx]
+                cluster_label = df_transformed["kmeans_{}".format(cluster_count)][idx]
                 # Set the cluster image path
                 cluster_image_dir = "kmeans_n{}_c{}".format(
                         cluster_count, cluster_label)
