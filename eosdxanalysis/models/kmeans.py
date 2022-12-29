@@ -94,17 +94,18 @@ def run_kmeans(
     # Train K-means models for each cluster number
     for cluster_count in range(cluster_count_min, cluster_count_max+1):
         kmeans = KMeans(cluster_count, random_state=0)
+        # Fit k-means on transformed features
         kmeans.fit(df_transformed)
 
         # Save the labels in a new dataframe
         df_transformed["kmeans_{}".format(cluster_count)] = kmeans.labels_
 
         estimator = make_pipeline(scaler, kmeans)
-        # Save the model to file
-        model_filename = "kmeans_model_n{}_{}.joblib".format(
+        # Save the estimator to file
+        estimator_filename = "estimator_scaler_kmeans_n{}_{}.joblib".format(
                 cluster_count, timestamp)
-        model_filepath = os.path.join(kmeans_results_path, model_filename)
-        dump(estimator, model_filepath)
+        estimator_filepath = os.path.join(kmeans_results_path, estimator_filename)
+        dump(estimator, estimator_filepath)
 
     # Save the transformed data with k-means labels
     kmeans_results_filename = "kmeans_results_{}.csv".format(timestamp)
