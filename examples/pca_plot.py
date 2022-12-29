@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from joblib import dump
+from joblib import load
 
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
@@ -21,9 +22,9 @@ import matplotlib.pyplot as plt
 
 
 def run_pca_plot(
-        training_filepath=None, blind_filepath=None, db_filepath=None,
-        output_path=None, scale_by=None, feature_list=None,
-        n_components=2):
+        training_filepath=None, kmeans_model_filepath=None,
+        kmeans_results_filepath=None, blind_filepath=None, db_filepath=None,
+        output_path=None, scale_by=None, feature_list=None, n_components=2):
     """
     """
     # Set empty blind dataframe
@@ -57,6 +58,7 @@ def run_pca_plot(
         if scale_by in feature_list:
             # Drop scale_by column
             df_train = df_train.drop(columns=[scale_by])
+            feature_list = df_train.columns.tolist()
     else:
         # Get features
         df_train = df_train[feature_list]
@@ -68,6 +70,7 @@ def run_pca_plot(
             if scale_by in feature_list:
                 # Drop scale_by column
                 df_blind = df_blind.drop(columns=[scale_by])
+                feature_list = df_train.columns.tolist()
         else:
             # Get features
             df_blind = df_blind[feature_list]
@@ -141,6 +144,57 @@ def run_pca_plot(
         ax.set_ylabel("PC1")
         ax.set_zlabel("PC2")
         # ax.set_zlim([-1, 1])
+
+        fig.tight_layout()
+
+        plt.show()
+
+
+    ################################################
+    # 3D PCA on K-means, divided by max_intensity, #
+    # rescaled using StandardScaler                #
+    ################################################
+
+    if True:
+        plot_title = "3D PCA on K-means, with cluster labels"
+        n_clusters = 20
+
+        kmeans_results = pd.read_csv(kmeans_results_filepath, index_col="Filename")
+        X_kmeans = kmeans_results[feature_list].values
+
+        scaler = StandardScaler()
+        scaler.fit(X_kmeans)
+        X_fit = scaler.transform(X_kmeans)
+        pca_model = PCA(n_components=n_components)
+        pca_model.fit(X_fit)
+
+        kmeans_pca = pca_model.transform(X_fit)
+
+        # Get K-means model
+        kmeans_model  = load(kmeans_model_filepath)
+
+        # Transform kmeans cluster centers
+        clusters_pca = pca_model.transform(kmeans_model.cluster_centers_)
+
+        fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
+        ax.scatter(kmeans_pca[:,0], kmeans_pca[:,1], kmeans_pca[:,2])
+        # Cluster centers
+        ax.scatter(clusters_pca[:,0], clusters_pca[:,1], clusters_pca[:,2], marker="^", s=200, alpha=0.5)
+        # Annotate data points with filenames
+        for idx in range(n_clusters):
+            ax.text(
+                clusters_pca[idx,0], clusters_pca[idx,1], clusters_pca[idx,2],
+                str(idx))
+
+        # ax.view_init(30, +60+180)
+
+        # ax.set_title("2D Sinusoid - 3D Surface Plot")
+        ax.set_xlabel("PC0")
+        ax.set_ylabel("PC1")
+        ax.set_zlabel("PC2")
+        # ax.set_zlim([-1, 1])
+
+        ax.set_title(plot_title)
 
         fig.tight_layout()
 
@@ -399,7 +453,7 @@ def run_pca_plot(
     # K-means plots #
     #################
 
-    if True:
+    if False:
 
         # df_pca = data + kmeans cluster labels
         df_pca = pd.DataFrame(data=X_train_pca, index=df_train.index)
@@ -502,6 +556,12 @@ if __name__ == '__main__':
             "--training_filepath", default=None, required=True,
             help="The csv input file containing training data features")
     parser.add_argument(
+            "--kmeans_results_filepath", default=None, required=False,
+            help="The kmeans cluster labels for all measurements files")
+    parser.add_argument(
+            "--kmeans_model_filepath", default=None, required=False,
+            help="The joblib kmeans model file")
+    parser.add_argument(
             "--blind_filepath", default=None, required=False,
             help="The csv input file containing blind data features")
     parser.add_argument(
@@ -523,6 +583,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     training_filepath = args.training_filepath
+    kmeans_model_filepath = args.kmeans_model_filepath
+    kmeans_results_filepath = args.kmeans_results_filepath
     blind_filepath = args.blind_filepath
     db_filepath = args.db_filepath
     output_path = args.output_path
@@ -531,6 +593,9 @@ if __name__ == '__main__':
     n_components = args.n_components
 
     run_pca_plot(
-        training_filepath=training_filepath, blind_filepath=blind_filepath,
-        db_filepath=db_filepath, output_path=output_path, scale_by=scale_by,
-        feature_list=feature_list, n_components=n_components)
+        training_filepath=training_filepath,
+        kmeans_model_filepath=kmeans_model_filepath,
+        kmeans_results_filepath=kmeans_results_filepath,
+        blind_filepath=blind_filepath, db_filepath=db_filepath,
+        output_path=output_path, scale_by=scale_by, feature_list=feature_list,
+        n_components=n_components)
