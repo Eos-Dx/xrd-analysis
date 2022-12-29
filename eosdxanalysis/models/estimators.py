@@ -58,6 +58,20 @@ class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
 
     def predict(self, X):
 
+        distance_threshold = self.distance_threshold
+        cancer_label = self.cancer_label
+
+        # Calculate the distance to the closest clusters
+        closest_distances = self.decision_function(X)
+
+        # If sample is close enough to any cancer cluster, predict cancer
+        cancer_predictions = closest_distances <= distance_threshold
+        cancer_predictions[cancer_predictions] = cancer_label
+
+        return cancer_predictions.astype(int)
+
+    def decision_function(self, X):
+
         cancer_label = self.cancer_label
 
         # Get distance threshold
@@ -77,8 +91,4 @@ class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
         # Find the distances to the closest cancer data
         closest_distances = np.min(distances, axis=1)
 
-        # If sample is close enough to any cancer cluster, predict cancer
-        cancer_predictions = closest_distances <= distance_threshold
-        cancer_predictions[cancer_predictions] = cancer_label
-
-        return cancer_predictions.astype(int)
+        return closest_distances
