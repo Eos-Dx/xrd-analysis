@@ -101,14 +101,27 @@ def run_kmeans(
         df_transformed["kmeans_{}".format(cluster_count)] = kmeans.labels_
 
         estimator = make_pipeline(scaler, kmeans)
+
         # Save the estimator to file
         estimator_filename = "estimator_scaler_kmeans_n{}_{}.joblib".format(
                 cluster_count, timestamp)
         estimator_filepath = os.path.join(kmeans_results_path, estimator_filename)
         dump(estimator, estimator_filepath)
 
+        # Save cluster centers to file
+        clusters_filename = "kmeans_clusters_n{}_{}.csv".format(
+                cluster_count, timestamp)
+        clusters_filepath = os.path.join(
+                kmeans_results_path, clusters_filename)
+        # Create dataframe of cluster centers only
+        df_clusters = pd.DataFrame(
+                data=kmeans.cluster_centers_, columns=feature_list)
+        df_clusters.to_csv(
+                clusters_filepath)
+
     # Save the transformed data with k-means labels
-    kmeans_results_filename = "kmeans_results_{}.csv".format(timestamp)
+    kmeans_results_filename = "kmeans_results_n{}_{}.csv".format(
+                cluster_count, timestamp)
     kmeans_results_filepath = os.path.join(
             kmeans_results_path, kmeans_results_filename)
     df_transformed.to_csv(kmeans_results_filepath)
