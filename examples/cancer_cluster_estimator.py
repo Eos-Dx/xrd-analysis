@@ -8,6 +8,8 @@ import argparse
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
 
 from eosdxanalysis.models.estimators import CancerClusterEstimator
 from eosdxanalysis.models.estimators import PatientCancerClusterEstimator
@@ -135,8 +137,8 @@ def run_patient_predictions(
 
     # Loop over thresholds
     # Set the threshold range to loop over
-    threshold_range = np.arange(0, 2, 0.1)
-    print("threshold,accuracy,roc_auc")
+    threshold_range = np.arange(0, 4, 0.2)
+    print("threshold,roc_auc,accuracy,precision,sensitivity,specificity")
     for idx in range(threshold_range.size):
         # Set the threshold
         threshold = threshold_range[idx]
@@ -152,9 +154,18 @@ def run_patient_predictions(
         # Generate measurement-wise predictions of the training data
         y_pred_patients = estimator.predict(df_train)
 
+        # Generate scores
         accuracy = accuracy_score(y_true_patients, y_pred_patients)
         roc_auc = roc_auc_score(y_true_patients, y_pred_patients)
-        print("{:.2f},{:.2f},{:2f}".format(threshold, accuracy, roc_auc))
+        precision = precision_score(y_true_patients, y_pred_patients)
+        sensitivity = recall_score(y_true_patients, y_pred_patients)
+        specificity = recall_score(
+                y_true_patients, y_pred_patients, pos_label=0)
+
+        print(
+                "{:.2f},{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+                    threshold, roc_auc, accuracy, precision, sensitivity,
+                    specificity))
 
 
 if __name__ == '__main__':
