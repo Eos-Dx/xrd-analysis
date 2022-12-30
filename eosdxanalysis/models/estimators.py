@@ -130,11 +130,6 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         if feature_list in (None, ""):
             raise ValueError("Feature list must be specified.")
 
-        # Set cancer_cluster_list to [] if empty
-        if cancer_cluster_list in (None, ""):
-            raise ValueError("Cancer cluster list must be specified.")
-
-        X_patient_ids = X["Patient_ID"]
         X_features = X[feature_list]
 
         # Check that X and y have correct shape
@@ -144,15 +139,25 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         if not np.issubdtype(labels.dtype, np.number):
             raise ValueError("Labels must be digits.")
 
+        # Ensure cancer_cluster_list and normal_cluster_list are not both empty
+        if cancer_cluster_list in ([], None, "") and normal_cluster_list in ([], None, ""):
+            raise ValueError("Must provide cancer cluster list, normal cluster list, or both")
+
         # Store the classes seen during fit
         self.classes_ = labels
 
         self.X_ = X_features
         self.y_ = y
 
-        y_cancer_cluster = X[label_name].isin(cancer_cluster_list)
-        if normal_cluster_list in (None, ""):
-            y_normal_cluster = np.zeros_like(y_cancer_cluster)
+        # Get values from cancer clusters
+        if cancer_cluster_list in ([], None, ""):
+            y_cancer_cluster = np.zeros_like(X[label_name], dtype=bool)
+        else:
+            y_cancer_cluster = X[label_name].isin(cancer_cluster_list)
+
+        # Get values from normal clusters
+        if normal_cluster_list in ([], None, ""):
+            y_normal_cluster = np.zeros_like(X[label_name], dtype=bool)
         else:
             y_normal_cluster = X[label_name].isin(normal_cluster_list)
 
@@ -178,17 +183,13 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         distance_threshold = self.distance_threshold
         cancer_label = self.cancer_label
         normal_label = self.normal_label
+        feature_list = self.feature_list
 
         X = pd.DataFrame(X)
-
-        cancer_label = self.cancer_label
-        distance_threshold = self.distance_threshold
-        feature_list = self.feature_list
 
         # Check if fit has been called
         check_is_fitted(self)
 
-        X_patient_ids = X["Patient_ID"]
         X_features = X[feature_list]
 
         # Input validation
@@ -203,13 +204,14 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
 
         # Find the closest cancer clusters per patient
         # Get the distance matrix
-        cancer_distances = euclidean_distances(X_features, self.cancer_data_)
-        # Find the distances to the closest cancer data
-        closest_cancer_distances = np.min(cancer_distances, axis=1)
-        X_copy["closest_cancer_distances"] = closest_cancer_distances
-        # Find the minimum distances per patient
-        closest_cancer_patient_distances = X_copy.groupby(
-                "Patient_ID")["closest_cancer_distances"].min().values
+        if self.cancer_data_.size > 0:
+            cancer_distances = euclidean_distances(X_features, self.cancer_data_)
+            # Find the distances to the closest cancer data
+            closest_cancer_distances = np.min(cancer_distances, axis=1)
+            X_copy["closest_cancer_distances"] = closest_cancer_distances
+            # Find the minimum distances per patient
+            closest_cancer_patient_distances = X_copy.groupby(
+                    "Patient_ID")["closest_cancer_distances"].min().values
 
         ################################################################
         # Step 2: Predict normal if all measurements are close enough  #
@@ -223,22 +225,34 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
             # Find the distances to the closest normal clusters data
             closest_normal_distances = np.min(normal_distances, axis=1)
             X_copy["closest_normal_distances"] = closest_normal_distances
-            # Find the maximum distances per patient
+            # Find the closest normal distances per patient
             closest_normal_patient_distances = X_copy.groupby(
-                    "Patient_ID")["closest_normal_distances"].max().values
+                    "Patient_ID")["closest_normal_distances"].min().values
 
         ########################################################
         # Step 3: Predict cancer on the remaining measurements #
         ########################################################
-        cancer_predictions = closest_cancer_patient_distances <= distance_threshold
 
-        if self.normal_data_.size > 0:
-            normal_predictions = closest_normal_patient_distances > distance_threshold
-            # Take NOR to get remaining predictions
-            remaining_predictions = ~(cancer_predictions | normal_predictions)
+        # Handle various cases
+        # Case: cancer data is present
+        if self.cancer_data_.size > 0:
+            cancer_predictions = closest_cancer_patient_distances <= distance_threshold
+            # Case: cancer and normal data are present
+            if self.normal_data_.size > 0:
+                # Set normal and remaining predictions
+                normal_predictions = closest_normal_patient_distances <= distance_threshold
+                # Take NOR to get remaining predictions
+                remaining_predictions = ~(cancer_predictions | normal_predictions)
+            # Case: only cancer data is present
+            else:
+                # No normal or remaining predictions
+                normal_predictions = np.zeros_like(cancer_predictions)
+                remaining_predictions = normal_predictions
+        # Case: only normal data is present
         else:
-            normal_predictions = np.zeros_like(cancer_predictions)
-            remaining_predictions = np.zeros_like(cancer_predictions)
+            normal_predictions = closest_normal_patient_distances <= distance_threshold
+            cancer_predictions = ~normal_predictions
+            remaining_predictions = cancer_predictions
 
         predictions = np.zeros_like(cancer_predictions, dtype=int)
         predictions[cancer_predictions] = cancer_label
