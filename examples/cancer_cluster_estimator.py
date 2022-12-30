@@ -121,6 +121,7 @@ def grid_search_cluster_model_on_df_file(
 
 def run_patient_predictions(
         training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
+        normal_cluster_list=None,
         ):
     # Load training data
     df_train = pd.read_csv(training_data_filepath, index_col="Filename")
@@ -145,7 +146,9 @@ def run_patient_predictions(
         # Create the estimator
         estimator = PatientCancerClusterEstimator(
                 distance_threshold=threshold, cancer_label=1,
+                normal_label=0,
                 cancer_cluster_list=cancer_cluster_list,
+                normal_cluster_list=normal_cluster_list,
                 feature_list=feature_list, label_name="kmeans_20")
 
         # Fit the estimator the training data
@@ -186,7 +189,10 @@ if __name__ == '__main__':
             help="The output path to save results in.")
     parser.add_argument(
             "--cancer_cluster_list", type=str, default=None, required=False,
-            help="The output path to save results in.")
+            help="List of cancer clusters.")
+    parser.add_argument(
+            "--normal_cluster_list", type=str, default=None, required=False,
+            help="List of normal clusters.")
     parser.add_argument(
             "--cancer_label", type=int, default=1, required=False,
             help="The cancerl label to use for saving results.")
@@ -204,6 +210,7 @@ if __name__ == '__main__':
     data_filepath = args.data_filepath
     output_path = args.output_path
     cancer_cluster_list = args.cancer_cluster_list
+    normal_cluster_list = args.normal_cluster_list
     cancer_label = args.cancer_label
     distance_threshold = args.distance_threshold
     feature_list = str(args.feature_list).split(",")
@@ -228,5 +235,6 @@ if __name__ == '__main__':
     run_patient_predictions(
             training_data_filepath=training_data_filepath,
             cancer_cluster_list=cancer_cluster_list,
+            normal_cluster_list=normal_cluster_list,
             feature_list=feature_list,
             )
