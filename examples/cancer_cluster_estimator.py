@@ -6,8 +6,11 @@ import pandas as pd
 import argparse
 
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score
 
 from eosdxanalysis.models.estimators import CancerClusterEstimator
+from eosdxanalysis.models.estimators import PatientCancerClusterEstimator
 
 
 def run_cancer_cluster_predictions_on_df(
@@ -114,6 +117,54 @@ def grid_search_cluster_model_on_df_file(
             distance_threshold=distance_threshold)
     return results
 
+def run_patient_predictions(
+        training_data_filepath=None, feature_list=None,
+        ):
+    df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+
+    X = df_train
+
+    # Set up measurement-wise true labels of the training data
+    y_true_measurements = pd.Series(index=df_train.index, dtype=str)
+    y_true_measurements.loc[df_train["Diagnosis"] == "cancer"] = 1
+    y_true_measurements.loc[df_train["Diagnosis"] == "healthy"] = 0
+    y_true_measurements = y_true_measurements.values.astype(int)
+
+    # Generate patient-wise true labels of the training data
+    s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"])
+    y_true_patients = s_true_measurements.groupby(level=0).unique().astype(int)
+
+    # Loop over thresholds
+    # Set the threshold range to loop over
+    threshold_range = np.arange(0, 2, 0.1)
+    print("threshold,score")
+    for idx in range(threshold_range.size):
+        # Set the threshold
+        threshold = threshold_range[idx]
+        # Create the estimator
+        estimator = PatientCancerClusterEstimator(
+                distance_threshold=threshold, cancer_label=1,
+                feature_list=feature_list, label_name="kmeans_20")
+
+        # Fit the estimator the training data
+        estimator.fit(X, y_true_measurements)
+
+        # Generate measurement-wise predictions of the training data
+        y_pred_measurements = estimator.predict(X)
+
+        # Get patient-wise predictions of the training data
+        # by taking the maximum prediction value for each patient
+        # Create a dataframe of measurement-wise predictions
+        df_pred_measurements = pd.DataFrame(
+                y_pred_measurements, columns={"predictions"}, index=df_train["Patient_ID"])
+
+        # Get largest prediction value per patient
+        y_pred_patients = df_pred_measurements.groupby(level=0)["predictions"].max().astype(int)
+
+        accuracy = accuracy_score(y_true_patients, y_pred_patients)
+        roc_auc = roc_auc_score(y_true_patients, y_pred_patients)
+        print("{:.2f},{:.2f},{:2f}".format(threshold, accuracy, roc_auc))
+
 
 if __name__ == '__main__':
     """
@@ -140,6 +191,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--distance_threshold", type=float, default=0.5, required=False,
             help="The distance threshold to use for cancer predictions.")
+    parser.add_argument(
+            "--feature_list", type=str, default=None, required=False,
+            help="The list of features to use.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -150,6 +204,7 @@ if __name__ == '__main__':
     cancer_cluster_list = args.cancer_cluster_list
     cancer_label = args.cancer_label
     distance_threshold = args.distance_threshold
+    feature_list = str(args.feature_list).split(",")
     
     # Convert cancer_cluster_list csv to list of ints
     cancer_cluster_list = cancer_cluster_list.split(",")
@@ -158,12 +213,17 @@ if __name__ == '__main__':
     if cancer_cluster_list is None:
         raise ValueError("Cancer cluster list must not be empty.")
 
-    results = grid_search_cluster_model_on_df_file(
-        training_data_filepath=training_data_filepath,
-        output_path=output_path,
-        cancer_cluster_list=cancer_cluster_list,
-        cancer_label=cancer_label,
-        distance_threshold=distance_threshold)
+    if False:
+        results = grid_search_cluster_model_on_df_file(
+            training_data_filepath=training_data_filepath,
+            output_path=output_path,
+            cancer_cluster_list=cancer_cluster_list,
+            cancer_label=cancer_label,
+            distance_threshold=distance_threshold)
 
-    import ipdb
-    ipdb.set_trace()
+        print(results.cv_results_)
+
+    run_patient_predictions(
+            training_data_filepath=training_data_filepath,
+            feature_list=feature_list,
+            )
