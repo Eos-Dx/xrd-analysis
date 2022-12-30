@@ -103,7 +103,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
     Uses the CancerClusterEstimator as a subestimator.
     """
     def __init__(self, distance_threshold=0, cancer_label=1,
-            feature_list=None, label_name="kmeans_20", cancer_cluster_list=None):
+            feature_list=None, label_name=None, cancer_cluster_list=None):
 
         self.distance_threshold = distance_threshold
         self.cancer_label = cancer_label
@@ -122,8 +122,14 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         label_name = self.label_name
         cancer_cluster_list = self.cancer_cluster_list
 
+        # Check if feature_list is empty
         if feature_list is None:
             raise ValueError("Feature list must be specified.")
+
+        # Set cancer_cluster_list to [1] if empty
+        if cancer_cluster_list is None:
+            cancer_cluster_list = [1]
+
 
         X_patient_ids = X["Patient_ID"]
         X_features = X[feature_list]
@@ -141,11 +147,11 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         self.X_ = X_features
         self.y_ = y
 
-        y_cancer_cluster = X[label_name].isin(cancer_cluster_list).astype(int)
+        y_cancer_cluster = X[label_name].isin(cancer_cluster_list)
 
         # Store the data belonging to cancer clusters
-        cancer_data = X_features[y_cancer_cluster]
-        self.cancer_data_ = cancer_data
+        cancer_data_ = X_features[y_cancer_cluster]
+        self.cancer_data_ = cancer_data_
 
         # Return the classifier
         return self
