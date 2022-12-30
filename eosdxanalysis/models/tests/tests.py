@@ -1522,6 +1522,7 @@ class TestPatientCancerClusterEstimator(unittest.TestCase):
         # Create the estimator
         estimator = PatientCancerClusterEstimator(
                 distance_threshold=threshold, cancer_label=1,
+                cancer_cluster_list=[1],
                 feature_list=feature_list, label_name=label_name)
 
         # Fit the estimator the training data
@@ -1558,6 +1559,7 @@ class TestPatientCancerClusterEstimator(unittest.TestCase):
         # Create the estimator
         estimator = PatientCancerClusterEstimator(
                 distance_threshold=threshold, cancer_label=1,
+                cancer_cluster_list=[1],
                 feature_list=feature_list, label_name=label_name)
 
         # Fit the estimator the training data
