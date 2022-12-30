@@ -127,15 +127,12 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         normal_cluster_list = self.normal_cluster_list
 
         # Check if feature_list is empty
-        if feature_list is None:
+        if feature_list in (None, ""):
             raise ValueError("Feature list must be specified.")
 
         # Set cancer_cluster_list to [] if empty
-        if cancer_cluster_list is None:
-            cancer_cluster_list = []
-        # Set normal_cluster_list to [] if empty
-        if normal_cluster_list is None:
-            normal_cluster_list = []
+        if cancer_cluster_list in (None, ""):
+            raise ValueError("Cancer cluster list must be specified.")
 
         X_patient_ids = X["Patient_ID"]
         X_features = X[feature_list]
@@ -154,7 +151,10 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         self.y_ = y
 
         y_cancer_cluster = X[label_name].isin(cancer_cluster_list)
-        y_normal_cluster = X[label_name].isin(normal_cluster_list)
+        if normal_cluster_list in (None, ""):
+            y_normal_cluster = np.zeros_like(y_cancer_cluster)
+        else:
+            y_normal_cluster = X[label_name].isin(normal_cluster_list)
 
         # Store the data belonging to cancer clusters
         cancer_data_ = X_features[y_cancer_cluster]
