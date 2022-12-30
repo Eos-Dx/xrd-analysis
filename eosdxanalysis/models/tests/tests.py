@@ -1481,6 +1481,8 @@ class TestPatientCancerClusterEstimator(unittest.TestCase):
                 [3, 0.1, 0, "healthy"],
                 [3, -0.4, 0, "healthy"],
                 [3, 0.5, 0, "healthy"],
+                [4, -1.7, 1, "cancer"],
+                [4, -1.9, 1, "cancer"],
         ])
 
         df_train = pd.DataFrame(X, columns=columns)
