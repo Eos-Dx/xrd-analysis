@@ -118,11 +118,10 @@ def grid_search_cluster_model_on_df_file(
     return results
 
 def run_patient_predictions(
-        training_data_filepath=None, feature_list=None,
+        training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
         ):
+    # Load training data
     df_train = pd.read_csv(training_data_filepath, index_col="Filename")
-
-    X = df_train
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train.index, dtype=str)
@@ -134,32 +133,25 @@ def run_patient_predictions(
     s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"])
     y_true_patients = s_true_measurements.groupby(level=0).unique().astype(int)
 
+
     # Loop over thresholds
     # Set the threshold range to loop over
     threshold_range = np.arange(0, 2, 0.1)
-    print("threshold,score")
+    print("threshold,accuracy,roc_auc")
     for idx in range(threshold_range.size):
         # Set the threshold
         threshold = threshold_range[idx]
         # Create the estimator
         estimator = PatientCancerClusterEstimator(
                 distance_threshold=threshold, cancer_label=1,
+                cancer_cluster_list=cancer_cluster_list,
                 feature_list=feature_list, label_name="kmeans_20")
 
         # Fit the estimator the training data
-        estimator.fit(X, y_true_measurements)
+        estimator.fit(df_train, y_true_measurements)
 
         # Generate measurement-wise predictions of the training data
-        y_pred_measurements = estimator.predict(X)
-
-        # Get patient-wise predictions of the training data
-        # by taking the maximum prediction value for each patient
-        # Create a dataframe of measurement-wise predictions
-        df_pred_measurements = pd.DataFrame(
-                y_pred_measurements, columns={"predictions"}, index=df_train["Patient_ID"])
-
-        # Get largest prediction value per patient
-        y_pred_patients = df_pred_measurements.groupby(level=0)["predictions"].max().astype(int)
+        y_pred_patients = estimator.predict(df_train)
 
         accuracy = accuracy_score(y_true_patients, y_pred_patients)
         roc_auc = roc_auc_score(y_true_patients, y_pred_patients)
@@ -225,5 +217,6 @@ if __name__ == '__main__':
 
     run_patient_predictions(
             training_data_filepath=training_data_filepath,
+            cancer_cluster_list=cancer_cluster_list,
             feature_list=feature_list,
             )
