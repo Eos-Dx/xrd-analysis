@@ -17,8 +17,9 @@ from sklearn.preprocessing import StandardScaler
 from joblib import dump
 
 def run_kmeans(
-        data_filepath, output_path=None, feature_list=None, cluster_count_min=2,
-        cluster_count_max=2, image_source_path=None, divide_by=None):
+        data_filepath, db_filepath=None, output_path=None, feature_list=None,
+        cluster_count_min=2, cluster_count_max=2, image_source_path=None,
+        divide_by=None):
     """
     Runs k-means on a dataset of extracted features for between
     ``cluster_count_min`` and ``cluster_count_max`` number of clusters.
@@ -28,6 +29,9 @@ def run_kmeans(
 
     data_filepath : str
         Path to input csv file with extracted features data
+
+    db_filepath : str
+        Path to patients database csv file (optional)
 
     output_path : str
         Path to save k-means models and cluster image previews
@@ -126,6 +130,30 @@ def run_kmeans(
             kmeans_results_path, kmeans_results_filename)
     df_transformed.to_csv(kmeans_results_filepath)
 
+    # If patients database provided, save extended version
+    if db_filepath:
+        db = pd.read_csv(db_filepath, index_col="Barcode")
+        extraction = df_transformed.index.str.extractall(
+                "CR_([A-Z]{1}).*?([0-9]+)")
+        extraction_series = extraction[0] + extraction[1].str.zfill(5)
+        extraction_list = extraction_series.tolist()
+
+        assert(len(extraction_list) == df_transformed.shape[0])
+        df_transformed_ext = df_transformed.copy()
+        df_transformed_ext["Barcode"] = extraction_list
+
+        df_transformed_ext = pd.merge(
+                df_transformed_ext, db, left_on="Barcode", right_index=True)
+        df_transformed_ext_sub = \
+                df_transformed_ext[df_transformed.columns.tolist() + \
+                ["Patient_ID"]]
+        # Save the transformed data with k-means labels and patient IDs
+        kmeans_results_ext_filename = "kmeans_results_ext_n{}_{}.csv".format(
+                    cluster_count, timestamp)
+        kmeans_results_ext_filepath = os.path.join(
+                kmeans_results_path, kmeans_results_ext_filename)
+        df_transformed_ext_sub.to_csv(kmeans_results_ext_filepath)
+
     # Use K-means results to create cluster image preview folders
     # Loop over files to copy the file to individual K-means cluster folders
     if image_source_path:
@@ -182,6 +210,9 @@ if __name__ == '__main__':
             help="The file path containing features to perform k-means"
             " clustering on.")
     parser.add_argument(
+            "--db_filepath", type=str, default=None, required=False,
+            help="The patients database")
+    parser.add_argument(
             "--output_path", default=None, required=False,
             help="The output path to save results in.")
     parser.add_argument(
@@ -204,6 +235,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     data_filepath = args.data_filepath
+    db_filepath = args.db_filepath
     output_path = args.output_path
     feature_list_kwarg = args.feature_list
     cluster_count_min = int(args.cluster_count_min)
@@ -216,9 +248,8 @@ if __name__ == '__main__':
     divide_by = args.divide_by
 
     run_kmeans(
-            data_filepath, output_path=output_path, feature_list=feature_list,
-            cluster_count_min=cluster_count_min,
+            data_filepath, db_filepath=db_filepath, output_path=output_path,
+            feature_list=feature_list, cluster_count_min=cluster_count_min,
             cluster_count_max=cluster_count_max,
-            image_source_path=image_source_path,
-            divide_by=divide_by,
+            image_source_path=image_source_path, divide_by=divide_by,
             )
