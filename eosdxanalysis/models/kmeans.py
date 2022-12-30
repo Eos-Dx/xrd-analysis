@@ -144,15 +144,12 @@ def run_kmeans(
 
         df_transformed_ext = pd.merge(
                 df_transformed_ext, db, left_on="Barcode", right_index=True)
-        df_transformed_ext_sub = \
-                df_transformed_ext[df_transformed.columns.tolist() + \
-                ["Patient_ID"]]
         # Save the transformed data with k-means labels and patient IDs
         kmeans_results_ext_filename = "kmeans_results_ext_n{}_{}.csv".format(
                     cluster_count, timestamp)
         kmeans_results_ext_filepath = os.path.join(
                 kmeans_results_path, kmeans_results_ext_filename)
-        df_transformed_ext_sub.to_csv(kmeans_results_ext_filepath)
+        df_transformed_ext.to_csv(kmeans_results_ext_filepath)
 
     # Use K-means results to create cluster image preview folders
     # Loop over files to copy the file to individual K-means cluster folders
