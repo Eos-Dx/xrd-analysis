@@ -1467,8 +1467,8 @@ class TestPatientCancerClusterEstimator(unittest.TestCase):
     def setUp(self):
         # Set up sample training data
         feature_name = "feature_0"
-        cluster_label = "cluster"
-        columns = ["Patient_ID", feature_name, cluster_label, "Diagnosis"]
+        label_name = "cluster"
+        columns = ["Patient_ID", feature_name, label_name, "Diagnosis"]
 
         X = np.array([
                 [0, 0.1, 0, "healthy"],
@@ -1491,21 +1491,21 @@ class TestPatientCancerClusterEstimator(unittest.TestCase):
         df_train["Patient_ID"] = df_train["Patient_ID"].astype(str)
         df_train["Diagnosis"] = df_train["Diagnosis"].astype(str)
         df_train[feature_name] = df_train[feature_name].astype(float)
-        df_train[cluster_label] = df_train[cluster_label].astype(int)
+        df_train[label_name] = df_train[label_name].astype(int)
 
         # Rename columns
         df_train.index.name = "Filename"
 
         self.df_train = df_train
         self.feature_name = feature_name
-        self.cluster_label = cluster_label
+        self.label_name = label_name
 
     def test_patient_cancer_cluster_estimator_accuracy_threshold_zero(self):
 
         df_train = self.df_train
         feature_name = self.feature_name
         feature_list = [feature_name]
-        cluster_label = self.cluster_label
+        label_name = self.label_name
 
         # Set up measurement-wise true labels of the training data
         y_true_measurements = pd.Series(index=df_train.index, dtype=str)
@@ -1514,15 +1514,15 @@ class TestPatientCancerClusterEstimator(unittest.TestCase):
         y_true_measurements = y_true_measurements.values.astype(int)
 
         # Generate patient-wise true labels of the training data
-        s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"].astype(int))
-        y_true_patients = s_true_measurements.groupby(level=0).max().astype(int)
+        s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"])
+        y_true_patients = s_true_measurements.groupby(level=0).unique().astype(int)
 
         # Set the threshold to zero
         threshold = 0
         # Create the estimator
         estimator = PatientCancerClusterEstimator(
                 distance_threshold=threshold, cancer_label=1,
-                feature_list=feature_list, label_name=cluster_label)
+                feature_list=feature_list, label_name=label_name)
 
         # Fit the estimator the training data
         estimator.fit(df_train, y_true_measurements)
@@ -1536,11 +1536,12 @@ class TestPatientCancerClusterEstimator(unittest.TestCase):
         # Ensure that accuracy is perfect with a threshold of zero
         self.assertTrue(np.isclose(test_accuracy, perfect_accuracy))
 
-    def test_patient_cancer_cluster_estimator_accuracy_threshold_nonzero(self):
+    def test_patient_cancer_cluster_estimator_accuracy_threshold_nonzero_large(self):
 
         df_train = self.df_train
         feature_name = self.feature_name
         feature_list = [feature_name]
+        label_name = self.label_name
 
         # Set up measurement-wise true labels of the training data
         y_true_measurements = pd.Series(index=df_train.index, dtype=str)
@@ -1552,12 +1553,12 @@ class TestPatientCancerClusterEstimator(unittest.TestCase):
         s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"])
         y_true_patients = s_true_measurements.groupby(level=0).unique().astype(int)
 
-        # Set the threshold to 0.5
-        threshold = 0.6
+        # Set the threshold to 2.0
+        threshold = 2.0
         # Create the estimator
         estimator = PatientCancerClusterEstimator(
                 distance_threshold=threshold, cancer_label=1,
-                feature_list=feature_list, label_name="kmeans_20")
+                feature_list=feature_list, label_name=label_name)
 
         # Fit the estimator the training data
         estimator.fit(df_train, y_true_measurements)
