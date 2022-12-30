@@ -104,7 +104,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
     """
     def __init__(self, distance_threshold=0, cancer_label=1, normal_label=0,
             feature_list=None, label_name=None, cancer_cluster_list=None,
-            normal_cluster_list=None):
+            normal_cluster_list=None, indeterminate_label=2):
 
         self.distance_threshold = distance_threshold
         self.cancer_label = cancer_label
@@ -113,6 +113,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         self.label_name = label_name
         self.cancer_cluster_list = cancer_cluster_list
         self.normal_cluster_list = normal_cluster_list
+        self.indeterminate_label = indeterminate_label
 
     def fit(self, X, y):
         """
@@ -180,9 +181,11 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         2. Predict normal if close enough to all normal clusters
         3. Predict cancer on the remaining
         """
+        tol=1e-6
         distance_threshold = self.distance_threshold
         cancer_label = self.cancer_label
         normal_label = self.normal_label
+        indeterminate_label = self.indeterminate_label
         feature_list = self.feature_list
 
         X = pd.DataFrame(X)
@@ -236,11 +239,11 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         # Handle various cases
         # Case: cancer data is present
         if self.cancer_data_.size > 0:
-            cancer_predictions = closest_cancer_patient_distances <= distance_threshold
+            cancer_predictions = (closest_cancer_patient_distances <= distance_threshold + tol)
             # Case: cancer and normal data are present
             if self.normal_data_.size > 0:
                 # Set normal and remaining predictions
-                normal_predictions = closest_normal_patient_distances <= distance_threshold
+                normal_predictions = (closest_normal_patient_distances <= distance_threshold + tol)
                 # Take NOR to get remaining predictions
                 remaining_predictions = ~(cancer_predictions | normal_predictions)
             # Case: only cancer data is present
@@ -250,7 +253,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                 remaining_predictions = normal_predictions
         # Case: only normal data is present
         else:
-            normal_predictions = closest_normal_patient_distances <= distance_threshold
+            normal_predictions = (closest_normal_patient_distances <= distance_threshold + tol)
             cancer_predictions = ~normal_predictions
             remaining_predictions = cancer_predictions
 
