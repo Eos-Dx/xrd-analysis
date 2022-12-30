@@ -188,19 +188,18 @@ def run_pca_plot(
         kmeans_results = pd.read_csv(kmeans_results_filepath, index_col="Filename")
         X_kmeans = kmeans_results[feature_list].values
 
-        scaler = StandardScaler()
-        scaler.fit(X_kmeans)
-        X_fit = scaler.transform(X_kmeans)
-        pca_model = PCA(n_components=n_components)
-        pca_model.fit(X_fit)
-
-        kmeans_pca = pca_model.transform(X_fit)
-
         # Get K-means model
-        kmeans_model  = load(kmeans_model_filepath)
+        estimator = load(kmeans_model_filepath)
+        kmeans_model  = estimator['kmeans']
 
         # Transform kmeans cluster centers
-        clusters_pca = pca_model.transform(kmeans_model.cluster_centers_)
+        clusters = kmeans_model.cluster_centers_
+
+        pca_model = PCA(n_components=n_components)
+        pca_model.fit(X_kmeans)
+
+        kmeans_pca = pca_model.transform(X_kmeans)
+        clusters_pca = pca_model.transform(clusters)
 
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
 
@@ -211,12 +210,12 @@ def run_pca_plot(
                 }
 
         # Loop over measurements according to patient diagnosis
-        for diagnosis in df_ext["Diagnosis"].dropna().unique():
-            df_diagnosis = df_ext[df_ext["Diagnosis"] == diagnosis]
-            X_scaled = scaler.transform(df_diagnosis[used_feature_list].values)
-            X_plot = pca_model.transform(X_scaled)
+        for diagnosis in kmeans_results["Diagnosis"].dropna().unique():
+            kmeans_diagnosis = kmeans_results[kmeans_results["Diagnosis"] == diagnosis]
+            X_plot = kmeans_diagnosis[feature_list].values
+            X_plot_pca = pca_model.transform(X_plot)
             ax.scatter(
-                    X_plot[:,0], X_plot[:,1], X_plot[:,2],
+                    X_plot_pca[:,0], X_plot_pca[:,1], X_plot_pca[:,2],
                     c=colors[diagnosis], label=diagnosis)
 
         # Plot cluster centers
