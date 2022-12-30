@@ -133,7 +133,6 @@ def run_patient_predictions(
     s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"])
     y_true_patients = s_true_measurements.groupby(level=0).unique().astype(int)
 
-
     # Loop over thresholds
     # Set the threshold range to loop over
     threshold_range = np.arange(0, 2, 0.1)
