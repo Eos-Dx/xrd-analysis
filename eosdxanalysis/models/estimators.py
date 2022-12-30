@@ -103,21 +103,24 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
     Uses the CancerClusterEstimator as a subestimator.
     """
     def __init__(self, distance_threshold=0, cancer_label=1,
-            feature_list=None, label_name="kmeans_20"):
+            feature_list=None, label_name="kmeans_20", cancer_cluster_list=None):
 
         self.distance_threshold = distance_threshold
         self.cancer_label = cancer_label
         self.feature_list = feature_list
         self.label_name = label_name
+        self.cancer_cluster_list = cancer_cluster_list
 
     def fit(self, X, y):
         """
         X must be a dataframe with 7 feature columns, one Patient_ID column
+        y are the patient diagnoses
         """
         distance_threshold = self.distance_threshold
         cancer_label = self.cancer_label
         feature_list = self.feature_list
         label_name = self.label_name
+        cancer_cluster_list = self.cancer_cluster_list
 
         if feature_list is None:
             raise ValueError("Feature list must be specified.")
@@ -138,8 +141,10 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         self.X_ = X_features
         self.y_ = y
 
+        y_cancer_cluster = X[label_name].isin(cancer_cluster_list).astype(int)
+
         # Store the data belonging to cancer clusters
-        cancer_data = X_features[y == cancer_label]
+        cancer_data = X_features[y_cancer_cluster]
         self.cancer_data_ = cancer_data
 
         # Return the classifier
@@ -166,7 +171,6 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         """
         X must be a dataframe with 7 feature columns, one Patient_ID column
         """
-
         X = pd.DataFrame(X)
 
         cancer_label = self.cancer_label
@@ -193,6 +197,6 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         X_copy["closest_distances"] = closest_distances
         # Find the minimum distances per patient
         closest_patient_distances = X_copy.groupby(
-                "Patient_ID")["closest_distances"].transform('min').values
+                "Patient_ID")["closest_distances"].min().values
 
         return closest_patient_distances
