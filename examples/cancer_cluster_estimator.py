@@ -188,10 +188,10 @@ if __name__ == '__main__':
             "--output_path", type=str, default=None, required=False,
             help="The output path to save results in.")
     parser.add_argument(
-            "--cancer_cluster_list", type=str, default=None, required=False,
+            "--cancer_cluster_list", type=str, default="", required=False,
             help="List of cancer clusters.")
     parser.add_argument(
-            "--normal_cluster_list", type=str, default=None, required=False,
+            "--normal_cluster_list", type=str, default="", required=False,
             help="List of normal clusters.")
     parser.add_argument(
             "--cancer_label", type=int, default=1, required=False,
@@ -216,8 +216,13 @@ if __name__ == '__main__':
     feature_list = str(args.feature_list).split(",")
     
     # Convert cancer_cluster_list csv to list of ints
-    cancer_cluster_list = cancer_cluster_list.split(",")
-    cancer_cluster_list = [int(x) for x in cancer_cluster_list]
+    if cancer_cluster_list:
+        cancer_cluster_list = cancer_cluster_list.split(",")
+        cancer_cluster_list = [int(x) for x in cancer_cluster_list]
+    # Convert normal_cluster_list csv to list of ints
+    if normal_cluster_list:
+        normal_cluster_list = normal_cluster_list.split(",")
+        normal_cluster_list = [int(x) for x in normal_cluster_list]
 
     if cancer_cluster_list is None:
         raise ValueError("Cancer cluster list must not be empty.")
