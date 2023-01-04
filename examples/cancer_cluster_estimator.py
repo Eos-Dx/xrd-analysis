@@ -11,6 +11,9 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import RadiusNeighborsClassifier
+
 from eosdxanalysis.models.estimators import CancerClusterEstimator
 from eosdxanalysis.models.estimators import PatientCancerClusterEstimator
 
