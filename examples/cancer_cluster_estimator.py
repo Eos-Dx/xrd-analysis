@@ -124,20 +124,24 @@ def grid_search_cluster_model_on_df_file(
 
 def run_patient_predictions(
         training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
-        normal_cluster_list=None,
+        normal_cluster_list=None, cluster_model_name=None,
         ):
     # Load training data
     df_train = pd.read_csv(training_data_filepath, index_col="Filename")
 
     # Set up measurement-wise true labels of the training data
-    y_true_measurements = pd.Series(index=df_train.index, dtype=str)
-    y_true_measurements.loc[df_train["Diagnosis"] == "cancer"] = 1
-    y_true_measurements.loc[df_train["Diagnosis"] == "healthy"] = 0
-    y_true_measurements = y_true_measurements.values.astype(int)
+    y_true_measurements = pd.Series(index=df_train.index, dtype=int)
+    y_true_measurements[df_train[cluster_model_name].isin(cancer_cluster_list)] = 1
+    y_true_measurements[~df_train[cluster_model_name].isin(cancer_cluster_list)] = 0
+    y_true_measurements = y_true_measurements.values
 
     # Generate patient-wise true labels of the training data
-    s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"])
-    y_true_patients = s_true_measurements.groupby(level=0).unique().astype(int)
+    # s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"], dtype=int)
+    y_true_patients = df_train.groupby("Patient_ID")["Diagnosis"].max()
+    y_true_patients.loc[y_true_patients == "cancer"] = 1
+    y_true_patients.loc[y_true_patients == "healthy"] = 0
+    y_true_patients = y_true_patients.astype(int)
+
 
     # Loop over thresholds
     # Set the threshold range to loop over
@@ -152,7 +156,7 @@ def run_patient_predictions(
                 normal_label=0,
                 cancer_cluster_list=cancer_cluster_list,
                 normal_cluster_list=normal_cluster_list,
-                feature_list=feature_list, label_name="kmeans_20")
+                feature_list=feature_list, label_name=cluster_model_name)
 
         # Fit the estimator the training data
         estimator.fit(df_train, y_true_measurements)
@@ -374,7 +378,7 @@ if __name__ == '__main__':
 
         print(results.cv_results_)
 
-    run_patient_predictions_radius_neighbors(
+    run_patient_predictions(
             training_data_filepath=training_data_filepath,
             cancer_cluster_list=cancer_cluster_list,
             normal_cluster_list=normal_cluster_list,
