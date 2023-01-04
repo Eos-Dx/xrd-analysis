@@ -238,6 +238,70 @@ def run_patient_predictions_knearest_neighbors(
                     threshold, roc_auc, accuracy, precision, sensitivity,
                     specificity))
 
+def run_patient_predictions_radius_neighbors(
+        training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
+        normal_cluster_list=None, cluster_model_name=None,
+        ):
+    # Load training data
+    df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+
+    X = df_train[feature_list]
+
+    # Set up measurement-wise true labels of the training data
+    y_true_measurements = pd.Series(index=df_train.index, dtype=int)
+    y_true_measurements[df_train[cluster_model_name].isin(cancer_cluster_list)] = 1
+    y_true_measurements[~df_train[cluster_model_name].isin(cancer_cluster_list)] = 0
+    y_true_measurements = y_true_measurements.values
+
+    # Generate patient-wise true labels of the training data
+    # s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"], dtype=int)
+    y_true_patients = df_train.groupby("Patient_ID")["Diagnosis"].max()
+    y_true_patients.loc[y_true_patients == "cancer"] = 1
+    y_true_patients.loc[y_true_patients == "healthy"] = 0
+    y_true_patients = y_true_patients.astype(int)
+
+    def warn(*args, **kwargs):
+        pass
+    import warnings
+    warnings.warn = warn
+
+    # Loop over thresholds
+    # Set the threshold range to loop over
+    threshold_range = np.arange(0, 4, 0.2)
+    print("threshold,roc_auc,accuracy,precision,sensitivity,specificity")
+    for idx in range(threshold_range.size):
+        # Set the threshold
+        threshold = threshold_range[idx]
+
+        # Create the estimator
+        estimator = RadiusNeighborsClassifier(radius=threshold)
+
+        # Fit the estimator the training data
+        estimator.fit(X, y_true_measurements)
+
+        # Generate measurement-wise predictions of the training data
+        y_pred_measurements = estimator.predict(X).astype(int)
+
+        # Generate patient-wise predictions
+        X_copy = df_train.copy()[feature_list + ["Patient_ID"]]
+
+        X_copy["predictions"] = y_pred_measurements
+
+        y_pred_patients = X_copy.groupby(
+                    "Patient_ID")["predictions"].max().values
+
+        # Generate scores
+        accuracy = accuracy_score(y_true_patients, y_pred_patients)
+        roc_auc = roc_auc_score(y_true_patients, y_pred_patients)
+        precision = precision_score(y_true_patients, y_pred_patients)
+        sensitivity = recall_score(y_true_patients, y_pred_patients)
+        specificity = recall_score(
+                y_true_patients, y_pred_patients, pos_label=0)
+
+        print(
+                "{:.2f},{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+                    threshold, roc_auc, accuracy, precision, sensitivity,
+                    specificity))
 
 
 if __name__ == '__main__':
@@ -286,7 +350,7 @@ if __name__ == '__main__':
     cancer_label = args.cancer_label
     distance_threshold = args.distance_threshold
     feature_list = str(args.feature_list).split(",")
-    cluser_model_name = args.cluster_model_name
+    cluster_model_name = args.cluster_model_name
     
     # Convert cancer_cluster_list csv to list of ints
     if cancer_cluster_list:
@@ -310,7 +374,7 @@ if __name__ == '__main__':
 
         print(results.cv_results_)
 
-    run_patient_predictions(
+    run_patient_predictions_radius_neighbors(
             training_data_filepath=training_data_filepath,
             cancer_cluster_list=cancer_cluster_list,
             normal_cluster_list=normal_cluster_list,
