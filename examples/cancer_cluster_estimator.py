@@ -6,6 +6,7 @@ import pandas as pd
 import argparse
 
 from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import precision_score
@@ -131,9 +132,13 @@ def run_patient_predictions(
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train.index, dtype=int)
-    y_true_measurements[df_train[cluster_model_name].isin(cancer_cluster_list)] = 1
-    y_true_measurements[~df_train[cluster_model_name].isin(cancer_cluster_list)] = 0
-    y_true_measurements = y_true_measurements.values
+    if cancer_cluster_list in ("", None):
+        y_true_measurements[df_train[cluster_model_name].isin(normal_cluster_list)] = 0
+        y_true_measurements[~df_train[cluster_model_name].isin(normal_cluster_list)] = 1
+    if normal_cluster_list in ("", None):
+        y_true_measurements[df_train[cluster_model_name].isin(cancer_cluster_list)] = 1
+        y_true_measurements[~df_train[cluster_model_name].isin(cancer_cluster_list)] = 0
+    # y_true_measurements = y_true_measurements.values
 
     # Generate patient-wise true labels of the training data
     # s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"], dtype=int)
@@ -142,40 +147,67 @@ def run_patient_predictions(
     y_true_patients.loc[y_true_patients == "healthy"] = 0
     y_true_patients = y_true_patients.astype(int)
 
-
     # Loop over thresholds
     # Set the threshold range to loop over
     threshold_range = np.arange(0, 4, 0.2)
-    print("threshold,roc_auc,accuracy,precision,sensitivity,specificity")
+    print("threshold,test_sensitivity_mean,test_specificity_mean,harmonic_mean_sens_spec")
     for idx in range(threshold_range.size):
-        # Set the threshold
-        threshold = threshold_range[idx]
-        # Create the estimator
-        estimator = PatientCancerClusterEstimator(
-                distance_threshold=threshold, cancer_label=1,
-                normal_label=0,
-                cancer_cluster_list=cancer_cluster_list,
-                normal_cluster_list=normal_cluster_list,
-                feature_list=feature_list, label_name=cluster_model_name)
+        # print("threshold,roc_auc,accuracy,precision,sensitivity,specificity")
+        sensitivity_list = []
+        specificity_list = []
+        for jdx in range(5):
+            # Set the threshold
+            threshold = threshold_range[idx]
 
-        # Fit the estimator the training data
-        estimator.fit(df_train, y_true_measurements)
+            # Create the estimator
+            estimator = PatientCancerClusterEstimator(
+                    distance_threshold=threshold, cancer_label=1,
+                    normal_label=0,
+                    cancer_cluster_list=cancer_cluster_list,
+                    normal_cluster_list=normal_cluster_list,
+                    feature_list=feature_list, label_name=cluster_model_name)
 
-        # Generate measurement-wise predictions of the training data
-        y_pred_patients = estimator.predict(df_train)
+            # Split patients 80/20
+            patients_train, patients_test, y_true_patients_train, y_true_patients_test = \
+                    train_test_split(
+                    y_true_patients.index, y_true_patients.values,
+                    train_size=0.8, random_state=jdx)
 
-        # Generate scores
-        accuracy = accuracy_score(y_true_patients, y_pred_patients)
-        roc_auc = roc_auc_score(y_true_patients, y_pred_patients)
-        precision = precision_score(y_true_patients, y_pred_patients)
-        sensitivity = recall_score(y_true_patients, y_pred_patients)
-        specificity = recall_score(
-                y_true_patients, y_pred_patients, pos_label=0)
+            # Split the measurements according to the patient train/test split
+            measurements_train = df_train[df_train["Patient_ID"].isin(patients_train)]
+            y_true_measurements_train = y_true_measurements.loc[measurements_train.index].astype(int)
+            measurements_test = df_train[df_train["Patient_ID"].isin(patients_test)]
+            y_true_measurements_test = y_true_measurements.loc[measurements_test.index].astype(int)
 
-        print(
-                "{:.2f},{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
-                    threshold, roc_auc, accuracy, precision, sensitivity,
-                    specificity))
+            # Fit the estimator the training data
+            estimator.fit(measurements_train, y_true_measurements_train)
+
+            # Generate measurement-wise predictions of the training data
+            y_test_pred_patients = estimator.predict(measurements_test)
+
+            # Get y_test_true_patients
+            y_test_true_patients = y_true_patients.loc[patients_test].values.astype(int)
+
+            # Generate scores
+            accuracy = accuracy_score(y_test_true_patients, y_test_pred_patients)
+            # roc_auc = roc_auc_score(y_test_true_patients, y_test_pred_patients)
+            precision = precision_score(y_test_true_patients, y_test_pred_patients)
+            sensitivity = recall_score(y_test_true_patients, y_test_pred_patients)
+            specificity = recall_score(
+                    y_test_true_patients, y_test_pred_patients, pos_label=0)
+
+            sensitivity_list.append(sensitivity)
+            specificity_list.append(specificity)
+
+#        print(
+#                "{:.2f},{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+#                    threshold, roc_auc, accuracy, precision, sensitivity,
+#                    specificity))
+        sensitivity_mean = np.mean(sensitivity_list)
+        specificity_mean = np.mean(specificity_list)
+        harmonic_mean_sens_spec = 2*sensitivity_mean*specificity_mean/(sensitivity_mean + specificity_mean)
+        print("{:.2f},{:.2f},{:.2f},{:.2f}".format(
+            threshold, sensitivity_mean, specificity_mean, harmonic_mean_sens_spec))
 
 def run_patient_predictions_knearest_neighbors(
         training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
