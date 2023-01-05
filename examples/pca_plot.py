@@ -98,8 +98,7 @@ def run_pca_plot(
 
     print("Explained variance ratios:")
     print(estimator['pca'].explained_variance_ratio_)
-    print(
-            "Total explained variance:",
+    print("Total explained variance:",
             np.sum(estimator['pca'].explained_variance_ratio_))
 
     # Print first two principal components
@@ -112,6 +111,7 @@ def run_pca_plot(
 
     # Transform data using PCA
     X_train_pca = estimator.transform(df_train.values)
+
     if not df_blind.empty:
         X_blind_pca = estimator.transform(df_blind.values)
         X_pca = np.vstack([X_train_pca, X_blind_pca])
@@ -152,6 +152,32 @@ def run_pca_plot(
     x_label_offset = 0.01
     y_label_offset = 0.01
 
+    n_clusters = 20
+
+    kmeans_results = pd.read_csv(kmeans_results_filepath, index_col="Filename")
+
+    X_kmeans = kmeans_results[feature_list].values
+
+    # Get K-means model
+    estimator = load(kmeans_model_filepath)
+    kmeans_model  = estimator['kmeans']
+    scaler = estimator['standardscaler']
+
+    # Transform kmeans cluster centers
+    clusters = kmeans_model.cluster_centers_
+
+    pca_model = PCA(n_components=n_components)
+    pca_model.fit(X_kmeans)
+
+    X_blind = scaler.transform(df_blind[feature_list])
+    blind_pca = pca_model.transform(X_blind)
+    clusters_pca = pca_model.transform(clusters)
+
+    # Predict on blind
+    blind_predictions = kmeans_model.predict(X_blind)
+    df_blind["kmeans_{}".format(n_clusters)] = blind_predictions
+
+
     ###################################
     # 3D PCA subspace projection plot #
     ###################################
@@ -183,23 +209,6 @@ def run_pca_plot(
 
     if True:
         plot_title = "3D PCA on K-means, with cluster labels"
-        n_clusters = 20
-
-        kmeans_results = pd.read_csv(kmeans_results_filepath, index_col="Filename")
-        X_kmeans = kmeans_results[feature_list].values
-
-        # Get K-means model
-        estimator = load(kmeans_model_filepath)
-        kmeans_model  = estimator['kmeans']
-
-        # Transform kmeans cluster centers
-        clusters = kmeans_model.cluster_centers_
-
-        pca_model = PCA(n_components=n_components)
-        pca_model.fit(X_kmeans)
-
-        kmeans_pca = pca_model.transform(X_kmeans)
-        clusters_pca = pca_model.transform(clusters)
 
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
 
@@ -217,6 +226,10 @@ def run_pca_plot(
             ax.scatter(
                     X_plot_pca[:,0], X_plot_pca[:,1], X_plot_pca[:,2],
                     c=colors[diagnosis], label=diagnosis)
+        ax.scatter(
+                blind_pca[:,0], blind_pca[:,1], blind_pca[:,2],
+                c="green", label="blind")
+
 
         # Plot cluster centers
         ax.scatter(
@@ -385,7 +398,6 @@ def run_pca_plot(
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, tight_layout=True)
         fig.suptitle(plot_title)
 
-
         colors = {
                 "cancer": "red",
                 "healthy": "blue",
@@ -395,7 +407,7 @@ def run_pca_plot(
         # Loop over series
         for diagnosis in df_ext["Diagnosis"].dropna().unique():
             df_diagnosis = df_ext[df_ext["Diagnosis"] == diagnosis]
-            X_plot = estimator.transform(df_diagnosis[used_feature_list])
+            X_plot = scaler.transform(df_diagnosis[used_feature_list])
             plt.scatter(
                     X_plot[:,0], X_plot[:,1], label=diagnosis, c=colors[diagnosis])
 
