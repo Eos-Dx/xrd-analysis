@@ -184,7 +184,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
 
         # Cancer predictions
         # If sample is close enough to any cancer cluster, predict cancer
-        cancer_patient_predictions = (decisions - distance_threshold) <= tol
+        cancer_patient_predictions = np.abs(decisions - distance_threshold) <= tol
         cancer_patient_predictions[cancer_patient_predictions] = cancer_label
 
         # Normal predictions
@@ -194,12 +194,10 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
     def decision_function(self, X):
 
         tol=1e-6
-        distance_threshold = self.distance_threshold
         cancer_label = self.cancer_label
         normal_label = self.normal_label
         indeterminate_label = self.indeterminate_label
         feature_list = self.feature_list
-        distance_threshold = self.distance_threshold
 
         X = pd.DataFrame(X)
 
