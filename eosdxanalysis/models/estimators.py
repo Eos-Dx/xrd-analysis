@@ -184,7 +184,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
 
         # Cancer predictions
         # If sample is close enough to any cancer cluster, predict cancer
-        cancer_patient_predictions = np.abs(decisions - distance_threshold) <= tol
+        cancer_patient_predictions = np.abs(decisions <= distance_threshold + tol)
         cancer_patient_predictions[cancer_patient_predictions] = cancer_label
 
         # Normal predictions
