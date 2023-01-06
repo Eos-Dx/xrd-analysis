@@ -5,12 +5,18 @@ import numpy as np
 import pandas as pd
 import argparse
 
+from joblib import load
+
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
+from sklearn.metrics import roc_curve
+from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import RocCurveDisplay
+from sklearn.metrics import PrecisionRecallDisplay
 
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neighbors import RadiusNeighborsClassifier
@@ -123,7 +129,57 @@ def grid_search_cluster_model_on_df_file(
             distance_threshold=distance_threshold)
     return results
 
-def run_patient_predictions(
+def run_patient_predictions_kmeans(
+        training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
+        normal_cluster_list=None, cluster_model_name=None,
+        unsupervised_estimator_filepath=None,
+        ):
+    # Load training data
+    df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+
+    # Set up measurement-wise true labels of the training data
+    y_true_measurements = pd.Series(index=df_train.index, dtype=int)
+    if cancer_cluster_list in ("", None):
+        y_true_measurements[df_train[cluster_model_name].isin(normal_cluster_list)] = 0
+        y_true_measurements[~df_train[cluster_model_name].isin(normal_cluster_list)] = 1
+    if normal_cluster_list in ("", None):
+        y_true_measurements[df_train[cluster_model_name].isin(cancer_cluster_list)] = 1
+        y_true_measurements[~df_train[cluster_model_name].isin(cancer_cluster_list)] = 0
+    # y_true_measurements = y_true_measurements.values
+    df_train["predictions"] = y_true_measurements.astype(int)
+
+    # Generate patient-wise true labels of the training data
+    # s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"], dtype=int)
+    y_true_patients = df_train.groupby("Patient_ID")["Diagnosis"].max()
+    y_true_patients.loc[y_true_patients == "cancer"] = 1
+    y_true_patients.loc[y_true_patients == "healthy"] = 0
+    y_true_patients = y_true_patients.astype(int)
+
+    # Transform kmeans cluster centers
+    unsupervised_estimator = load(unsupervised_estimator_filepath)
+    kmeans_model = unsupervised_estimator["kmeans"]
+    clusters = kmeans_model.cluster_centers_
+
+    # Loop over thresholds
+    # Set the threshold range to loop over
+    # threshold_range = np.arange(0, 4, 0.2)
+    # Create the estimator
+    print("accuracy,precision,sensitivity,specificity")
+
+    # Make predictions
+    y_pred_patients = df_train.groupby("Patient_ID")["predictions"].max().values
+
+    # Generate scores
+    accuracy = accuracy_score(y_true_patients, y_pred_patients)
+    precision = precision_score(y_true_patients, y_pred_patients)
+    sensitivity = recall_score(y_true_patients, y_pred_patients)
+    specificity = recall_score(
+            y_true_patients, y_pred_patients, pos_label=0)
+
+    print("{:2f},{:2f},{:2f},{:2f}".format(
+                accuracy, precision, sensitivity, specificity))
+
+def run_patient_predictions_pointwise(
         training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
         normal_cluster_list=None, cluster_model_name=None,
         ):
@@ -149,15 +205,205 @@ def run_patient_predictions(
 
     # Loop over thresholds
     # Set the threshold range to loop over
+    # threshold_range = np.arange(0, 4, 0.2)
+    # Create the estimator
     threshold_range = np.arange(0, 4, 0.2)
-    print("threshold,test_sensitivity_mean,test_specificity_mean,harmonic_mean_sens_spec")
+    print("threshold,accuracy,precision,sensitivity,specificity")
     for idx in range(threshold_range.size):
-        # print("threshold,roc_auc,accuracy,precision,sensitivity,specificity")
-        sensitivity_list = []
-        specificity_list = []
-        for jdx in range(5):
+        distance_threshold = threshold_range[idx]
+        estimator = PatientCancerClusterEstimator(
+                distance_threshold=distance_threshold,
+                cancer_label=1,
+                normal_label=0,
+                cancer_cluster_list=cancer_cluster_list,
+                normal_cluster_list=normal_cluster_list,
+                feature_list=feature_list, label_name=cluster_model_name)
+
+        # Fit the estimator the training data
+        estimator.fit(df_train, y_true_measurements)
+
+        # Generate measurement-wise predictions of the training data
+        y_pred_patients = estimator.predict(df_train)
+
+        # Generate scores
+        accuracy = accuracy_score(y_true_patients, y_pred_patients)
+        precision = precision_score(y_true_patients, y_pred_patients)
+        sensitivity = recall_score(y_true_patients, y_pred_patients)
+        specificity = recall_score(
+                y_true_patients, y_pred_patients, pos_label=0)
+
+        print("{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+                    distance_threshold, accuracy, precision, sensitivity,
+                    specificity))
+
+    # ROC analysis
+    distance_threshold = 1
+    estimator = PatientCancerClusterEstimator(
+            distance_threshold=distance_threshold,
+            cancer_label=1,
+            normal_label=0,
+            cancer_cluster_list=cancer_cluster_list,
+            normal_cluster_list=normal_cluster_list,
+            feature_list=feature_list, label_name=cluster_model_name)
+
+    # Fit the estimator to the cluster training data
+    estimator.fit(df_train, y_true_measurements)
+
+    # Generate measurement-wise predictions of the training data
+    y_score_patients = estimator.decision_function(df_train)
+
+    import matplotlib.pyplot as plt
+    RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
+    plt.show()
+    PrecisionRecallDisplay.from_predictions(y_true_patients, y_score_patients)
+    plt.show()
+
+def run_patient_predictions_clusterwise(
+        training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
+        normal_cluster_list=None, cluster_model_name=None,
+        unsupervised_estimator_filepath=None,
+        ):
+    # Load training data
+    df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+
+    # Set up measurement-wise true labels of the training data
+    y_true_measurements = pd.Series(index=df_train.index, dtype=int)
+    if cancer_cluster_list in ("", None):
+        y_true_measurements[df_train[cluster_model_name].isin(normal_cluster_list)] = 0
+        y_true_measurements[~df_train[cluster_model_name].isin(normal_cluster_list)] = 1
+    if normal_cluster_list in ("", None):
+        y_true_measurements[df_train[cluster_model_name].isin(cancer_cluster_list)] = 1
+        y_true_measurements[~df_train[cluster_model_name].isin(cancer_cluster_list)] = 0
+    # y_true_measurements = y_true_measurements.values
+
+    # Generate patient-wise true labels of the training data
+    # s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"], dtype=int)
+    y_true_patients = df_train.groupby("Patient_ID")["Diagnosis"].max()
+    y_true_patients.loc[y_true_patients == "cancer"] = 1
+    y_true_patients.loc[y_true_patients == "healthy"] = 0
+    y_true_patients = y_true_patients.astype(int)
+
+    # Transform kmeans cluster centers
+    unsupervised_estimator = load(unsupervised_estimator_filepath)
+    kmeans_model = unsupervised_estimator["kmeans"]
+    clusters = kmeans_model.cluster_centers_
+
+    df_clusters = pd.DataFrame(data=clusters, columns=feature_list)
+    n_clusters = clusters.shape[0]
+    df_clusters["kmeans_{}".format(n_clusters)] = np.arange(n_clusters)
+    y_true_clusters = np.zeros((n_clusters))
+    y_true_clusters[cancer_cluster_list] = 1
+
+    # Loop over thresholds
+    # Set the threshold range to loop over
+    # threshold_range = np.arange(0, 4, 0.2)
+    # Create the estimator
+    threshold_range = np.arange(0, 5, 0.1)
+    print("threshold,accuracy,precision,sensitivity,specificity")
+    for idx in range(threshold_range.size):
+        distance_threshold = threshold_range[idx]
+        estimator = PatientCancerClusterEstimator(
+                distance_threshold=distance_threshold,
+                cancer_label=1,
+                normal_label=0,
+                cancer_cluster_list=cancer_cluster_list,
+                normal_cluster_list=normal_cluster_list,
+                feature_list=feature_list, label_name=cluster_model_name)
+
+        # Fit the estimator to the cluster training data
+        estimator.fit(df_clusters, y_true_clusters)
+
+        # Generate measurement-wise predictions of the training data
+        y_pred_patients = estimator.predict(df_train)
+
+        # Generate scores
+        accuracy = accuracy_score(y_true_patients, y_pred_patients)
+        precision = precision_score(y_true_patients, y_pred_patients)
+        sensitivity = recall_score(y_true_patients, y_pred_patients)
+        specificity = recall_score(
+                y_true_patients, y_pred_patients, pos_label=0)
+
+        print("{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+                    distance_threshold, accuracy, precision, sensitivity,
+                    specificity))
+
+    # ROC analysis
+    distance_threshold = 1
+    estimator = PatientCancerClusterEstimator(
+            distance_threshold=distance_threshold,
+            cancer_label=1,
+            normal_label=0,
+            cancer_cluster_list=cancer_cluster_list,
+            normal_cluster_list=normal_cluster_list,
+            feature_list=feature_list, label_name=cluster_model_name)
+
+    # Fit the estimator to the cluster training data
+    estimator.fit(df_clusters, y_true_clusters)
+
+    # Generate measurement-wise predictions of the training data
+    y_score_patients = estimator.decision_function(df_train)
+
+    # Compute threshold corresponding best point in ROC curve
+    fpr, tpr, roc_thresholds = roc_curve(
+            y_true_patients, y_score_patients, pos_label=1)
+
+    # Compute threshold corresponding to best point in precision-recall curve
+    precision, recall, pr_thresholds = precision_recall_curve(
+            y_true_patients, y_score_patients, pos_label=1)
+
+    import matplotlib.pyplot as plt
+    RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
+    plt.show()
+    PrecisionRecallDisplay.from_predictions(y_true_patients, y_score_patients)
+    plt.show()
+
+    import ipdb
+    ipdb.set_trace()
+
+def run_patient_predictions_cv(
+        training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
+        normal_cluster_list=None, cluster_model_name=None,
+        ):
+    # Load training data
+    df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+
+    # Set up measurement-wise true labels of the training data
+    y_true_measurements = pd.Series(index=df_train.index, dtype=int)
+    if cancer_cluster_list in ("", None):
+        y_true_measurements[df_train[cluster_model_name].isin(normal_cluster_list)] = 0
+        y_true_measurements[~df_train[cluster_model_name].isin(normal_cluster_list)] = 1
+    if normal_cluster_list in ("", None):
+        y_true_measurements[df_train[cluster_model_name].isin(cancer_cluster_list)] = 1
+        y_true_measurements[~df_train[cluster_model_name].isin(cancer_cluster_list)] = 0
+    # y_true_measurements = y_true_measurements.values
+
+    # Generate patient-wise true labels of the training data
+    # s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"], dtype=int)
+    y_true_patients = df_train.groupby("Patient_ID")["Diagnosis"].max()
+    y_true_patients.loc[y_true_patients == "cancer"] = 1
+    y_true_patients.loc[y_true_patients == "healthy"] = 0
+    y_true_patients = y_true_patients.astype(int)
+
+    def warn(*args, **kwargs):
+        pass
+    import warnings
+    warnings.warn = warn
+
+    # Loop over thresholds
+    # Set the threshold range to loop over
+    threshold_range = np.arange(0, 4, 0.2)
+    print("threshold,accuracy,precision,sensitivity,specificity,harmonic_mean_sens_spec")
+    for idx in range(5):
+
+        # Split patients 80/20
+        patients_train, patients_test, y_true_patients_train, y_true_patients_test = \
+                train_test_split(
+                y_true_patients.index, y_true_patients.values,
+                train_size=0.8, random_state=idx)
+
+        for jdx in range(threshold_range.size):
             # Set the threshold
-            threshold = threshold_range[idx]
+            threshold = threshold_range[jdx]
 
             # Create the estimator
             estimator = PatientCancerClusterEstimator(
@@ -167,11 +413,6 @@ def run_patient_predictions(
                     normal_cluster_list=normal_cluster_list,
                     feature_list=feature_list, label_name=cluster_model_name)
 
-            # Split patients 80/20
-            patients_train, patients_test, y_true_patients_train, y_true_patients_test = \
-                    train_test_split(
-                    y_true_patients.index, y_true_patients.values,
-                    train_size=0.8, random_state=jdx)
 
             # Split the measurements according to the patient train/test split
             measurements_train = df_train[df_train["Patient_ID"].isin(patients_train)]
@@ -195,19 +436,12 @@ def run_patient_predictions(
             sensitivity = recall_score(y_test_true_patients, y_test_pred_patients)
             specificity = recall_score(
                     y_test_true_patients, y_test_pred_patients, pos_label=0)
+            harmonic_mean_sens_spec = 2*sensitivity*specificity/(sensitivity + specificity)
 
-            sensitivity_list.append(sensitivity)
-            specificity_list.append(specificity)
-
-#        print(
-#                "{:.2f},{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
-#                    threshold, roc_auc, accuracy, precision, sensitivity,
-#                    specificity))
-        sensitivity_mean = np.mean(sensitivity_list)
-        specificity_mean = np.mean(specificity_list)
-        harmonic_mean_sens_spec = 2*sensitivity_mean*specificity_mean/(sensitivity_mean + specificity_mean)
-        print("{:.2f},{:.2f},{:.2f},{:.2f}".format(
-            threshold, sensitivity_mean, specificity_mean, harmonic_mean_sens_spec))
+            print(
+                    "{:.2f},{:2f},{:2f},{:2f},{:2f},{:2f}".format(
+                        threshold, accuracy, precision, sensitivity,
+                        specificity, harmonic_mean_sens_spec))
 
 def run_patient_predictions_knearest_neighbors(
         training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
@@ -374,6 +608,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--cluster_model_name", type=str, default=None, required=False,
             help="Name of the column containing cluster labels.")
+    parser.add_argument(
+            "--unsupervised_estimator_filepath", type=str, default=None, required=False,
+            help="Name of the unsupervised estimator containing scaler and kmeans model.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -387,6 +624,7 @@ if __name__ == '__main__':
     distance_threshold = args.distance_threshold
     feature_list = str(args.feature_list).split(",")
     cluster_model_name = args.cluster_model_name
+    unsupervised_estimator_filepath = args.unsupervised_estimator_filepath
     
     # Convert cancer_cluster_list csv to list of ints
     if cancer_cluster_list:
@@ -410,10 +648,11 @@ if __name__ == '__main__':
 
         print(results.cv_results_)
 
-    run_patient_predictions(
+    run_patient_predictions_kmeans(
             training_data_filepath=training_data_filepath,
             cancer_cluster_list=cancer_cluster_list,
             normal_cluster_list=normal_cluster_list,
             feature_list=feature_list,
             cluster_model_name=cluster_model_name,
+            unsupervised_estimator_filepath=unsupervised_estimator_filepath,
             )
