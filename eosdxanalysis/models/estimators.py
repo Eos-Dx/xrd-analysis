@@ -114,6 +114,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         self.cancer_cluster_list = cancer_cluster_list
         self.normal_cluster_list = normal_cluster_list
         self.indeterminate_label = indeterminate_label
+        self.tol = 1e-6
 
     def fit(self, X, y):
         """
@@ -173,20 +174,32 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X):
-        """
-        X must be a dataframe with 7 feature columns, one Patient_ID column
 
-        Three steps:
-        1. Predict cancer if too close to any cancer cluster
-        2. Predict normal if close enough to all normal clusters
-        3. Predict cancer on the remaining
-        """
+        distance_threshold = self.distance_threshold
+        cancer_label = self.cancer_label
+        tol = self.tol
+
+        # Calculate the distance to the closest clusters
+        decisions = self.decision_function(X)
+
+        # Cancer predictions
+        # If sample is close enough to any cancer cluster, predict cancer
+        cancer_patient_predictions = (decisions - distance_threshold) <= tol
+        cancer_patient_predictions[cancer_patient_predictions] = cancer_label
+
+        # Normal predictions
+
+        return cancer_patient_predictions.astype(int)
+
+    def decision_function(self, X):
+
         tol=1e-6
         distance_threshold = self.distance_threshold
         cancer_label = self.cancer_label
         normal_label = self.normal_label
         indeterminate_label = self.indeterminate_label
         feature_list = self.feature_list
+        distance_threshold = self.distance_threshold
 
         X = pd.DataFrame(X)
 
@@ -201,65 +214,16 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         # Copy data
         X_copy = X.copy()
 
-        #############################################################
-        # Step 1: Predict cancer if too close to any cancer cluster #
-        #############################################################
-
-        # Find the closest cancer clusters per patient
+        # Find the closest cancer clusters
         # Get the distance matrix
-        if self.cancer_data_.size > 0:
-            cancer_distances = euclidean_distances(X_features, self.cancer_data_)
-            # Find the distances to the closest cancer data
-            closest_cancer_distances = np.min(cancer_distances, axis=1)
-            X_copy["closest_cancer_distances"] = closest_cancer_distances
-            # Find the minimum distances per patient
-            closest_cancer_patient_distances = X_copy.groupby(
-                    "Patient_ID")["closest_cancer_distances"].min().values
+        cancer_distances = euclidean_distances(X_features, self.cancer_data_)
+        closest_cancer_distances = np.min(cancer_distances, axis=1)
+        X_copy["closest_cancer_distances"] = closest_cancer_distances
+        # Find the minimum distances per patient
+        closest_cancer_patient_distances = X_copy.groupby(
+                "Patient_ID")["closest_cancer_distances"].min().values
 
-        ################################################################
-        # Step 2: Predict normal if all measurements are close enough  #
-        # to normal clusters                                           #
-        ################################################################
+        # For normal, find the closest normal clusters for each measurement
+        decisions = closest_cancer_patient_distances
 
-        # Find the closest normal clusters for all patient's measurements
-        # Get the distance matrix
-        if self.normal_data_.size > 0:
-            normal_distances = euclidean_distances(X_features, self.normal_data_)
-            # Find the distances to the closest normal clusters data
-            closest_normal_distances = np.min(normal_distances, axis=1)
-            X_copy["closest_normal_distances"] = closest_normal_distances
-            # Find the closest normal distances per patient
-            closest_normal_patient_distances = X_copy.groupby(
-                    "Patient_ID")["closest_normal_distances"].min().values
-
-        ########################################################
-        # Step 3: Predict cancer on the remaining measurements #
-        ########################################################
-
-        # Handle various cases
-        # Case: cancer data is present
-        if self.cancer_data_.size > 0:
-            cancer_predictions = (closest_cancer_patient_distances <= distance_threshold + tol)
-            # Case: cancer and normal data are present
-            if self.normal_data_.size > 0:
-                # Set normal and remaining predictions
-                normal_predictions = (closest_normal_patient_distances <= distance_threshold + tol)
-                # Take NOR to get remaining predictions
-                remaining_predictions = ~(cancer_predictions | normal_predictions)
-            # Case: only cancer data is present
-            else:
-                # No normal or remaining predictions
-                normal_predictions = np.zeros_like(cancer_predictions)
-                remaining_predictions = normal_predictions
-        # Case: only normal data is present
-        else:
-            normal_predictions = (closest_normal_patient_distances <= distance_threshold + tol)
-            cancer_predictions = ~normal_predictions
-            remaining_predictions = cancer_predictions
-
-        predictions = np.zeros_like(cancer_predictions, dtype=int)
-        predictions[cancer_predictions] = cancer_label
-        predictions[normal_predictions] = normal_label
-        predictions[remaining_predictions] = cancer_label
-
-        return predictions.astype(int)
+        return decisions
