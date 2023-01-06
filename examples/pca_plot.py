@@ -177,6 +177,8 @@ def run_pca_plot(
     blind_predictions = kmeans_model.predict(X_blind)
     df_blind["kmeans_{}".format(n_clusters)] = blind_predictions
 
+    df_all.loc[df_blind.index, "kmeans_{}".format(n_clusters)] = blind_predictions
+
 
     ###################################
     # 3D PCA subspace projection plot #
