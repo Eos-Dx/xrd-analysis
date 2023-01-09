@@ -169,24 +169,27 @@ def run_patient_predictions_kmeans(
     scaler = unsupervised_estimator["standardscaler"]
     kmeans_model = unsupervised_estimator["kmeans"]
 
-    # Make predictions
-    if df_test is None: 
+    y_pred_patients = df_train.groupby("Patient_ID")["predictions"].max().values
 
-        y_pred_patients = df_train.groupby("Patient_ID")["predictions"].max().values
+    print("accuracy,precision,sensitivity,specificity")
 
-        print("accuracy,precision,sensitivity,specificity")
+    # Generate scores
+    accuracy = accuracy_score(y_true_patients, y_pred_patients)
+    precision = precision_score(y_true_patients, y_pred_patients)
+    sensitivity = recall_score(y_true_patients, y_pred_patients)
+    specificity = recall_score(
+            y_true_patients, y_pred_patients, pos_label=0)
 
-        # Generate scores
-        accuracy = accuracy_score(y_true_patients, y_pred_patients)
-        precision = precision_score(y_true_patients, y_pred_patients)
-        sensitivity = recall_score(y_true_patients, y_pred_patients)
-        specificity = recall_score(
-                y_true_patients, y_pred_patients, pos_label=0)
+    print("{:2f},{:2f},{:2f},{:2f}".format(
+                accuracy, precision, sensitivity, specificity))
 
-        print("{:2f},{:2f},{:2f},{:2f}".format(
-                    accuracy, precision, sensitivity, specificity))
+    tn, fp, fn, tp = confusion_matrix(y_true_patients, y_pred_patients).ravel()
+    print("tn,fp,fn,tp")
+    print("{},{},{},{}".format(
+        tn, fp, fn, tp))
 
-    else:
+    # Make blind predictions
+    if df_test is not None:
         # Predict measurements
         y_test_pred_measurements = pd.Series(index=df_test.index, dtype=int)
         if cancer_cluster_list in ("", None):
@@ -203,6 +206,11 @@ def run_patient_predictions_kmeans(
         df_test_pred_patients = df_test.groupby("Patient_ID")["predictions"].max()
 
         # df_test_pred_patients.to_csv()
+        cancer_prediction_num = df_test_pred_patients.sum()
+        patients_num = df_test_pred_patients.shape[0]
+        print("Total blind patients:", patients_num)
+        print("Total blind cancer predictions:",cancer_prediction_num)
+        print("Total blind normal predictions:",patients_num - cancer_prediction_num)
 
 def run_patient_predictions_pointwise(
         training_data_filepath=None, data_filepath=None,
@@ -245,7 +253,7 @@ def run_patient_predictions_pointwise(
     # threshold_range = np.arange(0, 4, 0.2)
     # Create the estimator
     threshold_range = np.arange(0, 10, 0.1)
-    print("threshold,accuracy,precision,sensitivity,specificity")
+    print("tn,fp,fn,tp,threshold,accuracy,precision,sensitivity,specificity")
     # Store values for plotting
     sensitivity_array = np.zeros_like(threshold_range)
     specificity_array = np.zeros_like(threshold_range)
@@ -274,12 +282,16 @@ def run_patient_predictions_pointwise(
         specificity = recall_score(
                 y_true_patients, y_pred_patients, pos_label=0)
 
+        # Generate performance counts
+        tn, fp, fn, tp = confusion_matrix(y_true_patients, y_pred_patients).ravel()
+
         # Store scores
         sensitivity_array[idx] = sensitivity
         specificity_array[idx] = specificity
         precision_array[idx] = precision
 
-        print("{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+        print("{:.2f},{:2f},{:2f},{:2f},{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+                    tn, fp, fn, tp,
                     distance_threshold, accuracy, precision, sensitivity,
                     specificity))
 
@@ -321,37 +333,44 @@ def run_patient_predictions_pointwise(
 
     plt.show()
 
-    # Make predictions on test data
-    distance_threshold = 1.7
-    # Transform df_test data using kmeans_model
-    unsupervised_estimator = load(unsupervised_estimator_filepath)
-    kmeans_model = unsupervised_estimator["kmeans"]
-    scaler = unsupervised_estimator["standardscaler"]
-    X_test_scaled = scaler.transform(df_test[feature_list])
-    df_test_scaled = pd.DataFrame(
-            data=X_test_scaled, columns=feature_list, index=df_test.index)
-    df_test_scaled["Patient_ID"] = df_test["Patient_ID"]
+    if df_test is not None:
+        # Make predictions on test data
+        distance_threshold = 2.8
+        # Transform df_test data using kmeans_model
+        unsupervised_estimator = load(unsupervised_estimator_filepath)
+        kmeans_model = unsupervised_estimator["kmeans"]
+        scaler = unsupervised_estimator["standardscaler"]
+        X_test_scaled = scaler.transform(df_test[feature_list])
+        df_test_scaled = pd.DataFrame(
+                data=X_test_scaled, columns=feature_list, index=df_test.index)
+        df_test_scaled["Patient_ID"] = df_test["Patient_ID"]
 
-    # Create estimator
-    estimator = PatientCancerClusterEstimator(
-            distance_threshold=distance_threshold,
-            cancer_label=1,
-            normal_label=0,
-            cancer_cluster_list=cancer_cluster_list,
-            normal_cluster_list=normal_cluster_list,
-            feature_list=feature_list, label_name=cluster_model_name)
+        # Create estimator
+        estimator = PatientCancerClusterEstimator(
+                distance_threshold=distance_threshold,
+                cancer_label=1,
+                normal_label=0,
+                cancer_cluster_list=cancer_cluster_list,
+                normal_cluster_list=normal_cluster_list,
+                feature_list=feature_list, label_name=cluster_model_name)
 
-    # Fit the estimator to the cluster training data
-    estimator.fit(df_train, y_true_measurements)
+        # Fit the estimator to the cluster training data
+        estimator.fit(df_train, y_true_measurements)
 
-    # Generate measurement-wise predictions of the training data
-    y_test_pred_patients = estimator.predict(df_test_scaled).astype(int)
+        # Generate measurement-wise predictions of the training data
+        y_test_pred_patients = estimator.predict(df_test_scaled).astype(int)
 
-    patient_list = df_test["Patient_ID"].unique()
-    df_test_pred_patients = pd.DataFrame(
-            data=y_test_pred_patients, columns=["prediction"], index=patient_list)
+        patient_list = df_test["Patient_ID"].unique()
+        df_test_pred_patients = pd.DataFrame(
+                data=y_test_pred_patients, columns=["prediction"], index=patient_list)
 
-    # df_test_patients_predictions.to_csv()
+        # df_test_patients_predictions.to_csv()
+
+        cancer_prediction_num = df_test_pred_patients.sum()
+        patients_num = df_test_pred_patients.shape[0]
+        print("Total blind patients:", patients_num)
+        print("Total blind cancer predictions:",cancer_prediction_num)
+        print("Total blind normal predictions:",patients_num - cancer_prediction_num)
 
 def run_patient_predictions_clusterwise(
         training_data_filepath=None, data_filepath=None,
@@ -402,7 +421,7 @@ def run_patient_predictions_clusterwise(
     sensitivity_array = np.zeros_like(threshold_range)
     specificity_array = np.zeros_like(threshold_range)
     precision_array = np.zeros_like(threshold_range)
-    print("threshold,accuracy,precision,sensitivity,specificity")
+    print("tn,fp,fn,tp,threshold,accuracy,precision,sensitivity,specificity")
     for idx in range(threshold_range.size):
         distance_threshold = threshold_range[idx]
         estimator = PatientCancerClusterEstimator(
@@ -426,12 +445,17 @@ def run_patient_predictions_clusterwise(
         specificity = recall_score(
                 y_true_patients, y_pred_patients, pos_label=0)
 
+
+        # Generate performance counts
+        tn, fp, fn, tp = confusion_matrix(y_true_patients, y_pred_patients).ravel()
+
         # Store scores
         sensitivity_array[idx] = sensitivity
         specificity_array[idx] = specificity
         precision_array[idx] = precision
 
-        print("{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+        print("{:.2f},{:2f},{:2f},{:2f},{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+                    tn, fp, fn, tp,
                     distance_threshold, accuracy, precision, sensitivity,
                     specificity))
 
@@ -473,36 +497,43 @@ def run_patient_predictions_clusterwise(
 
     plt.show()
 
-    # Make predictions on test data
-    distance_threshold = 2.30
-    # Transform df_test data using kmeans_model
-    kmeans_model = unsupervised_estimator["kmeans"]
-    scaler = unsupervised_estimator["standardscaler"]
-    X_test_scaled = scaler.transform(df_test[feature_list])
-    df_test_scaled = pd.DataFrame(
-            data=X_test_scaled, columns=feature_list, index=df_test.index)
-    df_test_scaled["Patient_ID"] = df_test["Patient_ID"]
+    if df_test is not None:
+        # Make predictions on test data
+        distance_threshold = 3.7
+        # Transform df_test data using kmeans_model
+        kmeans_model = unsupervised_estimator["kmeans"]
+        scaler = unsupervised_estimator["standardscaler"]
+        X_test_scaled = scaler.transform(df_test[feature_list])
+        df_test_scaled = pd.DataFrame(
+                data=X_test_scaled, columns=feature_list, index=df_test.index)
+        df_test_scaled["Patient_ID"] = df_test["Patient_ID"]
 
-    # Create estimator
-    estimator = PatientCancerClusterEstimator(
-            distance_threshold=distance_threshold,
-            cancer_label=1,
-            normal_label=0,
-            cancer_cluster_list=cancer_cluster_list,
-            normal_cluster_list=normal_cluster_list,
-            feature_list=feature_list, label_name=cluster_model_name)
+        # Create estimator
+        estimator = PatientCancerClusterEstimator(
+                distance_threshold=distance_threshold,
+                cancer_label=1,
+                normal_label=0,
+                cancer_cluster_list=cancer_cluster_list,
+                normal_cluster_list=normal_cluster_list,
+                feature_list=feature_list, label_name=cluster_model_name)
 
-    # Fit the estimator to the cluster training data
-    estimator.fit(df_clusters, y_true_clusters)
+        # Fit the estimator to the cluster training data
+        estimator.fit(df_clusters, y_true_clusters)
 
-    # Generate measurement-wise predictions of the training data
-    y_test_pred_patients = estimator.predict(df_test_scaled).astype(int)
+        # Generate measurement-wise predictions of the training data
+        y_test_pred_patients = estimator.predict(df_test_scaled).astype(int)
 
-    patient_list = df_test["Patient_ID"].unique()
-    df_test_pred_patients = pd.DataFrame(
-            data=y_test_pred_patients, columns=["prediction"], index=patient_list)
+        patient_list = df_test["Patient_ID"].unique()
+        df_test_pred_patients = pd.DataFrame(
+                data=y_test_pred_patients, columns=["prediction"], index=patient_list)
 
-    # df_test_patients_predictions.to_csv()
+        # df_test_patients_predictions.to_csv()
+
+        cancer_prediction_num = df_test_pred_patients.sum()
+        patients_num = df_test_pred_patients.shape[0]
+        print("Total blind patients:", patients_num)
+        print("Total blind cancer predictions:",cancer_prediction_num)
+        print("Total blind normal predictions:",patients_num - cancer_prediction_num)
 
 def run_patient_predictions_cv(
         training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
