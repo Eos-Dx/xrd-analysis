@@ -27,6 +27,10 @@ from sklearn.neighbors import RadiusNeighborsClassifier
 from eosdxanalysis.models.estimators import CancerClusterEstimator
 from eosdxanalysis.models.estimators import PatientCancerClusterEstimator
 
+from eosdxanalysis.models.utils import scale_features
+from eosdxanalysis.models.utils import add_patient_data
+
+
 
 def run_cancer_cluster_predictions_on_df(
         df_train, df_predict=None, output_path=None, cancer_cluster_list=None,
@@ -131,38 +135,6 @@ def grid_search_cluster_model_on_df_file(
             cancer_cluster_list=cancer_cluster_list, cancer_label=cancer_label,
             distance_threshold=distance_threshold)
     return results
-
-def scale_features(df, scale_by, feature_list):
-    """
-    Scale all features by ``scale_by``
-    Returns a copy of a dataframe
-    Drops ``scale_by`` column
-    """
-    df_scaled_features = df.copy()
-    df_scaled_features = df_scaled_features.div(
-            df_scaled_features[scale_by], axis="rows")
-    df_scaled_features = df_scaled_features[feature_list]
-    if scale_by in feature_list:
-        # Drop ``scale_by`` column
-        df_scaled_features = df_scaled_features.drop(columns=[scale_by])
-    return df_scaled_features
-
-def add_patient_data(df, patient_db_filepath, index_col="Barcode"):
-    # Use patient database to get patient diagnosis
-    db = pd.read_csv(patient_db_filepath, index_col=index_col)
-    extraction = df.index.str.extractall(
-            "CR_([A-Z]{1}).*?([0-9]+)")
-    extraction_series = extraction[0] + extraction[1].str.zfill(5)
-    extraction_list = extraction_series.tolist()
-
-    assert(len(extraction_list) == df.shape[0])
-    df_ext = df.copy()
-    df_ext[index_col] = extraction_list
-
-    df_ext = pd.merge(
-            df_ext, db, left_on=index_col, right_index=True)
-
-    return df_ext
 
 def run_patient_predictions_kmeans(
         training_data_filepath=None, data_filepath=None,
@@ -1014,7 +986,7 @@ if __name__ == '__main__':
 
         print(results.cv_results_)
 
-    run_patient_predictions_clusterwise(
+    run_patient_predictions_kmeans(
             training_data_filepath=training_data_filepath,
             data_filepath=data_filepath,
             cancer_cluster_list=cancer_cluster_list,
@@ -1025,5 +997,5 @@ if __name__ == '__main__':
             scale_by=scale_by,
             patient_db_filepath=patient_db_filepath,
             blind_predictions=blind_predictions,
-            threshold=distance_threshold,
+            # threshold=distance_threshold,
             )
