@@ -172,6 +172,14 @@ def run_patient_predictions_kmeans(
         patient_db_filepath=None,
         blind_predictions=None,
         ):
+
+    #######################################
+    # Load training data
+    # scale by a feature
+    # scale with pre-fit standard scaler
+    # predict using pre-fit k-means model
+    #######################################
+
     # Load training data
     df_train = pd.read_csv(training_data_filepath, index_col="Filename")
     df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
@@ -185,9 +193,17 @@ def run_patient_predictions_kmeans(
     X_train_fully_scaled = scaler.transform(
             df_train_scaled_features[feature_list])
     df_train_fully_scaled = df_train_scaled_features.copy()
+    df_train_fully_scaled[feature_list] = X_train_fully_scaled 
     # Get k-means clusters on training data
     df_train_fully_scaled[cluster_model_name] = kmeans_model.predict(
             X_train_fully_scaled)
+
+    #################################################################
+    # Add patient data
+    # Create labels based on k-means predictions and cluster list
+    # Get patient predictions on training set
+    # Display performance metrics on training set
+    ################################################################
 
     # Add patient data
     df_train_ext = add_patient_data(
@@ -236,19 +252,27 @@ def run_patient_predictions_kmeans(
     import warnings
     warnings.warn = warn
 
+    ##########################
     # Make blind predictions
-    if data_filepath is not None:
-        df_test = pd.read_csv(data_filepath, index_col="Filename")
-        df_test_scaled_features = scale_features(
-                df_test, scale_by, feature_list)
+    ##########################
 
-        # Perform standard scaling
-        X_test_scaled = scaler.transform(df_test_scaled_features[feature_list])
-        # Get cluster data
-        df_test_scaled_features[cluster_model_name] = kmeans_model.predict(X_test_scaled)
-        
+    if data_filepath is not None:
+        # Load testing data
+        df_test = pd.read_csv(data_filepath, index_col="Filename")
+        df_test_scaled_features = scale_features(df_test, scale_by, feature_list)
+
+        # Performan final standard scaling of test data
+        X_test_fully_scaled = scaler.transform(
+                df_test_scaled_features[feature_list])
+        df_test_fully_scaled = df_test_scaled_features.copy()
+        df_test_fully_scaled[feature_list] = X_test_fully_scaled 
+        # Get k-means clusters on test data
+        df_test_fully_scaled[cluster_model_name] = kmeans_model.predict(
+                X_test_fully_scaled)
+
         # Add patient data
-        df_test_ext = add_patient_data(df_test_scaled_features, 
+        df_test_ext = add_patient_data(
+                df_test_fully_scaled,
                 patient_db_filepath,
                 index_col="Barcode")
 
@@ -280,62 +304,37 @@ def run_patient_predictions_kmeans(
         # Save blind predictions to file
         df_test_pred_patients.to_csv(blind_predictions)
 
-
 def run_patient_predictions_clusterwise(
         training_data_filepath=None, data_filepath=None,
         feature_list=None, cancer_cluster_list=None,
         normal_cluster_list=None, cluster_model_name=None,
         unsupervised_estimator_filepath=None,
-        scale_by=None, patient_db=None,
+        scale_by=None, patient_db_filepath=None,
         blind_predictions=None,
         threshold=None,
         ):
     # Load training data
     df_train = pd.read_csv(training_data_filepath, index_col="Filename")
-
-    # Scale all features
-    if scale_by:
-        df_train = df_train.div(df_train[scale_by], axis="rows")
-        df_train = df_train[feature_list]
-        if scale_by in feature_list:
-            # Drop scale_by column
-            df_train = df_train.drop(columns=[scale_by])
-
-    # Load test data
-    df_test = None
-    if data_filepath:
-        df_test = pd.read_csv(data_filepath, index_col="Filename")
-        # Scale all features
-        if scale_by:
-            df_test = df_test.div(df_test[scale_by], axis="rows")
-            df_test = df_test[feature_list]
-            if scale_by in feature_list:
-                # Drop scale_by column
-                df_test = df_test.drop(columns=[scale_by])
+    df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
 
     # Transform kmeans cluster centers
     unsupervised_estimator = load(unsupervised_estimator_filepath)
     scaler = unsupervised_estimator["standardscaler"]
     kmeans_model = unsupervised_estimator["kmeans"]
 
-    # Use patient database to get patient diagnosis
-    db = pd.read_csv(patient_db, index_col="Barcode")
-    extraction = df_train.index.str.extractall(
-            "CR_([A-Z]{1}).*?([0-9]+)")
-    extraction_series = extraction[0] + extraction[1].str.zfill(5)
-    extraction_list = extraction_series.tolist()
+    # Performan final standard scaling of training data
+    X_train_fully_scaled = scaler.transform(
+            df_train_scaled_features[feature_list])
+    df_train_fully_scaled = df_train_scaled_features.copy()
+    # Get k-means clusters on training data
+    df_train_fully_scaled[cluster_model_name] = kmeans_model.predict(
+            X_train_fully_scaled)
 
-    assert(len(extraction_list) == df_train.shape[0])
-    df_train_ext = df_train.copy()
-    df_train_ext["Barcode"] = extraction_list
-
-    df_train_ext = pd.merge(
-            df_train_ext, db, left_on="Barcode", right_index=True)
-
-    # Scale data
-    df_train_ext[feature_list] = scaler.transform(df_train_ext[feature_list])
-
-    df_train_ext[cluster_model_name] = kmeans_model.predict(df_train_ext[feature_list])
+    # Add patient data
+    df_train_ext = add_patient_data(
+            df_train_fully_scaled,
+            patient_db_filepath,
+            index_col="Barcode")
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
@@ -345,18 +344,14 @@ def run_patient_predictions_clusterwise(
     if normal_cluster_list in ("", None):
         y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
         y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
-    # y_true_measurements = y_true_measurements.values
 
     # Generate patient-wise true labels of the training data
-    # s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"], dtype=int)
     y_true_patients = df_train_ext.groupby("Patient_ID")["Diagnosis"].max()
     y_true_patients.loc[y_true_patients == "cancer"] = 1
     y_true_patients.loc[y_true_patients == "healthy"] = 0
     y_true_patients = y_true_patients.astype(int)
 
-    # Transform kmeans cluster centers
-    unsupervised_estimator = load(unsupervised_estimator_filepath)
-    kmeans_model = unsupervised_estimator["kmeans"]
+    # Use kmeans cluster centers for true labels
     clusters = kmeans_model.cluster_centers_
 
     df_clusters = pd.DataFrame(data=clusters, columns=feature_list)
@@ -451,27 +446,21 @@ def run_patient_predictions_clusterwise(
 
     plt.show()
 
-    if df_test is not None:
-        # Add in patient data
-        extraction = df_test.index.str.extractall(
-                "CR_([A-Z]{1}).*?([0-9]+)")
-        extraction_series = extraction[0] + extraction[1].str.zfill(5)
-        extraction_list = extraction_series.tolist()
+    if data_filepath is not None:
+        df_test = pd.read_csv(data_filepath, index_col="Filename")
+        df_test_scaled_features = scale_features(
+                df_test, scale_by, feature_list)
 
-        assert(len(extraction_list) == df_test.shape[0])
-        df_test_ext = df_test.copy()
-        df_test_ext["Barcode"] = extraction_list
-
-        df_test_ext = pd.merge(
-                df_test_ext, db, left_on="Barcode", right_index=True)
+        # Perform standard scaling
+        X_test_scaled = scaler.transform(df_test_scaled_features[feature_list])
 
         # Get cluster data
-        X_test_scaled = scaler.transform(df_test_ext[feature_list])
-
-        X_test_scaled = scaler.transform(df_test[feature_list])
-        df_test_scaled = pd.DataFrame(
-                data=X_test_scaled, columns=feature_list, index=df_test.index)
-        df_test_scaled["Patient_ID"] = df_test_ext["Patient_ID"]
+        df_test_scaled_features[cluster_model_name] = kmeans_model.predict(X_test_scaled)
+        
+        # Add patient data
+        df_test_ext = add_patient_data(df_test_scaled_features, 
+                patient_db_filepath,
+                index_col="Barcode")
 
         # Make predictions on test data
         distance_threshold = threshold
@@ -489,9 +478,9 @@ def run_patient_predictions_clusterwise(
         estimator.fit(df_clusters, y_true_clusters)
 
         # Generate measurement-wise predictions of the training data
-        y_test_pred_patients = estimator.predict(df_test_scaled).astype(int)
+        y_test_pred_patients = estimator.predict(df_test_ext).astype(int)
 
-        patient_list = df_test_scaled["Patient_ID"].unique()
+        patient_list = df_test_ext["Patient_ID"].unique()
         df_test_pred_patients = pd.DataFrame(
                 data=y_test_pred_patients, columns=["prediction"], index=patient_list)
 
