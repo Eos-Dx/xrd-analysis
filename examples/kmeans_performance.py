@@ -48,9 +48,9 @@ if "Patient_ID" not in df_kmeans.columns:
     df_kmeans = pd.merge(df_kmeans, db, left_on="Barcode", right_index=True)
 
 cluster_dict = {}
-n_clusters = 20
+n_clusters = k
 cancer_cluster_list = []
-cancer_cluster_threshold = 0.80
+cancer_cluster_threshold = 1.00
 
 print("Cluster,Cancer_Measurements_Percent,Cancer_Measurements_Num,Cancer_Patients_Percent,Cancer_Patients_Num")
 
