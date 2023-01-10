@@ -460,6 +460,38 @@ def gen_meshgrid(shape):
 
     return RR, TT
 
+def scale_features(df, scale_by, feature_list):
+    """
+    Scale all features by ``scale_by``
+    Returns a copy of a dataframe
+    Drops ``scale_by`` column
+    """
+    df_scaled_features = df.copy()
+    df_scaled_features = df_scaled_features.div(
+            df_scaled_features[scale_by], axis="rows")
+    df_scaled_features = df_scaled_features[feature_list]
+    if scale_by in feature_list:
+        # Drop ``scale_by`` column
+        df_scaled_features = df_scaled_features.drop(columns=[scale_by])
+    return df_scaled_features
+
+def add_patient_data(df, patient_db_filepath, index_col="Barcode"):
+    # Use patient database to get patient diagnosis
+    db = pd.read_csv(patient_db_filepath, index_col=index_col)
+    extraction = df.index.str.extractall(
+            "CR_([A-Z]{1}).*?([0-9]+)")
+    extraction_series = extraction[0] + extraction[1].str.zfill(5)
+    extraction_list = extraction_series.tolist()
+
+    assert(len(extraction_list) == df.shape[0])
+    df_ext = df.copy()
+    df_ext[index_col] = extraction_list
+
+    df_ext = pd.merge(
+            df_ext, db, left_on=index_col, right_index=True)
+
+    return df_ext
+
 #def l1_metric_optimized(image1, image2, params, plan=None):
 #    """
 #    Function which computes the L1 distance between two images
