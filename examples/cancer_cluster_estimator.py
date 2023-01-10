@@ -132,59 +132,68 @@ def grid_search_cluster_model_on_df_file(
             distance_threshold=distance_threshold)
     return results
 
-def run_patient_predictions_kmeans(
-        training_data_filepath=None, data_filepath=None,
-        feature_list=None, cancer_cluster_list=None, divide_by=None,
-        normal_cluster_list=None, cluster_model_name=None,
-        unsupervised_estimator_filepath=None,
-        patient_db=None,
-        blind_predictions=None,
-        ):
-    # Load training data
-    df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+def scale_features(df, scale_by, feature_list):
+    """
+    Scale all features by ``scale_by``
+    Returns a copy of a dataframe
+    Drops ``scale_by`` column
+    """
+    df_scaled_features = df.copy()
+    df_scaled_features = df_scaled_features.div(
+            df_scaled_features[scale_by], axis="rows")
+    df_scaled_features = df_scaled_features[feature_list]
+    if scale_by in feature_list:
+        # Drop ``scale_by`` column
+        df_scaled_features = df_scaled_features.drop(columns=[scale_by])
+    return df_scaled_features
 
-    # Scale all features
-    if divide_by:
-        df_train = df_train.div(df_train[divide_by], axis="rows")
-        df_train = df_train[feature_list]
-        if divide_by in feature_list:
-            # Drop divide_by column
-            df_train = df_train.drop(columns=[divide_by])
-
-    # Load test data
-    df_test = None
-    if data_filepath:
-        df_test = pd.read_csv(data_filepath, index_col="Filename")
-        # Scale all features
-        if divide_by:
-            df_test = df_test.div(df_test[divide_by], axis="rows")
-            df_test = df_test[feature_list]
-            if divide_by in feature_list:
-                # Drop divide_by column
-                df_test = df_test.drop(columns=[divide_by])
-
-    # Transform kmeans cluster centers
-    unsupervised_estimator = load(unsupervised_estimator_filepath)
-    scaler = unsupervised_estimator["standardscaler"]
-    kmeans_model = unsupervised_estimator["kmeans"]
-
-    # Get cluster data
-    X_train_scaled = scaler.transform(df_train[feature_list])
-    df_train[cluster_model_name] = kmeans_model.predict(X_train_scaled)
-
+def add_patient_data(df, patient_db_filepath, index_col="Barcode"):
     # Use patient database to get patient diagnosis
-    db = pd.read_csv(patient_db, index_col="Barcode")
-    extraction = df_train.index.str.extractall(
+    db = pd.read_csv(patient_db_filepath, index_col=index_col)
+    extraction = df.index.str.extractall(
             "CR_([A-Z]{1}).*?([0-9]+)")
     extraction_series = extraction[0] + extraction[1].str.zfill(5)
     extraction_list = extraction_series.tolist()
 
-    assert(len(extraction_list) == df_train.shape[0])
-    df_train_ext = df_train.copy()
-    df_train_ext["Barcode"] = extraction_list
+    assert(len(extraction_list) == df.shape[0])
+    df_ext = df.copy()
+    df_ext[index_col] = extraction_list
 
-    df_train_ext = pd.merge(
-            df_train_ext, db, left_on="Barcode", right_index=True)
+    df_ext = pd.merge(
+            df_ext, db, left_on=index_col, right_index=True)
+
+    return df_ext
+
+def run_patient_predictions_kmeans(
+        training_data_filepath=None, data_filepath=None,
+        feature_list=None, cancer_cluster_list=None, scale_by=None,
+        normal_cluster_list=None, cluster_model_name=None,
+        unsupervised_estimator_filepath=None,
+        patient_db_filepath=None,
+        blind_predictions=None,
+        ):
+    # Load training data
+    df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+    df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
+
+    # Load saved scaler and kmeans model
+    unsupervised_estimator = load(unsupervised_estimator_filepath)
+    scaler = unsupervised_estimator["standardscaler"]
+    kmeans_model = unsupervised_estimator["kmeans"]
+
+    # Performan final standard scaling of training data
+    X_train_fully_scaled = scaler.transform(
+            df_train_scaled_features[feature_list])
+    df_train_fully_scaled = df_train_scaled_features.copy()
+    # Get k-means clusters on training data
+    df_train_fully_scaled[cluster_model_name] = kmeans_model.predict(
+            X_train_fully_scaled)
+
+    # Add patient data
+    df_train_ext = add_patient_data(
+            df_train_fully_scaled,
+            patient_db_filepath,
+            index_col="Barcode")
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
@@ -198,12 +207,12 @@ def run_patient_predictions_kmeans(
     df_train_ext["predictions"] = y_true_measurements.astype(int)
 
     # Generate patient-wise true labels of the training data
-    # s_true_measurements = pd.Series(y_true_measurements, index=df_train_ext["Patient_ID"], dtype=int)
     y_true_patients = df_train_ext.groupby("Patient_ID")["Diagnosis"].max()
     y_true_patients.loc[y_true_patients == "cancer"] = 1
     y_true_patients.loc[y_true_patients == "healthy"] = 0
     y_true_patients = y_true_patients.astype(int)
 
+    # Get patient predictions
     y_pred_patients = df_train_ext.groupby("Patient_ID")["predictions"].max().values
 
     print("tn,fp,fn,tp,accuracy,precision,sensitivity,specificity")
@@ -228,22 +237,20 @@ def run_patient_predictions_kmeans(
     warnings.warn = warn
 
     # Make blind predictions
-    if df_test is not None:
-        extraction = df_test.index.str.extractall(
-                "CR_([A-Z]{1}).*?([0-9]+)")
-        extraction_series = extraction[0] + extraction[1].str.zfill(5)
-        extraction_list = extraction_series.tolist()
+    if data_filepath is not None:
+        df_test = pd.read_csv(data_filepath, index_col="Filename")
+        df_test_scaled_features = scale_features(
+                df_test, scale_by, feature_list)
 
-        assert(len(extraction_list) == df_test.shape[0])
-        df_test_ext = df_test.copy()
-        df_test_ext["Barcode"] = extraction_list
-
-        df_test_ext = pd.merge(
-                df_test_ext, db, left_on="Barcode", right_index=True)
-
+        # Perform standard scaling
+        X_test_scaled = scaler.transform(df_test_scaled_features[feature_list])
         # Get cluster data
-        X_test_scaled = scaler.transform(df_test_ext[feature_list])
-        df_test_ext[cluster_model_name] = kmeans_model.predict(X_test_scaled)
+        df_test_scaled_features[cluster_model_name] = kmeans_model.predict(X_test_scaled)
+        
+        # Add patient data
+        df_test_ext = add_patient_data(df_test_scaled_features, 
+                patient_db_filepath,
+                index_col="Barcode")
 
         # Predict measurements
         y_test_pred_measurements = pd.Series(index=df_test_ext.index, dtype=int)
@@ -273,215 +280,13 @@ def run_patient_predictions_kmeans(
         # Save blind predictions to file
         df_test_pred_patients.to_csv(blind_predictions)
 
-def run_patient_predictions_pointwise(
-        training_data_filepath=None, data_filepath=None,
-        feature_list=None, cancer_cluster_list=None,
-        normal_cluster_list=None, cluster_model_name=None,
-        unsupervised_estimator_filepath=None,
-        blind_predictions=None,
-        threshold=None,
-        divide_by=None,
-        patient_db=None,
-        ):
-    # Load training data
-    df_train = pd.read_csv(training_data_filepath, index_col="Filename")
-
-    # Scale all features
-    if divide_by:
-        df_train = df_train.div(df_train[divide_by], axis="rows")
-        df_train = df_train[feature_list]
-        if divide_by in feature_list:
-            # Drop divide_by column
-            df_train = df_train.drop(columns=[divide_by])
-
-    # Load test data
-    df_test = None
-    if data_filepath:
-        df_test = pd.read_csv(data_filepath, index_col="Filename")
-        # Scale all features
-        if divide_by:
-            df_test = df_test.div(df_test[divide_by], axis="rows")
-            df_test = df_test[feature_list]
-            if divide_by in feature_list:
-                # Drop divide_by column
-                df_test = df_test.drop(columns=[divide_by])
-
-    # Transform kmeans cluster centers
-    unsupervised_estimator = load(unsupervised_estimator_filepath)
-    scaler = unsupervised_estimator["standardscaler"]
-    kmeans_model = unsupervised_estimator["kmeans"]
-
-    # Use patient database to get patient diagnosis
-    db = pd.read_csv(patient_db, index_col="Barcode")
-    extraction = df_train.index.str.extractall(
-            "CR_([A-Z]{1}).*?([0-9]+)")
-    extraction_series = extraction[0] + extraction[1].str.zfill(5)
-    extraction_list = extraction_series.tolist()
-
-    assert(len(extraction_list) == df_train.shape[0])
-    df_train_ext = df_train.copy()
-    df_train_ext["Barcode"] = extraction_list
-
-    df_train_ext = pd.merge(
-            df_train_ext, db, left_on="Barcode", right_index=True)
-
-    # Run k-means model to label data points
-    df_train_ext[cluster_model_name] = kmeans_model.predict(df_train_ext[feature_list])
-
-    # Set up measurement-wise true labels of the training data
-    y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
-    if cancer_cluster_list in ("", None):
-        y_true_measurements[df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 0
-        y_true_measurements[~df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 1
-    if normal_cluster_list in ("", None):
-        y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
-        y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
-
-    # Generate patient-wise true labels of the training data
-    y_true_patients = df_train_ext.groupby("Patient_ID")["Diagnosis"].max()
-    y_true_patients.loc[y_true_patients == "cancer"] = 1
-    y_true_patients.loc[y_true_patients == "healthy"] = 0
-    y_true_patients = y_true_patients.astype(int)
-
-    def warn(*args, **kwargs):
-        pass
-    import warnings
-    warnings.warn = warn
-
-    # Loop over thresholds
-    # Set the threshold range to loop over
-    # threshold_range = np.arange(0, 4, 0.2)
-    # Create the estimator
-    threshold_range = np.arange(0, 10, 0.1)
-    print("tn,fp,fn,tp,threshold,accuracy,precision,sensitivity,specificity")
-    # Store values for plotting
-    sensitivity_array = np.zeros_like(threshold_range)
-    specificity_array = np.zeros_like(threshold_range)
-    precision_array = np.zeros_like(threshold_range)
-    for idx in range(threshold_range.size):
-        distance_threshold = threshold_range[idx]
-        estimator = PatientCancerClusterEstimator(
-                distance_threshold=distance_threshold,
-                cancer_label=1,
-                normal_label=0,
-                cancer_cluster_list=cancer_cluster_list,
-                normal_cluster_list=normal_cluster_list,
-                feature_list=feature_list, label_name=cluster_model_name)
-
-        # Fit the estimator the training data
-        estimator.fit(df_train_ext, y_true_measurements)
-
-        # Generate measurement-wise predictions of the training data
-        y_pred_patients = estimator.predict(df_train_ext)
-
-        # Generate scores
-        accuracy = accuracy_score(y_true_patients, y_pred_patients)
-        precision = precision_score(y_true_patients, y_pred_patients)
-        sensitivity = recall_score(
-                y_true_patients, y_pred_patients, pos_label=1)
-        specificity = recall_score(
-                y_true_patients, y_pred_patients, pos_label=0)
-
-        # Generate performance counts
-        tn, fp, fn, tp = confusion_matrix(y_true_patients, y_pred_patients).ravel()
-
-        # Store scores
-        sensitivity_array[idx] = sensitivity
-        specificity_array[idx] = specificity
-        precision_array[idx] = precision
-
-        print("{:.2f},{:2f},{:2f},{:2f},{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
-                    tn, fp, fn, tp,
-                    distance_threshold, accuracy, precision, sensitivity,
-                    specificity))
-
-    # Manually create ROC and precision-recall curves
-    subtitle = "Pointwise Cancer Distance Model"
-    tpr = sensitivity_array
-    fpr = 1 - specificity_array
-    x_offset = 0
-    y_offset = 0.002
-
-    # ROC Curve
-    title = "ROC Curve: {}".format(subtitle)
-    fig = plt.figure(title, figsize=(12,12))
-    plt.step(fpr, tpr, where="post")
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate")
-    plt.xlim([0,1])
-    plt.ylim([0,1])
-    plt.title(title)
-
-    # Annotate by threshold
-    for x, y, s in zip(fpr, tpr, threshold_range):
-        plt.text(x+x_offset, y+y_offset, np.round(s,1))
-    
-    # Precision-Recall Curve
-    title = "Precision-Recall Curve: {}".format(subtitle)
-    fig = plt.figure(title, figsize=(12,12))
-    recall_array = sensitivity_array
-    plt.step(recall_array, precision_array, where="pre")
-    plt.xlabel("Recall")
-    plt.ylabel("Precision")
-    plt.xlim([0,1])
-    plt.ylim([0,1])
-    plt.title(title)
-
-    # Annotate by threshold
-    for x, y, s in zip(recall_array, precision_array, threshold_range):
-        plt.text(x+x_offset, y+y_offset, np.round(s,1))
-
-    plt.show()
-
-    if df_test is not None:
-        # Make predictions on test data
-        distance_threshold = threshold
-        # Transform df_test data using kmeans_model
-        unsupervised_estimator = load(unsupervised_estimator_filepath)
-        kmeans_model = unsupervised_estimator["kmeans"]
-        scaler = unsupervised_estimator["standardscaler"]
-        X_test_scaled = scaler.transform(df_test[feature_list])
-        df_test_scaled = pd.DataFrame(
-                data=X_test_scaled, columns=feature_list, index=df_test.index)
-        df_test_scaled["Patient_ID"] = df_test["Patient_ID"]
-
-        # Create estimator
-        estimator = PatientCancerClusterEstimator(
-                distance_threshold=distance_threshold,
-                cancer_label=1,
-                normal_label=0,
-                cancer_cluster_list=cancer_cluster_list,
-                normal_cluster_list=normal_cluster_list,
-                feature_list=feature_list, label_name=cluster_model_name)
-
-        # Fit the estimator to the cluster training data
-        estimator.fit(df_train, y_true_measurements)
-
-        # Generate measurement-wise predictions of the training data
-        y_test_pred_patients = estimator.predict(df_test_scaled).astype(int)
-
-        patient_list = df_test["Patient_ID"].unique()
-        df_test_pred_patients = pd.DataFrame(
-                data=y_test_pred_patients, columns=["prediction"], index=patient_list)
-
-        # df_test_patients_predictions.to_csv()
-
-        patient_num = df_test_pred_patients.shape[0]
-        cancer_prediction_num = df_test_pred_patients.sum()
-        normal_prediction_num = patient_num - cancer_prediction_num
-        print("Total blind patients:", patients_num)
-        print("Total blind cancer predictions:",cancer_prediction_num)
-        print("Total blind normal predictions:",normal_prediction_num)
-
-        # Save blind predictions to file
-        df_test_pred_patients.to_csv(blind_predictions)
 
 def run_patient_predictions_clusterwise(
         training_data_filepath=None, data_filepath=None,
         feature_list=None, cancer_cluster_list=None,
         normal_cluster_list=None, cluster_model_name=None,
         unsupervised_estimator_filepath=None,
-        divide_by=None, patient_db=None,
+        scale_by=None, patient_db=None,
         blind_predictions=None,
         threshold=None,
         ):
@@ -489,24 +294,24 @@ def run_patient_predictions_clusterwise(
     df_train = pd.read_csv(training_data_filepath, index_col="Filename")
 
     # Scale all features
-    if divide_by:
-        df_train = df_train.div(df_train[divide_by], axis="rows")
+    if scale_by:
+        df_train = df_train.div(df_train[scale_by], axis="rows")
         df_train = df_train[feature_list]
-        if divide_by in feature_list:
-            # Drop divide_by column
-            df_train = df_train.drop(columns=[divide_by])
+        if scale_by in feature_list:
+            # Drop scale_by column
+            df_train = df_train.drop(columns=[scale_by])
 
     # Load test data
     df_test = None
     if data_filepath:
         df_test = pd.read_csv(data_filepath, index_col="Filename")
         # Scale all features
-        if divide_by:
-            df_test = df_test.div(df_test[divide_by], axis="rows")
+        if scale_by:
+            df_test = df_test.div(df_test[scale_by], axis="rows")
             df_test = df_test[feature_list]
-            if divide_by in feature_list:
-                # Drop divide_by column
-                df_test = df_test.drop(columns=[divide_by])
+            if scale_by in feature_list:
+                # Drop scale_by column
+                df_test = df_test.drop(columns=[scale_by])
 
     # Transform kmeans cluster centers
     unsupervised_estimator = load(unsupervised_estimator_filepath)
@@ -526,6 +331,9 @@ def run_patient_predictions_clusterwise(
 
     df_train_ext = pd.merge(
             df_train_ext, db, left_on="Barcode", right_index=True)
+
+    # Scale data
+    df_train_ext[feature_list] = scaler.transform(df_train_ext[feature_list])
 
     df_train_ext[cluster_model_name] = kmeans_model.predict(df_train_ext[feature_list])
 
@@ -687,23 +495,224 @@ def run_patient_predictions_clusterwise(
         df_test_pred_patients = pd.DataFrame(
                 data=y_test_pred_patients, columns=["prediction"], index=patient_list)
 
-        # df_test_patients_predictions.to_csv()
-
+        # Save blind predictions to file
         cancer_prediction_num = df_test_pred_patients.values.sum().astype(int)
         patient_num = df_test_pred_patients.shape[0]
-        normal_prediction_num = (patients_num - cancer_prediction_num).astype(int)
-        print("Total blind patients:", patients_num)
-        print("Total blind cancer predictions:",cancer_prediction_num)
-        print("Total blind normal predictions:",normal_prediction_num)
+        normal_prediction_num = patient_num - cancer_prediction_num
+        print("normal,cancer,total")
+        print("{},{},{}".format(
+            normal_prediction_num,
+            cancer_prediction_num,
+            patient_num))
 
         # Save blind predictions to file
-        with open(blind_predictions, "w") as outfile:
-            outfile.write("cancer,healthy,total\n")
-            outfile.write("{},{},{}".format(
-                cancer_prediction_num,
-                normal_prediction_num,
-                patient_num,
-                ))
+        df_test_pred_patients.to_csv(blind_predictions)
+
+def run_patient_predictions_pointwise(
+        training_data_filepath=None, data_filepath=None,
+        feature_list=None, cancer_cluster_list=None,
+        normal_cluster_list=None, cluster_model_name=None,
+        unsupervised_estimator_filepath=None,
+        blind_predictions=None,
+        threshold=None,
+        scale_by=None,
+        patient_db=None,
+        ):
+    # Load training data
+    df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+
+    # Scale all features
+    if scale_by:
+        df_train = df_train.div(df_train[scale_by], axis="rows")
+        df_train = df_train[feature_list]
+        if scale_by in feature_list:
+            # Drop scale_by column
+            df_train = df_train.drop(columns=[scale_by])
+
+    # Load test data
+    df_test = None
+    if data_filepath:
+        df_test = pd.read_csv(data_filepath, index_col="Filename")
+        # Scale all features
+        if scale_by:
+            df_test = df_test.div(df_test[scale_by], axis="rows")
+            df_test = df_test[feature_list]
+            if scale_by in feature_list:
+                # Drop scale_by column
+                df_test = df_test.drop(columns=[scale_by])
+
+    # Transform kmeans cluster centers
+    unsupervised_estimator = load(unsupervised_estimator_filepath)
+    scaler = unsupervised_estimator["standardscaler"]
+    kmeans_model = unsupervised_estimator["kmeans"]
+
+    # Use patient database to get patient diagnosis
+    db = pd.read_csv(patient_db, index_col="Barcode")
+    extraction = df_train.index.str.extractall(
+            "CR_([A-Z]{1}).*?([0-9]+)")
+    extraction_series = extraction[0] + extraction[1].str.zfill(5)
+    extraction_list = extraction_series.tolist()
+
+    assert(len(extraction_list) == df_train.shape[0])
+    df_train_ext = df_train.copy()
+    df_train_ext["Barcode"] = extraction_list
+
+    df_train_ext = pd.merge(
+            df_train_ext, db, left_on="Barcode", right_index=True)
+
+    # Scale training data
+    X_train_scaled = scaler.transform(df_train_ext[feature_list])
+    # Run k-means model to label data points
+    df_train_ext[cluster_model_name] = kmeans_model.predict(X_train_scaled)
+
+    # Set up measurement-wise true labels of the training data
+    y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
+    if cancer_cluster_list in ("", None):
+        y_true_measurements[df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 0
+        y_true_measurements[~df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 1
+    if normal_cluster_list in ("", None):
+        y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
+        y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
+
+    # Generate patient-wise true labels of the training data
+    y_true_patients = df_train_ext.groupby("Patient_ID")["Diagnosis"].max()
+    y_true_patients.loc[y_true_patients == "cancer"] = 1
+    y_true_patients.loc[y_true_patients == "healthy"] = 0
+    y_true_patients = y_true_patients.astype(int)
+
+    def warn(*args, **kwargs):
+        pass
+    import warnings
+    warnings.warn = warn
+
+    # Loop over thresholds
+    # Set the threshold range to loop over
+    # threshold_range = np.arange(0, 4, 0.2)
+    # Create the estimator
+    threshold_range = np.arange(0, 10, 0.1)
+    print("tn,fp,fn,tp,threshold,accuracy,precision,sensitivity,specificity")
+    # Store values for plotting
+    sensitivity_array = np.zeros_like(threshold_range)
+    specificity_array = np.zeros_like(threshold_range)
+    precision_array = np.zeros_like(threshold_range)
+    for idx in range(threshold_range.size):
+        distance_threshold = threshold_range[idx]
+        estimator = PatientCancerClusterEstimator(
+                distance_threshold=distance_threshold,
+                cancer_label=1,
+                normal_label=0,
+                cancer_cluster_list=cancer_cluster_list,
+                normal_cluster_list=normal_cluster_list,
+                feature_list=feature_list, label_name=cluster_model_name)
+
+        # Fit the estimator the training data
+        estimator.fit(df_train_ext, y_true_measurements)
+
+        # Generate measurement-wise predictions of the training data
+        y_pred_patients = estimator.predict(df_train_ext)
+
+        # Generate scores
+        accuracy = accuracy_score(y_true_patients, y_pred_patients)
+        precision = precision_score(y_true_patients, y_pred_patients)
+        sensitivity = recall_score(
+                y_true_patients, y_pred_patients, pos_label=1)
+        specificity = recall_score(
+                y_true_patients, y_pred_patients, pos_label=0)
+
+        # Generate performance counts
+        tn, fp, fn, tp = confusion_matrix(y_true_patients, y_pred_patients).ravel()
+
+        # Store scores
+        sensitivity_array[idx] = sensitivity
+        specificity_array[idx] = specificity
+        precision_array[idx] = precision
+
+        print("{:.2f},{:2f},{:2f},{:2f},{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+                    tn, fp, fn, tp,
+                    distance_threshold, accuracy, precision, sensitivity,
+                    specificity))
+
+    # Manually create ROC and precision-recall curves
+    subtitle = "Pointwise Cancer Distance Model"
+    tpr = sensitivity_array
+    fpr = 1 - specificity_array
+    x_offset = 0
+    y_offset = 0.002
+
+    # ROC Curve
+    title = "ROC Curve: {}".format(subtitle)
+    fig = plt.figure(title, figsize=(12,12))
+    plt.step(fpr, tpr, where="post")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.xlim([0,1])
+    plt.ylim([0,1])
+    plt.title(title)
+
+    # Annotate by threshold
+    for x, y, s in zip(fpr, tpr, threshold_range):
+        plt.text(x+x_offset, y+y_offset, np.round(s,1))
+    
+    # Precision-Recall Curve
+    title = "Precision-Recall Curve: {}".format(subtitle)
+    fig = plt.figure(title, figsize=(12,12))
+    recall_array = sensitivity_array
+    plt.step(recall_array, precision_array, where="pre")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.xlim([0,1])
+    plt.ylim([0,1])
+    plt.title(title)
+
+    # Annotate by threshold
+    for x, y, s in zip(recall_array, precision_array, threshold_range):
+        plt.text(x+x_offset, y+y_offset, np.round(s,1))
+
+    plt.show()
+
+    if df_test is not None:
+        # Make predictions on test data
+        distance_threshold = threshold
+        # Transform df_test data using kmeans_model
+        unsupervised_estimator = load(unsupervised_estimator_filepath)
+        kmeans_model = unsupervised_estimator["kmeans"]
+        scaler = unsupervised_estimator["standardscaler"]
+        X_test_scaled = scaler.transform(df_test[feature_list])
+        df_test_scaled = pd.DataFrame(
+                data=X_test_scaled, columns=feature_list, index=df_test.index)
+        df_test_scaled["Patient_ID"] = df_test["Patient_ID"]
+
+        # Create estimator
+        estimator = PatientCancerClusterEstimator(
+                distance_threshold=distance_threshold,
+                cancer_label=1,
+                normal_label=0,
+                cancer_cluster_list=cancer_cluster_list,
+                normal_cluster_list=normal_cluster_list,
+                feature_list=feature_list, label_name=cluster_model_name)
+
+        # Fit the estimator to the cluster training data
+        estimator.fit(df_train, y_true_measurements)
+
+        # Generate measurement-wise predictions of the training data
+        y_test_pred_patients = estimator.predict(df_test_scaled).astype(int)
+
+        patient_list = df_test["Patient_ID"].unique()
+        df_test_pred_patients = pd.DataFrame(
+                data=y_test_pred_patients, columns=["prediction"], index=patient_list)
+
+        # Save blind predictions to file
+        cancer_prediction_num = df_test_pred_patients.values.sum().astype(int)
+        patient_num = df_test_pred_patients.shape[0]
+        normal_prediction_num = patient_num - cancer_prediction_num
+        print("normal,cancer,total")
+        print("{},{},{}".format(
+            normal_prediction_num,
+            cancer_prediction_num,
+            patient_num))
+
+        # Save blind predictions to file
+        df_test_pred_patients.to_csv(blind_predictions)
 
 def run_patient_predictions_cv(
         training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
@@ -951,7 +960,7 @@ if __name__ == '__main__':
             "--feature_list", type=str, default=None, required=False,
             help="The list of features to use.")
     parser.add_argument(
-            "--divide_by", type=str, default=None, required=False,
+            "--scale_by", type=str, default=None, required=False,
             help="The feature to scale all other features by.")
     parser.add_argument(
             "--cluster_model_name", type=str, default=None, required=False,
@@ -960,7 +969,7 @@ if __name__ == '__main__':
             "--unsupervised_estimator_filepath", type=str, default=None, required=False,
             help="Name of the unsupervised estimator containing scaler and kmeans model.")
     parser.add_argument(
-            "--patient_db", type=str, default=None, required=False,
+            "--patient_db_filepath", type=str, default=None, required=False,
             help="File containing patient diagnosis.")
     parser.add_argument(
             "--blind_predictions", type=str, default=None, required=False,
@@ -979,8 +988,8 @@ if __name__ == '__main__':
     feature_list = str(args.feature_list).split(",")
     cluster_model_name = args.cluster_model_name
     unsupervised_estimator_filepath = args.unsupervised_estimator_filepath
-    divide_by = args.divide_by
-    patient_db = args.patient_db
+    scale_by = args.scale_by
+    patient_db_filepath = args.patient_db_filepath
     blind_predictions = args.blind_predictions
     
     # Convert cancer_cluster_list csv to list of ints
@@ -1013,8 +1022,8 @@ if __name__ == '__main__':
             feature_list=feature_list,
             cluster_model_name=cluster_model_name,
             unsupervised_estimator_filepath=unsupervised_estimator_filepath,
-            divide_by=divide_by,
-            patient_db=patient_db,
+            scale_by=scale_by,
+            patient_db_filepath=patient_db_filepath,
             blind_predictions=blind_predictions,
             # threshold=distance_threshold,
             )
