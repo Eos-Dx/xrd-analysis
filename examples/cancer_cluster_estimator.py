@@ -276,7 +276,7 @@ def run_patient_predictions_kmeans(
         # Save blind predictions to file
         df_test_pred_patients.to_csv(blind_predictions)
 
-def run_patient_predictions_clusterwise(
+def run_patient_predictions_centerwise(
         training_data_filepath=None, data_filepath=None,
         feature_list=None, cancer_cluster_list=None,
         normal_cluster_list=None, cluster_model_name=None,
@@ -986,7 +986,7 @@ if __name__ == '__main__':
 
         print(results.cv_results_)
 
-    run_patient_predictions_kmeans(
+    run_patient_predictions_pointwise(
             training_data_filepath=training_data_filepath,
             data_filepath=data_filepath,
             cancer_cluster_list=cancer_cluster_list,
@@ -997,5 +997,5 @@ if __name__ == '__main__':
             scale_by=scale_by,
             patient_db_filepath=patient_db_filepath,
             blind_predictions=blind_predictions,
-            # threshold=distance_threshold,
+            threshold=distance_threshold,
             )
