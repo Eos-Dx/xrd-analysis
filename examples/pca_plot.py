@@ -28,9 +28,10 @@ def run_pca_plot(
         training_filepath=None, kmeans_model_filepath=None,
         kmeans_results_filepath=None, blind_filepath=None, db_filepath=None,
         output_path=None, scale_by=None, feature_list=None, n_components=2,
-        cluster_model_name=None):
+        n_clusters=None):
     """
     """
+    cluster_model_name = "kmeans_{}".format(n_clusters)
     # Set empty blind dataframe
     df_blind = pd.DataFrame()
 
@@ -144,8 +145,6 @@ def run_pca_plot(
     # Set offsets
     x_label_offset = 0.01
     y_label_offset = 0.01
-
-    n_clusters = 20
 
     kmeans_results = pd.read_csv(kmeans_results_filepath, index_col="Filename")
 
@@ -597,8 +596,8 @@ if __name__ == '__main__':
             "--feature_list", default=None, required=False,
             help="A list of features to analyze")
     parser.add_argument(
-            "--cluster_model_name", type=str, default=None, required=False,
-            help="The name of the cluster model column.")
+            "--n_clusters", type=int, default=None, required=False,
+            help="The number of k-means clusters.")
     parser.add_argument(
             "--n_components", type=int, default=2, required=False,
             help="Number of PCA components")
@@ -613,7 +612,7 @@ if __name__ == '__main__':
     output_path = args.output_path
     scale_by = args.scale_by
     feature_list = str(args.feature_list).split(",")
-    cluster_model_name = args.cluster_model_name
+    n_clusters = args.n_clusters
 
     n_components = args.n_components
 
@@ -623,5 +622,5 @@ if __name__ == '__main__':
         kmeans_results_filepath=kmeans_results_filepath,
         blind_filepath=blind_filepath, db_filepath=db_filepath,
         output_path=output_path, scale_by=scale_by, feature_list=feature_list,
-        cluster_model_name=cluster_model_name,
+        n_clusters=n_clusters,
         n_components=n_components)
