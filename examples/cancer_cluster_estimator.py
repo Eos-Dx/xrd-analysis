@@ -401,7 +401,7 @@ def run_patient_predictions_centerwise(
     y_offset = 0.002
 
     # ROC Curve
-    title = "ROC Curve: {}".format(subtitle)
+    title = "ROC Curve - {}".format(subtitle)
     fig = plt.figure(title, figsize=(12,12))
     plt.step(fpr, tpr, where="post")
     plt.xlabel("False Positive Rate")
@@ -415,7 +415,7 @@ def run_patient_predictions_centerwise(
         plt.text(x+x_offset, y+y_offset, np.round(s,1))
 
     # Precision-Recall Curve
-    title = "Precision-Recall Curve: {}".format(subtitle)
+    title = "Precision-Recall Curve - {}".format(subtitle)
     fig = plt.figure(title, figsize=(12,12))
     recall_array = sensitivity_array
     plt.step(recall_array, precision_array, where="pre")
@@ -603,7 +603,7 @@ def run_patient_predictions_pointwise(
     y_offset = 0.002
 
     # ROC Curve
-    title = "ROC Curve: {}".format(subtitle)
+    title = "ROC Curve - {}".format(subtitle)
     fig = plt.figure(title, figsize=(12,12))
     plt.step(fpr, tpr, where="post")
     plt.xlabel("False Positive Rate")
@@ -617,7 +617,7 @@ def run_patient_predictions_pointwise(
         plt.text(x+x_offset, y+y_offset, np.round(s,1))
 
     # Precision-Recall Curve
-    title = "Precision-Recall Curve: {}".format(subtitle)
+    title = "Precision-Recall Curve - {}".format(subtitle)
     fig = plt.figure(title, figsize=(12,12))
     recall_array = sensitivity_array
     plt.step(recall_array, precision_array, where="pre")
