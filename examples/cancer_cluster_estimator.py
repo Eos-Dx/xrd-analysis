@@ -154,6 +154,7 @@ def run_patient_predictions_kmeans(
 
     # Load training data
     df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+    df_train = df_train[df_train.index.str.startswith("CR_A")]
     df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
 
     # Load saved scaler and kmeans model
@@ -294,6 +295,7 @@ def run_patient_predictions_centerwise(
 
     # Load training data
     df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+    df_train = df_train[df_train.index.str.startswith("CR_A")]
     df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
 
     # Load saved scaler and kmeans model
@@ -504,6 +506,7 @@ def run_patient_predictions_pointwise(
 
     # Load training data
     df_train = pd.read_csv(training_data_filepath, index_col="Filename")
+    df_train = df_train[df_train.index.str.startswith("CR_A")]
     df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
 
     # Load saved scaler and kmeans model
@@ -593,7 +596,7 @@ def run_patient_predictions_pointwise(
                     specificity))
 
     # Manually create ROC and precision-recall curves
-    subtitle = "Cluster Centerwise Cancer Distance Model"
+    subtitle = "Cluster Pointwise Cancer Distance Model"
     tpr = sensitivity_array
     fpr = 1 - specificity_array
     x_offset = 0
