@@ -312,6 +312,17 @@ def run_patient_predictions_centerwise(
     df_train_fully_scaled[cluster_model_name] = kmeans_model.predict(
             X_train_fully_scaled)
 
+    # Use kmeans cluster centers for true labels
+    clusters = kmeans_model.cluster_centers_
+
+    df_clusters = pd.DataFrame(data=clusters, columns=feature_list)
+    n_clusters = clusters.shape[0]
+    df_clusters["kmeans_{}".format(n_clusters)] = np.arange(n_clusters)
+    y_true_clusters = np.zeros((n_clusters))
+    if cancer_cluster_list in ("", None):
+        cancer_cluster_list = list(set(np.arange(n_clusters)) - set(normal_cluster_list))
+    y_true_clusters[cancer_cluster_list] = 1
+
     #################################################################
     # Add patient data
     # Create labels based on k-means predictions and cluster list
@@ -327,27 +338,14 @@ def run_patient_predictions_centerwise(
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
-    if cancer_cluster_list in ("", None):
-        y_true_measurements[df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 0
-        y_true_measurements[~df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 1
-    if normal_cluster_list in ("", None):
-        y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
-        y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
+    y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
+    y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
 
     # Generate patient-wise true labels of the training data
     y_true_patients = df_train_ext.groupby("Patient_ID")["Diagnosis"].max()
     y_true_patients.loc[y_true_patients == "cancer"] = 1
     y_true_patients.loc[y_true_patients == "healthy"] = 0
     y_true_patients = y_true_patients.astype(int)
-
-    # Use kmeans cluster centers for true labels
-    clusters = kmeans_model.cluster_centers_
-
-    df_clusters = pd.DataFrame(data=clusters, columns=feature_list)
-    n_clusters = clusters.shape[0]
-    df_clusters["kmeans_{}".format(n_clusters)] = np.arange(n_clusters)
-    y_true_clusters = np.zeros((n_clusters))
-    y_true_clusters[cancer_cluster_list] = 1
 
     # Loop over thresholds
     # Set the threshold range to loop over
@@ -523,6 +521,17 @@ def run_patient_predictions_pointwise(
     df_train_fully_scaled[cluster_model_name] = kmeans_model.predict(
             X_train_fully_scaled)
 
+    # Use kmeans cluster centers for true labels
+    clusters = kmeans_model.cluster_centers_
+
+    df_clusters = pd.DataFrame(data=clusters, columns=feature_list)
+    n_clusters = clusters.shape[0]
+    df_clusters["kmeans_{}".format(n_clusters)] = np.arange(n_clusters)
+    y_true_clusters = np.zeros((n_clusters))
+    if cancer_cluster_list in ("", None):
+        cancer_cluster_list = list(set(np.arange(n_clusters)) - set(normal_cluster_list))
+    y_true_clusters[cancer_cluster_list] = 1
+
     #################################################################
     # Add patient data
     # Create labels based on k-means predictions and cluster list
@@ -538,12 +547,8 @@ def run_patient_predictions_pointwise(
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
-    if cancer_cluster_list in ("", None):
-        y_true_measurements[df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 0
-        y_true_measurements[~df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 1
-    if normal_cluster_list in ("", None):
-        y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
-        y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
+    y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
+    y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
 
     # Generate patient-wise true labels of the training data
     y_true_patients = df_train_ext.groupby("Patient_ID")["Diagnosis"].max()
