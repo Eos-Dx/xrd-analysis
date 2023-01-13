@@ -320,7 +320,6 @@ def run_patient_predictions_centerwise(
     n_clusters = clusters.shape[0]
     df_clusters["kmeans_{}".format(n_clusters)] = np.arange(n_clusters)
 
-
     #################################################################
     # Add patient data
     # Create labels based on k-means predictions and cluster list
@@ -521,10 +520,6 @@ def run_patient_predictions_pointwise(
     df_clusters = pd.DataFrame(data=clusters, columns=feature_list)
     n_clusters = clusters.shape[0]
     df_clusters["kmeans_{}".format(n_clusters)] = np.arange(n_clusters)
-    y_true_clusters = np.zeros((n_clusters))
-    if cancer_cluster_list in ("", None):
-        cancer_cluster_list = list(set(np.arange(n_clusters)) - set(normal_cluster_list))
-    y_true_clusters[cancer_cluster_list] = 1
 
     #################################################################
     # Add patient data
@@ -541,8 +536,18 @@ def run_patient_predictions_pointwise(
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
-    y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
-    y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
+    if cancer_cluster_list in ("", None):
+        y_true_measurements[df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 0
+        y_true_measurements[~df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 1
+        y_true_clusters = np.ones((n_clusters))
+        y_true_clusters[normal_cluster_list] = 1
+    if normal_cluster_list in ("", None):
+        y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
+        y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
+        y_true_clusters = np.zeros((n_clusters))
+        y_true_clusters[cancer_cluster_list] = 1
+    # y_true_measurements = y_true_measurements.values
+    df_train_ext["predictions"] = y_true_measurements.astype(int)
 
     # Generate patient-wise true labels of the training data
     y_true_patients = df_train_ext.groupby("Patient_ID")["Diagnosis"].max()
@@ -594,43 +599,29 @@ def run_patient_predictions_pointwise(
                     distance_threshold, accuracy, precision, sensitivity,
                     specificity))
 
-    # Manually create ROC and precision-recall curves
-    subtitle = "Cluster Pointwise Cancer Distance Model"
-    tpr = sensitivity_array
-    fpr = 1 - specificity_array
-    x_offset = 0
-    y_offset = 0.002
+    subtitle = "Cluster Pointwise Distance Model"
 
-    # ROC Curve
-    title = "ROC Curve - {}".format(subtitle)
-    fig = plt.figure(title, figsize=(12,12))
-    plt.step(fpr, tpr, where="post")
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate")
-    plt.xlim([0,1])
-    plt.ylim([0,1])
-    plt.title(title)
+    plot_roc_curve(
+            normal_cluster_list=normal_cluster_list,
+            cancer_cluster_list=cancer_cluster_list,
+            df_train_ext=df_train_ext,
+            estimator=estimator,
+            y_true_patients=y_true_patients,
+            threshold_range=threshold_range,
+            sensitivity_array=sensitivity_array,
+            specificity_array=specificity_array,
+            subtitle=subtitle)
 
-    # Annotate by threshold
-    for x, y, s in zip(fpr, tpr, threshold_range):
-        plt.text(x+x_offset, y+y_offset, np.round(s,1))
-
-    # Precision-Recall Curve
-    title = "Precision-Recall Curve - {}".format(subtitle)
-    fig = plt.figure(title, figsize=(12,12))
-    recall_array = sensitivity_array
-    plt.step(recall_array, precision_array, where="pre")
-    plt.xlabel("Recall")
-    plt.ylabel("Precision")
-    plt.xlim([0,1])
-    plt.ylim([0,1])
-    plt.title(title)
-
-    # Annotate by threshold
-    for x, y, s in zip(recall_array, precision_array, threshold_range):
-        plt.text(x+x_offset, y+y_offset, np.round(s,1))
-
-    plt.show()
+    plot_precision_recall_curve(
+            normal_cluster_list=normal_cluster_list,
+            cancer_cluster_list=cancer_cluster_list,
+            df_train_ext=df_train_ext,
+            estimator=estimator,
+            y_true_patients=y_true_patients,
+            threshold_range=threshold_range,
+            recall_array=sensitivity_array,
+            precision_array=precision_array,
+            subtitle=subtitle)
 
     if data_filepath is not None:
         # Load testing data
