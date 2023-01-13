@@ -178,16 +178,23 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         distance_threshold = self.distance_threshold
         cancer_label = self.cancer_label
         tol = self.tol
+        cancer_cluster_list = self.cancer_cluster_list
+        normal_cluster_list = self.normal_cluster_list
 
         # Calculate the distance to the closest clusters
         decisions = self.decision_function(X)
 
-        # Cancer predictions
-        # If sample is close enough to any cancer cluster, predict cancer
-        cancer_patient_predictions = np.abs(decisions <= distance_threshold + tol)
-        cancer_patient_predictions[cancer_patient_predictions] = cancer_label
+        if normal_cluster_list in (None, ""):
+            # Cancer predictions
+            # If sample is close enough to any cancer cluster, predict cancer
+            cancer_patient_predictions = np.abs(decisions <= distance_threshold + tol)
+            cancer_patient_predictions[cancer_patient_predictions] = cancer_label
 
-        # Normal predictions
+        if cancer_cluster_list in (None, ""):
+            # Normal predictions
+            # If sample is too far from the closest normal cluster, predict cancer
+            cancer_patient_predictions = np.abs(decisions > distance_threshold + tol)
+            cancer_patient_predictions[cancer_patient_predictions] = cancer_label
 
         return cancer_patient_predictions.astype(int)
 
@@ -198,6 +205,8 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         normal_label = self.normal_label
         indeterminate_label = self.indeterminate_label
         feature_list = self.feature_list
+        cancer_cluster_list = self.cancer_cluster_list
+        normal_cluster_list = self.normal_cluster_list
 
         X = pd.DataFrame(X)
 
@@ -212,16 +221,30 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         # Copy data
         X_copy = X.copy()
 
-        # Find the closest cancer clusters
-        # Get the distance matrix
-        cancer_distances = euclidean_distances(X_features, self.cancer_data_)
-        closest_cancer_distances = np.min(cancer_distances, axis=1)
-        X_copy["closest_cancer_distances"] = closest_cancer_distances
-        # Find the minimum distances per patient
-        closest_cancer_patient_distances = X_copy.groupby(
-                "Patient_ID")["closest_cancer_distances"].min().values
+        if normal_cluster_list in (None, ""):
+            # Find the closest cancer clusters
+            # Get the distance matrix
+            cancer_distances = euclidean_distances(X_features, self.cancer_data_)
+            closest_cancer_distances = np.min(cancer_distances, axis=1)
+            X_copy["closest_cancer_distances"] = closest_cancer_distances
+            # Find the minimum distances per patient
+            closest_cancer_patient_distances = X_copy.groupby(
+                    "Patient_ID")["closest_cancer_distances"].min().values
 
-        # For normal, find the closest normal clusters for each measurement
-        decisions = closest_cancer_patient_distances
+            # For normal, find the closest normal clusters for each measurement
+            decisions = closest_cancer_patient_distances
+
+        if cancer_cluster_list in (None, ""):
+            # Find the closest normal clusters
+            # Get the distance matrix
+            normal_distances = euclidean_distances(X_features, self.normal_data_)
+            closest_normal_distances = np.min(normal_distances, axis=1)
+            X_copy["closest_normal_distances"] = closest_normal_distances
+            # Find the maximum distances per patient
+            closest_normal_patient_distances = X_copy.groupby(
+                    "Patient_ID")["closest_normal_distances"].max().values
+
+            # For normal, find the closest normal clusters for each measurement
+            decisions = closest_normal_patient_distances
 
         return decisions
