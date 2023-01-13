@@ -32,6 +32,11 @@ from eosdxanalysis.models.utils import add_patient_data
 from eosdxanalysis.models.utils import plot_roc_curve
 from eosdxanalysis.models.utils import plot_precision_recall_curve
 
+MODEL_TYPE_LIST = [
+        "kmeans",
+        "centerwise",
+        "pointwise",
+        ]
 
 def run_cancer_cluster_predictions_on_df(
         df_train, df_predict=None, output_path=None, cancer_cluster_list=None,
@@ -231,6 +236,7 @@ def run_patient_predictions_kmeans(
     ##########################
 
     if data_filepath is not None:
+        print("Running blind predictions:")
         # Load testing data
         df_test = pd.read_csv(data_filepath, index_col="Filename")
         df_test_scaled_features = scale_features(df_test, scale_by, feature_list)
@@ -423,6 +429,7 @@ def run_patient_predictions_centerwise(
             subtitle=subtitle)
 
     if data_filepath is not None:
+        print("Running blind predictions:")
         # Load testing data
         df_test = pd.read_csv(data_filepath, index_col="Filename")
         df_test_scaled_features = scale_features(df_test, scale_by, feature_list)
@@ -624,6 +631,7 @@ def run_patient_predictions_pointwise(
             subtitle=subtitle)
 
     if data_filepath is not None:
+        print("Running blind predictions:")
         # Load testing data
         df_test = pd.read_csv(data_filepath, index_col="Filename")
         df_test_scaled_features = scale_features(df_test, scale_by, feature_list)
@@ -939,6 +947,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--blind_predictions", type=str, default=None, required=False,
             help="File to save blind predictions.")
+    parser.add_argument(
+            "--model_type", type=str, default="kmeans", required=False,
+            help="Model type to use: kmeans, centerwise, pointwise.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -956,6 +967,7 @@ if __name__ == '__main__':
     scale_by = args.scale_by
     patient_db_filepath = args.patient_db_filepath
     blind_predictions = args.blind_predictions
+    model_type = args.model_type
 
     # Convert cancer_cluster_list csv to list of ints
     if cancer_cluster_list:
@@ -979,16 +991,52 @@ if __name__ == '__main__':
 
         print(results.cv_results_)
 
-    run_patient_predictions_centerwise(
-            training_data_filepath=training_data_filepath,
-            data_filepath=data_filepath,
-            cancer_cluster_list=cancer_cluster_list,
-            normal_cluster_list=normal_cluster_list,
-            feature_list=feature_list,
-            cluster_model_name=cluster_model_name,
-            unsupervised_estimator_filepath=unsupervised_estimator_filepath,
-            scale_by=scale_by,
-            patient_db_filepath=patient_db_filepath,
-            blind_predictions=blind_predictions,
-            threshold=distance_threshold,
-            )
+    if model_type not in MODEL_TYPE_LIST:
+        raise ValueError(
+                "Must specify a valid model type! Choose from: {}".format(
+                    MODEL_TYPE_LIST))
+
+    if model_type == "kmeans":
+        print("Running {} model.".format(model_type))
+        run_patient_predictions_kmeans(
+                training_data_filepath=training_data_filepath,
+                data_filepath=data_filepath,
+                cancer_cluster_list=cancer_cluster_list,
+                normal_cluster_list=normal_cluster_list,
+                feature_list=feature_list,
+                cluster_model_name=cluster_model_name,
+                unsupervised_estimator_filepath=unsupervised_estimator_filepath,
+                scale_by=scale_by,
+                patient_db_filepath=patient_db_filepath,
+                blind_predictions=blind_predictions,
+                )
+    if model_type == "centerwise":
+        print("Running {} model.".format(model_type))
+        run_patient_predictions_centerwise(
+                training_data_filepath=training_data_filepath,
+                data_filepath=data_filepath,
+                cancer_cluster_list=cancer_cluster_list,
+                normal_cluster_list=normal_cluster_list,
+                feature_list=feature_list,
+                cluster_model_name=cluster_model_name,
+                unsupervised_estimator_filepath=unsupervised_estimator_filepath,
+                scale_by=scale_by,
+                patient_db_filepath=patient_db_filepath,
+                blind_predictions=blind_predictions,
+                threshold=distance_threshold,
+                )
+    if model_type == "pointwise":
+        print("Running {} model.".format(model_type))
+        run_patient_predictions_pointwise(
+                training_data_filepath=training_data_filepath,
+                data_filepath=data_filepath,
+                cancer_cluster_list=cancer_cluster_list,
+                normal_cluster_list=normal_cluster_list,
+                feature_list=feature_list,
+                cluster_model_name=cluster_model_name,
+                unsupervised_estimator_filepath=unsupervised_estimator_filepath,
+                scale_by=scale_by,
+                patient_db_filepath=patient_db_filepath,
+                blind_predictions=blind_predictions,
+                threshold=distance_threshold,
+                )
