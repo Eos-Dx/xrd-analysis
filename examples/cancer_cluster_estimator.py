@@ -29,7 +29,8 @@ from eosdxanalysis.models.estimators import PatientCancerClusterEstimator
 
 from eosdxanalysis.models.utils import scale_features
 from eosdxanalysis.models.utils import add_patient_data
-
+from eosdxanalysis.models.utils import plot_roc_curve
+from eosdxanalysis.models.utils import plot_precision_recall_curve
 
 
 def run_cancer_cluster_predictions_on_df(
@@ -398,56 +399,29 @@ def run_patient_predictions_centerwise(
                     distance_threshold, accuracy, precision, sensitivity,
                     specificity))
 
-    # Calculate ROC AUC
-    y_score_patients = estimator.decision_function(df_train_ext)
-    auc = roc_auc_score(y_true_patients, y_score_patients)
+    subtitle = "Cluster Centerwise Distance Model"
 
-    # Manually create ROC and precision-recall curves
-    subtitle = "Cluster Centerwise Cancer Distance Model"
-    tpr = sensitivity_array
-    fpr = 1 - specificity_array
-    x_offset = 0
-    y_offset = 0.002
+    plot_roc_curve(
+            normal_cluster_list=normal_cluster_list,
+            cancer_cluster_list=cancer_cluster_list,
+            df_train_ext=df_train_ext,
+            estimator=estimator,
+            y_true_patients=y_true_patients,
+            threshold_range=threshold_range,
+            sensitivity_array=sensitivity_array,
+            specificity_array=specificity_array,
+            subtitle=subtitle)
 
-    # ROC Curve
-    title = "ROC Curve - {}".format(subtitle)
-    fig = plt.figure(title, figsize=(12,12))
-
-    if normal_cluster_list in (None, ""):
-        plt.step(fpr, tpr, where="post", label="AUC = {:0.2f}".format(auc))
-    if cancer_cluster_list in (None, ""):
-        plt.step(fpr, tpr, where="pre", label="AUC = {:0.2f}".format(auc))
-
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate")
-    plt.xlim([0,1])
-    plt.ylim([0,1])
-    plt.title(title)
-    plt.legend()
-
-    # Annotate by threshold
-    for x, y, s in zip(fpr, tpr, threshold_range):
-        plt.text(x+x_offset, y+y_offset, np.round(s,1))
-
-    # Precision-Recall Curve
-    title = "Precision-Recall Curve - {}".format(subtitle)
-    fig = plt.figure(title, figsize=(12,12))
-    recall_array = sensitivity_array
-    if normal_cluster_list in (None, ""):
-        plt.step(recall_array, precision_array, where="pre")
-    if cancer_cluster_list in (None, ""):
-        plt.step(recall_array, precision_array, where="post")
-    plt.xlabel("Recall")
-    plt.ylabel("Precision")
-    plt.xlim([0,1])
-    plt.ylim([0,1])
-    plt.title(title)
-
-    # Annotate by threshold
-    for x, y, s in zip(recall_array, precision_array, threshold_range):
-        plt.text(x+x_offset, y+y_offset, np.round(s,1))
-
-    plt.show()
+    plot_precision_recall_curve(
+            normal_cluster_list=normal_cluster_list,
+            cancer_cluster_list=cancer_cluster_list,
+            df_train_ext=df_train_ext,
+            estimator=estimator,
+            y_true_patients=y_true_patients,
+            threshold_range=threshold_range,
+            recall_array=sensitivity_array,
+            precision_array=precision_array,
+            subtitle=subtitle)
 
     if data_filepath is not None:
         # Load testing data
