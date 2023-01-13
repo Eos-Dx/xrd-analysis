@@ -318,10 +318,7 @@ def run_patient_predictions_centerwise(
     df_clusters = pd.DataFrame(data=clusters, columns=feature_list)
     n_clusters = clusters.shape[0]
     df_clusters["kmeans_{}".format(n_clusters)] = np.arange(n_clusters)
-    y_true_clusters = np.zeros((n_clusters))
-    if cancer_cluster_list in ("", None):
-        cancer_cluster_list = list(set(np.arange(n_clusters)) - set(normal_cluster_list))
-    y_true_clusters[cancer_cluster_list] = 1
+
 
     #################################################################
     # Add patient data
@@ -338,8 +335,18 @@ def run_patient_predictions_centerwise(
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
-    y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
-    y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
+    if cancer_cluster_list in ("", None):
+        y_true_measurements[df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 0
+        y_true_measurements[~df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 1
+        y_true_clusters = np.ones((n_clusters))
+        y_true_clusters[normal_cluster_list] = 1
+    if normal_cluster_list in ("", None):
+        y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
+        y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
+        y_true_clusters = np.zeros((n_clusters))
+        y_true_clusters[cancer_cluster_list] = 1
+    # y_true_measurements = y_true_measurements.values
+    df_train_ext["predictions"] = y_true_measurements.astype(int)
 
     # Generate patient-wise true labels of the training data
     y_true_patients = df_train_ext.groupby("Patient_ID")["Diagnosis"].max()
@@ -401,7 +408,12 @@ def run_patient_predictions_centerwise(
     # ROC Curve
     title = "ROC Curve - {}".format(subtitle)
     fig = plt.figure(title, figsize=(12,12))
-    plt.step(fpr, tpr, where="post")
+
+    if normal_cluster_list in (None, ""):
+        plt.step(fpr, tpr, where="post")
+    if cancer_cluster_list in (None, ""):
+        plt.step(fpr, tpr, where="pre")
+
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate")
     plt.xlim([0,1])
@@ -416,7 +428,10 @@ def run_patient_predictions_centerwise(
     title = "Precision-Recall Curve - {}".format(subtitle)
     fig = plt.figure(title, figsize=(12,12))
     recall_array = sensitivity_array
-    plt.step(recall_array, precision_array, where="pre")
+    if normal_cluster_list in (None, ""):
+        plt.step(recall_array, precision_array, where="pre")
+    if cancer_cluster_list in (None, ""):
+        plt.step(recall_array, precision_array, where="post")
     plt.xlabel("Recall")
     plt.ylabel("Precision")
     plt.xlim([0,1])
@@ -994,7 +1009,7 @@ if __name__ == '__main__':
 
         print(results.cv_results_)
 
-    run_patient_predictions_pointwise(
+    run_patient_predictions_centerwise(
             training_data_filepath=training_data_filepath,
             data_filepath=data_filepath,
             cancer_cluster_list=cancer_cluster_list,
