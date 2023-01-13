@@ -398,6 +398,10 @@ def run_patient_predictions_centerwise(
                     distance_threshold, accuracy, precision, sensitivity,
                     specificity))
 
+    # Calculate ROC AUC
+    y_score_patients = estimator.decision_function(df_train_ext)
+    auc = roc_auc_score(y_true_patients, y_score_patients)
+
     # Manually create ROC and precision-recall curves
     subtitle = "Cluster Centerwise Cancer Distance Model"
     tpr = sensitivity_array
@@ -410,15 +414,16 @@ def run_patient_predictions_centerwise(
     fig = plt.figure(title, figsize=(12,12))
 
     if normal_cluster_list in (None, ""):
-        plt.step(fpr, tpr, where="post")
+        plt.step(fpr, tpr, where="post", label="AUC = {:0.2f}".format(auc))
     if cancer_cluster_list in (None, ""):
-        plt.step(fpr, tpr, where="pre")
+        plt.step(fpr, tpr, where="pre", label="AUC = {:0.2f}".format(auc))
 
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate")
     plt.xlim([0,1])
     plt.ylim([0,1])
     plt.title(title)
+    plt.legend()
 
     # Annotate by threshold
     for x, y, s in zip(fpr, tpr, threshold_range):
