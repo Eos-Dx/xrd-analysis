@@ -16,9 +16,14 @@ from skimage.transform import rescale
 from skimage.transform import warp_polar
 from skimage.transform import rotate
 
+from sklearn.metrics import roc_auc_score
+
+import matplotlib.pyplot as plt
+
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.utils import create_circular_mask
+
 
 def gen_jn_zerosmatrix(shape, save_mat=False, save_numpy=False, outdir=""):
     """
@@ -491,6 +496,76 @@ def add_patient_data(df, patient_db_filepath, index_col="Barcode"):
             df_ext, db, left_on=index_col, right_index=True)
 
     return df_ext
+
+def plot_roc_curve(
+        normal_cluster_list=None, cancer_cluster_list=None,
+        df_train_ext=None, estimator=None,
+        y_true_patients=None, threshold_range=None,
+        sensitivity_array=None, specificity_array=None,
+        subtitle=None):
+    # Calculate ROC AUC
+    if normal_cluster_list in (None, ""):
+        y_score_patients = 1 - estimator.decision_function(df_train_ext)
+    if cancer_cluster_list in (None, ""):
+        y_score_patients = estimator.decision_function(df_train_ext)
+    auc = roc_auc_score(y_true_patients, y_score_patients)
+
+    # Manually create ROC and precision-recall curves
+    tpr = sensitivity_array
+    fpr = 1 - specificity_array
+    x_offset = 0
+    y_offset = 0.002
+
+    # ROC Curve
+    title = "ROC Curve - {}".format(subtitle)
+    fig = plt.figure(title, figsize=(12,12))
+
+    if normal_cluster_list in (None, ""):
+        plt.step(fpr, tpr, where="post", label="AUC = {:0.2f}".format(auc))
+    if cancer_cluster_list in (None, ""):
+        plt.step(fpr, tpr, where="pre", label="AUC = {:0.2f}".format(auc))
+
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.xlim([0,1])
+    plt.ylim([0,1])
+    plt.title(title)
+    plt.legend(loc="lower right")
+
+    # Annotate by threshold
+    for x, y, s in zip(fpr, tpr, threshold_range):
+        plt.text(x+x_offset, y+y_offset, np.round(s,1))
+
+    plt.show()
+
+def plot_precision_recall_curve(
+        normal_cluster_list=None, cancer_cluster_list=None,
+        df_train_ext=None, estimator=None,
+        y_true_patients=None, threshold_range=None,
+        recall_array=None, precision_array=None,
+        subtitle=None):
+    # Precision-Recall Curve
+    title = "Precision-Recall Curve - {}".format(subtitle)
+    fig = plt.figure(title, figsize=(12,12))
+
+    x_offset = 0
+    y_offset = 0.002
+
+    if normal_cluster_list in (None, ""):
+        plt.step(recall_array, precision_array, where="pre")
+    if cancer_cluster_list in (None, ""):
+        plt.step(recall_array, precision_array, where="post")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.xlim([0,1])
+    plt.ylim([0,1])
+    plt.title(title)
+
+    # Annotate by threshold
+    for x, y, s in zip(recall_array, precision_array, threshold_range):
+        plt.text(x+x_offset, y+y_offset, np.round(s,1))
+
+    plt.show()
 
 #def l1_metric_optimized(image1, image2, params, plan=None):
 #    """
