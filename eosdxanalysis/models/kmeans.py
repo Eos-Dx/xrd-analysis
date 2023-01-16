@@ -19,7 +19,7 @@ from joblib import dump
 def run_kmeans(
         data_filepath, db_filepath=None, output_path=None, feature_list=None,
         cluster_count_min=2, cluster_count_max=2, image_source_path=None,
-        divide_by=None, index_col=None):
+        divide_by=None, model_type="measurementwise"):
     """
     Runs k-means on a dataset of extracted features for between
     ``cluster_count_min`` and ``cluster_count_max`` number of clusters.
@@ -48,9 +48,12 @@ def run_kmeans(
 
     image_source_path : str
         Path to image previews
+
+    model_type : str
+        Choice of "measurementwise" (default) or "patientwise".
     """
     # Load data into dataframe
-    df = pd.read_csv(data_filepath, index_col=index_col)
+    df = pd.read_csv(data_filepath, index_col="Filename")
 
     # Get list of features
     if feature_list is None:
@@ -85,15 +88,73 @@ def run_kmeans(
     kmeans_results_path = os.path.join(output_path, kmeans_results_dir)
     os.makedirs(kmeans_results_path, exist_ok=True)
 
-    # Fit the standard scaler
-    scaler = StandardScaler()
-    scaler.fit(df)
-    # Create dataframe with transformed features
-    transformed_features = scaler.transform(df)
-    df_transformed = pd.DataFrame(
-            data=transformed_features,
-            columns=feature_list,
-            index=df.index)
+    if model_type == "measurementwise":
+        # Fit the standard scaler
+        scaler = StandardScaler()
+        scaler.fit(df)
+
+        # Create dataframe with transformed features
+        transformed_features = scaler.transform(df)
+        df_transformed = pd.DataFrame(
+                data=transformed_features,
+                columns=feature_list,
+                index=df.index)
+
+        # Add patient data if provided
+        if db_filepath:
+            db = pd.read_csv(db_filepath, index_col="Barcode")
+            extraction = df_transformed.index.str.extractall(
+                    "CR_([A-Z]{1}).*?([0-9]+)")
+            extraction_series = extraction[0] + extraction[1].str.zfill(5)
+            extraction_list = extraction_series.tolist()
+
+            assert(len(extraction_list) == df_transformed.shape[0])
+            df_transformed_ext = df_transformed.copy()
+            df_transformed_ext["Barcode"] = extraction_list
+
+            df_transformed_ext = pd.merge(
+                    df_transformed_ext, db, left_on="Barcode", right_index=True)
+
+    # Set model type
+    if model_type == "patientwise":
+        if db_filepath is None:
+            raise ValueError("Must provide path to patient database file.")
+
+        # Get patient data
+        db = pd.read_csv(db_filepath, index_col="Barcode")
+        extraction = df.index.str.extractall(
+                "CR_([A-Z]{1}).*?([0-9]+)")
+        extraction_series = extraction[0] + extraction[1].str.zfill(5)
+        extraction_list = extraction_series.tolist()
+
+        assert(len(extraction_list) == df.shape[0])
+        df_ext = df.copy()
+        df_ext["Barcode"] = extraction_list
+
+        df_ext = pd.merge(
+                df_ext, db, left_on="Barcode", right_index=True)
+
+        # Take mean of patient measurements to get patient centroid
+        df_patients = df_ext.groupby(
+                "Patient_ID").agg("mean")[feature_list]
+
+        # Add in diagnosis
+        df_patients_ext = df_ext.groupby(
+                "Patient_ID").max()
+
+        # Fit the standard scaler
+        scaler = StandardScaler()
+        scaler.fit(df_patients)
+
+        # Create dataframe with transformed features
+        transformed_features = scaler.transform(df_patients)
+        df_transformed = pd.DataFrame(
+                data=transformed_features,
+                columns=feature_list,
+                index=df_patients.index)
+
+        df_transformed_ext = df_transformed.copy()
+        df_transformed_ext["Diagnosis"] = df_ext.groupby("Patient_ID").max()["Diagnosis"]
 
     # Train K-means models for each cluster number
     for cluster_count in range(cluster_count_min, cluster_count_max+1):
@@ -103,6 +164,9 @@ def run_kmeans(
 
         # Save the labels in a new dataframe
         df_transformed["kmeans_{}".format(cluster_count)] = kmeans.labels_
+        if db_filepath:
+            df_transformed_ext["kmeans_{}".format(cluster_count)] = \
+                    kmeans.labels_
 
         estimator = make_pipeline(scaler, kmeans)
 
@@ -132,18 +196,6 @@ def run_kmeans(
 
     # If patients database provided, save extended version
     if db_filepath:
-        db = pd.read_csv(db_filepath, index_col="Barcode")
-        extraction = df_transformed.index.str.extractall(
-                "CR_([A-Z]{1}).*?([0-9]+)")
-        extraction_series = extraction[0] + extraction[1].str.zfill(5)
-        extraction_list = extraction_series.tolist()
-
-        assert(len(extraction_list) == df_transformed.shape[0])
-        df_transformed_ext = df_transformed.copy()
-        df_transformed_ext["Barcode"] = extraction_list
-
-        df_transformed_ext = pd.merge(
-                df_transformed_ext, db, left_on="Barcode", right_index=True)
         # Save the transformed data with k-means labels and patient IDs
         kmeans_results_ext_filename = "kmeans_results_ext_n{}_{}.csv".format(
                     cluster_count, timestamp)
@@ -228,8 +280,8 @@ if __name__ == '__main__':
             "--divide_by", default=None, required=False,
             help="Input feature to scale by. This feature is not used for clustering.")
     parser.add_argument(
-            "--index_col", default="Filename", type=str, required=False,
-            help="Name of the index column for training data frame.")
+            "--model_type", default="measurementwise", type=str, required=False,
+            help="Choice of ``measurementwise`` (default) or ``patientwise`` model.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -246,12 +298,12 @@ if __name__ == '__main__':
     image_source_path = args.image_source_path
 
     divide_by = args.divide_by
-    index_col = args.index_col
+    model_type = args.model_type
 
     run_kmeans(
             data_filepath, db_filepath=db_filepath, output_path=output_path,
             feature_list=feature_list, cluster_count_min=cluster_count_min,
             cluster_count_max=cluster_count_max,
             image_source_path=image_source_path, divide_by=divide_by,
-            index_col=index_col,
+            model_type=model_type,
             )
