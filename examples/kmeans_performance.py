@@ -13,17 +13,22 @@ def kmeans_performance(
         kmeans_results_filepath=None,
         patient_db_filepath=None,
         cluster_count=None,
+        index_col=None,
+        model_type=None,
         ):
-
+    if model_type == "measurementwise":
+        index_col = "Filename"
+    elif model_type == "patientwise":
+        index_col = "Patient_ID"
 
     # Set kmeans_column
     kmeans_column = f"kmeans_{cluster_count}"
 
     # Open measurement k-means cluster labels
-    df_kmeans = pd.read_csv(kmeans_results_filepath, index_col="Filename")
+    df_kmeans = pd.read_csv(kmeans_results_filepath, index_col=index_col)
 
     # Import patient data if not already present
-    if "Patient_ID" not in df_kmeans.columns:
+    if "Patient_ID" not in df_kmeans.columns and model_type == "measurementwise":
         # Set patients database
         db = pd.read_csv(patient_db_filepath, index_col="Barcode")
 
@@ -52,11 +57,16 @@ def kmeans_performance(
         num_healthy = len(df_cluster[df_cluster["Diagnosis"] == "healthy"])
         cancer_ratio = num_cancer / (num_cancer + num_healthy)
         cluster_name = "cluster_{}".format(idx)
-        cluster_patients = df_kmeans[df_kmeans[f"kmeans_{cluster_count}"] == idx]["Patient_ID"].unique()
-        num_cancer_patients = len(
-                df_cluster[df_cluster["Diagnosis"] == "cancer"]["Patient_ID"].unique())
-        num_healthy_patients = len(
-                df_cluster[df_cluster["Diagnosis"] == "healthy"]["Patient_ID"].unique())
+
+        if model_type == "measurementwise":
+            num_cancer_patients = len(
+                    df_cluster[df_cluster["Diagnosis"] == "cancer"]["Patient_ID"].unique())
+            num_healthy_patients = len(
+                    df_cluster[df_cluster["Diagnosis"] == "healthy"]["Patient_ID"].unique())
+        elif model_type == "patientwise":
+            num_cancer_patients = len(df_kmeans["Diagnosis"] == "cancer")
+            num_healthy_patients = len(df_kmeans["Diagnosis"] == "healthy")
+
         patient_cancer_ratio = num_cancer_patients / (num_cancer_patients + num_healthy_patients)
         print(
                 f"{idx},"
@@ -81,6 +91,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--cluster_count", type=int, default=None, required=True,
             help="The cluser count for k-means.")
+    parser.add_argument(
+            "--model_type", default="measurementwise", type=str, required=False,
+            help="Choice of ``measurementwise`` (default) or ``patientwise`` model.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -88,9 +101,11 @@ if __name__ == '__main__':
     kmeans_results_filepath = args.kmeans_results_filepath
     cluster_count = args.cluster_count
     patient_db_filepath = args.patient_db_filepath
+    model_type = args.model_type
 
     kmeans_performance(
         kmeans_results_filepath=kmeans_results_filepath,
         patient_db_filepath=patient_db_filepath,
         cluster_count=cluster_count,
+        model_type=model_type,
         )
