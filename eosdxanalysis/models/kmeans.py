@@ -19,7 +19,7 @@ from joblib import dump
 def run_kmeans(
         data_filepath, db_filepath=None, output_path=None, feature_list=None,
         cluster_count_min=2, cluster_count_max=2, image_source_path=None,
-        divide_by=None):
+        divide_by=None, index_col=None):
     """
     Runs k-means on a dataset of extracted features for between
     ``cluster_count_min`` and ``cluster_count_max`` number of clusters.
@@ -50,7 +50,7 @@ def run_kmeans(
         Path to image previews
     """
     # Load data into dataframe
-    df = pd.read_csv(data_filepath, index_col="Filename")
+    df = pd.read_csv(data_filepath, index_col=index_col)
 
     # Get list of features
     if feature_list is None:
@@ -227,6 +227,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--divide_by", default=None, required=False,
             help="Input feature to scale by. This feature is not used for clustering.")
+    parser.add_argument(
+            "--index_col", default="Filename", type=str, required=False,
+            help="Name of the index column for training data frame.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -243,10 +246,12 @@ if __name__ == '__main__':
     image_source_path = args.image_source_path
 
     divide_by = args.divide_by
+    index_col = args.index_col
 
     run_kmeans(
             data_filepath, db_filepath=db_filepath, output_path=output_path,
             feature_list=feature_list, cluster_count_min=cluster_count_min,
             cluster_count_max=cluster_count_max,
             image_source_path=image_source_path, divide_by=divide_by,
+            index_col=index_col,
             )
