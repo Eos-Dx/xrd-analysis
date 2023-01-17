@@ -406,12 +406,19 @@ def run_patient_predictions_centerwise(
 
     subtitle = "Cluster Centerwise Distance Model"
 
+    y_score_patients = estimator.decision_function(df_train_ext)
+
+    RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
+
+    fpr, tpr, thresholds = roc_curve(y_true_patients, y_score_patients)
+
+    plt.show()
+
     plot_roc_curve(
             normal_cluster_list=normal_cluster_list,
             cancer_cluster_list=cancer_cluster_list,
-            df_train_ext=df_train_ext,
-            estimator=estimator,
             y_true_patients=y_true_patients,
+            y_score_patients=y_score_patients,
             threshold_range=threshold_range,
             sensitivity_array=sensitivity_array,
             specificity_array=specificity_array,
@@ -420,9 +427,6 @@ def run_patient_predictions_centerwise(
     plot_precision_recall_curve(
             normal_cluster_list=normal_cluster_list,
             cancer_cluster_list=cancer_cluster_list,
-            df_train_ext=df_train_ext,
-            estimator=estimator,
-            y_true_patients=y_true_patients,
             threshold_range=threshold_range,
             recall_array=sensitivity_array,
             precision_array=precision_array,
@@ -608,12 +612,19 @@ def run_patient_predictions_pointwise(
 
     subtitle = "Cluster Pointwise Distance Model"
 
+    y_score_patients = estimator.decision_function(df_train_ext)
+
+    RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
+
+    fpr, tpr, thresholds = roc_curve(y_true_patients, y_score_patients)
+
+    plt.show()
+
     plot_roc_curve(
             normal_cluster_list=normal_cluster_list,
             cancer_cluster_list=cancer_cluster_list,
-            df_train_ext=df_train_ext,
-            estimator=estimator,
             y_true_patients=y_true_patients,
+            y_score_patients=y_score_patients,
             threshold_range=threshold_range,
             sensitivity_array=sensitivity_array,
             specificity_array=specificity_array,
@@ -622,9 +633,6 @@ def run_patient_predictions_pointwise(
     plot_precision_recall_curve(
             normal_cluster_list=normal_cluster_list,
             cancer_cluster_list=cancer_cluster_list,
-            df_train_ext=df_train_ext,
-            estimator=estimator,
-            y_true_patients=y_true_patients,
             threshold_range=threshold_range,
             recall_array=sensitivity_array,
             precision_array=precision_array,
@@ -650,7 +658,6 @@ def run_patient_predictions_pointwise(
                 df_test_fully_scaled,
                 patient_db_filepath,
                 index_col="Barcode")
-
 
         # Make predictions on test data
         distance_threshold = threshold
