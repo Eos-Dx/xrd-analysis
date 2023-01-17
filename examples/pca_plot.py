@@ -28,8 +28,7 @@ def run_pca_plot(
         training_filepath=None, kmeans_model_filepath=None,
         kmeans_results_filepath=None, blind_filepath=None, db_filepath=None,
         output_path=None, scale_by=None, feature_list=None, n_components=2,
-        n_clusters=None, index_col=None, standard_scaler=False,
-        model_type="measurementwise"):
+        n_clusters=None):
     """
     """
     cluster_model_name = "kmeans_{}".format(n_clusters)
@@ -44,89 +43,47 @@ def run_pca_plot(
     timestamp = datetime.utcnow().strftime(timestr)
 
     # Load training data
-    df_train = pd.read_csv(training_filepath, index_col=index_col)
-    if scale_by is not None:
-        df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
-    else:
-        df_train_scaled_features = df_train
+    df_train = pd.read_csv(training_filepath, index_col="Filename")
+    df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
 
     # Load saved scaler and kmeans model
     unsupervised_estimator = load(kmeans_model_filepath)
     scaler = unsupervised_estimator["standardscaler"]
     kmeans_model = unsupervised_estimator["kmeans"]
 
-    # Perform final standard scaling of training data
-    if standard_scaler:
-        X_train_fully_scaled = scaler.transform(
-                df_train_scaled_features[feature_list])
-        df_train_fully_scaled = df_train_scaled_features.copy()
-        df_train_fully_scaled[feature_list] = X_train_fully_scaled
-    else:
-        X_train_fully_scaled = df_train_scaled_features[feature_list]
-        df_train_fully_scaled = df_train_scaled_features
+    # Performan final standard scaling of training data
+    X_train_fully_scaled = scaler.transform(
+            df_train_scaled_features[feature_list])
+    df_train_fully_scaled = df_train_scaled_features.copy()
+    df_train_fully_scaled[feature_list] = X_train_fully_scaled
+    # Get k-means clusters on training data
+    df_train_fully_scaled[cluster_model_name] = kmeans_model.predict(
+            X_train_fully_scaled)
 
-    # Check if patientwise model
-    if model_type == "patientwise":
-        if db_filepath is None:
-            raise ValueError("Must provide patient database file to run"
-            " ``patientwise`` analysis.")
+    # Add patient data
+    df_train_ext = add_patient_data(
+            df_train_fully_scaled,
+            db_filepath,
+            index_col="Barcode")
 
-        # Take mean of patient measurements to get centroid
-        df_train_patients = df_train_fully_scaled.groupby(
-                "Patient_ID").agg("mean")[feature_list]
-        # Add in Diagnosis
-        df_train_patients_ext = df_train_fully_scaled.groupby(
-                "Patient_ID").max()
+    # Load blinding data
+    df_blind = pd.read_csv(blind_filepath, index_col="Filename")
+    df_blind_scaled_features = scale_features(df_blind, scale_by, feature_list)
 
-        X_train_patients_fully_scaled = df_train_patients_ext[feature_list]
+    # Performan final standard scaling of blind data
+    X_blind_fully_scaled = scaler.transform(
+            df_blind_scaled_features[feature_list])
+    df_blind_fully_scaled = df_blind_scaled_features.copy()
+    df_blind_fully_scaled[feature_list] = X_blind_fully_scaled
+    # Get k-means clusters on blind data
+    df_blind_fully_scaled[cluster_model_name] = kmeans_model.predict(
+            X_blind_fully_scaled)
 
-        # Get k-means clusters on training data
-        df_train_patients[cluster_model_name] = kmeans_model.predict(
-                X_train_patients_fully_scaled)
-
-        df_train_ext = df_train_patients_ext
-        X_train_fully_scaled = X_train_patients_fully_scaled
-
-    elif model_type == "measurementwise":
-        # Get k-means clusters on training data
-        df_train_fully_scaled[cluster_model_name] = kmeans_model.predict(
-                X_train_fully_scaled)
-
-        # Add patient data
-        df_train_ext = add_patient_data(
-                df_train_fully_scaled,
-                db_filepath,
-                index_col="Barcode")
-
-    if not df_blind.empty:
-        # Load blind data
-        df_blind = pd.read_csv(blind_filepath, index_col="Filename")
-        if scale_by is not None:
-            df_blind_scaled_features = scale_features(df_blind, scale_by, feature_list)
-        else:
-            df_blind_scaled_features = df_blind
-
-        # Performan final standard scaling of blind data
-        if standard_scaler:
-            X_blind_fully_scaled = scaler.transform(
-                    df_blind_scaled_features[feature_list])
-            df_blind_fully_scaled = df_blind_scaled_features.copy()
-            df_blind_fully_scaled[feature_list] = X_blind_fully_scaled
-        else:
-            X_blind_fully_scaled = df_blind_scaled_features[feature_list]
-            df_blind_fully_scaled = df_blind_scaled_features
-        # Get k-means clusters on blind data
-        df_blind_fully_scaled[cluster_model_name] = kmeans_model.predict(
-                X_blind_fully_scaled)
-
-        if index_col == "Filename":
-            # Add patient data
-            df_blind_ext = add_patient_data(
-                    df_blind_fully_scaled,
-                    db_filepath,
-                    index_col="Barcode")
-        else:
-            df_blind_ext = df_blind_fully_scaled
+    # Add patient data
+    df_blind_ext = add_patient_data(
+            df_blind_fully_scaled,
+            db_filepath,
+            index_col="Barcode")
 
     # Set title based on feature scaling
     if scale_by:
@@ -175,7 +132,7 @@ def run_pca_plot(
         df_all = df_train_ext
 
     # Save dataframe to file
-    df_ext_filename = "extracted_features_pca_{}.csv".format(timestamp)
+    df_ext_filename = "extrated_features_pca_{}.csv".format(timestamp)
     df_ext_filepath = os.path.join(output_path, df_ext_filename)
     # Transform df_ext using estimator
     data_pca_ext = pca.transform(df_train_ext[feature_list])
@@ -189,17 +146,17 @@ def run_pca_plot(
     x_label_offset = 0.01
     y_label_offset = 0.01
 
-    kmeans_results = pd.read_csv(kmeans_results_filepath, index_col=index_col)
+    kmeans_results = pd.read_csv(kmeans_results_filepath, index_col="Filename")
 
-    if not df_blind.empty:
-        # Predict on blind
-        blind_predictions = kmeans_model.predict(df_blind_ext[feature_list].values)
-        df_blind_ext["kmeans_{}".format(n_clusters)] = blind_predictions
+    # Predict on blind
+    blind_predictions = kmeans_model.predict(df_blind_ext[feature_list].values)
+    df_blind_ext["kmeans_{}".format(n_clusters)] = blind_predictions
 
-        df_all.loc[df_blind.index, "kmeans_{}".format(n_clusters)] = blind_predictions
+    df_all.loc[df_blind.index, "kmeans_{}".format(n_clusters)] = blind_predictions
 
     clusters = kmeans_model.cluster_centers_
     pca_clusters = pca.transform(clusters)
+
 
     ###################################
     # 3D PCA subspace projection plot #
@@ -463,14 +420,11 @@ def run_pca_plot(
         extraction_series = extraction[0] + extraction[1].str.zfill(5)
         extraction_list = extraction_series.tolist()
 
-        if index_col == "Filename":
-            assert(len(extraction_list) == df_all.shape[0])
-            df_ext = df_all.copy()
-            df_ext["Barcode"] = extraction_list
+        assert(len(extraction_list) == df_all.shape[0])
+        df_ext = df_all.copy()
+        df_ext["Barcode"] = extraction_list
 
-            df_ext = pd.merge(df_ext, db, left_on="Barcode", right_index=True)
-        else:
-            df_ext = df_all
+        df_ext = pd.merge(df_ext, db, left_on="Barcode", right_index=True)
 
         colors = {
                 "cancer": "red",
@@ -647,16 +601,6 @@ if __name__ == '__main__':
     parser.add_argument(
             "--n_components", type=int, default=2, required=False,
             help="Number of PCA components")
-    parser.add_argument(
-            "--index_col", default="Filename", type=str, required=False,
-            help="Name of the index column for training data frame.")
-    parser.add_argument(
-            "--standard_scaler", action="store_true", required=False,
-            help="Apply standard scaling to the data.")
-    parser.add_argument(
-            "--model_type",type=str, default="measurementwise", required=False,
-            help="Choice of ``measurementwise`` (default) or ``patientwise``"
-            " analysis.")
 
     args = parser.parse_args()
 
@@ -669,10 +613,8 @@ if __name__ == '__main__':
     scale_by = args.scale_by
     feature_list = str(args.feature_list).split(",")
     n_clusters = args.n_clusters
+
     n_components = args.n_components
-    index_col = args.index_col
-    standard_scaler = args.standard_scaler
-    model_type = args.model_type
 
     run_pca_plot(
         training_filepath=training_filepath,
@@ -680,5 +622,5 @@ if __name__ == '__main__':
         kmeans_results_filepath=kmeans_results_filepath,
         blind_filepath=blind_filepath, db_filepath=db_filepath,
         output_path=output_path, scale_by=scale_by, feature_list=feature_list,
-        n_clusters=n_clusters, n_components=n_components, index_col=index_col,
-        standard_scaler=standard_scaler, model_type=model_type)
+        n_clusters=n_clusters,
+        n_components=n_components)
