@@ -187,18 +187,22 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         if normal_cluster_list in (None, ""):
             # Cancer predictions
             # If sample is close enough to any cancer cluster, predict cancer
-            cancer_patient_predictions = np.abs(decisions <= distance_threshold + tol)
+            cancer_patient_predictions = (np.abs(decisions) <= (np.abs(distance_threshold) + tol))
             cancer_patient_predictions[cancer_patient_predictions] = cancer_label
 
         if cancer_cluster_list in (None, ""):
             # Normal predictions
             # If sample is too far from the closest normal cluster, predict cancer
-            cancer_patient_predictions = np.abs(decisions > distance_threshold + tol)
+            cancer_patient_predictions = (decisions > (distance_threshold + tol))
             cancer_patient_predictions[cancer_patient_predictions] = cancer_label
 
         return cancer_patient_predictions.astype(int)
 
     def decision_function(self, X):
+        """
+        Returns a score to be thresholded. Higher scores have increased
+        probability of being cancer.
+        """
 
         tol=1e-6
         cancer_label = self.cancer_label
@@ -231,8 +235,9 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
             closest_cancer_patient_distances = X_copy.groupby(
                     "Patient_ID")["closest_cancer_distances"].min().values
 
-            # For normal, find the closest normal clusters for each measurement
-            decisions = closest_cancer_patient_distances
+            # Take the inverse of distances, smaller distance has higher
+            # probability of being cancer
+            decisions = -closest_cancer_patient_distances
 
         if cancer_cluster_list in (None, ""):
             # Find the closest normal clusters
@@ -244,7 +249,8 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
             closest_normal_patient_distances = X_copy.groupby(
                     "Patient_ID")["closest_normal_distances"].max().values
 
-            # For normal, find the closest normal clusters for each measurement
+            # Return distances from normal, the larger the distance, the higher
+            # probability of being cancer
             decisions = closest_normal_patient_distances
 
         return decisions
