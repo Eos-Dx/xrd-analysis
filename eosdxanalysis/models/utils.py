@@ -499,15 +499,9 @@ def add_patient_data(df, patient_db_filepath, index_col="Barcode"):
 
 def plot_roc_curve(
         normal_cluster_list=None, cancer_cluster_list=None,
-        df_train_ext=None, estimator=None,
-        y_true_patients=None, threshold_range=None,
-        sensitivity_array=None, specificity_array=None,
-        subtitle=None):
+        y_true_patients=None, y_score_patients=None, threshold_range=None,
+        sensitivity_array=None, specificity_array=None, subtitle=None):
     # Calculate ROC AUC
-    if normal_cluster_list in (None, ""):
-        y_score_patients = 1 - estimator.decision_function(df_train_ext)
-    if cancer_cluster_list in (None, ""):
-        y_score_patients = estimator.decision_function(df_train_ext)
     auc = roc_auc_score(y_true_patients, y_score_patients)
 
     # Manually create ROC and precision-recall curves
@@ -540,9 +534,7 @@ def plot_roc_curve(
 
 def plot_precision_recall_curve(
         normal_cluster_list=None, cancer_cluster_list=None,
-        df_train_ext=None, estimator=None,
-        y_true_patients=None, threshold_range=None,
-        recall_array=None, precision_array=None,
+        threshold_range=None, recall_array=None, precision_array=None,
         subtitle=None):
     # Precision-Recall Curve
     title = "Precision-Recall Curve - {}".format(subtitle)
