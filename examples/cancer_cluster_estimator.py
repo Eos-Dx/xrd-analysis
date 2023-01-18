@@ -6,6 +6,7 @@ import pandas as pd
 import argparse
 
 from joblib import load
+from joblib import dump
 
 import matplotlib.pyplot as plt
 
@@ -149,6 +150,7 @@ def run_patient_predictions_kmeans(
         unsupervised_estimator_filepath=None,
         patient_db_filepath=None,
         blind_predictions=None,
+        model_output_filepath=None,
         ):
 
     #######################################
@@ -284,6 +286,9 @@ def run_patient_predictions_kmeans(
         # Save blind predictions to file
         df_test_pred_patients.to_csv(blind_predictions)
 
+        # Save model to file
+        dump(kmeans_model, model_output_filepath)
+
 def run_patient_predictions_centerwise(
         training_data_filepath=None, data_filepath=None,
         feature_list=None, cancer_cluster_list=None,
@@ -292,6 +297,7 @@ def run_patient_predictions_centerwise(
         scale_by=None, patient_db_filepath=None,
         blind_predictions=None,
         threshold=None,
+        model_output_filepath=None,
         ):
     #######################################
     # Load training data
@@ -488,6 +494,9 @@ def run_patient_predictions_centerwise(
 
         # Save blind predictions to file
         df_test_pred_patients.to_csv(blind_predictions)
+
+        # Save model to file
+        dump(estimator, model_output_filepath)
 
 def run_patient_predictions_pointwise(
         training_data_filepath=None, data_filepath=None,
@@ -957,6 +966,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--model_type", type=str, default="kmeans", required=False,
             help="Model type to use: kmeans, centerwise, pointwise.")
+    parser.add_argument(
+            "--model_output_filepath", type=str, default=None, required=False,
+            help="File to save prediction model.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -975,6 +987,7 @@ if __name__ == '__main__':
     patient_db_filepath = args.patient_db_filepath
     blind_predictions = args.blind_predictions
     model_type = args.model_type
+    model_output_filepath = args.model_output_filepath
 
     # Convert cancer_cluster_list csv to list of ints
     if cancer_cluster_list:
@@ -1016,6 +1029,7 @@ if __name__ == '__main__':
                 scale_by=scale_by,
                 patient_db_filepath=patient_db_filepath,
                 blind_predictions=blind_predictions,
+                model_output_filepath=model_output_filepath,
                 )
     if model_type == "centerwise":
         print("Running {} model.".format(model_type))
@@ -1031,6 +1045,7 @@ if __name__ == '__main__':
                 patient_db_filepath=patient_db_filepath,
                 blind_predictions=blind_predictions,
                 threshold=distance_threshold,
+                model_output_filepath=model_output_filepath,
                 )
     if model_type == "pointwise":
         print("Running {} model.".format(model_type))
@@ -1046,4 +1061,5 @@ if __name__ == '__main__':
                 patient_db_filepath=patient_db_filepath,
                 blind_predictions=blind_predictions,
                 threshold=distance_threshold,
+                model_output_filepath=model_output_filepath,
                 )
