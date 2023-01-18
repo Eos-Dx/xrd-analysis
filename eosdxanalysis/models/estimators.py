@@ -105,13 +105,17 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
     def __init__(self, distance_threshold=0, cancer_label=1, normal_label=0,
             feature_list=None, label_name=None, cancer_cluster_list=None,
             normal_cluster_list=None, indeterminate_label=2,
-            distance_type="worst_distance"):
+            distance_type="worst_distance", projection=False,
+            normal_cluster_center=None, abnormal_cluster_center=None):
         """
         Parameters
         ----------
 
         distance_type : str
             Choice of ``worst_distance`` (default) or ``mean_distance`` model.
+
+        projection : str
+            Choice of ``normal``, ``abnormal``, or ``False`` (default).
         """
 
         self.distance_threshold = distance_threshold
@@ -124,6 +128,9 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         self.indeterminate_label = indeterminate_label
         self.tol = 1e-6
         self.distance_type = distance_type
+        self.projection = projection
+        self.normal_cluster_center = normal_cluster_center
+        self.abnormal_cluster_center = abnormal_cluster_center
 
     def fit(self, X, y):
         """
@@ -189,17 +196,18 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         tol = self.tol
         cancer_cluster_list = self.cancer_cluster_list
         normal_cluster_list = self.normal_cluster_list
+        projection = self.projection
 
         # Calculate the distance to the closest clusters
         decisions = self.decision_function(X)
 
-        if normal_cluster_list in (None, ""):
+        if normal_cluster_list in (None, "") or projection == "abnormal":
             # Cancer predictions
             # If sample is close enough to any cancer cluster, predict cancer
             cancer_patient_predictions = (np.abs(decisions) <= (np.abs(distance_threshold) + tol))
             cancer_patient_predictions[cancer_patient_predictions] = cancer_label
 
-        if cancer_cluster_list in (None, ""):
+        if cancer_cluster_list in (None, "") or projection == "normal":
             # Normal predictions
             # If sample is too far from the closest normal cluster, predict cancer
             cancer_patient_predictions = (decisions > (distance_threshold + tol))
@@ -221,6 +229,13 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         cancer_cluster_list = self.cancer_cluster_list
         normal_cluster_list = self.normal_cluster_list
         distance_type = self.distance_type
+        projection = self.projection
+        normal_cluster_center = self.normal_cluster_center
+        abnormal_cluster_center = self.abnormal_cluster_center
+        if normal_cluster_center is not None and abnormal_cluster_center is not None:
+            # Create the vector pointing from the normal cluster to the abnormal cluster
+            normal_abnormal_vector = abnormal_cluster_center - normal_cluster_center
+            normal_abnormal_vector = normal_abnormal_vector.reshape(-1,1)
 
         X = pd.DataFrame(X)
 
@@ -235,43 +250,107 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         # Copy data
         X_copy = X.copy()
 
-        if normal_cluster_list in (None, ""):
-            # Find the closest cancer clusters
-            # Get the distance matrix
-            cancer_distances = euclidean_distances(X_features, self.cancer_data_)
-            closest_cancer_distances = np.min(cancer_distances, axis=1)
-            X_copy["closest_cancer_distances"] = closest_cancer_distances
-            if distance_type == "worst_distance":
-                # Find the minimum distances per patient
-                closest_cancer_patient_distances = X_copy.groupby(
-                        "Patient_ID")["closest_cancer_distances"].min().values
-            elif distance_type == "mean_distance":
-                # Find the mean distances per patient
-                closest_cancer_patient_distances = X_copy.groupby(
-                        "Patient_ID")["closest_cancer_distances"].mean().values
+        if projection is None:
+            if normal_cluster_list in (None, ""):
+                # Find the closest cancer clusters
+                # Get the distance matrix
+                cancer_distances = euclidean_distances(X_features, self.cancer_data_)
+                closest_cancer_distances = np.min(cancer_distances, axis=1)
+                X_copy["closest_cancer_distances"] = closest_cancer_distances
 
-            # Take the inverse of distances, smaller distance has higher
-            # probability of being cancer
-            decisions = -closest_cancer_patient_distances
+                if distance_type == "worst_distance":
+                    # Find the minimum distances per patient
+                    closest_cancer_patient_distances = X_copy.groupby(
+                            "Patient_ID")["closest_cancer_distances"].min().values
+                elif distance_type == "mean_distance":
+                    # Find the mean distances per patient
+                    closest_cancer_patient_distances = X_copy.groupby(
+                            "Patient_ID")["closest_cancer_distances"].mean().values
 
-        if cancer_cluster_list in (None, ""):
+                # Take the inverse of distances, smaller distance has higher
+                # probability of being cancer
+                decisions = -closest_cancer_patient_distances
+
+            if cancer_cluster_list in (None, ""):
+                # Find the closest normal clusters
+                # Get the distance matrix
+                normal_distances = euclidean_distances(X_features, self.normal_data_)
+                closest_normal_distances = np.min(normal_distances, axis=1)
+                X_copy["closest_normal_distances"] = closest_normal_distances
+
+                if distance_type == "worst_distance":
+                    # Find the maximum distances per patient
+                    closest_normal_patient_distances = X_copy.groupby(
+                            "Patient_ID")["closest_normal_distances"].max().values
+                if distance_type == "mean_distance":
+                    # Find the mean distances per patient
+                    closest_normal_patient_distances = X_copy.groupby(
+                            "Patient_ID")["closest_normal_distances"].mean().values
+
+                # Return distances from normal, the larger the distance, the higher
+                # probability of being cancer
+                decisions = closest_normal_patient_distances
+        elif projection == "normal":
+            # Project distance from normal cluster to normal-abnormal axis
             # Find the closest normal clusters
             # Get the distance matrix
-            normal_distances = euclidean_distances(X_features, self.normal_data_)
-            closest_normal_distances = np.min(normal_distances, axis=1)
-            X_copy["closest_normal_distances"] = closest_normal_distances
+
+            # Project X_features onto normal_abnormal_vector
+            X_projected_features = \
+                    (np.dot(X_features, normal_abnormal_vector) @ normal_abnormal_vector.T) \
+                    / np.dot(normal_abnormal_vector.T, normal_abnormal_vector)
+
+            # Calculated distances of projected measurements to normal
+            projected_normal_distances = euclidean_distances(
+                    X_projected_features, self.normal_data_)
+            closest_projected_normal_distances = np.min(projected_normal_distances, axis=1)
+
+            X_copy["closest_projected_normal_distances"] = closest_projected_normal_distances
 
             if distance_type == "worst_distance":
                 # Find the maximum distances per patient
-                closest_normal_patient_distances = X_copy.groupby(
-                        "Patient_ID")["closest_normal_distances"].max().values
+                closest_projected_normal_patient_distances = X_copy.groupby(
+                        "Patient_ID")["closest_projected_normal_distances"].max(
+                                ).values
             if distance_type == "mean_distance":
                 # Find the mean distances per patient
-                closest_normal_patient_distances = X_copy.groupby(
-                        "Patient_ID")["closest_normal_distances"].mean().values
+                closest_projected_normal_patient_distances = X_copy.groupby(
+                        "Patient_ID")["closest_projected_normal_distances"].mean(
+                                ).values
 
-            # Return distances from normal, the larger the distance, the higher
+            # Return projected distances from normal, the larger the distance,
+            # the higher probability of being cancer
+            decisions = closest_projected_normal_patient_distances
+
+        elif projection == "abnormal":
+            # Project distance from abnormal cluster to normal-abnormal axis
+            # Find the closest cancer clusters
+            # Get the distance matrix
+
+            # Project X_features onto normal_abnormal_vector
+            X_projected_features = \
+                    (np.dot(X_features, normal_abnormal_vector) @ normal_abnormal_vector.T) \
+                    / np.dot(normal_abnormal_vector.T, normal_abnormal_vector)
+
+            projected_cancer_distances = euclidean_distances(
+                    X_projected_features, self.cancer_data_)
+            closest_projected_cancer_distances = np.min(projected_cancer_distances, axis=1)
+
+            X_copy["closest_projected_cancer_distances"] = closest_projected_cancer_distances
+
+            if distance_type == "worst_distance":
+                # Find the minimum distances per patient
+                closest_projected_cancer_patient_distances = X_copy.groupby(
+                        "Patient_ID")["closest_projected_cancer_distances"].min(
+                                ).values
+            elif distance_type == "mean_distance":
+                # Find the mean distances per patient
+                closest_projected_cancer_patient_distances = X_copy.groupby(
+                        "Patient_ID")["closest_projected_cancer_distances"].mean(
+                                ).values
+
+            # Take the inverse of distances, smaller distance has higher
             # probability of being cancer
-            decisions = closest_normal_patient_distances
+            decisions = -closest_projected_cancer_patient_distances
 
         return decisions
