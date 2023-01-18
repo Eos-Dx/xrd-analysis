@@ -104,7 +104,15 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
     """
     def __init__(self, distance_threshold=0, cancer_label=1, normal_label=0,
             feature_list=None, label_name=None, cancer_cluster_list=None,
-            normal_cluster_list=None, indeterminate_label=2):
+            normal_cluster_list=None, indeterminate_label=2,
+            distance_type="worst_distance"):
+        """
+        Parameters
+        ----------
+
+        distance_type : str
+            Choice of ``worst_distance`` (default) or ``mean_distance`` model.
+        """
 
         self.distance_threshold = distance_threshold
         self.cancer_label = cancer_label
@@ -115,6 +123,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         self.normal_cluster_list = normal_cluster_list
         self.indeterminate_label = indeterminate_label
         self.tol = 1e-6
+        self.distance_type = distance_type
 
     def fit(self, X, y):
         """
@@ -211,6 +220,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         feature_list = self.feature_list
         cancer_cluster_list = self.cancer_cluster_list
         normal_cluster_list = self.normal_cluster_list
+        distance_type = self.distance_type
 
         X = pd.DataFrame(X)
 
@@ -231,9 +241,14 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
             cancer_distances = euclidean_distances(X_features, self.cancer_data_)
             closest_cancer_distances = np.min(cancer_distances, axis=1)
             X_copy["closest_cancer_distances"] = closest_cancer_distances
-            # Find the minimum distances per patient
-            closest_cancer_patient_distances = X_copy.groupby(
-                    "Patient_ID")["closest_cancer_distances"].min().values
+            if distance_type == "worst_distance":
+                # Find the minimum distances per patient
+                closest_cancer_patient_distances = X_copy.groupby(
+                        "Patient_ID")["closest_cancer_distances"].min().values
+            elif distance_type == "mean_distance":
+                # Find the mean distances per patient
+                closest_cancer_patient_distances = X_copy.groupby(
+                        "Patient_ID")["closest_cancer_distances"].mean().values
 
             # Take the inverse of distances, smaller distance has higher
             # probability of being cancer
@@ -245,9 +260,15 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
             normal_distances = euclidean_distances(X_features, self.normal_data_)
             closest_normal_distances = np.min(normal_distances, axis=1)
             X_copy["closest_normal_distances"] = closest_normal_distances
-            # Find the maximum distances per patient
-            closest_normal_patient_distances = X_copy.groupby(
-                    "Patient_ID")["closest_normal_distances"].max().values
+
+            if distance_type == "worst_distance":
+                # Find the maximum distances per patient
+                closest_normal_patient_distances = X_copy.groupby(
+                        "Patient_ID")["closest_normal_distances"].max().values
+            if distance_type == "mean_distance":
+                # Find the mean distances per patient
+                closest_normal_patient_distances = X_copy.groupby(
+                        "Patient_ID")["closest_normal_distances"].mean().values
 
             # Return distances from normal, the larger the distance, the higher
             # probability of being cancer
