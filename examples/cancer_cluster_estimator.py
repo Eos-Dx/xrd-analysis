@@ -302,6 +302,7 @@ def run_patient_predictions_centerwise(
         threshold=None,
         model_output_filepath=None,
         distance_type=None,
+        projection=None,
         ):
     #######################################
     # Load training data
@@ -336,6 +337,19 @@ def run_patient_predictions_centerwise(
     n_clusters = clusters.shape[0]
     df_clusters["kmeans_{}".format(n_clusters)] = np.arange(n_clusters)
 
+    # Use projection if specified
+    if projection is not None:
+        # Check that normal cluster list and cancer cluster list have one
+        # element each
+        if (len(normal_cluster_list) != 1) and (len(cancer_cluster_list) !=1):
+            raise ValueError("Projection model must include one normal"
+                    " cluster and one cancer cluster only.")
+        normal_cluster = normal_cluster_list[0]
+        cancer_cluster = cancer_cluster_list[0]
+
+        normal_cluster_center = clusters[normal_cluster]
+        abnormal_cluster_center = clusters[cancer_cluster]
+
     #################################################################
     # Add patient data
     # Create labels based on k-means predictions and cluster list
@@ -351,16 +365,17 @@ def run_patient_predictions_centerwise(
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
-    if cancer_cluster_list in ("", None):
+    if cancer_cluster_list in ("", None) or projection == "normal":
         y_true_measurements[df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 0
         y_true_measurements[~df_train_ext[cluster_model_name].isin(normal_cluster_list)] = 1
         y_true_clusters = np.ones((n_clusters))
         y_true_clusters[normal_cluster_list] = 1
-    if normal_cluster_list in ("", None):
+    if normal_cluster_list in ("", None) or projection == "abnormal":
         y_true_measurements[df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 1
         y_true_measurements[~df_train_ext[cluster_model_name].isin(cancer_cluster_list)] = 0
         y_true_clusters = np.zeros((n_clusters))
         y_true_clusters[cancer_cluster_list] = 1
+
     # y_true_measurements = y_true_measurements.values
     df_train_ext["predictions"] = y_true_measurements.astype(int)
 
@@ -387,7 +402,11 @@ def run_patient_predictions_centerwise(
                 cancer_cluster_list=cancer_cluster_list,
                 normal_cluster_list=normal_cluster_list,
                 feature_list=feature_list, label_name=cluster_model_name,
-                distance_type=distance_type)
+                distance_type=distance_type,
+                projection=projection,
+                normal_cluster_center=normal_cluster_center,
+                abnormal_cluster_center=abnormal_cluster_center,
+                )
 
         # Fit the estimator to the cluster training data
         estimator.fit(df_clusters, y_true_clusters)
@@ -476,7 +495,11 @@ def run_patient_predictions_centerwise(
                 cancer_cluster_list=cancer_cluster_list,
                 normal_cluster_list=normal_cluster_list,
                 feature_list=feature_list, label_name=cluster_model_name,
-                distance_type=distance_type)
+                distance_type=distance_type,
+                projection=projection,
+                normal_cluster_center=normal_cluster_center,
+                abnormal_cluster_center=abnormal_cluster_center,
+                )
 
         # Fit the estimator to the cluster training data
         estimator.fit(df_clusters, y_true_clusters)
@@ -518,6 +541,7 @@ def run_patient_predictions_pointwise(
         patient_db_filepath=None,
         distance_type=None,
         model_output_filepath=None,
+        projection=None,
         ):
     #######################################
     # Load training data
@@ -551,6 +575,19 @@ def run_patient_predictions_pointwise(
     df_clusters = pd.DataFrame(data=clusters, columns=feature_list)
     n_clusters = clusters.shape[0]
     df_clusters["kmeans_{}".format(n_clusters)] = np.arange(n_clusters)
+
+    # Use projection if specified
+    if projection is not None:
+        # Check that normal cluster list and cancer cluster list have one
+        # element each
+        if (len(normal_cluster_list) != 1) and (len(cancer_cluster_list) !=1):
+            raise ValueError("Projection model must include one normal"
+                    " cluster and one cancer cluster only.")
+        normal_cluster = normal_cluster_list[0]
+        cancer_cluster = cancer_cluster_list[0]
+
+        normal_cluster_center = clusters[normal_cluster]
+        abnormal_cluster_center = clusters[cancer_cluster]
 
     #################################################################
     # Add patient data
@@ -603,7 +640,11 @@ def run_patient_predictions_pointwise(
                 cancer_cluster_list=cancer_cluster_list,
                 normal_cluster_list=normal_cluster_list,
                 feature_list=feature_list, label_name=cluster_model_name,
-                distance_type=distance_type)
+                distance_type=distance_type,
+                projection=projection,
+                normal_cluster_center=normal_cluster_center,
+                abnormal_cluster_center=abnormal_cluster_center,
+                )
 
         # Fit the estimator to the cluster training data
         estimator.fit(df_train_ext, y_true_measurements)
@@ -691,7 +732,11 @@ def run_patient_predictions_pointwise(
                 cancer_cluster_list=cancer_cluster_list,
                 normal_cluster_list=normal_cluster_list,
                 feature_list=feature_list, label_name=cluster_model_name,
-                distance_type=distance_type)
+                distance_type=distance_type,
+                projection=projection,
+                normal_cluster_center=normal_cluster_center,
+                abnormal_cluster_center=abnormal_cluster_center,
+                )
 
         # Fit the estimator to the cluster training data
         estimator.fit(df_train_ext, y_true_measurements)
@@ -986,6 +1031,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--model_output_filepath", type=str, default=None, required=False,
             help="File to save prediction model.")
+    parser.add_argument(
+            "--projection", type=str, default=None, required=False,
+            help="Use projected distances: ``normal``, ``abnormal``, or ``False``.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -1006,6 +1054,7 @@ if __name__ == '__main__':
     model_type = args.model_type
     distance_type = args.distance_type
     model_output_filepath = args.model_output_filepath
+    projection = args.projection
 
     # Convert cancer_cluster_list csv to list of ints
     if cancer_cluster_list:
@@ -1065,6 +1114,7 @@ if __name__ == '__main__':
                 threshold=distance_threshold,
                 model_output_filepath=model_output_filepath,
                 distance_type=distance_type,
+                projection=projection,
                 )
     if model_type == "pointwise":
         print("Running {} model.".format(model_type))
@@ -1082,4 +1132,5 @@ if __name__ == '__main__':
                 threshold=distance_threshold,
                 model_output_filepath=model_output_filepath,
                 distance_type=distance_type,
+                projection=projection,
                 )
