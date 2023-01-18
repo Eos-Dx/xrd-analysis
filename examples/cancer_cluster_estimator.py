@@ -272,6 +272,8 @@ def run_patient_predictions_kmeans(
 
         # Group by patients
         df_test_pred_patients = df_test_ext.groupby("Patient_ID")["predictions"].max()
+        # Rename index column to Patient_ID
+        df_test_pred_patients.index.rename("Patient_ID", inplace=True)
 
         # df_test_pred_patients.to_csv()
         cancer_prediction_num = df_test_pred_patients.sum()
@@ -485,6 +487,8 @@ def run_patient_predictions_centerwise(
         patient_list = df_test_ext["Patient_ID"].unique()
         df_test_pred_patients = pd.DataFrame(
                 data=y_test_pred_patients, columns=["prediction"], index=patient_list)
+        # Rename index column to Patient_ID
+        df_test_pred_patients.index.rename("Patient_ID", inplace=True)
 
         # Save blind predictions to file
         cancer_prediction_num = df_test_pred_patients.values.sum().astype(int)
