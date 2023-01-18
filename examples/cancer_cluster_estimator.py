@@ -286,8 +286,9 @@ def run_patient_predictions_kmeans(
         # Save blind predictions to file
         df_test_pred_patients.to_csv(blind_predictions)
 
-        # Save model to file
-        dump(kmeans_model, model_output_filepath)
+        if model_output_filepath:
+            # Save model to file
+            dump(kmeans_model, model_output_filepath)
 
 def run_patient_predictions_centerwise(
         training_data_filepath=None, data_filepath=None,
@@ -298,6 +299,7 @@ def run_patient_predictions_centerwise(
         blind_predictions=None,
         threshold=None,
         model_output_filepath=None,
+        distance_type=None,
         ):
     #######################################
     # Load training data
@@ -382,7 +384,8 @@ def run_patient_predictions_centerwise(
                 normal_label=0,
                 cancer_cluster_list=cancer_cluster_list,
                 normal_cluster_list=normal_cluster_list,
-                feature_list=feature_list, label_name=cluster_model_name)
+                feature_list=feature_list, label_name=cluster_model_name,
+                distance_type=distance_type)
 
         # Fit the estimator to the cluster training data
         estimator.fit(df_clusters, y_true_clusters)
@@ -470,7 +473,8 @@ def run_patient_predictions_centerwise(
                 normal_label=0,
                 cancer_cluster_list=cancer_cluster_list,
                 normal_cluster_list=normal_cluster_list,
-                feature_list=feature_list, label_name=cluster_model_name)
+                feature_list=feature_list, label_name=cluster_model_name,
+                distance_type=distance_type)
 
         # Fit the estimator to the cluster training data
         estimator.fit(df_clusters, y_true_clusters)
@@ -495,8 +499,9 @@ def run_patient_predictions_centerwise(
         # Save blind predictions to file
         df_test_pred_patients.to_csv(blind_predictions)
 
-        # Save model to file
-        dump(estimator, model_output_filepath)
+        if model_output_filepath:
+            # Save model to file
+            dump(estimator, model_output_filepath)
 
 def run_patient_predictions_pointwise(
         training_data_filepath=None, data_filepath=None,
@@ -507,6 +512,8 @@ def run_patient_predictions_pointwise(
         threshold=None,
         scale_by=None,
         patient_db_filepath=None,
+        distance_type=None,
+        model_output_filepath=None,
         ):
     #######################################
     # Load training data
@@ -591,7 +598,8 @@ def run_patient_predictions_pointwise(
                 normal_label=0,
                 cancer_cluster_list=cancer_cluster_list,
                 normal_cluster_list=normal_cluster_list,
-                feature_list=feature_list, label_name=cluster_model_name)
+                feature_list=feature_list, label_name=cluster_model_name,
+                distance_type=distance_type)
 
         # Fit the estimator to the cluster training data
         estimator.fit(df_train_ext, y_true_measurements)
@@ -678,7 +686,8 @@ def run_patient_predictions_pointwise(
                 normal_label=0,
                 cancer_cluster_list=cancer_cluster_list,
                 normal_cluster_list=normal_cluster_list,
-                feature_list=feature_list, label_name=cluster_model_name)
+                feature_list=feature_list, label_name=cluster_model_name,
+                distance_type=distance_type)
 
         # Fit the estimator to the cluster training data
         estimator.fit(df_train_ext, y_true_measurements)
@@ -700,8 +709,9 @@ def run_patient_predictions_pointwise(
             cancer_prediction_num,
             patient_num))
 
-        # Save blind predictions to file
-        df_test_pred_patients.to_csv(blind_predictions)
+        if model_output_filepath:
+            # Save blind predictions to file
+            df_test_pred_patients.to_csv(blind_predictions)
 
 def run_patient_predictions_cv(
         training_data_filepath=None, feature_list=None, cancer_cluster_list=None,
@@ -967,6 +977,9 @@ if __name__ == '__main__':
             "--model_type", type=str, default="kmeans", required=False,
             help="Model type to use: kmeans, centerwise, pointwise.")
     parser.add_argument(
+            "--distance_type", type=str, default="worst_distance", required=False,
+            help="Distance model type to use: worst_distance, mean_distance.")
+    parser.add_argument(
             "--model_output_filepath", type=str, default=None, required=False,
             help="File to save prediction model.")
 
@@ -987,6 +1000,7 @@ if __name__ == '__main__':
     patient_db_filepath = args.patient_db_filepath
     blind_predictions = args.blind_predictions
     model_type = args.model_type
+    distance_type = args.distance_type
     model_output_filepath = args.model_output_filepath
 
     # Convert cancer_cluster_list csv to list of ints
@@ -1046,6 +1060,7 @@ if __name__ == '__main__':
                 blind_predictions=blind_predictions,
                 threshold=distance_threshold,
                 model_output_filepath=model_output_filepath,
+                distance_type=distance_type,
                 )
     if model_type == "pointwise":
         print("Running {} model.".format(model_type))
@@ -1062,4 +1077,5 @@ if __name__ == '__main__':
                 blind_predictions=blind_predictions,
                 threshold=distance_threshold,
                 model_output_filepath=model_output_filepath,
+                distance_type=distance_type,
                 )
