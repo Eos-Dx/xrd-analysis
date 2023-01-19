@@ -303,6 +303,7 @@ def run_patient_predictions_centerwise(
         model_output_filepath=None,
         distance_type=None,
         projection=None,
+        z_threshold=None,
         ):
     #######################################
     # Load training data
@@ -409,6 +410,7 @@ def run_patient_predictions_centerwise(
                 projection=projection,
                 normal_cluster_center=normal_cluster_center,
                 abnormal_cluster_center=abnormal_cluster_center,
+                z_threshold=z_threshold,
                 )
 
         # Fit the estimator to the cluster training data
@@ -446,14 +448,28 @@ def run_patient_predictions_centerwise(
     y_score_patients_mean = np.mean(y_score_patients)
 
     # Plot scatter plot
-    y_score_patients_colors = y_true_patients.replace(
-            1, "red").replace(0, "blue")
-    label = "Mean: {:.1f}".format(y_score_patients_mean)
-    plt.scatter(y_score_patients, [0]*len(y_score_patients),
-            c=y_score_patients_colors, label=label)
+    # Calcualte mean of healthy and cancer patient scores
+    y_score_healthy_patients = y_score_patients[~(y_true_patients.astype(bool))]
+    y_score_healthy_patients_mean = np.mean(y_score_healthy_patients)
+    y_score_cancer_patients = y_score_patients[y_true_patients.astype(bool)]
+    y_score_cancer_patients_mean = np.mean(y_score_cancer_patients)
+
+    healthy_label = "Healthy Mean: {:.1f}".format(
+            y_score_healthy_patients_mean)
+    cancer_label = "Cancer Mean: {:.1f}".format(
+            y_score_cancer_patients_mean)
+
+    plt.scatter(y_score_healthy_patients,
+            [0]*len(y_score_healthy_patients),
+            c="blue", label=healthy_label)
+    plt.scatter(y_score_cancer_patients,
+            [1]*len(y_score_cancer_patients),
+            c="red", label=cancer_label)
+
     plt.title("Scatter Plot of Training Patient Scores")
     plt.xlabel("Patient Score")
     plt.legend(loc="upper right")
+    plt.ylim([-5, 5])
     plt.show()
 
     # Plot training patient scores histogram
@@ -525,6 +541,7 @@ def run_patient_predictions_centerwise(
                 projection=projection,
                 normal_cluster_center=normal_cluster_center,
                 abnormal_cluster_center=abnormal_cluster_center,
+                z_threshold=z_threshold,
                 )
 
         # Fit the estimator to the cluster training data
@@ -592,6 +609,7 @@ def run_patient_predictions_pointwise(
         distance_type=None,
         model_output_filepath=None,
         projection=None,
+        z_threshold=None,
         ):
     #######################################
     # Load training data
@@ -697,6 +715,7 @@ def run_patient_predictions_pointwise(
                 projection=projection,
                 normal_cluster_center=normal_cluster_center,
                 abnormal_cluster_center=abnormal_cluster_center,
+                z_threshold=z_threshold,
                 )
 
         # Fit the estimator to the cluster training data
@@ -734,14 +753,28 @@ def run_patient_predictions_pointwise(
     y_score_patients_mean = np.mean(y_score_patients)
 
     # Plot scatter plot
-    y_score_patients_colors = y_true_patients.replace(
-            1, "red").replace(0, "blue")
-    label = "Mean: {:.1f}".format(y_score_patients_mean)
-    plt.scatter(y_score_patients, [0]*len(y_score_patients),
-            c=y_score_patients_colors, label=label)
+    # Calcualte mean of healthy and cancer patient scores
+    y_score_healthy_patients = y_score_patients[~(y_true_patients.astype(bool))]
+    y_score_healthy_patients_mean = np.mean(y_score_healthy_patients)
+    y_score_cancer_patients = y_score_patients[y_true_patients.astype(bool)]
+    y_score_cancer_patients_mean = np.mean(y_score_cancer_patients)
+
+    healthy_label = "Healthy Mean: {:.1f}".format(
+            y_score_healthy_patients_mean)
+    cancer_label = "Cancer Mean: {:.1f}".format(
+            y_score_cancer_patients_mean)
+
+    plt.scatter(y_score_healthy_patients,
+            [0]*len(y_score_healthy_patients),
+            c="blue", label=healthy_label)
+    plt.scatter(y_score_cancer_patients,
+            [1]*len(y_score_cancer_patients),
+            c="red", label=cancer_label)
+
     plt.title("Scatter Plot of Training Patient Scores")
     plt.xlabel("Patient Score")
     plt.legend(loc="upper right")
+    plt.ylim([-5, 5])
     plt.show()
 
     # Plot training patient scores histogram
@@ -813,6 +846,7 @@ def run_patient_predictions_pointwise(
                 projection=projection,
                 normal_cluster_center=normal_cluster_center,
                 abnormal_cluster_center=abnormal_cluster_center,
+                z_threshold=z_threshold,
                 )
 
         # Fit the estimator to the cluster training data
@@ -1135,6 +1169,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--projection", type=str, default=None, required=False,
             help="Use projected distances: ``normal``, ``abnormal``, or ``False``.")
+    parser.add_argument(
+            "--z_threshold", type=float, default=None, required=False,
+            help="Threshold to use for z-score filtering.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -1156,6 +1193,7 @@ if __name__ == '__main__':
     distance_type = args.distance_type
     model_output_filepath = args.model_output_filepath
     projection = args.projection
+    z_threshold = args.z_threshold
 
     # Convert cancer_cluster_list csv to list of ints
     if cancer_cluster_list:
@@ -1216,6 +1254,7 @@ if __name__ == '__main__':
                 model_output_filepath=model_output_filepath,
                 distance_type=distance_type,
                 projection=projection,
+                z_threshold=z_threshold,
                 )
     if model_type == "pointwise":
         print("Running {} model.".format(model_type))
@@ -1234,4 +1273,5 @@ if __name__ == '__main__':
                 model_output_filepath=model_output_filepath,
                 distance_type=distance_type,
                 projection=projection,
+                z_threshold=z_threshold,
                 )
