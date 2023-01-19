@@ -559,6 +559,58 @@ def plot_precision_recall_curve(
 
     plt.show()
 
+def plot_patient_score_scatterplot(
+        y_true_patients, y_score_patients,
+        y_test_score_patients=None):
+    # Plot scatter plot
+    # Calcualte mean of healthy and cancer patient scores
+    y_score_healthy_patients = y_score_patients[~(y_true_patients.astype(bool))]
+    y_score_healthy_patients_mean = np.mean(y_score_healthy_patients)
+    y_score_cancer_patients = y_score_patients[y_true_patients.astype(bool)]
+    y_score_cancer_patients_mean = np.mean(y_score_cancer_patients)
+
+    healthy_label = "Healthy Mean: {:.1f}".format(
+            y_score_healthy_patients_mean)
+    cancer_label = "Cancer Mean: {:.1f}".format(
+            y_score_cancer_patients_mean)
+
+    plt.scatter(y_score_healthy_patients,
+            [0]*len(y_score_healthy_patients),
+            c="blue", label=healthy_label)
+    plt.scatter(y_score_cancer_patients,
+            [1]*len(y_score_cancer_patients),
+            c="red", label=cancer_label)
+
+    if y_test_score_patients is not None:
+        y_test_score_patients_mean = np.mean(y_test_score_patients)
+        blind_label = "Blind Mean: {:.1f}".format(
+                y_test_score_patients_mean)
+        plt.scatter(y_test_score_patients,
+                [-1]*len(y_test_score_patients),
+                c="green", label=blind_label)
+
+    plot_title = "Scatterplot of Patient Scores"
+
+    plt.title(plot_title)
+    plt.xlabel("Patient Score")
+    plt.legend(loc="upper right")
+    plt.ylim([-5, 5])
+    plt.show()
+
+def plot_patient_score_histogram(y_score_patients):
+    # Plot training patient scores histogram
+    y_score_patients_mean = np.mean(y_score_patients)
+    label = "Mean: {:.1f}".format(y_score_patients_mean)
+    plt.hist(y_score_patients, label=label)
+
+    plot_title = "Histogram of Patient Scores"
+
+    plt.title(plot_title)
+    plt.ylabel("Frequency Count")
+    plt.xlabel("Patient Score")
+    plt.legend(loc="upper right")
+    plt.show()
+
 #def l1_metric_optimized(image1, image2, params, plan=None):
 #    """
 #    Function which computes the L1 distance between two images
