@@ -32,6 +32,8 @@ from eosdxanalysis.models.utils import scale_features
 from eosdxanalysis.models.utils import add_patient_data
 from eosdxanalysis.models.utils import plot_roc_curve
 from eosdxanalysis.models.utils import plot_precision_recall_curve
+from eosdxanalysis.models.utils import plot_patient_score_scatterplot
+from eosdxanalysis.models.utils import plot_patient_score_histogram
 
 MODEL_TYPE_LIST = [
         "kmeans",
@@ -444,42 +446,11 @@ def run_patient_predictions_centerwise(
     # Generate training patient scores
     y_score_patients = estimator.decision_function(df_train_ext)
 
-    # Calculate mean
-    y_score_patients_mean = np.mean(y_score_patients)
+    # Generate scatterplot
+    plot_patient_score_scatterplot(y_true_patients, y_score_patients)
 
-    # Plot scatter plot
-    # Calcualte mean of healthy and cancer patient scores
-    y_score_healthy_patients = y_score_patients[~(y_true_patients.astype(bool))]
-    y_score_healthy_patients_mean = np.mean(y_score_healthy_patients)
-    y_score_cancer_patients = y_score_patients[y_true_patients.astype(bool)]
-    y_score_cancer_patients_mean = np.mean(y_score_cancer_patients)
-
-    healthy_label = "Healthy Mean: {:.1f}".format(
-            y_score_healthy_patients_mean)
-    cancer_label = "Cancer Mean: {:.1f}".format(
-            y_score_cancer_patients_mean)
-
-    plt.scatter(y_score_healthy_patients,
-            [0]*len(y_score_healthy_patients),
-            c="blue", label=healthy_label)
-    plt.scatter(y_score_cancer_patients,
-            [1]*len(y_score_cancer_patients),
-            c="red", label=cancer_label)
-
-    plt.title("Scatter Plot of Training Patient Scores")
-    plt.xlabel("Patient Score")
-    plt.legend(loc="upper right")
-    plt.ylim([-5, 5])
-    plt.show()
-
-    # Plot training patient scores histogram
-    label = "Mean: {:.1f}".format(y_score_patients_mean)
-    plt.hist(y_score_patients, label=label)
-    plt.title("Histogram of Training Patient Scores")
-    plt.ylabel("Frequency Count")
-    plt.xlabel("Patient Score")
-    plt.legend(loc="upper right")
-    plt.show()
+    # Generate histogram
+    plot_patient_score_histogram(y_score_patients)
 
     RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
 
@@ -550,26 +521,10 @@ def run_patient_predictions_centerwise(
         # Generate test patient scores
         y_test_score_patients = estimator.decision_function(df_test_ext)
 
-        # Calculate mean
-        y_test_score_patients_mean = np.mean(y_test_score_patients)
+        plot_patient_score_scatterplot(
+                y_true_patients, y_score_patients, y_test_score_patients)
 
-        # Plot scatter plot
-        label = "Mean: {:.1f}".format(y_test_score_patients_mean)
-        plt.scatter(y_test_score_patients, [0]*len(y_test_score_patients),
-                label=label)
-        plt.title("Scatter Plot of Blind Patient Scores")
-        plt.xlabel("Patient Score")
-        plt.legend(loc="upper right")
-        plt.show()
-
-        # Plot test patient scores histogram
-        label = "Mean: {:.1f}".format(y_test_score_patients_mean)
-        plt.hist(y_test_score_patients, label=label)
-        plt.title("Histogram of Blind Patient Scores")
-        plt.ylabel("Frequency Count")
-        plt.xlabel("Patient Score")
-        plt.legend(loc="upper right")
-        plt.show()
+        plot_patient_score_histogram(y_test_score_patients)
 
         # Generate measurement-wise predictions of the training data
         y_test_pred_patients = estimator.predict(df_test_ext).astype(int)
