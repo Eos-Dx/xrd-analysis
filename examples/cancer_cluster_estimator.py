@@ -349,6 +349,9 @@ def run_patient_predictions_centerwise(
 
         normal_cluster_center = clusters[normal_cluster]
         abnormal_cluster_center = clusters[cancer_cluster]
+    else:
+        normal_cluster_center = None
+        abnormal_cluster_center = None
 
     #################################################################
     # Add patient data
@@ -436,7 +439,20 @@ def run_patient_predictions_centerwise(
 
     subtitle = "Cluster Centerwise Distance Model"
 
+    # Generate training patient scores
     y_score_patients = estimator.decision_function(df_train_ext)
+
+    # Calculate mean
+    y_score_patients_mean = np.mean(y_score_patients)
+
+    # Plot training patient scores histogram
+    label = "Mean: {:.1f}".format(y_score_patients_mean)
+    plt.hist(y_score_patients, label=label)
+    plt.title("Histogram of Training Patient Scores")
+    plt.ylabel("Frequency Count")
+    plt.xlabel("Patient Score")
+    plt.legend(loc="upper right")
+    plt.show()
 
     RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
 
@@ -483,7 +499,6 @@ def run_patient_predictions_centerwise(
                 patient_db_filepath,
                 index_col="Barcode")
 
-
         # Make predictions on test data
         distance_threshold = threshold
 
@@ -503,6 +518,21 @@ def run_patient_predictions_centerwise(
 
         # Fit the estimator to the cluster training data
         estimator.fit(df_clusters, y_true_clusters)
+
+        # Generate test patient scores
+        y_test_score_patients = estimator.decision_function(df_test_ext)
+
+        # Calculate mean
+        y_test_score_patients_mean = np.mean(y_test_score_patients)
+
+        # Plot test patient scores histogram
+        label = "Mean: {:.1f}".format(y_test_score_patients_mean)
+        plt.hist(y_test_score_patients, label=label)
+        plt.title("Histogram of Blind Patient Scores")
+        plt.ylabel("Frequency Count")
+        plt.xlabel("Patient Score")
+        plt.legend(loc="upper right")
+        plt.show()
 
         # Generate measurement-wise predictions of the training data
         y_test_pred_patients = estimator.predict(df_test_ext).astype(int)
@@ -588,6 +618,9 @@ def run_patient_predictions_pointwise(
 
         normal_cluster_center = clusters[normal_cluster]
         abnormal_cluster_center = clusters[cancer_cluster]
+    else:
+        normal_cluster_center = None
+        abnormal_cluster_center = None
 
     #################################################################
     # Add patient data
@@ -674,7 +707,20 @@ def run_patient_predictions_pointwise(
 
     subtitle = "Cluster Pointwise Distance Model"
 
+    # Generate training patient scores
     y_score_patients = estimator.decision_function(df_train_ext)
+
+    # Calculate mean
+    y_score_patients_mean = np.mean(y_score_patients)
+
+    # Plot training patient scores histogram
+    label = "Mean: {:.1f}".format(y_score_patients_mean)
+    plt.hist(y_score_patients, label=label)
+    plt.title("Histogram of Training Patient Scores")
+    plt.ylabel("Frequency Count")
+    plt.xlabel("Patient Score")
+    plt.legend(loc="upper right")
+    plt.show()
 
     RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
 
@@ -740,6 +786,21 @@ def run_patient_predictions_pointwise(
 
         # Fit the estimator to the cluster training data
         estimator.fit(df_train_ext, y_true_measurements)
+
+        # Generate test patient scores
+        y_test_score_patients = estimator.decision_function(df_test_ext)
+
+        # Calculate mean
+        y_test_score_patients_mean = np.mean(y_test_score_patients)
+
+        # Plot test patient scores histogram
+        label = "Mean: {:.1f}".format(y_test_score_patients_mean)
+        plt.hist(y_test_score_patients, label=label)
+        plt.title("Histogram of Blind Patient Scores")
+        plt.ylabel("Frequency Count")
+        plt.xlabel("Patient Score")
+        plt.legend(loc="upper right")
+        plt.show()
 
         # Generate measurement-wise predictions of the training data
         y_test_pred_patients = estimator.predict(df_test_ext).astype(int)
