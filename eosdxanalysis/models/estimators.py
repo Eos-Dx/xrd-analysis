@@ -5,6 +5,8 @@ Code for implementing custom cluster-based models
 import numpy as np
 import pandas as pd
 
+from scipy.stats import zscore
+
 from sklearn.base import BaseEstimator
 from sklearn.base import ClassifierMixin
 
@@ -106,7 +108,8 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
             feature_list=None, label_name=None, cancer_cluster_list=None,
             normal_cluster_list=None, indeterminate_label=2,
             distance_type="worst_distance", projection=False,
-            normal_cluster_center=None, abnormal_cluster_center=None):
+            normal_cluster_center=None, abnormal_cluster_center=None,
+            z_threshold=3.0):
         """
         Parameters
         ----------
@@ -131,6 +134,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         self.projection = projection
         self.normal_cluster_center = normal_cluster_center
         self.abnormal_cluster_center = abnormal_cluster_center
+        self.z_threshold = z_threshold
 
     def fit(self, X, y):
         """
@@ -232,6 +236,8 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         projection = self.projection
         normal_cluster_center = self.normal_cluster_center
         abnormal_cluster_center = self.abnormal_cluster_center
+        z_threshold = self.z_threshold
+
         if normal_cluster_center is not None and abnormal_cluster_center is not None:
             # Create the vector pointing from the normal cluster to the abnormal cluster
             normal_abnormal_vector = abnormal_cluster_center - normal_cluster_center
@@ -266,6 +272,17 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                     # Find the mean distances per patient
                     closest_cancer_patient_distances = X_copy.groupby(
                             "Patient_ID")["closest_cancer_distances"].mean().values
+                elif distance_type == "filtered_mean_distance":
+                    # Calculate z-scores of measurements on a per-patient basis
+                    X_copy_filtered = X_copy.copy()
+                    X_copy["z_score"] = X_copy.groupby(
+                            "Patient_ID")["closest_cancer_distances"].apply(
+                                    zscore).replace(np.nan, 0)
+                    X_copy_filtered = X_copy[np.abs(X_copy["z_score"]) < z_threshold]
+
+                    # Find the mean distances per patient on the filtered data
+                    closest_cancer_patient_distances = X_copy_filtered.groupby(
+                            "Patient_ID")["closest_cancer_distances"].mean().values
 
                 # Take the inverse of distances, smaller distance has higher
                 # probability of being cancer
@@ -282,9 +299,20 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                     # Find the maximum distances per patient
                     closest_normal_patient_distances = X_copy.groupby(
                             "Patient_ID")["closest_normal_distances"].max().values
-                if distance_type == "mean_distance":
+                elif distance_type == "mean_distance":
                     # Find the mean distances per patient
                     closest_normal_patient_distances = X_copy.groupby(
+                            "Patient_ID")["closest_normal_distances"].mean().values
+                elif distance_type == "filtered_mean_distance":
+                    # Calculate z-scores of measurements on a per-patient basis
+                    X_copy_filtered = X_copy.copy()
+                    X_copy["z_score"] = X_copy.groupby(
+                            "Patient_ID")["closest_normal_distances"].apply(
+                                    zscore).replace(np.nan, 0)
+                    X_copy_filtered = X_copy[np.abs(X_copy["z_score"]) < z_threshold]
+
+                    # Find the mean distances per patient on the filtered data
+                    closest_normal_patient_distances = X_copy_filtered.groupby(
                             "Patient_ID")["closest_normal_distances"].mean().values
 
                 # Return distances from normal, the larger the distance, the higher
@@ -317,6 +345,17 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                 closest_projected_normal_patient_distances = X_copy.groupby(
                         "Patient_ID")["closest_projected_normal_distances"].mean(
                                 ).values
+            elif distance_type == "filtered_mean_distance":
+                # Calculate z-scores of measurements on a per-patient basis
+                X_copy_filtered = X_copy.copy()
+                X_copy["z_score"] = X_copy.groupby(
+                        "Patient_ID")["closest_projected_normal_distances"].apply(
+                                zscore).replace(np.nan, 0)
+                X_copy_filtered = X_copy[np.abs(X_copy["z_score"]) < z_threshold]
+
+                # Find the mean distances per patient on the filtered data
+                closest_projected_normal_patient_distances = X_copy_filtered.groupby(
+                        "Patient_ID")["closest_projected_normal_distances"].mean().values
 
             # Return projected distances from normal, the larger the distance,
             # the higher probability of being cancer
@@ -348,6 +387,17 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                 closest_projected_cancer_patient_distances = X_copy.groupby(
                         "Patient_ID")["closest_projected_cancer_distances"].mean(
                                 ).values
+            elif distance_type == "filtered_mean_distance":
+                # Calculate z-scores of measurements on a per-patient basis
+                X_copy_filtered = X_copy.copy()
+                X_copy["z_score"] = X_copy.groupby(
+                        "Patient_ID")["closest_projected_cancer_distances"].apply(
+                                zscore).replace(np.nan, 0)
+                X_copy_filtered = X_copy[np.abs(X_copy["z_score"]) < z_threshold]
+
+                # Find the mean distances per patient on the filtered data
+                closest_projected_cancer_patient_distances = X_copy_filtered.groupby(
+                        "Patient_ID")["closest_projected_cancer_distances"].mean().values
 
             # Take the inverse of distances, smaller distance has higher
             # probability of being cancer
