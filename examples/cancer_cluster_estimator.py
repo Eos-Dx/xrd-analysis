@@ -445,6 +445,17 @@ def run_patient_predictions_centerwise(
     # Calculate mean
     y_score_patients_mean = np.mean(y_score_patients)
 
+    # Plot scatter plot
+    y_score_patients_colors = y_true_patients.replace(
+            1, "red").replace(0, "blue")
+    label = "Mean: {:.1f}".format(y_score_patients_mean)
+    plt.scatter(y_score_patients, [0]*len(y_score_patients),
+            c=y_score_patients_colors, label=label)
+    plt.title("Scatter Plot of Training Patient Scores")
+    plt.xlabel("Patient Score")
+    plt.legend(loc="upper right")
+    plt.show()
+
     # Plot training patient scores histogram
     label = "Mean: {:.1f}".format(y_score_patients_mean)
     plt.hist(y_score_patients, label=label)
@@ -524,6 +535,15 @@ def run_patient_predictions_centerwise(
 
         # Calculate mean
         y_test_score_patients_mean = np.mean(y_test_score_patients)
+
+        # Plot scatter plot
+        label = "Mean: {:.1f}".format(y_test_score_patients_mean)
+        plt.scatter(y_test_score_patients, [0]*len(y_test_score_patients),
+                label=label)
+        plt.title("Scatter Plot of Blind Patient Scores")
+        plt.xlabel("Patient Score")
+        plt.legend(loc="upper right")
+        plt.show()
 
         # Plot test patient scores histogram
         label = "Mean: {:.1f}".format(y_test_score_patients_mean)
@@ -713,6 +733,17 @@ def run_patient_predictions_pointwise(
     # Calculate mean
     y_score_patients_mean = np.mean(y_score_patients)
 
+    # Plot scatter plot
+    y_score_patients_colors = y_true_patients.replace(
+            1, "red").replace(0, "blue")
+    label = "Mean: {:.1f}".format(y_score_patients_mean)
+    plt.scatter(y_score_patients, [0]*len(y_score_patients),
+            c=y_score_patients_colors, label=label)
+    plt.title("Scatter Plot of Training Patient Scores")
+    plt.xlabel("Patient Score")
+    plt.legend(loc="upper right")
+    plt.show()
+
     # Plot training patient scores histogram
     label = "Mean: {:.1f}".format(y_score_patients_mean)
     plt.hist(y_score_patients, label=label)
@@ -792,6 +823,15 @@ def run_patient_predictions_pointwise(
 
         # Calculate mean
         y_test_score_patients_mean = np.mean(y_test_score_patients)
+
+        # Plot scatter plot
+        label = "Mean: {:.1f}".format(y_test_score_patients_mean)
+        plt.scatter(y_test_score_patients, [0]*len(y_test_score_patients),
+                label=label)
+        plt.title("Scatter Plot of Blind Patient Scores")
+        plt.xlabel("Patient Score")
+        plt.legend(loc="upper right")
+        plt.show()
 
         # Plot test patient scores histogram
         label = "Mean: {:.1f}".format(y_test_score_patients_mean)
