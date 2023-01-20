@@ -575,10 +575,10 @@ def plot_patient_score_scatterplot(
             y_score_cancer_patients_mean)
 
     plt.scatter(y_score_healthy_patients,
-            [0]*len(y_score_healthy_patients),
+            np.zeros(y_score_healthy_patients.shape),
             c="blue", label=healthy_label)
     plt.scatter(y_score_cancer_patients,
-            [1]*len(y_score_cancer_patients),
+            np.ones(y_score_cancer_patients.shape),
             c="red", label=cancer_label)
 
     if y_test_score_patients is not None:
@@ -586,7 +586,7 @@ def plot_patient_score_scatterplot(
         blind_label = "Blind Mean: {:.1f}".format(
                 y_test_score_patients_mean)
         plt.scatter(y_test_score_patients,
-                [-1]*len(y_test_score_patients),
+                -np.ones(y_test_score_patients.shape),
                 c="green", label=blind_label)
 
     plot_title = "Scatterplot of Patient Scores"
