@@ -268,6 +268,10 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                     # Find the minimum distances per patient
                     closest_cancer_patient_distances = X_copy.groupby(
                             "Patient_ID")["closest_cancer_distances"].min().values
+                elif distance_type == "best_distance":
+                    # Find the max distances per patient
+                    closest_cancer_patient_distances = X_copy.groupby(
+                            "Patient_ID")["closest_cancer_distances"].max().values
                 elif distance_type == "mean_distance":
                     # Find the mean distances per patient
                     closest_cancer_patient_distances = X_copy.groupby(
@@ -299,6 +303,10 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                     # Find the maximum distances per patient
                     closest_normal_patient_distances = X_copy.groupby(
                             "Patient_ID")["closest_normal_distances"].max().values
+                elif distance_type == "best_distance":
+                    # Find the minimum distances per patient
+                    closest_normal_patient_distances = X_copy.groupby(
+                            "Patient_ID")["closest_normal_distances"].min().values
                 elif distance_type == "mean_distance":
                     # Find the mean distances per patient
                     closest_normal_patient_distances = X_copy.groupby(
@@ -340,7 +348,12 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                 closest_projected_normal_patient_distances = X_copy.groupby(
                         "Patient_ID")["closest_projected_normal_distances"].max(
                                 ).values
-            if distance_type == "mean_distance":
+            elif distance_type == "best_distance":
+                # Find the minimum distances per patient
+                closest_projected_normal_patient_distances = X_copy.groupby(
+                        "Patient_ID")["closest_projected_normal_distances"].min(
+                                ).values
+            elif distance_type == "mean_distance":
                 # Find the mean distances per patient
                 closest_projected_normal_patient_distances = X_copy.groupby(
                         "Patient_ID")["closest_projected_normal_distances"].mean(
@@ -381,6 +394,11 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                 # Find the minimum distances per patient
                 closest_projected_cancer_patient_distances = X_copy.groupby(
                         "Patient_ID")["closest_projected_cancer_distances"].min(
+                                ).values
+            elif distance_type == "best_distance":
+                # Find the maximum distances per patient
+                closest_projected_cancer_patient_distances = X_copy.groupby(
+                        "Patient_ID")["closest_projected_cancer_distances"].max(
                                 ).values
             elif distance_type == "mean_distance":
                 # Find the mean distances per patient
