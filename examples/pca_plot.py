@@ -132,7 +132,7 @@ def run_pca_plot(
         df_all = df_train_ext
 
     # Save dataframe to file
-    df_ext_filename = "extrated_features_pca_{}.csv".format(timestamp)
+    df_ext_filename = "extracted_features_pca_{}.csv".format(timestamp)
     df_ext_filepath = os.path.join(output_path, df_ext_filename)
     # Transform df_ext using estimator
     data_pca_ext = pca.transform(df_train_ext[feature_list])
