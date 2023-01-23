@@ -16,9 +16,14 @@ from skimage.transform import rescale
 from skimage.transform import warp_polar
 from skimage.transform import rotate
 
+from sklearn.metrics import roc_auc_score
+
+import matplotlib.pyplot as plt
+
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.utils import create_circular_mask
+
 
 def gen_jn_zerosmatrix(shape, save_mat=False, save_numpy=False, outdir=""):
     """
@@ -459,6 +464,152 @@ def gen_meshgrid(shape):
     TT, RR = cart2pol(XX, YY)
 
     return RR, TT
+
+def scale_features(df, scale_by, feature_list):
+    """
+    Scale all features by ``scale_by``
+    Returns a copy of a dataframe
+    Drops ``scale_by`` column
+    """
+    df_scaled_features = df.copy()
+    df_scaled_features = df_scaled_features.div(
+            df_scaled_features[scale_by], axis="rows")
+    df_scaled_features = df_scaled_features[feature_list]
+    if scale_by in feature_list:
+        # Drop ``scale_by`` column
+        df_scaled_features = df_scaled_features.drop(columns=[scale_by])
+    return df_scaled_features
+
+def add_patient_data(df, patient_db_filepath, index_col="Barcode"):
+    # Use patient database to get patient diagnosis
+    db = pd.read_csv(patient_db_filepath, index_col=index_col)
+    extraction = df.index.str.extractall(
+            "CR_([A-Z]{1}).*?([0-9]+)")
+    extraction_series = extraction[0] + extraction[1].str.zfill(5)
+    extraction_list = extraction_series.tolist()
+
+    assert(len(extraction_list) == df.shape[0])
+    df_ext = df.copy()
+    df_ext[index_col] = extraction_list
+
+    df_ext = pd.merge(
+            df_ext, db, left_on=index_col, right_index=True)
+
+    return df_ext
+
+def plot_roc_curve(
+        normal_cluster_list=None, cancer_cluster_list=None,
+        y_true_patients=None, y_score_patients=None, threshold_range=None,
+        sensitivity_array=None, specificity_array=None, subtitle=None):
+    # Calculate ROC AUC
+    auc = roc_auc_score(y_true_patients, y_score_patients)
+
+    # Manually create ROC and precision-recall curves
+    tpr = sensitivity_array
+    fpr = 1 - specificity_array
+    x_offset = 0
+    y_offset = 0.002
+
+    # ROC Curve
+    title = "ROC Curve - {}".format(subtitle)
+    fig = plt.figure(title, figsize=(12,12))
+
+    if normal_cluster_list in (None, ""):
+        plt.step(fpr, tpr, where="post", label="AUC = {:0.2f}".format(auc))
+    if cancer_cluster_list in (None, ""):
+        plt.step(fpr, tpr, where="pre", label="AUC = {:0.2f}".format(auc))
+
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.xlim([0,1])
+    plt.ylim([0,1])
+    plt.title(title)
+    plt.legend(loc="lower right")
+
+    # Annotate by threshold
+    for x, y, s in zip(fpr, tpr, threshold_range):
+        plt.text(x+x_offset, y+y_offset, np.round(s,1))
+
+    plt.show()
+
+def plot_precision_recall_curve(
+        normal_cluster_list=None, cancer_cluster_list=None,
+        threshold_range=None, recall_array=None, precision_array=None,
+        subtitle=None):
+    # Precision-Recall Curve
+    title = "Precision-Recall Curve - {}".format(subtitle)
+    fig = plt.figure(title, figsize=(12,12))
+
+    x_offset = 0
+    y_offset = 0.002
+
+    if normal_cluster_list in (None, ""):
+        plt.step(recall_array, precision_array, where="pre")
+    if cancer_cluster_list in (None, ""):
+        plt.step(recall_array, precision_array, where="post")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.xlim([0,1])
+    plt.ylim([0,1])
+    plt.title(title)
+
+    # Annotate by threshold
+    for x, y, s in zip(recall_array, precision_array, threshold_range):
+        plt.text(x+x_offset, y+y_offset, np.round(s,1))
+
+    plt.show()
+
+def plot_patient_score_scatterplot(
+        y_true_patients, y_score_patients,
+        y_test_score_patients=None):
+    # Plot scatter plot
+    # Calcualte mean of healthy and cancer patient scores
+    y_score_healthy_patients = y_score_patients[~(y_true_patients.astype(bool))]
+    y_score_healthy_patients_mean = np.mean(y_score_healthy_patients)
+    y_score_cancer_patients = y_score_patients[y_true_patients.astype(bool)]
+    y_score_cancer_patients_mean = np.mean(y_score_cancer_patients)
+
+    healthy_label = "Healthy Mean: {:.1f}".format(
+            y_score_healthy_patients_mean)
+    cancer_label = "Cancer Mean: {:.1f}".format(
+            y_score_cancer_patients_mean)
+
+    plt.scatter(y_score_healthy_patients,
+            np.zeros(y_score_healthy_patients.shape),
+            c="blue", label=healthy_label)
+    plt.scatter(y_score_cancer_patients,
+            np.ones(y_score_cancer_patients.shape),
+            c="red", label=cancer_label)
+
+    if y_test_score_patients is not None:
+        y_test_score_patients_mean = np.mean(y_test_score_patients)
+        blind_label = "Blind Mean: {:.1f}".format(
+                y_test_score_patients_mean)
+        plt.scatter(y_test_score_patients,
+                -np.ones(y_test_score_patients.shape),
+                c="green", label=blind_label)
+
+    plot_title = "Scatterplot of Patient Scores"
+
+    plt.title(plot_title)
+    plt.xlabel("Patient Score")
+    plt.legend(loc="upper right")
+    plt.ylim([-5, 5])
+    plt.show()
+
+def plot_patient_score_histogram(y_score_patients):
+    # Plot training patient scores histogram
+    y_score_patients_mean = np.mean(y_score_patients)
+    label = "Mean: {:.1f}".format(y_score_patients_mean)
+    plt.hist(y_score_patients, label=label)
+
+    plot_title = "Histogram of Patient Scores"
+
+    plt.title(plot_title)
+    plt.ylabel("Frequency Count")
+    plt.xlabel("Patient Score")
+    plt.legend(loc="upper right")
+    plt.show()
 
 #def l1_metric_optimized(image1, image2, params, plan=None):
 #    """

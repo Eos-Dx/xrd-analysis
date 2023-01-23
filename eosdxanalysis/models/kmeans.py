@@ -10,14 +10,16 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
+from sklearn.pipeline import make_pipeline
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
 from joblib import dump
 
 def run_kmeans(
-        data_filepath, output_path=None, feature_list=None, cluster_count_min=2,
-        cluster_count_max=2, image_source_path=None, divide_by=None):
+        data_filepath, db_filepath=None, output_path=None, feature_list=None,
+        cluster_count_min=2, cluster_count_max=2, image_source_path=None,
+        divide_by=None, model_type="measurementwise"):
     """
     Runs k-means on a dataset of extracted features for between
     ``cluster_count_min`` and ``cluster_count_max`` number of clusters.
@@ -27,6 +29,9 @@ def run_kmeans(
 
     data_filepath : str
         Path to input csv file with extracted features data
+
+    db_filepath : str
+        Path to patients database csv file (optional)
 
     output_path : str
         Path to save k-means models and cluster image previews
@@ -43,6 +48,9 @@ def run_kmeans(
 
     image_source_path : str
         Path to image previews
+
+    model_type : str
+        Choice of "measurementwise" (default) or "patientwise".
     """
     # Load data into dataframe
     df = pd.read_csv(data_filepath, index_col="Filename")
@@ -75,35 +83,125 @@ def run_kmeans(
         output_dir = "kmeans_models_{}".format(timestamp)
         output_path = os.path.dirname(data_filepath)
 
-
-    # Set up standard scaler
-    scaler = StandardScaler()
-    # Fit standard scaler to data
-    scaler.fit(df)
-
-    # Transform data using standard scaler
-    X = scaler.transform(df)
-
     # Create the k-means results directory
     kmeans_results_dir = "kmeans_{}".format(timestamp)
     kmeans_results_path = os.path.join(output_path, kmeans_results_dir)
     os.makedirs(kmeans_results_path, exist_ok=True)
 
+    if model_type == "measurementwise":
+        # Fit the standard scaler
+        scaler = StandardScaler()
+        scaler.fit(df)
+
+        # Create dataframe with transformed features
+        transformed_features = scaler.transform(df)
+        df_transformed = pd.DataFrame(
+                data=transformed_features,
+                columns=feature_list,
+                index=df.index)
+
+        # Add patient data if provided
+        if db_filepath:
+            db = pd.read_csv(db_filepath, index_col="Barcode")
+            extraction = df_transformed.index.str.extractall(
+                    "CR_([A-Z]{1}).*?([0-9]+)")
+            extraction_series = extraction[0] + extraction[1].str.zfill(5)
+            extraction_list = extraction_series.tolist()
+
+            assert(len(extraction_list) == df_transformed.shape[0])
+            df_transformed_ext = df_transformed.copy()
+            df_transformed_ext["Barcode"] = extraction_list
+
+            df_transformed_ext = pd.merge(
+                    df_transformed_ext, db, left_on="Barcode", right_index=True)
+
+    # Set model type
+    if model_type == "patientwise":
+        if db_filepath is None:
+            raise ValueError("Must provide path to patient database file.")
+
+        # Get patient data
+        db = pd.read_csv(db_filepath, index_col="Barcode")
+        extraction = df.index.str.extractall(
+                "CR_([A-Z]{1}).*?([0-9]+)")
+        extraction_series = extraction[0] + extraction[1].str.zfill(5)
+        extraction_list = extraction_series.tolist()
+
+        assert(len(extraction_list) == df.shape[0])
+        df_ext = df.copy()
+        df_ext["Barcode"] = extraction_list
+
+        df_ext = pd.merge(
+                df_ext, db, left_on="Barcode", right_index=True)
+
+        # Take mean of patient measurements to get patient centroid
+        df_patients = df_ext.groupby(
+                "Patient_ID").agg("mean")[feature_list]
+
+        # Add in diagnosis
+        df_patients_ext = df_ext.groupby(
+                "Patient_ID").max()
+
+        # Fit the standard scaler
+        scaler = StandardScaler()
+        scaler.fit(df_patients)
+
+        # Create dataframe with transformed features
+        transformed_features = scaler.transform(df_patients)
+        df_transformed = pd.DataFrame(
+                data=transformed_features,
+                columns=feature_list,
+                index=df_patients.index)
+
+        df_transformed_ext = df_transformed.copy()
+        df_transformed_ext["Diagnosis"] = df_ext.groupby("Patient_ID").max()["Diagnosis"]
+
     # Train K-means models for each cluster number
     for cluster_count in range(cluster_count_min, cluster_count_max+1):
-        kmeans = KMeans(cluster_count, random_state=0).fit(X)
-        # Save the labels in the dataframe
-        df["kmeans_{}".format(cluster_count)] = kmeans.labels_
+        kmeans = KMeans(cluster_count, random_state=0)
+        # Fit k-means on transformed features
+        kmeans.fit(df_transformed)
 
-        # Save the model to file
-        model_filename = "kmeans_model_n{}_{}.joblib".format(
+        # Save the labels in a new dataframe
+        df_transformed["kmeans_{}".format(cluster_count)] = kmeans.labels_
+        if db_filepath:
+            df_transformed_ext["kmeans_{}".format(cluster_count)] = \
+                    kmeans.labels_
+
+        estimator = make_pipeline(scaler, kmeans)
+
+        # Save the estimator to file
+        estimator_filename = "estimator_scaler_kmeans_n{}_{}.joblib".format(
                 cluster_count, timestamp)
-        model_filepath = os.path.join(kmeans_results_path, model_filename)
-        dump(kmeans, model_filepath)
+        estimator_filepath = os.path.join(kmeans_results_path, estimator_filename)
+        dump(estimator, estimator_filepath)
 
-    # Save K-means results to file
-    df_kmeans_path = os.path.join(kmeans_results_path, kmeans_results_filename)
-    df.to_csv(df_kmeans_path, index=True)
+        # Save cluster centers to file
+        clusters_filename = "kmeans_clusters_n{}_{}.csv".format(
+                cluster_count, timestamp)
+        clusters_filepath = os.path.join(
+                kmeans_results_path, clusters_filename)
+        # Create dataframe of cluster centers only
+        df_clusters = pd.DataFrame(
+                data=kmeans.cluster_centers_, columns=feature_list)
+        df_clusters.to_csv(
+                clusters_filepath)
+
+    # Save the transformed data with k-means labels
+    kmeans_results_filename = "kmeans_results_n{}_{}.csv".format(
+                cluster_count, timestamp)
+    kmeans_results_filepath = os.path.join(
+            kmeans_results_path, kmeans_results_filename)
+    df_transformed.to_csv(kmeans_results_filepath)
+
+    # If patients database provided, save extended version
+    if db_filepath:
+        # Save the transformed data with k-means labels and patient IDs
+        kmeans_results_ext_filename = "kmeans_results_ext_n{}_{}.csv".format(
+                    cluster_count, timestamp)
+        kmeans_results_ext_filepath = os.path.join(
+                kmeans_results_path, kmeans_results_ext_filename)
+        df_transformed_ext.to_csv(kmeans_results_ext_filepath)
 
     # Use K-means results to create cluster image preview folders
     # Loop over files to copy the file to individual K-means cluster folders
@@ -124,7 +222,7 @@ def run_kmeans(
                         kmeans_model_path, cluster_image_dir)
                 os.makedirs(cluster_image_path, exist_ok=True)
 
-        for idx in df.index:
+        for idx in df_transformed.index:
             filename = idx + ".png"
 
             # Copy the file to the appropriate directory or directories
@@ -135,7 +233,7 @@ def run_kmeans(
                         kmeans_results_path, kmeans_model_dir)
 
                 # Get the cluster label
-                cluster_label = df["kmeans_{}".format(cluster_count)][idx]
+                cluster_label = df_transformed["kmeans_{}".format(cluster_count)][idx]
                 # Set the cluster image path
                 cluster_image_dir = "kmeans_n{}_c{}".format(
                         cluster_count, cluster_label)
@@ -161,6 +259,9 @@ if __name__ == '__main__':
             help="The file path containing features to perform k-means"
             " clustering on.")
     parser.add_argument(
+            "--db_filepath", type=str, default=None, required=False,
+            help="The patients database")
+    parser.add_argument(
             "--output_path", default=None, required=False,
             help="The output path to save results in.")
     parser.add_argument(
@@ -178,11 +279,15 @@ if __name__ == '__main__':
     parser.add_argument(
             "--divide_by", default=None, required=False,
             help="Input feature to scale by. This feature is not used for clustering.")
+    parser.add_argument(
+            "--model_type", default="measurementwise", type=str, required=False,
+            help="Choice of ``measurementwise`` (default) or ``patientwise`` model.")
 
     # Collect arguments
     args = parser.parse_args()
 
     data_filepath = args.data_filepath
+    db_filepath = args.db_filepath
     output_path = args.output_path
     feature_list_kwarg = args.feature_list
     cluster_count_min = int(args.cluster_count_min)
@@ -193,11 +298,12 @@ if __name__ == '__main__':
     image_source_path = args.image_source_path
 
     divide_by = args.divide_by
+    model_type = args.model_type
 
     run_kmeans(
-            data_filepath, output_path=output_path, feature_list=feature_list,
-            cluster_count_min=cluster_count_min,
+            data_filepath, db_filepath=db_filepath, output_path=output_path,
+            feature_list=feature_list, cluster_count_min=cluster_count_min,
             cluster_count_max=cluster_count_max,
-            image_source_path=image_source_path,
-            divide_by=divide_by,
+            image_source_path=image_source_path, divide_by=divide_by,
+            model_type=model_type,
             )

@@ -9,6 +9,8 @@ import numpy as np
 import numpy.ma as ma
 import subprocess
 
+import pandas as pd
+
 from collections import OrderedDict
 
 from scipy.special import jn_zeros
@@ -20,6 +22,7 @@ from scipy.signal import peak_widths
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import accuracy_score
 
 from eosdxanalysis.models.curve_fitting import PolynomialFit
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
@@ -46,6 +49,8 @@ from eosdxanalysis.models.fourier_analysis import YmatrixAssembly
 from eosdxanalysis.models.fourier_analysis import pfft2_SpaceLimited
 from eosdxanalysis.models.fourier_analysis import ipfft2_SpaceLimited
 from eosdxanalysis.models.stats import plot_feature_histograms
+
+from eosdxanalysis.models.estimators import PatientCancerClusterEstimator
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 
@@ -1456,6 +1461,181 @@ class TestFourierAnalysis(unittest.TestCase):
 
         self.assertTrue(np.isclose(idft, idft_gaussian).all())
 
+
+class TestPatientCancerClusterEstimator(unittest.TestCase):
+
+    def setUp(self):
+        # Set up sample training data
+        feature_name = "feature_0"
+        label_name = "cluster"
+        columns = ["Patient_ID", feature_name, label_name, "Diagnosis"]
+
+        X = np.array([
+                [0, 0.1, 0, "healthy"],
+                [0, 0.3, 0, "healthy"],
+                [0, 0.2, 0, "healthy"],
+                [1, 1.1, 1, "cancer"],
+                [1, 1.7, 1, "cancer"],
+                [1, 2.9, 0, "cancer"],
+                [2, 2.4, 0, "healthy"],
+                [3, 0.1, 0, "healthy"],
+                [3, -0.4, 0, "healthy"],
+                [3, 0.5, 0, "healthy"],
+                [4, -1.7, 1, "cancer"],
+                [4, -1.9, 1, "cancer"],
+        ])
+
+        df_train = pd.DataFrame(X, columns=columns)
+
+        # Set types
+        df_train["Patient_ID"] = df_train["Patient_ID"].astype(str)
+        df_train["Diagnosis"] = df_train["Diagnosis"].astype(str)
+        df_train[feature_name] = df_train[feature_name].astype(float)
+        df_train[label_name] = df_train[label_name].astype(int)
+
+        # Rename columns
+        df_train.index.name = "Filename"
+
+        self.df_train = df_train
+        self.feature_name = feature_name
+        self.label_name = label_name
+        self.columns = columns
+
+    def test_patient_cancer_cluster_estimator_accuracy_threshold_zero(self):
+
+        df_train = self.df_train
+        feature_name = self.feature_name
+        feature_list = [feature_name]
+        label_name = self.label_name
+
+        # Set up measurement-wise true labels of the training data
+        y_true_measurements = pd.Series(index=df_train.index, dtype=str)
+        y_true_measurements.loc[df_train["Diagnosis"] == "cancer"] = 1
+        y_true_measurements.loc[df_train["Diagnosis"] == "healthy"] = 0
+        y_true_measurements = y_true_measurements.values.astype(int)
+
+        # Generate patient-wise true labels of the training data
+        s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"])
+        y_true_patients = s_true_measurements.groupby(level=0).unique().astype(int)
+
+        # Set the threshold to zero
+        threshold = 0
+        # Create the estimator
+        estimator = PatientCancerClusterEstimator(
+                distance_threshold=threshold, cancer_label=1,
+                cancer_cluster_list=[1],
+                feature_list=feature_list, label_name=label_name)
+
+        # Fit the estimator the training data
+        estimator.fit(df_train, y_true_measurements)
+
+        # Generate measurement-wise predictions of the training data
+        y_pred_patients = estimator.predict(df_train)
+
+        test_accuracy = accuracy_score(y_true_patients, y_pred_patients)
+
+        perfect_accuracy = 1
+        # Ensure that accuracy is perfect with a threshold of zero
+        self.assertTrue(np.isclose(test_accuracy, perfect_accuracy))
+
+    def test_patient_cancer_cluster_estimator_accuracy_threshold_nonzero_large(self):
+
+        df_train = self.df_train
+        feature_name = self.feature_name
+        feature_list = [feature_name]
+        label_name = self.label_name
+
+        # Set up measurement-wise true labels of the training data
+        y_true_measurements = pd.Series(index=df_train.index, dtype=str)
+        y_true_measurements.loc[df_train["Diagnosis"] == "cancer"] = 1
+        y_true_measurements.loc[df_train["Diagnosis"] == "healthy"] = 0
+        y_true_measurements = y_true_measurements.values.astype(int)
+
+        # Generate patient-wise true labels of the training data
+        s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"])
+        y_true_patients = s_true_measurements.groupby(level=0).unique().astype(int)
+
+        # Set the threshold to 2.0
+        threshold = 2.0
+        # Create the estimator
+        estimator = PatientCancerClusterEstimator(
+                distance_threshold=threshold, cancer_label=1,
+                cancer_cluster_list=[1],
+                feature_list=feature_list, label_name=label_name)
+
+        # Fit the estimator the training data
+        estimator.fit(df_train, y_true_measurements)
+
+        # Generate measurement-wise predictions of the training data
+        y_pred_patients = estimator.predict(df_train)
+
+        test_accuracy = accuracy_score(y_true_patients, y_pred_patients)
+
+        perfect_accuracy = 1
+        # Ensure that accuracy is not perfect with a small non-zero threshold
+        self.assertFalse(np.isclose(test_accuracy, perfect_accuracy))
+
+    def test_patient_cancer_cluster_estimator_single_cancer_cluster_only_threshold_zero(self):
+        feature_name = self.feature_name
+        feature_list = [feature_name]
+        label_name = self.label_name
+        columns = self.columns
+
+        X = np.array([
+                [0, 0.1, 0, "healthy"],
+                [0, 0.3, 0, "healthy"],
+                [0, 0.2, 0, "healthy"],
+                [1, 1.1, 1, "cancer"],
+                [1, 1.7, 1, "cancer"],
+                [1, 2.9, 0, "cancer"],
+                [2, 2.4, 0, "healthy"],
+                [3, 0.1, 0, "healthy"],
+                [3, -0.4, 0, "healthy"],
+                [3, 0.5, 0, "healthy"],
+                [4, -1.7, 0, "cancer"],
+                [4, -1.9, 0, "cancer"],
+        ])
+
+        df_train = pd.DataFrame(X, columns=columns)
+
+        # Set types
+        df_train["Patient_ID"] = df_train["Patient_ID"].astype(str)
+        df_train["Diagnosis"] = df_train["Diagnosis"].astype(str)
+        df_train[feature_name] = df_train[feature_name].astype(float)
+        df_train[label_name] = df_train[label_name].astype(int)
+
+        # Rename columns
+        df_train.index.name = "Filename"
+
+        # Set up measurement-wise true labels of the training data
+        y_true_measurements = pd.Series(index=df_train.index, dtype=str)
+        y_true_measurements.loc[df_train["Diagnosis"] == "cancer"] = 1
+        y_true_measurements.loc[df_train["Diagnosis"] == "healthy"] = 0
+        y_true_measurements = y_true_measurements.values.astype(int)
+
+        # Generate patient-wise true labels of the training data
+        s_true_measurements = pd.Series(y_true_measurements, index=df_train["Patient_ID"])
+        y_true_patients = s_true_measurements.groupby(level=0).unique().astype(int)
+
+        # Set the threshold to 0
+        threshold = 0
+        # Create the estimator
+        estimator = PatientCancerClusterEstimator(
+                distance_threshold=threshold, cancer_label=1,
+                cancer_cluster_list=[1],
+                feature_list=feature_list, label_name=label_name)
+
+        # Fit the estimator the training data
+        estimator.fit(df_train, y_true_measurements)
+
+        # Generate measurement-wise predictions of the training data
+        y_pred_patients = estimator.predict(df_train)
+
+        test_accuracy = accuracy_score(y_true_patients, y_pred_patients)
+
+        known_accuracy = 4/5
+        # Ensure that accuracy is correct
+        self.assertTrue(np.isclose(test_accuracy, known_accuracy))
 
 if __name__ == '__main__':
     unittest.main()
