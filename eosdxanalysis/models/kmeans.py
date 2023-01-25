@@ -113,18 +113,7 @@ def run_kmeans(
             raise ValueError("Must provide path to patient database file.")
 
         # Get patient data
-        db = pd.read_csv(db_filepath, index_col="Barcode")
-        extraction = df.index.str.extractall(
-                "CR_([A-Z]{1}).*?([0-9]+)")
-        extraction_series = extraction[0] + extraction[1].str.zfill(5)
-        extraction_list = extraction_series.tolist()
-
-        assert(len(extraction_list) == df.shape[0])
-        df_ext = df.copy()
-        df_ext["Barcode"] = extraction_list
-
-        df_ext = pd.merge(
-                df_ext, db, left_on="Barcode", right_index=True)
+        df_ext = add_patient_data(df, db_filepath, index_col="Barcode")
 
         # Take mean of patient measurements to get patient centroid
         df_patients = df_ext.groupby(
