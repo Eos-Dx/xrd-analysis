@@ -16,6 +16,8 @@ from sklearn.preprocessing import StandardScaler
 
 from joblib import dump
 
+from eosdxanalysis.models.utils import add_patient_data
+
 def run_kmeans(
         data_filepath, db_filepath=None, output_path=None, feature_list=None,
         cluster_count_min=2, cluster_count_max=2, image_source_path=None,
@@ -102,18 +104,8 @@ def run_kmeans(
 
         # Add patient data if provided
         if db_filepath:
-            db = pd.read_csv(db_filepath, index_col="Barcode")
-            extraction = df_transformed.index.str.extractall(
-                    "CR_([A-Z]{1}).*?([0-9]+)")
-            extraction_series = extraction[0] + extraction[1].str.zfill(5)
-            extraction_list = extraction_series.tolist()
-
-            assert(len(extraction_list) == df_transformed.shape[0])
-            df_transformed_ext = df_transformed.copy()
-            df_transformed_ext["Barcode"] = extraction_list
-
-            df_transformed_ext = pd.merge(
-                    df_transformed_ext, db, left_on="Barcode", right_index=True)
+            df_transformed_ext = add_patient_data(
+                    df_transformed, db_filepath, index_col="Barcode")
 
     # Set model type
     if model_type == "patientwise":
