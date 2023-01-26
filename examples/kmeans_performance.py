@@ -29,23 +29,8 @@ def kmeans_performance(
 
     # Import patient data if not already present
     if "Patient_ID" not in df_kmeans.columns and model_type == "measurementwise":
-        # Set patients database
-        db = pd.read_csv(patient_db_filepath, index_col="Barcode")
-
-        # Extract barcodes from preprocesed filenames
-        extraction = df_kmeans.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
-        extraction_series = extraction[0] + extraction[1].str.zfill(5)
-        extraction_list = extraction_series.tolist()
-
-        # Ensure the length of extracted barcodes matches the number of
-        # preprocessed files
-        assert(len(extraction_list) == df_kmeans.shape[0])
-
-        # Set the barcode column
-        df_kmeans["Barcode"] = extraction_list
-
-        # Import patient id and diagnosis
-        df_kmeans = pd.merge(df_kmeans, db, left_on="Barcode", right_index=True)
+        df_kmeans = add_patient_data(
+                df_kmeans, patient_db_filepath, index_col="Barcode")
 
     print("Cluster cancer measurements and patients composition:")
     print("Cluster,Measurements Percent,Measurements Count,Patients Percent,"
