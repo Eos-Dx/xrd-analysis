@@ -2646,5 +2646,43 @@ class TestPolarMeshgrid(unittest.TestCase):
 
         self.assertTrue(np.array_equal(meshgrid, known_image))
 
+    def test_two_sectors(self):
+        """
+        Test polar meshgrid for a simple 2-sector case
+        """
+        size = 256
+        output_shape = (size, size)
+        r_count = 1
+        theta_count = 2
+        rmin = 0
+        rmax = output_shape[0]/2
+        quadrant_fold=False
+
+        meshgrid = polar_meshgrid(
+                output_shape=output_shape,
+                r_count=r_count,
+                theta_count=theta_count,
+                rmin=rmin,
+                rmax=rmax,
+                quadrant_fold=quadrant_fold
+                )
+
+        # Create masks for upper and lower parts of images
+        upper_mask = create_circular_mask(
+                size, size, rmin=rmin, rmax=rmax)
+        # Set bottom half of image to zero
+        upper_mask[int(size/2):] = 0
+
+        lower_mask = create_circular_mask(
+                size, size, rmin=rmin, rmax=rmax)
+        # Set upper half of image to zero
+        lower_mask[:int(size/2),:] = 0
+
+        known_image = np.zeros(output_shape)
+        known_image[upper_mask] = 1
+        known_image[lower_mask] = 2
+
+        self.assertTrue(np.array_equal(meshgrid, known_image))
+
 if __name__ == '__main__':
     unittest.main()
