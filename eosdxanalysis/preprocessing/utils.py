@@ -262,31 +262,33 @@ def polar_meshgrid(
     output = np.zeros(output_shape)
     shape = output.shape
 
-    sector_angle = 2*np.pi/theta_count
+    # Set up radius and theta ranges
+    r_range = np.linspace(rmin, rmax, r_count+1)
+    theta_range = np.linspace(0, 2*np.pi, theta_count+1)
+
+    # Generate a meshgrid the same size as the image
+    x_end = shape[1]/2 - 0.5
+    x_start = -x_end
+    y_end = x_start
+    y_start = x_end
+    YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+    TT = np.arctan2(YY, XX)
 
     for idx in range(r_count):
+        # Create a mask for the annulus
+        annulus_mask = create_circular_mask(
+                shape[0], shape[1], rmin=r_range[idx], rmax=r_range[idx+1])
+
         for jdx in range(theta_count):
-            # Create a mask for the annulus
-            annulus_mask = create_circular_mask(
-                    shape[0], shape[1], rmin=rmin, rmax=rmax)
-
-            # Set the sector pixel values to 1
-            # Generate a meshgrid the same size as the image
-            x_end = shape[1]/2 - 0.5
-            x_start = -x_end
-            y_end = x_start
-            y_start = x_end
-            YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
-            TT = np.arctan2(YY, XX)
-
             # Calculate sector start and end angles based on symmetric sector angle
-            theta_min = 0
-            theta_max = sector_angle
+            theta_min = theta_range[jdx]
+            theta_max = theta_range[jdx+1]
 
             # Get top and bottom indices
             top_sector_indices = \
                     (TT > theta_min) & (TT < theta_max) & annulus_mask
-            bottom_sector_indices = np.fliplr(top_sector_indices)
+            bottom_sector_indices = np.flipud(top_sector_indices)
+
             # Combine indices
             cell_indices = top_sector_indices | bottom_sector_indices
 
