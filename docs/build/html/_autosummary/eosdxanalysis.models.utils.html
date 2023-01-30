@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>eosdxanalysis.models.utils &#8212; Eos Dx Analysis 2.25.0 documentation</title>
+    <title>eosdxanalysis.models.utils &#8212; Eos Dx Analysis 2.26.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -89,7 +89,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.25.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.26.0 documentation</p>
   
 </a>
     
@@ -268,44 +268,62 @@
 <p class="rubric">Functions</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">angular_intensity_1d</span></code>(image[, radius, N])</p></td>
-<td><p>Get a 1D profile of intensity vs.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_min_distance</span></code>(image1_post, ...[, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_patient_data</span></code>(df, patient_db_filepath[, ...])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cart2pol</span></code>(x, y)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">angular_intensity_1d</span></code>(image[, radius, N])</p></td>
+<td><p>Get a 1D profile of intensity vs.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_min_distance</span></code>(image1_post, ...[, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cart2pol</span></code>(x, y)</p></td>
 <td><p>Function to convert cartesian to polar coordinates Similar to Matlab cart2pol</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cluster_corr</span></code>(corr_array[, inplace])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cluster_corr</span></code>(corr_array[, inplace])</p></td>
 <td><p>Rearranges the correlation matrix, corr_array, so that groups of highly correlated variables are next to eachother</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw_antialiased_arc</span></code>(radius, start_angle, ...)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw_antialiased_arc</span></code>(radius, start_angle, ...)</p></td>
 <td><p>Creates a 2D direc delta function in the shape of an arc.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw_antialiased_circle</span></code>(outer_radius)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw_antialiased_circle</span></code>(outer_radius)</p></td>
 <td><p>Adapted via: <a class="reference external" href="https://stackoverflow.com/a/37714284">https://stackoverflow.com/a/37714284</a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_jn_zerosmatrix</span></code>(shape[, save_mat, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_jn_zerosmatrix</span></code>(shape[, save_mat, ...])</p></td>
 <td><p>Pre-calculate Bessel zeros Can save matlab and/or numpy format Used for 2D Polar Discrete Fourier Transform</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_meshgrid</span></code>(shape)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_meshgrid</span></code>(shape)</p></td>
 <td><p>Generate a meshgrid</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">l1_metric</span></code>(A, B)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">l1_metric</span></code>(A, B)</p></td>
 <td><p>Calculates the L1 metric (distance) of two matrices based on the L1 norm as defined below.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">l1_metric_normalized</span></code>(A, B)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">l1_metric_normalized</span></code>(A, B)</p></td>
 <td><p>Calculates the L1 metric (distance) of two matrices based on the L1 norm as defined below, with normalization.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">metrics_report</span></code>([TP, FP, TN, FN, print_csv, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">metrics_report</span></code>([TP, FP, TN, FN, print_csv, ...])</p></td>
 <td><p>Generate a metrics report from blind test results</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pol2cart</span></code>(theta, rho)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_patient_score_histogram</span></code>(y_score_patients)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_patient_score_scatterplot</span></code>(...[, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_precision_recall_curve</span></code>([...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_roc_curve</span></code>([normal_cluster_list, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pol2cart</span></code>(theta, rho)</p></td>
 <td><p>Function to convert polar to cartesian coordinates Similar to Matlab pol2cart</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">radial_intensity_1d</span></code>(image[, width])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">radial_intensity_1d</span></code>(image[, width])</p></td>
 <td><p>Returns the 1D radial intensity of positive horizontal strip (averaged). For any other strip or quadrant, transpose and/or reverse rows/columns order. __  /        |   ===|  __ /.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scale_features</span></code>(df, scale_by, feature_list)</p></td>
+<td><p>Scale all features by <code class="docutils literal notranslate"><span class="pre">scale_by</span></code> Returns a copy of a dataframe Drops <code class="docutils literal notranslate"><span class="pre">scale_by</span></code> column</p></td>
 </tr>
 </tbody>
 </table>
