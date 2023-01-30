@@ -28,6 +28,7 @@ from eosdxanalysis.preprocessing.utils import count_intervals
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
+from eosdxanalysis.preprocessing.utils import polar_meshgrid
 
 from eosdxanalysis.preprocessing.preprocess import PreprocessData
 from eosdxanalysis.preprocessing.preprocess import ABBREVIATIONS
@@ -2607,6 +2608,43 @@ class TestFeatureExtractionCLI(unittest.TestCase):
         # Delete test directory
         test_path = self.test_path
         shutil.rmtree(test_path)
+
+class TestPolarMeshgrid(unittest.TestCase):
+    """
+    Test polar meshgrid
+    """
+
+    def test_two_radii(self):
+        """
+        Test polar meshgrid for a simple 2-radii case
+        """
+        size = 256
+        output_shape = (size, size)
+        r_count = 2
+        theta_count = 1
+        rmin = 0
+        rmax = output_shape[0]/2
+        quadrant_fold=False
+
+        meshgrid = polar_meshgrid(
+                output_shape=output_shape,
+                r_count=r_count,
+                theta_count=theta_count,
+                rmin=rmin,
+                rmax=rmax,
+                quadrant_fold=quadrant_fold
+                )
+
+        inner_mask = create_circular_mask(
+                size, size, rmin=rmin, rmax=rmax/2)
+        outer_mask = create_circular_mask(
+                size, size, rmin=rmax/2, rmax=rmax)
+
+        known_image = np.zeros(output_shape)
+        known_image[inner_mask] = 1
+        known_image[outer_mask] = 2
+
+        self.assertTrue(np.array_equal(meshgrid, known_image))
 
 if __name__ == '__main__':
     unittest.main()
