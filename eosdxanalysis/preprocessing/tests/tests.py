@@ -1660,6 +1660,72 @@ class TestFeatureExtraction(unittest.TestCase):
         # Ensure the calculated intensity is correct
         self.assertEqual(calculated_intensity, known_intensity)
 
+    def test_feature_extraction_percentile_intensity_ones(self):
+        """
+        Test FeatureExtraction for a test image of ones.
+        Ensure the calculated percentile intensity is correct.
+        """
+        size = 256
+        shape = size, size
+        test_image = np.ones(shape)
+        percentile = 99.99
+        # Calculate the known intensity
+        known_intensity = 1
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the intensit
+        calculated_intensity = \
+                feature_extraction.feature_percentile_intensity(percentile)
+
+        # Ensure the calculated intensity is correct
+        self.assertEqual(calculated_intensity, known_intensity)
+
+    def test_feature_extraction_percentile_intensity_zeros(self):
+        """
+        Test FeatureExtraction for a test image of zeros.
+        Ensure the calculated percentile intensity is correct.
+        """
+        size = 256
+        shape = size, size
+        test_image = np.zeros(shape)
+        percentile = 99.99
+        # Calculate the known intensity
+        known_intensity = 0
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the intensit
+        calculated_intensity = \
+                feature_extraction.feature_percentile_intensity(percentile)
+
+        # Ensure the calculated intensity is correct
+        self.assertEqual(calculated_intensity, known_intensity)
+
+    def test_feature_extraction_percentile_intensity_range(self):
+        """
+        Test FeatureExtraction for a test image of range.
+        Ensure the calculated percentile intensity is correct.
+        """
+        size = 256
+        shape = size, size
+        test_image = np.arange(size*size).reshape(shape)
+        percentile = 99.99
+        # Calculate the known intensity
+        known_intensity = percentile*(size*size-1)/100
+
+        # Initiate the class
+        feature_extraction = FeatureExtraction(test_image)
+
+        # Calculate the intensit
+        calculated_intensity = \
+                feature_extraction.feature_percentile_intensity(percentile)
+
+        # Ensure the calculated intensity is correct
+        self.assertEqual(calculated_intensity, known_intensity)
+
     def test_feature_extraction_annulus_intensity_ones(self):
         """
         Test FeatureExtraction for a test image with an annulus of ones.

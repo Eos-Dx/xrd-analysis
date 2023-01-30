@@ -81,6 +81,38 @@ class FeatureExtraction(object):
 
         return max_intensity
 
+    def feature_percentile_intensity(self, percentile):
+        """
+        Computes the percentile intensity of the image
+
+        Parameters
+        ----------
+
+        image : ndarray
+            The measurement image data
+
+        percentile : array_like of float
+            Percentile to compute.
+
+        Output
+        ------
+
+        percentile_intensity : number
+            The percentile intensity
+
+        Notes
+        -----
+        Calls ``numpy.percentile``.
+
+        """
+        # Reference the stored image
+        image = self.image
+
+        # Compute the percentile image intensity
+        percentile_intensity = np.percentile(image, percentile)
+
+        return percentile_intensity
+
     def feature_image_intensity(self):
         """
         Computes the intensity of the image
@@ -802,6 +834,13 @@ def feature_extraction(input_path, output_filepath, params):
                 # Compute max intensity
                 max_intensity = feature_extraction.feature_max_intensity()
                 extracted_feature_list.append(max_intensity)
+            if "percentile_intensity" in feature:
+                # Compute percentile intensity
+                percentile = features[feature]
+                percentile_intensity = \
+                        feature_extraction.feature_percentile_intensity(
+                                percentile)
+                extracted_feature_list.append(percentile_intensity)
             if "cropped_intensity" in feature:
                 # Compute cropped intensity
                 cropped_intensity = feature_extraction.feature_image_intensity()
