@@ -28,7 +28,7 @@ def run_pca_plot(
         training_filepath=None, kmeans_model_filepath=None,
         kmeans_results_filepath=None, blind_filepath=None, db_filepath=None,
         output_path=None, scale_by=None, feature_list=None, n_components=2,
-        n_clusters=None):
+        n_clusters=None, cancer_type_filepath=None):
     """
     """
     cluster_model_name = "kmeans_{}".format(n_clusters)
@@ -190,7 +190,6 @@ def run_pca_plot(
 
         plt.show()
 
-
     ################################################
     # 3D PCA on K-means, divided by max_intensity, #
     # rescaled using StandardScaler                #
@@ -245,6 +244,77 @@ def run_pca_plot(
 
         plt.show()
 
+    ################################################
+    # 3D PCA color by cancer type
+    # rescaled using StandardScaler                #
+    ################################################
+
+    if cancer_type_filepath:
+
+        cancer_type_list = [
+                "Lymphoma",
+                "Melanoma",
+                "Carcinoma",
+                "Hemangiosarcoma",
+                "Sarcoma",
+                ]
+
+        # Add cancer type
+        df_cancer_patients_type = pd.read_csv(cancer_type_filepath, index_col="Patient_ID")
+        df_cancer_measurements_type = pd.merge(
+                df_all, df_cancer_patients_type, left_on="Patient_ID", right_index=True)
+
+        cancer_measurement_counts = df_cancer_measurements_type.groupby("Cancer_Type")["Cancer_Type"].count()
+        cancer_patient_counts = df_cancer_patients_type.groupby("Cancer_Type")["Cancer_Type"].count()
+
+        print("Cancer_Type,Measurement_Count,Patient_Count")
+        for cancer_type in cancer_measurement_counts.index:
+            measurement_count = cancer_measurement_counts.loc[cancer_type]
+            patient_count = cancer_patient_counts.loc[cancer_type]
+            print("{},{},{}".format(cancer_type, measurement_count, patient_count))
+        plot_title = "3D PCA on {} features, labeled by cancer type {}".format(
+                len(feature_list), cancer_type)
+
+        fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
+
+        # Loop over measurements according to patient cancer type
+        # for cancer_type in df_all["Cancer_Type"].dropna().unique():
+        for cancer_type in cancer_type_list:
+
+            kmeans_cancer_type = df_cancer_measurements_type[df_cancer_measurements_type["Cancer_Type"] == cancer_type]
+            X_plot = kmeans_cancer_type[feature_list].values
+            X_plot_pca = pca.transform(X_plot)
+            ax.scatter(
+                    X_plot_pca[:,0], X_plot_pca[:,1], X_plot_pca[:,2],
+                    # c=colors[cancer_type], label=cancer_type)
+                    label=cancer_type)
+
+        if True:
+            # Plot cluster centers
+            ax.scatter(
+                    pca_clusters[:,0], pca_clusters[:,1], pca_clusters[:,2],
+                    marker="^", s=200, alpha=0.5, c="orange", label="cluster centers")
+
+            # Annotate cluster centers with cluster labels
+            for idx in range(n_clusters):
+                ax.text(
+                    pca_clusters[idx,0], pca_clusters[idx,1], pca_clusters[idx,2],
+                    str(idx))
+
+        # ax.view_init(30, +60+180)
+
+        # ax.set_title("2D Sinusoid - 3D Surface Plot")
+        ax.set_xlabel("PC0")
+        ax.set_ylabel("PC1")
+        ax.set_zlabel("PC2")
+        # ax.set_zlim([-1, 1])
+
+        ax.set_title(plot_title)
+        ax.legend()
+
+        fig.tight_layout()
+
+        plt.show()
 
     ################################
     # PCA subspace projection plot #
@@ -603,6 +673,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--n_components", type=int, default=2, required=False,
             help="Number of PCA components")
+    parser.add_argument(
+            "--cancer_type_filepath", default=None, required=False,
+            help="The csv input file containing patient cancer type data")
 
     args = parser.parse_args()
 
@@ -615,6 +688,7 @@ if __name__ == '__main__':
     scale_by = args.scale_by
     feature_list = str(args.feature_list).split(",")
     n_clusters = args.n_clusters
+    cancer_type_filepath = args.cancer_type_filepath
 
     n_components = args.n_components
 
@@ -625,4 +699,6 @@ if __name__ == '__main__':
         blind_filepath=blind_filepath, db_filepath=db_filepath,
         output_path=output_path, scale_by=scale_by, feature_list=feature_list,
         n_clusters=n_clusters,
-        n_components=n_components)
+        n_components=n_components,
+        cancer_type_filepath=cancer_type_filepath,
+        )
