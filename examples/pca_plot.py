@@ -86,6 +86,11 @@ def run_pca_plot(
                 db_filepath,
                 index_col="Barcode")
 
+        print("WARNING:")
+        print("HACK due to mising Patient Data!")
+        df_blind_ext = df_blind_fully_scaled
+        df_blind_ext["Diagnosis"] = "blind"
+
     # Set title based on feature scaling
     if scale_by:
         title = "PCA-Reduced Xena Dataset 2-D Subspace Projection, divide by {}".format(scale_by)
@@ -192,7 +197,9 @@ def run_pca_plot(
     ################################################
 
     if True:
-        plot_title = "3D PCA on K-means, with cluster labels"
+        # plot_title = "3D PCA on K-means, with cluster labels"
+        plot_title = "3D PCA on {} features, labeled by diagnosis".format(
+                len(feature_list))
 
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
 
@@ -211,16 +218,17 @@ def run_pca_plot(
                     X_plot_pca[:,0], X_plot_pca[:,1], X_plot_pca[:,2],
                     c=colors[diagnosis], label=diagnosis)
 
-        # Plot cluster centers
-        ax.scatter(
-                pca_clusters[:,0], pca_clusters[:,1], pca_clusters[:,2],
-                marker="^", s=200, alpha=0.5, c="orange", label="cluster centers")
+        if False:
+            # Plot cluster centers
+            ax.scatter(
+                    pca_clusters[:,0], pca_clusters[:,1], pca_clusters[:,2],
+                    marker="^", s=200, alpha=0.5, c="orange", label="cluster centers")
 
-        # Annotate cluster centers with cluster labels
-        for idx in range(n_clusters):
-            ax.text(
-                pca_clusters[idx,0], pca_clusters[idx,1], pca_clusters[idx,2],
-                str(idx))
+            # Annotate cluster centers with cluster labels
+            for idx in range(n_clusters):
+                ax.text(
+                    pca_clusters[idx,0], pca_clusters[idx,1], pca_clusters[idx,2],
+                    str(idx))
 
         # ax.view_init(30, +60+180)
 
@@ -417,18 +425,7 @@ def run_pca_plot(
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
 
         # Add a Barcode column to the dataframe
-        # Extract the first letter and all numbers in the filename before the subindex
-        # E.g., from filename AB12345-01.txt -> A12345 is extracted
-        # Note: Issue if the Barcode format changes
-        extraction = df_all.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
-        extraction_series = extraction[0] + extraction[1].str.zfill(5)
-        extraction_list = extraction_series.tolist()
-
-        assert(len(extraction_list) == df_all.shape[0])
-        df_ext = df_all.copy()
-        df_ext["Barcode"] = extraction_list
-
-        df_ext = pd.merge(df_ext, db, left_on="Barcode", right_index=True)
+        df_ext = add_patient_data(df_all, db_filepath, index_col="Barcode")
 
         colors = {
                 "cancer": "red",
