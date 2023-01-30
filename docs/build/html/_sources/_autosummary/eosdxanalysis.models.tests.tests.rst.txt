@@ -21,6 +21,7 @@
       TestFourierAnalysis
       TestGaussianDecomposition
       TestL1Metric
+      TestPatientCancerClusterEstimator
       TestPolarSamplingGrid
       TestPolynomialFit
       TestStats

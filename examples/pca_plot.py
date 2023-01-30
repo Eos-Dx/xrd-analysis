@@ -66,24 +66,30 @@ def run_pca_plot(
             db_filepath,
             index_col="Barcode")
 
-    # Load blinding data
-    df_blind = pd.read_csv(blind_filepath, index_col="Filename")
-    df_blind_scaled_features = scale_features(df_blind, scale_by, feature_list)
+    if blind_filepath:
+        # Load blinding data
+        df_blind = pd.read_csv(blind_filepath, index_col="Filename")
+        df_blind_scaled_features = scale_features(df_blind, scale_by, feature_list)
 
-    # Performan final standard scaling of blind data
-    X_blind_fully_scaled = scaler.transform(
-            df_blind_scaled_features[feature_list])
-    df_blind_fully_scaled = df_blind_scaled_features.copy()
-    df_blind_fully_scaled[feature_list] = X_blind_fully_scaled
-    # Get k-means clusters on blind data
-    df_blind_fully_scaled[cluster_model_name] = kmeans_model.predict(
-            X_blind_fully_scaled)
+        # Performan final standard scaling of blind data
+        X_blind_fully_scaled = scaler.transform(
+                df_blind_scaled_features[feature_list])
+        df_blind_fully_scaled = df_blind_scaled_features.copy()
+        df_blind_fully_scaled[feature_list] = X_blind_fully_scaled
+        # Get k-means clusters on blind data
+        df_blind_fully_scaled[cluster_model_name] = kmeans_model.predict(
+                X_blind_fully_scaled)
 
-    # Add patient data
-    df_blind_ext = add_patient_data(
-            df_blind_fully_scaled,
-            db_filepath,
-            index_col="Barcode")
+        # Add patient data
+        df_blind_ext = add_patient_data(
+                df_blind_fully_scaled,
+                db_filepath,
+                index_col="Barcode")
+
+        print("WARNING:")
+        print("HACK due to mising Patient Data!")
+        df_blind_ext = df_blind_fully_scaled
+        df_blind_ext["Diagnosis"] = "blind"
 
     # Set title based on feature scaling
     if scale_by:
@@ -99,10 +105,11 @@ def run_pca_plot(
     # estimator = make_pipeline(scaler, pca).fit(df_train.values)
     pca.fit(df_train_ext[feature_list])
 
-    # Save PCA estimator to file
-    pca_class_filename = "pca_class_{}.joblib".format(timestamp)
-    pca_class_filepath = os.path.join(output_path, pca_class_filename)
-    dump(pca, pca_class_filepath)
+    if output_path:
+        # Save PCA estimator to file
+        pca_class_filename = "pca_class_{}.joblib".format(timestamp)
+        pca_class_filepath = os.path.join(output_path, pca_class_filename)
+        dump(pca, pca_class_filepath)
 
     print("Explained variance ratios:")
     print(pca.explained_variance_ratio_)
@@ -131,16 +138,17 @@ def run_pca_plot(
     else:
         df_all = df_train_ext
 
-    # Save dataframe to file
-    df_ext_filename = "extracted_features_pca_{}.csv".format(timestamp)
-    df_ext_filepath = os.path.join(output_path, df_ext_filename)
-    # Transform df_ext using estimator
-    data_pca_ext = pca.transform(df_train_ext[feature_list])
-    columns = ["PC{}".format(idx) for idx in range(n_components)]
-    # Create dataframe
-    df_pca_ext = pd.DataFrame(data=data_pca_ext,
-            columns=columns, index=df_train_ext.index)
-    df_pca_ext.to_csv(df_ext_filepath)
+    if output_path:
+        # Save dataframe to file
+        df_ext_filename = "extracted_features_pca_{}.csv".format(timestamp)
+        df_ext_filepath = os.path.join(output_path, df_ext_filename)
+        # Transform df_ext using estimator
+        data_pca_ext = pca.transform(df_train_ext[feature_list])
+        columns = ["PC{}".format(idx) for idx in range(n_components)]
+        # Create dataframe
+        df_pca_ext = pd.DataFrame(data=data_pca_ext,
+                columns=columns, index=df_train_ext.index)
+        df_pca_ext.to_csv(df_ext_filepath)
 
     # Set offsets
     x_label_offset = 0.01
@@ -148,11 +156,12 @@ def run_pca_plot(
 
     kmeans_results = pd.read_csv(kmeans_results_filepath, index_col="Filename")
 
-    # Predict on blind
-    blind_predictions = kmeans_model.predict(df_blind_ext[feature_list].values)
-    df_blind_ext["kmeans_{}".format(n_clusters)] = blind_predictions
+    if blind_filepath:
+        # Predict on blind
+        blind_predictions = kmeans_model.predict(df_blind_ext[feature_list].values)
+        df_blind_ext["kmeans_{}".format(n_clusters)] = blind_predictions
 
-    df_all.loc[df_blind.index, "kmeans_{}".format(n_clusters)] = blind_predictions
+        df_all.loc[df_blind.index, "kmeans_{}".format(n_clusters)] = blind_predictions
 
     clusters = kmeans_model.cluster_centers_
     pca_clusters = pca.transform(clusters)
@@ -188,7 +197,9 @@ def run_pca_plot(
     ################################################
 
     if True:
-        plot_title = "3D PCA on K-means, with cluster labels"
+        # plot_title = "3D PCA on K-means, with cluster labels"
+        plot_title = "3D PCA on {} features, labeled by diagnosis".format(
+                len(feature_list))
 
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
 
@@ -207,16 +218,17 @@ def run_pca_plot(
                     X_plot_pca[:,0], X_plot_pca[:,1], X_plot_pca[:,2],
                     c=colors[diagnosis], label=diagnosis)
 
-        # Plot cluster centers
-        ax.scatter(
-                pca_clusters[:,0], pca_clusters[:,1], pca_clusters[:,2],
-                marker="^", s=200, alpha=0.5, c="orange", label="cluster centers")
+        if False:
+            # Plot cluster centers
+            ax.scatter(
+                    pca_clusters[:,0], pca_clusters[:,1], pca_clusters[:,2],
+                    marker="^", s=200, alpha=0.5, c="orange", label="cluster centers")
 
-        # Annotate cluster centers with cluster labels
-        for idx in range(n_clusters):
-            ax.text(
-                pca_clusters[idx,0], pca_clusters[idx,1], pca_clusters[idx,2],
-                str(idx))
+            # Annotate cluster centers with cluster labels
+            for idx in range(n_clusters):
+                ax.text(
+                    pca_clusters[idx,0], pca_clusters[idx,1], pca_clusters[idx,2],
+                    str(idx))
 
         # ax.view_init(30, +60+180)
 
@@ -367,7 +379,7 @@ def run_pca_plot(
     # Diagnosis plot #
     ##################
 
-    if True:
+    if False:
 
         # Plot all data highlighting patient diagnosis
         plot_title="{}, color by diagnosis".format(title)
@@ -406,25 +418,14 @@ def run_pca_plot(
     # 3D Diagnosis plot #
     #####################
 
-    if True:
+    if False:
 
         # Plot all data highlighting patient diagnosis
         plot_title="3D {}, color by diagnosis".format(title)
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
 
         # Add a Barcode column to the dataframe
-        # Extract the first letter and all numbers in the filename before the subindex
-        # E.g., from filename AB12345-01.txt -> A12345 is extracted
-        # Note: Issue if the Barcode format changes
-        extraction = df_all.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
-        extraction_series = extraction[0] + extraction[1].str.zfill(5)
-        extraction_list = extraction_series.tolist()
-
-        assert(len(extraction_list) == df_all.shape[0])
-        df_ext = df_all.copy()
-        df_ext["Barcode"] = extraction_list
-
-        df_ext = pd.merge(df_ext, db, left_on="Barcode", right_index=True)
+        df_ext = add_patient_data(df_all, db_filepath, index_col="Barcode")
 
         colors = {
                 "cancer": "red",
@@ -546,22 +547,23 @@ def run_pca_plot(
             # Show K-means plots
             plt.show()
 
+        if False:
 
-        extraction = df_pca.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
-        extraction_series = extraction[0] + extraction[1].str.zfill(5)
-        extraction_list = extraction_series.tolist()
+            extraction = df_pca.index.str.extractall("CR_([A-Z]{1}).*?([0-9]+)")
+            extraction_series = extraction[0] + extraction[1].str.zfill(5)
+            extraction_list = extraction_series.tolist()
 
-        assert(len(extraction_list) == df_pca.shape[0])
+            assert(len(extraction_list) == df_pca.shape[0])
 
-        df_pca_ext = df_pca.copy()
-        df_pca_ext["Barcode"] = extraction_list
-        df_pca_ext = pd.merge(df_pca_ext, db, left_on="Barcode", right_index=True)
-        df_pca_ext = df_pca_ext.rename(columns={0: "PC0", 1: "PC1", 2: "PC2"})
+            df_pca_ext = df_pca.copy()
+            df_pca_ext["Barcode"] = extraction_list
+            df_pca_ext = pd.merge(df_pca_ext, db, left_on="Barcode", right_index=True)
+            df_pca_ext = df_pca_ext.rename(columns={0: "PC0", 1: "PC1", 2: "PC2"})
 
-        # Save dataframe
-        kmeans_pca_filename = "kmeans_pca_model_{}.joblib".format(timestamp)
-        kmeans_pca_filepath = os.path.join(output_path, kmeans_pca_filename)
-        df_pca_ext.to_csv(kmeans_pca_filepath )
+            # Save dataframe
+            kmeans_pca_filename = "kmeans_pca_model_{}.joblib".format(timestamp)
+            kmeans_pca_filepath = os.path.join(output_path, kmeans_pca_filename)
+            df_pca_ext.to_csv(kmeans_pca_filepath )
 
 
 if __name__ == '__main__':
@@ -587,7 +589,7 @@ if __name__ == '__main__':
             "--db_filepath", default=None, required=True,
             help="The csv input file containing patient data")
     parser.add_argument(
-            "--output_path", default=None, required=True,
+            "--output_path", default=None, required=False,
             help="The output path to save PCA and K-means data")
     parser.add_argument(
             "--scale_by", default=None, required=False,
