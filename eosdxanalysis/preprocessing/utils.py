@@ -221,3 +221,79 @@ def radial_integration(image, center=None, output_shape=(360,128)):
             output_shape=output_shape, preserve_range=True)
     profile_1d = np.mean(polar_image, axis=1)
     return profile_1d
+
+def polar_meshgrid(
+        output_shape=(256,256), r_count=10, theta_count=10,
+        rmin=20, rmax=110, quadrant_fold=False):
+    """
+    Creates a polar meshgrid with unique label per cell.
+
+    Parameters
+    ----------
+    output_shape : (int, int)
+        Shape of polar meshgrid
+
+    r_count : int
+        Number of annuli
+
+    theta_count : int
+        Number of sectors
+
+    rmin : int
+        Start radius
+
+    rmax : int
+        End radius
+
+    quadrant_fold : bool
+        Return a quadrant-folded image if ``True``. Default is ``False``.
+
+
+    Returns
+    -------
+
+    meshgrid : ndarray
+        Returns ndarray of shape ``output_shape`` with unique label per cell.
+
+    Notes
+    -----
+    Cell label values start at 1 to distinguish unused image portions
+    """
+    output = np.zeros(output_shape)
+    shape = output.shape
+
+    sector_angle = 2*np.pi/theta_count
+
+    for idx in range(r_count):
+        for jdx in range(theta_count):
+            # Create a mask for the annulus
+            annulus_mask = create_circular_mask(
+                    shape[0], shape[1], rmin=rmin, rmax=rmax)
+
+            # Set the sector pixel values to 1
+            # Generate a meshgrid the same size as the image
+            x_end = shape[1]/2 - 0.5
+            x_start = -x_end
+            y_end = x_start
+            y_start = x_end
+            YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+            TT = np.arctan2(YY, XX)
+
+            # Calculate sector start and end angles based on symmetric sector angle
+            theta_min = 0
+            theta_max = sector_angle
+
+            # Get top and bottom indices
+            top_sector_indices = \
+                    (TT > theta_min) & (TT < theta_max) & annulus_mask
+            bottom_sector_indices = np.fliplr(top_sector_indices)
+            # Combine indices
+            cell_indices = top_sector_indices | bottom_sector_indices
+
+            # Set the cell value
+            cell_value = idx + jdx*theta_count + 1
+
+            # Set the cell value
+            output[cell_indices] = cell_value
+
+    return output
