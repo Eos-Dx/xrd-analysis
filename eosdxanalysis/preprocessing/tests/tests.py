@@ -2624,7 +2624,6 @@ class TestPolarMeshgrid(unittest.TestCase):
         theta_count = 1
         rmin = 0
         rmax = output_shape[0]/2
-        quadrant_fold=False
 
         meshgrid = polar_meshgrid(
                 output_shape=output_shape,
@@ -2632,7 +2631,6 @@ class TestPolarMeshgrid(unittest.TestCase):
                 theta_count=theta_count,
                 rmin=rmin,
                 rmax=rmax,
-                quadrant_fold=quadrant_fold
                 )
 
         inner_mask = create_circular_mask(
@@ -2646,17 +2644,16 @@ class TestPolarMeshgrid(unittest.TestCase):
 
         self.assertTrue(np.array_equal(meshgrid, known_image))
 
-    def test_two_sectors(self):
+    def test_four_sectors(self):
         """
         Test polar meshgrid for a simple 2-sector case
         """
         size = 256
         output_shape = (size, size)
         r_count = 1
-        theta_count = 2
+        theta_count = 4
         rmin = 0
         rmax = output_shape[0]/2
-        quadrant_fold=False
 
         meshgrid = polar_meshgrid(
                 output_shape=output_shape,
@@ -2664,23 +2661,27 @@ class TestPolarMeshgrid(unittest.TestCase):
                 theta_count=theta_count,
                 rmin=rmin,
                 rmax=rmax,
-                quadrant_fold=quadrant_fold
                 )
 
-        # Create masks for upper and lower parts of images
-        upper_mask = create_circular_mask(
+        # Create image mask
+        image_mask = create_circular_mask(
                 size, size, rmin=rmin, rmax=rmax)
-        # Set bottom half of image to zero
-        upper_mask[int(size/2):] = 0
 
-        lower_mask = create_circular_mask(
-                size, size, rmin=rmin, rmax=rmax)
-        # Set upper half of image to zero
-        lower_mask[:int(size/2),:] = 0
-
+        # Create known image
         known_image = np.zeros(output_shape)
-        known_image[upper_mask] = 1
-        known_image[lower_mask] = 2
+        # Set middle index
+        mdx = int(output_shape[0]/2)
+        # Set upper-right quadrant value to 1
+        known_image[:mdx,mdx:] = 1
+        # Set upper-left quadrant value to 2
+        known_image[:mdx,:mdx] = 2
+        # Set lower-left quadrant value to 3
+        known_image[mdx:,:mdx] = 3
+        # Set lower-right quadrant value to 4
+        known_image[mdx:,mdx:] = 4
+
+        # Apply image mask
+        known_image[~image_mask] = 0
 
         self.assertTrue(np.array_equal(meshgrid, known_image))
 
