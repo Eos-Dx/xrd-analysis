@@ -1,8 +1,10 @@
-import numpy as np
-
 """
 Utility functions
 """
+
+import numpy as np
+
+from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 
 def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min"):
     """
@@ -224,7 +226,7 @@ def radial_integration(image, center=None, output_shape=(360,128)):
 
 def polar_meshgrid(
         output_shape=(256,256), r_count=10, theta_count=10,
-        rmin=20, rmax=110, quadrant_fold=False):
+        rmin=20, rmax=110):
     """
     Creates a polar meshgrid with unique label per cell.
 
@@ -259,12 +261,16 @@ def polar_meshgrid(
     -----
     Cell label values start at 1 to distinguish unused image portions
     """
+    # Check for theta count of 1 or multiple of 4
+    if (theta_count%4) != 0 and (theta_count != 1):
+        raise ValueError("Theta count must be 1 or a power of 4.")
+
     output = np.zeros(output_shape)
     shape = output.shape
 
     # Set up radius and theta ranges
     r_range = np.linspace(rmin, rmax, r_count+1)
-    theta_range = np.linspace(0, 2*np.pi, theta_count+1)
+    theta_range = np.linspace(0, np.pi/2, int(theta_count/4)+1)
 
     # Generate a meshgrid the same size as the image
     x_end = shape[1]/2 - 0.5
@@ -273,29 +279,58 @@ def polar_meshgrid(
     y_start = x_end
     YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
     TT = np.arctan2(YY, XX)
+    RR = np.sqrt(XX**2 + YY**2)
+
+    # Create image mask
+    image_mask = create_circular_mask(
+            shape[0], shape[1], rmin=rmin, rmax=rmax)
 
     for idx in range(r_count):
+        # Set sector rmin rmax
+        sector_rmin = r_range[idx]
+        sector_rmax = r_range[idx+1]
+
         # Create a mask for the annulus
         annulus_mask = create_circular_mask(
-                shape[0], shape[1], rmin=r_range[idx], rmax=r_range[idx+1])
+                shape[0], shape[1], rmin=sector_rmin, rmax=sector_rmax)
 
-        for jdx in range(theta_count):
-            # Calculate sector start and end angles based on symmetric sector angle
-            theta_min = theta_range[jdx]
-            theta_max = theta_range[jdx+1]
+        if theta_count >= 4:
+            # Use quadrant folding we only need to calculate 1/4 of the image
+            for jdx in range(int(theta_count/4)):
+                # Calculate sector start and end angles based on symmetric sector angle
+                theta_min = theta_range[jdx]
+                theta_max = theta_range[jdx+1]
 
-            # Get top and bottom indices
-            top_sector_indices = \
-                    (TT > theta_min) & (TT < theta_max) & annulus_mask
-            bottom_sector_indices = np.flipud(top_sector_indices)
+                # Create a mask for the cell, combining annulus mask
+                # with theta bounds
+                cell_mask = annulus_mask & \
+                    (TT > theta_min) & (TT < theta_max)
 
-            # Combine indices
-            cell_indices = top_sector_indices | bottom_sector_indices
+                # Set the cell value
+                cell_value = idx + jdx*(theta_count-1) + 1
 
-            # Set the cell value
-            cell_value = idx + jdx*theta_count + 1
+                # Set the cell value
+                output[cell_mask] = cell_value
 
-            # Set the cell value
-            output[cell_indices] = cell_value
+            mdx = int(output_shape[0]/2)
+            # Set upper-left quadrant value to 2x the first quadrant
+            output[:mdx,:mdx] = 2*np.fliplr(output[:mdx,mdx:])
+            # Set lower-left quadrant value to 3x the first quadrant
+            output[mdx:,:mdx] = 3*np.flipud(np.fliplr(output[:mdx,mdx:]))
+            # Set lower-right quadrant value to 4x the first quadrant
+            output[mdx:,mdx:] = 4*np.flipud(output[:mdx,mdx:])
+
+            # Apply image mask
+            output[~image_mask] = 0
+
+        elif theta_count == 1:
+            cell_value = idx + 1
+
+            # Apply annulus mask to set cell value
+            output[annulus_mask] = cell_value
+
+            # Apply image mask
+            output[~image_mask] = 0
+
 
     return output
