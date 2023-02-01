@@ -2614,7 +2614,7 @@ class TestPolarMeshgrid(unittest.TestCase):
     Test polar meshgrid
     """
 
-    def test_two_radii(self):
+    def test_2_radii(self):
         """
         Test polar meshgrid for a simple 2-radii case
         """
@@ -2644,9 +2644,9 @@ class TestPolarMeshgrid(unittest.TestCase):
 
         self.assertTrue(np.array_equal(meshgrid, known_image))
 
-    def test_four_sectors(self):
+    def test_4_sectors(self):
         """
-        Test polar meshgrid for a simple 2-sector case
+        Test polar meshgrid for a simple 4-sector case
         """
         size = 256
         output_shape = (size, size)
