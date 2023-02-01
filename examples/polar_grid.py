@@ -52,7 +52,7 @@ def run_feature_extraction(input_path, meshgrid_params, output_filepath):
         image = np.loadtxt(filepath, dtype=np.uint32)
 
         for idx in range(num_features):
-            cell = (image == feature_list[idx])
+            cell = (mesh == feature_list[idx])
             feature_values[idx] = image[cell].sum()
 
         # Add extracted features to dataframe
