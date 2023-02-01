@@ -302,7 +302,7 @@ class PreprocessData(object):
                     plan_image = filter_hot_spots(
                             plan_image, threshold=hot_spot_threshold,
                             hot_spot_coords_array=hot_spot_coords_array,
-                            method="median")
+                            filter_method="median")
 
                 if median_filter_size:
                     plan_image = median_filter(plan_image, size=median_filter_size)
@@ -400,7 +400,7 @@ class PreprocessData(object):
 
                 # Mask original image for detecting bright pixel count
                 # before any Euclidean transformations (centering, rotating)
-                if not masked_image:
+                if not isinstance(masked_image, np.ndarray):
                     # Use a beam-masked image to calculate bright pixel count
                     calculated_center = find_center(
                             plan_image, method="max_centroid", rmax=beam_rmax)
