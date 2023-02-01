@@ -227,7 +227,7 @@ def run_pca_plot(
             for idx in range(n_clusters):
                 ax.text(
                     pca_clusters[idx,0], pca_clusters[idx,1], pca_clusters[idx,2],
-                    str(idx))
+                    str(idx), fontsize=14)
 
         # ax.view_init(30, +60+180)
 
