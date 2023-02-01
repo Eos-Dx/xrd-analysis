@@ -18,6 +18,7 @@ import matplotlib.colors as colors
 
 from scipy import ndimage
 from scipy.ndimage import gaussian_filter
+from scipy.ndimage import median_filter
 from skimage.feature import peak_local_max
 from skimage.filters import threshold_local
 from skimage.transform import EuclideanTransform
@@ -195,6 +196,8 @@ class PreprocessData(object):
                 "hot_spot_detection_method", "relative")
         bright_pixel_count_threshold = params.get(
                 "bright_pixel_count_threshold", 0.75)
+        median_filter_size = params.get(
+                "median_filter_size", None)
 
         # Get plans from from parameters or keyword argument
         plans = params.get("plans", plans)
@@ -300,6 +303,9 @@ class PreprocessData(object):
                             plan_image, threshold=hot_spot_threshold,
                             hot_spot_coords_array=hot_spot_coords_array,
                             method="median")
+
+                if median_filter_size:
+                    plan_image = median_filter(plan_image, size=median_filter_size)
 
                 # Set the output based on output specifications
                 if plan == "original":
