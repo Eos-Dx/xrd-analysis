@@ -272,8 +272,8 @@ def run_pca_plot(
             measurement_count = cancer_measurement_counts.loc[cancer_type]
             patient_count = cancer_patient_counts.loc[cancer_type]
             print("{},{},{}".format(cancer_type, measurement_count, patient_count))
-        plot_title = "3D PCA on {} features, labeled by cancer type {}".format(
-                len(feature_list), cancer_type)
+        plot_title = "3D PCA on {} features, labeled by cancer type".format(
+                len(feature_list))
 
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
 
