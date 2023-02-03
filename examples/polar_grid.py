@@ -23,6 +23,7 @@ def run_feature_extraction(input_path, meshgrid_params, output_filepath):
     rmin = meshgrid_params["rmin"]
     rmax = meshgrid_params["rmax"]
     quadrant_fold = meshgrid_params["quadrant_fold"]
+    half_step_rotation = meshgrid_params["half_step_rotation"]
 
     mesh = polar_meshgrid(
             output_shape=output_shape,
@@ -30,7 +31,9 @@ def run_feature_extraction(input_path, meshgrid_params, output_filepath):
             theta_count=theta_count,
             rmin=rmin,
             rmax=rmax,
-            quadrant_fold=quadrant_fold)
+            quadrant_fold=quadrant_fold,
+            half_step_rotation=half_step_rotation,
+            )
 
     # Get filepath list
     filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
