@@ -4,6 +4,8 @@ Utility functions
 
 import numpy as np
 
+from skimage.transform import rotate
+
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 
 def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min"):
@@ -226,7 +228,7 @@ def radial_integration(image, center=None, output_shape=(360,128)):
 
 def polar_meshgrid(
         output_shape=(256,256), r_count=10, theta_count=10,
-        rmin=20, rmax=110, quadrant_fold=True):
+        rmin=20, rmax=110, quadrant_fold=True, half_step_rotation=True):
     """
     Creates a polar meshgrid with unique label per cell.
 
@@ -250,6 +252,8 @@ def polar_meshgrid(
     quadrant_fold : bool
         Return a quadrant-folded image if ``True``. Default is ``False``.
 
+    half_step_rotation : bool
+        Rotate meshgrid by half sector angle size.
 
     Returns
     -------
@@ -315,6 +319,13 @@ def polar_meshgrid(
 
     # Rotate image
     output = np.rot90(np.rot90(output))
+
+    # Rotate image by half step
+    if half_step_rotation:
+        # Get rotation angle in degrees
+        rotation_angle = 360/16/2
+        # Rotate image
+        output = rotate(output, -rotation_angle)
 
     # Get quadrant folded image
     if quadrant_fold:
