@@ -197,7 +197,7 @@ def run_pca_plot(
 
     if True:
         # plot_title = "3D PCA on K-means, with cluster labels"
-        plot_title = "3D PCA on {} features, labeled by diagnosis".format(
+        plot_title = "3D PCA on {} features labeled by diagnosis".format(
                 len(feature_list))
 
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
