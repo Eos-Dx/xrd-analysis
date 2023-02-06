@@ -192,7 +192,7 @@ def run_patient_predictions_kmeans(
     df_train_ext = add_patient_data(
             df_train_fully_scaled,
             patient_db_filepath,
-            index_col="Barcode").dropna()
+            index_col="Barcode").dropna().sort_values("Patient_ID")
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
@@ -258,7 +258,7 @@ def run_patient_predictions_kmeans(
         df_test_ext = add_patient_data(
                 df_test_fully_scaled,
                 patient_db_filepath,
-                index_col="Barcode").dropna()
+                index_col="Barcode").dropna().sort_values("Patient_ID")
 
         # Predict measurements
         y_test_pred_measurements = pd.Series(index=df_test_ext.index, dtype=int)
@@ -630,7 +630,7 @@ def run_patient_predictions_pointwise(
     df_train_ext = add_patient_data(
             df_train_fully_scaled,
             patient_db_filepath,
-            index_col="Barcode").dropna()
+            index_col="Barcode").dropna().sort_values("Patient_ID")
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
@@ -789,7 +789,7 @@ def run_patient_predictions_pointwise(
         df_test_ext = add_patient_data(
                 df_test_fully_scaled,
                 patient_db_filepath,
-                index_col="Barcode").dropna()
+                index_col="Barcode").dropna().sort_values("Patient_ID")
 
         # Make predictions on test data
         distance_threshold = threshold
