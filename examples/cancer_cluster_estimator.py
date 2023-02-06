@@ -306,7 +306,7 @@ def run_patient_predictions_centerwise(
         distance_type=None,
         projection=None,
         z_threshold=None,
-        distance_type=None,
+        distance_function=None,
         ):
     #######################################
     # Load training data
@@ -414,7 +414,7 @@ def run_patient_predictions_centerwise(
                 normal_cluster_center=normal_cluster_center,
                 abnormal_cluster_center=abnormal_cluster_center,
                 z_threshold=z_threshold,
-                distance_type=distance_type,
+                distance_function=distance_function,
                 )
 
         # Fit the estimator to the cluster training data
@@ -515,7 +515,7 @@ def run_patient_predictions_centerwise(
                 normal_cluster_center=normal_cluster_center,
                 abnormal_cluster_center=abnormal_cluster_center,
                 z_threshold=z_threshold,
-                distance_type=distance_type,
+                distance_function=distance_function,
                 )
 
         # Fit the estimator to the cluster training data
@@ -568,7 +568,7 @@ def run_patient_predictions_pointwise(
         model_output_filepath=None,
         projection=None,
         z_threshold=None,
-        distance_type=None,
+        distance_function=None,
         ):
     #######################################
     # Load training data
@@ -675,7 +675,7 @@ def run_patient_predictions_pointwise(
                 normal_cluster_center=normal_cluster_center,
                 abnormal_cluster_center=abnormal_cluster_center,
                 z_threshold=z_threshold,
-                distance_type=distance_type,
+                distance_function=distance_function,
                 )
 
         # Fit the estimator to the cluster training data
@@ -807,7 +807,7 @@ def run_patient_predictions_pointwise(
                 normal_cluster_center=normal_cluster_center,
                 abnormal_cluster_center=abnormal_cluster_center,
                 z_threshold=z_threshold,
-                distance_type=distance_type,
+                distance_function=distance_function,
                 )
 
         # Fit the estimator to the cluster training data
@@ -1134,8 +1134,8 @@ if __name__ == '__main__':
             "--z_threshold", type=float, default=None, required=False,
             help="Threshold to use for z-score filtering.")
     parser.add_argument(
-            "--distance_type", type=str, default=None, required=False,
-            help="Distance type (\"euclidean\" or \"manhattan\").")
+            "--distance_function", type=str, default=None, required=False,
+            help="Distance function (\"euclidean\" or \"manhattan\").")
 
     # Collect arguments
     args = parser.parse_args()
@@ -1158,7 +1158,7 @@ if __name__ == '__main__':
     model_output_filepath = args.model_output_filepath
     projection = args.projection
     z_threshold = args.z_threshold
-    distance_type = args.distance_type
+    distance_function = args.distance_function
 
     # Convert cancer_cluster_list csv to list of ints
     if cancer_cluster_list:
@@ -1220,7 +1220,7 @@ if __name__ == '__main__':
                 distance_type=distance_type,
                 projection=projection,
                 z_threshold=z_threshold,
-                distance_type=distance_type,
+                distance_function=distance_function,
                 )
     if model_type == "pointwise":
         print("Running {} model.".format(model_type))
@@ -1240,5 +1240,5 @@ if __name__ == '__main__':
                 distance_type=distance_type,
                 projection=projection,
                 z_threshold=z_threshold,
-                distance_type=distance_type,
+                distance_function=distance_function,
                 )
