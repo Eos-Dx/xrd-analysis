@@ -192,7 +192,7 @@ def run_patient_predictions_kmeans(
     df_train_ext = add_patient_data(
             df_train_fully_scaled,
             patient_db_filepath,
-            index_col="Barcode")
+            index_col="Barcode").dropna()
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
@@ -258,7 +258,7 @@ def run_patient_predictions_kmeans(
         df_test_ext = add_patient_data(
                 df_test_fully_scaled,
                 patient_db_filepath,
-                index_col="Barcode")
+                index_col="Barcode").dropna()
 
         # Predict measurements
         y_test_pred_measurements = pd.Series(index=df_test_ext.index, dtype=int)
@@ -364,11 +364,11 @@ def run_patient_predictions_centerwise(
     # Display performance metrics on training set
     ################################################################
 
-    # Add patient data
+    # Add patient data, drop patients missing info
     df_train_ext = add_patient_data(
             df_train_fully_scaled,
             patient_db_filepath,
-            index_col="Barcode")
+            index_col="Barcode").dropna()
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
@@ -497,7 +497,7 @@ def run_patient_predictions_centerwise(
         df_test_ext = add_patient_data(
                 df_test_fully_scaled,
                 patient_db_filepath,
-                index_col="Barcode")
+                index_col="Barcode").dropna()
 
         # Make predictions on test data
         distance_threshold = threshold
@@ -532,7 +532,7 @@ def run_patient_predictions_centerwise(
         # Generate measurement-wise predictions of the training data
         y_test_pred_patients = estimator.predict(df_test_ext).astype(int)
 
-        patient_list = df_test_ext["Patient_ID"].unique()
+        patient_list = df_test_ext["Patient_ID"].dropna().unique()
         df_test_pred_patients = pd.DataFrame(
                 data=y_test_pred_patients, columns=["prediction"], index=patient_list)
         # Rename index column to Patient_ID
@@ -630,7 +630,7 @@ def run_patient_predictions_pointwise(
     df_train_ext = add_patient_data(
             df_train_fully_scaled,
             patient_db_filepath,
-            index_col="Barcode")
+            index_col="Barcode").dropna()
 
     # Set up measurement-wise true labels of the training data
     y_true_measurements = pd.Series(index=df_train_ext.index, dtype=int)
@@ -789,7 +789,7 @@ def run_patient_predictions_pointwise(
         df_test_ext = add_patient_data(
                 df_test_fully_scaled,
                 patient_db_filepath,
-                index_col="Barcode")
+                index_col="Barcode").dropna()
 
         # Make predictions on test data
         distance_threshold = threshold
@@ -840,7 +840,7 @@ def run_patient_predictions_pointwise(
         # Generate measurement-wise predictions of the training data
         y_test_pred_patients = estimator.predict(df_test_ext).astype(int)
 
-        patient_list = df_test_ext["Patient_ID"].unique()
+        patient_list = df_test_ext["Patient_ID"].dropna().unique()
         df_test_pred_patients = pd.DataFrame(
                 data=y_test_pred_patients, columns=["prediction"], index=patient_list)
 
