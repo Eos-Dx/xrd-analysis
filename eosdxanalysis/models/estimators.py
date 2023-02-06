@@ -19,7 +19,7 @@ from sklearn.utils.validation import check_is_fitted
 from sklearn.utils.multiclass import unique_labels
 
 from sklearn.metrics import euclidean_distances
-from sklearn.metrics import manhattan_distances
+from sklearn.metrics.pairwise import manhattan_distances
 
 
 class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
@@ -29,13 +29,10 @@ class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
     Healthy patients must have label 0.
     """
 
-    def __init__(
-            self, distance_threshold=0, cancer_label=1,
-            distance_function="euclidean"):
+    def __init__(self, distance_threshold=0, cancer_label=1):
 
         self.distance_threshold = distance_threshold
         self.cancer_label = cancer_label
-        self.distance_function = distance_function
 
     def fit(self, X, y):
 
@@ -117,7 +114,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
             normal_cluster_list=None, indeterminate_label=2,
             distance_type="worst_distance", projection=False,
             normal_cluster_center=None, abnormal_cluster_center=None,
-            z_threshold=3.0):
+            z_threshold=3.0, distance_function="euclidean"):
         """
         Parameters
         ----------
@@ -143,6 +140,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         self.normal_cluster_center = normal_cluster_center
         self.abnormal_cluster_center = abnormal_cluster_center
         self.z_threshold = z_threshold
+        self.distance_function = distance_function
 
     def fit(self, X, y):
         """
@@ -245,6 +243,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         normal_cluster_center = self.normal_cluster_center
         abnormal_cluster_center = self.abnormal_cluster_center
         z_threshold = self.z_threshold
+        distance_function = self.distance_function
 
         if normal_cluster_center is not None and abnormal_cluster_center is not None:
             # Create the vector pointing from the normal cluster to the abnormal cluster
