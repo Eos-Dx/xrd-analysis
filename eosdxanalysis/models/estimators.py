@@ -250,7 +250,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
             normal_abnormal_vector = abnormal_cluster_center - normal_cluster_center
             normal_abnormal_vector = normal_abnormal_vector.reshape(-1,1)
 
-        X = pd.DataFrame(X)
+        X = pd.DataFrame(X).sort_values("Patient_ID")
 
         # Check if fit has been called
         check_is_fitted(self)
@@ -261,7 +261,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         X_features = check_array(X_features)
 
         # Copy data
-        X_copy = X.copy()
+        X_copy = X.sort_values("Patient_ID").copy()
 
         if projection is None:
             if normal_cluster_list in (None, ""):
