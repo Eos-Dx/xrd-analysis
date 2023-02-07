@@ -1604,6 +1604,25 @@ class TestBeamUtils(unittest.TestCase):
 
         self.fail("Finish writing test.")
 
+    def test_azimuthal_integration_constant_function(self):
+        """
+        Ensure that a constant image function results in a constant
+        azimuthal profile.
+        """
+
+        size = 256
+        shape = (size, size)
+        array_center = np.array([size]*2)/2 - 0.5
+
+        # Set the test function as constant value 1
+        test_image = np.ones(shape)
+
+        radial_profile = azimuthal_integration(test_image)
+
+        known_profile = np.ones(radial_profile.shape)
+
+        self.assertTrue(np.array_equal(radial_profile, known_profile))
+
 class TestFeatureExtraction(unittest.TestCase):
     """
     FeatureExtraction tests
