@@ -19,8 +19,8 @@ def test_azimuthal_integration_centering_error(
     """
     size = 256
     array_center = np.array([size]*2)/2 - 0.5
-    x_label_offset = 0
-    y_label_offset = 0.01
+    x_label_offset = 20
+    y_label_offset = -0.075
 
     x = np.linspace(-array_center[1], array_center[1], num=size)
     y = np.linspace(-array_center[0], array_center[0], num=size)
@@ -44,7 +44,8 @@ def test_azimuthal_integration_centering_error(
             profile_orig, width=1)
 
     # Plot image and radial profile
-    plot_title = "Azimuthal Integration Sensitivity Test Image"
+    plot_title = "Azimuthal Integration Test Image Peak Radius {} Pixels".format(
+            peak_position)
     fig, axs = plt.subplots(num=plot_title)
     plt.imshow(test_image)
     plt.title(plot_title)
