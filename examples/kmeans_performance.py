@@ -8,6 +8,8 @@ import pandas as pd
 from sklearn.metrics import confusion_matrix
 
 from eosdxanalysis.models.utils import metrics_report
+from eosdxanalysis.models.utils import add_patient_data
+
 
 def kmeans_performance(
         kmeans_results_filepath=None,

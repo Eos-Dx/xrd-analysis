@@ -28,6 +28,7 @@ from eosdxanalysis.preprocessing.utils import count_intervals
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
+from eosdxanalysis.preprocessing.utils import polar_meshgrid
 
 from eosdxanalysis.preprocessing.preprocess import PreprocessData
 from eosdxanalysis.preprocessing.preprocess import ABBREVIATIONS
@@ -2607,6 +2608,82 @@ class TestFeatureExtractionCLI(unittest.TestCase):
         # Delete test directory
         test_path = self.test_path
         shutil.rmtree(test_path)
+
+class TestPolarMeshgrid(unittest.TestCase):
+    """
+    Test polar meshgrid
+    """
+
+    def test_2_radii(self):
+        """
+        Test polar meshgrid for a simple 2-radii case
+        """
+        size = 256
+        output_shape = (size, size)
+        r_count = 2
+        theta_count = 1
+        rmin = 0
+        rmax = output_shape[0]/2
+
+        meshgrid = polar_meshgrid(
+                output_shape=output_shape,
+                r_count=r_count,
+                theta_count=theta_count,
+                rmin=rmin,
+                rmax=rmax,
+                )
+
+        inner_mask = create_circular_mask(
+                size, size, rmin=rmin, rmax=rmax/2)
+        outer_mask = create_circular_mask(
+                size, size, rmin=rmax/2, rmax=rmax)
+
+        known_image = np.zeros(output_shape)
+        known_image[inner_mask] = 1
+        known_image[outer_mask] = 2
+
+        self.assertTrue(np.array_equal(meshgrid, known_image))
+
+    def test_4_sectors(self):
+        """
+        Test polar meshgrid for a simple 4-sector case
+        """
+        size = 256
+        output_shape = (size, size)
+        r_count = 1
+        theta_count = 4
+        rmin = 0
+        rmax = output_shape[0]/2
+
+        meshgrid = polar_meshgrid(
+                output_shape=output_shape,
+                r_count=r_count,
+                theta_count=theta_count,
+                rmin=rmin,
+                rmax=rmax,
+                )
+
+        # Create image mask
+        image_mask = create_circular_mask(
+                size, size, rmin=rmin, rmax=rmax)
+
+        # Create known image
+        known_image = np.zeros(output_shape)
+        # Set middle index
+        mdx = int(output_shape[0]/2)
+        # Set upper-right quadrant value to 1
+        known_image[:mdx,mdx:] = 1
+        # Set upper-left quadrant value to 2
+        known_image[:mdx,:mdx] = 2
+        # Set lower-left quadrant value to 3
+        known_image[mdx:,:mdx] = 3
+        # Set lower-right quadrant value to 4
+        known_image[mdx:,mdx:] = 4
+
+        # Apply image mask
+        known_image[~image_mask] = 0
+
+        self.assertTrue(np.array_equal(meshgrid, known_image))
 
 if __name__ == '__main__':
     unittest.main()

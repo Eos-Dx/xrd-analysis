@@ -19,6 +19,7 @@ from sklearn.utils.validation import check_is_fitted
 from sklearn.utils.multiclass import unique_labels
 
 from sklearn.metrics import euclidean_distances
+from sklearn.metrics.pairwise import manhattan_distances
 
 
 class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
@@ -76,6 +77,7 @@ class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
     def decision_function(self, X):
 
         cancer_label = self.cancer_label
+        distance_type = self.distance_type
 
         # Get distance threshold
         distance_threshold = self.distance_threshold
@@ -88,7 +90,10 @@ class CancerClusterEstimator(BaseEstimator, ClassifierMixin):
 
         # Find the closest cancer clusters
         # Get the distance matrix
-        distances = euclidean_distances(X, self.cancer_data_)
+        if distance_function == "euclidean":
+            distances = euclidean_distances(X, self.cancer_data_)
+        elif distance_function == "manhattan":
+            distances = manhattan_distances(X, self.cancer_data_)
         # Find the indices of the closest cancer data
         closest_indices = np.argmin(distances, axis=1)
         # Find the distances to the closest cancer data
@@ -109,7 +114,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
             normal_cluster_list=None, indeterminate_label=2,
             distance_type="worst_distance", projection=False,
             normal_cluster_center=None, abnormal_cluster_center=None,
-            z_threshold=3.0):
+            z_threshold=3.0, distance_function="euclidean"):
         """
         Parameters
         ----------
@@ -135,6 +140,7 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         self.normal_cluster_center = normal_cluster_center
         self.abnormal_cluster_center = abnormal_cluster_center
         self.z_threshold = z_threshold
+        self.distance_function = distance_function
 
     def fit(self, X, y):
         """
@@ -237,13 +243,14 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         normal_cluster_center = self.normal_cluster_center
         abnormal_cluster_center = self.abnormal_cluster_center
         z_threshold = self.z_threshold
+        distance_function = self.distance_function
 
         if normal_cluster_center is not None and abnormal_cluster_center is not None:
             # Create the vector pointing from the normal cluster to the abnormal cluster
             normal_abnormal_vector = abnormal_cluster_center - normal_cluster_center
             normal_abnormal_vector = normal_abnormal_vector.reshape(-1,1)
 
-        X = pd.DataFrame(X)
+        X = pd.DataFrame(X).sort_values("Patient_ID")
 
         # Check if fit has been called
         check_is_fitted(self)
@@ -254,13 +261,17 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
         X_features = check_array(X_features)
 
         # Copy data
-        X_copy = X.copy()
+        X_copy = X.sort_values("Patient_ID").copy()
 
         if projection is None:
             if normal_cluster_list in (None, ""):
                 # Find the closest cancer clusters
                 # Get the distance matrix
-                cancer_distances = euclidean_distances(X_features, self.cancer_data_)
+                if distance_function == "euclidean":
+                    cancer_distances = euclidean_distances(X_features, self.cancer_data_)
+                elif distance_function == "manhattan":
+                    cancer_distances = manhattan_distances(X_features, self.cancer_data_)
+
                 closest_cancer_distances = np.min(cancer_distances, axis=1)
                 X_copy["closest_cancer_distances"] = closest_cancer_distances
 
@@ -295,7 +306,11 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
             if cancer_cluster_list in (None, ""):
                 # Find the closest normal clusters
                 # Get the distance matrix
-                normal_distances = euclidean_distances(X_features, self.normal_data_)
+                if distance_function == "euclidean":
+                    normal_distances = euclidean_distances(X_features, self.normal_data_)
+                elif distance_function == "manhattan":
+                    normal_distances = manhattan_distances(X_features, self.normal_data_)
+
                 closest_normal_distances = np.min(normal_distances, axis=1)
                 X_copy["closest_normal_distances"] = closest_normal_distances
 
@@ -337,8 +352,12 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                     / np.dot(normal_abnormal_vector.T, normal_abnormal_vector)
 
             # Calculated distances of projected measurements to normal
-            projected_normal_distances = euclidean_distances(
-                    X_projected_features, self.normal_data_)
+            if distance_function == "euclidean":
+                projected_normal_distances = euclidean_distances(
+                        X_projected_features, self.normal_data_)
+            elif distance_function == "manhattan":
+                projected_normal_distances = manhattan_distances(
+                        X_projected_features, self.normal_data_)
             closest_projected_normal_distances = np.min(projected_normal_distances, axis=1)
 
             X_copy["closest_projected_normal_distances"] = closest_projected_normal_distances
@@ -384,8 +403,12 @@ class PatientCancerClusterEstimator(BaseEstimator, ClassifierMixin):
                     (np.dot(X_features, normal_abnormal_vector) @ normal_abnormal_vector.T) \
                     / np.dot(normal_abnormal_vector.T, normal_abnormal_vector)
 
-            projected_cancer_distances = euclidean_distances(
-                    X_projected_features, self.cancer_data_)
+            if distance_function == "euclidean":
+                projected_cancer_distances = euclidean_distances(
+                        X_projected_features, self.cancer_data_)
+            elif distance_function == "manhattan":
+                projected_cancer_distances = manhattan_distances(
+                        X_projected_features, self.cancer_data_)
             closest_projected_cancer_distances = np.min(projected_cancer_distances, axis=1)
 
             X_copy["closest_projected_cancer_distances"] = closest_projected_cancer_distances
