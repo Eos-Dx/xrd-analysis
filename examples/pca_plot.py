@@ -197,7 +197,7 @@ def run_pca_plot(
 
     if True:
         # plot_title = "3D PCA on K-means, with cluster labels"
-        plot_title = "3D PCA on {} features, labeled by diagnosis".format(
+        plot_title = "3D PCA on {} features labeled by diagnosis".format(
                 len(feature_list))
 
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
@@ -217,7 +217,7 @@ def run_pca_plot(
                     X_plot_pca[:,0], X_plot_pca[:,1], X_plot_pca[:,2],
                     c=colors[diagnosis], label=diagnosis)
 
-        if False:
+        if True:
             # Plot cluster centers
             ax.scatter(
                     pca_clusters[:,0], pca_clusters[:,1], pca_clusters[:,2],
@@ -227,7 +227,7 @@ def run_pca_plot(
             for idx in range(n_clusters):
                 ax.text(
                     pca_clusters[idx,0], pca_clusters[idx,1], pca_clusters[idx,2],
-                    str(idx))
+                    str(idx), fontsize=14)
 
         # ax.view_init(30, +60+180)
 
@@ -272,8 +272,8 @@ def run_pca_plot(
             measurement_count = cancer_measurement_counts.loc[cancer_type]
             patient_count = cancer_patient_counts.loc[cancer_type]
             print("{},{},{}".format(cancer_type, measurement_count, patient_count))
-        plot_title = "3D PCA on {} features, labeled by cancer type {}".format(
-                len(feature_list), cancer_type)
+        plot_title = "3D PCA on {} features, labeled by cancer type".format(
+                len(feature_list))
 
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
 

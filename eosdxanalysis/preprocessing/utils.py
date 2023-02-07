@@ -1,8 +1,12 @@
-import numpy as np
-
 """
 Utility functions
 """
+
+import numpy as np
+
+from skimage.transform import rotate
+
+from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 
 def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min"):
     """
@@ -221,3 +225,127 @@ def radial_integration(image, center=None, output_shape=(360,128)):
             output_shape=output_shape, preserve_range=True)
     profile_1d = np.mean(polar_image, axis=1)
     return profile_1d
+
+def polar_meshgrid(
+        output_shape=(256,256), r_count=10, theta_count=10,
+        rmin=20, rmax=110, quadrant_fold=True, half_step_rotation=True):
+    """
+    Creates a polar meshgrid with unique label per cell.
+
+    Parameters
+    ----------
+    output_shape : (int, int)
+        Shape of polar meshgrid
+
+    r_count : int
+        Number of annuli
+
+    theta_count : int
+        Number of sectors
+
+    rmin : int
+        Start radius
+
+    rmax : int
+        End radius
+
+    quadrant_fold : bool
+        Return a quadrant-folded image if ``True``. Default is ``False``.
+
+    half_step_rotation : bool
+        Rotate meshgrid by half sector angle size.
+
+    Returns
+    -------
+
+    meshgrid : ndarray
+        Returns ndarray of shape ``output_shape`` with unique label per cell.
+
+    Notes
+    -----
+    Cell label values start at 1 to distinguish unused image portions
+    """
+    output = np.zeros(output_shape)
+    shape = output.shape
+
+    # Set up radius and theta ranges
+    r_range = np.linspace(rmin, rmax, r_count+1)
+    theta_range = np.linspace(-np.pi, np.pi, theta_count+1)
+
+    # Generate a meshgrid the same size as the image
+    x_end = shape[1]/2 - 0.5
+    x_start = -x_end
+    y_end = x_start
+    y_start = x_end
+    YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+    TT = np.arctan2(YY, XX)
+    RR = np.sqrt(XX**2 + YY**2)
+
+    # Create image mask
+    image_mask = create_circular_mask(
+            shape[0], shape[1], rmin=rmin, rmax=rmax)
+
+    # Initialize cell values
+    cell_value = 1
+
+    for jdx in range(theta_count):
+        # Calculate sector start and end angles based on symmetric sector angle
+        theta_min = theta_range[jdx]
+        theta_max = theta_range[jdx+1]
+
+        for idx in range(r_count):
+            # Set sector rmin rmax
+            sector_rmin = r_range[idx]
+            sector_rmax = r_range[idx+1]
+
+            # Create a mask for the annulus
+            annulus_mask = create_circular_mask(
+                    shape[0], shape[1], rmin=sector_rmin, rmax=sector_rmax)
+
+
+            # Create a mask for the cell, combining annulus mask
+            # with theta bounds
+            cell_mask = annulus_mask & \
+                (TT >= theta_min) & (TT < theta_max)
+
+            # Set the cell value
+            output[cell_mask] = cell_value
+
+            # Increment the cell value
+            cell_value += 1
+
+        # Apply image mask
+        output[~image_mask] = 0
+
+    # Rotate image
+    output = np.rot90(np.rot90(output))
+
+    # Rotate image by half step
+    if half_step_rotation:
+        # Get rotation angle in degrees
+        rotation_angle = 360/16/2
+        # Rotate image
+        output = rotate(output, -rotation_angle)
+
+    # Get quadrant folded image
+    if quadrant_fold:
+        # Get middle index
+        mdx = int(shape[0]/2)
+        # Use upper right as template
+        upper_right = output[:mdx,mdx:]
+        # Set upper left as right mirror image
+        upper_left = np.fliplr(upper_right)
+        # Set lower left as upper left mirror image
+        lower_left = np.flipud(upper_left)
+        # Set lower right as upper right mirror image
+        lower_right = np.flipud(upper_right)
+
+        # Set image quadrants
+        # Set upper left
+        output[:mdx,:mdx] = upper_left
+        # Set lower left
+        output[mdx:,:mdx] = lower_left
+        # Set lower right
+        output[mdx:, mdx:] = lower_right
+
+    return output
