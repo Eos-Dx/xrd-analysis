@@ -305,6 +305,10 @@ class PreprocessData(object):
                             filter_method="median")
 
                 if median_filter_size:
+                    # Use a beam-masked image to filter hot spots
+                    calculated_center = find_center(
+                            plan_image, method="max_centroid", rmax=beam_rmax)
+                    self.calculated_center = calculated_center
                     plan_image = median_filter(plan_image, size=median_filter_size)
 
                 # Set the output based on output specifications
