@@ -141,7 +141,7 @@ def run_kmeans(
     for cluster_count in range(cluster_count_min, cluster_count_max+1):
         kmeans = KMeans(cluster_count, random_state=0)
         # Fit k-means on transformed features
-        kmeans.fit(df_transformed)
+        kmeans.fit(df_transformed[feature_list])
 
         # Save the labels in a new dataframe
         df_transformed["kmeans_{}".format(cluster_count)] = kmeans.labels_
