@@ -471,10 +471,8 @@ def scale_features(df, scale_by, feature_list):
     Returns a copy of a dataframe
     Drops ``scale_by`` column
     """
-    df_scaled_features = df.copy()
-    df_scaled_features = df_scaled_features.div(
-            df_scaled_features[scale_by], axis="rows")
-    df_scaled_features = df_scaled_features[feature_list]
+    df_scaled_features = df[feature_list].div(
+            df[scale_by], axis="rows")
     if scale_by in feature_list:
         # Drop ``scale_by`` column
         df_scaled_features = df_scaled_features.drop(columns=[scale_by])
