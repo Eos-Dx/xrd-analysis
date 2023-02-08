@@ -168,29 +168,26 @@ def run_kmeans(
         df_clusters.to_csv(
                 clusters_filepath)
 
-    # Save the transformed data with k-means labels
-    kmeans_results_filename = "kmeans_results_n{}_{}.csv".format(
-                cluster_count, timestamp)
-    kmeans_results_filepath = os.path.join(
-            kmeans_results_path, kmeans_results_filename)
-    df_transformed.to_csv(kmeans_results_filepath)
-
-    # If patients database provided, save extended version
-    if db_filepath:
-        # Save the transformed data with k-means labels and patient IDs
-        kmeans_results_ext_filename = "kmeans_results_ext_n{}_{}.csv".format(
+        # Save the transformed data with k-means labels
+        kmeans_results_filename = "kmeans_results_n{}_{}.csv".format(
                     cluster_count, timestamp)
-        kmeans_results_ext_filepath = os.path.join(
-                kmeans_results_path, kmeans_results_ext_filename)
-        df_transformed_ext.to_csv(kmeans_results_ext_filepath)
+        kmeans_results_filepath = os.path.join(
+                kmeans_results_path, kmeans_results_filename)
+        df_transformed.to_csv(kmeans_results_filepath)
 
-    # Use K-means results to create cluster image preview folders
-    # Loop over files to copy the file to individual K-means cluster folders
-    if image_source_path:
+        # If patients database provided, save extended version
+        if db_filepath:
+            # Save the transformed data with k-means labels and patient IDs
+            kmeans_results_ext_filename = "kmeans_results_ext_n{}_{}.csv".format(
+                        cluster_count, timestamp)
+            kmeans_results_ext_filepath = os.path.join(
+                    kmeans_results_path, kmeans_results_ext_filename)
+            df_transformed_ext.to_csv(kmeans_results_ext_filepath)
 
-        # Create image cluster paths for all models
-        # Loop over model numbers
-        for cluster_count in range(cluster_count_min, cluster_count_max+1):
+        # Use K-means results to create cluster image preview folders
+        # Loop over files to copy the file to individual K-means cluster folders
+        if image_source_path:
+
             # Create the models paths
             kmeans_model_dir = "kmeans_n{}".format(cluster_count)
             kmeans_model_path = os.path.join(
@@ -203,12 +200,10 @@ def run_kmeans(
                         kmeans_model_path, cluster_image_dir)
                 os.makedirs(cluster_image_path, exist_ok=True)
 
-        for idx in df_transformed.index:
-            filename = idx + ".png"
+            for idx in df_transformed.index:
+                filename = idx + ".png"
 
-            # Copy the file to the appropriate directory or directories
-            # Loop over K-means models
-            for cluster_count in range(cluster_count_min, cluster_count_max+1):
+                # Copy the file to the appropriate directory or directories
                 kmeans_model_dir = "kmeans_n{}".format(cluster_count)
                 kmeans_model_path = os.path.join(
                         kmeans_results_path, kmeans_model_dir)
