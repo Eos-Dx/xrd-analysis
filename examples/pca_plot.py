@@ -229,6 +229,17 @@ def run_pca_plot(
                     pca_clusters[idx,0], pca_clusters[idx,1], pca_clusters[idx,2],
                     str(idx), fontsize=14)
 
+
+        if False:
+            # Annotate data points with filenames
+            X_plot = df_all[feature_list].values
+            X_plot_pca = pca.transform(X_plot)
+            for i, filename in enumerate(df_all.index):
+                ax.text(
+                    X_plot_pca[i,0], X_plot_pca[i,1], X_plot_pca[i,2],
+                    filename.replace("CR_","").replace(".txt",""),
+                    fontsize=10)
+
         # ax.view_init(30, +60+180)
 
         # ax.set_title("2D Sinusoid - 3D Surface Plot")
