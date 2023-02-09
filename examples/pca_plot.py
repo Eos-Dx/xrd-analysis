@@ -215,7 +215,7 @@ def run_pca_plot(
             X_plot_pca = pca.transform(X_plot)
             ax.scatter(
                     X_plot_pca[:,0], X_plot_pca[:,1], X_plot_pca[:,2],
-                    c=colors[diagnosis], label=diagnosis)
+                    c=colors[diagnosis], label=diagnosis, s=10)
 
         if True:
             # Plot cluster centers
