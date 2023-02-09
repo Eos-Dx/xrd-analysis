@@ -208,25 +208,29 @@ def run_pca_plot(
                 "blind": "green",
                 }
 
+        pc_a = 0
+        pc_b = 1
+        pc_c = 2
+
         # Loop over measurements according to patient diagnosis
         for diagnosis in df_all["Diagnosis"].dropna().unique():
             kmeans_diagnosis = df_all[df_all["Diagnosis"] == diagnosis]
             X_plot = kmeans_diagnosis[feature_list].values
             X_plot_pca = pca.transform(X_plot)
             ax.scatter(
-                    X_plot_pca[:,0], X_plot_pca[:,1], X_plot_pca[:,2],
+                    X_plot_pca[:,pc_a], X_plot_pca[:,pc_b], X_plot_pca[:,pc_c],
                     c=colors[diagnosis], label=diagnosis, s=10)
 
         if True:
             # Plot cluster centers
             ax.scatter(
-                    pca_clusters[:,0], pca_clusters[:,1], pca_clusters[:,2],
+                    pca_clusters[:,pc_a], pca_clusters[:,pc_b], pca_clusters[:,pc_c],
                     marker="^", s=200, alpha=0.5, c="orange", label="cluster centers")
 
             # Annotate cluster centers with cluster labels
             for idx in range(n_clusters):
                 ax.text(
-                    pca_clusters[idx,0], pca_clusters[idx,1], pca_clusters[idx,2],
+                    pca_clusters[idx,pc_a], pca_clusters[idx,pc_b], pca_clusters[idx,pc_c],
                     str(idx), fontsize=14)
 
 
@@ -236,16 +240,16 @@ def run_pca_plot(
             X_plot_pca = pca.transform(X_plot)
             for i, filename in enumerate(df_all.index):
                 ax.text(
-                    X_plot_pca[i,0], X_plot_pca[i,1], X_plot_pca[i,2],
+                    X_plot_pca[i,pc_a], X_plot_pca[i,pc_b], X_plot_pca[i,pc_c],
                     filename.replace("CR_","").replace(".txt",""),
                     fontsize=10)
 
         # ax.view_init(30, +60+180)
 
         # ax.set_title("2D Sinusoid - 3D Surface Plot")
-        ax.set_xlabel("PC0")
-        ax.set_ylabel("PC1")
-        ax.set_zlabel("PC2")
+        ax.set_xlabel("PC{}".format(pc_a))
+        ax.set_ylabel("PC{}".format(pc_b))
+        ax.set_zlabel("PC{}".format(pc_c))
         # ax.set_zlim([-1, 1])
 
         ax.set_title(plot_title)
