@@ -21,7 +21,7 @@ from eosdxanalysis.models.utils import add_patient_data
 def run_kmeans(
         data_filepath, db_filepath=None, output_path=None, feature_list=None,
         cluster_count_min=2, cluster_count_max=2, image_source_path=None,
-        divide_by=None, model_type="measurementwise"):
+        divide_by=None, model_type="measurementwise", random_state=0):
     """
     Runs k-means on a dataset of extracted features for between
     ``cluster_count_min`` and ``cluster_count_max`` number of clusters.
@@ -139,7 +139,7 @@ def run_kmeans(
 
     # Train K-means models for each cluster number
     for cluster_count in range(cluster_count_min, cluster_count_max+1):
-        kmeans = KMeans(cluster_count, random_state=0)
+        kmeans = KMeans(cluster_count, random_state=random_state)
         # Fit k-means on transformed features
         kmeans.fit(df_transformed[feature_list])
 
@@ -258,6 +258,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--model_type", default="measurementwise", type=str, required=False,
             help="Choice of ``measurementwise`` (default) or ``patientwise`` model.")
+    parser.add_argument(
+            "--random_state", type=int, default=0, required=False,
+            help="Random seed to use for kmeans algorithm initialization.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -268,6 +271,7 @@ if __name__ == '__main__':
     feature_list_kwarg = args.feature_list
     cluster_count_min = int(args.cluster_count_min)
     cluster_count_max = int(args.cluster_count_max)
+    random_state = args.random_state
 
     feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else None
 
@@ -281,5 +285,5 @@ if __name__ == '__main__':
             feature_list=feature_list, cluster_count_min=cluster_count_min,
             cluster_count_max=cluster_count_max,
             image_source_path=image_source_path, divide_by=divide_by,
-            model_type=model_type,
+            model_type=model_type, random_state=random_state,
             )
