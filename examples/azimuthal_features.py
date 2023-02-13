@@ -38,14 +38,14 @@ peak_location_angstrom_dict = {
         "peak_location_4A": 4.5e-10,
         }
 
-# Convert to pixel locations
-peak_location_pixel_dict = {}
-for peak_name, peak_location in peak_location_angstrom_dict.items():
-    peak_location_pixel_dict[peak_name] = feature_pixel_location(peak_location)
+## Convert to pixel locations
+#peak_location_pixel_dict = {}
+#for peak_name, peak_location in peak_location_angstrom_dict.items():
+#    peak_location_pixel_dict[peak_name] = feature_pixel_location(peak_location)
 
 
 def sum_of_gaussians():
-
+    gau = None
     return gau
 
 def run_feature_extraction(input_path, output_path):
@@ -101,6 +101,8 @@ def run_feature_extraction(input_path, output_path):
 
         # Add extracted features to dataframe
         # df.loc[len(df.index)+1] = [filename] + [radial_profile]
+
+        plt.close(fig)
 
     # Save dataframe to csv
     # df.to_csv(output_filepath, index=False)
