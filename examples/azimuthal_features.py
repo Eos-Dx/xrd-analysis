@@ -67,9 +67,18 @@ def run_feature_extraction(input_path, output_path):
 
     # Store output directory info
     # Create output directory if it does not exist
-    data_output_dir = "preprocessed_{}".format(timestamp)
+    output_dir = "preprocessed_{}".format(timestamp)
+    output_path = os.path.join(output_path, output_dir)
+
+    # Data output path
+    data_output_dir = "data"
     data_output_path = os.path.join(output_path, data_output_dir)
     os.makedirs(data_output_path, exist_ok=True)
+
+    # Image output path
+    image_output_dir = "images"
+    image_output_path = os.path.join(output_path, image_output_dir)
+    os.makedirs(image_output_path, exist_ok=True)
 
     # Loop over files list
     for filepath in filepath_list:
@@ -78,26 +87,28 @@ def run_feature_extraction(input_path, output_path):
 
         radial_profile = azimuthal_integration(image)
 
-        peak_indices, properties = find_peaks(
-                radial_profile)
-
         # Save data to file
-        output_filename = "radial_{}".format(filename) + ".png"
-        data_output_file_path = os.path.join(data_output_path, output_filename)
+        data_output_filename = "radial_{}".format(filename)
+        data_output_filepath = os.path.join(data_output_path,
+                data_output_filename)
 
-        np.savetxt(data_output_file_path,
+        np.savetxt(data_output_filepath,
                         np.round(radial_profile).astype(np.uint32), fmt='%i')
 
         # Save image preview to file
         plot_title = "Azimuthal Integration {}".format(filename)
         fig = plt.figure(plot_title)
         plt.scatter(range(radial_profile.size), radial_profile)
-        plt.scatter(peak_indices, radial_profile[peak_indices])
 
         plt.title(plot_title)
 
+        # Set image output file
+        image_output_filename = "radial_{}".format(filename) + ".png"
+        image_output_filepath = os.path.join(image_output_path,
+                image_output_filename)
+
         # Save image preview to file
-        plt.savefig(data_output_file_path)
+        plt.savefig(image_output_filepath)
 
         # Add extracted features to dataframe
         # df.loc[len(df.index)+1] = [filename] + [radial_profile]
