@@ -121,23 +121,23 @@ def best_fit(
 
     # Initial guess
     p0_dict = {
-        "peak_amplitude_beam":  1e2,
-        "peak_std_beam":        20,
+        "peak_amplitude_beam":  1e3,
+        "peak_std_beam":        1e3,
         "peak_position_9A":     43,
-        "peak_amplitude_9A":    227,
+        "peak_amplitude_9A":    20,
         "peak_std_9A":          10,
         "peak_position_5A":     85,
-        "peak_amplitude_5A":    260,
+        "peak_amplitude_5A":    20,
         "peak_std_5A":          15,
         "peak_position_4A":     100,
-        "peak_amplitude_4A":    240,
+        "peak_amplitude_4A":    20,
         "peak_std_4A":          15, 
         }
 
     p_lower_bounds_dict = {
         "peak_amplitude_beam":  0,
         "peak_std_beam":        0,
-        "peak_position_9A":     35,
+        "peak_position_9A":     40,
         "peak_amplitude_9A":    0,
         "peak_std_9A":          0,
         "peak_position_5A":     75,
@@ -150,8 +150,8 @@ def best_fit(
 
     p_upper_bounds_dict = {
         "peak_amplitude_beam":  1e20,
-        "peak_std_beam":        128,
-        "peak_position_9A":     56,
+        "peak_std_beam":        1e4,
+        "peak_position_9A":     46,
         "peak_amplitude_9A":    300,
         "peak_std_9A":          50,
         "peak_position_5A":     90,
