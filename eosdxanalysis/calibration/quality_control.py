@@ -14,9 +14,9 @@ def find_weighted_centroid(input_image):
         for j in range(input_image.shape[1]):
             sum = sum + np.array([i, j])*input_image[i][j]
 
-    row_weighted_centroid, col_weighted_centroid = sum/input_image.sum()
+    weighted_centroid = sum/input_image.sum()
 
-    return row_weighted_centroid, col_weighted_centroid
+    return weighted_centroid
 
 def check_beam_detector_alignment(input_filepath):
     """
@@ -28,7 +28,20 @@ def check_beam_detector_alignment(input_filepath):
 
     # calculating the weighted centroid
     weighted_centroid = find_weighted_centroid(image)
-    print(weighted_centroid)
+    print("Beam position: {:.1f}, {:.1f}".format(
+        weighted_centroid[1], weighted_centroid.shape[0] - weighted_centroid[0]))
+
+    # calculate error
+    detector_center = np.array([127.5, 127.5])
+    error = weighted_centroid - detector_center
+    print("Beam position error: {:.1f}, {:.1f}".format(error[1], -error[0]))
+
+    # check tolerance
+    error_tol = np.array([5, 5])
+    if (np.abs(error) > error_tol).any():
+        print("Beam position is out of bounds!")
+    else:
+        print("Beam position is within tolerance.")
 
     return weighted_centroid
 
