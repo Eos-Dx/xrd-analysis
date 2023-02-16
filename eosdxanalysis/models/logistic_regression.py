@@ -96,7 +96,7 @@ def main(
 
         save = True
         if save:
-            model_output_filename = "svm_model_{}.joblib".format(timestamp)
+            model_output_filename = "logistic_regression_model_{}.joblib".format(timestamp)
             model_output_filepath = os.path.join(output_path, model_output_filename)
             dump(clf, model_output_filepath)
 
