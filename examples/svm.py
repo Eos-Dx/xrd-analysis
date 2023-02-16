@@ -256,9 +256,9 @@ def run_svm(df_train_path, db_path, output_path=None, scale_by=None):
         specificity))
 
     RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
-    plt.show()
 
     PrecisionRecallDisplay.from_predictions(y_true_patients, y_score_patients)
+
     plt.show()
 
 
