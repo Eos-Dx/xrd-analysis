@@ -16,10 +16,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from sklearn.linear_model import LogisticRegression
+
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import cross_validate
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import precision_score
@@ -28,6 +29,11 @@ from sklearn.metrics import balanced_accuracy_score
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.inspection import DecisionBoundaryDisplay
+
+from sklearn.metrics import roc_curve
+from sklearn.metrics import RocCurveDisplay
+from sklearn.metrics import PrecisionRecallDisplay
+
 
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 from eosdxanalysis.models.utils import metrics_report
@@ -62,101 +68,95 @@ def main(
     # Build a new model
     else:
         # Load dataframe
-        df = pd.read_csv(data_filepath, index_col=0)
+        df_train = pd.read_csv(data_filepath, index_col="Filename")
+
+        diagnosis_series = (df_train["Diagnosis"] == "cancer").astype(int)
+        df_train["y_true"] = diagnosis_series
 
         # Logistic Regression
         # -------------------
         # Data
-
-        if not feature_list:
-            feature_list = GaussianDecomposition.feature_list()
-
-        Xlinear = df[[*feature_list]].astype(float).values
+        Xlinear = df_train[feature_list].astype(float).values
         # Create a polynomial
         poly = PolynomialFeatures(degree=degree)
 
         X = poly.fit_transform(Xlinear)
 
-        patient_averaging = False
+        # Get training labels
+        y = df_train["y_true"].values
 
-        # Patient averaging
-        if patient_averaging:
-            csv_num = df["Patient"].nunique()
-
-            print("There are " + str(csv_num) + " unique samples.")
-
-            # y = np.zeros((X.shape[0],1))
-            # y = df['Cancer'].values.reshape((-1,1))
-            # print(..shape)
-
-            # Labels
-            y = np.zeros((csv_num,1),dtype=bool)
-            X_new = np.zeros((csv_num,2))
-
-            # Loop over each sample
-            # and average X and label y
-
-            for idx in np.arange(csv_num):
-                # Get a sample
-                sample = df.loc[df['Barcode'] == barcodes[idx]]
-                patient = sample.values[0][1]
-                # Get all specimens from the same patient
-                df_rows = df.loc[df['Patient'] == patient]
-                indices = df_rows.index
-                # Now average across all samples
-                X_new[idx,:] = np.mean(X[indices,:],axis=0)
-                # Get the labels for the samples, first one is ok'
-                y[idx] = df_rows["Cancer"][indices[0]]
-
-
-            X = X_new
-            print("Total data count after averaging:")
-            print(y.shape)
-
-            print("Normal data count:")
-            print(np.sum(y == False))
-            print("Cancer data count:")
-            print(np.sum(y == True))
-
-        # No patient averaging
-        elif not patient_averaging:
-            y = df["Cancer"]
-
-        # Check that X and y have same number of rows
-        assert(np.array_equal(X.shape[0], y.shape[0]))
-
-        if use_cross_val == True:
-            # Randomly split up training and test set
-            X_train, X_test, y_train, y_test = train_test_split(
-                    X, y, test_size=0.4, random_state=0)
-        else:
-            X_train, y_train = X, y
-
-
-
-        # Perform logistic regression
+        # Create classifier
         logreg = LogisticRegression(
                 C=1,class_weight=class_weight, solver="newton-cg",
                 max_iter=max_iter)
-        pipe = Pipeline([('scaler', StandardScaler()), ('logreg', logreg)])
-        pipe.fit(X_train, y_train)
+        clf = make_pipeline(StandardScaler(), logreg)
 
-        # Save the model
-        model_filename = "logistic_regression_model_{}.joblib".format(timestamp)
-        model_filepath = os.path.join(output_path, model_filename)
-        dump(pipe, model_filepath)
+        # Train model
+        clf.fit(X, y)
 
-        scores = cross_val_score(pipe, X, y, cv=5)
+        save = True
+        if save:
+            model_output_filename = "svm_model_{}.joblib".format(timestamp)
+            model_output_filepath = os.path.join(output_path, model_output_filename)
+            dump(clf, model_output_filepath)
 
-        # Now check performance on entire set
-        # Predict
-        y_predict = pipe.predict(X)
+        # Get patient-wise performance
+        # Get patient labels
+        y_true_patients = df_train.groupby("Patient_ID")["y_true"].max()
 
-        # Get true negatives, false positives, false negatives, true positives
-        tn, fp, fn, tp = confusion_matrix(y, y_predict).ravel()
+        # Get patient-wise predictions
+        y_score_measurements = clf.decision_function(X)
+        df_train["y_score"] = y_score_measurements
+        # Calculate patient scores
+        y_score_patients = df_train.groupby("Patient_ID")["y_score"].max()
 
-        # Print scores
-        metrics_report(TN=tn, FP=fp, FN=fn, TP=tp, degree=degree, printout=True)
+        fpr, tpr, thresholds = roc_curve(y_true_patients, y_score_patients)
+
+        # Find threshold closest to ideal classifier
+        distances = np.sqrt((1-tpr)**2 + fpr**2)
+        min_distance = np.min(distances)
+        # Get the index of min distances
+        optimal_index = np.where(distances == min_distance)
+        optimal_threshold_array = thresholds[optimal_index]
+
+        if optimal_threshold_array.size > 1:
+            # Take the first one
+            print("Info: {} optimal thresholds found".format(
+                optimal_threshold_array.size))
+
+        optimal_threshold = optimal_threshold_array[0]
+
+        # Generate predictions for optimal threshold
+        y_pred_patients = (y_score_patients.values >= optimal_threshold).astype(int)
+
+        # Get the number of predicted "old" patients that have a healthy diagnosis
+        train_patients_diagnosis_series = df_train.groupby("Patient_ID")["Diagnosis"].max()
+        df_train_patients = pd.DataFrame(data=train_patients_diagnosis_series, columns={"Diagnosis"})
+        df_train_patients["y_pred"] = y_pred_patients
+
+        # Generate scores for optimal threshold
+        accuracy = accuracy_score(y_true_patients, y_pred_patients)
+        precision = precision_score(y_true_patients, y_pred_patients)
+        sensitivity = recall_score(y_true_patients, y_pred_patients)
+        specificity = recall_score(
+                y_true_patients, y_pred_patients, pos_label=0)
+
+        # Generate performance counts
+        tn, fp, fn, tp = confusion_matrix(y_true_patients, y_pred_patients).ravel()
+
+        # Print metrics
+        print("tn,fp,fn,tp,threshold,accuracy,precision,sensitivity,specificity")
+        print("{},{},{},{},{:.2f},{:2f},{:2f},{:2f},{:2f}".format(
+            tn, fp, fn, tp,
+            optimal_threshold, accuracy, precision, sensitivity,
+            specificity))
+
+        RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
+
+        PrecisionRecallDisplay.from_predictions(y_true_patients, y_score_patients)
+
+        plt.show()
+
 
     # Blind data predictions
     # ----------------------
