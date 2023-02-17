@@ -100,6 +100,9 @@ def run_feature_extraction(input_path, output_path):
         fig = plt.figure(plot_title)
         plt.scatter(range(radial_profile.size), radial_profile)
 
+        plt.xlabel("Radius [pixel units]")
+        plt.ylabel("Mean Intensity [photon count]")
+
         plt.title(plot_title)
 
         # Set image output file
