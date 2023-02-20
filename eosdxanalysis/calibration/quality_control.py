@@ -8,16 +8,18 @@ It checks the following:
 import numpy as np
 from eosdxanalysis.preprocessing.center_finding import find_centroid
 
+
 def find_weighted_centroid(input_image):
     # The weighted sum of all data coordinates divided by the total weight
     sum = np.array([0, 0])
     for i in range(input_image.shape[0]):
         for j in range(input_image.shape[1]):
-            sum = sum + np.array([i, j])*input_image[i][j]
+            sum = sum + np.array([i, j]) * input_image[i][j]
 
-    weighted_centroid = sum/input_image.sum()
+    weighted_centroid = sum / input_image.sum()
 
     return weighted_centroid
+
 
 def check_beam_detector_alignment(input_filepath, error_tol=np.array([5, 5])):
     """
@@ -31,7 +33,7 @@ def check_beam_detector_alignment(input_filepath, error_tol=np.array([5, 5])):
     # calculating the weighted centroid
     weighted_centroid = find_weighted_centroid(image)
     print("Beam position: {:.1f}, {:.1f}".format(
-        weighted_centroid[1], weighted_centroid.shape[0] - weighted_centroid[0]))
+        weighted_centroid[1], weighted_centroid[0] - weighted_centroid.shape[0]))
 
     # calculate error
     detector_center = np.array([127.5, 127.5])
@@ -46,6 +48,7 @@ def check_beam_detector_alignment(input_filepath, error_tol=np.array([5, 5])):
         print("Beam position is within tolerance.")
 
     return weighted_centroid
+
 
 def check_beam_aperture_alignment(input_filepath, error_tol=np.array([2, 2])):
     """
@@ -63,7 +66,7 @@ def check_beam_aperture_alignment(input_filepath, error_tol=np.array([2, 2])):
     image_max_coordinates = np.array(np.where(image == image.max())).T
     max_centroid = np.array(find_centroid(image_max_coordinates))
     print("Max centroid position: {:.1f}, {:.1f}".format(
-        max_centroid[1], max_centroid.shape[0] - max_centroid[0]))
+        max_centroid[1], max_centroid[0] - max_centroid.shape[0]))
 
     error = weighted_centroid - max_centroid
     print("Beam max centroid position error: {:.1f}, {:.1f}".format(error[1], -error[0]))
@@ -75,6 +78,7 @@ def check_beam_aperture_alignment(input_filepath, error_tol=np.array([2, 2])):
         print("Beam-aperture alignment is within tolerance.")
 
     return max_centroid
+
 
 if __name__ == '__main__':
     """
