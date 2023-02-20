@@ -31,13 +31,13 @@ from eosdxanalysis.models.utils import add_patient_data
 
 
 def run_svm(
-        df_train_path, df_blind_path=None, db_path=None, output_path=None,
-        scale_by=None):
+        df_train_filepath, df_blind_filepath=None, db_path=None, output_path=None,
+        scale_by=None, C=1.0):
     # Generate timestamp
     timestr = "%Y%m%dT%H%M%S.%f"
     timestamp = datetime.utcnow().strftime(timestr)
 
-    df_train = pd.read_csv(df_train_path, index_col="Filename")
+    df_train = pd.read_csv(df_train_filepath, index_col="Filename")
     if db_path:
         # Add patient data
         df_train = add_patient_data(df_train, db_path, index_col="Barcode").dropna().copy()
@@ -56,7 +56,7 @@ def run_svm(
     y = df_train["y_true"].values
 
     # Create classifier
-    svm = SVC(C=100, kernel='rbf', gamma='auto', verbose=False)
+    svm = SVC(C=C, kernel='rbf', gamma='auto', verbose=False)
     clf = make_pipeline(StandardScaler(), svm)
 
     # Train model
@@ -64,7 +64,7 @@ def run_svm(
 
     save = True
     if save:
-        model_output_filename = "svm_model_{}.joblib".format(timestamp)
+        model_output_filename = "svm_model_C_{}_{}.joblib".format(C, timestamp)
         model_output_filepath = os.path.join(output_path, model_output_filename)
         dump(clf, model_output_filepath)
 
@@ -120,10 +120,24 @@ def run_svm(
         specificity))
 
     RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
+    fig_roc = plt.gcf()
+    title = "SVM ROC Curve C={}".format(C)
+    fig_roc.suptitle(title)
+    fig_roc_filename = "roc_curve_C_{}.png".format(C)
+    fig_roc_filepath = os.path.join(output_path, fig_roc_filename)
+    fig_roc.savefig(fig_roc_filepath)
 
     PrecisionRecallDisplay.from_predictions(y_true_patients, y_score_patients)
+    fig_pr = plt.gcf()
+    title = "SVM Precision-Recall Curve C={}".format(C)
+    fig_pr.suptitle(title)
+    fig_pr_filename = "precision_recall_curve_C_{}.png".format(C)
+    fig_pr_filepath = os.path.join(output_path, fig_pr_filename)
+    fig_pr.savefig(fig_pr_filepath)
 
     plt.show()
+
+
 
     # Run blind predictions
     if df_blind_filepath:
@@ -156,8 +170,8 @@ def run_svm(
         # Save blind measurement predictions
         measurement_output_prefix = "blind_measurement_predictions"
 
-        measurement_csv_filename = "{}_degree_{}_{}.csv".format(
-                measurement_output_prefix, str(degree), timestamp)
+        measurement_csv_filename = "{}_C_{}_{}.csv".format(
+                measurement_output_prefix, str(C), timestamp)
         measurement_csv_output_path = os.path.join(
                 output_path, measurement_csv_filename)
 
@@ -172,8 +186,8 @@ def run_svm(
         # Save blind patient predictions
         patient_output_prefix = "blind_patient_predictions"
 
-        patient_csv_filename = "{}_degree_{}_{}.csv".format(
-                patient_output_prefix, str(degree), timestamp)
+        patient_csv_filename = "{}_C_{}_{}.csv".format(
+                patient_output_prefix, str(C), timestamp)
         patient_csv_output_path = os.path.join(
                 output_path, patient_csv_filename)
 
@@ -195,10 +209,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--df_train_path", type=str, default=None, required=True,
+            "--df_train_filepath", type=str, default=None, required=True,
             help="The path to training features")
     parser.add_argument(
-            "--df_blind_path", type=str, default=None, required=False,
+            "--df_blind_filepath", type=str, default=None, required=False,
             help="The path to blind features")
     parser.add_argument(
             "--db_path", type=str, default=None, required=False,
@@ -209,18 +223,23 @@ if __name__ == '__main__':
     parser.add_argument(
             "--scale_by", type=str, default=None, required=False,
             help="The feature to scale by")
+    parser.add_argument(
+            "--C", type=float, default=1.0, required=False,
+            help="The SVM C parameter")
 
     args = parser.parse_args()
 
-    df_train_path = args.df_train_path
-    df_blind_path = args.df_blind_path
+    df_train_filepath = args.df_train_filepath
+    df_blind_filepath = args.df_blind_filepath
     db_path = args.db_path
     output_path = args.output_path
     scale_by = args.scale_by
+    C = args.C
 
-    run_svm(df_train_path=df_train_path,
-            df_blind_path=df_blind_path,
+    run_svm(df_train_filepath=df_train_filepath,
+            df_blind_filepath=df_blind_filepath,
             db_path=db_path,
             output_path=output_path,
             scale_by=scale_by,
+            C=C,
             )
