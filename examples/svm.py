@@ -157,7 +157,7 @@ def run_svm(
 
 if __name__ == '__main__':
     """
-    Run azimuthal integration on an image
+    Run svm
     """
     # Set up argument parser
     parser = argparse.ArgumentParser()
