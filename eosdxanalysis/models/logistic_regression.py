@@ -64,7 +64,7 @@ def main(
 
     # Load an existing model if provided
     if joblib_filepath:
-        pipe = load(joblib_filepath)
+        clf = load(joblib_filepath)
     # Build a new model
     else:
         # Load dataframe
