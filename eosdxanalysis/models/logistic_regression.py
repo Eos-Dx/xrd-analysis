@@ -178,35 +178,61 @@ def main(
     if blind_data_filepath:
         # Run blind data through trained model and assess performance
         # Load dataframe
-        df_blind = pd.read_csv(blind_data_filepath)
+        df_blind = pd.read_csv(blind_data_filepath, index_col="Filename")
 
-        if not feature_list:
-            feature_list = GaussianDecomposition.feature_list()
-
-        X_blind_linear = df_blind[[*feature_list]].astype(float).values
+        X_blind_linear = df_blind[feature_list].astype(float).values
         # Create a polynomial
         poly = PolynomialFeatures(degree=degree)
 
         X_blind_poly = poly.fit_transform(X_blind_linear)
 
-        # Predict
-        y_predict = pipe.predict(X_blind_poly)
+        # Predict on measurements
+        y_predict_blind = clf.predict(X_blind_poly)
 
         # Save results
-        df_blind["Prediction"] = y_predict
+        df_blind["y_pred"] = y_predict_blind
 
-        # Prefix
-        output_prefix = "blind_set_predictions"
+        # Get patient predictions
+        y_pred_blind_patients = df_blind.groupby("Patient_ID")["y_pred"].max()
 
-        csv_filename = "{}_degree_{}_{}.csv".format(
-                output_prefix, str(degree), timestamp)
-        csv_output_path = os.path.join(output_path, csv_filename)
+        # Print patient statistics
+        p_blind = y_pred_blind_patients.sum()
+        n_blind = y_pred_blind_patients.shape[0] - p_blind
+        print("n,p")
+        print("{},{}".format(n_blind, p_blind))
+
+        # Save blind measurement predictions
+        measurement_output_prefix = "blind_measurement_predictions"
+
+        measurement_csv_filename = "{}_degree_{}_{}.csv".format(
+                measurement_output_prefix, str(degree), timestamp)
+        measurement_csv_output_path = os.path.join(
+                output_path, measurement_csv_filename)
 
         df_blind.to_csv(
-                csv_output_path, columns=["Filename", "Prediction"],
-                index=False)
+                measurement_csv_output_path, columns=["y_pred"],
+                index=True)
 
-        print("Blind predictions saved to", csv_output_path)
+        print(
+                "Blind measurement predictions saved to",
+                measurement_csv_output_path)
+
+        # Save blind patient predictions
+        patient_output_prefix = "blind_patient_predictions"
+
+        patient_csv_filename = "{}_degree_{}_{}.csv".format(
+                patient_output_prefix, str(degree), timestamp)
+        patient_csv_output_path = os.path.join(
+                output_path, patient_csv_filename)
+
+        y_pred_blind_patients.to_csv(
+                patient_csv_output_path,
+                index=True)
+
+        print(
+                "Blind patient predictions saved to",
+                patient_csv_output_path)
+
 
 if __name__ == '__main__':
     """
