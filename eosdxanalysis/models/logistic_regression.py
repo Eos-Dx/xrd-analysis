@@ -37,12 +37,13 @@ from sklearn.metrics import PrecisionRecallDisplay
 
 from eosdxanalysis.models.curve_fitting import GaussianDecomposition
 from eosdxanalysis.models.utils import metrics_report
+from eosdxanalysis.models.utils import scale_features
 
 
 def main(
         data_filepath=None, blind_data_filepath=None, output_path=None,
         max_iter=100, degree=1, use_cross_val=False, feature_list=[],
-        joblib_filepath=None, balanced=None):
+        joblib_filepath=None, balanced=None, scale_by=None):
     t0 = time()
 
     cmap="hot"
@@ -73,14 +74,19 @@ def main(
         diagnosis_series = (df_train["Diagnosis"] == "cancer").astype(int)
         df_train["y_true"] = diagnosis_series
 
+        # Get training data
+        if scale_by:
+            df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
+            X_train = df_train_scaled_features[feature_list].values
+        else:
+            X_train = df_train[feature_list].values
+
         # Logistic Regression
         # -------------------
-        # Data
-        Xlinear = df_train[feature_list].astype(float).values
         # Create a polynomial
         poly = PolynomialFeatures(degree=degree)
 
-        X = poly.fit_transform(Xlinear)
+        X = poly.fit_transform(X_train)
 
         # Get training labels
         y = df_train["y_true"].values
@@ -180,11 +186,17 @@ def main(
         # Load dataframe
         df_blind = pd.read_csv(blind_data_filepath, index_col="Filename")
 
-        X_blind_linear = df_blind[feature_list].astype(float).values
+        # Get blind data
+        if scale_by:
+            df_blind_scaled_features = scale_features(df_blind, scale_by, feature_list)
+            X_blind = df_blind_scaled_features[feature_list].values
+        else:
+            X_blind = df_blind[feature_list].values
+
         # Create a polynomial
         poly = PolynomialFeatures(degree=degree)
 
-        X_blind_poly = poly.fit_transform(X_blind_linear)
+        X_blind_poly = poly.fit_transform(X_blind)
 
         # Predict on measurements
         y_predict_blind = clf.predict(X_blind_poly)
@@ -270,6 +282,9 @@ if __name__ == '__main__':
             "--balanced", default=None, required=False,
             action="store_true",
             help="Flag to perform balanced logistic regression training.")
+    parser.add_argument(
+            "--scale_by", type=str, default=None, required=False,
+            help="The feature to scale by")
 
     # Collect arguments
     args = parser.parse_args()
@@ -282,6 +297,7 @@ if __name__ == '__main__':
     feature_list_kwarg = args.feature_list
     joblib_filepath = args.joblib_filepath
     balanced = args.balanced
+    scale_by = args.scale_by
 
     feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
 
@@ -289,4 +305,5 @@ if __name__ == '__main__':
             data_filepath, blind_data_filepath=blind_data_filepath,
             output_path=output_path, max_iter=max_iter, degree=degree,
             use_cross_val=use_cross_val, feature_list=feature_list,
-            joblib_filepath=joblib_filepath, balanced=balanced)
+            joblib_filepath=joblib_filepath, balanced=balanced,
+            scale_by=scale_by)
