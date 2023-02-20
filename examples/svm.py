@@ -30,7 +30,9 @@ from eosdxanalysis.models.utils import scale_features
 from eosdxanalysis.models.utils import add_patient_data
 
 
-def run_svm(df_train_path, db_path=None, output_path=None, scale_by=None):
+def run_svm(
+        df_train_path, df_blind_path=None, db_path=None, output_path=None,
+        scale_by=None):
     # Generate timestamp
     timestr = "%Y%m%dT%H%M%S.%f"
     timestamp = datetime.utcnow().strftime(timestr)
@@ -45,20 +47,20 @@ def run_svm(df_train_path, db_path=None, output_path=None, scale_by=None):
     # Get training data
     if scale_by:
         df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
-        X = df_train_scaled_features[feature_list].values
+        X_train = df_train_scaled_features[feature_list].values
     else:
-        X = df_train[feature_list].values
+        X_train = df_train[feature_list].values
 
     # Get training labels
     df_train["y_true"] = (df_train["Diagnosis"] == "cancer").astype(int)
     y = df_train["y_true"].values
 
     # Create classifier
-    svm = SVC(C=1, kernel='rbf', gamma='auto', verbose=True)
+    svm = SVC(C=100, kernel='rbf', gamma='auto', verbose=False)
     clf = make_pipeline(StandardScaler(), svm)
 
     # Train model
-    clf.fit(X, y)
+    clf.fit(X_train, y)
 
     save = True
     if save:
@@ -71,7 +73,7 @@ def run_svm(df_train_path, db_path=None, output_path=None, scale_by=None):
     y_true_patients = df_train.groupby("Patient_ID")["y_true"].max()
 
     # Get patient-wise predictions
-    y_score_measurements = clf.decision_function(X)
+    y_score_measurements = clf.decision_function(X_train)
     df_train["y_score"] = y_score_measurements
     # Calculate patient scores
     y_score_patients = df_train.groupby("Patient_ID")["y_score"].max()
@@ -123,6 +125,34 @@ def run_svm(df_train_path, db_path=None, output_path=None, scale_by=None):
 
     plt.show()
 
+    # Run blind predictions
+    if df_blind_path:
+
+        df_blind = pd.read_csv(df_blind_path, index_col="Filename")
+        if db_path:
+            # Add patient data
+            df_blind = add_patient_data(df_blind, db_path, index_col="Barcode").dropna().copy()
+
+        feature_list = np.arange(1,51).astype(str)
+
+        # Get blind data
+        if scale_by:
+            df_blind_scaled_features = scale_features(df_blind, scale_by, feature_list)
+            X_blind = df_blind_scaled_features[feature_list].values
+        else:
+            X_blind = df_blind[feature_list].values
+
+        # Get patient-wise predictions
+        y_pred_measurements = clf.predict(X_blind)
+        df_blind["y_pred"] = y_pred_measurements
+        # Calculate patient predictions
+        y_pred_patients = df_blind.groupby("Patient_ID")["y_pred"].max()
+
+        # Print basic statistics
+        print("p,n")
+        p = y_pred_patients.sum()
+        n = y_pred_patients.size - p
+        print("{},{}".format(p, n))
 
 
 if __name__ == '__main__':
@@ -136,6 +166,9 @@ if __name__ == '__main__':
             "--df_train_path", type=str, default=None, required=True,
             help="The path to training features")
     parser.add_argument(
+            "--df_blind_path", type=str, default=None, required=False,
+            help="The path to blind features")
+    parser.add_argument(
             "--db_path", type=str, default=None, required=False,
             help="The path to patient database")
     parser.add_argument(
@@ -148,11 +181,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     df_train_path = args.df_train_path
+    df_blind_path = args.df_blind_path
     db_path = args.db_path
     output_path = args.output_path
     scale_by = args.scale_by
 
     run_svm(df_train_path=df_train_path,
+            df_blind_path=df_blind_path,
             db_path=db_path,
             output_path=output_path,
             scale_by=scale_by,
