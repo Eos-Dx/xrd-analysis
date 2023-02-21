@@ -152,27 +152,27 @@ def best_fit(
         "peak_decay_beam":      0,
         "peak_position_9A":     40,
         "peak_amplitude_9A":    0,
-        "peak_std_9A":          0,
-        "peak_position_5A":     75,
+        "peak_std_9A":          1,
+        "peak_position_5A":     80,
         "peak_amplitude_5A":    0,
-        "peak_std_5A":          0,
+        "peak_std_5A":          1,
         "peak_position_4A":     95,
         "peak_amplitude_4A":    0,
-        "peak_std_4A":          0, 
+        "peak_std_4A":          1,
     }
 
     p_upper_bounds_dict = {
         "peak_amplitude_beam":  1e20,
         "peak_decay_beam":      1e3,
         "peak_position_9A":     46,
-        "peak_amplitude_9A":    300,
-        "peak_std_9A":          50,
+        "peak_amplitude_9A":    500,
+        "peak_std_9A":          20,
         "peak_position_5A":     90,
-        "peak_amplitude_5A":    300,
-        "peak_std_5A":          40,
+        "peak_amplitude_5A":    500,
+        "peak_std_5A":          20,
         "peak_position_4A":     105,
-        "peak_amplitude_4A":    300,
-        "peak_std_4A":          30, 
+        "peak_amplitude_4A":    500,
+        "peak_std_4A":          20,
         }
 
     # Get parameters and bounds
@@ -266,17 +266,20 @@ def run_peak_fitting(input_path, output_path, rmin, rmax):
         np.savetxt(data_output_filepath, best_fit_curve)
 
         # Save image preview to file
-        plot_title = "Azimuthal Integration {}".format(filename)
+        # Plot comparison
+        plot_title = "Azimuthal Integration Best Fit Curve Comparison {}".format(filename)
         fig = plt.figure(plot_title)
-        plt.scatter(range(best_fit_curve.size), best_fit_curve)
+        plt.plot(range(radial_profile.size), radial_profile, label="original")
+        plt.plot(range(best_fit_curve.size), best_fit_curve, label="best fit")
 
         plt.xlabel("Radius [pixel units]")
         plt.ylabel("Mean Intensity [photon count]")
+        plt.legend()
 
         plt.title(plot_title)
 
         # Set image output file
-        image_output_filename = "radial_{}".format(filename) + ".png"
+        image_output_filename = "radial_best_fit_comparison_{}".format(filename) + ".png"
         image_output_filepath = os.path.join(image_output_path,
                 image_output_filename)
 
