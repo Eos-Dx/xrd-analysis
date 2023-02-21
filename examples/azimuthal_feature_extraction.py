@@ -83,7 +83,7 @@ def run_feature_extraction(input_path, output_path):
     # Loop over files list
     for filepath in filepath_list:
         filename = os.path.basename(filepath)
-        image = np.loadtxt(filepath, dtype=np.uint32)
+        image = np.loadtxt(filepath, dtype=np.float64)
 
         radial_profile = azimuthal_integration(image)
 
@@ -92,8 +92,7 @@ def run_feature_extraction(input_path, output_path):
         data_output_filepath = os.path.join(data_output_path,
                 data_output_filename)
 
-        np.savetxt(data_output_filepath,
-                        np.round(radial_profile).astype(np.uint32), fmt='%i')
+        np.savetxt(data_output_filepath, radial_profile)
 
         # Save image preview to file
         plot_title = "Azimuthal Integration {}".format(filename)
