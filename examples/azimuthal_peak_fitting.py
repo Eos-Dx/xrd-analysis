@@ -17,12 +17,13 @@ import matplotlib.pyplot as plt
 
 from scipy.optimize import curve_fit
 
+
 feature_list = [
         "peak_location_beam",
         "peak_location_9A",
         "peak_location_5A",
         "peak_location_4A",
-        "peak_width_beam",
+        "peak_decay_beam",
         "peak_width_9A",
         "peak_width_5A",
         "peak_width_4A",
@@ -54,10 +55,22 @@ def gauss_1d(
             -1/2*((r_position-peak_position)/peak_std)**2)
     return gau
 
+def exp_1d(
+        r_position,
+        peak_position=0,
+        peak_amplitude=1,
+        peak_decay=1,
+        ):
+    """
+    1-D Exponential decay function
+    """
+    exp_1d_func = peak_amplitude*np.exp(-(r_position-peak_position)/peak_decay)
+    return exp_1d_func
+
 def keratin_function_1d(
         r_position,
         peak_amplitude_beam,
-        peak_std_beam,
+        peak_decay_beam,
         peak_position_9A,
         peak_amplitude_9A,
         peak_std_9A,
@@ -72,13 +85,13 @@ def keratin_function_1d(
     1-D keratin xrd pattern function
     """
 
-    # Beam Gaussian function
+    # Beam Exponential function
     peak_position_beam = 0
-    gauss_beam = gauss_1d(
+    exp_beam = gauss_1d(
             r_position,
             peak_position_beam,
             peak_amplitude_beam,
-            peak_std_beam,
+            peak_decay_beam,
             )
     # 9A Gaussian function
     gauss_9A = gauss_1d(
@@ -102,12 +115,12 @@ def keratin_function_1d(
             peak_std_4A,
             )
 
-    keratin = gauss_beam + gauss_9A + gauss_5A + gauss_4A
+    keratin = exp_beam + gauss_9A + gauss_5A + gauss_4A
     return keratin
 
 def best_fit(
-        # profile_1d, p0_dict, lower_bounds_dict, upper_bounds_dict,
-        profile_1d, rmin=0, rmax=0):
+        profile_1d, rmin, rmax, p0_dict=None, lower_bounds_dict=None,
+        upper_bounds_dict=None):
     """
     Parameters
     ----------
@@ -122,7 +135,7 @@ def best_fit(
     # Initial guess
     p0_dict = {
         "peak_amplitude_beam":  1e3,
-        "peak_std_beam":        1e3,
+        "peak_decay_beam":      50,
         "peak_position_9A":     43,
         "peak_amplitude_9A":    20,
         "peak_std_9A":          10,
@@ -136,7 +149,7 @@ def best_fit(
 
     p_lower_bounds_dict = {
         "peak_amplitude_beam":  0,
-        "peak_std_beam":        0,
+        "peak_decay_beam":      0,
         "peak_position_9A":     40,
         "peak_amplitude_9A":    0,
         "peak_std_9A":          0,
@@ -150,7 +163,7 @@ def best_fit(
 
     p_upper_bounds_dict = {
         "peak_amplitude_beam":  1e20,
-        "peak_std_beam":        1e4,
+        "peak_decay_beam":      1e3,
         "peak_position_9A":     46,
         "peak_amplitude_9A":    300,
         "peak_std_9A":          50,
@@ -173,13 +186,15 @@ def best_fit(
         )
 
     # Apply beam and outer area mask
-    profile_masked = profile_1d[rmin:rmax]
-    x_data = np.arange(rmin, rmax)
+    # Offset rmin and rmax by 1 to avoid discretization issues
+    rmin_used = rmin + 1
+    rmax_used = rmax - 1
+    profile_masked = profile_1d[rmin_used:rmax_used]
+    x_data = np.arange(rmin_used, rmax_used)
     y_data = profile_masked.astype(np.float64)
 
     popt, pcov = curve_fit(
             keratin_function_1d, x_data, y_data, p0, bounds=p_bounds)
-            # keratin_function_1d, x_data, y_data, p0)
 
     # Create popt_dict so we can have keys
     popt_dict = OrderedDict()
@@ -189,6 +204,93 @@ def best_fit(
         idx += 1
 
     return popt_dict, pcov
+
+def run_peak_fitting(input_path, output_path, rmin, rmax):
+    """
+    Run peak fitting on 1-D azimuthal integration profiles
+    """
+    # Get filepath list
+    filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
+    # Sort files list
+    filepath_list.sort()
+
+    # Create dataframe to collect extracted features
+    columns = ["Filename"] + feature_list
+    df = pd.DataFrame(data={}, columns=columns, dtype=object)
+
+    # Set timestamp
+    timestr = "%Y%m%dT%H%M%S.%f"
+    timestamp = datetime.utcnow().strftime(timestr)
+
+    # Store output directory info
+    # Create output directory if it does not exist
+    output_dir = "best_fit_{}".format(timestamp)
+    output_path = os.path.join(output_path, output_dir)
+
+    # Data output path
+    data_output_dir = "data"
+    data_output_path = os.path.join(output_path, data_output_dir)
+    os.makedirs(data_output_path, exist_ok=True)
+
+    # Image output path
+    image_output_dir = "images"
+    image_output_path = os.path.join(output_path, image_output_dir)
+    os.makedirs(image_output_path, exist_ok=True)
+
+    # Loop over files list
+    for filepath in filepath_list:
+        filename = os.path.basename(filepath)
+
+        # Read 1-D azimuthal integration profile data frome file
+        radial_profile = np.loadtxt(filepath, dtype=np.float64)
+
+        # Get best fit curve to 1-D azimuthal integration profile
+        popt_dict, pcov = best_fit(radial_profile, rmin, rmax)
+
+        rmin_used = rmin + 1
+        rmax_used = rmax - 1
+
+        x_data = np.arange(rmin_used, rmax_used)
+
+        best_fit_cropped = keratin_function_1d(x_data, **popt_dict)
+
+        # Pad with zeros
+        best_fit_curve = np.zeros(128)
+        best_fit_curve[rmin_used:rmax_used] = best_fit_cropped
+
+        # Save data to file
+        data_output_filename = "radial_{}".format(filename)
+        data_output_filepath = os.path.join(data_output_path,
+                data_output_filename)
+
+        np.savetxt(data_output_filepath, best_fit_curve)
+
+        # Save image preview to file
+        plot_title = "Azimuthal Integration {}".format(filename)
+        fig = plt.figure(plot_title)
+        plt.scatter(range(best_fit_curve.size), best_fit_curve)
+
+        plt.xlabel("Radius [pixel units]")
+        plt.ylabel("Mean Intensity [photon count]")
+
+        plt.title(plot_title)
+
+        # Set image output file
+        image_output_filename = "radial_{}".format(filename) + ".png"
+        image_output_filepath = os.path.join(image_output_path,
+                image_output_filename)
+
+        # Save image preview to file
+        plt.savefig(image_output_filepath)
+
+        # Add extracted features to dataframe
+        # df.loc[len(df.index)+1] = [filename] + [radial_profile]
+
+        plt.close(fig)
+
+    # Save dataframe to csv
+    # df.to_csv(output_filepath, index=False)
+
 
 
 if __name__ == '__main__':
@@ -204,13 +306,23 @@ if __name__ == '__main__':
     parser.add_argument(
             "--output_path", default=None, required=False,
             help="The output path to save radial profiles and peak features")
+    parser.add_argument(
+            "--rmin", default=None, type=int, required=True,
+            help="The rmin value defining the beam cutoff")
+    parser.add_argument(
+            "--rmax", default=None, type=int, required=True,
+            help="The rmax value defining the outer diffraction pattern cutoff")
 
     args = parser.parse_args()
 
     input_path = args.input_path
     output_path = args.output_path
+    rmin = args.rmin
+    rmax = args.rmax
 
-    run_feature_extraction(
+    run_peak_fitting(
         input_path=input_path,
         output_path=output_path,
+        rmin=rmin,
+        rmax=rmax
         )
