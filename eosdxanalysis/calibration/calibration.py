@@ -24,6 +24,7 @@ from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 
 PIXEL_WIDTH = 55e-6 # Pixel width in meters (it is 55 um)
 WAVELENGTH = 1.5418E-10 # Wavelength in meters (1.5418 Angstroms)
+BEAM_RMAX = 10 # Pixel radius to block out beam
 
 
 class Calibration(object):
@@ -126,7 +127,7 @@ class Calibration(object):
         q_peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
 
         # The first doublet will be the last peak
-        final_index = all_radial_peak_indices.tolist().index(prominent_peak_index)
+        final_index = int(np.where(all_radial_peak_indices == prominent_peak_index)[0])
         # Count how many we are missing before the first doublet
         num_missing = len(q_peaks_avg[:-1]) - len(all_radial_peak_indices[:final_index])
 
@@ -137,10 +138,8 @@ class Calibration(object):
             q_peaks_avg_subset = q_peaks_avg
         elif num_missing > 0:
             # Take subset
-            # Note: need to do :final_index+1 since slicing is right-exclusive,
-            # and num_missing-1: since slicing is left-inclusive
-            radial_peak_indices = all_radial_peak_indices[num_missing:final_index+1]
-            q_peaks_avg_subset = q_peaks_avg[num_missing:final_index+1]
+            radial_peak_indices = all_radial_peak_indices[num_missing-1:final_index+1]
+            q_peaks_avg_subset = q_peaks_avg[num_missing:final_index+2]
 
         if visualize:
             import matplotlib.pyplot as plt
@@ -230,6 +229,9 @@ if __name__ == "__main__":
             "--wavelength", default=WAVELENGTH,
             help="The wavelength meters.")
     parser.add_argument(
+            "--beam_rmax", type=int, default=BEAM_RMAX,
+            help="The radius to block out the beam.")
+    parser.add_argument(
             "--visualize", action="store_true",
             help="Plot calibration results to screen")
 
@@ -249,6 +251,8 @@ if __name__ == "__main__":
     pixel_width = args.pixel_width
     # Set visualization option
     visualize = args.visualize
+    # Set beam_rmax
+    beam_rmax = args.beam_rmax
 
     # Instantiate Calibration class
     calibrator = Calibration(calibration_material=material,
@@ -259,7 +263,7 @@ if __name__ == "__main__":
 
     # Run calibration procedure
     detector_distance, linreg, score  = calibrator.single_sample_detector_distance(
-            image, beam_rmax=10, r_max=90, distance_approx=10e-3, visualize=visualize)
+            image, beam_rmax=beam_rmax, r_max=90, distance_approx=10e-3, visualize=visualize)
 
     detector_distance_mm = detector_distance * 1e3
 
