@@ -74,9 +74,17 @@ class Calibration(object):
         center = find_center(image)
         array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
 
-        radial_intensity = azimuthal_integration(
-                image, center=center, output_shape=output_shape)
+        # Mask the beam
+        mask = create_circular_mask(
+                image.shape[1], image.shape[0], center=center,
+                rmax=beam_rmax)
+        masked_image = np.copy(image)
+        # Set the masked part to the minimum of the beam area
+        # to avoid creating another peak
+        masked_image[mask] = masked_image[mask].min()
 
+        radial_intensity = azimuthal_integration(
+                masked_image, center=center, output_shape=output_shape)
 
 #        # Set a maximum radius which we are interested in
 #        if r_max is None:
@@ -125,7 +133,8 @@ class Calibration(object):
         if num_missing < 0:
             raise ValueError("We found more peaks than in the reference!")
         elif num_missing == 0:
-            radial_peak_indices = all_radial_peak_indices
+            radial_peak_indices = all_radial_peak_indices[:final_index+1]
+            q_peaks_avg_subset = q_peaks_avg
         elif num_missing > 0:
             # Take subset
             # Note: need to do :final_index+1 since slicing is right-exclusive,
@@ -139,11 +148,6 @@ class Calibration(object):
             title = "Beam masked image"
             fig = plt.figure(title)
             plt.title(title)
-            mask = create_circular_mask(
-                    image.shape[1], image.shape[0], center=center,
-                    rmax=beam_rmax)
-            masked_image = np.copy(image)
-            masked_image[mask] = 0
 
             plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
             plt.scatter(center[1], center[0], color="green")
