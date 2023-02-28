@@ -7,7 +7,31 @@ It checks the following:
 
 import numpy as np
 import matplotlib.pyplot as plt
-from eosdxanalysis.preprocessing.center_finding import find_centroid
+
+def find_centroid(points):
+    """
+    Given an array of shape (n,2), with elemenets aij,
+    [[a00,a01],
+     [a10,a11],
+        ...],
+    calculate the centroid in row, column notation.
+
+    Returns a tuple result with row and column centroid
+    """
+    try:
+        shape = points.shape
+        dim = shape[1]
+        if dim != 2:
+            raise ValueError("Input must be array of shape (n,2)!")
+    except AttributeError as error:
+        print(error)
+        raise AttributeError("Input must be array of shape (n,2)!")
+    except IndexError as error:
+        print(error)
+        raise ValueError("Input must be array of shape (n,2)!")
+
+    # Return centroid
+    return tuple(np.mean(points, axis=0))
 
 
 def find_weighted_centroid(input_image):
@@ -84,12 +108,12 @@ def plot_centers(input_filepath):
     """
     Plots the given file as well as the Beam position centre and the Max Centroid position
     """
-    # Load the iamge
+    # Load the image
     image = np.loadtxt(input_filepath)
 
     # Plots the data given
     fig, ax = plt.subplots()
-    ax.imshow(image)
+    ax.imshow(image, cmap="hot")
 
     # Plot the real centre
     real_centre = np.array([127.5, 127.5])
@@ -97,7 +121,7 @@ def plot_centers(input_filepath):
 
     # Plot the Beam position centre
     weighted_centroid = check_beam_detector_alignment(input_filepath)
-    ax.scatter(weighted_centroid[1], weighted_centroid[0], label="weigted centroid", marker="+")
+    ax.scatter(weighted_centroid[1], weighted_centroid[0], label="weighted centroid", marker="+")
 
     # Plot the max centroid position
     max_centroid = check_beam_aperture_alignment(input_filepath)
@@ -120,4 +144,4 @@ if __name__ == '__main__':
 
     check_beam_aperture_alignment(measurement_filepath)
 
-    # plot_centers(measurement_filepath)
+    plot_centers(measurement_filepath)
