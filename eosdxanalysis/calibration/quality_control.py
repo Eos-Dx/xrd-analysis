@@ -12,12 +12,12 @@ from eosdxanalysis.preprocessing.center_finding import find_centroid
 
 def find_weighted_centroid(input_image):
     # The weighted sum of all data coordinates divided by the total weight
-    sum = np.array([0, 0])
+    weighted_sum = np.array([0, 0])
     for i in range(input_image.shape[0]):
         for j in range(input_image.shape[1]):
-            sum = sum + np.array([i, j]) * input_image[i][j]
+            weighted_sum = weighted_sum + np.array([i, j]) * input_image[i][j]
 
-    weighted_centroid = sum / input_image.sum()
+    weighted_centroid = weighted_sum / input_image.sum()
 
     return weighted_centroid
 
@@ -120,4 +120,4 @@ if __name__ == '__main__':
 
     check_beam_aperture_alignment(measurement_filepath)
 
-    plot_centers(measurement_filepath)
+    # plot_centers(measurement_filepath)
