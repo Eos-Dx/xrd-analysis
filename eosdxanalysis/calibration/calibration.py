@@ -157,23 +157,31 @@ class Calibration(object):
 
 
             # Plot azimuthal integration 1-D profile
-            plt.plot(20*np.log10(radial_intensity+1))
+            plt.plot(20*np.log10(radial_intensity+1),
+                    label="1-D profile")
 
             # Plot markers for found peaks
             plt.scatter(r_space_pixel[all_radial_peak_indices].ravel(),
                         20*np.log10(radial_intensity[all_radial_peak_indices]+1).ravel(),
-                        color="green", marker="+", s=500)
+                        color="green", marker="+", s=250,
+                        label="found peaks")
 
             # Plot a marker for the most prominent peak
             plt.scatter(r_space_pixel[prominent_peak_index],
                     20*np.log10(radial_intensity[prominent_peak_index]+1),
-                    color="red", marker=".", s=500)
+                    color="red", marker=".", s=250,
+                    label="prominent peak")
 
             # Plot markers for peaks used for fitting
             plt.scatter(r_space_pixel[radial_peak_indices],
                     20*np.log10(radial_intensity[radial_peak_indices]+1),
-                    color="orange", marker="x", s=500)
+                    color="orange", marker="x", s=250,
+                    label="peaks for fitting")
 
+            plt.xlabel("Radius [pixels]")
+            plt.ylabel("Intensity [dB+1]")
+
+            plt.legend()
             plt.show()
 
         # Set up linear regression inputs
