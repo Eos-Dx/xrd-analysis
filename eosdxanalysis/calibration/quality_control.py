@@ -138,7 +138,11 @@ if __name__ == '__main__':
     """
     Check if the machine has proper beam-detector alignment
     """
-    measurement_filepath = input("Enter the full path to the beam-only measurement file:\n")
+    measurement_filepath = input(
+            "Enter the full path to the beam-only measurement file:\n")
+
+    # Remove extra spaces or quote characters at the ends
+    measurement_filepath = measurement_filepath.strip(" ").strip("\'")
 
     check_beam_detector_alignment(measurement_filepath)
 
