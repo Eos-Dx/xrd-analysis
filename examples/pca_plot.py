@@ -28,7 +28,7 @@ def run_pca_plot(
         training_filepath=None, kmeans_model_filepath=None,
         kmeans_results_filepath=None, blind_filepath=None, db_filepath=None,
         output_path=None, scale_by=None, feature_list=None, n_components=2,
-        n_clusters=None, cancer_type_filepath=None):
+        n_clusters=None, cancer_type_filepath=None, standard_scaler=False):
     """
     """
     cluster_model_name = "kmeans_{}".format(n_clusters)
@@ -44,47 +44,93 @@ def run_pca_plot(
 
     # Load training data
     df_train = pd.read_csv(training_filepath, index_col="Filename")
-    df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
+    if scale_by:
+        df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
+    else:
+        df_train_scaled_features = df_train
 
     # Load saved scaler and kmeans model
-    unsupervised_estimator = load(kmeans_model_filepath)
-    scaler = unsupervised_estimator["standardscaler"]
-    kmeans_model = unsupervised_estimator["kmeans"]
+    if kmeans_model_filepath:
+        unsupervised_estimator = load(kmeans_model_filepath)
+        scaler = unsupervised_estimator["standardscaler"]
+        kmeans_model = unsupervised_estimator["kmeans"]
 
-    # Performan final standard scaling of training data
-    X_train_fully_scaled = scaler.transform(
-            df_train_scaled_features[feature_list])
-    df_train_fully_scaled = df_train_scaled_features.copy()
-    df_train_fully_scaled[feature_list] = X_train_fully_scaled
+        # Performan final standard scaling of training data
+        if scale_by:
+            X_train_fully_scaled = scaler.transform(
+                    df_train_scaled_features[feature_list])
+            df_train_fully_scaled = df_train_scaled_features.copy()
+            df_train_fully_scaled[feature_list] = X_train_fully_scaled
+        else:
+            X_train_fully_scaled = scaler.transform(df_train[feature_list])
+            df_train_fully_scaled = df_train.copy()
+
+    elif standard_scaler:
+        # Introduce standard scaler
+        scaler = StandardScaler()
+        # Fit the standard scaler
+        scaler.fit(df_train_scaled_features[feature_list])
+
+        # Transform data and overwrite features
+        X_train_fully_scaled = scaler.transform(df_train_scaled_features[feature_list])
+        df_train_fully_scaled = df_train_scaled_features.copy()
+        df_train_fully_scaled[feature_list] = X_train_fully_scaled
+    else:
+        df_train_fully_scaled = df_train_scaled_features
+
     # Get k-means clusters on training data
-    df_train_fully_scaled[cluster_model_name] = kmeans_model.predict(
-            X_train_fully_scaled)
+    if kmeans_model_filepath:
+        df_train_fully_scaled[cluster_model_name] = kmeans_model.predict(
+                X_train_fully_scaled)
 
     # Add patient data
-    df_train_ext = add_patient_data(
-            df_train_fully_scaled,
-            db_filepath,
-            index_col="Barcode")
+    if "Diagnosis" not in df_train_fully_scaled.columns:
+        df_train_ext = add_patient_data(
+                df_train_fully_scaled,
+                db_filepath,
+                index_col="Barcode")
+    else:
+        df_train_ext = df_train_fully_scaled
 
     if blind_filepath:
         # Load blinding data
         df_blind = pd.read_csv(blind_filepath, index_col="Filename")
-        df_blind_scaled_features = scale_features(df_blind, scale_by, feature_list)
+        if scale_by:
+            df_blind_scaled_features = scale_features(df_blind, scale_by, feature_list)
+        else:
+            df_blind_scaled_features = df_blind
 
-        # Performan final standard scaling of blind data
-        X_blind_fully_scaled = scaler.transform(
-                df_blind_scaled_features[feature_list])
-        df_blind_fully_scaled = df_blind_scaled_features.copy()
-        df_blind_fully_scaled[feature_list] = X_blind_fully_scaled
-        # Get k-means clusters on blind data
-        df_blind_fully_scaled[cluster_model_name] = kmeans_model.predict(
-                X_blind_fully_scaled)
+        if kmeans_model_filepath:
+            # Performan final standard scaling of blind data
+            if scale_by:
+                X_blind_fully_scaled = scaler.transform(
+                        df_blind_scaled_features[feature_list])
+                df_blind_fully_scaled = df_blind_scaled_features.copy()
+                df_blind_fully_scaled[feature_list] = X_blind_fully_scaled
+            else:
+                X_blind_fully_scaled = scaler.transform(df_blind[feature_list])
+                df_blind_fully_scaled = df_blind.copy()
+        elif standard_scaler:
+            # Transform data and overwrite features
+            X_blind_fully_scaled = scaler.transform(df_blind_scaled_features[feature_list])
+            df_blind_fully_scaled = df_blind_scaled_features.copy()
+            df_blind_fully_scaled[feature_list] = X_blind_fully_scaled
+        else:
+            df_blind_fully_scaled = df_blind_scaled_features
+
+        if kmeans_model_filepath:
+            # Get k-means clusters on blind data
+            df_blind_fully_scaled[cluster_model_name] = kmeans_model.predict(
+                    X_blind_fully_scaled)
 
         # Add patient data
-        df_blind_ext = add_patient_data(
-                df_blind_fully_scaled,
-                db_filepath,
-                index_col="Barcode")
+        if "Diagnosis" not in df_blind_fully_scaled.columns:
+            df_blind_ext = add_patient_data(
+                    df_blind_fully_scaled,
+                    db_filepath,
+                    index_col="Barcode")
+        else:
+            df_blind_ext = df_blind_fully_scaled
 
         print("WARNING:")
         print("HACK due to mising Patient Data!")
@@ -148,23 +194,29 @@ def run_pca_plot(
         # Create dataframe
         df_pca_ext = pd.DataFrame(data=data_pca_ext,
                 columns=columns, index=df_train_ext.index)
+        # Add patient data
+        df_pca_ext = add_patient_data(
+                df_pca_ext,
+                db_filepath,
+                index_col="Barcode")
         df_pca_ext.to_csv(df_ext_filepath)
 
     # Set offsets
     x_label_offset = 0.01
     y_label_offset = 0.01
 
-    kmeans_results = pd.read_csv(kmeans_results_filepath, index_col="Filename")
+    if kmeans_results_filepath:
+        kmeans_results = pd.read_csv(kmeans_results_filepath, index_col="Filename")
 
-    if blind_filepath:
-        # Predict on blind
-        blind_predictions = kmeans_model.predict(df_blind_ext[feature_list].values)
-        df_blind_ext["kmeans_{}".format(n_clusters)] = blind_predictions
+        if blind_filepath:
+            # Predict on blind
+            blind_predictions = kmeans_model.predict(df_blind_ext[feature_list].values)
+            df_blind_ext["kmeans_{}".format(n_clusters)] = blind_predictions
 
-        df_all.loc[df_blind.index, "kmeans_{}".format(n_clusters)] = blind_predictions
+            df_all.loc[df_blind.index, "kmeans_{}".format(n_clusters)] = blind_predictions
 
-    clusters = kmeans_model.cluster_centers_
-    pca_clusters = pca.transform(clusters)
+        clusters = kmeans_model.cluster_centers_
+        pca_clusters = pca.transform(clusters)
 
 
     ###################################
@@ -208,33 +260,92 @@ def run_pca_plot(
                 "blind": "green",
                 }
 
-        # Loop over measurements according to patient diagnosis
-        for diagnosis in df_all["Diagnosis"].dropna().unique():
-            kmeans_diagnosis = df_all[df_all["Diagnosis"] == diagnosis]
-            X_plot = kmeans_diagnosis[feature_list].values
-            X_plot_pca = pca.transform(X_plot)
-            ax.scatter(
-                    X_plot_pca[:,0], X_plot_pca[:,1], X_plot_pca[:,2],
-                    c=colors[diagnosis], label=diagnosis)
+        pc_a = 0
+        pc_b = 1
+        pc_c = 2
 
         if True:
+            # Loop over measurements according to patient diagnosis
+            for diagnosis in colors.keys():
+                df_diagnosis = df_all[df_all["Diagnosis"] == diagnosis]
+                X_plot = df_diagnosis[feature_list].values
+                X_plot_pca = pca.transform(X_plot)
+                ax.scatter(
+                        X_plot_pca[:,pc_a], X_plot_pca[:,pc_b], X_plot_pca[:,pc_c],
+                        c=colors[diagnosis], label=diagnosis, s=10)
+
+                if False:
+                    # Annotate data points with filenames
+                    for i, filename in enumerate(kmeans_diagnosis.index):
+                        ax.text(
+                            X_plot_pca[i,pc_a], X_plot_pca[i,pc_b], X_plot_pca[i,pc_c],
+                            filename.replace("CR_","").replace(".txt",""),
+                            fontsize=10)
+
+            if False:
+                # Plot young dogs
+                young_dogs_list = np.loadtxt(
+                        "/home/jfriedman/EosDx/data/2023_02_14_young_dogs_vs_rest/young_dogs_patient_id_list.txt",
+                        dtype=str, delimiter=",")
+                diagnosis_data = df_all[df_all["Patient_ID"].isin(young_dogs_list)]
+                X_plot = diagnosis_data[feature_list].values
+                X_plot_pca = pca.transform(X_plot)
+                ax.scatter(
+                        X_plot_pca[:,pc_a], X_plot_pca[:,pc_b], X_plot_pca[:,pc_c],
+                        c="blue", label="young", s=10)
+
+        if False:
             # Plot cluster centers
             ax.scatter(
-                    pca_clusters[:,0], pca_clusters[:,1], pca_clusters[:,2],
+                    pca_clusters[:,pc_a], pca_clusters[:,pc_b], pca_clusters[:,pc_c],
                     marker="^", s=200, alpha=0.5, c="orange", label="cluster centers")
 
             # Annotate cluster centers with cluster labels
             for idx in range(n_clusters):
                 ax.text(
-                    pca_clusters[idx,0], pca_clusters[idx,1], pca_clusters[idx,2],
+                    pca_clusters[idx,pc_a], pca_clusters[idx,pc_b], pca_clusters[idx,pc_c],
                     str(idx), fontsize=14)
+
+
+        if False:
+            # Plot Bella
+            df_bella = df_all[df_all["Patient_ID"] == "Bella"]
+            X_plot = df_bella[feature_list].values
+            X_plot_pca = pca.transform(X_plot)
+            ax.scatter(
+                    X_plot_pca[:,pc_a], X_plot_pca[:,pc_b], X_plot_pca[:,pc_c],
+                   s=10)
+
+            if False:
+                # Annotate data points with filenames
+                for i, filename in enumerate(df_bella.index):
+                    ax.text(
+                        X_plot_pca[i,pc_a], X_plot_pca[i,pc_b], X_plot_pca[i,pc_c],
+                        filename.replace("CR_","").replace(".txt",""),
+                        fontsize=10)
+
+        # PCA all data
+        X_plot = df_all[feature_list].values
+        X_plot_pca = pca.transform(X_plot)
+
+        if False:
+            # Plot a plane
+            xx, yy = np.meshgrid(np.arange(-5,5), np.arange(-5,5))
+            m = -5/6
+            b = -1/6
+            zz = m*yy + b
+            ax.plot_surface(xx, yy, zz, alpha=0.5)
+
+            # Split data above/below plane
+            healthy_predictions = df_pca_ext[df_pca_ext["PC3"] - m*df_pca_ext["PC2"] - b < 0]
+            cancer_predictions = df_pca_ext[~(df_pca_ext["PC3"] - m*df_pca_ext["PC2"] - b < 0)]
 
         # ax.view_init(30, +60+180)
 
         # ax.set_title("2D Sinusoid - 3D Surface Plot")
-        ax.set_xlabel("PC0")
-        ax.set_ylabel("PC1")
-        ax.set_zlabel("PC2")
+        ax.set_xlabel("PC{}".format(pc_a))
+        ax.set_ylabel("PC{}".format(pc_b))
+        ax.set_zlabel("PC{}".format(pc_c))
         # ax.set_zlim([-1, 1])
 
         ax.set_title(plot_title)
@@ -317,30 +428,80 @@ def run_pca_plot(
         plt.show()
 
     ################################
-    # PCA subspace projection plot #
+    # 2-D PCA subspace projection plot #
     ################################
 
     if False:
+
+        pc_a = 2
+        pc_b = 3
 
         # Plot PCA-reduced dataset with file labels
         plot_title = title
         fig, ax = plt.subplots(figsize=aspect, num=plot_title, tight_layout=True)
         fig.suptitle(title)
-        plt.scatter(X_pca[:,0], X_pca[:,1])
+
+        colors = {
+                "cancer": "red",
+                "healthy": "blue",
+                "blind": "green",
+                }
+
+        # Loop over measurements according to patient diagnosis
+        for diagnosis in ["cancer", "healthy"]:
+            kmeans_diagnosis = df_all[df_all["Diagnosis"] == diagnosis]
+            X_plot = kmeans_diagnosis[feature_list].values
+            X_plot_pca = pca.transform(X_plot)
+            ax.scatter(
+                    X_plot_pca[:,pc_a], X_plot_pca[:,pc_b],
+                    c=colors[diagnosis], label=diagnosis, s=10)
 
 
-        filename_list = df.index.to_list()
+        if True:
+            # Plot decision boundary
+            x = np.arange(-2,3)
 
-        # Annotate data points with filenames
-        for i, filename in enumerate(filename_list):
-            ax.annotate(
-                filename.replace("CR_","").replace(".txt",""),
-                (X_pca[i,0], X_pca[i,1]),
-                xytext=(X_pca[i,0]+x_label_offset, X_pca[i,1]+y_label_offset))
+            if False:
+                x1 = -1
+                x2 = 1
+                y1 = -0.4
+                y2 = 0.6
+
+                m = (y2-y1)/(x2-x1)
+                b = y1 - m*x1
+
+            if True:
+                m = -5/6
+                b = -1/6
+
+                x1 = x[0]
+                x2 = x[-1]
+                y1, y2 = m*np.array([x1,x2]) + b
+
+            ax.plot([x1, x2], [y1, y2])
+
+            # Split data above/below plane
+            healthy_measurement_predictions = df_pca_ext[df_pca_ext["PC3"] - m*df_pca_ext["PC2"] - b > 0]
+            cancer_measurement_predictions = df_pca_ext[~(df_pca_ext["PC3"] - m*df_pca_ext["PC2"] - b > 0)]
+
+        if False:
+            # PCA all data
+            X_plot = df_all[feature_list].values
+            X_plot_pca = pca.transform(X_plot)
+
+            # Annotate data points with filenames
+            filename_list = df_all.index.to_list()
+            for i, filename in enumerate(filename_list):
+                ax.annotate(
+                    filename.replace("CR_","").replace(".txt",""),
+                    (X_plot_pca[i,pc_a], X_plot_pca[i,pc_b]),
+                    xytext=(
+                        X_plot_pca[i,pc_a]+x_label_offset,
+                        X_plot_pca[i,pc_b]+y_label_offset))
 
         # Label plot axes and title
-        plt.xlabel("PC0")
-        plt.ylabel("PC1")
+        plt.xlabel("PC{}".format(pc_a))
+        plt.ylabel("PC{}".format(pc_b))
 
         plt.show()
 
@@ -676,6 +837,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--cancer_type_filepath", default=None, required=False,
             help="The csv input file containing patient cancer type data")
+    parser.add_argument(
+            "--standard_scaler", default=False, required=False, action="store_true",
+            help="Use standard scaler.")
 
     args = parser.parse_args()
 
@@ -691,6 +855,7 @@ if __name__ == '__main__':
     cancer_type_filepath = args.cancer_type_filepath
 
     n_components = args.n_components
+    standard_scaler = args.standard_scaler
 
     run_pca_plot(
         training_filepath=training_filepath,
@@ -701,4 +866,5 @@ if __name__ == '__main__':
         n_clusters=n_clusters,
         n_components=n_components,
         cancer_type_filepath=cancer_type_filepath,
+        standard_scaler=standard_scaler,
         )

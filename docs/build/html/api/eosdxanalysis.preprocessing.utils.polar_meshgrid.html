@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>find_hot_spots &#8212; Eos Dx Analysis 2.28.0 documentation</title>
+    <title>polar_meshgrid &#8212; Eos Dx Analysis 2.28.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -35,11 +35,11 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.denoising.find_hot_spots';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.utils.polar_meshgrid';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="bright_pixel_count" href="eosdxanalysis.preprocessing.image_processing.bright_pixel_count.html" />
-    <link rel="prev" title="filter_hot_spots" href="eosdxanalysis.preprocessing.denoising.filter_hot_spots.html" />
+    <link rel="next" title="radial_integration" href="eosdxanalysis.preprocessing.utils.radial_integration.html" />
+    <link rel="prev" title="get_angle" href="eosdxanalysis.preprocessing.utils.get_angle.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
   </head>
@@ -307,14 +307,14 @@
   </a>
  </li>
 </ul>
-<ul class="current nav bd-sidenav">
+<ul class="nav bd-sidenav">
  <li class="toctree-l1">
   <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.filter_hot_spots.html">
    filter_hot_spots
   </a>
  </li>
- <li class="toctree-l1 current active">
-  <a class="current reference internal" href="#">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.find_hot_spots.html">
    find_hot_spots
   </a>
  </li>
@@ -370,7 +370,7 @@
   </a>
  </li>
 </ul>
-<ul class="nav bd-sidenav">
+<ul class="current nav bd-sidenav">
  <li class="toctree-l1">
   <a class="reference internal" href="eosdxanalysis.preprocessing.utils.count_intervals.html">
    count_intervals
@@ -396,8 +396,8 @@
    get_angle
   </a>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.polar_meshgrid.html">
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
    polar_meshgrid
   </a>
  </li>
@@ -439,28 +439,33 @@
             
             <article class="bd-article" role="main">
               
-  <section id="find-hot-spots">
-<h1>find_hot_spots<a class="headerlink" href="#find-hot-spots" title="Permalink to this heading">#</a></h1>
+  <section id="polar-meshgrid">
+<h1>polar_meshgrid<a class="headerlink" href="#polar-meshgrid" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.denoising.find_hot_spots">
-<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">find_hot_spots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masked_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detection_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'relative'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_hot_spots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.find_hot_spots" title="Permalink to this definition">#</a></dt>
-<dd><dl class="field-list simple">
+<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.utils.polar_meshgrid">
+<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.utils.</span></span><span class="sig-name descname"><span class="pre">polar_meshgrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(256,</span> <span class="pre">256)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">110</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quadrant_fold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">half_step_rotation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.utils.polar_meshgrid" title="Permalink to this definition">#</a></dt>
+<dd><p>Creates a polar meshgrid with unique label per cell.</p>
+<dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>masked_image</strong> (<em>ndarray</em>) – Image with beam removed (zeroed)</p></li>
-<li><p><strong>threshold</strong> (<em>number</em>) – Any pixels with photon count greater than <code class="docutils literal notranslate"><span class="pre">intensity_threshold</span></code> are
-considered hot spots. If using <code class="docutils literal notranslate"><span class="pre">relative</span></code> detection method,
-<code class="docutils literal notranslate"><span class="pre">intensity_threshold</span> <span class="pre">=</span> <span class="pre">threshold</span> <span class="pre">*</span> <span class="pre">max(masked_image)</span></code>. If using
-<code class="docutils literal notranslate"><span class="pre">absolute</span></code> detection method, <code class="docutils literal notranslate"><span class="pre">intensity_threshold</span> <span class="pre">=</span> <span class="pre">threshold</span></code>.</p></li>
-<li><p><strong>detection_method</strong> (<em>str</em>) – Choice of <code class="docutils literal notranslate"><span class="pre">relative</span></code> or <code class="docutils literal notranslate"><span class="pre">absolute</span></code> threshold.</p></li>
-<li><p><strong>max_hot_spots</strong> (<em>int</em>) – If more than <code class="docutils literal notranslate"><span class="pre">max_hot_spots</span></code> are found, only the first
-<code class="docutils literal notranslate"><span class="pre">max_hot_spots</span></code> are returned.</p></li>
+<li><p><strong>output_shape</strong> (<em>(</em><em>int</em><em>, </em><em>int</em><em>)</em>) – Shape of polar meshgrid</p></li>
+<li><p><strong>r_count</strong> (<em>int</em>) – Number of annuli</p></li>
+<li><p><strong>theta_count</strong> (<em>int</em>) – Number of sectors</p></li>
+<li><p><strong>rmin</strong> (<em>int</em>) – Start radius</p></li>
+<li><p><strong>rmax</strong> (<em>int</em>) – End radius</p></li>
+<li><p><strong>quadrant_fold</strong> (<em>bool</em>) – Return a quadrant-folded image if <code class="docutils literal notranslate"><span class="pre">True</span></code>. Default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><strong>half_step_rotation</strong> (<em>bool</em>) – Rotate meshgrid by half sector angle size.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>hot_spot_coords_array</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>meshgrid</strong> – Returns ndarray of shape <code class="docutils literal notranslate"><span class="pre">output_shape</span></code> with unique label per cell.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>Cell label values start at 1 to distinguish unused image portions</p>
 </dd></dl>
 
 </section>
@@ -473,17 +478,17 @@ considered hot spots. If using <code class="docutils literal notranslate"><span 
             <footer class="bd-footer-article">
                 <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.denoising.filter_hot_spots.html" title="previous page">
+  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.utils.get_angle.html" title="previous page">
       <i class="fas fa-angle-left"></i>
       <div class="prev-next-info">
           <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">filter_hot_spots</p>
+          <p class="prev-next-title">get_angle</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.image_processing.bright_pixel_count.html" title="next page">
+  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.utils.radial_integration.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">bright_pixel_count</p>
+      <p class="prev-next-title">radial_integration</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>
@@ -503,7 +508,7 @@ considered hot spots. If using <code class="docutils literal notranslate"><span 
 <div class="toc-item">
   
 <div class="tocsection sourcelink">
-    <a href="../_sources/api/eosdxanalysis.preprocessing.denoising.find_hot_spots.rst.txt">
+    <a href="../_sources/api/eosdxanalysis.preprocessing.utils.polar_meshgrid.rst.txt">
         <i class="fas fa-file-alt"></i> Show Source
     </a>
 </div>
