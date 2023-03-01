@@ -144,8 +144,4 @@ if __name__ == '__main__':
     # Remove extra spaces or quote characters at the ends
     measurement_filepath = measurement_filepath.strip(" ").strip("\'")
 
-    check_beam_detector_alignment(measurement_filepath)
-
-    check_beam_aperture_alignment(measurement_filepath)
-
     plot_centers(measurement_filepath)
