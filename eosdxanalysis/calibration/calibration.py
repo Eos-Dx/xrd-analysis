@@ -25,6 +25,7 @@ from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 PIXEL_WIDTH = 55e-6 # Pixel width in meters (it is 55 um)
 WAVELENGTH = 1.5418E-10 # Wavelength in meters (1.5418 Angstroms)
 BEAM_RMAX = 10 # Pixel radius to block out beam
+RMAX = 110 # Pixel radius to ignore beyond this value
 
 
 class Calibration(object):
@@ -45,6 +46,9 @@ class Calibration(object):
         # Store calibration material name
         self.calibration_material = calibration_material
 
+        # Store pixel width
+        self.pixel_width = pixel_width
+
         # Look up calibration material q-peaks reference data
         try:
             self.q_peaks_ref = q_peaks_ref_dict[calibration_material]
@@ -53,8 +57,111 @@ class Calibration(object):
                                             calibration_material))
         return super().__init__()
 
-    def single_sample_detector_distance(
-            self, image, beam_rmax=10, r_max=None, distance_approx=10e-3,
+    def sample_detector_distance(
+            self, image, center=None, beam_rmax=10, rmax=None,
+            distance_approx=10e-3, output_shape=(360, 128),
+            doublet_approx_min_factor=0.5,
+            doublet_approx_max_factor=2.0,
+            doublet_width=6,
+            visualize=False):
+        """
+        Calculate the sample-to-detector distance for a calibration sample
+
+        Steps performed:
+        1. Use sample-to-detector distance estimate to estimate location of AgBH doublet
+        2. Run find peaks in this location to find the doublet
+        3. Use doublet peak location to determine sample-to-detector distance
+
+        Parameters
+        ----------
+
+        image : ndarray
+
+        center : (float, float)
+            Center of the diffraction pattern
+
+        beam_rmax : int
+            Maximum beam extent
+
+        rmax : int
+            Maximum radius to analyze
+
+        distance_approx : float
+            Approximate sample-to-detector distance
+
+        output_shape : (int, int)
+            output shape of polar warp.
+
+        visualize : bool
+            Flag to display plots image and azimuthal integration profile.
+        """
+        wavelength = self.wavelength
+        wavelength_angstroms = wavelength*1e10
+        q_peaks_ref = self.q_peaks_ref
+        pixel_width = self.pixel_width
+
+        # Calculate 1-d azimuthal integration profile
+        if center is None:
+            # Find the image center
+            center = find_center(image)
+
+        # Mask the beam
+        mask = create_circular_mask(
+                image.shape[1], image.shape[0], center=center,
+                rmax=beam_rmax)
+        masked_image = np.copy(image)
+        # Set the masked part to the minimum of the beam area
+        # to avoid creating another peak
+        masked_image[mask] = masked_image[mask].min()
+
+        radial_intensity = azimuthal_integration(
+                masked_image, center=center, output_shape=output_shape)
+
+        # Convert doublet average in q units to 2*theta units
+        # Average the doublets
+        q_doublets = np.array(q_peaks_ref.get("doublets"))
+        if q_doublets.size == 2:
+            q_doublets_avg = np.mean(q_doublets)
+        else:
+            raise ValueError("Incorrect amount of doublets found.")
+
+        # Calculate theta_n
+        theta_n = np.arcsin(q_doublets_avg*wavelength_angstroms/(4*np.pi))
+        # Calculate the approximate distance of the doublet average
+        doublet_distance_approx = distance_approx * np.tan(2*theta_n).reshape(-1,1)
+        # Convert to pixel units
+        doublet_pixel_location_approx = int(np.round(doublet_distance_approx / pixel_width))
+
+        # Create a subset of the radial intensity to look for doublet
+        start_index = \
+                int(np.round(doublet_approx_min_factor*doublet_pixel_location_approx))
+        end_index = \
+                int(np.round(doublet_approx_max_factor*doublet_pixel_location_approx))
+        # Ensure there is no overshoot with the end index
+        end_index = radial_intensity.size - 1 if end_index >= radial_intensity.size else end_index
+        radial_intensity_subset = radial_intensity[start_index:end_index]
+
+        # Find the doublet in this subset
+        doublet_peak_indices_approx, properties = find_peaks(
+                radial_intensity_subset, width=doublet_width)
+
+        # Check how many prominent peaks were found
+        prominences = properties.get("prominences")
+        if prominences.size >= 1:
+            # Get the peak index of the doublet in the main array
+            doublet_peak_index = doublet_peak_indices_approx[0] + start_index
+        else:
+            raise ValueError("Doublet peak not found.")
+
+        # Now use location of doublet to calculate sample-to-detector distance
+        doublet_distance = doublet_peak_index * pixel_width
+
+        L = doublet_distance / np.tan(2*theta_n)
+
+        return L
+
+    def single_sample_detector_distance_old(
+            self, image, beam_rmax=10, rmax=None, distance_approx=10e-3,
             output_shape=(360, 128), visualize=False):
         """
         Calculate the sample-to-detector distance for a single sample
@@ -88,9 +195,9 @@ class Calibration(object):
                 masked_image, center=center, output_shape=output_shape)
 
 #        # Set a maximum radius which we are interested in
-#        if r_max is None:
+#        if rmax is None:
 #            raise ValueError("Must specify maximum radius.")
-#        final_r_pixel = int(r_max)
+#        final_r_pixel = int(rmax)
 # -
 #        # Set a minimum radius which we are interested in
 #        start_r_pixel = int(r_min) if r_min else 0
@@ -155,16 +262,33 @@ class Calibration(object):
             fig = plt.figure(title)
             plt.title(title)
 
-            plt.plot(20*np.log10(radial_intensity+1))
+
+            # Plot azimuthal integration 1-D profile
+            plt.plot(20*np.log10(radial_intensity+1),
+                    label="1-D profile")
+
+            # Plot markers for found peaks
             plt.scatter(r_space_pixel[all_radial_peak_indices].ravel(),
                         20*np.log10(radial_intensity[all_radial_peak_indices]+1).ravel(),
-                        color="green", marker="+", s=500)
+                        color="green", marker="+", s=250,
+                        label="found peaks")
+
+            # Plot a marker for the most prominent peak
             plt.scatter(r_space_pixel[prominent_peak_index],
                     20*np.log10(radial_intensity[prominent_peak_index]+1),
-                    color="red", marker=".", s=500)
+                    color="red", marker=".", s=250,
+                    label="prominent peak")
+
+            # Plot markers for peaks used for fitting
             plt.scatter(r_space_pixel[radial_peak_indices],
                     20*np.log10(radial_intensity[radial_peak_indices]+1),
-                    color="orange", marker="|", s=500)
+                    color="orange", marker="x", s=250,
+                    label="peaks for fitting")
+
+            plt.xlabel("Radius [pixels]")
+            plt.ylabel("Intensity [dB+1]")
+
+            plt.legend()
             plt.show()
 
         # Set up linear regression inputs
@@ -229,8 +353,17 @@ if __name__ == "__main__":
             "--wavelength", default=WAVELENGTH,
             help="The wavelength meters.")
     parser.add_argument(
+            "--center", type=str, default=None,
+            help="The center of the diffraction pattern.")
+    parser.add_argument(
             "--beam_rmax", type=int, default=BEAM_RMAX,
             help="The radius to block out the beam.")
+    parser.add_argument(
+            "--rmax", type=int, default=RMAX,
+            help="The radius to block out the beam.")
+    parser.add_argument(
+            "--distance_approx", type=float, default=10e-3,
+            help="The approximate sample-to-detector distance.")
     parser.add_argument(
             "--visualize", action="store_true",
             help="Plot calibration results to screen")
@@ -243,16 +376,14 @@ if __name__ == "__main__":
     if image_fullpath is None:
         raise ValueError("Must provide full path to image calibration file.")
 
-    # Set material info
     material = args.material
-    # Set wavelength
     wavelength = args.wavelength
-    # Set pixel width
     pixel_width = args.pixel_width
-    # Set visualization option
-    visualize = args.visualize
-    # Set beam_rmax
     beam_rmax = args.beam_rmax
+    center = ",".split(args.center) if args.center else None
+    rmax = args.rmax
+    distance_approx = args.distance_approx
+    visualize = args.visualize
 
     # Instantiate Calibration class
     calibrator = Calibration(calibration_material=material,
@@ -262,13 +393,20 @@ if __name__ == "__main__":
     image = np.loadtxt(image_fullpath, dtype=np.uint32)
 
     # Run calibration procedure
-    detector_distance, linreg, score  = calibrator.single_sample_detector_distance(
-            image, beam_rmax=beam_rmax, r_max=90, distance_approx=10e-3, visualize=visualize)
+    try:
+        detector_distance = calibrator.sample_detector_distance(
+                image,
+                beam_rmax=beam_rmax,
+                rmax=rmax,
+                distance_approx=distance_approx,
+                center=center,
+                visualize=visualize)
 
-    detector_distance_mm = detector_distance * 1e3
+        detector_distance_mm = detector_distance * 1e3
 
-    print("Detector distance:", detector_distance_mm, "[mm]")
-    print("R^2:", score)
+        print("Detector distance:", detector_distance_mm, "[mm]")
 
-    # Save
-    print("Done calibrating")
+        # Save
+        print("Done calibrating")
+    except Exception as err:
+        print("Calibration failed.")
