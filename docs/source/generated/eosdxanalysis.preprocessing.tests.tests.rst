@@ -35,6 +35,7 @@
       TestImageProcessing
       TestOutputSaturationBugFix
       TestPeakFinding
+      TestPolarMeshgrid
       TestPreprocessData
       TestPreprocessingCLI
       TestUtils

@@ -24,6 +24,7 @@ from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 
 PIXEL_WIDTH = 55e-6 # Pixel width in meters (it is 55 um)
 WAVELENGTH = 1.5418E-10 # Wavelength in meters (1.5418 Angstroms)
+BEAM_RMAX = 10 # Pixel radius to block out beam
 
 
 class Calibration(object):
@@ -74,9 +75,17 @@ class Calibration(object):
         center = find_center(image)
         array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
 
-        radial_intensity = azimuthal_integration(
-                image, center=center, output_shape=output_shape)
+        # Mask the beam
+        mask = create_circular_mask(
+                image.shape[1], image.shape[0], center=center,
+                rmax=beam_rmax)
+        masked_image = np.copy(image)
+        # Set the masked part to the minimum of the beam area
+        # to avoid creating another peak
+        masked_image[mask] = masked_image[mask].min()
 
+        radial_intensity = azimuthal_integration(
+                masked_image, center=center, output_shape=output_shape)
 
 #        # Set a maximum radius which we are interested in
 #        if r_max is None:
@@ -118,20 +127,19 @@ class Calibration(object):
         q_peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
 
         # The first doublet will be the last peak
-        final_index = all_radial_peak_indices.tolist().index(prominent_peak_index)
+        final_index = int(np.where(all_radial_peak_indices == prominent_peak_index)[0])
         # Count how many we are missing before the first doublet
         num_missing = len(q_peaks_avg[:-1]) - len(all_radial_peak_indices[:final_index])
 
         if num_missing < 0:
             raise ValueError("We found more peaks than in the reference!")
         elif num_missing == 0:
-            radial_peak_indices = all_radial_peak_indices
+            radial_peak_indices = all_radial_peak_indices[:final_index+1]
+            q_peaks_avg_subset = q_peaks_avg
         elif num_missing > 0:
             # Take subset
-            # Note: need to do :final_index+1 since slicing is right-exclusive,
-            # and num_missing-1: since slicing is left-inclusive
-            radial_peak_indices = all_radial_peak_indices[num_missing:final_index+1]
-            q_peaks_avg_subset = q_peaks_avg[num_missing:final_index+1]
+            radial_peak_indices = all_radial_peak_indices[num_missing-1:final_index+1]
+            q_peaks_avg_subset = q_peaks_avg[num_missing:final_index+2]
 
         if visualize:
             import matplotlib.pyplot as plt
@@ -139,11 +147,6 @@ class Calibration(object):
             title = "Beam masked image"
             fig = plt.figure(title)
             plt.title(title)
-            mask = create_circular_mask(
-                    image.shape[1], image.shape[0], center=center,
-                    rmax=beam_rmax)
-            masked_image = np.copy(image)
-            masked_image[mask] = 0
 
             plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
             plt.scatter(center[1], center[0], color="green")
@@ -226,6 +229,9 @@ if __name__ == "__main__":
             "--wavelength", default=WAVELENGTH,
             help="The wavelength meters.")
     parser.add_argument(
+            "--beam_rmax", type=int, default=BEAM_RMAX,
+            help="The radius to block out the beam.")
+    parser.add_argument(
             "--visualize", action="store_true",
             help="Plot calibration results to screen")
 
@@ -245,6 +251,8 @@ if __name__ == "__main__":
     pixel_width = args.pixel_width
     # Set visualization option
     visualize = args.visualize
+    # Set beam_rmax
+    beam_rmax = args.beam_rmax
 
     # Instantiate Calibration class
     calibrator = Calibration(calibration_material=material,
@@ -255,7 +263,7 @@ if __name__ == "__main__":
 
     # Run calibration procedure
     detector_distance, linreg, score  = calibrator.single_sample_detector_distance(
-            image, beam_rmax=10, r_max=90, distance_approx=10e-3, visualize=visualize)
+            image, beam_rmax=beam_rmax, r_max=90, distance_approx=10e-3, visualize=visualize)
 
     detector_distance_mm = detector_distance * 1e3
 
