@@ -127,6 +127,9 @@ def plot_centers(input_filepath):
     max_centroid = check_beam_aperture_alignment(input_filepath)
     ax.scatter(max_centroid[1], max_centroid[0], label="max centroid", marker="*")
 
+    plot_title = "Alignment Quality Assurance"
+    plt.title(plot_title)
+
     # legend
     plt.legend()
 
