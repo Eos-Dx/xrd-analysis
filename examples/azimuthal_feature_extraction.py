@@ -38,14 +38,14 @@ peak_location_angstrom_dict = {
         "peak_location_4A": 4.5e-10,
         }
 
-# Convert to pixel locations
-peak_location_pixel_dict = {}
-for peak_name, peak_location in peak_location_angstrom_dict.items():
-    peak_location_pixel_dict[peak_name] = feature_pixel_location(peak_location)
+## Convert to pixel locations
+#peak_location_pixel_dict = {}
+#for peak_name, peak_location in peak_location_angstrom_dict.items():
+#    peak_location_pixel_dict[peak_name] = feature_pixel_location(peak_location)
 
 
 def sum_of_gaussians():
-
+    gau = None
     return gau
 
 def run_feature_extraction(input_path, output_path):
@@ -67,40 +67,55 @@ def run_feature_extraction(input_path, output_path):
 
     # Store output directory info
     # Create output directory if it does not exist
-    data_output_dir = "preprocessed_{}".format(timestamp)
+    output_dir = "preprocessed_{}".format(timestamp)
+    output_path = os.path.join(output_path, output_dir)
+
+    # Data output path
+    data_output_dir = "data"
     data_output_path = os.path.join(output_path, data_output_dir)
     os.makedirs(data_output_path, exist_ok=True)
+
+    # Image output path
+    image_output_dir = "images"
+    image_output_path = os.path.join(output_path, image_output_dir)
+    os.makedirs(image_output_path, exist_ok=True)
 
     # Loop over files list
     for filepath in filepath_list:
         filename = os.path.basename(filepath)
-        image = np.loadtxt(filepath, dtype=np.uint32)
+        image = np.loadtxt(filepath, dtype=np.float64)
 
         radial_profile = azimuthal_integration(image)
 
-        peak_indices, properties = find_peaks(
-                radial_profile)
-
         # Save data to file
-        output_filename = "radial_{}".format(filename) + ".png"
-        data_output_file_path = os.path.join(data_output_path, output_filename)
+        data_output_filename = "radial_{}".format(filename)
+        data_output_filepath = os.path.join(data_output_path,
+                data_output_filename)
 
-        np.savetxt(data_output_file_path,
-                        np.round(radial_profile).astype(np.uint32), fmt='%i')
+        np.savetxt(data_output_filepath, radial_profile)
 
         # Save image preview to file
         plot_title = "Azimuthal Integration {}".format(filename)
         fig = plt.figure(plot_title)
         plt.scatter(range(radial_profile.size), radial_profile)
-        plt.scatter(peak_indices, radial_profile[peak_indices])
+
+        plt.xlabel("Radius [pixel units]")
+        plt.ylabel("Mean Intensity [photon count]")
 
         plt.title(plot_title)
 
+        # Set image output file
+        image_output_filename = "radial_{}".format(filename) + ".png"
+        image_output_filepath = os.path.join(image_output_path,
+                image_output_filename)
+
         # Save image preview to file
-        plt.savefig(data_output_file_path)
+        plt.savefig(image_output_filepath)
 
         # Add extracted features to dataframe
         # df.loc[len(df.index)+1] = [filename] + [radial_profile]
+
+        plt.close(fig)
 
     # Save dataframe to csv
     # df.to_csv(output_filepath, index=False)

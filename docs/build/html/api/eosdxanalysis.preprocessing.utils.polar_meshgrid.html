@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>eosdxanalysis.models.tests &#8212; Eos Dx Analysis 2.31.0 documentation</title>
+    <title>polar_meshgrid &#8212; Eos Dx Analysis 2.31.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -35,9 +35,11 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = '_autosummary/eosdxanalysis.models.tests';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.utils.polar_meshgrid';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="radial_integration" href="eosdxanalysis.preprocessing.utils.radial_integration.html" />
+    <link rel="prev" title="get_angle" href="eosdxanalysis.preprocessing.utils.get_angle.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
   </head>
@@ -120,7 +122,7 @@
                 </li>
                 
 
-                <li class="nav-item">
+                <li class="nav-item current active">
                     <a class="nav-link" href="../api.html">
                         API
                     </a>
@@ -206,7 +208,7 @@
                 </li>
                 
 
-                <li class="nav-item">
+                <li class="nav-item current active">
                     <a class="nav-link" href="../api.html">
                         API
                     </a>
@@ -249,8 +251,164 @@
   <div class="bd-toc-item navbar-nav">
     <ul class="nav bd-sidenav">
  <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.models.tests.tests.html">
-   eosdxanalysis.models.tests.tests
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.PreprocessData.html">
+   PreprocessData
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.ABBREVIATIONS.html">
+   ABBREVIATIONS
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.INVERSE_OUTPUT_MAP.html">
+   INVERSE_OUTPUT_MAP
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.preprocess.OUTPUT_MAP.html">
+   OUTPUT_MAP
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.circular_average.html">
+   circular_average
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.find_center.html">
+   find_center
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.find_centroid.html">
+   find_centroid
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.radial_histogram.html">
+   radial_histogram
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.RMAX_BEAM.html">
+   RMAX_BEAM
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.RMIN_BEAM.html">
+   RMIN_BEAM
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.filter_hot_spots.html">
+   filter_hot_spots
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.find_hot_spots.html">
+   find_hot_spots
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.bright_pixel_count.html">
+   bright_pixel_count
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.crop_image.html">
+   crop_image
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.pad_image.html">
+   pad_image
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.quadrant_fold.html">
+   quadrant_fold
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.unwarp_polar.html">
+   unwarp_polar
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.find_1d_peaks.html">
+   find_1d_peaks
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.find_2d_peak.html">
+   find_2d_peak
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.multivariate_normal.html">
+   multivariate_normal
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.peak_finding.norm.html">
+   norm
+  </a>
+ </li>
+</ul>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.count_intervals.html">
+   count_intervals
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.create_circular_mask.html">
+   create_circular_mask
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.find_maxima.html">
+   find_maxima
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.gen_rotation_line.html">
+   gen_rotation_line
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.get_angle.html">
+   get_angle
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   polar_meshgrid
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.radial_integration.html">
+   radial_integration
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.zerocross1d.html">
+   zerocross1d
   </a>
  </li>
 </ul>
@@ -281,16 +439,35 @@
             
             <article class="bd-article" role="main">
               
-  <section id="module-eosdxanalysis.models.tests">
-<span id="eosdxanalysis-models-tests"></span><h1>eosdxanalysis.models.tests<a class="headerlink" href="#module-eosdxanalysis.models.tests" title="Permalink to this heading">#</a></h1>
-<p class="rubric">Modules</p>
-<table class="autosummary longtable table autosummary">
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="../generated/eosdxanalysis.models.tests.tests.html#module-eosdxanalysis.models.tests.tests" title="eosdxanalysis.models.tests.tests"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eosdxanalysis.models.tests.tests</span></code></a></p></td>
-<td><p>Tests for models module</p></td>
-</tr>
-</tbody>
-</table>
+  <section id="polar-meshgrid">
+<h1>polar_meshgrid<a class="headerlink" href="#polar-meshgrid" title="Permalink to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.utils.polar_meshgrid">
+<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.utils.</span></span><span class="sig-name descname"><span class="pre">polar_meshgrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(256,</span> <span class="pre">256)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">110</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quadrant_fold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">half_step_rotation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.utils.polar_meshgrid" title="Permalink to this definition">#</a></dt>
+<dd><p>Creates a polar meshgrid with unique label per cell.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_shape</strong> (<em>(</em><em>int</em><em>, </em><em>int</em><em>)</em>) – Shape of polar meshgrid</p></li>
+<li><p><strong>r_count</strong> (<em>int</em>) – Number of annuli</p></li>
+<li><p><strong>theta_count</strong> (<em>int</em>) – Number of sectors</p></li>
+<li><p><strong>rmin</strong> (<em>int</em>) – Start radius</p></li>
+<li><p><strong>rmax</strong> (<em>int</em>) – End radius</p></li>
+<li><p><strong>quadrant_fold</strong> (<em>bool</em>) – Return a quadrant-folded image if <code class="docutils literal notranslate"><span class="pre">True</span></code>. Default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><strong>half_step_rotation</strong> (<em>bool</em>) – Rotate meshgrid by half sector angle size.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>meshgrid</strong> – Returns ndarray of shape <code class="docutils literal notranslate"><span class="pre">output_shape</span></code> with unique label per cell.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Cell label values start at 1 to distinguish unused image portions</p>
+</dd></dl>
+
 </section>
 
 
@@ -301,6 +478,20 @@
             <footer class="bd-footer-article">
                 <!-- Previous / next buttons -->
 <div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.utils.get_angle.html" title="previous page">
+      <i class="fas fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">get_angle</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.utils.radial_integration.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">radial_integration</p>
+  </div>
+  <i class="fas fa-angle-right"></i>
+  </a>
 </div>
             </footer>
             
@@ -317,7 +508,7 @@
 <div class="toc-item">
   
 <div class="tocsection sourcelink">
-    <a href="../_sources/_autosummary/eosdxanalysis.models.tests.rst.txt">
+    <a href="../_sources/api/eosdxanalysis.preprocessing.utils.polar_meshgrid.rst.txt">
         <i class="fas fa-file-alt"></i> Show Source
     </a>
 </div>
