@@ -24,6 +24,7 @@ from skimage.filters import threshold_local
 from skimage.transform import EuclideanTransform
 from skimage.transform import warp
 from skimage.transform import rotate
+from skimage.transform import rescale
 
 from eosdxanalysis.preprocessing.center_finding import find_center
 from eosdxanalysis.preprocessing.center_finding import find_centroid
@@ -161,7 +162,9 @@ class PreprocessData(object):
         return super().__init__()
 
     def preprocess(self, plans=["centerize"],
-                mask_style="both", uniform_filter_size=0, scaling="linear"):
+                mask_style="both", uniform_filter_size=0, scaling="linear",
+                scale_distance=None, df_calibration_filepath=None,
+                df_measurements_filepath=None):
         """
         Run all preprocessing steps
 
@@ -240,6 +243,21 @@ class PreprocessData(object):
         with open(os.path.join(output_path,"params.txt"),"w") as paramsfile:
             paramsfile.write(json.dumps(params,indent=4))
 
+
+        # Load data used to rescale images to standard sample-to-detector distance
+        if scale_distance:
+            # Load measurement filenames and timestamps
+            df_measurements = pd.read_csv(
+                    df_measurements_filepath,
+                    index_col="Timestamp",
+                    parse_dates=["Timestamp"])
+            # Load calibration measurement filenames, timestamps,
+            # and sample-to-detector distances calculated from the
+            # calibration measurements
+            df_calibration = pd.read_csv(
+                    df_calibration_filepath,
+                    index_col="Timestamp",
+                    parse_dates=["Timestamp"])
 
         # Loop over plans
         for plan in plans:
@@ -366,6 +384,73 @@ class PreprocessData(object):
                 # Uniform filter
                 if uniform_filter_size > 1:
                     output = ndimage.uniform_filter(output, size=uniform_filter_size)
+
+                # Rescale image to standard sample-to-detector distance
+                if scale_distance:
+                    # If there is a corresponding calibration measurement, scale
+                    # Otherwise, do nothing
+                    try:
+                        # Get the measurement metadata
+                        measurement_metadata = df_measurements[df_measurements["Filename"] == filename]
+                        # Ensure one measurement is found
+                        assert(measurement_metadata.shape[0] == 1)
+                        # Ensure at least one corresponding calibration measurement is found
+                        calibration_filename_array_str = measurement_metadata["Calibrated"].values[0]
+                        calibration_filename_array = np.array(
+                                calibration_filename_array_str.strip(
+                                    "[]").replace(
+                                        "\'", "").split(
+                                            ", "))
+                        assert(calibration_filename_array.shape[0] >= 1)
+                        # Get the sample-to-detector distance for this calibration file
+                        calibration_filename = calibration_filename_array[0]
+
+                        # Get the corresponding calibration measurement(s)
+                        calibration_measurement_metadata = \
+                                df_calibration[df_calibration["Filename"] == calibration_filename]
+                        # Get the sample-to-detector distance from the calibration file
+                        calibrant_distance = calibration_measurement_metadata["Distance_mm"]
+
+                        # Calculate scale factor
+                        scale_factor = scale_distance / calibrant_distance
+                        # Rescale image (enlarges size of array and interpolates)
+                        output_rescaled = rescale(
+                                output, scale=scale_factor, preserve_range=True)
+                        # Crop rescaled image if larger than original
+                        if all([output_rescaled.shape[0] > h,
+                                output_rescaled.shape[1] > h,
+                                output_rescaled.shape[0] > w,
+                                output_rescaled.shape[1] > w,
+                                ]):
+                            # Crop image
+                            output_rescaled_cropped = crop_image(output_rescaled, h, w)
+                            output = output_rescaled_cropped
+                        # Pad rescaled imaage with zeros if smaller than original
+                        else:
+                            # Calculate border size
+                            border_size = np.max([
+                                h - output_rescaled.shape[0],
+                                w - output_rescaled.shape[1]])
+
+                            # Calculate array center
+                            rescaled_image_center = np.array(output_rescaled.shape)/2-0.5
+
+                            # Padd with zeros
+                            output_rescaled_padded = np.pad(output_rescaled, border_size)
+
+                            # Track the center
+                            new_image_center = rescaled_image_center + border_size
+
+                            # Crop image
+                            output_rescaled_padded_cropped = crop_image(
+                                    output_rescaled_padded, h, w, new_image_center)
+
+                            output = output_rescaled_padded_cropped
+
+
+                    except Exception as err:
+                        print("Error in rescaling according to standard sample-to-detector distance.")
+                        raise err
 
                 # Mask
                 if mask_style:
@@ -706,6 +791,15 @@ if __name__ == "__main__":
             "--scaling", default=None,
             help="Plot scaling")
     parser.add_argument(
+            "--scale_distance", type=float, default=None,
+            help="Sample-to-detector distance standard to scale measurements for uniform representation.")
+    parser.add_argument(
+            "--df_calibration_filepath", type=str, default=None,
+            help="Path to csv file containing calibration measurements data.")
+    parser.add_argument(
+            "--df_measurements_filepath", type=str, default=None,
+            help="Path to csv file containing measurements data.")
+    parser.add_argument(
             "--parallel", default=None, action="store_true",
             help="Flag to run preprocessing in parallel.")
 
@@ -717,6 +811,9 @@ if __name__ == "__main__":
     filename = args.filename
     data_dir = args.data_dir
     output_path = args.output_path
+    scale_distance = args.scale_distance
+    df_calibration_filepath = args.df_calibration_filepath
+    df_measurements_filepath = args.df_measurements_filepath
 
     # Get parameters from file or from JSON string commandline argument
     params_file = args.params_file
@@ -783,6 +880,12 @@ if __name__ == "__main__":
                     str(params_file),
                     '--output_path',
                     str(output_path),
+                    '--scale_distance',
+                    str(scale_distance),
+                    '--df_calibration_filepath',
+                    str(df_calibration_filepath),
+                    '--df_measurements_filepath',
+                    str(df_measurements_filepath),
                     ]
 
             p = subprocess.Popen(function_cli_list)
@@ -802,6 +905,10 @@ if __name__ == "__main__":
 
         # Run preprocessing
         preprocessor.preprocess(plans=plans, mask_style=params.get("crop_style"),
-                uniform_filter_size=int(uniform_filter_size), scaling=scaling)
+                uniform_filter_size=int(uniform_filter_size), scaling=scaling,
+                scale_distance=scale_distance,
+                df_calibration_filepath=df_calibration_filepath,
+                df_measurements_filepath=df_measurements_filepath,
+                )
 
     print("Done preprocessing.")
