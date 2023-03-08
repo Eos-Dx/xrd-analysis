@@ -4,6 +4,7 @@ Code to calibrate X-ray diffraction setup using calibration samples data
 import argparse
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from sklearn.linear_model import LinearRegression
 
@@ -26,6 +27,11 @@ PIXEL_WIDTH = 55e-6 # Pixel width in meters (it is 55 um)
 WAVELENGTH = 1.5418E-10 # Wavelength in meters (1.5418 Angstroms)
 BEAM_RMAX = 10 # Pixel radius to block out beam
 RMAX = 110 # Pixel radius to ignore beyond this value
+DISTANCE_APPROX = 10e-3
+DOUBLET_WIDTH = 5
+DOUBLET_APPROX_MIN_FACTOR = 0.5
+DOUBLET_APPROX_MAX_FACTOR = 2.0
+OUTPUT_SHAPE = (360,128)
 
 
 class Calibration(object):
@@ -35,7 +41,7 @@ class Calibration(object):
     q units are per Angstrom
     """
 
-    def __init__(self, calibration_material, wavelength=1.5418e-10,
+    def __init__(self, calibration_material, wavelength=WAVELENGTH,
             pixel_width=PIXEL_WIDTH):
         """
         Initialize Calibration class
@@ -58,11 +64,11 @@ class Calibration(object):
         return super().__init__()
 
     def sample_detector_distance(
-            self, image, center=None, beam_rmax=10, rmax=None,
-            distance_approx=10e-3, output_shape=(360, 128),
-            doublet_approx_min_factor=0.5,
-            doublet_approx_max_factor=2.0,
-            doublet_width=6,
+            self, image, center=None, beam_rmax=BEAM_RMAX, rmax=RMAX,
+            distance_approx=DISTANCE_APPROX, output_shape=OUTPUT_SHAPE,
+            doublet_approx_min_factor=DOUBLET_APPROX_MIN_FACTOR,
+            doublet_approx_max_factor=DOUBLET_APPROX_MAX_FACTOR,
+            doublet_width=DOUBLET_WIDTH,
             visualize=False):
         """
         Calculate the sample-to-detector distance for a calibration sample
@@ -143,7 +149,8 @@ class Calibration(object):
 
         # Find the doublet in this subset
         doublet_peak_indices_approx, properties = find_peaks(
-                radial_intensity_subset, width=doublet_width)
+                radial_intensity_subset, width=doublet_width,
+                height=0.05*radial_intensity.max())
 
         # Check how many prominent peaks were found
         prominences = properties.get("prominences")
@@ -157,6 +164,34 @@ class Calibration(object):
         doublet_distance = doublet_peak_index * pixel_width
 
         L = doublet_distance / np.tan(2*theta_n)
+
+        if visualize:
+            title = "Beam masked image"
+            fig = plt.figure(title)
+            plt.title(title)
+
+            plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
+            plt.scatter(center[1], center[0], color="green")
+
+            title = "Azimuthal integrated 1-d profile"
+            fig = plt.figure(title)
+            plt.title(title)
+
+            # Plot azimuthal integration 1-D profile
+            plt.plot(20*np.log10(radial_intensity+1),
+                    label="1-D profile")
+
+            # Plot a marker for the most prominent peak
+            plt.scatter(doublet_peak_index,
+                    20*np.log10(radial_intensity[doublet_peak_index]+1),
+                    color="red", marker=".", s=250,
+                    label="Doublet peak")
+
+            plt.xlabel("Radius [pixels]")
+            plt.ylabel("Intensity [dB+1]")
+
+            plt.legend()
+            plt.show()
 
         return L
 
@@ -249,8 +284,6 @@ class Calibration(object):
             q_peaks_avg_subset = q_peaks_avg[num_missing:final_index+2]
 
         if visualize:
-            import matplotlib.pyplot as plt
-
             title = "Beam masked image"
             fig = plt.figure(title)
             plt.title(title)
@@ -362,7 +395,10 @@ if __name__ == "__main__":
             "--rmax", type=int, default=RMAX,
             help="The radius to block out the beam.")
     parser.add_argument(
-            "--distance_approx", type=float, default=10e-3,
+            "--doublet_width", type=int, default=DOUBLET_WIDTH,
+            help="The doublet width to look for.")
+    parser.add_argument(
+            "--distance_approx", type=float, default=DISTANCE_APPROX,
             help="The approximate sample-to-detector distance.")
     parser.add_argument(
             "--visualize", action="store_true",
@@ -383,6 +419,7 @@ if __name__ == "__main__":
     center = ",".split(args.center) if args.center else None
     rmax = args.rmax
     distance_approx = args.distance_approx
+    doublet_width = args.doublet_width
     visualize = args.visualize
 
     # Instantiate Calibration class
@@ -400,6 +437,7 @@ if __name__ == "__main__":
                 rmax=rmax,
                 distance_approx=distance_approx,
                 center=center,
+                doublet_width=doublet_width,
                 visualize=visualize)
 
         detector_distance_mm = detector_distance * 1e3
