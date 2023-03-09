@@ -200,14 +200,6 @@ def main(
             optimal_threshold, accuracy, precision, sensitivity,
             specificity))
 
-        RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
-        fig_roc = plt.gcf()
-        title = "Logistic Regression ROC Curve Degree {}".format(degree)
-        fig_roc.suptitle(title)
-        fig_roc_filename = "roc_curve_degree_{}.png".format(degree)
-        fig_roc_filepath = os.path.join(output_path, fig_roc_filename)
-        fig_roc.savefig(fig_roc_filepath)
-
         PrecisionRecallDisplay.from_predictions(y_true_patients, y_score_patients)
         fig_pr = plt.gcf()
         title = "Logistic Regression Precision-Recall Curve Degree {}".format(degree)
@@ -215,6 +207,14 @@ def main(
         fig_pr_filename = "precision_recall_curve_degree_{}.png".format(degree)
         fig_pr_filepath = os.path.join(output_path, fig_pr_filename)
         fig_pr.savefig(fig_pr_filepath)
+
+        RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
+        fig_roc = plt.gcf()
+        title = "Logistic Regression ROC Curve Degree {}".format(degree)
+        fig_roc.suptitle(title)
+        fig_roc_filename = "roc_curve_degree_{}.png".format(degree)
+        fig_roc_filepath = os.path.join(output_path, fig_roc_filename)
+        fig_roc.savefig(fig_roc_filepath)
 
         plt.show()
 
