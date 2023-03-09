@@ -70,7 +70,7 @@ def main(
     # Build a new model
     else:
         # Load dataframe
-        df = pd.read_csv(data_filepath, index_col="Filename")
+        df = pd.read_csv(data_filepath, index_col="Filename").dropna()
 
         # Scale data
         if scale_by:

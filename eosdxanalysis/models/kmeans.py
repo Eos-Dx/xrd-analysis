@@ -55,7 +55,7 @@ def run_kmeans(
         Choice of "measurementwise" (default) or "patientwise".
     """
     # Load data into dataframe
-    df = pd.read_csv(data_filepath, index_col="Filename")
+    df = pd.read_csv(data_filepath, index_col="Filename").dropna()
 
     # Get list of features
     if feature_list is None:
