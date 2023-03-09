@@ -6,11 +6,11 @@ import argparse
 import glob
 from collections import OrderedDict
 from datetime import datetime
-from time import time
 from joblib import dump
 from joblib import load
 
 import numpy as np
+from numpy.random import default_rng
 import pandas as pd
 
 import matplotlib.pyplot as plt
@@ -43,13 +43,14 @@ from eosdxanalysis.models.utils import scale_features
 def main(
         data_filepath=None, blind_data_filepath=None, output_path=None,
         max_iter=100, degree=1, use_cross_val=False, feature_list=[],
-        joblib_filepath=None, balanced=None, scale_by=None):
-    t0 = time()
-
-    cmap="hot"
+        joblib_filepath=None, balanced=None, scale_by=None,
+        random_state=0, test_size=0.4):
 
     # Set class_weight
     class_weight = balanced if balanced else None
+
+    # Set rng
+    rng = default_rng(random_state)
 
     # Perform Logistic Regression
     # ---------------------------
@@ -69,27 +70,63 @@ def main(
     # Build a new model
     else:
         # Load dataframe
-        df_train = pd.read_csv(data_filepath, index_col="Filename")
+        df = pd.read_csv(data_filepath, index_col="Filename")
 
-        diagnosis_series = (df_train["Diagnosis"] == "cancer").astype(int)
-        df_train["y_true"] = diagnosis_series
-
-        # Get training data
+        # Scale data
         if scale_by:
-            df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
-            X_train = df_train_scaled_features[feature_list].values
+            df_scaled_features = scale_features(df, scale_by, feature_list)
+            X = df_scaled_features[feature_list].values
         else:
-            X_train = df_train[feature_list].values
+            X = df[feature_list].values
+
+        diagnosis_series = (df["Diagnosis"] == "cancer").astype(int)
+        df["y_true"] = diagnosis_series
+
+        # Get training labels
+        y = df["y_true"].values
+
+
+        # Split training data into training set and test set patientwise
+        patient_series = df["Patient_ID"]
+        patient_array = patient_series.unique()
+
+        num_patients = patient_array.shape[0]
+        num_test = int(test_size * num_patients)
+        num_train = num_patients - num_test
+        test_indices = rng.choice(np.arange(num_patients), num_test, replace=False)
+        train_indices = list(set(np.arange(num_patients)) - set(test_indices))
+
+        # Get the patient train/test split
+        test_patient_array = patient_array[test_indices]
+        train_patient_array = patient_array[train_indices]
+
+        # Get the measurements
+        test_measurements_index = df[df["Patient_ID"].isin(test_patient_array)].index
+        train_measurements_index = df[df["Patient_ID"].isin(train_patient_array)].index
+
+        # Store train/test data
+        df_train = df[df.index.isin(train_measurements_index)].copy()
+        df_test = df[df.index.isin(test_measurements_index)].copy()
+
+        if scale_by:
+            X_train_orig = df_scaled_features[df_scaled_features.index.isin(
+                train_measurements_index)][feature_list].values
+            X_test_orig = df_scaled_features[df_scaled_features.index.isin(
+                test_measurements_index)][feature_list].values
+        else:
+            X_train_orig = df.loc[train_measurements_index, feature_list].values
+            X_test_orig = df.loc[test_measurements_index, feature_list].values
+
+        y_train = df[df.index.isin(train_measurements_index)]["y_true"].values
+        y_test = df[df.index.isin(test_measurements_index)]["y_true"].values
 
         # Logistic Regression
         # -------------------
         # Create a polynomial
         poly = PolynomialFeatures(degree=degree)
 
-        X = poly.fit_transform(X_train)
-
-        # Get training labels
-        y = df_train["y_true"].values
+        X_train = poly.fit_transform(X_train_orig)
+        X_test = poly.fit_transform(X_test_orig)
 
         # Create classifier
         logreg = LogisticRegression(
@@ -98,7 +135,7 @@ def main(
         clf = make_pipeline(StandardScaler(), logreg)
 
         # Train model
-        clf.fit(X, y)
+        clf.fit(X_train, y_train)
 
         save = True
         if save:
@@ -112,7 +149,7 @@ def main(
         y_true_patients = df_train.groupby("Patient_ID")["y_true"].max()
 
         # Get patient-wise predictions
-        y_score_measurements = clf.decision_function(X)
+        y_score_measurements = clf.decision_function(X_train)
         df_train["y_score"] = y_score_measurements
         # Calculate patient scores
         y_score_patients = df_train.groupby("Patient_ID")["y_score"].max()
@@ -139,7 +176,7 @@ def main(
         # Get the number of predicted "old" patients that have a healthy diagnosis
         train_patients_diagnosis_series = df_train.groupby("Patient_ID")["Diagnosis"].max()
         df_train_patients = pd.DataFrame(data=train_patients_diagnosis_series, columns={"Diagnosis"})
-        df_train_patients["y_pred"] = y_pred_patients
+        df_train_patients["y_train_pred"] = y_pred_patients
 
         # Generate scores for optimal threshold
         accuracy = accuracy_score(y_true_patients, y_pred_patients)
@@ -175,6 +212,72 @@ def main(
         fig_pr.savefig(fig_pr_filepath)
 
         plt.show()
+
+        ###############################
+        # Get performance on test set #
+        ###############################
+
+        # Get patient-wise performance
+        # Get patient labels
+        y_true_patients = df_test.groupby("Patient_ID")["y_true"].max()
+
+        # Predict on measurements
+        y_test_predict = clf.predict(X_test)
+
+        # Save results
+        df_test["y_test_pred"] = y_test_predict
+
+        # Get patient predictions
+        y_pred_patients = df_test.groupby("Patient_ID")["y_test_pred"].max()
+
+        # Print patient statistics
+        accuracy = accuracy_score(y_true_patients, y_pred_patients)
+        precision = precision_score(y_true_patients, y_pred_patients)
+        sensitivity = recall_score(y_true_patients, y_pred_patients)
+        specificity = recall_score(
+                y_true_patients, y_pred_patients, pos_label=0)
+
+        # Generate performance counts
+        tn, fp, fn, tp = confusion_matrix(y_true_patients, y_pred_patients).ravel()
+
+        # Print metrics
+        print("tn,fp,fn,tp,accuracy,precision,sensitivity,specificity")
+        print("{},{},{},{},{:2f},{:2f},{:2f},{:2f}".format(
+            tn, fp, fn, tp,
+            accuracy, precision, sensitivity,
+            specificity))
+
+        # Save test measurement predictions
+        measurement_output_prefix = "test_measurement_predictions"
+
+        measurement_csv_filename = "{}_degree_{}_{}.csv".format(
+                measurement_output_prefix, str(degree), timestamp)
+        measurement_csv_output_path = os.path.join(
+                output_path, measurement_csv_filename)
+
+        df_test.to_csv(
+                measurement_csv_output_path, columns=["y_test_pred"],
+                index=True)
+
+        print(
+                "Test measurement predictions saved to",
+                measurement_csv_output_path)
+
+        # Save test patient predictions
+        patient_output_prefix = "test_patient_predictions"
+
+        patient_csv_filename = "{}_degree_{}_{}.csv".format(
+                patient_output_prefix, str(degree), timestamp)
+        patient_csv_output_path = os.path.join(
+                output_path, patient_csv_filename)
+
+        y_pred_patients.to_csv(
+                patient_csv_output_path,
+                index=True)
+
+        print(
+                "Test patient predictions saved to",
+                patient_csv_output_path)
 
 
     # Blind data predictions
@@ -285,6 +388,12 @@ if __name__ == '__main__':
     parser.add_argument(
             "--scale_by", type=str, default=None, required=False,
             help="The feature to scale by")
+    parser.add_argument(
+            "--random_state", type=int, default=0, required=False,
+            help="Random state seed.")
+    parser.add_argument(
+            "--test_size", type=float, default=0.4, required=False,
+            help="Size of test set as a fraction of all training data.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -298,6 +407,8 @@ if __name__ == '__main__':
     joblib_filepath = args.joblib_filepath
     balanced = args.balanced
     scale_by = args.scale_by
+    random_state = args.random_state
+    test_size = args.test_size
 
     feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
 
@@ -306,4 +417,5 @@ if __name__ == '__main__':
             output_path=output_path, max_iter=max_iter, degree=degree,
             use_cross_val=use_cross_val, feature_list=feature_list,
             joblib_filepath=joblib_filepath, balanced=balanced,
-            scale_by=scale_by)
+            scale_by=scale_by, random_state=random_state,
+            test_size=test_size)
