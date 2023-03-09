@@ -43,7 +43,7 @@ def run_pca_plot(
     timestamp = datetime.utcnow().strftime(timestr)
 
     # Load training data
-    df_train = pd.read_csv(training_filepath, index_col="Filename")
+    df_train = pd.read_csv(training_filepath, index_col="Filename").dropna()
     if scale_by:
         df_train_scaled_features = scale_features(df_train, scale_by, feature_list)
     else:
@@ -256,8 +256,8 @@ def run_pca_plot(
 
         colors = {
                 "cancer": "red",
-                "healthy": "blue",
-                "blind": "green",
+                "non_cancer": "blue",
+                # "blind": "green",
                 }
 
         pc_a = 0
