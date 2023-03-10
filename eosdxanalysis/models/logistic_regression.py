@@ -44,7 +44,7 @@ def main(
         data_filepath=None, blind_data_filepath=None, output_path=None,
         max_iter=100, degree=1, use_cross_val=False, feature_list=[],
         joblib_filepath=None, balanced=None, scale_by=None,
-        random_state=0, test_size=None):
+        random_state=0, test_size=None, score_agg="max"):
 
     # Set class_weight
     class_weight = balanced if balanced else None
@@ -157,7 +157,14 @@ def main(
         y_score_measurements = clf.decision_function(X_train)
         df_train["y_score"] = y_score_measurements
         # Calculate patient scores
-        y_score_patients = df_train.groupby("Patient_ID")["y_score"].max()
+        if score_agg == "max":
+            y_score_patients = df_train.groupby("Patient_ID")["y_score"].max()
+        elif score_agg == "min":
+            y_score_patients = df_train.groupby("Patient_ID")["y_score"].min()
+        elif score_agg == "mean":
+            y_score_patients = df_train.groupby("Patient_ID")["y_score"].mean()
+        else:
+            raise ValueError("Invalid ``score_agg`` keyword")
 
         fpr, tpr, thresholds = roc_curve(y_true_patients, y_score_patients)
 
@@ -227,14 +234,24 @@ def main(
             # Get patient labels
             y_true_patients = df_test.groupby("Patient_ID")["y_true"].max()
 
-            # Predict on measurements
-            y_test_predict = clf.predict(X_test)
+            # Get patient-wise predictions
+            y_score_measurements = clf.decision_function(X_test)
+            df_test["y_score"] = y_score_measurements
 
-            # Save results
-            df_test["y_test_pred"] = y_test_predict
+            # Calculate patient scores
+            if score_agg == "max":
+                y_score_patients = df_test.groupby("Patient_ID")["y_score"].max()
+            elif score_agg == "min":
+                y_score_patients = df_test.groupby("Patient_ID")["y_score"].min()
+            elif score_agg == "mean":
+                y_score_patients = df_test.groupby("Patient_ID")["y_score"].mean()
+            else:
+                raise ValueError("Invalid ``score_agg`` keyword")
 
-            # Get patient predictions
-            y_pred_patients = df_test.groupby("Patient_ID")["y_test_pred"].max()
+            # Use the optimal threshold from the training set to generate
+            # patient predictions
+            y_pred_patients = (y_score_patients > optimal_threshold).astype(int)
+            df_test["y_test_pred"] = y_pred_patients
 
             # Print patient statistics
             accuracy = accuracy_score(y_true_patients, y_pred_patients)
@@ -284,7 +301,6 @@ def main(
             print(
                     "Test patient predictions saved to",
                     patient_csv_output_path)
-
 
     # Blind data predictions
     # ----------------------
@@ -400,6 +416,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--test_size", type=float, default=None, required=False,
             help="Size of test set as a fraction of all training data.")
+    parser.add_argument(
+            "--score_agg", type=str, default="max", required=False,
+            help="Score aggregation method (\"max\", \"min\", or \"mean\")")
 
     # Collect arguments
     args = parser.parse_args()
@@ -415,6 +434,7 @@ if __name__ == '__main__':
     scale_by = args.scale_by
     random_state = args.random_state
     test_size = args.test_size
+    score_agg = args.score_agg
 
     feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
 
@@ -424,4 +444,4 @@ if __name__ == '__main__':
             use_cross_val=use_cross_val, feature_list=feature_list,
             joblib_filepath=joblib_filepath, balanced=balanced,
             scale_by=scale_by, random_state=random_state,
-            test_size=test_size)
+            test_size=test_size, score_agg=score_agg)
