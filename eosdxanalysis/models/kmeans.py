@@ -63,8 +63,7 @@ def run_kmeans(
 
     # Scale all features
     if divide_by:
-        df = df.div(df[divide_by], axis="rows")
-        df = df[feature_list]
+        df = df[feature_list].div(df[divide_by], axis="rows")
         if divide_by in feature_list:
             # Drop divide_by column
             df = df.drop(columns=[divide_by])
