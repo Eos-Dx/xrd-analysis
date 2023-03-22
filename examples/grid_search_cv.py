@@ -1,0 +1,195 @@
+"""
+Grid Search CV
+"""
+import os
+import argparse
+import glob
+
+from datetime import datetime
+
+import pandas as pd
+import numpy as np
+
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.linear_model import LogisticRegression
+
+from sklearn.model_selection import GridSearchCV
+
+from sklearn.pipeline import make_pipeline
+
+from sklearn.metrics import make_scorer
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score
+
+from eosdxanalysis.models.utils import scale_features
+from eosdxanalysis.models.utils import specificity_score
+
+
+def main(
+        data_filepath=None, output_path=None,
+        max_iter=1000, degree=1, feature_list=[],
+        joblib_filepath=None, balanced=None, scale_by=None,
+        random_state=0, score_agg="max", feature_range=None,
+        C_doublings=0):
+
+    # Set timestamp
+    timestr = "%Y%m%dT%H%M%S.%f"
+    timestamp = datetime.utcnow().strftime(timestr)
+
+    # Set output path with a timestamp if not specified
+    if not output_path:
+        output_dir = "logistic_regression_{}".format(timestamp)
+        output_path = os.path.dirname(data_filepath)
+
+    if not feature_list:
+        feature_list = feature_range
+
+    # Load data
+    df = pd.read_csv(data_filepath, index_col="Filename").dropna()
+
+    df_train = df.copy()
+
+    # Scale data by intensity
+    if scale_by:
+        df_scaled_features = scale_features(df_train, scale_by, feature_list)
+        df_train[feature_list] = df_scaled_features[feature_list].values
+
+    # Get the true labels
+    diagnosis_series = (df_train["Diagnosis"] == "cancer").astype(int)
+    df_train["y_true"] = diagnosis_series
+
+    # Get training labels
+    y = df_train["y_true"].values
+
+    # Set up polynomial
+    poly = PolynomialFeatures(degree=degree)
+
+    X = poly.fit_transform(df_train[feature_list].values)
+
+    # Set grid search parameters
+    C_range = 2**np.arange(C_doublings+1)
+    parameters = {
+            'max_iter': [1000],
+            'solver':['newton-cg'],
+            'C': C_range,
+            }
+
+    # Set scoring outputs
+    scoring={
+            "accuracy": make_scorer(accuracy_score),
+            "balanced_accuracy": make_scorer(balanced_accuracy_score),
+            "precision": make_scorer(precision_score),
+            "sensitivity": make_scorer(recall_score),
+            "specificity": make_scorer(specificity_score),
+            "roc_auc": make_scorer(roc_auc_score),
+            }
+
+    clf = make_pipeline(
+            StandardScaler(), 
+            GridSearchCV(
+                LogisticRegression(),
+                param_grid=parameters,
+                scoring=scoring,
+                return_train_score=True,
+                cv=5,
+                refit="roc_auc"))
+
+    # Fit the classifier
+    clf.fit(X, y)
+
+    # Output results to csv file
+    # Convert results to dataframe
+    results = clf["gridsearchcv"].cv_results_
+    df_results =  pd.DataFrame.from_dict(data=results, orient='index')
+
+    # Set output filename
+    results_output_filename = "gridsearch_results_{}.csv".format(timestamp)
+    results_output_filepath = os.path.join(output_path, results_output_filename)
+
+    # Save results to file
+    df_results.to_csv(
+            results_output_filepath,
+            header=C_range.astype(str),
+            index_label="scoring")
+
+
+if __name__ == '__main__':
+    """
+    Run logistic regression grid search cross-validation
+    """
+    # Set up argument parser
+    parser = argparse.ArgumentParser()
+    # Set up parser arguments
+    parser.add_argument(
+            "--data_filepath", default=None, required=False,
+            help="The file path containing 2D Gaussian fit results labeled data.")
+    parser.add_argument(
+            "--output_path", default=None, required=False,
+            help="The output path to save results in.")
+    parser.add_argument(
+            "--feature_list", default=None, required=False,
+            help="List of features to perform logistic regression on.")
+    parser.add_argument(
+            "--max_iter", type=int, default=1000, required=False,
+            help="The maximum iteration number for logistic regression.")
+    parser.add_argument(
+            "--degree", type=int, default=1, required=False,
+            help="The logistic regression decision boundary polynomial degree.")
+    parser.add_argument(
+            "--balanced", default=None, required=False,
+            action="store_true",
+            help="Flag to perform balanced logistic regression training.")
+    parser.add_argument(
+            "--scale_by", type=str, default=None, required=False,
+            help="The feature to scale by")
+    parser.add_argument(
+            "--random_state", type=int, default=0, required=False,
+            help="Random state seed.")
+    parser.add_argument(
+            "--score_agg", type=str, default="max", required=False,
+            help="Score aggregation method (\"max\", \"min\", or \"mean\")")
+    parser.add_argument(
+            "--feature_range_count", type=int, default=None, required=False,
+            help="Number of 1-indexed integer feature labels to use.")
+    parser.add_argument(
+            "--C_doublings", type=int, default=0, required=False,
+            help="Number of C-doublings to use in grid search CV.")
+
+    # Collect arguments
+    args = parser.parse_args()
+    data_filepath = args.data_filepath
+    output_path = args.output_path
+    max_iter = args.max_iter
+    degree = args.degree
+    feature_list_kwarg = args.feature_list
+    balanced = args.balanced
+    scale_by = args.scale_by
+    random_state = args.random_state
+    score_agg = args.score_agg
+    feature_range_count = args.feature_range_count
+    C_doublings = args.C_doublings
+
+    feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
+    feature_range = np.arange(feature_range_count) + 1 if feature_range_count else None
+
+    if feature_list == [] and feature_range == None:
+        raise ValueError("Must supply feature list or feature range count.")
+
+    main(
+            data_filepath,
+            output_path=output_path,
+            max_iter=max_iter,
+            degree=degree,
+            feature_list=feature_list,
+            balanced=balanced,
+            scale_by=scale_by,
+            random_state=random_state,
+            score_agg=score_agg,
+            feature_range=feature_range,
+            C_doublings=C_doublings,
+            )
