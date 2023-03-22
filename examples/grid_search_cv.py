@@ -19,6 +19,7 @@ from sklearn.model_selection import GridSearchCV
 
 from sklearn.pipeline import make_pipeline
 
+from sklearn.metrics import euclidean_distances
 from sklearn.metrics import make_scorer
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
@@ -34,8 +35,8 @@ def main(
         data_filepath=None, output_path=None,
         max_iter=1000, degree=1, feature_list=[],
         joblib_filepath=None, balanced=None, scale_by=None,
-        random_state=0, score_agg="max", feature_range=None,
-        C_doublings=0):
+        random_state=0, patient_agg="min", feature_range=None,
+        C_doublings=0, ideal_measurement_filename=None):
 
     # Set timestamp
     timestr = "%Y%m%dT%H%M%S.%f"
@@ -52,12 +53,30 @@ def main(
     # Load data
     df = pd.read_csv(data_filepath, index_col="Filename").dropna()
 
-    df_train = df.copy()
+    # remove duplicates
+    df_train = df[~df.duplicated(keep="first")].copy()
 
     # Scale data by intensity
     if scale_by:
         df_scaled_features = scale_features(df_train, scale_by, feature_list)
         df_train[feature_list] = df_scaled_features[feature_list].values
+
+    # Perform measurement aggregation
+    if ideal_measurement_filename:
+        # Use the specified ideal measurement to calculate euclidean distances
+        # for each measurement
+        y_ideal = df_train.loc[ideal_measurement_filename, feature_list].values
+        y_ideal = y_ideal.reshape(1,-1)
+
+        df_train["distance_to_ideal"] = euclidean_distances(
+                df_train[feature_list], y_ideal)
+
+        keep = df_train.groupby(
+                "Patient_ID")["distance_to_ideal"].transform(
+                        patient_agg).eq(
+                                df_train["distance_to_ideal"])
+
+        df_train = df_train[keep].copy()
 
     # Get the true labels
     diagnosis_series = (df_train["Diagnosis"] == "cancer").astype(int)
@@ -74,7 +93,7 @@ def main(
     # Set grid search parameters
     C_range = 2**np.arange(C_doublings+1)
     parameters = {
-            'max_iter': [1000],
+            'max_iter': [max_iter],
             'solver':['newton-cg'],
             'C': C_range,
             }
@@ -108,7 +127,9 @@ def main(
     df_results =  pd.DataFrame.from_dict(data=results, orient='index')
 
     # Set output filename
-    results_output_filename = "gridsearch_results_{}.csv".format(timestamp)
+    results_output_filename = "gridsearch_results_{}_{}.csv".format(
+            patient_agg,
+            timestamp)
     results_output_filepath = os.path.join(output_path, results_output_filename)
 
     # Save results to file
@@ -151,7 +172,7 @@ if __name__ == '__main__':
             "--random_state", type=int, default=0, required=False,
             help="Random state seed.")
     parser.add_argument(
-            "--score_agg", type=str, default="max", required=False,
+            "--patient_agg", type=str, default="max", required=False,
             help="Score aggregation method (\"max\", \"min\", or \"mean\")")
     parser.add_argument(
             "--feature_range_count", type=int, default=None, required=False,
@@ -159,6 +180,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--C_doublings", type=int, default=0, required=False,
             help="Number of C-doublings to use in grid search CV.")
+    parser.add_argument(
+            "--ideal_measurement_filename", type=str, default=None, required=False,
+            help="Barcode of the measurement closest to the ideal keratin pattern.")
 
     # Collect arguments
     args = parser.parse_args()
@@ -170,9 +194,10 @@ if __name__ == '__main__':
     balanced = args.balanced
     scale_by = args.scale_by
     random_state = args.random_state
-    score_agg = args.score_agg
+    patient_agg = args.patient_agg
     feature_range_count = args.feature_range_count
     C_doublings = args.C_doublings
+    ideal_measurement_filename = args.ideal_measurement_filename
 
     feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
     feature_range = np.arange(feature_range_count) + 1 if feature_range_count else None
@@ -189,7 +214,8 @@ if __name__ == '__main__':
             balanced=balanced,
             scale_by=scale_by,
             random_state=random_state,
-            score_agg=score_agg,
+            patient_agg=patient_agg,
             feature_range=feature_range,
             C_doublings=C_doublings,
+            ideal_measurement_filename=ideal_measurement_filename,
             )
