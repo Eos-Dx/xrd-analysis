@@ -54,29 +54,50 @@ def main(
     df = pd.read_csv(data_filepath, index_col="Filename").dropna()
 
     # remove duplicates
-    df_train = df[~df.duplicated(keep="first")].copy()
+    df = df[~df.duplicated(keep="first")].copy()
+    df_train = df.copy()
 
     # Scale data by intensity
     if scale_by:
         df_scaled_features = scale_features(df_train, scale_by, feature_list)
         df_train[feature_list] = df_scaled_features[feature_list].values
 
-    # Perform measurement aggregation
+    # Reduce dataset to get one data point per patient
     if ideal_measurement_filename:
         # Use the specified ideal measurement to calculate euclidean distances
         # for each measurement
         y_ideal = df_train.loc[ideal_measurement_filename, feature_list].values
         y_ideal = y_ideal.reshape(1,-1)
 
+        # Calculate euclidean distances
         df_train["distance_to_ideal"] = euclidean_distances(
                 df_train[feature_list], y_ideal)
 
-        keep = df_train.groupby(
-                "Patient_ID")["distance_to_ideal"].transform(
-                        patient_agg).eq(
-                                df_train["distance_to_ideal"])
+        # Perform measurement aggregation
+        if patient_agg in ["min", "max"]:
+            keep = df_train.groupby(
+                    "Patient_ID")["distance_to_ideal"].transform(
+                            patient_agg).eq(
+                                    df_train["distance_to_ideal"])
+            df_train = df_train[keep].copy()
+        elif patient_agg in ["mean", "median"]:
+            agg_data_series = df_train.groupby(
+                    "Patient_ID")["distance_to_ideal"].agg(
+                            patient_agg)
+            agg_feature_name = "{}_distance_to_ideal".format(patient_agg)
+            feature_list = [agg_feature_name]
 
-        df_train = df_train[keep].copy()
+            # Get patient diagnosis series
+            patient_series = df_train.groupby("Patient_ID")["Diagnosis"].max()
+
+            # Create new dataframe with mean/median distances for
+            # training data
+            df_train = pd.DataFrame(
+                    agg_data_series.values,
+                    index=agg_data_series.index,
+                    columns=feature_list)
+
+            df_train["Diagnosis"] = patient_series
 
     # Get the true labels
     diagnosis_series = (df_train["Diagnosis"] == "cancer").astype(int)
