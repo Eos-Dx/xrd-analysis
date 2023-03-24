@@ -35,7 +35,7 @@ def main(
         data_filepath=None, output_path=None,
         max_iter=1000, degree=1, feature_list=[],
         joblib_filepath=None, balanced=None, scale_by=None,
-        random_state=0, patient_agg="min", feature_range=None,
+        random_state=0, patient_agg=None, feature_range=None,
         C_doublings=0, ideal_measurement_filename=None):
 
     # Set timestamp
@@ -127,9 +127,15 @@ def main(
     df_results =  pd.DataFrame.from_dict(data=results, orient='index')
 
     # Set output filename
-    results_output_filename = "gridsearch_results_{}_{}.csv".format(
-            patient_agg,
-            timestamp)
+    if patient_agg:
+        results_output_filename = "gridsearch_results_degree_{}_{}_{}.csv".format(
+                degree,
+                patient_agg,
+                timestamp)
+    else:
+        results_output_filename = "gridsearch_results_degree_{}_{}.csv".format(
+                degree,
+                timestamp)
     results_output_filepath = os.path.join(output_path, results_output_filename)
 
     # Save results to file
@@ -172,7 +178,7 @@ if __name__ == '__main__':
             "--random_state", type=int, default=0, required=False,
             help="Random state seed.")
     parser.add_argument(
-            "--patient_agg", type=str, default="max", required=False,
+            "--patient_agg", type=str, default=None, required=False,
             help="Score aggregation method (\"max\", \"min\", or \"mean\")")
     parser.add_argument(
             "--feature_range_count", type=int, default=None, required=False,
@@ -200,9 +206,9 @@ if __name__ == '__main__':
     ideal_measurement_filename = args.ideal_measurement_filename
 
     feature_list = feature_list_kwarg.split(",") if feature_list_kwarg else []
-    feature_range = np.arange(feature_range_count) + 1 if feature_range_count else None
+    feature_range = (np.arange(feature_range_count) + 1).astype(str) if feature_range_count else None
 
-    if feature_list == [] and feature_range == None:
+    if feature_list == [] and feature_range_count < 1:
         raise ValueError("Must supply feature list or feature range count.")
 
     main(
