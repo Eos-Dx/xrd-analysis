@@ -10,6 +10,8 @@ import glob
 import matplotlib.pyplot as plt
 import numpy as np
 
+from scipy.ndimage import median_filter
+
 def heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw={}, cbarlabel="", **kwargs):
     """
@@ -126,7 +128,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
     return texts
 
 def plot_data_dir(input_directory, output_directory, scaling="linear",
-        filename_format="*.txt", cmap="hot"):
+        filename_format="*.txt", median_filter_size=None, cmap="hot"):
     """
     Plots raw text data as png files and saves to file.
     """
@@ -143,7 +145,11 @@ def plot_data_dir(input_directory, output_directory, scaling="linear",
 
     for idx in range(len(input_filenames)):
 
-        image = np.loadtxt(input_filenames[idx], dtype=np.uint32)
+        image = np.loadtxt(input_filenames[idx])
+        # image = np.loadtxt(input_filenames[idx], dtype=np.uint32)
+
+        if median_filter_size:
+            image = median_filter(image, size=median_filter_size)
 
         if scaling == "linear":
             output_image = image
