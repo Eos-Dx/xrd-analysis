@@ -17,6 +17,7 @@ from skimage.transform import warp_polar
 from skimage.transform import rotate
 
 from sklearn.metrics import roc_auc_score
+from sklearn.metrics import recall_score
 
 import matplotlib.pyplot as plt
 
@@ -608,6 +609,15 @@ def plot_patient_score_histogram(y_score_patients):
     plt.xlabel("Patient Score")
     plt.legend(loc="upper right")
     plt.show()
+
+
+
+def  specificity_score(y_true, y_pred):
+    """
+    Returns specificity score
+    """
+    return recall_score(y_true, y_pred, pos_label=0)
+
 
 #def l1_metric_optimized(image1, image2, params, plan=None):
 #    """
