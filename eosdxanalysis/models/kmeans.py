@@ -57,6 +57,9 @@ def run_kmeans(
     # Load data into dataframe
     df = pd.read_csv(data_filepath, index_col="Filename").dropna()
 
+    # Drop duplicates
+    df = df[~df.duplicated(keep="first")].copy()
+
     # Get list of features
     if feature_list is None:
         feature_list = df.columns.tolist()
@@ -104,7 +107,9 @@ def run_kmeans(
         # Add patient data if provided
         if db_filepath:
             df_transformed_ext = add_patient_data(
-                    df_transformed, db_filepath, index_col="Barcode")
+                    df_transformed, db_filepath, index_col="Barcode").dropna()
+            # remove duplicates
+            df_transformed_ext = df_transformed_ext[~df_transformed_ext.duplicated(keep="first")].copy()
 
     # Set model type
     if model_type == "patientwise":
