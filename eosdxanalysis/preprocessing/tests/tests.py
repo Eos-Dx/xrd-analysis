@@ -1449,6 +1449,35 @@ class TestBeamUtils(unittest.TestCase):
 
         self.assertEqual(calculated_peak_location, known_peak_location)
 
+    def test_azimuthal_integration_half_image(self):
+        """
+        Use a synthetic half-image test pattern with known peak location
+        and check that azimuthal integration yields a peak in the
+        same location with the expected value.
+        """
+        shape = (256,256)
+        x_start = -shape[1]/2 - 0.5
+        x_end = -x_start
+        y_start = x_start
+        y_end = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        RR = np.sqrt(XX**2 + YY**2)
+
+        known_peak_location = 20
+        test_image = np.exp(-(RR - known_peak_location)**2)
+
+        profile_1d = azimuthal_integration(
+                test_image,
+                num_steps=180,
+                start_angle=0,
+                end_angle=np.pi/2)
+
+        calculated_peak_location = np.where(profile_1d == np.max(profile_1d))[0]
+
+        self.assertEqual(calculated_peak_location, known_peak_location)
+
+        self.fail("Finish writing test")
+
     def test_azimuthal_integration(self):
         """
         """
