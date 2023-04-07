@@ -14,7 +14,9 @@ from eosdxanalysis.preprocessing.utils import zerocross1d
 import matplotlib.pyplot as plt
 
 
-def azimuthal_integration(image, center=None, output_shape=(360,128)):
+def azimuthal_integration(
+        image, center=None, radius=None, num_angles=None,
+        start_angle=None, end_angle=None, scale=1):
     """
     Performs azimuthal integration
 
@@ -23,20 +25,38 @@ def azimuthal_integration(image, center=None, output_shape=(360,128)):
 
     image : ndarray
 
-    output_shape : 2-tuple int
+    center : (num, num)
+
+    radius : int
+
+    num_angles : int
+
+    start_angle : float
+
+    end_angle : float
+
+    scale : int
 
     Returns
     -------
 
     profile_1d : (n,1)-array float 
     """
+    # Set radius
+    if not radius:
+        radius = np.max(image.shape)/2
+    if not num_angles:
+        num_angles = 360
+    if type(scale) != int:
+        raise ValueError("Scale must be an integer")
+
+    # Perform a polar warp on the input image
+    output_shape = (num_angles, radius*scale)
     polar_image = warp_polar(
-            image, center=center, radius=output_shape[1]-0.5,
+            image, center=center, radius=radius,
             output_shape=output_shape, preserve_range=True)
     profile_1d = np.mean(polar_image, axis=0)
     return profile_1d
-
-
 
 def first_valley_location(image=None, center=None, profile_1d=None, bounds=None):
     """
