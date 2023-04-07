@@ -1,11 +1,11 @@
 """
-Store calibration materials data
-
-q units are per meter
+Calibration materials reference data
 """
 
 # AgBH q-peaks via:
 # http://gisaxs.com/index.php/Material:Silver_behenate 
+# D-spacing is 5.8 nm
+# q-peak units are inverse Angstroms
 
 q_peaks_ref_dict = {
         "silver_behenate": {
