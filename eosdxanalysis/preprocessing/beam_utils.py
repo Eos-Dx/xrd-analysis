@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 def azimuthal_integration(
-        image, center=None, radius=None, num_angles=None,
+        image, center=None, radius=None, num_points=360,
         start_angle=None, end_angle=None, scale=1):
     """
     Performs azimuthal integration
@@ -29,7 +29,7 @@ def azimuthal_integration(
 
     radius : int
 
-    num_angles : int
+    num_points : int
 
     start_angle : float
 
@@ -45,17 +45,29 @@ def azimuthal_integration(
     # Set radius
     if not radius:
         radius = np.max(image.shape)/2
-    if not num_angles:
-        num_angles = 360
+    if not num_points:
+        num_points = 360
     if type(scale) != int:
         raise ValueError("Scale must be an integer")
+    if (start_angle is None) and (end_angle is None):
+        start_angle = -np.pi + np.pi/num_points/2
+        end_angle = np.pi - np.pi/num_points/2
+    if start_angle > end_angle:
+        raise ValueError("Start angle must be greater than end angle")
+
+    angle_range = np.arange(start_angle, end_angle, step=2*np.pi/num_points)
 
     # Perform a polar warp on the input image
-    output_shape = (num_angles, radius*scale)
+    output_shape = (num_points, radius*scale)
     polar_image = warp_polar(
             image, center=center, radius=radius,
             output_shape=output_shape, preserve_range=True)
-    profile_1d = np.mean(polar_image, axis=0)
+    # Take subset of 2*pi if start or end angle provided
+    start_angle_idx = int(start_angle / (2*np.pi)  * num_points)
+    end_angle_idx = int(end_angle / (2*np.pi) * num_points)
+    polar_image_subset = polar_image[start_angle_idx:end_angle_idx, :]
+    profile_1d = np.mean(polar_image_subset, axis=0)
+
     return profile_1d
 
 def first_valley_location(image=None, center=None, profile_1d=None, bounds=None):
