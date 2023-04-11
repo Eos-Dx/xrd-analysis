@@ -1501,13 +1501,13 @@ class TestBeamUtils(unittest.TestCase):
         profile_1d_full = azimuthal_integration(
                 test_image_full,
                 num_points=90,
-                start_angle=-np.pi/2,
-                end_angle=np.pi/2)
+                start_angle=-np.pi,
+                end_angle=np.pi)
         profile_1d_half = azimuthal_integration(
                 test_image_half,
-                num_points=90,
-                start_angle=-np.pi/2,
-                end_angle=np.pi/2)
+                num_points=180,
+                start_angle=0,
+                end_angle=np.pi)
 
         peak_value_full = np.max(profile_1d_full)
         peak_value_half = np.max(profile_1d_half)
