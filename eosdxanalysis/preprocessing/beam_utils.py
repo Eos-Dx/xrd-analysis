@@ -8,15 +8,18 @@ import glob
 import numpy as np
 from skimage.transform import warp_polar
 from scipy.signal import find_peaks
+from scipy.interpolate import RegularGridInterpolator
 
 from eosdxanalysis.preprocessing.utils import zerocross1d
 
 import matplotlib.pyplot as plt
 
+AZIMUTHAL_POINT_COUNT_DEFAULT = 360
 
 def azimuthal_integration(
-        image, center=None, radius=None, num_points=360,
-        start_angle=None, end_angle=None, scale=1):
+        image, center=None, radius=None,
+        azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
+        start_angle=None, end_angle=None, res=1):
     """
     Performs azimuthal integration
 
@@ -24,48 +27,71 @@ def azimuthal_integration(
     ----------
 
     image : ndarray
+        Diffraction image.
 
     center : (num, num)
+        Center of diffraction pattern.
 
     radius : int
 
-    num_points : int
+    azimuthal_point_count : int
+        Number of points in azimuthal dimension.
 
     start_angle : float
+        Radians
 
     end_angle : float
+        Radians
 
-    scale : int
+    res : int
+        Resolution
 
     Returns
     -------
 
     profile_1d : (n,1)-array float 
+        n = azimuthal_point_count
     """
     # Set radius
     if not radius:
-        radius = np.max(image.shape)/2
-    if not num_points:
-        num_points = 360
-    if type(scale) != int:
+        radius = np.max(image.shape)/2*res
+    if not azimuthal_point_count:
+        azimuthal_point_count = AZIMUTHAL_POINT_COUNT*res
+    if type(res) != int:
         raise ValueError("Scale must be an integer")
     if (start_angle is None) and (end_angle is None):
-        start_angle = -np.pi + np.pi/num_points/2
-        end_angle = np.pi - np.pi/num_points/2
+        start_angle = -np.pi + 2*np.pi/azimuthal_point_count/2
+        end_angle = np.pi - 2*np.pi/azimuthal_point_count/2
     if start_angle > end_angle:
         raise ValueError("Start angle must be greater than end angle")
 
-    angle_range = np.arange(start_angle, end_angle, step=2*np.pi/num_points)
+    azimuthal_step = 2*np.pi/azimuthal_point_count
 
-    # Perform a polar warp on the input image
-    output_shape = (num_points, radius*scale)
+    azimuthal_space = np.linspace(
+            start_angle,
+            end_angle,
+            num=AZIMUTHAL_POINT_COUNT_DEFAULT*res)
+    radial_range = np.arange(radius)
+
+    # Perform a polar warp on the input image for entire azimuthal range
+    output_shape = (AZIMUTHAL_POINT_COUNT_DEFAULT*res, radius*res)
     polar_image = warp_polar(
             image, center=center, radius=radius,
             output_shape=output_shape, preserve_range=True)
-    # Take subset of 2*pi if start or end angle provided
-    start_angle_idx = int(start_angle / (2*np.pi)  * num_points)
-    end_angle_idx = int(end_angle / (2*np.pi) * num_points)
-    polar_image_subset = polar_image[start_angle_idx:end_angle_idx, :]
+
+    # Interpolate if subset is needed
+    interp = RegularGridInterpolator((azimuthal_space, radial_range), polar_image)
+
+    azimuthal_space_subset = np.linspace(
+            start_angle,
+            end_angle,
+            num=azimuthal_point_count*res)
+
+    AA, RR = np.meshgrid(azimuthal_space_subset, radial_range, indexing="ij", sparse=True)
+
+    polar_image_subset = interp((AA, RR))
+
+    # Calculate the mean
     profile_1d = np.mean(polar_image_subset, axis=0)
 
     return profile_1d
