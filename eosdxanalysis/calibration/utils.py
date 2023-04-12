@@ -5,6 +5,11 @@ Functions to help with calibration code
 import numpy as np
 
 
+PIXEL_SIZE = 55e-6 # Pixel width in meters (it is 55 um)
+WAVELENGTH = 1.5418E-10 # Wavelength in meters (1.5418 Angstroms)
+WAVELEN_ANGSTROMS = WAVELENGTH * 1e10 # Wavelength in Angstroms
+
+
 class DiffractionUnitsConversion(object):
     """
     Class to handle converting units for X-ray diffraction measurements
@@ -221,3 +226,39 @@ class DiffractionUnitsConversion(object):
         bragg_peak_pixel_location = bragg_peak_location / pixel_length
 
         return bragg_peak_pixel_location
+
+def radial_profile_unit_conversion(radial_count,
+        sample_to_detector_distance,
+        radial_units="q_per_nm"):
+    """
+    Convert radial profile from pixel lengths to:
+    - q_per_nm
+    - two_theta
+    - um
+
+    Parameters
+    ----------
+
+    radial_count : int
+        Number of radial points.
+
+    sample_to_detector_distance : float
+        Meters.
+
+    radial_units : str
+        Choice of "q_per_nm" (default), "two_theta", or "um".
+    """
+    radial_range_m = np.arange(radial_count) * PIXEL_SIZE
+    theta_range = 0.5*np.arctan2(radial_range_m, sample_to_detector_distance)
+
+    if radial_units == "q_per_nm":
+        q_range_per_m = 4 * np.pi * np.sin(theta_range) / WAVELENGTH
+        q_range_per_nm = q_range_per_m / 1e9
+
+        return q_range_per_nm
+
+    if radial_units == "two_theta":
+        return 2*theta_range
+
+    if radial_units == "um":
+        return radial_range_m * 1e6
