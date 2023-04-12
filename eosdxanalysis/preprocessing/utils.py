@@ -358,13 +358,13 @@ def polar_meshgrid(
 
     return output
 
-
-def azimuthal_integration(
+def warp_polar_preprocessor(
         image, center=None, radius=None,
         azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
         start_angle=None, end_angle=None, res=1):
     """
-    Performs azimuthal integration
+    Performs warp polar preprocessing for azimuthal integration
+    and radial intensity functions.
 
     Parameters
     ----------
@@ -434,7 +434,106 @@ def azimuthal_integration(
 
     polar_image_subset = interp((AA, RR))
 
+    return polar_image_subset
+
+def azimuthal_integration(
+        image, center=None, radius=None,
+        azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
+        start_angle=None, end_angle=None, res=1):
+    """
+    Performs 2D -> 1D azimuthal integration yielding mean intensity as a
+    function of radius
+
+    Parameters
+    ----------
+
+    image : ndarray
+        Diffraction image.
+
+    center : (num, num)
+        Center of diffraction pattern.
+
+    radius : int
+
+    azimuthal_point_count : int
+        Number of points in azimuthal dimension.
+
+    start_angle : float
+        Radians
+
+    end_angle : float
+        Radians
+
+    res : int
+        Resolution
+
+    Returns
+    -------
+
+    profile_1d : (n,1)-array float
+        n = azimuthal_point_count
+    """
+    polar_image_subset = warp_polar_preprocessor(
+        image,
+        center=center,
+        radius=radius,
+        azimuthal_point_count=azimuthal_point_count,
+        start_angle=start_angle,
+        end_angle=end_angle,
+        res=1)
+
     # Calculate the mean
     profile_1d = np.mean(polar_image_subset, axis=0)
+
+    return profile_1d
+
+def radial_intensity(
+        image, center=None, radius=None,
+        azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
+        start_angle=None, end_angle=None, res=1):
+    """
+    Performs 2D -> 1D radial intensity summation yielding total intensity
+    as a function of radius.
+
+    Parameters
+    ----------
+
+    image : ndarray
+        Diffraction image.
+
+    center : (num, num)
+        Center of diffraction pattern.
+
+    radius : int
+
+    azimuthal_point_count : int
+        Number of points in azimuthal dimension.
+
+    start_angle : float
+        Radians
+
+    end_angle : float
+        Radians
+
+    res : int
+        Resolution
+
+    Returns
+    -------
+
+    profile_1d : (n,1)-array float
+        n = azimuthal_point_count
+    """
+    polar_image_subset = warp_polar_preprocessor(
+        image,
+        center=center,
+        radius=radius,
+        azimuthal_point_count=azimuthal_point_count,
+        start_angle=start_angle,
+        end_angle=end_angle,
+        res=1)
+
+    # Calculate the sum
+    profile_1d = np.sum(polar_image_subset, axis=0)
 
     return profile_1d
