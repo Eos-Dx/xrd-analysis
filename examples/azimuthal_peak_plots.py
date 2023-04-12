@@ -11,7 +11,7 @@ import numpy as np
 
 from examples.azimuthal_peak_fitting import best_fit
 from examples.azimuthal_peak_fitting import keratin_function_1d
-from eosdxanalysis.preprocessing.beam_utils import azimuthal_integration
+from eosdxanalysis.preprocessing.utils import azimuthal_integration
 
 
 
