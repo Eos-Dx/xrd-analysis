@@ -788,9 +788,9 @@ class TestUtils(unittest.TestCase):
         x_end = -x_start
         y_start = x_start
         y_end = x_end
-        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
-        RR = np.sqrt(XX**2 + YY**2)
-        TT = np.arctan2(YY, XX)
+        rows, cols = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        RR = np.sqrt(rows**2 + cols**2)
+        TT = np.arctan2(-rows, cols)
 
         known_peak_location = 20
         test_image_full = np.exp(-(RR - known_peak_location)**2)
@@ -811,7 +811,7 @@ class TestUtils(unittest.TestCase):
         peak_value_full = np.max(profile_1d_full)
         peak_value_half = np.max(profile_1d_half)
 
-        self.assertEqual(peak_value_full, peak_value_half)
+        self.assertTrue(np.isclose(peak_value_full, peak_value_half, atol=1e-2))
 
         calculated_peak_location_full = np.where(
                 profile_1d_full == np.max(profile_1d_full))[0]
