@@ -14,7 +14,8 @@ from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 
 
 AZIMUTHAL_POINT_COUNT_DEFAULT = 360
-
+PIXEL_SIZE=55e-6 # Size of pixel in meters
+WAVELENGTH = 0.1540562e-9 # Cu K_alpha source wavelength in meters
 
 def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min"):
     """
