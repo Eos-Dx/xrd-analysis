@@ -395,25 +395,30 @@ def warp_polar_preprocessor(
     profile_1d : (n,1)-array float
         n = azimuthal_point_count
     """
+    if type(res) != int:
+        raise ValueError("Scale must be an integer")
+
+    START_ANGLE_DEFAULT = -np.pi
+    END_ANGLE_DEFAULT = np.pi
+
+    AZIMUTHAL_SPACE_DEFAULT = np.linspace(
+            START_ANGLE_DEFAULT,
+            END_ANGLE_DEFAULT,
+            num=AZIMUTHAL_POINT_COUNT_DEFAULT*res)
+
     # Set radius
     if not radius:
         radius = np.max(image.shape)/2*res
     if not azimuthal_point_count:
         azimuthal_point_count = AZIMUTHAL_POINT_COUNT*res
-    if type(res) != int:
-        raise ValueError("Scale must be an integer")
     if (start_angle is None) and (end_angle is None):
-        start_angle = -np.pi + 2*np.pi/azimuthal_point_count/2
-        end_angle = np.pi - 2*np.pi/azimuthal_point_count/2
+        start_angle = START_ANGLE_DEFAULT
+        end_angle = END_ANGLE_DEFAULT
     if start_angle > end_angle:
         raise ValueError("Start angle must be greater than end angle")
 
     azimuthal_step = 2*np.pi/azimuthal_point_count
 
-    azimuthal_space = np.linspace(
-            start_angle,
-            end_angle,
-            num=AZIMUTHAL_POINT_COUNT_DEFAULT*res)
     radial_range = np.arange(radius)
 
     # Perform a polar warp on the input image for entire azimuthal range
@@ -423,7 +428,8 @@ def warp_polar_preprocessor(
             output_shape=output_shape, preserve_range=True)
 
     # Interpolate if subset is needed
-    interp = RegularGridInterpolator((azimuthal_space, radial_range), polar_image)
+    interp = RegularGridInterpolator(
+            (AZIMUTHAL_SPACE_DEFAULT, radial_range), polar_image)
 
     azimuthal_space_subset = np.linspace(
             start_angle,
