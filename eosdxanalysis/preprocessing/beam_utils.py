@@ -6,36 +6,11 @@ import os
 import glob
 
 import numpy as np
-from skimage.transform import warp_polar
 from scipy.signal import find_peaks
 
 from eosdxanalysis.preprocessing.utils import zerocross1d
 
 import matplotlib.pyplot as plt
-
-
-def azimuthal_integration(image, center=None, output_shape=(360,128)):
-    """
-    Performs azimuthal integration
-
-    Parameters
-    ----------
-
-    image : ndarray
-
-    output_shape : 2-tuple int
-
-    Returns
-    -------
-
-    profile_1d : (n,1)-array float 
-    """
-    polar_image = warp_polar(
-            image, center=center, radius=output_shape[1]-0.5,
-            output_shape=output_shape, preserve_range=True)
-    profile_1d = np.mean(polar_image, axis=0)
-    return profile_1d
-
 
 
 def first_valley_location(image=None, center=None, profile_1d=None, bounds=None):
