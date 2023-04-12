@@ -17,8 +17,10 @@ from scipy.signal import find_peaks
 from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
-from eosdxanalysis.preprocessing.beam_utils import azimuthal_integration
+from eosdxanalysis.preprocessing.utils import azimuthal_integration
+
 from eosdxanalysis.preprocessing.center_finding import find_center
+
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
