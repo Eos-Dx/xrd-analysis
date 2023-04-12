@@ -16,6 +16,8 @@ from scipy.signal import find_peaks
 
 from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
+from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
+
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
 
@@ -127,7 +129,7 @@ class Calibration(object):
         # to avoid creating another peak
         masked_image[mask] = masked_image[mask].min()
 
-        radial_intensity = azimuthal_integration(
+        radial_profile = azimuthal_integration(
                 masked_image, center=center, radius=radius)
 
         # Convert doublet average in q units to 2*theta units
@@ -151,13 +153,13 @@ class Calibration(object):
         end_index = \
                 int(np.round(doublet_approx_max_factor*doublet_pixel_location_approx))
         # Ensure there is no overshoot with the end index
-        end_index = radial_intensity.size - 1 if end_index >= radial_intensity.size else end_index
-        radial_intensity_subset = radial_intensity[start_index:end_index]
+        end_index = radial_profile.size - 1 if end_index >= radial_profile.size else end_index
+        radial_profile_subset = radial_profile[start_index:end_index]
 
         # Find the doublet in this subset
         doublet_peak_indices_approx, properties = find_peaks(
-                radial_intensity_subset, width=doublet_width,
-                height=0.05*radial_intensity.max())
+                radial_profile_subset, width=doublet_width,
+                height=0.05*radial_profile.max())
 
         # Check how many prominent peaks were found
         prominences = properties.get("prominences")
@@ -185,182 +187,183 @@ class Calibration(object):
             plt.title(title)
 
             # Convert to q-values
-            r_range = np.arange(radial_intensity.size) * PIXEL_SIZE
-            theta_range = 0.5*np.arctan2(L, r_range)
-            q_range = 4 * np.pi * np.sin(theta_range) / WAVELEN_ANGSTROMS
+            q_range = radial_profile_unit_conversion(
+                    radial_profile.size,
+                    distance_approx,
+                    radial_units="q_per_nm")
 
             # Plot azimuthal integration 1-D profile
-            plt.plot(q_range, 20*np.log10(radial_intensity+1),
+            plt.plot(q_range, 20*np.log10(radial_profile+1),
                     label="1-D profile")
 
             # Plot a marker for the most prominent peak
             plt.scatter(q_range[doublet_peak_index],
-                    20*np.log10(radial_intensity[doublet_peak_index]+1),
+                    20*np.log10(radial_profile[doublet_peak_index]+1),
                     color="red", marker=".", s=250,
                     label="Doublet peak")
 
-            plt.xlabel(r"q $\mathrm{\AA^{-1}}$")
+            plt.xlabel(r"q $\mathrm{{nm}^{-1}}$")
             plt.ylabel(r"Mean intensity [photon count, dB+1]")
-
-            plt.xlim([q_range.max(), q_range.min()])
 
             plt.legend()
             plt.show()
 
         return L
 
-    def single_sample_detector_distance_old(
-            self, image, beam_rmax=10, rmax=None, distance_approx=10e-3,
-            output_shape=(360, 128), visualize=False):
-        """
-        Calculate the sample-to-detector distance for a single sample
-
-        Steps performed:
-        - Centerize the image
-        - Warp to polar
-        - Convert to 1D intensity vs. radius (pixel)
-        - For each q-peak reference value, calculate
-          the sample-to-detector distance
-        - Return the mean, standard deviation, and values
-
-        """
-        wavelength = self.wavelength
-        q_peaks_ref = self.q_peaks_ref
-
-        # Find the image center
-        center = find_center(image)
-        array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
-
-        # Mask the beam
-        mask = create_circular_mask(
-                image.shape[1], image.shape[0], center=center,
-                rmax=beam_rmax)
-        masked_image = np.copy(image)
-        # Set the masked part to the minimum of the beam area
-        # to avoid creating another peak
-        masked_image[mask] = masked_image[mask].min()
-
-        radial_intensity = azimuthal_integration(
-                masked_image, center=center, output_shape=output_shape)
-
-#        # Set a maximum radius which we are interested in
-#        if rmax is None:
-#            raise ValueError("Must specify maximum radius.")
-#        final_r_pixel = int(rmax)
-# -
-#        # Set a minimum radius which we are interested in
-#        start_r_pixel = int(r_min) if r_min else 0
-
-        # Set up radius linspace, where r is in pixels
-        r_space_pixel = np.arange(radial_intensity.size)
-
-        # Idea: Find the widest peak
-
-        # Find the radial peaks
-        # Find the peak of the first doublet
-        # First, get a list of possible doublets with a width of oversample*8
-        test_doublet_peak_indices, properties = find_peaks(
-                radial_intensity, width=6)
-        prominences = properties.get("prominences")
-        if len(prominences) > 2:
-            prominent_max = np.max(prominences)
-            prominent_index = prominences.tolist().index(prominent_max)
-        else:
-            prominent_max = prominences
-            prominent_index = 0
-        # Take the the most prominent peak as the first doublet
-        prominent_peak_index = test_doublet_peak_indices[prominent_index]
-
-        # Now find all the peaks
-        all_radial_peak_indices, _ = find_peaks(radial_intensity)
-
-        # Average the doublets
-        doublets = np.array(q_peaks_ref.get("doublets"))
-        if doublets.size > 0:
-            doublets_avg = np.array(np.mean(doublets)).flatten()
-        singlets = np.array(q_peaks_ref.get("singlets")).flatten()
-        # Join the singlets and doublets averages into a single array
-        q_peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
-
-        # The first doublet will be the last peak
-        final_index = int(np.where(all_radial_peak_indices == prominent_peak_index)[0])
-        # Count how many we are missing before the first doublet
-        num_missing = len(q_peaks_avg[:-1]) - len(all_radial_peak_indices[:final_index])
-
-        if num_missing < 0:
-            raise ValueError("We found more peaks than in the reference!")
-        elif num_missing == 0:
-            radial_peak_indices = all_radial_peak_indices[:final_index+1]
-            q_peaks_avg_subset = q_peaks_avg
-        elif num_missing > 0:
-            # Take subset
-            radial_peak_indices = all_radial_peak_indices[num_missing-1:final_index+1]
-            q_peaks_avg_subset = q_peaks_avg[num_missing:final_index+2]
-
-        if visualize:
-            title = "Beam masked image"
-            fig = plt.figure(title)
-            plt.title(title)
-
-            plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
-            plt.scatter(center[1], center[0], color="green")
-
-            title = "Azimuthal integrated 1-d profile"
-            fig = plt.figure(title)
-            plt.title(title)
-
-
-            # Plot azimuthal integration 1-D profile
-            plt.plot(20*np.log10(radial_intensity+1),
-                    label="1-D profile")
-
-            # Plot markers for found peaks
-            plt.scatter(r_space_pixel[all_radial_peak_indices].ravel(),
-                        20*np.log10(radial_intensity[all_radial_peak_indices]+1).ravel(),
-                        color="green", marker="+", s=250,
-                        label="found peaks")
-
-            # Plot a marker for the most prominent peak
-            plt.scatter(r_space_pixel[prominent_peak_index],
-                    20*np.log10(radial_intensity[prominent_peak_index]+1),
-                    color="red", marker=".", s=250,
-                    label="prominent peak")
-
-            # Plot markers for peaks used for fitting
-            plt.scatter(r_space_pixel[radial_peak_indices],
-                    20*np.log10(radial_intensity[radial_peak_indices]+1),
-                    color="orange", marker="x", s=250,
-                    label="peaks for fitting")
-
-            plt.xlabel("Radius [pixels]")
-            plt.ylabel("Intensity [dB+1]")
-
-            plt.legend()
-            plt.show()
-
-        # Set up linear regression inputs
-        # Set y values based on derviations
-        # Convert wavelength to angstroms, same units as q_peaks
-        wavelength_angstroms = wavelength*1e10
-        theta_n = np.arcsin(q_peaks_avg_subset*wavelength_angstroms/(4*np.pi))
-        Y = np.tan(2*theta_n).reshape(-1,1)
-        # Set x values as the measured r peaks
-        X = r_space_pixel[radial_peak_indices].reshape(-1,1)
-
-        # Now perform linear regression, line goes through the origin
-        # so intercept = 0
-        linreg = LinearRegression(fit_intercept=False)
-        linreg.fit(X, Y)
-        score = linreg.score(X, Y)
-
-        # Get the slope
-        coef = linreg.coef_
-        slope = coef[0][0]
-        # The slope is the inverse of the sample-to-detector distance
-        distance_pixel = 1/slope
-        distance = distance_pixel * PIXEL_SIZE
-
-        return distance, linreg, score
+#    def single_sample_detector_distance_old(
+#            self, image, beam_rmax=10, rmax=None, distance_approx=10e-3,
+#            output_shape=(360, 128), visualize=False):
+#        """
+#        Calculate the sample-to-detector distance for a single sample
+#
+#        Steps performed:
+#        - Centerize the image
+#        - Warp to polar
+#        - Convert to 1D intensity vs. radius (pixel)
+#        - For each q-peak reference value, calculate
+#          the sample-to-detector distance
+#        - Return the mean, standard deviation, and values
+#
+#        """
+#        wavelength = self.wavelength
+#        q_peaks_ref = self.q_peaks_ref
+#
+#        # Find the image center
+#        center = find_center(image)
+#        array_center = (image.shape[0]/2-0.5, image.shape[1]/2-0.5)
+#
+#        # Mask the beam
+#        mask = create_circular_mask(
+#                image.shape[1], image.shape[0], center=center,
+#                rmax=beam_rmax)
+#        masked_image = np.copy(image)
+#        # Set the masked part to the minimum of the beam area
+#        # to avoid creating another peak
+#        masked_image[mask] = masked_image[mask].min()
+#
+#        radial_profile = azimuthal_integration(
+#                masked_image, center=center, output_shape=output_shape)
+#
+#
+#
+##        # Set a maximum radius which we are interested in
+##        if rmax is None:
+##            raise ValueError("Must specify maximum radius.")
+##        final_r_pixel = int(rmax)
+## -
+##        # Set a minimum radius which we are interested in
+##        start_r_pixel = int(r_min) if r_min else 0
+#
+#        # Set up radius linspace, where r is in pixels
+#        r_space_pixel = np.arange(radial_profile.size)
+#
+#        # Idea: Find the widest peak
+#
+#        # Find the radial peaks
+#        # Find the peak of the first doublet
+#        # First, get a list of possible doublets with a width of oversample*8
+#        test_doublet_peak_indices, properties = find_peaks(
+#                radial_profile, width=6)
+#        prominences = properties.get("prominences")
+#        if len(prominences) > 2:
+#            prominent_max = np.max(prominences)
+#            prominent_index = prominences.tolist().index(prominent_max)
+#        else:
+#            prominent_max = prominences
+#            prominent_index = 0
+#        # Take the the most prominent peak as the first doublet
+#        prominent_peak_index = test_doublet_peak_indices[prominent_index]
+#
+#        # Now find all the peaks
+#        all_radial_peak_indices, _ = find_peaks(radial_profile)
+#
+#        # Average the doublets
+#        doublets = np.array(q_peaks_ref.get("doublets"))
+#        if doublets.size > 0:
+#            doublets_avg = np.array(np.mean(doublets)).flatten()
+#        singlets = np.array(q_peaks_ref.get("singlets")).flatten()
+#        # Join the singlets and doublets averages into a single array
+#        q_peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
+#
+#        # The first doublet will be the last peak
+#        final_index = int(np.where(all_radial_peak_indices == prominent_peak_index)[0])
+#        # Count how many we are missing before the first doublet
+#        num_missing = len(q_peaks_avg[:-1]) - len(all_radial_peak_indices[:final_index])
+#
+#        if num_missing < 0:
+#            raise ValueError("We found more peaks than in the reference!")
+#        elif num_missing == 0:
+#            radial_peak_indices = all_radial_peak_indices[:final_index+1]
+#            q_peaks_avg_subset = q_peaks_avg
+#        elif num_missing > 0:
+#            # Take subset
+#            radial_peak_indices = all_radial_peak_indices[num_missing-1:final_index+1]
+#            q_peaks_avg_subset = q_peaks_avg[num_missing:final_index+2]
+#
+#        if visualize:
+#            title = "Beam masked image"
+#            fig = plt.figure(title)
+#            plt.title(title)
+#
+#            plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
+#            plt.scatter(center[1], center[0], color="green")
+#
+#            title = "Azimuthal integrated 1-d profile"
+#            fig = plt.figure(title)
+#            plt.title(title)
+#
+#
+#            # Plot azimuthal integration 1-D profile
+#            plt.plot(20*np.log10(radial_profile+1),
+#                    label="1-D profile")
+#
+#            # Plot markers for found peaks
+#            plt.scatter(r_space_pixel[all_radial_peak_indices].ravel(),
+#                        20*np.log10(radial_profile[all_radial_peak_indices]+1).ravel(),
+#                        color="green", marker="+", s=250,
+#                        label="found peaks")
+#
+#            # Plot a marker for the most prominent peak
+#            plt.scatter(r_space_pixel[prominent_peak_index],
+#                    20*np.log10(radial_profile[prominent_peak_index]+1),
+#                    color="red", marker=".", s=250,
+#                    label="prominent peak")
+#
+#            # Plot markers for peaks used for fitting
+#            plt.scatter(r_space_pixel[radial_peak_indices],
+#                    20*np.log10(radial_profile[radial_peak_indices]+1),
+#                    color="orange", marker="x", s=250,
+#                    label="peaks for fitting")
+#
+#            plt.xlabel("Radius [pixels]")
+#            plt.ylabel("Intensity [dB+1]")
+#
+#            plt.legend()
+#            plt.show()
+#
+#        # Set up linear regression inputs
+#        # Set y values based on derviations
+#        # Convert wavelength to angstroms, same units as q_peaks
+#        wavelength_angstroms = wavelength*1e10
+#        theta_n = np.arcsin(q_peaks_avg_subset*wavelength_angstroms/(4*np.pi))
+#        Y = np.tan(2*theta_n).reshape(-1,1)
+#        # Set x values as the measured r peaks
+#        X = r_space_pixel[radial_peak_indices].reshape(-1,1)
+#
+#        # Now perform linear regression, line goes through the origin
+#        # so intercept = 0
+#        linreg = LinearRegression(fit_intercept=False)
+#        linreg.fit(X, Y)
+#        score = linreg.score(X, Y)
+#
+#        # Get the slope
+#        coef = linreg.coef_
+#        slope = coef[0][0]
+#        # The slope is the inverse of the sample-to-detector distance
+#        distance_pixel = 1/slope
+#        distance = distance_pixel * PIXEL_SIZE
+#
+#        return distance, linreg, score
 
 
     def sample_set_detector_distance(self):
