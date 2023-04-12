@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 from scipy.signal import find_peaks
 
-from eosdxanalysis.preprocessing.beam_utils import azimuthal_integration
+from eosdxanalysis.preprocessing.utils import azimuthal_integration
 
 
 feature_list = [
