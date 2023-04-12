@@ -769,9 +769,9 @@ class TestUtils(unittest.TestCase):
 
         profile_1d = azimuthal_integration(
                 test_image,
-                num_points=90,
-                start_angle=-np.pi/2,
-                end_angle=np.pi/2)
+                azimuthal_point_count=90,
+                start_angle=-np.pi,
+                end_angle=0)
 
         calculated_peak_location = np.where(profile_1d == np.max(profile_1d))[0]
 
@@ -799,12 +799,12 @@ class TestUtils(unittest.TestCase):
 
         profile_1d_full = azimuthal_integration(
                 test_image_full,
-                num_points=180,
+                azimuthal_point_count=180,
                 start_angle=-np.pi,
                 end_angle=np.pi)
         profile_1d_half = azimuthal_integration(
                 test_image_half,
-                num_points=90,
+                azimuthal_point_count=90,
                 start_angle=0,
                 end_angle=np.pi)
 
@@ -813,8 +813,10 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(peak_value_full, peak_value_half)
 
-        calculated_peak_location_full = np.where(profile_1d_full == np.max(profile_1d_full))[0]
-        calculated_peak_location_half = np.where(profile_1d_half == np.max(profile_1d_half))[0]
+        calculated_peak_location_full = np.where(
+                profile_1d_full == np.max(profile_1d_full))[0]
+        calculated_peak_location_half = np.where(
+                profile_1d_half == np.max(profile_1d_half))[0]
 
         self.assertEqual(calculated_peak_location_full, known_peak_location)
         self.assertEqual(calculated_peak_location_half, known_peak_location)
