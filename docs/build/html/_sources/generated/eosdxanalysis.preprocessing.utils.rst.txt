@@ -13,6 +13,7 @@
 
    .. autosummary::
    
+      azimuthal_integration
       count_intervals
       create_circular_mask
       find_maxima
@@ -20,6 +21,8 @@
       get_angle
       polar_meshgrid
       radial_integration
+      radial_intensity
+      warp_polar_preprocessor
       zerocross1d
    
    

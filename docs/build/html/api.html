@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>API &#8212; Eos Dx Analysis 2.34.0 documentation</title>
+    <title>API &#8212; Eos Dx Analysis 2.35.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -91,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.34.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.35.0 documentation</p>
   
 </a>
     
@@ -372,6 +372,11 @@
 </ul>
 <ul class="nav bd-sidenav">
  <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.azimuthal_integration.html">
+   azimuthal_integration
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.count_intervals.html">
    count_intervals
   </a>
@@ -407,8 +412,25 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.radial_intensity.html">
+   radial_intensity
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.warp_polar_preprocessor.html">
+   warp_polar_preprocessor
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.zerocross1d.html">
    zerocross1d
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.AZIMUTHAL_POINT_COUNT_DEFAULT.html">
+   AZIMUTHAL_POINT_COUNT_DEFAULT
   </a>
  </li>
 </ul>
@@ -621,40 +643,62 @@
 </section>
 <section id="module-eosdxanalysis.preprocessing.utils">
 <span id="eosdxanalysis-preprocessing-utils-module"></span><h2>eosdxanalysis.preprocessing.utils Module<a class="headerlink" href="#module-eosdxanalysis.preprocessing.utils" title="Permalink to this heading">#</a></h2>
-<p>Utility functions</p>
+<p>Preprocessing utility functions</p>
 <section id="id6">
 <h3>Functions<a class="headerlink" href="#id6" title="Permalink to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.count_intervals.html#eosdxanalysis.preprocessing.utils.count_intervals" title="eosdxanalysis.preprocessing.utils.count_intervals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">count_intervals</span></code></a>(num_array[, count])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.azimuthal_integration.html#eosdxanalysis.preprocessing.utils.azimuthal_integration" title="eosdxanalysis.preprocessing.utils.azimuthal_integration"><code class="xref py py-obj docutils literal notranslate"><span class="pre">azimuthal_integration</span></code></a>(image[, center, ...])</p></td>
+<td><p>Performs 2D -&gt; 1D azimuthal integration yielding mean intensity as a function of radius</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.count_intervals.html#eosdxanalysis.preprocessing.utils.count_intervals" title="eosdxanalysis.preprocessing.utils.count_intervals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">count_intervals</span></code></a>(num_array[, count])</p></td>
 <td><p>Given an array of integers, return the number of intervals Example: - num_array = [0,1,2,6,7,10,12,16,17,18] - output: 5</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.create_circular_mask.html#eosdxanalysis.preprocessing.utils.create_circular_mask" title="eosdxanalysis.preprocessing.utils.create_circular_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_circular_mask</span></code></a>(nrows, ncols[, center, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.create_circular_mask.html#eosdxanalysis.preprocessing.utils.create_circular_mask" title="eosdxanalysis.preprocessing.utils.create_circular_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_circular_mask</span></code></a>(nrows, ncols[, center, ...])</p></td>
 <td><p>Creates a circular mask for a pixel array with shape (nrows,ncols) Center can be specified as float tuple (row_center, col_center) rmin and rmax can be float Mask elements are True when distance from center is between rmin and rmax (inclusive)</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.find_maxima.html#eosdxanalysis.preprocessing.utils.find_maxima" title="eosdxanalysis.preprocessing.utils.find_maxima"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_maxima</span></code></a>(img, mask_center[, rmin, rmax])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.find_maxima.html#eosdxanalysis.preprocessing.utils.find_maxima" title="eosdxanalysis.preprocessing.utils.find_maxima"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_maxima</span></code></a>(img, mask_center[, rmin, rmax])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.gen_rotation_line.html#eosdxanalysis.preprocessing.utils.gen_rotation_line" title="eosdxanalysis.preprocessing.utils.gen_rotation_line"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_rotation_line</span></code></a>([center, angle, radius])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.gen_rotation_line.html#eosdxanalysis.preprocessing.utils.gen_rotation_line" title="eosdxanalysis.preprocessing.utils.gen_rotation_line"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gen_rotation_line</span></code></a>([center, angle, radius])</p></td>
 <td><p>Function to generate line for plotting purposes using x,y coordinates. Parameters: - center: (x0,y0) where origin is top-left (north-west or nw)      horizontal is x0, vertical down is y0 - angle: (theta) [degrees] for standard lower-left origin - radius: (radius) Returns: - line_points: ([x1,x2],[y1,y2]) a tuple of the line endpoints.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.get_angle.html#eosdxanalysis.preprocessing.utils.get_angle" title="eosdxanalysis.preprocessing.utils.get_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_angle</span></code></a>(feature1, feature2)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.get_angle.html#eosdxanalysis.preprocessing.utils.get_angle" title="eosdxanalysis.preprocessing.utils.get_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_angle</span></code></a>(feature1, feature2)</p></td>
 <td><p>Calculate the angle between two features, angle is for standard origin lower-left</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.polar_meshgrid.html#eosdxanalysis.preprocessing.utils.polar_meshgrid" title="eosdxanalysis.preprocessing.utils.polar_meshgrid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">polar_meshgrid</span></code></a>([output_shape, r_count, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.polar_meshgrid.html#eosdxanalysis.preprocessing.utils.polar_meshgrid" title="eosdxanalysis.preprocessing.utils.polar_meshgrid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">polar_meshgrid</span></code></a>([output_shape, r_count, ...])</p></td>
 <td><p>Creates a polar meshgrid with unique label per cell.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">quadrant_fold</span></code>(image)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">quadrant_fold</span></code>(image)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.radial_integration.html#eosdxanalysis.preprocessing.utils.radial_integration" title="eosdxanalysis.preprocessing.utils.radial_integration"><code class="xref py py-obj docutils literal notranslate"><span class="pre">radial_integration</span></code></a>(image[, center, output_shape])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.radial_integration.html#eosdxanalysis.preprocessing.utils.radial_integration" title="eosdxanalysis.preprocessing.utils.radial_integration"><code class="xref py py-obj docutils literal notranslate"><span class="pre">radial_integration</span></code></a>(image[, center, output_shape])</p></td>
 <td><p>Performs radial integration</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.radial_intensity.html#eosdxanalysis.preprocessing.utils.radial_intensity" title="eosdxanalysis.preprocessing.utils.radial_intensity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">radial_intensity</span></code></a>(image[, center, radius, ...])</p></td>
+<td><p>Performs 2D -&gt; 1D radial intensity summation yielding total intensity as a function of radius.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">rotate</span></code>(image, angle[, resize, center, ...])</p></td>
 <td><p>Rotate image by a certain angle around its center.</p></td>
 </tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">warp_polar</span></code>(image[, center, radius, ...])</p></td>
+<td><p>Remap image to polar or log-polar coordinates space.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.warp_polar_preprocessor.html#eosdxanalysis.preprocessing.utils.warp_polar_preprocessor" title="eosdxanalysis.preprocessing.utils.warp_polar_preprocessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">warp_polar_preprocessor</span></code></a>(image[, center, ...])</p></td>
+<td><p>Performs warp polar preprocessing for azimuthal integration and radial intensity functions.</p></td>
+</tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.zerocross1d.html#eosdxanalysis.preprocessing.utils.zerocross1d" title="eosdxanalysis.preprocessing.utils.zerocross1d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">zerocross1d</span></code></a>(x, y[, getIndices])</p></td>
 <td><p>Find the zero crossing points in 1d data.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id7">
+<h3>Variables<a class="headerlink" href="#id7" title="Permalink to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/eosdxanalysis.preprocessing.utils.AZIMUTHAL_POINT_COUNT_DEFAULT.html#eosdxanalysis.preprocessing.utils.AZIMUTHAL_POINT_COUNT_DEFAULT" title="eosdxanalysis.preprocessing.utils.AZIMUTHAL_POINT_COUNT_DEFAULT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AZIMUTHAL_POINT_COUNT_DEFAULT</span></code></a></p></td>
+<td><p>int([x]) -&gt; integer int(x, base=10) -&gt; integer</p></td>
 </tr>
 </tbody>
 </table>
@@ -788,6 +832,11 @@
    <li class="toc-h3 nav-item toc-entry">
     <a class="reference internal nav-link" href="#id6">
      Functions
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id7">
+     Variables
     </a>
    </li>
   </ul>
