@@ -29,7 +29,6 @@ from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import polar_meshgrid
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
-from eosdxanalysis.preprocessing.utils import enlarge_image
 from eosdxanalysis.preprocessing.utils import unwarp_polar
 from eosdxanalysis.preprocessing.utils import find_center
 from eosdxanalysis.preprocessing.utils import find_centroid
