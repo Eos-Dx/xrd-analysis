@@ -38,7 +38,7 @@ def find_centroid(points):
         raise ValueError("Input must be array of shape (n,2)!")
 
     # Return centroid
-    return tuple(np.mean(points,axis=0))
+    return tuple(np.nanmean(points,axis=0))
 
 def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None):
     """
