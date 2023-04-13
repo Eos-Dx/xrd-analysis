@@ -6,7 +6,7 @@ from scipy.ndimage import map_coordinates
 Functions for image processing
 """
 
-def pad_image(img, method="prerotation", padding=None):
+def pad_image(img, method="prerotation", padding=None, center=None, nan=False):
     """
     Add zeros to image
     Default behavior is if padding is not specified,
@@ -21,13 +21,13 @@ def pad_image(img, method="prerotation", padding=None):
     if padding == None and method == "prerotation":
         # Calculate padding for worst-case scenario
         # when rotation is 45 degrees
-        max_dim = np.max([nrows,ncols])
-        pad_side = int(np.around((np.sqrt(2)-1)*(max_dim-1)/2))
-        padding = (pad_side,)*4
+        diag = int(np.around(np.sqrt(img.shape[0]**2 + img.shape[1]**2)))
+        padding = (diag, diag-img.shape[0], diag, diag-img.shape[1])
 
     # Pad according to padding
-    new_img = np.zeros((padding[0]+padding[1]+nrows,
-            padding[2]+padding[3]+ncols))
+    values = np.nan if nan else 0
+    new_img = np.full((padding[0]+padding[1]+nrows,
+            padding[2]+padding[3]+ncols), np.nan)
 
     # Write the old image shifted into the new image
     new_img[padding[0]:nrows+padding[0],
