@@ -12,6 +12,8 @@ from scipy.interpolate import RegularGridInterpolator
 
 from eosdxanalysis.preprocessing.image_processing import quadrant_fold
 
+from eosdxanalysis.preprocessing.center_finding import find_center
+
 
 AZIMUTHAL_POINT_COUNT_DEFAULT = 360
 PIXEL_SIZE=55e-6 # Size of pixel in meters
@@ -417,6 +419,9 @@ def warp_polar_preprocessor(
         end_angle = END_ANGLE_DEFAULT
     if start_angle > end_angle:
         raise ValueError("Start angle must be greater than end angle")
+    # Set center
+    if type(center) == type(None):
+        center = find_center(image)
 
     azimuthal_step = 2*np.pi/azimuthal_point_count
 
