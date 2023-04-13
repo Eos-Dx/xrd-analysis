@@ -975,35 +975,35 @@ class TestImageProcessing(unittest.TestCase):
 
         padded_image = pad_image(image, method="prerotation")
 
-        self.assertEqual(padded_image.shape, (1,1))
+        self.assertEqual(padded_image.shape, (2,2))
 
         dim = 2
         image = np.arange(dim**2).reshape((dim,dim))
 
         padded_image = pad_image(image, method="prerotation")
 
-        self.assertEqual(padded_image.shape, (2,2))
+        self.assertEqual(padded_image.shape, (6,6))
 
         dim = 3
         image = np.arange(dim**2).reshape((dim,dim))
 
         padded_image = pad_image(image, method="prerotation")
 
-        self.assertEqual(padded_image.shape, (3,3))
+        self.assertEqual(padded_image.shape, (8,8))
 
         dim = 4
         image = np.arange(dim**2).reshape((dim,dim))
 
         padded_image = pad_image(image, method="prerotation")
 
-        self.assertEqual(padded_image.shape, (6,6))
+        self.assertEqual(padded_image.shape, (12,12))
 
         dim = 10
         image = np.arange(dim**2).reshape((dim,dim))
 
         padded_image = pad_image(image, method="prerotation")
 
-        self.assertEqual(padded_image.shape, (14,14))
+        self.assertEqual(padded_image.shape, (28,28))
 
     def test_unwarp_polar(self):
         """
