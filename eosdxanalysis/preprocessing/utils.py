@@ -10,14 +10,61 @@ from skimage.transform import warp_polar
 from scipy.interpolate import RegularGridInterpolator
 
 
-from eosdxanalysis.preprocessing.image_processing import quadrant_fold
-
-from eosdxanalysis.preprocessing.center_finding import find_center
-
-
 AZIMUTHAL_POINT_COUNT_DEFAULT = 360
 PIXEL_SIZE=55e-6 # Size of pixel in meters
 WAVELENGTH = 0.1540562e-9 # Cu K_alpha source wavelength in meters
+
+
+def find_centroid(points):
+    """
+    Given an array of shape (n,2), with elemenets aij,
+    [[a00,a01],
+     [a10,a11],
+        ...],
+    calculate the centroid in row, column notation.
+
+    Returns a tuple result with row and column centroid
+    """
+    try:
+        shape = points.shape
+        dim = shape[1]
+        if dim != 2:
+            raise ValueError("Input must be array of shape (n,2)!")
+    except AttributeError as error:
+        print(error)
+        raise AttributeError("Input must be array of shape (n,2)!")
+    except IndexError as error:
+        print(error)
+        raise ValueError("Input must be array of shape (n,2)!")
+
+    # Return centroid
+    return tuple(np.mean(points,axis=0))
+
+def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None):
+    """
+    Find the center of an image in matrix notation
+
+    Output of np.where is a tuple of shape (1,2) with first element
+    numpy array of row coordinates, second element numpy array of
+    column coordinates. We reshape to (n,2).
+    """
+    if method == "max_centroid":
+        # Create create circular mask for beam region of interest (roi)
+        shape = img.shape
+        beam_roi = create_circular_mask(shape[0], shape[1],
+                center=mask_center, rmin=rmin, rmax=rmax)
+
+        img_roi = np.copy(img)
+        img_roi[~beam_roi]=0
+
+        # Find pixels with maximum intensity within beam region of interest (roi)
+        # Take tranpose so each rows is coordinates for each point
+        max_indices = np.array(np.where(img_roi == np.max(img_roi))).T
+
+        # Find centroid of max intensity
+        return find_centroid(max_indices)
+    else:
+        raise NotImplementedError("Please choose another method.")
 
 def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min"):
     """
@@ -53,6 +100,65 @@ def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min
     # Mask elements are True if they lie within rmin and rmax
     mask = (dist_from_center <= rmax) & (dist_from_center >= rmin)
     return mask
+
+def enlarge_image(image, center):
+    return None
+
+def quadrant_fold(image):
+    # Create copies of flipped image
+    flip_horizontal = image[:,::-1]
+    flip_vertical = image[::-1,:]
+    flip_both = flip_vertical[:,::-1]
+
+    # Take average of all image copies
+    quad_folded = (image + flip_horizontal + flip_vertical + flip_both)/4
+
+    return quad_folded
+
+def unwarp_polar(img, origin=None, output_shape=None, rmax=None, order=1):
+    """
+    Convert image from polar to cartesian.
+    Reverse of `skimage.transform.warp_polar`
+
+    Cartesian origin is upper-left corner.
+    - Y is height (rows)
+    - X is width (columns)
+
+    Adapted from:
+    https://forum.image.sc/t/polar-transform-and-inverse-transform/40547/3
+    """
+    if output_shape is None:
+        output_shape = img.shape
+    output = np.zeros(output_shape, dtype=img.dtype)
+    out_h, out_w = output.shape
+
+    if origin is None:
+        origin = np.array(output.shape)/2 - 0.5
+
+    # Create a grid of x and y coordinates with origin
+    YY, XX = np.ogrid[:out_h, :out_w]
+    YY = YY - origin[0]
+    XX = XX - origin[1]
+
+    # Create a grid of r and theta coordinates
+    RR = np.sqrt(YY**2+XX**2)
+    TT = np.arccos(XX/RR)
+
+    # Add 2*pi if YY < 0 to make theta range from 0 to 2*pi
+    TT[YY.ravel() < 0, :] = np.pi*2 - TT[YY.ravel() < 0, :]
+    # Rescale theta to go from 0 to 2*pi
+    TT *= (img.shape[1]-1)/(2*np.pi)
+
+    # Crop according to rmax
+    if rmax is not None:
+        RR *= (img.shape[0]-1)/(rmax)
+
+    # Convert image from polar to cartesian
+    map_coordinates(img, (RR, TT), order=order, output=output)
+
+    return output
+
+
 
 def gen_rotation_line(center=[0,0],angle=0.0,radius=100.0):
     """
@@ -423,6 +529,9 @@ def warp_polar_preprocessor(
     if type(center) == type(None):
         center = find_center(image)
 
+    # TODO: Enlarge image and fill with nans
+    enlarged_image = enlarge_image(image, center)
+
     azimuthal_step = 2*np.pi/azimuthal_point_count
 
     radial_range = np.arange(radius)
@@ -430,7 +539,7 @@ def warp_polar_preprocessor(
     # Perform a polar warp on the input image for entire azimuthal range
     output_shape = (AZIMUTHAL_POINT_COUNT_DEFAULT*res, radius*res)
     polar_image = warp_polar(
-            image, center=center, radius=radius,
+            enlarged_image, center=center, radius=radius,
             output_shape=output_shape, preserve_range=True)
 
     # Interpolate if subset is needed

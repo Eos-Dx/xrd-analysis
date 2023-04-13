@@ -17,8 +17,8 @@ from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
 
 from eosdxanalysis.preprocessing.center_finding import circular_average
-from eosdxanalysis.preprocessing.center_finding import find_center
-from eosdxanalysis.preprocessing.center_finding import find_centroid
+from eosdxanalysis.preprocessing.utils import find_center
+from eosdxanalysis.preprocessing.utils import find_centroid
 
 from eosdxanalysis.preprocessing.denoising import stray_filter
 from eosdxanalysis.preprocessing.denoising import filter_strays

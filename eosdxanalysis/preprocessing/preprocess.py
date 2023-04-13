@@ -25,15 +25,15 @@ from skimage.transform import EuclideanTransform
 from skimage.transform import warp
 from skimage.transform import rotate
 
-from eosdxanalysis.preprocessing.center_finding import find_center
-from eosdxanalysis.preprocessing.center_finding import find_centroid
+from eosdxanalysis.preprocessing.utils import find_center
+from eosdxanalysis.preprocessing.utils import find_centroid
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import find_maxima
 from eosdxanalysis.preprocessing.denoising import find_hot_spots
 from eosdxanalysis.preprocessing.denoising import filter_hot_spots
 from eosdxanalysis.preprocessing.image_processing import crop_image
-from eosdxanalysis.preprocessing.image_processing import quadrant_fold
+from eosdxanalysis.preprocessing.utils import quadrant_fold
 from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 from eosdxanalysis.preprocessing.beam_utils import beam_extent
 

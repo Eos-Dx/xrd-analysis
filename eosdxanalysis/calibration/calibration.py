@@ -21,11 +21,11 @@ from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
 
-from eosdxanalysis.preprocessing.center_finding import find_center
+from eosdxanalysis.preprocessing.utils import find_center
 
 from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
-from eosdxanalysis.preprocessing.image_processing import quadrant_fold
+from eosdxanalysis.preprocessing.utils import quadrant_fold
 
 PIXEL_SIZE = 55e-6 # Pixel width in meters (it is 55 um)
 WAVELENGTH = 1.5418E-10 # Wavelength in meters (1.5418 Angstroms)
