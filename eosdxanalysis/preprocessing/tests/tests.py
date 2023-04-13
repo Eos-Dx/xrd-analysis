@@ -15,13 +15,10 @@ from scipy.ndimage import center_of_mass
 from scipy.interpolate import RegularGridInterpolator
 
 from eosdxanalysis.preprocessing.image_processing import pad_image
-from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
 from eosdxanalysis.preprocessing.center_finding import circular_average
-from eosdxanalysis.preprocessing.center_finding import find_center
-from eosdxanalysis.preprocessing.center_finding import find_centroid
 
 from eosdxanalysis.preprocessing.denoising import filter_hot_spots
 from eosdxanalysis.preprocessing.denoising import find_hot_spots
@@ -32,6 +29,10 @@ from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import polar_meshgrid
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
+from eosdxanalysis.preprocessing.utils import enlarge_image
+from eosdxanalysis.preprocessing.utils import unwarp_polar
+from eosdxanalysis.preprocessing.utils import find_center
+from eosdxanalysis.preprocessing.utils import find_centroid
 
 from eosdxanalysis.preprocessing.preprocess import PreprocessData
 from eosdxanalysis.preprocessing.preprocess import ABBREVIATIONS

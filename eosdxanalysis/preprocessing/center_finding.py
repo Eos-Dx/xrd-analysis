@@ -5,63 +5,12 @@ import numpy as np
 from skimage.transform import warp_polar
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
-from eosdxanalysis.preprocessing.image_processing import unwarp_polar
+from eosdxanalysis.preprocessing.utils import unwarp_polar
 
 RMIN_BEAM=0
 RMAX_BEAM=50
 
 
-
-def find_centroid(points):
-    """
-    Given an array of shape (n,2), with elemenets aij,
-    [[a00,a01],
-     [a10,a11],
-        ...],
-    calculate the centroid in row, column notation.
-
-    Returns a tuple result with row and column centroid
-    """
-    try:
-        shape = points.shape
-        dim = shape[1]
-        if dim != 2:
-            raise ValueError("Input must be array of shape (n,2)!")
-    except AttributeError as error:
-        print(error)
-        raise AttributeError("Input must be array of shape (n,2)!")
-    except IndexError as error:
-        print(error)
-        raise ValueError("Input must be array of shape (n,2)!")
-
-    # Return centroid
-    return tuple(np.mean(points,axis=0))
-
-def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None):
-    """
-    Find the center of an image in matrix notation
-
-    Output of np.where is a tuple of shape (1,2) with first element
-    numpy array of row coordinates, second element numpy array of
-    column coordinates. We reshape to (n,2).
-    """
-    if method == "max_centroid":
-        # Create create circular mask for beam region of interest (roi)
-        shape = img.shape
-        beam_roi = create_circular_mask(shape[0], shape[1],
-                center=mask_center, rmin=rmin, rmax=rmax)
-
-        img_roi = np.copy(img)
-        img_roi[~beam_roi]=0
-
-        # Find pixels with maximum intensity within beam region of interest (roi)
-        # Take tranpose so each rows is coordinates for each point
-        max_indices = np.array(np.where(img_roi == np.max(img_roi))).T
-
-        # Find centroid of max intensity
-        return find_centroid(max_indices)
-    else:
-        raise NotImplementedError("Please choose another method.")
 
 def circular_average(image, center, order=1):
     """
