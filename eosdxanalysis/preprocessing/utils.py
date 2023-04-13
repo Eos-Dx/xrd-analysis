@@ -527,7 +527,7 @@ def warp_polar_preprocessor(
         center = find_center(image)
 
     # TODO: Enlarge image and fill with nans
-    enlarged_image = enlarge_image(image, center)
+    # enlarged_image = enlarge_image(image, center)
 
     azimuthal_step = 2*np.pi/azimuthal_point_count
 
@@ -536,7 +536,7 @@ def warp_polar_preprocessor(
     # Perform a polar warp on the input image for entire azimuthal range
     output_shape = (AZIMUTHAL_POINT_COUNT_DEFAULT*res, radius*res)
     polar_image = warp_polar(
-            enlarged_image, center=center, radius=radius,
+            image, center=center, radius=radius,
             output_shape=output_shape, preserve_range=True)
 
     # Interpolate if subset is needed
@@ -601,7 +601,7 @@ def azimuthal_integration(
         res=1)
 
     # Calculate the mean
-    profile_1d = np.mean(polar_image_subset, axis=0)
+    profile_1d = np.nanmean(polar_image_subset, axis=0)
 
     return profile_1d
 
@@ -652,6 +652,6 @@ def radial_intensity(
         res=1)
 
     # Calculate the sum
-    profile_1d = np.sum(polar_image_subset, axis=0)
+    profile_1d = np.nansum(polar_image_subset, axis=0)
 
     return profile_1d
