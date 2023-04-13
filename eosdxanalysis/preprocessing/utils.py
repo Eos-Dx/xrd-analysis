@@ -101,9 +101,6 @@ def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min
     mask = (dist_from_center <= rmax) & (dist_from_center >= rmin)
     return mask
 
-def enlarge_image(image, center):
-    return None
-
 def quadrant_fold(image):
     # Create copies of flipped image
     flip_horizontal = image[:,::-1]
