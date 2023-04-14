@@ -195,12 +195,36 @@ class Calibration(object):
         L = doublet_distance / np.tan(2*theta_n)
 
         if visualize:
+            # Calculate to q-range
+            q_range = radial_profile_unit_conversion(
+                    radial_profile.size,
+                    L,
+                    radial_units="q_per_nm")
+
+
             title = "Beam masked image"
             fig = plt.figure(title)
             plt.title(title)
 
             plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
+            # Beam center
             plt.scatter(center[1], center[0], color="green")
+            # Doublet ring
+            circle = plt.Circle(
+                    (center[1], center[0]),
+                    radius=doublet_peak_index,
+                    linestyle="--",
+                    fill=False,
+                    color="red",
+                    label="Doublet peak at {} [pixel length] or ".format(doublet_peak_index) + \
+                        "{} ".format(np.around(q_range[doublet_peak_index], decimals=1)) + \
+                        r"$\mathrm{{nm}^{-1}}$"
+                    )
+            ax = plt.gca()
+            ax.add_artist(circle)
+
+            plt.legend()
+
 
             title = "Azimuthal Integration 1-D Mean Intensity Profile [pixel length]"
             fig = plt.figure(title)
@@ -215,21 +239,18 @@ class Calibration(object):
             plt.scatter(doublet_peak_index,
                     20*np.log10(radial_profile[doublet_peak_index]+1),
                     color="red", marker=".", s=250,
-                    label="Doublet peak")
+                    label="Doublet peak at {} [pixel length]".format(doublet_peak_index))
+
+            plt.xlabel("Position [pixel length]")
+            plt.ylabel(r"Mean intensity [photon count, dB+1]")
 
             plt.legend()
 
             # Plot azimuthal integration 1-D profile [q]
 
-            title = "Azimuthal Iintegration 1-D Mean Intensity Profile [q]"
+            title = "Azimuthal Integration 1-D Mean Intensity Profile [q]"
             fig = plt.figure(title)
             plt.title(title)
-
-            # Convert to q-values
-            q_range = radial_profile_unit_conversion(
-                    radial_profile.size,
-                    L,
-                    radial_units="q_per_nm")
 
             plt.plot(q_range, 20*np.log10(radial_profile+1),
                     label="1-D profile")
@@ -238,7 +259,10 @@ class Calibration(object):
             plt.scatter(q_range[doublet_peak_index],
                     20*np.log10(radial_profile[doublet_peak_index]+1),
                     color="red", marker=".", s=250,
-                    label="Doublet peak")
+                    label="Doublet peak at {} ".format(
+                        np.around(q_range[doublet_peak_index], decimals=1)) + \
+                        r"[$\mathrm{{nm}^{-1}}$]"
+                        )
 
             plt.xlabel(r"q $\mathrm{{nm}^{-1}}$")
             plt.ylabel(r"Mean intensity [photon count, dB+1]")
