@@ -25,35 +25,6 @@ from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 
-feature_list = [
-        "peak_location_beam",
-        "peak_location_9A",
-        "peak_location_5A",
-        "peak_location_4A",
-        "peak_width_beam",
-        "peak_width_9A",
-        "peak_width_5A",
-        "peak_width_4A",
-        ]
-
-# Create dictionary of peaks and their theoretical locations in angstroms
-peak_location_angstrom_dict = {
-        "peak_location_beam": 1,
-        "peak_location_9A": 9.8e-10,
-        "peak_location_5A": 5.1e-10,
-        "peak_location_4A": 4.5e-10,
-        }
-
-## Convert to pixel locations
-#peak_location_pixel_dict = {}
-#for peak_name, peak_location in peak_location_angstrom_dict.items():
-#    peak_location_pixel_dict[peak_name] = feature_pixel_location(peak_location)
-
-
-def sum_of_gaussians():
-    gau = None
-    return gau
-
 def run_feature_extraction(
         input_path, output_path, beam_rmax=15, sample_distance=None,
         visualize=False):
