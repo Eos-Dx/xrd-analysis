@@ -15,13 +15,10 @@ from scipy.ndimage import center_of_mass
 from scipy.interpolate import RegularGridInterpolator
 
 from eosdxanalysis.preprocessing.image_processing import pad_image
-from eosdxanalysis.preprocessing.image_processing import unwarp_polar
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
 from eosdxanalysis.preprocessing.center_finding import circular_average
-from eosdxanalysis.preprocessing.center_finding import find_center
-from eosdxanalysis.preprocessing.center_finding import find_centroid
 
 from eosdxanalysis.preprocessing.denoising import filter_hot_spots
 from eosdxanalysis.preprocessing.denoising import find_hot_spots
@@ -32,6 +29,9 @@ from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import polar_meshgrid
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
+from eosdxanalysis.preprocessing.utils import unwarp_polar
+from eosdxanalysis.preprocessing.utils import find_center
+from eosdxanalysis.preprocessing.utils import find_centroid
 
 from eosdxanalysis.preprocessing.preprocess import PreprocessData
 from eosdxanalysis.preprocessing.preprocess import ABBREVIATIONS
@@ -975,35 +975,35 @@ class TestImageProcessing(unittest.TestCase):
 
         padded_image = pad_image(image, method="prerotation")
 
-        self.assertEqual(padded_image.shape, (1,1))
+        self.assertEqual(padded_image.shape, (2,2))
 
         dim = 2
         image = np.arange(dim**2).reshape((dim,dim))
 
         padded_image = pad_image(image, method="prerotation")
 
-        self.assertEqual(padded_image.shape, (2,2))
+        self.assertEqual(padded_image.shape, (6,6))
 
         dim = 3
         image = np.arange(dim**2).reshape((dim,dim))
 
         padded_image = pad_image(image, method="prerotation")
 
-        self.assertEqual(padded_image.shape, (3,3))
+        self.assertEqual(padded_image.shape, (8,8))
 
         dim = 4
         image = np.arange(dim**2).reshape((dim,dim))
 
         padded_image = pad_image(image, method="prerotation")
 
-        self.assertEqual(padded_image.shape, (6,6))
+        self.assertEqual(padded_image.shape, (12,12))
 
         dim = 10
         image = np.arange(dim**2).reshape((dim,dim))
 
         padded_image = pad_image(image, method="prerotation")
 
-        self.assertEqual(padded_image.shape, (14,14))
+        self.assertEqual(padded_image.shape, (28,28))
 
     def test_unwarp_polar(self):
         """

@@ -21,11 +21,10 @@ from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
 
-from eosdxanalysis.preprocessing.center_finding import find_center
+from eosdxanalysis.preprocessing.utils import find_center
 
-from eosdxanalysis.preprocessing.image_processing import unwarp_polar
-from eosdxanalysis.preprocessing.image_processing import crop_image
-from eosdxanalysis.preprocessing.image_processing import quadrant_fold
+from eosdxanalysis.preprocessing.image_processing import pad_image
+from eosdxanalysis.preprocessing.utils import quadrant_fold
 
 PIXEL_SIZE = 55e-6 # Pixel width in meters (it is 55 um)
 WAVELENGTH = 1.5418E-10 # Wavelength in meters (1.5418 Angstroms)
@@ -74,8 +73,8 @@ class Calibration(object):
             distance_approx=DISTANCE_APPROX, output_shape=OUTPUT_SHAPE,
             doublet_approx_min_factor=DOUBLET_APPROX_MIN_FACTOR,
             doublet_approx_max_factor=DOUBLET_APPROX_MAX_FACTOR,
-            doublet_width=DOUBLET_WIDTH,
-            visualize=False, radius=None):
+            doublet_width=DOUBLET_WIDTH, visualize=False, radius=None,
+            padding=None, height=None):
         """
         Calculate the sample-to-detector distance for a calibration sample
 
@@ -118,7 +117,12 @@ class Calibration(object):
             center = find_center(image)
 
         if radius is None:
-            radius = int(np.max(image.shape)/2)
+            radius = int(np.around(np.max([
+                center[0],
+                center[1],
+                image.shape[0] - center[0],
+                image.shape[1] - center[1]]
+                )))
 
         # Mask the beam
         mask = create_circular_mask(
@@ -129,8 +133,21 @@ class Calibration(object):
         # to avoid creating another peak
         masked_image[mask] = masked_image[mask].min()
 
+        # Enlarge or pad the image with nans so as not to average with zeros
+
+        padding_amount = (np.sqrt(2)*np.max(image.shape)).astype(int)
+        padding_top = padding_amount
+        padding_bottom = padding_amount
+        padding_left = padding_amount
+        padding_right = padding_amount
+        padding = (padding_top, padding_bottom, padding_left, padding_right)
+        enlarged_masked_image = pad_image(
+                masked_image, padding=padding, nan=True)
+
+        new_center = (padding_top + center[0], padding_left + center[1])
+
         radial_profile = azimuthal_integration(
-                masked_image, center=center, radius=radius)
+                enlarged_masked_image, center=new_center, radius=radius)
 
         # Convert doublet average in q units to 2*theta units
         # Average the doublets
@@ -156,10 +173,13 @@ class Calibration(object):
         end_index = radial_profile.size - 1 if end_index >= radial_profile.size else end_index
         radial_profile_subset = radial_profile[start_index:end_index]
 
-        # Find the doublet in this subset
+        if height is None:
+            # Get the height of the peak based on distance estimate
+            height = radial_profile[doublet_pixel_location_approx]
+
         doublet_peak_indices_approx, properties = find_peaks(
                 radial_profile_subset, width=doublet_width,
-                height=0.05*radial_profile.max())
+                height=height)
 
         # Check how many prominent peaks were found
         prominences = properties.get("prominences")
@@ -418,8 +438,11 @@ if __name__ == "__main__":
             "--distance_approx", type=float, default=DISTANCE_APPROX,
             help="The approximate sample-to-detector distance.")
     parser.add_argument(
-            "--radius", type=int, default=DEFAULT_RADIUS,
+            "--radius", type=int, default=None,
             help="The maximum radius to analyze.")
+    parser.add_argument(
+            "--height", type=float, default=None,
+            help="The height of the doublet peak")
     parser.add_argument(
             "--visualize", action="store_true",
             help="Plot calibration results to screen")
@@ -469,4 +492,5 @@ if __name__ == "__main__":
         # Save
         print("Done calibrating")
     except Exception as err:
+        raise err
         print("Calibration failed.")

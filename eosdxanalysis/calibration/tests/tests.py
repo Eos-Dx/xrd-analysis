@@ -8,7 +8,7 @@ import os
 import unittest
 import numpy as np
 
-from eosdxanalysis.preprocessing.center_finding import find_center
+from eosdxanalysis.preprocessing.utils import find_center
 
 from eosdxanalysis.calibration.calibration import Calibration
 
