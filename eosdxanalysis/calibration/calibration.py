@@ -202,7 +202,26 @@ class Calibration(object):
             plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
             plt.scatter(center[1], center[0], color="green")
 
-            title = "Azimuthal integrated 1-d profile"
+            title = "Azimuthal Integration 1-D Mean Intensity Profile [pixel length]"
+            fig = plt.figure(title)
+            plt.title(title)
+
+            # Plot azimuthal integration 1-D profile [pixel length]
+            plt.plot(np.arange(radial_profile.size),
+                    20*np.log10(radial_profile+1),
+                    label="1-D profile")
+
+            # Plot a marker for the most prominent peak
+            plt.scatter(doublet_peak_index,
+                    20*np.log10(radial_profile[doublet_peak_index]+1),
+                    color="red", marker=".", s=250,
+                    label="Doublet peak")
+
+            plt.legend()
+
+            # Plot azimuthal integration 1-D profile [q]
+
+            title = "Azimuthal Iintegration 1-D Mean Intensity Profile [q]"
             fig = plt.figure(title)
             plt.title(title)
 
@@ -212,7 +231,6 @@ class Calibration(object):
                     L,
                     radial_units="q_per_nm")
 
-            # Plot azimuthal integration 1-D profile
             plt.plot(q_range, 20*np.log10(radial_profile+1),
                     label="1-D profile")
 
