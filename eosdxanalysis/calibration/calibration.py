@@ -195,24 +195,70 @@ class Calibration(object):
         L = doublet_distance / np.tan(2*theta_n)
 
         if visualize:
-            title = "Beam masked image"
-            fig = plt.figure(title)
-            plt.title(title)
-
-            plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
-            plt.scatter(center[1], center[0], color="green")
-
-            title = "Azimuthal integrated 1-d profile"
-            fig = plt.figure(title)
-            plt.title(title)
-
-            # Convert to q-values
+            # Calculate to q-range
             q_range = radial_profile_unit_conversion(
                     radial_profile.size,
                     L,
                     radial_units="q_per_nm")
 
-            # Plot azimuthal integration 1-D profile
+
+            title = "Beam masked image"
+            fig = plt.figure(title)
+            plt.title(title)
+
+            plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
+            # Beam center
+            plt.scatter(center[1], center[0], color="green")
+            # Doublet ring
+            circle = plt.Circle(
+                    (center[1], center[0]),
+                    radius=doublet_peak_index,
+                    linestyle="--",
+                    fill=False,
+                    color="red",
+                    label="Doublet peak location:\n" + \
+                            "Real-Space: {} pixel lengths\n".format(doublet_peak_index) + \
+                            "Calculated: {} ".format(
+                                np.around(q_range[doublet_peak_index], decimals=1)) + \
+                            r"$\mathrm{{nm}^{-1}}$" + "\n" + \
+                            "Theoretical: {} ".format(
+                                np.around(q_doublets_avg*10, decimals=1)) + \
+                            r"$\mathrm{{nm}^{-1}}$"
+                    )
+            ax = plt.gca()
+            ax.add_artist(circle)
+
+            plt.xlabel("Horizontal Position [pixel length]")
+            plt.ylabel("Vertical Position [pixel length]")
+            plt.legend()
+
+
+            title = "Azimuthal Integration 1-D Mean Intensity Profile versus real-space distance"
+            fig = plt.figure(title)
+            plt.title(title)
+
+            # Plot azimuthal integration 1-D profile [pixel length]
+            plt.plot(np.arange(radial_profile.size),
+                    20*np.log10(radial_profile+1),
+                    label="1-D profile")
+
+            # Plot a marker for the most prominent peak
+            plt.scatter(doublet_peak_index,
+                    20*np.log10(radial_profile[doublet_peak_index]+1),
+                    color="red", marker=".", s=250,
+                    label="Doublet peak at {} pixel lengths".format(doublet_peak_index))
+
+            plt.xlabel("Position [pixel length]")
+            plt.ylabel(r"Mean intensity [photon count, dB+1]")
+
+            plt.legend()
+
+            # Plot azimuthal integration 1-D profile [q]
+
+            title = "Azimuthal Integration 1-D Mean Intensity Profile versus q"
+            fig = plt.figure(title)
+            plt.title(title)
+
             plt.plot(q_range, 20*np.log10(radial_profile+1),
                     label="1-D profile")
 
@@ -220,7 +266,14 @@ class Calibration(object):
             plt.scatter(q_range[doublet_peak_index],
                     20*np.log10(radial_profile[doublet_peak_index]+1),
                     color="red", marker=".", s=250,
-                    label="Doublet peak")
+                    label="Doublet peak location:\n" +\
+                            "Calculated: {} ".format(
+                        np.around(q_range[doublet_peak_index], decimals=1)) + \
+                        r"$\mathrm{{nm}^{-1}}$" + "\n" + \
+                            "Theoretical: {} ".format(
+                                np.around(q_doublets_avg*10, decimals=1)) + \
+                            r"$\mathrm{{nm}^{-1}}$"
+                        )
 
             plt.xlabel(r"q $\mathrm{{nm}^{-1}}$")
             plt.ylabel(r"Mean intensity [photon count, dB+1]")
