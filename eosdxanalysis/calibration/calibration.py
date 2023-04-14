@@ -209,7 +209,7 @@ class Calibration(object):
             # Convert to q-values
             q_range = radial_profile_unit_conversion(
                     radial_profile.size,
-                    distance_approx,
+                    L,
                     radial_units="q_per_nm")
 
             # Plot azimuthal integration 1-D profile
