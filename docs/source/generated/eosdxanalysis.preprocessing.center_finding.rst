@@ -1,4 +1,4 @@
-eosdxanalysis.preprocessing.center\_finding
+﻿eosdxanalysis.preprocessing.center\_finding
 ===========================================
 
 .. automodule:: eosdxanalysis.preprocessing.center_finding
@@ -14,8 +14,6 @@ eosdxanalysis.preprocessing.center\_finding
    .. autosummary::
    
       circular_average
-      find_center
-      find_centroid
       radial_histogram
    
    
