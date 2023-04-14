@@ -17,6 +17,12 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
+from eosdxanalysis.preprocessing.utils import create_circular_mask
+from eosdxanalysis.preprocessing.utils import find_center
+
+from eosdxanalysis.preprocessing.image_processing import pad_image
+
+from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 
 feature_list = [
@@ -48,7 +54,9 @@ def sum_of_gaussians():
     gau = None
     return gau
 
-def run_feature_extraction(input_path, output_path):
+def run_feature_extraction(
+        input_path, output_path, beam_rmax=15, sample_distance=None,
+        visualize=False):
     """
     """
 
@@ -67,8 +75,18 @@ def run_feature_extraction(input_path, output_path):
 
     # Store output directory info
     # Create output directory if it does not exist
-    output_dir = "preprocessed_{}".format(timestamp)
-    output_path = os.path.join(output_path, output_dir)
+    if not output_path:
+        # Create preprocessing results directory
+        parent_path = os.path.dirname(input_path)
+        results_dir = "preprocessed_results"
+        results_path = os.path.join(parent_path, results_dir)
+
+        # Create timestamped output directory
+        input_dir = os.path.basename(input_path)
+        output_dir = "preprocessed_{}_{}".format(
+                input_dir,
+                timestamp)
+        output_path = os.path.join(results_path, output_dir)
 
     # Data output path
     data_output_dir = "data"
@@ -85,21 +103,58 @@ def run_feature_extraction(input_path, output_path):
         filename = os.path.basename(filepath)
         image = np.loadtxt(filepath, dtype=np.float64)
 
-        radial_profile = azimuthal_integration(image)
+        # Find the center
+        center = find_center(image)
+
+        # Block out the beam
+        beam_mask = create_circular_mask(
+                image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
+
+        masked_image = image.copy()
+        masked_image[beam_mask] = np.nan
+
+        # Enlarge the image
+        padding_amount = (np.sqrt(2)*np.max(image.shape)).astype(int)
+        padding_top = padding_amount
+        padding_bottom = padding_amount
+        padding_left = padding_amount
+        padding_right = padding_amount
+        padding = (padding_top, padding_bottom, padding_left, padding_right)
+        enlarged_masked_image = pad_image(
+                masked_image, padding=padding, nan=True)
+
+        new_center = (padding_top + center[0], padding_left + center[1])
+
+        radial_profile = azimuthal_integration(
+                enlarged_masked_image, center=new_center, radius=padding_amount)
+
 
         # Save data to file
         data_output_filename = "radial_{}".format(filename)
         data_output_filepath = os.path.join(data_output_path,
                 data_output_filename)
 
-        np.savetxt(data_output_filepath, radial_profile)
+        if sample_distance:
+            # Combine radial profile intensity and q-units
+            q_range = radial_profile_unit_conversion(
+                    radial_profile.size,
+                    sample_distance,
+                    radial_units="q_per_nm")
+            results = np.hstack([q_range.reshape(-1,1), radial_profile.reshape(-1,1)])
+            np.savetxt(data_output_filepath, results)
+        else:
+            np.savetxt(data_output_filepath, radial_profile)
 
         # Save image preview to file
         plot_title = "Azimuthal Integration {}".format(filename)
         fig = plt.figure(plot_title)
-        plt.scatter(range(radial_profile.size), radial_profile)
 
-        plt.xlabel("Radius [pixel units]")
+        if sample_distance:
+            plt.scatter(q_range, radial_profile)
+            plt.xlabel(r"q $\mathrm{{nm}^{-1}}$")
+        else:
+            plt.scatter(range(radial_profile.size), radial_profile)
+            plt.xlabel("Radius [pixel units]")
         plt.ylabel("Mean Intensity [photon count]")
 
         plt.title(plot_title)
@@ -115,6 +170,9 @@ def run_feature_extraction(input_path, output_path):
         # Add extracted features to dataframe
         # df.loc[len(df.index)+1] = [filename] + [radial_profile]
 
+        if visualize:
+            plt.show()
+
         plt.close(fig)
 
     # Save dataframe to csv
@@ -129,18 +187,35 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--input_path", default=None, required=True,
+            "--input_path", type=str, required=True,
             help="The path to data to extract features from")
     parser.add_argument(
-            "--output_path", default=None, required=True,
+            "--output_path", type=str, default=None, required=False,
             help="The output path to save radial profiles and peak features")
+    parser.add_argument(
+            "--beam_rmax", type=int, default=15, required=True,
+            help="The maximum beam radius in pixel lengths.")
+    parser.add_argument(
+            "--sample_distance", type=float, default=None, required=False,
+            help="The maximum beam radius in pixel lengths.")
+    parser.add_argument(
+            "--visualize", action="store_true",
+            help="Visualize plots.")
 
     args = parser.parse_args()
 
-    input_path = args.input_path
-    output_path = args.output_path
+    input_path = os.path.abspath(args.input_path) if args.input_path \
+            else None
+    output_path = os.path.abspath(args.output_path) if args.output_path \
+            else None
+    beam_rmax = args.beam_rmax
+    sample_distance = args.sample_distance
+    visualize = args.visualize
 
     run_feature_extraction(
         input_path=input_path,
         output_path=output_path,
+        beam_rmax=beam_rmax,
+        sample_distance=sample_distance,
+        visualize=visualize,
         )
