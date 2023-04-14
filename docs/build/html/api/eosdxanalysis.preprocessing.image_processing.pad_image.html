@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>pad_image &#8212; Eos Dx Analysis 2.36.0 documentation</title>
+    <title>pad_image &#8212; Eos Dx Analysis 2.36.1 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -38,7 +38,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.image_processing.pad_image';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="quadrant_fold" href="eosdxanalysis.preprocessing.image_processing.quadrant_fold.html" />
+    <link rel="next" title="find_1d_peaks" href="eosdxanalysis.preprocessing.peak_finding.find_1d_peaks.html" />
     <link rel="prev" title="crop_image" href="eosdxanalysis.preprocessing.image_processing.crop_image.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
@@ -91,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.36.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.36.1 documentation</p>
   
 </a>
     
@@ -280,16 +280,6 @@
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.find_center.html">
-   find_center
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.find_centroid.html">
-   find_centroid
-  </a>
- </li>
- <li class="toctree-l1">
   <a class="reference internal" href="eosdxanalysis.preprocessing.center_finding.radial_histogram.html">
    radial_histogram
   </a>
@@ -335,16 +325,6 @@
    pad_image
   </a>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.quadrant_fold.html">
-   quadrant_fold
-  </a>
- </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.unwarp_polar.html">
-   unwarp_polar
-  </a>
- </li>
 </ul>
 <ul class="nav bd-sidenav">
  <li class="toctree-l1">
@@ -387,6 +367,16 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.find_center.html">
+   find_center
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.find_centroid.html">
+   find_centroid
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="eosdxanalysis.preprocessing.utils.find_maxima.html">
    find_maxima
   </a>
@@ -407,6 +397,11 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.quadrant_fold.html">
+   quadrant_fold
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="eosdxanalysis.preprocessing.utils.radial_integration.html">
    radial_integration
   </a>
@@ -414,6 +409,11 @@
  <li class="toctree-l1">
   <a class="reference internal" href="eosdxanalysis.preprocessing.utils.radial_intensity.html">
    radial_intensity
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.unwarp_polar.html">
+   unwarp_polar
   </a>
  </li>
  <li class="toctree-l1">
@@ -475,7 +475,7 @@
 <h1>pad_image<a class="headerlink" href="#pad-image" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="eosdxanalysis.preprocessing.image_processing.pad_image">
-<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.image_processing.</span></span><span class="sig-name descname"><span class="pre">pad_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'prerotation'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.image_processing.pad_image" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.image_processing.</span></span><span class="sig-name descname"><span class="pre">pad_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'prerotation'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nan</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.image_processing.pad_image" title="Permalink to this definition">#</a></dt>
 <dd><p>Add zeros to image
 Default behavior is if padding is not specified,
 then pad image symmetrically to prevent image loss in case of rotation
@@ -501,10 +501,10 @@ and cropping to original size.</p>
           <p class="prev-next-title">crop_image</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.image_processing.quadrant_fold.html" title="next page">
+  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.peak_finding.find_1d_peaks.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">quadrant_fold</p>
+      <p class="prev-next-title">find_1d_peaks</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>
