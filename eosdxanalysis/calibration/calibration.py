@@ -2,6 +2,7 @@
 Code to calibrate X-ray diffraction setup using calibration samples data
 """
 import argparse
+import os
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -74,7 +75,7 @@ class Calibration(object):
             doublet_approx_min_factor=DOUBLET_APPROX_MIN_FACTOR,
             doublet_approx_max_factor=DOUBLET_APPROX_MAX_FACTOR,
             doublet_width=DOUBLET_WIDTH, visualize=False, radius=None,
-            padding=None, height=None):
+            padding=None, height=None, save=False, image_fullpath=None):
         """
         Calculate the sample-to-detector distance for a calibration sample
 
@@ -194,6 +195,31 @@ class Calibration(object):
 
         L = doublet_distance / np.tan(2*theta_n)
 
+        if save:
+            # Get the parent path of the calibration image
+            image_path = os.path.dirname(image_fullpath)
+            image_filename = os.path.basename(image_fullpath)
+            parent_path = os.path.dirname(image_path)
+
+            # Create the calibration results directory
+            calibration_results_dir = "calibration_results"
+            calibration_results_path = os.path.join(
+                    parent_path, calibration_results_dir)
+            os.makedirs(calibration_results_path, exist_ok=True)
+
+            # Set the calibration results output file properties
+            output_filename = "{}_calibration_results.txt".format(
+                    image_filename)
+            output_filepath = os.path.join(
+                    calibration_results_path, output_filename)
+
+            # Construct calibration results file content
+            output_text = "sample_to_detector_distance_m:{}".format(L)
+
+            # Write calibration results to file
+            with open(output_filepath, "w") as outfile:
+                outfile.writelines(output_text)
+
         if visualize:
             # Calculate to q-range
             q_range = radial_profile_unit_conversion(
@@ -218,9 +244,6 @@ class Calibration(object):
                     color="red",
                     label="Doublet peak location:\n" + \
                             "Real-Space: {} pixel lengths\n".format(doublet_peak_index) + \
-                            "Calculated: {} ".format(
-                                np.around(q_range[doublet_peak_index], decimals=1)) + \
-                            r"$\mathrm{{nm}^{-1}}$" + "\n" + \
                             "Theoretical: {} ".format(
                                 np.around(q_doublets_avg*10, decimals=1)) + \
                             r"$\mathrm{{nm}^{-1}}$"
@@ -267,9 +290,6 @@ class Calibration(object):
                     20*np.log10(radial_profile[doublet_peak_index]+1),
                     color="red", marker=".", s=250,
                     label="Doublet peak location:\n" +\
-                            "Calculated: {} ".format(
-                        np.around(q_range[doublet_peak_index], decimals=1)) + \
-                        r"$\mathrm{{nm}^{-1}}$" + "\n" + \
                             "Theoretical: {} ".format(
                                 np.around(q_doublets_avg*10, decimals=1)) + \
                             r"$\mathrm{{nm}^{-1}}$"
@@ -499,6 +519,9 @@ if __name__ == "__main__":
     parser.add_argument(
             "--visualize", action="store_true",
             help="Plot calibration results to screen")
+    parser.add_argument(
+            "--save", action="store_true",
+            help="Store distance to file.")
 
     args = parser.parse_args()
 
@@ -518,6 +541,7 @@ if __name__ == "__main__":
     doublet_width = args.doublet_width
     visualize = args.visualize
     radius = args.radius
+    save = args.save
 
     # Instantiate Calibration class
     calibrator = Calibration(calibration_material=material,
@@ -536,7 +560,9 @@ if __name__ == "__main__":
                 center=center,
                 doublet_width=doublet_width,
                 visualize=visualize,
-                radius=radius)
+                radius=radius,
+                save=save,
+                image_fullpath=image_fullpath)
 
         detector_distance_mm = detector_distance * 1e3
 
