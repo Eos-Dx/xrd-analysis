@@ -65,7 +65,7 @@ def run_azimuthal_preprocessing(
                 parent_path, calibration_results_dir)
 
         # Find files
-        filepath_list = glob.glob(os.path.join(sample_distance_path, "*.txt"))
+        filepath_list = glob.glob(os.path.join(sample_distance_path, "*.json"))
         if len(filepath_list) != 1:
             raise ValueError("Only a single calibration file is allowed.")
         else:
