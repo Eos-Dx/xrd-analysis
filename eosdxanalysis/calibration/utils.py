@@ -19,7 +19,7 @@ class DiffractionUnitsConversion(object):
 
     Machine diagram:
                /|   tan(2*theta) =
-              / |       bragg_peak_pixel_location/sample_to_detector_distance
+              / |       bragg_peak_pixel_location/sample_distance
              /  |
         ____/_\_|   angle = 2*theta
        ^   ^    ^
@@ -33,14 +33,14 @@ class DiffractionUnitsConversion(object):
 
     def __init__(
             self, source_wavelength=None, pixel_length=None,
-            sample_to_detector_distance=None, n=1):
+            sample_distance=None, n=1):
         """
         Initialize the DiffractionUnitConversion class
         """
         # Store machine parameters
         self.source_wavelength = source_wavelength
         self.pixel_length = pixel_length
-        self.sample_to_detector_distance = sample_to_detector_distance
+        self.sample_distance = sample_distance
 
         # Set defaults
         self.n = n
@@ -171,10 +171,10 @@ class DiffractionUnitsConversion(object):
         """
         # Get machine parameters
         source_wavelength = self.source_wavelength
-        sample_to_detector_distance = self.sample_to_detector_distance 
+        sample_distance = self.sample_distance
 
         # Check if required machine parameters were provided
-        if not all([self.source_wavelength, self.sample_to_detector_distance]):
+        if not all([self.source_wavelength, self.sample_distance]):
             raise ValueError(
                     "Missing source wavelength and sample-to-detector distance!"
                     " You must initialize the class with machine parameters for"
@@ -182,7 +182,7 @@ class DiffractionUnitsConversion(object):
 
         # Calculate the distance in meters
         two_theta = self.two_theta_from_molecular_spacing(molecular_spacing)
-        bragg_peak_location = sample_to_detector_distance * np.tan(two_theta)
+        bragg_peak_location = sample_distance * np.tan(two_theta)
 
         return bragg_peak_location
 
@@ -228,7 +228,7 @@ class DiffractionUnitsConversion(object):
         return bragg_peak_pixel_location
 
 def radial_profile_unit_conversion(radial_count,
-        sample_to_detector_distance,
+        sample_distance,
         radial_units="q_per_nm"):
     """
     Convert radial profile from pixel lengths to:
@@ -242,14 +242,16 @@ def radial_profile_unit_conversion(radial_count,
     radial_count : int
         Number of radial points.
 
-    sample_to_detector_distance : float
+    sample_distance : float
         Meters.
 
     radial_units : str
         Choice of "q_per_nm" (default), "two_theta", or "um".
     """
     radial_range_m = np.arange(radial_count) * PIXEL_SIZE
-    theta_range = 0.5*np.arctan2(radial_range_m, sample_to_detector_distance)
+    radial_range_m = radial_range_m.reshape(-1,1)
+    sample_distance = np.array(sample_distance).reshape(-1,1)
+    theta_range = 0.5*np.arctan2(radial_range_m, sample_distance)
 
     if radial_units == "q_per_nm":
         q_range_per_m = 4 * np.pi * np.sin(theta_range) / WAVELENGTH
