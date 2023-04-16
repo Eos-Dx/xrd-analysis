@@ -468,6 +468,45 @@ class Calibration(object):
         """
         pass
 
+def sample_distance_calibration(
+            image_fullpath=None,
+            calibration_material=None,
+            wavelength=WAVELENGTH,
+            pixel_size=PIXEL_SIZE,
+            beam_rmax=BEAM_RMAX,
+            rmax=RMAX,
+            distance_approx=DISTANCE_APPROX,
+            center=None,
+            doublet_width=DOUBLET_WIDTH,
+            visualize=False,
+            radius=DEFAULT_RADIUS,
+            save=False,
+            print_result=False):
+
+    # Instantiate Calibration class
+    calibrator = Calibration(calibration_material=material,
+            wavelength=wavelength, pixel_size=pixel_size)
+
+    # Load calibration image
+    image = np.loadtxt(image_fullpath, dtype=np.uint32)
+
+    # Run calibration procedure
+    sample_distance = calibrator.sample_detector_distance(
+            image,
+            beam_rmax=beam_rmax,
+            rmax=rmax,
+            distance_approx=distance_approx,
+            center=center,
+            doublet_width=doublet_width,
+            visualize=visualize,
+            radius=radius,
+            save=save,
+            image_fullpath=image_fullpath)
+
+    if print_result:
+        print("{}m".format(sample_distance))
+
+    return sample_distance
 
 if __name__ == "__main__":
     """
@@ -481,13 +520,11 @@ if __name__ == "__main__":
     - provide a JSON-encoded string of parameters.
 
     """
-    print("Start calibration...")
-
     # Set up argument parser
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--image_fullpath", default=None,
+            "--image_fullpath", required=True,
             help="The full path to the raw image data")
     parser.add_argument(
             "--material", default="silver_behenate",
@@ -525,15 +562,14 @@ if __name__ == "__main__":
     parser.add_argument(
             "--save", action="store_true",
             help="Store distance to file.")
+    parser.add_argument(
+            "--print_result", action="store_true",
+            help="Print sample distance.")
 
     args = parser.parse_args()
 
     # Set variables based on input arguments
-    # Set path info
     image_fullpath = args.image_fullpath
-    if image_fullpath is None:
-        raise ValueError("Must provide full path to image calibration file.")
-
     material = args.material
     wavelength = args.wavelength
     pixel_size = args.pixel_size
@@ -545,34 +581,19 @@ if __name__ == "__main__":
     visualize = args.visualize
     radius = args.radius
     save = args.save
+    print_result= args.print_result
 
-    # Instantiate Calibration class
-    calibrator = Calibration(calibration_material=material,
-            wavelength=wavelength, pixel_size=pixel_size)
-
-    # Load image
-    image = np.loadtxt(image_fullpath, dtype=np.uint32)
-
-    # Run calibration procedure
-    try:
-        detector_distance = calibrator.sample_detector_distance(
-                image,
-                beam_rmax=beam_rmax,
-                rmax=rmax,
-                distance_approx=distance_approx,
-                center=center,
-                doublet_width=doublet_width,
-                visualize=visualize,
-                radius=radius,
-                save=save,
-                image_fullpath=image_fullpath)
-
-        detector_distance_mm = detector_distance * 1e3
-
-        print("Detector distance:", detector_distance_mm, "[mm]")
-
-        # Save
-        print("Done calibrating")
-    except Exception as err:
-        raise err
-        print("Calibration failed.")
+    sample_distance_calibration(
+            image_fullpath=image_fullpath,
+            calibration_material=material,
+            wavelength=wavelength,
+            pixel_size=pixel_size,
+            beam_rmax=beam_rmax,
+            rmax=rmax,
+            distance_approx=distance_approx,
+            center=center,
+            doublet_width=doublet_width,
+            visualize=visualize,
+            radius=radius,
+            save=save,
+            print_result=print_result)
