@@ -2,6 +2,7 @@
 Example with polar grid
 """
 import os
+import glob
 
 import numpy as np
 
@@ -26,9 +27,11 @@ from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 def run_azimuthal_preprocessing(
         input_path, output_path, sample_distance_filepath=None,
+        find_sample_distance_filepath=False,
         beam_rmax=15, visualize=False):
     """
     """
+    sample_distance_m = None
 
     # Get filepath list
     filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
@@ -53,6 +56,20 @@ def run_azimuthal_preprocessing(
                 input_dir,
                 timestamp)
         output_path = os.path.join(results_path, output_dir)
+
+    if find_sample_distance_filepath:
+        # Try to locate the sample distance filepath:
+        parent_path = os.path.dirname(input_path)
+        calibration_results_dir = "calibration_results"
+        sample_distance_path = os.path.join(
+                parent_path, calibration_results_dir)
+
+        # Find files
+        filepath_list = glob.glob(os.path.join(sample_distance_path, "*.txt"))
+        if len(filepath_list) != 1:
+            raise ValueError("More than one calibration file found.")
+        else:
+            sample_distance_filepath = filepath_list[0]
 
     # Data output path
     data_output_dir = "data"
@@ -159,6 +176,9 @@ if __name__ == '__main__':
             "--sample_distance_filepath", type=str, default=None, required=False,
             help="The path to calibrated sample distance.")
     parser.add_argument(
+            "--find_sample_distance_filepath", action="store_true",
+            help="Automatically try to find sample distance file.")
+    parser.add_argument(
             "--beam_rmax", type=int, default=15, required=True,
             help="The maximum beam radius in pixel lengths.")
     parser.add_argument(
@@ -173,6 +193,7 @@ if __name__ == '__main__':
             else None
     sample_distance_filepath = os.path.abspath(args.sample_distance_filepath) \
             if args.sample_distance_filepath else None
+    find_sample_distance_filepath = args.find_sample_distance_filepath
     beam_rmax = args.beam_rmax
     sample_distance_filepath = args.sample_distance_filepath
     visualize = args.visualize
@@ -182,5 +203,6 @@ if __name__ == '__main__':
         output_path=output_path,
         beam_rmax=beam_rmax,
         sample_distance_filepath=sample_distance_filepath,
+        find_sample_distance_filepath=find_sample_distance_filepath,
         visualize=visualize,
         )
