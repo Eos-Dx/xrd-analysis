@@ -3,6 +3,7 @@ Code to calibrate X-ray diffraction setup using calibration samples data
 """
 import argparse
 import os
+import json
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -193,7 +194,7 @@ class Calibration(object):
         # Now use location of doublet to calculate sample-to-detector distance
         doublet_distance = doublet_peak_index * pixel_size
 
-        L = doublet_distance / np.tan(2*theta_n)
+        sample_distance = doublet_distance / np.tan(2*theta_n)
 
         if save:
             # Get the parent path of the calibration image
@@ -208,23 +209,25 @@ class Calibration(object):
             os.makedirs(calibration_results_path, exist_ok=True)
 
             # Set the calibration results output file properties
-            output_filename = "{}_calibration_results.txt".format(
+            output_filename = "{}_calibration_results.json".format(
                     image_filename)
             output_filepath = os.path.join(
                     calibration_results_path, output_filename)
 
             # Construct calibration results file content
-            output_text = "sample_to_detector_distance_m:{}".format(L)
+            results_dict = {
+                    "sample_to_detector_distance_m": sample_distance,
+                    }
 
             # Write calibration results to file
             with open(output_filepath, "w") as outfile:
-                outfile.writelines(output_text)
+                outfile.writelines(json.dumps(results_dict, indent=4))
 
         if visualize:
             # Calculate to q-range
             q_range = radial_profile_unit_conversion(
                     radial_profile.size,
-                    L,
+                    sample_distance,
                     radial_units="q_per_nm")
 
 
@@ -301,7 +304,7 @@ class Calibration(object):
             plt.legend()
             plt.show()
 
-        return L
+        return sample_distance
 
 #    def single_sample_detector_distance_old(
 #            self, image, beam_rmax=10, rmax=None, distance_approx=10e-3,
