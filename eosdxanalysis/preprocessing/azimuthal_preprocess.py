@@ -67,7 +67,7 @@ def run_azimuthal_preprocessing(
         # Find files
         filepath_list = glob.glob(os.path.join(sample_distance_path, "*.txt"))
         if len(filepath_list) != 1:
-            raise ValueError("More than one calibration file found.")
+            raise ValueError("Only a single calibration file is allowed.")
         else:
             sample_distance_filepath = filepath_list[0]
 
