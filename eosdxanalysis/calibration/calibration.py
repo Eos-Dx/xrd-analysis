@@ -216,7 +216,7 @@ class Calibration(object):
 
             # Construct calibration results file content
             results_dict = {
-                    "sample_to_detector_distance_m": sample_distance,
+                    "sample_distance_m": sample_distance,
                     }
 
             # Write calibration results to file
