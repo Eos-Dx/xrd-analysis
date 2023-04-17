@@ -49,7 +49,7 @@ def plot_peak_intensity_versus_q(data_list_filepath, cancer_df_filepath):
         # Plot peaks
         plt.scatter(q_range[peak_indices], mean_intensity_profile[peak_indices], s=20, marker="+")
 
-    plt.xlabel(r"q $\mathrm{\AA^{-1}}$")
+    plt.xlabel(r"q $\mathrm{nm^{-1}}$")
     plt.ylabel("Intensity [photon count]")
         
     plt.title(plot_title)
@@ -75,7 +75,7 @@ def plot_peak_intensity_versus_q(data_list_filepath, cancer_df_filepath):
 
         plt.scatter(q_peak_list[idx], peak_intensity_list[idx], label=label, color=color)
 
-    plt.xlabel(r"q $\mathrm{\AA^{-1}}$")
+    plt.xlabel(r"q $\mathrm{nm^{-1}}$")
     plt.ylabel("Intensity [photon count]")
 
     plt.title(plot_title)
