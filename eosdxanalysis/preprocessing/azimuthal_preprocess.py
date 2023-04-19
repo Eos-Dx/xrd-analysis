@@ -2,9 +2,9 @@
 Example with polar grid
 """
 import os
+import glob
 
 import numpy as np
-import pandas as pd
 
 from datetime import datetime
 
@@ -25,20 +25,18 @@ from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 
-def run_feature_extraction(
-        input_path, output_path, beam_rmax=15, sample_distance=None,
-        visualize=False):
+def run_azimuthal_preprocessing(
+        input_path, output_path, sample_distance_filepath=None,
+        find_sample_distance_filepath=False,
+        beam_rmax=15, visualize=False):
     """
     """
+    sample_distance_m = None
 
     # Get filepath list
     filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
     # Sort files list
     filepath_list.sort()
-
-    # Create dataframe to collect extracted features
-    columns = ["Filename"] + feature_list
-    df = pd.DataFrame(data={}, columns=columns, dtype=object)
 
     # Set timestamp
     timestr = "%Y%m%dT%H%M%S.%f"
@@ -58,6 +56,20 @@ def run_feature_extraction(
                 input_dir,
                 timestamp)
         output_path = os.path.join(results_path, output_dir)
+
+    if find_sample_distance_filepath:
+        # Try to locate the sample distance filepath:
+        parent_path = os.path.dirname(input_path)
+        calibration_results_dir = "calibration_results"
+        sample_distance_path = os.path.join(
+                parent_path, calibration_results_dir)
+
+        # Find files
+        calibration_results_filepath_list = glob.glob(os.path.join(sample_distance_path, "*.json"))
+        if len(calibration_results_filepath_list) != 1:
+            raise ValueError("Only a single calibration file is allowed.")
+        else:
+            sample_distance_filepath = calibration_results_filepath_list[0]
 
     # Data output path
     data_output_dir = "data"
@@ -99,17 +111,20 @@ def run_feature_extraction(
         radial_profile = azimuthal_integration(
                 enlarged_masked_image, center=new_center, radius=padding_amount)
 
-
         # Save data to file
         data_output_filename = "radial_{}".format(filename)
         data_output_filepath = os.path.join(data_output_path,
                 data_output_filename)
 
-        if sample_distance:
+        if sample_distance_filepath:
+            with open(sample_distance_filepath, "r") as distance_fp:
+                sample_distance_results = json.loads(distance_fp.read())
+                sample_distance_m = sample_distance_results["sample_distance_m"]
+
             # Combine radial profile intensity and q-units
             q_range = radial_profile_unit_conversion(
                     radial_profile.size,
-                    sample_distance,
+                    sample_distance_m,
                     radial_units="q_per_nm")
             results = np.hstack([q_range.reshape(-1,1), radial_profile.reshape(-1,1)])
             np.savetxt(data_output_filepath, results)
@@ -120,7 +135,7 @@ def run_feature_extraction(
         plot_title = "Azimuthal Integration {}".format(filename)
         fig = plt.figure(plot_title)
 
-        if sample_distance:
+        if sample_distance_m:
             plt.scatter(q_range, radial_profile)
             plt.xlabel(r"q $\mathrm{{nm}^{-1}}$")
         else:
@@ -138,16 +153,10 @@ def run_feature_extraction(
         # Save image preview to file
         plt.savefig(image_output_filepath)
 
-        # Add extracted features to dataframe
-        # df.loc[len(df.index)+1] = [filename] + [radial_profile]
-
         if visualize:
             plt.show()
 
         plt.close(fig)
-
-    # Save dataframe to csv
-    # df.to_csv(output_filepath, index=False)
 
 
 if __name__ == '__main__':
@@ -164,10 +173,13 @@ if __name__ == '__main__':
             "--output_path", type=str, default=None, required=False,
             help="The output path to save radial profiles and peak features")
     parser.add_argument(
-            "--beam_rmax", type=int, default=15, required=True,
-            help="The maximum beam radius in pixel lengths.")
+            "--sample_distance_filepath", type=str, default=None, required=False,
+            help="The path to calibrated sample distance.")
     parser.add_argument(
-            "--sample_distance", type=float, default=None, required=False,
+            "--find_sample_distance_filepath", action="store_true",
+            help="Automatically try to find sample distance file.")
+    parser.add_argument(
+            "--beam_rmax", type=int, default=15, required=True,
             help="The maximum beam radius in pixel lengths.")
     parser.add_argument(
             "--visualize", action="store_true",
@@ -179,14 +191,18 @@ if __name__ == '__main__':
             else None
     output_path = os.path.abspath(args.output_path) if args.output_path \
             else None
+    sample_distance_filepath = os.path.abspath(args.sample_distance_filepath) \
+            if args.sample_distance_filepath else None
+    find_sample_distance_filepath = args.find_sample_distance_filepath
     beam_rmax = args.beam_rmax
-    sample_distance = args.sample_distance
+    sample_distance_filepath = args.sample_distance_filepath
     visualize = args.visualize
 
-    run_feature_extraction(
+    run_azimuthal_preprocessing(
         input_path=input_path,
         output_path=output_path,
         beam_rmax=beam_rmax,
-        sample_distance=sample_distance,
+        sample_distance_filepath=sample_distance_filepath,
+        find_sample_distance_filepath=find_sample_distance_filepath,
         visualize=visualize,
         )
