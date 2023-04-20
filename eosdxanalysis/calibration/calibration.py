@@ -209,8 +209,7 @@ class Calibration(object):
             os.makedirs(calibration_results_path, exist_ok=True)
 
             # Set the calibration results output file properties
-            output_filename = "{}_calibration_results.json".format(
-                    image_filename)
+            output_filename = "{}.json".format(image_filename)
             output_filepath = os.path.join(
                     calibration_results_path, output_filename)
 
