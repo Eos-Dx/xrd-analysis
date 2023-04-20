@@ -3,8 +3,10 @@ Example with polar grid
 """
 import os
 import glob
+import re
 
 import numpy as np
+import pandas as pd
 
 from datetime import datetime
 
@@ -26,17 +28,24 @@ from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 
 def run_azimuthal_preprocessing(
-        input_path, output_path, sample_distance_filepath=None,
+        input_path, output_path, input_path_list=None,
+        sample_distance_filepath=None,
+        input_dataframe_filepath=None,
         find_sample_distance_filepath=False,
         beam_rmax=15, visualize=False):
     """
     """
     sample_distance_m = None
 
-    # Get filepath list
-    filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
-    # Sort files list
-    filepath_list.sort()
+    if input_path:
+        # Given single input path
+        # Get filepath list
+        filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
+        # Sort files list
+        filepath_list.sort()
+    elif input_dataframe_filepath:
+        input_df = pd.read_csv(input_dataframe_filepath, index_col="Filepath")
+        filepath_list = input_df.index.tolist()
 
     # Set timestamp
     timestr = "%Y%m%dT%H%M%S.%f"
@@ -58,6 +67,7 @@ def run_azimuthal_preprocessing(
         output_path = os.path.join(results_path, output_dir)
 
     if find_sample_distance_filepath:
+        # Given a single sample distance file path
         # Try to locate the sample distance filepath:
         parent_path = os.path.dirname(input_path)
         calibration_results_dir = "calibration_results"
@@ -112,7 +122,13 @@ def run_azimuthal_preprocessing(
                 enlarged_masked_image, center=new_center, radius=padding_amount)
 
         # Save data to file
-        data_output_filename = "radial_{}".format(filename)
+        # Get approximate sample distance from folder name
+        sample_distance_approx_list = re.findall(r"dist_[0-9]{2,3}mm", filepath)
+        if len(sample_distance_approx_list) != 1:
+            raise ValueError("Unable to find the approximate sample distance from folder name.")
+        else:
+            sample_distance_approx = sample_distance_approx_list[0]
+        data_output_filename = "radial_{}_{}".format(filename, sample_distance_approx)
         data_output_filepath = os.path.join(data_output_path,
                 data_output_filename)
 
@@ -120,6 +136,16 @@ def run_azimuthal_preprocessing(
             with open(sample_distance_filepath, "r") as distance_fp:
                 sample_distance_results = json.loads(distance_fp.read())
                 sample_distance_m = sample_distance_results["sample_distance_m"]
+
+            # Combine radial profile intensity and q-units
+            q_range = radial_profile_unit_conversion(
+                    radial_profile.size,
+                    sample_distance_m,
+                    radial_units="q_per_nm")
+            results = np.hstack([q_range.reshape(-1,1), radial_profile.reshape(-1,1)])
+            np.savetxt(data_output_filepath, results)
+        elif input_dataframe_filepath:
+            sample_distance_m = input_df.loc[filepath, "Sample_Distance_m"]
 
             # Combine radial profile intensity and q-units
             q_range = radial_profile_unit_conversion(
@@ -146,7 +172,7 @@ def run_azimuthal_preprocessing(
         plt.title(plot_title)
 
         # Set image output file
-        image_output_filename = "radial_{}".format(filename) + ".png"
+        image_output_filename = "radial_{}_{}.png".format(filename, sample_distance_approx)
         image_output_filepath = os.path.join(image_output_path,
                 image_output_filename)
 
@@ -167,8 +193,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--input_path", type=str, required=True,
+            "--input_path", type=str, required=False,
             help="The path to data to extract features from")
+    parser.add_argument(
+            "--input_path_list", type=str, required=False,
+            help="The path to data to extract features from")
+    parser.add_argument(
+            "--input_dataframe_filepath", type=str, required=False,
+            help="The dataframe containing file paths to extract features from")
     parser.add_argument(
             "--output_path", type=str, default=None, required=False,
             help="The output path to save radial profiles and peak features")
@@ -189,10 +221,12 @@ if __name__ == '__main__':
 
     input_path = os.path.abspath(args.input_path) if args.input_path \
             else None
+    if not input_path:
+        input_path_list = args.input_path_list
     output_path = os.path.abspath(args.output_path) if args.output_path \
             else None
-    sample_distance_filepath = os.path.abspath(args.sample_distance_filepath) \
-            if args.sample_distance_filepath else None
+    input_dataframe_filepath = os.path.abspath(args.input_dataframe_filepath) \
+            if args.input_dataframe_filepath else None
     find_sample_distance_filepath = args.find_sample_distance_filepath
     beam_rmax = args.beam_rmax
     sample_distance_filepath = args.sample_distance_filepath
@@ -201,8 +235,9 @@ if __name__ == '__main__':
     run_azimuthal_preprocessing(
         input_path=input_path,
         output_path=output_path,
+        input_path_list=input_path_list,
+        input_dataframe_filepath=input_dataframe_filepath,
         beam_rmax=beam_rmax,
-        sample_distance_filepath=sample_distance_filepath,
         find_sample_distance_filepath=find_sample_distance_filepath,
         visualize=visualize,
         )
