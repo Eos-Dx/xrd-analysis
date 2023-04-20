@@ -128,7 +128,7 @@ def run_azimuthal_preprocessing(
             raise ValueError("Unable to find the approximate sample distance from folder name.")
         else:
             sample_distance_approx = sample_distance_approx_list[0]
-        data_output_filename = "radial_{}_{}".format(filename, sample_distance_approx)
+        data_output_filename = "radial_{}_{}".format(sample_distance_approx, filename)
         data_output_filepath = os.path.join(data_output_path,
                 data_output_filename)
 
@@ -172,7 +172,7 @@ def run_azimuthal_preprocessing(
         plt.title(plot_title)
 
         # Set image output file
-        image_output_filename = "radial_{}_{}.png".format(filename, sample_distance_approx)
+        image_output_filename = "{}.png".format(data_output_filename)
         image_output_filepath = os.path.join(image_output_path,
                 image_output_filename)
 
