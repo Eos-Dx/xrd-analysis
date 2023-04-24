@@ -523,16 +523,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--image_fullpath", required=True,
+            "--image_fullpath", type=str, required=True,
             help="The full path to the raw image data")
     parser.add_argument(
-            "--material", default="silver_behenate",
+            "--material", type=str, default="silver_behenate",
             help="The calibration material")
     parser.add_argument(
-            "--pixel_size", default=PIXEL_SIZE,
+            "--pixel_size", type=float, default=PIXEL_SIZE,
             help="The physical pixel size in meters.")
     parser.add_argument(
-            "--wavelength", default=WAVELENGTH,
+            "--wavelength", type=float, default=WAVELENGTH,
             help="The wavelength meters.")
     parser.add_argument(
             "--center", type=str, default=None,
