@@ -275,6 +275,8 @@ class Calibration(object):
             linreg = LinearRegression(fit_intercept=False)
             linreg.fit(X, Y)
             score = linreg.score(X, Y)
+            if print_result:
+                print("R^2 score:",score)
 
             # Get the slope
             coef = linreg.coef_
@@ -282,6 +284,7 @@ class Calibration(object):
             # The slope is the inverse of the sample-to-detector distance
             sample_distance_pixel = 1/slope
             sample_distance = sample_distance_pixel * PIXEL_SIZE
+
 
         if save:
             # Get the parent path of the calibration image
@@ -592,7 +595,7 @@ def sample_distance_calibration(
             doublet_only=doublet_only)
 
     if print_result:
-        print("{}m".format(sample_distance))
+        print("{} m".format(sample_distance))
 
     return sample_distance
 
