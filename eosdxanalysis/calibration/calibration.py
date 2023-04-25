@@ -76,7 +76,8 @@ class Calibration(object):
             doublet_approx_min_factor=DOUBLET_APPROX_MIN_FACTOR,
             doublet_approx_max_factor=DOUBLET_APPROX_MAX_FACTOR,
             doublet_width=DOUBLET_WIDTH, visualize=False, radius=None,
-            padding=None, height=None, save=False, image_fullpath=None):
+            padding=None, height=None, save=False, image_fullpath=None,
+            doublet_only=False):
         """
         Calculate the sample-to-detector distance for a calibration sample
 
@@ -151,50 +152,136 @@ class Calibration(object):
         radial_profile = azimuthal_integration(
                 enlarged_masked_image, center=new_center, radius=radius)
 
-        # Convert doublet average in q units to 2*theta units
-        # Average the doublets
-        q_doublets = np.array(q_peaks_ref.get("doublets"))
-        if q_doublets.size == 2:
-            q_doublets_avg = np.mean(q_doublets)
+        # Use the doublet peak location only
+        if doublet_only:
+            # Convert doublet average in q units to 2*theta units
+            # Average the doublets
+            q_doublets = np.array(q_peaks_ref.get("doublets"))
+            if q_doublets.size == 2:
+                q_doublets_avg = np.mean(q_doublets)
+            else:
+                raise ValueError("Incorrect amount of doublets found.")
+
+            # Calculate theta_n
+            theta_n = np.arcsin(q_doublets_avg*wavelength_angstroms/(4*np.pi))
+            # Calculate the approximate distance of the doublet average
+            doublet_distance_approx = distance_approx * np.tan(2*theta_n).reshape(-1,1)
+            # Convert to pixel units
+            doublet_pixel_location_approx = int(np.round(doublet_distance_approx / pixel_size))
+
+            # Create a subset of the radial intensity to look for doublet
+            start_index = \
+                    int(np.round(doublet_approx_min_factor*doublet_pixel_location_approx))
+            end_index = \
+                    int(np.round(doublet_approx_max_factor*doublet_pixel_location_approx))
+            # Ensure there is no overshoot with the end index
+            end_index = radial_profile.size - 1 if end_index >= radial_profile.size else end_index
+            radial_profile_subset = radial_profile[start_index:end_index]
+
+            if height is None:
+                # Get the height of the peak based on distance estimate
+                height = radial_profile[doublet_pixel_location_approx]
+
+            doublet_peak_indices_approx, properties = find_peaks(
+                    radial_profile_subset, width=doublet_width,
+                    height=height)
+
+            # Check how many prominent peaks were found
+            prominences = properties.get("prominences")
+            if prominences.size >= 1:
+                # Get the peak index of the doublet in the main array
+                doublet_peak_index = doublet_peak_indices_approx[0] + start_index
+            else:
+                raise ValueError("Doublet peak not found.")
+
+            # Now use location of doublet to calculate sample-to-detector distance
+            doublet_distance = doublet_peak_index * pixel_size
+
+            sample_distance = doublet_distance / np.tan(2*theta_n)
         else:
-            raise ValueError("Incorrect amount of doublets found.")
+            # Use all non-doublet peaks
+            q_peaks_singlets = np.array(q_peaks_ref.get("singlets"))
 
-        # Calculate theta_n
-        theta_n = np.arcsin(q_doublets_avg*wavelength_angstroms/(4*np.pi))
-        # Calculate the approximate distance of the doublet average
-        doublet_distance_approx = distance_approx * np.tan(2*theta_n).reshape(-1,1)
-        # Convert to pixel units
-        doublet_pixel_location_approx = int(np.round(doublet_distance_approx / pixel_size))
+            singlet_height = 2
+            singlet_width = 2
 
-        # Create a subset of the radial intensity to look for doublet
-        start_index = \
-                int(np.round(doublet_approx_min_factor*doublet_pixel_location_approx))
-        end_index = \
-                int(np.round(doublet_approx_max_factor*doublet_pixel_location_approx))
-        # Ensure there is no overshoot with the end index
-        end_index = radial_profile.size - 1 if end_index >= radial_profile.size else end_index
-        radial_profile_subset = radial_profile[start_index:end_index]
+            peak_finding_loop = True
+            while peak_finding_loop:
+                # Find peaks
+                singlet_peak_indices_approx, properties = find_peaks(
+                        radial_profile, width=singlet_width,
+                        height=singlet_height)
 
-        if height is None:
-            # Get the height of the peak based on distance estimate
-            height = radial_profile[doublet_pixel_location_approx]
+                if visualize:
+                    # Plot radial intensity profile
+                    plt.scatter(np.arange(radial_profile.size), radial_profile)
+                    # Plot found peaks
+                    plt.scatter(
+                            singlet_peak_indices_approx,
+                            radial_profile[singlet_peak_indices_approx])
+                    plt.show()
+                print("Found peaks at pixel radius locations:")
+                print(singlet_peak_indices_approx)
 
-        doublet_peak_indices_approx, properties = find_peaks(
-                radial_profile_subset, width=doublet_width,
-                height=height)
+                correct = input("Are the found peak locations correct? (Y/n) ")
+                if correct in ("Y", "y", "yes", "Yes"):
+                    # Stop the loop
+                    peak_finding_loop = False
+                else:
+                    print("Please enter in a new height and width.")
+                    singlet_height_input = input("Height: ")
+                    singlet_width_input = input("Width:" )
+                    if singlet_height_input != "":
+                        singlet_height = int(singlet_height_input)
+                    if singlet_width_input != "":
+                        singlet_width = int(singlet_width_input)
 
-        # Check how many prominent peaks were found
-        prominences = properties.get("prominences")
-        if prominences.size >= 1:
-            # Get the peak index of the doublet in the main array
-            doublet_peak_index = doublet_peak_indices_approx[0] + start_index
-        else:
-            raise ValueError("Doublet peak not found.")
+            # Match found peaks with reference peaks
+            q_peaks_found = q_peaks_singlets[:len(singlet_peak_indices_approx)]
 
-        # Now use location of doublet to calculate sample-to-detector distance
-        doublet_distance = doublet_peak_index * pixel_size
+            # Check if found peaks are correct
+            peak_id_loop = True
+            while peak_id_loop:
+                print("Found q-peaks:")
+                print(q_peaks_found)
 
-        sample_distance = doublet_distance / np.tan(2*theta_n)
+                print("q-peaks reference:")
+                print("q\tvalue")
+                print("============")
+                for idx in range(len(q_peaks_singlets)):
+                    print("{}\t{}".format(idx,q_peaks_singlets[idx]))
+
+                correct = input("Are the found peak q values correct? (Y/n) ")
+
+                if correct in ("Y", "y", "yes", "Yes"):
+                    # Stop the loop
+                    peak_id_loop = False
+                else:
+                    q_peaks_found_indices_list = input(
+                        "Please enter the indices of the found peaks: ")
+                    q_peaks_found_indices = q_peaks_found_indices_list.split(",")
+                    q_peaks_found_indices = np.array(q_peaks_found_indices, dtype=int)
+                    q_peaks_found = q_peaks_singlets[q_peaks_found_indices]
+
+            # Use Angstroms units
+            wavelength_angstroms = wavelength*1e10
+            theta_n = np.arcsin(q_peaks_found*wavelength_angstroms/(4*np.pi))
+            Y = np.tan(2*theta_n).reshape(-1,1)
+            # Set x values as the measured r peaks
+            X = (singlet_peak_indices_approx).reshape(-1,1)
+
+            # Now perform linear regression, line goes through the origin
+            # so intercept = 0
+            linreg = LinearRegression(fit_intercept=False)
+            linreg.fit(X, Y)
+            score = linreg.score(X, Y)
+
+            # Get the slope
+            coef = linreg.coef_
+            slope = coef[0][0]
+            # The slope is the inverse of the sample-to-detector distance
+            sample_distance_pixel = 1/slope
+            sample_distance = sample_distance_pixel * PIXEL_SIZE
 
         if save:
             # Get the parent path of the calibration image
@@ -480,14 +567,15 @@ def sample_distance_calibration(
             visualize=False,
             radius=DEFAULT_RADIUS,
             save=False,
-            print_result=False):
+            print_result=False,
+            doublet_only=False):
 
     # Instantiate Calibration class
     calibrator = Calibration(calibration_material=material,
             wavelength=wavelength, pixel_size=pixel_size)
 
     # Load calibration image
-    image = np.loadtxt(image_fullpath, dtype=np.uint32)
+    image = np.loadtxt(image_fullpath, dtype=np.float64)
 
     # Run calibration procedure
     sample_distance = calibrator.sample_detector_distance(
@@ -500,7 +588,8 @@ def sample_distance_calibration(
             visualize=visualize,
             radius=radius,
             save=save,
-            image_fullpath=image_fullpath)
+            image_fullpath=image_fullpath,
+            doublet_only=doublet_only)
 
     if print_result:
         print("{}m".format(sample_distance))
@@ -564,6 +653,9 @@ if __name__ == "__main__":
     parser.add_argument(
             "--print_result", action="store_true",
             help="Print sample distance.")
+    parser.add_argument(
+            "--doublet_only", action="store_true",
+            help="Calibrate distance according to doublet peak location only.")
 
     args = parser.parse_args()
 
@@ -581,6 +673,7 @@ if __name__ == "__main__":
     radius = args.radius
     save = args.save
     print_result= args.print_result
+    doublet_only = args.doublet_only
 
     sample_distance_calibration(
             image_fullpath=image_fullpath,
@@ -595,4 +688,5 @@ if __name__ == "__main__":
             visualize=visualize,
             radius=radius,
             save=save,
-            print_result=print_result)
+            print_result=print_result,
+            doublet_only=doublet_only)
