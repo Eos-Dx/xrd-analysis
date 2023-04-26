@@ -203,12 +203,12 @@ def run_pca_plot(
 
     # Plot principal components
     for idx in range(n_components):
-        plot_title = "PC{}".format(idx)
+        plot_title = "PC{} Loading Plot".format(idx)
         fig = plt.figure(plot_title)
-        plt.scatter(q_range, pca_2d_components[idx,:])
+        plt.scatter(q_range, pca_2d_components[idx,:], s=10)
 
         plt.xlabel(r"q $\mathrm{{nm}^{-1}}$")
-        plt.ylabel("Mean Intensity [photon count]")
+        plt.ylabel("Loading")
 
         plt.title(plot_title)
     plt.show()
