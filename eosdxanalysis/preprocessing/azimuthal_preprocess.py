@@ -116,7 +116,7 @@ def run_azimuthal_preprocessing(
         if len(sample_distance_approx_list) != 1:
             raise ValueError("Unable to find the approximate sample distance from folder name.")
         else:
-            sample_distance_approx = sample_distance_approx_list[0]
+            sample_distance_approx = sample_distance_approx_list[0].lower()
         data_output_filename = "radial_{}_{}".format(sample_distance_approx, filename)
         data_output_filepath = os.path.join(data_output_path,
                 data_output_filename)
