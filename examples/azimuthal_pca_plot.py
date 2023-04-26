@@ -139,7 +139,7 @@ def run_pca_plot(
 
     plot_title = "3D PCA on {} features at {} mm colored by diagnosis".format(
             X.shape[1], distance_mm)
-    aspect = (16,9)
+    aspect = (12,8)
 
     fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
 
@@ -234,7 +234,7 @@ def run_pca_plot(
 
     plot_title = "2D PCA on {} features at {} mm colored by diagnosis".format(
             X.shape[1], distance_mm)
-    aspect = (16,9)
+    aspect = (12,8)
 
     fig, ax = plt.subplots(figsize=aspect, num=plot_title)
 
