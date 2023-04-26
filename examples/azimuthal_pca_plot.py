@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from scipy.interpolate import interp1d
+
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
@@ -86,9 +88,19 @@ def run_pca_plot(
     # Set final array length after removing nans
     array_len = end_index - start_index
 
-    # Clip X and q_ranges to avoid nans
-    X_unscaled = X_unscaled[:, start_index:end_index]
     q_range = q_ranges[0, start_index:end_index]
+    q_max = q_range[-1]
+    q_min = q_range[0]
+    uniform_q_range = np.linspace(q_min, q_max, num=array_len)
+
+    # Rescale each sample
+    for idx in range(X_unscaled.shape[0]):
+        sample_q_range = q_ranges[idx]
+        sample_values = X_unscaled[idx,:]
+        sample_interp = interp1d(sample_q_range, sample_values)
+        X_unscaled[idx,:array_len] = sample_interp(uniform_q_range)
+
+    X_unscaled = X_unscaled[:, :array_len]
 
     X_max = np.max(X_unscaled, axis=1).reshape(-1,1)
     X = X_unscaled/X_max
@@ -118,7 +130,8 @@ def run_pca_plot(
         # print(dict(zip(feature_list, pca_components[idx,:])))
         print("PC{}".format(idx))
         for jdx in range(array_len):
-            print("{},{}".format(jdx, pca_3d_components[idx,jdx]))
+            print("{},{:.2f},{}".format(
+                jdx, uniform_q_range[jdx], pca_3d_components[idx,jdx]))
 
     ###########
     # 3-D Plot
@@ -143,7 +156,7 @@ def run_pca_plot(
 
     for diagnosis in colors.keys():
         X_pca_diagnosis = X_pca[y == diagnosis, :]
-        label = "tumor" if diagnosis == 1 else "control"
+        label = "cancer" if diagnosis == 1 else "non-cancer"
         ax.scatter(
                 X_pca_diagnosis[:,pc_a],
                 X_pca_diagnosis[:,pc_b],
@@ -181,7 +194,7 @@ def run_pca_plot(
     # 2-D PCA
     ##########
 
-    n_components = 2
+    n_components = 3
     pca = PCA(n_components=n_components)
 
     estimator_2d = make_pipeline(StandardScaler(), pca)
@@ -199,7 +212,8 @@ def run_pca_plot(
         # print(dict(zip(feature_list, pca_components[idx,:])))
         print("PC{}".format(idx))
         for jdx in range(array_len):
-            print("{},{}".format(jdx, pca_2d_components[idx,jdx]))
+            print("{},{:.2f},{}".format(
+                jdx, uniform_q_range[jdx], pca_2d_components[idx,jdx]))
 
     # Plot principal components
     for idx in range(n_components):
@@ -236,7 +250,7 @@ def run_pca_plot(
 
     for diagnosis in colors.keys():
         X_pca_diagnosis = X_pca[y == diagnosis, :]
-        label = "tumor" if diagnosis == 1 else "control"
+        label = "cancer" if diagnosis == 1 else "non-cancer"
         ax.scatter(
                 X_pca_diagnosis[:,pc_a],
                 X_pca_diagnosis[:,pc_b],
