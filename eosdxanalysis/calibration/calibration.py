@@ -39,6 +39,8 @@ DOUBLET_APPROX_MIN_FACTOR = 0.5
 DOUBLET_APPROX_MAX_FACTOR = 2.0
 OUTPUT_SHAPE = (360,128)
 DEFAULT_RADIUS = 128
+DEFAULT_SINGLET_HEIGHT = 4
+DEFAULT_SINGLET_WIDTH = 4
 
 
 class Calibration(object):
@@ -134,7 +136,7 @@ class Calibration(object):
         masked_image = np.copy(image)
         # Set the masked part to the minimum of the beam area
         # to avoid creating another peak
-        masked_image[mask] = masked_image[mask].min()
+        masked_image[mask] = np.nan
 
         # Enlarge or pad the image with nans so as not to average with zeros
 
@@ -153,6 +155,7 @@ class Calibration(object):
                 enlarged_masked_image, center=new_center, radius=radius)
 
         # Use the doublet peak location only
+        doublet_peak_index = None
         if doublet_only:
             # Convert doublet average in q units to 2*theta units
             # Average the doublets
@@ -199,11 +202,16 @@ class Calibration(object):
 
             sample_distance = doublet_distance / np.tan(2*theta_n)
         else:
-            # Use all non-doublet peaks
-            q_peaks_singlets = np.array(q_peaks_ref.get("singlets"))
+            # Average the doublets
+            doublets = np.array(q_peaks_ref.get("doublets"))
+            if doublets.size > 0:
+                doublets_avg = np.array(np.mean(doublets)).flatten()
+            singlets = np.array(q_peaks_ref.get("singlets")).flatten()
+            # Join the singlets and doublets averages into a single array
+            q_peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
 
-            singlet_height = 2
-            singlet_width = 2
+            singlet_height = DEFAULT_SINGLET_HEIGHT
+            singlet_width = DEFAULT_SINGLET_WIDTH
 
             peak_finding_loop = True
             while peak_finding_loop:
@@ -214,11 +222,13 @@ class Calibration(object):
 
                 if visualize:
                     # Plot radial intensity profile
-                    plt.scatter(np.arange(radial_profile.size), radial_profile)
+                    plt.scatter(np.arange(radial_profile.size),
+                            20*np.log10(radial_profile+1))
                     # Plot found peaks
                     plt.scatter(
                             singlet_peak_indices_approx,
-                            radial_profile[singlet_peak_indices_approx])
+                            20*np.log10(
+                                radial_profile[singlet_peak_indices_approx]+1))
                     plt.show()
                 print("Found peaks at pixel radius locations:")
                 print(singlet_peak_indices_approx)
@@ -237,7 +247,7 @@ class Calibration(object):
                         singlet_width = int(singlet_width_input)
 
             # Match found peaks with reference peaks
-            q_peaks_found = q_peaks_singlets[:len(singlet_peak_indices_approx)]
+            q_peaks_found = q_peaks_avg[:len(singlet_peak_indices_approx)]
 
             # Check if found peaks are correct
             peak_id_loop = True
@@ -246,10 +256,10 @@ class Calibration(object):
                 print(q_peaks_found)
 
                 print("q-peaks reference:")
-                print("q\tvalue")
-                print("============")
-                for idx in range(len(q_peaks_singlets)):
-                    print("{}\t{}".format(idx,q_peaks_singlets[idx]))
+                print("index\tq-value")
+                print("=====\t=======")
+                for idx in range(len(q_peaks_avg)):
+                    print("{}\t{}".format(idx,q_peaks_avg[idx]))
 
                 correct = input("Are the found peak q values correct? (Y/n) ")
 
@@ -261,7 +271,7 @@ class Calibration(object):
                         "Please enter the indices of the found peaks: ")
                     q_peaks_found_indices = q_peaks_found_indices_list.split(",")
                     q_peaks_found_indices = np.array(q_peaks_found_indices, dtype=int)
-                    q_peaks_found = q_peaks_singlets[q_peaks_found_indices]
+                    q_peaks_found = q_peaks_avg[q_peaks_found_indices]
 
             # Use Angstroms units
             wavelength_angstroms = wavelength*1e10
@@ -320,35 +330,36 @@ class Calibration(object):
                     radial_units="q_per_nm")
 
 
-            title = "Beam masked image"
+            title = "Beam masked image [dB+1]"
             fig = plt.figure(title)
             plt.title(title)
 
             plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
             # Beam center
             plt.scatter(center[1], center[0], color="green")
-            # Doublet ring
-            circle = plt.Circle(
-                    (center[1], center[0]),
-                    radius=doublet_peak_index,
-                    linestyle="--",
-                    fill=False,
-                    color="red",
-                    label="Doublet peak location:\n" + \
-                            "Real-Space: {} pixel lengths\n".format(doublet_peak_index) + \
-                            "Theoretical: {} ".format(
-                                np.around(q_doublets_avg*10, decimals=1)) + \
-                            r"$\mathrm{{nm}^{-1}}$"
-                    )
-            ax = plt.gca()
-            ax.add_artist(circle)
+            if doublet_peak_index:
+                # Doublet ring
+                circle = plt.Circle(
+                        (center[1], center[0]),
+                        radius=doublet_peak_index,
+                        linestyle="--",
+                        fill=False,
+                        color="red",
+                        label="Doublet peak location:\n" + \
+                                "Real-Space: {} pixel lengths\n".format(doublet_peak_index) + \
+                                "Theoretical: {} ".format(
+                                    np.around(q_doublets_avg*10, decimals=1)) + \
+                                r"$\mathrm{{nm}^{-1}}$"
+                        )
+                ax = plt.gca()
+                ax.add_artist(circle)
+                plt.legend()
 
             plt.xlabel("Horizontal Position [pixel length]")
             plt.ylabel("Vertical Position [pixel length]")
-            plt.legend()
 
 
-            title = "Azimuthal Integration 1-D Mean Intensity Profile versus real-space distance"
+            title = "Radial Intensity Profile versus real-space distance"
             fig = plt.figure(title)
             plt.title(title)
 
@@ -358,39 +369,41 @@ class Calibration(object):
                     label="1-D profile")
 
             # Plot a marker for the most prominent peak
-            plt.scatter(doublet_peak_index,
-                    20*np.log10(radial_profile[doublet_peak_index]+1),
-                    color="red", marker=".", s=250,
-                    label="Doublet peak at {} pixel lengths".format(doublet_peak_index))
+            if doublet_peak_index:
+                plt.scatter(doublet_peak_index,
+                        20*np.log10(radial_profile[doublet_peak_index]+1),
+                        color="red", marker=".", s=250,
+                        label="Doublet peak at {} pixel lengths".format(doublet_peak_index))
+                plt.legend()
 
             plt.xlabel("Position [pixel length]")
             plt.ylabel(r"Mean intensity [photon count, dB+1]")
 
-            plt.legend()
 
             # Plot azimuthal integration 1-D profile [q]
 
-            title = "Azimuthal Integration 1-D Mean Intensity Profile versus q"
+            title = "Radial Intensity Profile versus q"
             fig = plt.figure(title)
             plt.title(title)
 
             plt.plot(q_range, 20*np.log10(radial_profile+1),
                     label="1-D profile")
 
-            # Plot a marker for the most prominent peak
-            plt.scatter(q_range[doublet_peak_index],
-                    20*np.log10(radial_profile[doublet_peak_index]+1),
-                    color="red", marker=".", s=250,
-                    label="Doublet peak location:\n" +\
-                            "Theoretical: {} ".format(
-                                np.around(q_doublets_avg*10, decimals=1)) + \
-                            r"$\mathrm{{nm}^{-1}}$"
-                        )
+            if doublet_peak_index:
+                # Plot a marker for the most prominent peak
+                plt.scatter(q_range[doublet_peak_index],
+                        20*np.log10(radial_profile[doublet_peak_index]+1),
+                        color="red", marker=".", s=250,
+                        label="Doublet peak location:\n" +\
+                                "Theoretical: {} ".format(
+                                    np.around(q_doublets_avg*10, decimals=1)) + \
+                                r"$\mathrm{{nm}^{-1}}$"
+                            )
+                plt.legend()
 
             plt.xlabel(r"q $\mathrm{{nm}^{-1}}$")
             plt.ylabel(r"Mean intensity [photon count, dB+1]")
 
-            plt.legend()
             plt.show()
 
         return sample_distance
