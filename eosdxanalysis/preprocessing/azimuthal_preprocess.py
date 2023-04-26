@@ -112,7 +112,7 @@ def run_azimuthal_preprocessing(
 
         # Save data to file
         # Get approximate sample distance from folder name
-        sample_distance_approx_list = re.findall(r"dist_[0-9]{2,3}mm", filepath)
+        sample_distance_approx_list = re.findall(r"dist_[0-9]{2,3}mm", filepath, re.IGNORECASE)
         if len(sample_distance_approx_list) != 1:
             raise ValueError("Unable to find the approximate sample distance from folder name.")
         else:
