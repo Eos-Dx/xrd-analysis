@@ -85,13 +85,27 @@ def run_pca_plot(
     uniform_q_range = np.linspace(q_min, q_max, num=array_len)
 
     # Rescale each sample to the same q-range
+    start_index = 0
+    end_index = 1e6
     for idx in range(X_unscaled.shape[0]):
         sample_q_range = q_ranges[idx]
         sample_values = X_unscaled[idx,:]
         sample_interp = interp1d(sample_q_range, sample_values)
-        X_unscaled[idx,:array_len] = sample_interp(uniform_q_range)
+        interp_profile = sample_interp(uniform_q_range)
+        X_unscaled[idx,:array_len] = interp_profile
 
-    X_unscaled = X_unscaled[:, :array_len]
+        # Clip nan
+        finite_indices = np.where(np.isfinite(interp_profile))
+        start_index_sub = finite_indices[0][0]
+        end_index_sub = finite_indices[0][-1]
+        start_index = start_index_sub if start_index_sub > start_index \
+                else start_index
+        end_index = end_index_sub if end_index_sub < end_index \
+                else end_index
+
+    q_range = uniform_q_range[start_index:end_index]
+    X_unscaled = X_unscaled[:, start_index:end_index]
+    array_len = end_index - start_index
 
     if scaling == "sum":
         X_sum = np.sum(X_unscaled, axis=1).reshape(-1,1)
@@ -101,6 +115,7 @@ def run_pca_plot(
         X = X_unscaled/X_max
     else:
         X = X_unscaled
+
 
     ##########
     # 3-D PCA
