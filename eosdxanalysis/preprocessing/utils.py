@@ -59,7 +59,7 @@ def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None)
 
         # Find pixels with maximum intensity within beam region of interest (roi)
         # Take tranpose so each rows is coordinates for each point
-        max_indices = np.array(np.where(img_roi == np.max(img_roi))).T
+        max_indices = np.array(np.where(img_roi == np.nanmax(img_roi))).T
 
         # Find centroid of max intensity
         return find_centroid(max_indices)
