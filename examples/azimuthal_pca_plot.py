@@ -23,7 +23,7 @@ from sklearn.pipeline import make_pipeline
 
 def run_pca_plot(
         input_path=None, input_dataframe_filepath=None, annotate=False,
-        distance_mm="29"):
+        distance_mm="29", scaling=None):
 
     ##############
     # Load data
@@ -74,16 +74,7 @@ def run_pca_plot(
         end_index = end_index_sub if end_index_sub < end_index \
                 else end_index
 
-        # Scaling
-#        max_intensity = np.nanmax(mean_intensity_profile)
-#        mean_intensity_profile /= max_intensity
-    #    total_intensity = np.nansum(mean_intensity_profile)
-    #    mean_intensity_profile /= total_intensity
-
         X_unscaled[idx,:] = mean_intensity_profile
-
-    # Ensure q-ranges are equal
-    # assert(np.isclose(q_ranges, q_ranges[0,:]).all())
 
     # Set final array length after removing nans
     array_len = end_index - start_index
@@ -93,7 +84,7 @@ def run_pca_plot(
     q_min = q_range[0]
     uniform_q_range = np.linspace(q_min, q_max, num=array_len)
 
-    # Rescale each sample
+    # Rescale each sample to the same q-range
     for idx in range(X_unscaled.shape[0]):
         sample_q_range = q_ranges[idx]
         sample_values = X_unscaled[idx,:]
@@ -102,11 +93,14 @@ def run_pca_plot(
 
     X_unscaled = X_unscaled[:, :array_len]
 
-    X_max = np.max(X_unscaled, axis=1).reshape(-1,1)
-    X = X_unscaled/X_max
-    # X_sum = np.sum(X_unscaled, axis=1).reshape(-1,1)
-    # X = X_unscaled/X_sum
-    # X = X_unscaled
+    if scaling == "max":
+        X_max = np.max(X_unscaled, axis=1).reshape(-1,1)
+        X = X_unscaled/X_max
+    elif scaling == "sum":
+        X_sum = np.sum(X_unscaled, axis=1).reshape(-1,1)
+        X = X_unscaled/X_sum
+    else:
+        X = X_unscaled
 
     ##########
     # 3-D PCA
@@ -302,6 +296,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--distance_mm", type=int,
             help="Approximate sample distance in mm (integer).")
+    parser.add_argument(
+            "--scaling", type=str,
+            help="Scaling method to use: \"max\" (default), \"min\", or \"mean\"")
 
     args = parser.parse_args()
 
@@ -310,10 +307,12 @@ if __name__ == '__main__':
     input_dataframe_filepath = args.input_dataframe_filepath
     annotate = args.annotate
     distance_mm = args.distance_mm
+    scaling = args.scaling
 
     run_pca_plot(
             input_path=input_path,
             input_dataframe_filepath=input_dataframe_filepath,
             annotate=annotate,
             distance_mm=distance_mm,
+            scaling=scaling,
             )
