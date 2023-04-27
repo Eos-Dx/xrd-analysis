@@ -93,12 +93,12 @@ def run_pca_plot(
 
     X_unscaled = X_unscaled[:, :array_len]
 
-    if scaling == "max":
-        X_max = np.max(X_unscaled, axis=1).reshape(-1,1)
-        X = X_unscaled/X_max
-    elif scaling == "sum":
+    if scaling == "sum":
         X_sum = np.sum(X_unscaled, axis=1).reshape(-1,1)
         X = X_unscaled/X_sum
+    elif scaling == "max":
+        X_max = np.max(X_unscaled, axis=1).reshape(-1,1)
+        X = X_unscaled/X_max
     else:
         X = X_unscaled
 
@@ -133,6 +133,8 @@ def run_pca_plot(
 
     plot_title = "3D PCA on {} features at {} mm colored by diagnosis".format(
             X.shape[1], distance_mm)
+    if scaling:
+        plot_title += " scaled by {}".format(scaling)
     aspect = (12,8)
 
     fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
@@ -228,6 +230,8 @@ def run_pca_plot(
 
     plot_title = "2D PCA on {} features at {} mm colored by diagnosis".format(
             X.shape[1], distance_mm)
+    if scaling:
+        plot_title += " scaled by {}".format(scaling)
     aspect = (12,8)
 
     fig, ax = plt.subplots(figsize=aspect, num=plot_title)
@@ -298,7 +302,7 @@ if __name__ == '__main__':
             help="Approximate sample distance in mm (integer).")
     parser.add_argument(
             "--scaling", type=str,
-            help="Scaling method to use: \"max\" (default), \"min\", or \"mean\"")
+            help="Scaling method to use: \"sum\" (default), or \"max\"")
 
     args = parser.parse_args()
 
