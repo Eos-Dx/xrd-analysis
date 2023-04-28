@@ -5,6 +5,10 @@ import os
 import glob
 import re
 
+from datetime import datetime
+
+from joblib import dump
+
 import argparse
 
 import numpy as np
@@ -23,7 +27,7 @@ from sklearn.pipeline import make_pipeline
 
 def run_pca_plot(
         input_path=None, input_dataframe_filepath=None, annotate=False,
-        distance_mm="29", scaling=None):
+        distance_mm="29", scaling=None, output_path=None):
 
     ##############
     # Load data
@@ -127,6 +131,41 @@ def run_pca_plot(
     estimator_3d = make_pipeline(StandardScaler(), pca)
     estimator_3d.fit(X)
 
+    X_pca = estimator_3d.transform(X)
+
+    # Save
+    if output_path:
+        # Create timestamped data output directory
+        timestr = "%Y%m%dT%H%M%S.%f"
+        timestamp = datetime.utcnow().strftime(timestr)
+
+        data_dir = "pca_{}_scaling_results_{}".format(scaling, timestamp)
+        pca_output_path = os.path.join(output_path, data_dir)
+
+        os.makedirs(pca_output_path, exist_ok=True)
+
+        # Save dataframe
+        pca_data_output_filename = "pca_{}mm_{}_scaling.csv".format(
+                distance_mm, scaling)
+        filename_list = [os.path.basename(filepath) \
+                for filepath in filepath_list]
+        columns = {"PC0", "PC1", "PC2"}
+        df = pd.DataFrame(data=X_pca, columns=columns)
+        df["Filename"] = filename_list
+        df = df.set_index("Filename")
+        # Set cancer label
+        df["Cancer"] = ~(
+                df.index.str.contains("SC") | df.index.str.contains("LC"))
+        pca_data_output_filepath = os.path.join(
+                pca_output_path, pca_data_output_filename)
+        df.to_csv(pca_data_output_filepath)
+
+        # Save model
+        model_output_filename = "estimator_3d_{}.joblib".format(timestamp)
+        model_output_filepath = os.path.join(
+                pca_output_path, model_output_filename)
+        dump(estimator_3d, model_output_filepath)
+
     pca_3d = estimator_3d["pca"]
     print("Explained variance ratios:")
     print(pca_3d.explained_variance_ratio_)
@@ -163,7 +202,8 @@ def run_pca_plot(
     pc_b = 1
     pc_c = 2
 
-    X_pca = estimator_3d.transform(X)
+
+
 
     for diagnosis in colors.keys():
         X_pca_diagnosis = X_pca[y == diagnosis, :]
@@ -318,6 +358,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--scaling", type=str,
             help="Scaling method to use: \"sum\" (default), or \"max\"")
+    parser.add_argument(
+            "--output_path", type=str,
+            help="Path to save PCA-transformed data and model.")
 
     args = parser.parse_args()
 
@@ -327,6 +370,7 @@ if __name__ == '__main__':
     annotate = args.annotate
     distance_mm = args.distance_mm
     scaling = args.scaling
+    output_path = args.output_path
 
     run_pca_plot(
             input_path=input_path,
@@ -334,4 +378,5 @@ if __name__ == '__main__':
             annotate=annotate,
             distance_mm=distance_mm,
             scaling=scaling,
+            output_path=output_path,
             )
