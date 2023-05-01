@@ -25,6 +25,7 @@ DEFAULT_BEAM_RMAX = 15
 def dead_pixel_repair_dir(
             input_path=None,
             output_path=None,
+            overwrite=False,
             beam_rmax=DEFAULT_BEAM_RMAX,
             dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD):
     """
@@ -46,7 +47,7 @@ def dead_pixel_repair_dir(
 
     # Store output directory info
     # Create output directory if it does not exist
-    if not output_path:
+    if not output_path and not overwrite:
         # Create preprocessing results directory
         results_dir = "preprocessed_results"
         results_path = os.path.join(parent_path, results_dir)
@@ -56,6 +57,8 @@ def dead_pixel_repair_dir(
         output_dir = "preprocessed_results_{}".format(
                 timestamp)
         output_path = os.path.join(results_path, output_dir)
+    elif overwrite:
+        output_path = input_path
 
     os.makedirs(output_path, exist_ok=True)
 
@@ -119,6 +122,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--visualize", action="store_true",
             help="Visualize plots.")
+    parser.add_argument(
+            "--overwrite", action="store_true",
+            help="Overwrite files.")
 
     args = parser.parse_args()
 
@@ -132,11 +138,13 @@ if __name__ == '__main__':
     beam_rmax = args.beam_rmax
     dead_pixel_threshold = args.dead_pixel_threshold 
     visualize = args.visualize
+    overwrite = args.overwrite
 
     if input_path and find_dead_pixels:
         dead_pixel_repair_dir(
             input_path=input_path,
             output_path=output_path,
+            overwrite=overwrite,
             beam_rmax=beam_rmax,
             dead_pixel_threshold=dead_pixel_threshold,
             )
