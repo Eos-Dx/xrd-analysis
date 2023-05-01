@@ -68,12 +68,12 @@ def run_azimuthal_preprocessing(
         output_path = os.path.join(results_path, output_dir)
 
     # Data output path
-    data_output_dir = "data"
+    data_output_dir = "preprocessed_data"
     data_output_path = os.path.join(output_path, data_output_dir)
     os.makedirs(data_output_path, exist_ok=True)
 
     # Image output path
-    image_output_dir = "images"
+    image_output_dir = "preprocessed_images"
     image_output_path = os.path.join(output_path, image_output_dir)
     os.makedirs(image_output_path, exist_ok=True)
 
