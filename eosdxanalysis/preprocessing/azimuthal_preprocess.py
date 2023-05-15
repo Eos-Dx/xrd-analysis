@@ -40,7 +40,7 @@ def run_azimuthal_preprocessing(
         beam_rmax=15, visualize=False,
         azimuthal_mean=True,
         azimuthal_sum=False,
-        file_format="txt"):
+        file_format=DEFAULT_FILE_FORMAT):
     """
     """
     if not (azimuthal_mean ^ azimuthal_sum):
