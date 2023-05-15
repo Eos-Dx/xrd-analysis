@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
+from eosdxanalysis.preprocessing.utils import radial_intensity
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
 
@@ -32,9 +33,13 @@ def run_azimuthal_preprocessing(
         input_dataframe_filepath=None,
         sample_distance_filepath=None,
         find_sample_distance_filepath=None,
-        beam_rmax=15, visualize=False):
+        beam_rmax=15, visualize=False,
+        azimuthal_mean=True,
+        azimuthal_sum=False):
     """
     """
+    if not (azimuthal_mean ^ azimuthal_sum):
+        raise ValueError("Choose azimuthal_mean or azimuthal_sum.")
     sample_distance_m = None
 
     if input_path:
@@ -107,12 +112,17 @@ def run_azimuthal_preprocessing(
 
         new_center = (padding_top + center[0], padding_left + center[1])
 
-        radial_profile = azimuthal_integration(
-                enlarged_masked_image, center=new_center, radius=padding_amount)
+        if azimuthal_mean:
+            radial_profile = azimuthal_integration(
+                    enlarged_masked_image, center=new_center, radius=padding_amount)
+        elif azimuthal_sum:
+            radial_profile = radial_intensity(
+                    enlarged_masked_image, center=new_center, radius=padding_amount)
 
         # Save data to file
         # Get approximate sample distance from folder name
-        sample_distance_approx_list = re.findall(r"dist_[0-9]{2,3}mm", filepath, re.IGNORECASE)
+        sample_distance_approx_list = np.unique(
+                re.findall(r"dist_[0-9]{2,3}mm", filepath, re.IGNORECASE))
         if len(sample_distance_approx_list) != 1:
             raise ValueError("Unable to find the approximate sample distance from folder name.")
         else:
@@ -163,14 +173,14 @@ def run_azimuthal_preprocessing(
             np.savetxt(data_output_filepath, radial_profile)
 
         # Save image preview to file
-        plot_title = "Radial Intensity Profile {}".format(filename)
+        plot_title = "Radial Intensity Profile\n{}".format(filename)
         fig = plt.figure(plot_title)
 
         if sample_distance_m:
-            plt.scatter(q_range, radial_profile)
+            plt.plot(q_range, radial_profile)
             plt.xlabel(r"q $\mathrm{{nm}^{-1}}$")
         else:
-            plt.scatter(range(radial_profile.size), radial_profile)
+            plt.plot(range(radial_profile.size), radial_profile)
             plt.xlabel("Radius [pixel units]")
         plt.ylabel("Mean Intensity [photon count]")
 
@@ -225,6 +235,12 @@ if __name__ == '__main__':
     parser.add_argument(
             "--visualize", action="store_true",
             help="Visualize plots.")
+    parser.add_argument(
+            "--azimuthal_mean", action="store_true",
+            help="Use azimuthal mean.")
+    parser.add_argument(
+            "--azimuthal_sum", action="store_true",
+            help="Use azimuthal sum.")
 
     args = parser.parse_args()
 
@@ -238,6 +254,11 @@ if __name__ == '__main__':
     find_sample_distance_filepath = args.find_sample_distance_filepath 
     sample_distance_filepath = args.sample_distance_filepath
     visualize = args.visualize
+    azimuthal_mean = args.azimuthal_mean
+    azimuthal_sum = args.azimuthal_sum
+
+    if not (azimuthal_sum or azimuthal_mean):
+        azimuthal_mean = True
 
     run_azimuthal_preprocessing(
         input_path=input_path,
@@ -246,4 +267,6 @@ if __name__ == '__main__':
         find_sample_distance_filepath=find_sample_distance_filepath,
         beam_rmax=beam_rmax,
         visualize=visualize,
+        azimuthal_mean=azimuthal_mean,
+        azimuthal_sum=azimuthal_sum,
         )
