@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.linear_model import LinearRegression
 
+from skimage import io
 from skimage.transform import warp_polar
 from skimage.transform import warp
 from skimage.transform import EuclideanTransform
@@ -41,6 +42,7 @@ OUTPUT_SHAPE = (360,128)
 DEFAULT_RADIUS = 128
 DEFAULT_SINGLET_HEIGHT = 4
 DEFAULT_SINGLET_WIDTH = 4
+DEFAULT_FILE_FORMAT = "txt"
 
 
 class Calibration(object):
@@ -123,11 +125,9 @@ class Calibration(object):
 
         if radius is None:
             radius = int(np.around(np.max([
-                center[0],
-                center[1],
-                image.shape[0] - center[0],
-                image.shape[1] - center[1]]
-                )))
+                np.sqrt(2)*image.shape[0],
+                np.sqrt(2)*image.shape[1],
+                ])))
 
         # Mask the beam
         mask = create_circular_mask(
@@ -426,14 +426,21 @@ def sample_distance_calibration(
             radius=DEFAULT_RADIUS,
             save=False,
             print_result=False,
-            doublet_only=False):
+            doublet_only=False,
+            file_format=DEFAULT_FILE_FORMAT):
+
+    if file_format != "txt" and file_format != "tiff":
+        raise ValueError("Choose ``txt`` or ``tiff`` file format.")
 
     # Instantiate Calibration class
     calibrator = Calibration(calibration_material=material,
             wavelength=wavelength, pixel_size=pixel_size)
 
     # Load calibration image
-    image = np.loadtxt(image_fullpath, dtype=np.float64)
+    if file_format == "txt":
+        image = np.loadtxt(image_fullpath, dtype=np.float64)
+    elif file_format == "tiff":
+        image = io.imread(image_fullpath).astype(np.float64)
 
     # Run calibration procedure
     sample_distance = calibrator.sample_detector_distance(
@@ -514,6 +521,9 @@ if __name__ == "__main__":
     parser.add_argument(
             "--doublet_only", action="store_true",
             help="Calibrate distance according to doublet peak location only.")
+    parser.add_argument(
+            "--file_format", type=str, default=DEFAULT_FILE_FORMAT, required=False,
+            help="The data file format:``txt`` (default), or  ``tiff``.")
 
     args = parser.parse_args()
 
@@ -532,6 +542,7 @@ if __name__ == "__main__":
     save = args.save
     print_result= args.print_result
     doublet_only = args.doublet_only
+    file_format = args.file_format
 
     sample_distance_calibration(
             image_fullpath=image_fullpath,
@@ -547,4 +558,6 @@ if __name__ == "__main__":
             radius=radius,
             save=save,
             print_result=print_result,
-            doublet_only=doublet_only)
+            doublet_only=doublet_only,
+            file_format=file_format,
+            )
