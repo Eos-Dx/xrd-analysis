@@ -16,6 +16,8 @@ import glob
 
 import matplotlib.pyplot as plt
 
+from skimage import io
+
 from scipy.signal import find_peaks
 
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
@@ -27,6 +29,8 @@ from eosdxanalysis.preprocessing.image_processing import pad_image
 
 from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
+DEFAULT_FILE_FORMAT = "txt"
+
 
 def run_azimuthal_preprocessing(
         input_path, output_path=None,
@@ -35,17 +39,21 @@ def run_azimuthal_preprocessing(
         find_sample_distance_filepath=None,
         beam_rmax=15, visualize=False,
         azimuthal_mean=True,
-        azimuthal_sum=False):
+        azimuthal_sum=False,
+        file_format=DEFAULT_FILE_FORMAT):
     """
     """
     if not (azimuthal_mean ^ azimuthal_sum):
         raise ValueError("Choose azimuthal_mean or azimuthal_sum.")
+    if file_format != "txt" and file_format != "tiff":
+        raise ValueError("Choose ``txt`` or ``tiff`` file format.")
     sample_distance_m = None
 
     if input_path:
         # Given single input path
         # Get filepath list
-        filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
+        filepath_list = glob.glob(
+                os.path.join(input_path, "*.{}".format(file_format)))
         # Sort files list
         filepath_list.sort()
     elif input_dataframe_filepath:
@@ -88,7 +96,10 @@ def run_azimuthal_preprocessing(
     # Loop over files list
     for filepath in filepath_list:
         filename = os.path.basename(filepath)
-        image = np.loadtxt(filepath, dtype=np.float64)
+        if file_format == "txt":
+            image = np.loadtxt(filepath, dtype=np.float64)
+        elif file_format == "tiff":
+            image = io.imread(filepath).astype(np.float64)
 
         # Find the center
         center = find_center(image)
@@ -124,10 +135,10 @@ def run_azimuthal_preprocessing(
         sample_distance_approx_list = np.unique(
                 re.findall(r"dist_[0-9]{2,3}mm", filepath, re.IGNORECASE))
         if len(sample_distance_approx_list) != 1:
-            raise ValueError("Unable to find the approximate sample distance from folder name.")
+            data_output_filename = "radial_{}.txt".format(filename)
         else:
             sample_distance_approx = sample_distance_approx_list[0].lower()
-        data_output_filename = "radial_{}_{}".format(sample_distance_approx, filename)
+            data_output_filename = "radial_{}_{}".format(sample_distance_approx, filename)
         data_output_filepath = os.path.join(data_output_path,
                 data_output_filename)
 
@@ -241,6 +252,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--azimuthal_sum", action="store_true",
             help="Use azimuthal sum.")
+    parser.add_argument(
+            "--file_format", type=str, default=DEFAULT_FILE_FORMAT, required=False,
+            help="The data file format:``txt`` (default), or  ``tiff``.")
 
     args = parser.parse_args()
 
@@ -256,6 +270,7 @@ if __name__ == '__main__':
     visualize = args.visualize
     azimuthal_mean = args.azimuthal_mean
     azimuthal_sum = args.azimuthal_sum
+    file_format = args.file_format
 
     if not (azimuthal_sum or azimuthal_mean):
         azimuthal_mean = True
@@ -269,4 +284,5 @@ if __name__ == '__main__':
         visualize=visualize,
         azimuthal_mean=azimuthal_mean,
         azimuthal_sum=azimuthal_sum,
+        file_format=file_format,
         )
