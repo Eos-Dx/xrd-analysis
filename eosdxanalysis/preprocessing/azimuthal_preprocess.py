@@ -280,6 +280,7 @@ if __name__ == '__main__':
         output_path=output_path,
         input_dataframe_filepath=input_dataframe_filepath,
         find_sample_distance_filepath=find_sample_distance_filepath,
+        sample_distance_filepath=sample_distance_filepath,
         beam_rmax=beam_rmax,
         visualize=visualize,
         azimuthal_mean=azimuthal_mean,
