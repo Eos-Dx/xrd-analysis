@@ -8,6 +8,7 @@ import re
 from datetime import datetime
 
 from joblib import dump
+from joblib import load
 
 import argparse
 
@@ -27,7 +28,8 @@ from sklearn.pipeline import make_pipeline
 
 def run_pca_plot(
         input_path=None, input_dataframe_filepath=None, annotate=False,
-        distance_mm="29", scaling=None, output_path=None):
+        distance_mm="29", scaling=None, output_path=None,
+        estimator_filepath=None, q_min=None, q_max=None):
 
     ##############
     # Load data
@@ -40,7 +42,7 @@ def run_pca_plot(
 
     elif input_path:
         filepath_list = glob.glob(os.path.join(
-            input_path, "radial_dist_{}mm*.txt".format(distance_mm)
+            input_path, "radial_*.txt"
             ))
         filepath_list.sort()
 
@@ -50,66 +52,51 @@ def run_pca_plot(
     radial_profile_size = shape_orig[0]
 
     X_unscaled = np.zeros((dataset_size, radial_profile_size))
-    q_ranges = np.zeros_like(X_unscaled)
     y = np.zeros(dataset_size)
 
-    start_index = 0
-    end_index = 1e6
+    # Set q-range
+    array_len=256
+    q_range = np.linspace(q_min, q_max, num=array_len)
+
+    # Read mean radial intensity data from files
     for idx in range(dataset_size):
         filepath = filepath_list[idx]
         filename = os.path.basename(filepath)
+
         # Set diagnosis based on filename
         if input_dataframe_filepath:
             diagnosis = 1 if "Cancer" in filepath else 0
         else:
             diagnosis = 0 if ("SC" or  "LC") in filename else 1
         y[idx] = diagnosis
+
         # Get data
         radial_data = np.loadtxt(filepath)
         mean_intensity_profile = radial_data[:,1]
-        q_ranges[idx,:] = radial_data[:,0]
 
-        # Clip nan
-        finite_indices = np.where(np.isfinite(mean_intensity_profile))
-        start_index_sub = finite_indices[0][0]
-        end_index_sub = finite_indices[0][-1]
-        start_index = start_index_sub if start_index_sub > start_index \
-                else start_index
-        end_index = end_index_sub if end_index_sub < end_index \
-                else end_index
+        # Perform quality control on q-range
+        sample_q_range = radial_data[:,0]
+        if any([sample_q_range[0] > q_min, sample_q_range[-1] < q_max]):
+            message = "File ``{}`` q-range is too small, {}-{}," + \
+                    " should be {}-{}.".format(
+                filename_list[idx],
+                sample_q_range[0],
+                sample_q_range[-1],
+                q_range[0],
+                q_range[-1])
+            raise ValueError(message)
 
+        # Store data in array
         X_unscaled[idx,:] = mean_intensity_profile
 
-    # Set final array length after removing nans
-    array_len = end_index - start_index
-
-    q_range = q_ranges[0, start_index:end_index]
-    q_max = q_range[-1]
-    q_min = q_range[0]
-    uniform_q_range = np.linspace(q_min, q_max, num=array_len)
-
     # Rescale each sample to the same q-range
-    start_index = 0
-    end_index = 1e6
     for idx in range(X_unscaled.shape[0]):
-        sample_q_range = q_ranges[idx]
         sample_values = X_unscaled[idx,:]
         sample_interp = interp1d(sample_q_range, sample_values)
-        interp_profile = sample_interp(uniform_q_range)
+        interp_profile = sample_interp(q_range)
         X_unscaled[idx,:array_len] = interp_profile
 
-        # Clip nan
-        finite_indices = np.where(np.isfinite(interp_profile))
-        start_index_sub = finite_indices[0][0]
-        end_index_sub = finite_indices[0][-1]
-        start_index = start_index_sub if start_index_sub > start_index \
-                else start_index
-        end_index = end_index_sub if end_index_sub < end_index \
-                else end_index
-
-    q_range = uniform_q_range[start_index:end_index]
-    X_unscaled = X_unscaled[:, start_index:end_index]
-    array_len = end_index - start_index
+    X_unscaled = X_unscaled[:, :array_len]
 
     if scaling == "sum":
         X_sum = np.sum(X_unscaled, axis=1).reshape(-1,1)
@@ -120,7 +107,6 @@ def run_pca_plot(
     else:
         X = X_unscaled
 
-
     ##########
     # 3-D PCA
     ##########
@@ -128,7 +114,12 @@ def run_pca_plot(
     n_components = 3
     pca = PCA(n_components=n_components)
 
-    estimator_3d = make_pipeline(StandardScaler(), pca)
+
+    if not estimator_filepath:
+        estimator_3d = make_pipeline(StandardScaler(), pca)
+    else:
+        estimator_3d = load(estimator_filepath)
+
     estimator_3d.fit(X)
 
     X_pca = estimator_3d.transform(X)
@@ -166,6 +157,13 @@ def run_pca_plot(
                 pca_output_path, model_output_filename)
         dump(estimator_3d, model_output_filepath)
 
+        # Save q range
+        q_range_output_filename = "q_range_{}.txt".format(timestamp)
+        q_range_output_filepath = os.path.join(
+                pca_output_path, q_range_output_filename)
+        print(q_range_output_filepath)
+        np.savetxt(q_range_output_filepath, q_range)
+
     pca_3d = estimator_3d["pca"]
     print("Explained variance ratios:")
     print(pca_3d.explained_variance_ratio_)
@@ -179,7 +177,7 @@ def run_pca_plot(
         print("PC{}".format(idx))
         for jdx in range(array_len):
             print("{},{:.2f},{}".format(
-                jdx, uniform_q_range[jdx], pca_3d_components[idx,jdx]))
+                jdx, q_range[jdx], pca_3d_components[idx,jdx]))
 
     ###########
     # 3-D Plot
@@ -248,7 +246,12 @@ def run_pca_plot(
     n_components = 3
     pca = PCA(n_components=n_components)
 
-    estimator_2d = make_pipeline(StandardScaler(), pca)
+
+    if not estimator_filepath:
+        estimator_2d = make_pipeline(StandardScaler(), pca)
+    else:
+        estimator_2d = load(estimator_filepath)
+
     estimator_2d.fit(X)
 
     pca_2d = estimator_2d["pca"]
@@ -264,7 +267,7 @@ def run_pca_plot(
         print("PC{}".format(idx))
         for jdx in range(array_len):
             print("{},{:.2f},{}".format(
-                jdx, uniform_q_range[jdx], pca_2d_components[idx,jdx]))
+                jdx, q_range[jdx], pca_2d_components[idx,jdx]))
 
     # Plot principal components
     for idx in range(n_components):
@@ -361,6 +364,12 @@ if __name__ == '__main__':
     parser.add_argument(
             "--output_path", type=str,
             help="Path to save PCA-transformed data and model.")
+    parser.add_argument(
+            "--estimator_filepath", type=str,
+            help="Path to PCA estimator.")
+    parser.add_argument(
+            "--q_range", type=str, required=True,
+            help="Specify q-range as ``min-max`` string.")
 
     args = parser.parse_args()
 
@@ -371,6 +380,10 @@ if __name__ == '__main__':
     distance_mm = args.distance_mm
     scaling = args.scaling
     output_path = args.output_path
+    estimator_filepath = args.estimator_filepath
+    q_range_min_max = args.q_range
+    if q_range_min_max:
+        q_min, q_max = q_range_min_max.split("-")
 
     run_pca_plot(
             input_path=input_path,
@@ -379,4 +392,7 @@ if __name__ == '__main__':
             distance_mm=distance_mm,
             scaling=scaling,
             output_path=output_path,
+            estimator_filepath=estimator_filepath,
+            q_min=int(q_min),
+            q_max=int(q_max),
             )
