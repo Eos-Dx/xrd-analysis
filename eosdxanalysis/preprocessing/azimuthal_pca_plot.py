@@ -136,44 +136,49 @@ def run_pca_plot(
     X_pca = estimator_3d.transform(X)
 
     # Save
-    if output_path:
-        # Create timestamped data output directory
-        timestr = "%Y%m%dT%H%M%S.%f"
-        timestamp = datetime.utcnow().strftime(timestr)
+    if not output_path:
+        # Set output path to parent directory of input path
+        output_path = os.path.join(
+                os.path.dirname(input_path),
+                "preprocessed_data")
 
-        data_dir = "pca_{}_scaling_results_{}".format(scaling, timestamp)
-        pca_output_path = os.path.join(output_path, data_dir)
+    # Create timestamped data output directory
+    timestr = "%Y%m%dT%H%M%S.%f"
+    timestamp = datetime.utcnow().strftime(timestr)
 
-        os.makedirs(pca_output_path, exist_ok=True)
+    data_dir = "pca_{}_scaling_results_{}".format(scaling, timestamp)
+    pca_output_path = os.path.join(output_path, data_dir)
 
-        # Save dataframe
-        pca_data_output_filename = "pca_{}mm_{}_scaling_{}.csv".format(
-                distance_mm, scaling, timestamp)
-        filename_list = [os.path.basename(filepath) \
-                for filepath in filepath_list]
-        columns = {"PC0", "PC1", "PC2"}
-        df = pd.DataFrame(data=X_pca, columns=columns)
-        df["Filename"] = filename_list
-        df = df.set_index("Filename")
-        # Set cancer label
-        df["Cancer"] = ~(
-                df.index.str.contains("SC") | df.index.str.contains("LC"))
-        pca_data_output_filepath = os.path.join(
-                pca_output_path, pca_data_output_filename)
-        df.to_csv(pca_data_output_filepath)
+    os.makedirs(pca_output_path, exist_ok=True)
 
-        # Save model
-        model_output_filename = "estimator_3d_{}.joblib".format(timestamp)
-        model_output_filepath = os.path.join(
-                pca_output_path, model_output_filename)
-        dump(estimator_3d, model_output_filepath)
+    # Save dataframe
+    pca_data_output_filename = "pca_{}mm_{}_scaling_{}.csv".format(
+            distance_mm, scaling, timestamp)
+    filename_list = [os.path.basename(filepath) \
+            for filepath in filepath_list]
+    columns = {"PC0", "PC1", "PC2"}
+    df = pd.DataFrame(data=X_pca, columns=columns)
+    df["Filename"] = filename_list
+    df = df.set_index("Filename")
+    # Set cancer label
+    df["Cancer"] = ~(
+            df.index.str.contains("SC") | df.index.str.contains("LC"))
+    pca_data_output_filepath = os.path.join(
+            pca_output_path, pca_data_output_filename)
+    df.to_csv(pca_data_output_filepath)
 
-        # Save q range
-        q_range_output_filename = "q_range_{}.txt".format(timestamp)
-        q_range_output_filepath = os.path.join(
-                pca_output_path, q_range_output_filename)
-        print(q_range_output_filepath)
-        np.savetxt(q_range_output_filepath, q_range)
+    # Save model
+    model_output_filename = "estimator_3d_{}.joblib".format(timestamp)
+    model_output_filepath = os.path.join(
+            pca_output_path, model_output_filename)
+    dump(estimator_3d, model_output_filepath)
+
+    # Save q range
+    q_range_output_filename = "q_range_{}.txt".format(timestamp)
+    q_range_output_filepath = os.path.join(
+            pca_output_path, q_range_output_filename)
+    print(q_range_output_filepath)
+    np.savetxt(q_range_output_filepath, q_range)
 
     pca_3d = estimator_3d["pca"]
     print("Explained variance ratios:")
