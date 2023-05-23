@@ -150,18 +150,32 @@ def run_pca_plot(
 
     os.makedirs(pca_output_path, exist_ok=True)
 
+    pca_3d = estimator_3d["pca"]
+    print("Explained variance ratios:")
+    print(pca_3d.explained_variance_ratio_)
+    print("Total explained variance:",
+            np.sum(pca_3d.explained_variance_ratio_))
+
+    # Print principal components
+    pca_3d_components = pca_3d.components_
+    for idx in range(n_components):
+        # print(dict(zip(feature_list, pca_components[idx,:])))
+        print("PC{}".format(idx))
+        for jdx in range(array_len):
+            print("{},{:.2f},{}".format(
+                jdx, q_range[jdx], pca_3d_components[idx,jdx]))
+
     # Save dataframe
     pca_data_output_filename = "pca_{}mm_{}_scaling_{}.csv".format(
             distance_mm, scaling, timestamp)
     filename_list = [os.path.basename(filepath) \
             for filepath in filepath_list]
-    columns = {"PC0", "PC1", "PC2"}
+    columns = ["PC0", "PC1", "PC2"]
     df = pd.DataFrame(data=X_pca, columns=columns)
     df["Filename"] = filename_list
     df = df.set_index("Filename")
     # Set cancer label
-    df["Cancer"] = ~(
-            df.index.str.contains("SC") | df.index.str.contains("LC"))
+    df["Cancer"] = y
     pca_data_output_filepath = os.path.join(
             pca_output_path, pca_data_output_filename)
     df.to_csv(pca_data_output_filepath)
@@ -179,20 +193,6 @@ def run_pca_plot(
     print(q_range_output_filepath)
     np.savetxt(q_range_output_filepath, q_range)
 
-    pca_3d = estimator_3d["pca"]
-    print("Explained variance ratios:")
-    print(pca_3d.explained_variance_ratio_)
-    print("Total explained variance:",
-            np.sum(pca_3d.explained_variance_ratio_))
-
-    # Print principal components
-    pca_3d_components = pca_3d.components_
-    for idx in range(n_components):
-        # print(dict(zip(feature_list, pca_components[idx,:])))
-        print("PC{}".format(idx))
-        for jdx in range(array_len):
-            print("{},{:.2f},{}".format(
-                jdx, q_range[jdx], pca_3d_components[idx,jdx]))
 
     ###########
     # 3-D Plot
@@ -255,16 +255,7 @@ def run_pca_plot(
     # 2-D PCA
     ##########
 
-    n_components = 3
-    pca = PCA(n_components=n_components)
-
-    if estimator_filepath:
-        estimator_2d = load(estimator_filepath)
-    else:
-        estimator_2d = make_pipeline(StandardScaler(), pca)
-        estimator_2d.fit(X)
-
-    pca_2d = estimator_2d["pca"]
+    pca_2d = estimator_3d["pca"]
     print("Explained variance ratios:")
     print(pca_2d.explained_variance_ratio_)
     print("Total explained variance:",
@@ -312,7 +303,7 @@ def run_pca_plot(
     pc_a = 0
     pc_b = 1
 
-    X_pca = estimator_2d.transform(X)
+    # X_pca = estimator_2d.transform(X)
 
     for diagnosis in colors.keys():
         X_pca_diagnosis = X_pca[y == diagnosis, :]
