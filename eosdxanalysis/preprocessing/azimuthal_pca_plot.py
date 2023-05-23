@@ -140,7 +140,7 @@ def run_pca_plot(
         # Set output path to parent directory of input path
         output_path = os.path.join(
                 os.path.dirname(input_path),
-                "preprocessed_data")
+                "analysis_data")
 
     # Create timestamped data output directory
     timestr = "%Y%m%dT%H%M%S.%f"
