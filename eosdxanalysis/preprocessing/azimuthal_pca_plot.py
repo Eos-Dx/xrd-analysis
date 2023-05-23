@@ -126,12 +126,11 @@ def run_pca_plot(
     pca = PCA(n_components=n_components)
 
 
-    if not estimator_filepath:
-        estimator_3d = make_pipeline(StandardScaler(), pca)
-    else:
+    if estimator_filepath:
         estimator_3d = load(estimator_filepath)
-
-    estimator_3d.fit(X)
+    else:
+        estimator_3d = make_pipeline(StandardScaler(), pca)
+        estimator_3d.fit(X)
 
     X_pca = estimator_3d.transform(X)
 
@@ -216,9 +215,6 @@ def run_pca_plot(
     pc_b = 1
     pc_c = 2
 
-
-
-
     for diagnosis in colors.keys():
         X_pca_diagnosis = X_pca[y == diagnosis, :]
         label = "cancer" if diagnosis == 1 else "non-cancer"
@@ -262,13 +258,11 @@ def run_pca_plot(
     n_components = 3
     pca = PCA(n_components=n_components)
 
-
-    if not estimator_filepath:
-        estimator_2d = make_pipeline(StandardScaler(), pca)
-    else:
+    if estimator_filepath:
         estimator_2d = load(estimator_filepath)
-
-    estimator_2d.fit(X)
+    else:
+        estimator_2d = make_pipeline(StandardScaler(), pca)
+        estimator_2d.fit(X)
 
     pca_2d = estimator_2d["pca"]
     print("Explained variance ratios:")
