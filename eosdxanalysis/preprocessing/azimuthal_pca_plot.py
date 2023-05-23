@@ -29,7 +29,8 @@ from sklearn.pipeline import make_pipeline
 def run_pca_plot(
         input_path=None, input_dataframe_filepath=None, annotate=False,
         distance_mm="29", scaling=None, output_path=None,
-        estimator_filepath=None, q_min=None, q_max=None):
+        patient_dataframe_filepath=None, estimator_filepath=None,
+        q_min=None, q_max=None):
 
     ##############
     # Load data
@@ -46,29 +47,39 @@ def run_pca_plot(
             ))
         filepath_list.sort()
 
+    # Associate file with patient with diagnosis
+    filename_list = [os.path.basename(filepath) for filepath in filepath_list]
+    assert(len(filename_list) == len(filepath_list))
+    df = pd.DataFrame(data={}, index=filepath_list)
+    df["Filename"] = filename_list
+    df["Sample_ID"] = df["Filename"].astype(str).str.replace(
+            "radial_", "").str.replace(
+                    "\.txt.*", "", regex=True)
+
+    # Get patient diagnoses
+    df_patients = pd.read_csv(patient_dataframe_filepath, index_col="Patient_ID")
+    df_ext = pd.merge(df, df_patients, left_on="Sample_ID", right_on="Sample_ID")
+    df_ext.index = df["Filename"]
+
     # Get the size from the first file
     shape_orig = np.loadtxt(filepath_list[0]).shape
     dataset_size = len(filepath_list)
     radial_profile_size = shape_orig[0]
 
     X_unscaled = np.zeros((dataset_size, radial_profile_size))
-    y = np.zeros(dataset_size)
+
+    # Get diagnoses
+    y = df_ext["Diagnosis"].replace("non_cancer", 0).replace("cancer", 1).values
 
     # Set q-range
     array_len=256
     q_range = np.linspace(q_min, q_max, num=array_len)
 
+    # TODO: Refactor this code
     # Read mean radial intensity data from files
     for idx in range(dataset_size):
         filepath = filepath_list[idx]
         filename = os.path.basename(filepath)
-
-        # Set diagnosis based on filename
-        if input_dataframe_filepath:
-            diagnosis = 1 if "Cancer" in filepath else 0
-        else:
-            diagnosis = 0 if ("SC" or  "LC") in filename else 1
-        y[idx] = diagnosis
 
         # Get data
         radial_data = np.loadtxt(filepath)
@@ -136,8 +147,8 @@ def run_pca_plot(
         os.makedirs(pca_output_path, exist_ok=True)
 
         # Save dataframe
-        pca_data_output_filename = "pca_{}mm_{}_scaling.csv".format(
-                distance_mm, scaling)
+        pca_data_output_filename = "pca_{}mm_{}_scaling_{}.csv".format(
+                distance_mm, scaling, timestamp)
         filename_list = [os.path.basename(filepath) \
                 for filepath in filepath_list]
         columns = {"PC0", "PC1", "PC2"}
@@ -314,12 +325,12 @@ def run_pca_plot(
 
     if annotate:
         # Annotate data points with filenames
-        for i, filepath in enumerate(filepath_list):
+        for i, filepath in enumerate(filepath_list[:]):
             filename = os.path.basename(filepath).format(distance_mm)
-            annotation = re.sub(
-                    "radial_dist_[0-9]{1,3}mm_SLA1_",
+            annotation = filename.replace(
+                    "radial_",
                     "",
-                    filename).replace(".txt", "")
+                    ).replace(".txt", "")
             ax.text(
                 X_pca[i,pc_a], X_pca[i,pc_b],
                 annotation,
@@ -365,6 +376,9 @@ if __name__ == '__main__':
             "--output_path", type=str,
             help="Path to save PCA-transformed data and model.")
     parser.add_argument(
+            "--patient_dataframe_filepath", type=str,
+            help="Path to save PCA-transformed data and model.")
+    parser.add_argument(
             "--estimator_filepath", type=str,
             help="Path to PCA estimator.")
     parser.add_argument(
@@ -381,6 +395,7 @@ if __name__ == '__main__':
     scaling = args.scaling
     output_path = args.output_path
     estimator_filepath = args.estimator_filepath
+    patient_dataframe_filepath = args.patient_dataframe_filepath
     q_range_min_max = args.q_range
     if q_range_min_max:
         q_min, q_max = q_range_min_max.split("-")
@@ -392,6 +407,7 @@ if __name__ == '__main__':
             distance_mm=distance_mm,
             scaling=scaling,
             output_path=output_path,
+            patient_dataframe_filepath=patient_dataframe_filepath,
             estimator_filepath=estimator_filepath,
             q_min=int(q_min),
             q_max=int(q_max),
