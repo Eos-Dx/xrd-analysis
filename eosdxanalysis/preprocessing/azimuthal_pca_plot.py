@@ -30,7 +30,7 @@ def run_pca_plot(
         input_path=None, input_dataframe_filepath=None, annotate=False,
         distance_mm="29", scaling=None, output_path=None,
         patient_dataframe_filepath=None, estimator_filepath=None,
-        q_min=None, q_max=None):
+        q_min=None, q_max=None, display=False):
 
     ##############
     # Load data
@@ -56,9 +56,11 @@ def run_pca_plot(
             "radial_", "").str.replace(
                     "\.txt.*", "", regex=True)
 
+
     # Get patient diagnoses
     df_patients = pd.read_csv(patient_dataframe_filepath, index_col="Patient_ID")
     df_ext = pd.merge(df, df_patients, left_on="Sample_ID", right_on="Sample_ID")
+
     df_ext.index = df["Filename"]
 
     # Get the size from the first file
@@ -194,150 +196,152 @@ def run_pca_plot(
     np.savetxt(q_range_output_filepath, q_range)
 
 
-    ###########
-    # 3-D Plot
-    ###########
+    if display:
 
-    plot_title = "3D PCA on {} features at {} mm colored by diagnosis".format(
-            X.shape[1], distance_mm)
-    if scaling:
-        plot_title += " scaled by {}".format(scaling)
-    aspect = (12,8)
+        ###########
+        # 3-D Plot
+        ###########
 
-    fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
+        plot_title = "3D PCA on {} features at {} mm colored by diagnosis".format(
+                X.shape[1], distance_mm)
+        if scaling:
+            plot_title += " scaled by {}".format(scaling)
+        aspect = (12,8)
 
-    colors = {
-            1: "red",
-            0: "blue",
-            }
+        fig, ax = plt.subplots(figsize=aspect, num=plot_title, subplot_kw={"projection": "3d"})
 
-    pc_a = 0
-    pc_b = 1
-    pc_c = 2
+        colors = {
+                1: "red",
+                0: "blue",
+                }
 
-    for diagnosis in colors.keys():
-        X_pca_diagnosis = X_pca[y == diagnosis, :]
-        label = "cancer" if diagnosis == 1 else "non-cancer"
-        ax.scatter(
-                X_pca_diagnosis[:,pc_a],
-                X_pca_diagnosis[:,pc_b],
-                X_pca_diagnosis[:,pc_c],
-                c=colors[diagnosis], label=label, s=10)
+        pc_a = 0
+        pc_b = 1
+        pc_c = 2
 
-    if annotate:
-        # Annotate data points with filenames
-        for i, filepath in enumerate(filepath_list):
-            filename = os.path.basename(filepath).format(distance_mm)
-            annotation = re.sub(
-                    "radial_dist_[0-9]{1,3}mm_SLA1_",
-                    "",
-                    filename).replace(".txt", "")
+        for diagnosis in colors.keys():
+            X_pca_diagnosis = X_pca[y == diagnosis, :]
+            label = "cancer" if diagnosis == 1 else "non-cancer"
+            ax.scatter(
+                    X_pca_diagnosis[:,pc_a],
+                    X_pca_diagnosis[:,pc_b],
+                    X_pca_diagnosis[:,pc_c],
+                    c=colors[diagnosis], label=label, s=10)
 
-            ax.text(
-                X_pca[i,pc_a], X_pca[i,pc_b], X_pca[i,pc_c],
-                annotation,
-                fontsize=10)
+        if annotate:
+            # Annotate data points with filenames
+            for i, filepath in enumerate(filepath_list):
+                filename = os.path.basename(filepath).format(distance_mm)
+                annotation = re.sub(
+                        "radial_dist_[0-9]{1,3}mm_SLA1_",
+                        "",
+                        filename).replace(".txt", "")
 
-    ax.set_xlabel("PC{}".format(pc_a))
-    ax.set_ylabel("PC{}".format(pc_b))
-    ax.set_zlabel("PC{}".format(pc_c))
-    # ax.set_zlim([-1, 1])
+                ax.text(
+                    X_pca[i,pc_a], X_pca[i,pc_b], X_pca[i,pc_c],
+                    annotation,
+                    fontsize=10)
 
-    ax.set_title(plot_title)
-    ax.legend()
+        ax.set_xlabel("PC{}".format(pc_a))
+        ax.set_ylabel("PC{}".format(pc_b))
+        ax.set_zlabel("PC{}".format(pc_c))
+        # ax.set_zlim([-1, 1])
 
-    fig.tight_layout()
+        ax.set_title(plot_title)
+        ax.legend()
 
-    plt.show()
+        fig.tight_layout()
 
-
-    ##########
-    # 2-D PCA
-    ##########
-
-    pca_2d = estimator_3d["pca"]
-    print("Explained variance ratios:")
-    print(pca_2d.explained_variance_ratio_)
-    print("Total explained variance:",
-            np.sum(pca_2d.explained_variance_ratio_))
-
-    # Print principal components
-    pca_2d_components = pca_2d.components_
-    for idx in range(n_components):
-        # print(dict(zip(feature_list, pca_components[idx,:])))
-        print("PC{}".format(idx))
-        for jdx in range(array_len):
-            print("{},{:.2f},{}".format(
-                jdx, q_range[jdx], pca_2d_components[idx,jdx]))
-
-    # Plot principal components
-    for idx in range(n_components):
-        plot_title = "PC{} Loading Plot".format(idx)
-        fig = plt.figure(plot_title)
-        plt.scatter(q_range, pca_2d_components[idx,:], s=10)
-
-        plt.xlabel(r"q $\mathrm{{nm}^{-1}}$")
-        plt.ylabel("Loading")
-
-        plt.title(plot_title)
-    plt.show()
+        plt.show()
 
 
-    ###########
-    # 2-D Plot
-    ###########
+        ##########
+        # 2-D PCA
+        ##########
 
-    plot_title = "2D PCA on {} features at {} mm colored by diagnosis".format(
-            X.shape[1], distance_mm)
-    if scaling:
-        plot_title += " scaled by {}".format(scaling)
-    aspect = (12,8)
+        pca_2d = estimator_3d["pca"]
+        print("Explained variance ratios:")
+        print(pca_2d.explained_variance_ratio_)
+        print("Total explained variance:",
+                np.sum(pca_2d.explained_variance_ratio_))
 
-    fig, ax = plt.subplots(figsize=aspect, num=plot_title)
+        # Print principal components
+        pca_2d_components = pca_2d.components_
+        for idx in range(n_components):
+            # print(dict(zip(feature_list, pca_components[idx,:])))
+            print("PC{}".format(idx))
+            for jdx in range(array_len):
+                print("{},{:.2f},{}".format(
+                    jdx, q_range[jdx], pca_2d_components[idx,jdx]))
 
-    colors = {
-            1: "red",
-            0: "blue",
-            }
+        # Plot principal components
+        for idx in range(n_components):
+            plot_title = "PC{} Loading Plot".format(idx)
+            fig = plt.figure(plot_title)
+            plt.scatter(q_range, pca_2d_components[idx,:], s=10)
 
-    pc_a = 0
-    pc_b = 1
+            plt.xlabel(r"q $\mathrm{{nm}^{-1}}$")
+            plt.ylabel("Loading")
 
-    # X_pca = estimator_2d.transform(X)
-
-    for diagnosis in colors.keys():
-        X_pca_diagnosis = X_pca[y == diagnosis, :]
-        label = "cancer" if diagnosis == 1 else "non-cancer"
-        ax.scatter(
-                X_pca_diagnosis[:,pc_a],
-                X_pca_diagnosis[:,pc_b],
-                c=colors[diagnosis], label=label, s=10)
-
-    if annotate:
-        # Annotate data points with filenames
-        for i, filepath in enumerate(filepath_list[:]):
-            filename = os.path.basename(filepath).format(distance_mm)
-            annotation = filename.replace(
-                    "radial_",
-                    "",
-                    ).replace(".txt", "")
-            ax.text(
-                X_pca[i,pc_a], X_pca[i,pc_b],
-                annotation,
-                fontsize=10)
+            plt.title(plot_title)
+        plt.show()
 
 
+        ###########
+        # 2-D Plot
+        ###########
 
-    ax.set_xlabel("PC{}".format(pc_a))
-    ax.set_ylabel("PC{}".format(pc_b))
-    # ax.set_zlim([-1, 1])
+        plot_title = "2D PCA on {} features at {} mm colored by diagnosis".format(
+                X.shape[1], distance_mm)
+        if scaling:
+            plot_title += " scaled by {}".format(scaling)
+        aspect = (12,8)
 
-    ax.set_title(plot_title)
-    ax.legend()
+        fig, ax = plt.subplots(figsize=aspect, num=plot_title)
 
-    fig.tight_layout()
+        colors = {
+                1: "red",
+                0: "blue",
+                }
 
-    plt.show()
+        pc_a = 0
+        pc_b = 1
+
+        # X_pca = estimator_2d.transform(X)
+
+        for diagnosis in colors.keys():
+            X_pca_diagnosis = X_pca[y == diagnosis, :]
+            label = "cancer" if diagnosis == 1 else "non-cancer"
+            ax.scatter(
+                    X_pca_diagnosis[:,pc_a],
+                    X_pca_diagnosis[:,pc_b],
+                    c=colors[diagnosis], label=label, s=10)
+
+        if annotate:
+            # Annotate data points with filenames
+            for i, filepath in enumerate(filepath_list[:]):
+                filename = os.path.basename(filepath).format(distance_mm)
+                annotation = filename.replace(
+                        "radial_",
+                        "",
+                        ).replace(".txt", "")
+                ax.text(
+                    X_pca[i,pc_a], X_pca[i,pc_b],
+                    annotation,
+                    fontsize=10)
+
+
+
+        ax.set_xlabel("PC{}".format(pc_a))
+        ax.set_ylabel("PC{}".format(pc_b))
+        # ax.set_zlim([-1, 1])
+
+        ax.set_title(plot_title)
+        ax.legend()
+
+        fig.tight_layout()
+
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -356,6 +360,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--annotate", action="store_true",
             help="Annotate plots with file names.")
+    parser.add_argument(
+            "--display", action="store_true",
+            help="Plot graphs.")
     parser.add_argument(
             "--distance_mm", type=int,
             help="Approximate sample distance in mm (integer).")
@@ -389,6 +396,7 @@ if __name__ == '__main__':
     q_range_min_max = args.q_range
     if q_range_min_max:
         q_min, q_max = q_range_min_max.split("-")
+    display = args.display
 
     run_pca_plot(
             input_path=input_path,
@@ -401,4 +409,5 @@ if __name__ == '__main__':
             estimator_filepath=estimator_filepath,
             q_min=int(q_min),
             q_max=int(q_max),
+            display=display,
             )
