@@ -222,7 +222,7 @@ class Calibration(object):
 
                 if visualize:
                     # Plot radial intensity profile
-                    plt.scatter(np.arange(radial_profile.size),
+                    plt.plot(np.arange(radial_profile.size),
                             20*np.log10(radial_profile+1))
                     # Plot found peaks
                     plt.scatter(
@@ -429,8 +429,8 @@ def sample_distance_calibration(
             doublet_only=False,
             file_format=DEFAULT_FILE_FORMAT):
 
-    if file_format != "txt" and file_format != "tiff":
-        raise ValueError("Choose ``txt`` or ``tiff`` file format.")
+    if file_format != "txt" and file_format != "tiff" and file_format != "npy":
+        raise ValueError("Choose ``txt``, ``npy``, or ``tiff`` file format.")
 
     # Instantiate Calibration class
     calibrator = Calibration(calibration_material=material,
@@ -439,6 +439,8 @@ def sample_distance_calibration(
     # Load calibration image
     if file_format == "txt":
         image = np.loadtxt(image_fullpath, dtype=np.float64)
+    if file_format == "npy":
+        image = np.load(image_fullpath)
     elif file_format == "tiff":
         image = io.imread(image_fullpath).astype(np.float64)
 
