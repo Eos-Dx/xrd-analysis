@@ -51,17 +51,16 @@ def run_azimuthal_preprocessing(
         # Get filepath list
         if file_format:
             if file_format == "txt":
-                filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
+                file_pattern = "*.txt"
             elif file_format == "npy":
-                filepath_list = glob.glob(
-                        os.path.join(input_path, "*.npy"))
+                file_pattern = "*.npy"
             elif "tif" in file_format:
-                filepath_list = glob.glob(
-                        os.path.join(input_path, "*.tif*"))
+                file_pattern = "*.tif*" # Finds tiff or tif
             else:
                 raise ValueError(
                         "Unrecognized file format: {}\n".format(
-                            file_format) + "Must be ``txt`` or ``tiff``.")
+                            file_format) + "Must be ``txt``,``tiff``, or ``npy``.")
+            filepath_list = glob.glob(os.path.join(input_path, file_pattern))
         else:
             filepath_list= glob.glob(os.path.join(input_path, "*.*"))
         # Sort files list

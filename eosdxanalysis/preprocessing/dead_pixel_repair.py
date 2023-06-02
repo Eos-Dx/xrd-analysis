@@ -27,7 +27,8 @@ def dead_pixel_repair_dir(
             output_path=None,
             overwrite=False,
             beam_rmax=DEFAULT_BEAM_RMAX,
-            dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD):
+            dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD,
+            file_format=None):
     """
     Repairs dead pixels in images contained in a directory
     """
@@ -38,10 +39,20 @@ def dead_pixel_repair_dir(
     timestr = "%Y%m%dT%H%M%S.%f"
     timestamp = datetime.utcnow().strftime(timestr)
 
+    if not file_format:
+        file_format = "txt"
+
     if input_path:
         # Given single input path
         # Get filepath list
-        filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
+        if file_format == "txt":
+            file_pattern = "*.txt"
+        elif file_format == "npy":
+            file_pattern = "*.npy"
+        elif file_format == "tiff":
+            file_pattern = "*.tif*" # finds tiff or tif
+
+        filepath_list = glob.glob(os.path.join(input_path, file_pattern))
         # Sort files list
         filepath_list.sort()
 
@@ -67,7 +78,8 @@ def dead_pixel_repair_dir(
     # Loop over files list
     for filepath in filepath_list:
         filename = os.path.basename(filepath)
-        image = np.loadtxt(filepath, dtype=np.float64)
+        # image = np.loadtxt(filepath, dtype=np.float64)
+        image = np.load(filepath, allow_pickle=True)
 
         # Find the center
         center = find_center(image)
@@ -87,7 +99,8 @@ def dead_pixel_repair_dir(
 
         # Save results
         data_output_filepath = os.path.join(output_path, filename)
-        np.savetxt(data_output_filepath, output_image)
+        # np.savetxt(data_output_filepath, output_image)
+        np.save(data_output_filepath, output_image)
 
 
 if __name__ == '__main__':
@@ -125,6 +138,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--overwrite", action="store_true",
             help="Overwrite files.")
+    parser.add_argument(
+            "--file_format", type=str, default=None, required=False,
+            help="The file format to use (txt, tiff, or npy).")
 
     args = parser.parse_args()
 
@@ -139,6 +155,7 @@ if __name__ == '__main__':
     dead_pixel_threshold = args.dead_pixel_threshold 
     visualize = args.visualize
     overwrite = args.overwrite
+    file_format = args.file_format
 
     if input_path and find_dead_pixels:
         dead_pixel_repair_dir(
@@ -147,6 +164,7 @@ if __name__ == '__main__':
             overwrite=overwrite,
             beam_rmax=beam_rmax,
             dead_pixel_threshold=dead_pixel_threshold,
+            file_format=file_format
             )
     else:
         raise NotImplementedError()
