@@ -229,6 +229,7 @@ class DiffractionUnitsConversion(object):
 
 def radial_profile_unit_conversion(radial_count,
         sample_distance,
+        wavelength_nm,
         radial_units="q_per_nm"):
     """
     Convert radial profile from pixel lengths to:
@@ -254,8 +255,7 @@ def radial_profile_unit_conversion(radial_count,
     theta_range = 0.5*np.arctan2(radial_range_m, sample_distance)
 
     if radial_units == "q_per_nm":
-        q_range_per_m = 4 * np.pi * np.sin(theta_range) / WAVELENGTH
-        q_range_per_nm = q_range_per_m / 1e9
+        q_range_per_nm = 4 * np.pi * np.sin(theta_range) / wavelength_nm
 
         return q_range_per_nm
 
