@@ -29,31 +29,41 @@ from eosdxanalysis.preprocessing.image_processing import pad_image
 
 from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
-DEFAULT_FILE_FORMAT = "txt"
-
 
 def run_azimuthal_preprocessing(
-        input_path, output_path=None,
+        input_path, wavelength_nm,
+        output_path=None,
         input_dataframe_filepath=None,
         sample_distance_filepath=None,
         find_sample_distance_filepath=None,
         beam_rmax=15, visualize=False,
         azimuthal_mean=True,
         azimuthal_sum=False,
-        file_format=DEFAULT_FILE_FORMAT):
+        file_format=None):
     """
     """
     if not (azimuthal_mean ^ azimuthal_sum):
         raise ValueError("Choose azimuthal_mean or azimuthal_sum.")
-    if file_format != "txt" and file_format != "tiff":
-        raise ValueError("Choose ``txt`` or ``tiff`` file format.")
     sample_distance_m = None
 
     if input_path:
         # Given single input path
         # Get filepath list
-        filepath_list = glob.glob(
-                os.path.join(input_path, "*.{}".format(file_format)))
+        if file_format:
+            if file_format == "txt":
+                filepath_list = glob.glob(os.path.join(input_path, "*.txt"))
+            elif file_format == "npy":
+                filepath_list = glob.glob(
+                        os.path.join(input_path, "*.npy"))
+            elif "tif" in file_format:
+                filepath_list = glob.glob(
+                        os.path.join(input_path, "*.tif*"))
+            else:
+                raise ValueError(
+                        "Unrecognized file format: {}\n".format(
+                            file_format) + "Must be ``txt`` or ``tiff``.")
+        else:
+            filepath_list= glob.glob(os.path.join(input_path, "*.*"))
         # Sort files list
         filepath_list.sort()
     elif input_dataframe_filepath:
@@ -96,10 +106,18 @@ def run_azimuthal_preprocessing(
     # Loop over files list
     for filepath in filepath_list:
         filename = os.path.basename(filepath)
+        if file_format is None:
+            file_root, file_format = os.path.splitext(filename)
         if file_format == "txt":
             image = np.loadtxt(filepath, dtype=np.float64)
-        elif file_format == "tiff":
+        elif file_format == "npy":
+            image = np.load(filepath)
+        elif "tif" in file_format:
             image = io.imread(filepath).astype(np.float64)
+        else:
+            raise ValueError(
+                    "Unrecognized file format: {}\n".format(
+                        file_format.strip(".")) + "Must be ``txt`` or ``tiff``.")
 
         # Find the center
         center = find_center(image)
@@ -161,6 +179,7 @@ def run_azimuthal_preprocessing(
             # Combine radial profile intensity and q-units
             q_range = radial_profile_unit_conversion(
                     radial_profile.size,
+                    wavelength_nm,
                     sample_distance_m,
                     radial_units="q_per_nm")
             results = np.hstack([q_range.reshape(-1,1), radial_profile.reshape(-1,1)])
@@ -226,8 +245,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--input_path", type=str, required=False,
+            "--input_path", type=str, required=True,
             help="The path to data to extract features from")
+    parser.add_argument(
+            "--wavelength_nm", type=float, required=True,
+            help="Wavelength in nanometers.")
     parser.add_argument(
             "--input_dataframe_filepath", type=str, required=False,
             help="The dataframe containing file paths to extract features from")
@@ -253,13 +275,14 @@ if __name__ == '__main__':
             "--azimuthal_sum", action="store_true",
             help="Use azimuthal sum.")
     parser.add_argument(
-            "--file_format", type=str, default=DEFAULT_FILE_FORMAT, required=False,
-            help="The data file format:``txt`` (default), or  ``tiff``.")
+            "--file_format", type=str, default=None, required=False,
+            help="File format: ``txt`` or ``tiff``.")
 
     args = parser.parse_args()
 
     input_path = os.path.abspath(args.input_path) if args.input_path \
             else None
+    wavelength_nm = args.wavelength_nm
     output_path = os.path.abspath(args.output_path) if args.output_path \
             else None
     input_dataframe_filepath = os.path.abspath(args.input_dataframe_filepath) \
@@ -277,6 +300,7 @@ if __name__ == '__main__':
 
     run_azimuthal_preprocessing(
         input_path=input_path,
+        wavelength_nm=wavelength_nm,
         output_path=output_path,
         input_dataframe_filepath=input_dataframe_filepath,
         find_sample_distance_filepath=find_sample_distance_filepath,
