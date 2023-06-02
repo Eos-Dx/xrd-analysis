@@ -50,7 +50,7 @@ def dead_pixel_repair_dir(
         elif file_format == "npy":
             file_pattern = "*.npy"
         elif file_format == "tiff":
-            file_pattern = "*.tif*"
+            file_pattern = "*.tif*" # finds tiff or tif
 
         filepath_list = glob.glob(os.path.join(input_path, file_pattern))
         # Sort files list
