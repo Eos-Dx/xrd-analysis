@@ -89,6 +89,10 @@ def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min
             rmax = np.min([center[0], center[1], ncols-1-center[0], nrows-1-center[1]])
         else:
             rmax = np.max([center[0], center[1], ncols-1-center[0], nrows-1-center[1]])
+    if rmax < rmin:
+        raise ValueError("rmax must be greather than rmin.")
+    if rmax == 0:
+        return np.zeros((nrows, ncols)).astype(bool)
 
     # Create a grid of coordinates
     Rows, Cols = np.ogrid[:nrows, :ncols]
