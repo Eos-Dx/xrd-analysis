@@ -30,8 +30,7 @@ from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.utils import quadrant_fold
 
 PIXEL_SIZE = 55e-6 # Pixel width in meters (it is 55 um)
-WAVELENGTH = 1.5418E-10 # Wavelength in meters (1.5418 Angstroms)
-WAVELEN_ANGSTROMS = WAVELENGTH * 1e10 # Wavelength in Angstroms
+DEFAULT_WAVELENGTH_NM = 0.15418 # Wavelength in nanometers (1.5418 Angstroms)
 BEAM_RMAX = 10 # Pixel radius to block out beam
 RMAX = 110 # Pixel radius to ignore beyond this value
 DISTANCE_APPROX = 10e-3
@@ -52,13 +51,13 @@ class Calibration(object):
     q units are per Angstrom
     """
 
-    def __init__(self, calibration_material, wavelength=WAVELENGTH,
+    def __init__(self, calibration_material, wavelength_nm=DEFAULT_WAVELENGTH_NM,
             pixel_size=PIXEL_SIZE):
         """
         Initialize Calibration class
         """
         # Store source wavelength
-        self.wavelength = wavelength
+        self.wavelength_nm = wavelength_nm
 
         # Store calibration material name
         self.calibration_material = calibration_material
@@ -113,10 +112,11 @@ class Calibration(object):
         visualize : bool
             Flag to display plots image and azimuthal integration profile.
         """
-        wavelength = self.wavelength
-        wavelength_angstroms = wavelength*1e10
+        wavelength_nm = self.wavelength_nm
         q_peaks_ref = self.q_peaks_ref
         pixel_size = self.pixel_size
+
+        wavelength_angstroms = wavelength_nm*1e1
 
         # Calculate 1-d azimuthal integration profile
         if center is None:
@@ -274,7 +274,6 @@ class Calibration(object):
                     q_peaks_found = q_peaks_avg[q_peaks_found_indices]
 
             # Use Angstroms units
-            wavelength_angstroms = wavelength*1e10
             theta_n = np.arcsin(q_peaks_found*wavelength_angstroms/(4*np.pi))
             Y = np.tan(2*theta_n).reshape(-1,1)
             # Set x values as the measured r peaks
@@ -324,6 +323,7 @@ class Calibration(object):
             # Calculate to q-range
             q_range = radial_profile_unit_conversion(
                     radial_profile.size,
+                    wavelength_nm,
                     sample_distance_m,
                     radial_units="q_per_nm")
 
@@ -415,7 +415,7 @@ class Calibration(object):
 def sample_distance_calibration(
             image_fullpath=None,
             calibration_material=None,
-            wavelength=WAVELENGTH,
+            wavelength_nm=DEFAULT_WAVELENGTH_NM,
             pixel_size=PIXEL_SIZE,
             beam_rmax=BEAM_RMAX,
             rmax=RMAX,
@@ -434,7 +434,7 @@ def sample_distance_calibration(
 
     # Instantiate Calibration class
     calibrator = Calibration(calibration_material=material,
-            wavelength=wavelength, pixel_size=pixel_size)
+            wavelength_nm=wavelength_nm, pixel_size=pixel_size)
 
     # Load calibration image
     if file_format == "txt":
@@ -488,8 +488,8 @@ if __name__ == "__main__":
             "--pixel_size", type=float, default=PIXEL_SIZE,
             help="The physical pixel size in meters.")
     parser.add_argument(
-            "--wavelength", type=float, default=WAVELENGTH,
-            help="The wavelength meters.")
+            "--wavelength_nm", type=float, default=DEFAULT_WAVELENGTH_NM,
+            help="The wavelength in nanometers.")
     parser.add_argument(
             "--center", type=str, default=None,
             help="The center of the diffraction pattern.")
@@ -532,7 +532,7 @@ if __name__ == "__main__":
     # Set variables based on input arguments
     image_fullpath = args.image_fullpath
     material = args.material
-    wavelength = args.wavelength
+    wavelength_nm = args.wavelength_nm
     pixel_size = args.pixel_size
     beam_rmax = args.beam_rmax
     center = ",".split(args.center) if args.center else None
@@ -549,7 +549,7 @@ if __name__ == "__main__":
     sample_distance_calibration(
             image_fullpath=image_fullpath,
             calibration_material=material,
-            wavelength=wavelength,
+            wavelength_nm=wavelength_nm,
             pixel_size=pixel_size,
             beam_rmax=beam_rmax,
             rmax=rmax,
