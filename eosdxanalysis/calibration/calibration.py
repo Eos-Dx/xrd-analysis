@@ -38,7 +38,6 @@ DOUBLET_WIDTH = 5
 DOUBLET_APPROX_MIN_FACTOR = 0.5
 DOUBLET_APPROX_MAX_FACTOR = 2.0
 OUTPUT_SHAPE = (360,128)
-DEFAULT_RADIUS = 128
 DEFAULT_SINGLET_HEIGHT = 4
 DEFAULT_SINGLET_WIDTH = 4
 DEFAULT_FILE_FORMAT = "txt"
@@ -78,9 +77,9 @@ class Calibration(object):
             distance_approx=DISTANCE_APPROX, output_shape=OUTPUT_SHAPE,
             doublet_approx_min_factor=DOUBLET_APPROX_MIN_FACTOR,
             doublet_approx_max_factor=DOUBLET_APPROX_MAX_FACTOR,
-            doublet_width=DOUBLET_WIDTH, visualize=False, radius=None,
-            padding=None, height=None, save=False, image_fullpath=None,
-            doublet_only=False):
+            doublet_width=DOUBLET_WIDTH, visualize=False, start_radius=None,
+            end_radius=None, padding=None, height=None, save=False,
+            image_fullpath=None, doublet_only=False):
         """
         Calculate the sample-to-detector distance for a calibration sample
 
@@ -123,8 +122,10 @@ class Calibration(object):
             # Find the image center
             center = find_center(image)
 
-        if radius is None:
-            radius = int(np.around(np.max([
+        if start_radius is None:
+            start_radius = 0
+        if end_radius is None:
+            end_radius = int(np.around(np.max([
                 np.sqrt(2)*image.shape[0],
                 np.sqrt(2)*image.shape[1],
                 ])))
@@ -152,7 +153,8 @@ class Calibration(object):
         new_center = (padding_top + center[0], padding_left + center[1])
 
         radial_profile = azimuthal_integration(
-                enlarged_masked_image, center=new_center, radius=radius)
+                enlarged_masked_image, center=new_center,
+                start_radius=start_radius, end_radius=end_radius)
 
         # Use the doublet peak location only
         doublet_peak_index = None
@@ -423,7 +425,8 @@ def sample_distance_calibration(
             center=None,
             doublet_width=DOUBLET_WIDTH,
             visualize=False,
-            radius=DEFAULT_RADIUS,
+            start_radius=None,
+            end_radius=None,
             save=False,
             print_result=False,
             doublet_only=False,
@@ -453,7 +456,8 @@ def sample_distance_calibration(
             center=center,
             doublet_width=doublet_width,
             visualize=visualize,
-            radius=radius,
+            start_radius=start_radius,
+            end_radius=end_radius,
             save=save,
             image_fullpath=image_fullpath,
             doublet_only=doublet_only)
@@ -506,7 +510,10 @@ if __name__ == "__main__":
             "--distance_approx", type=float, default=DISTANCE_APPROX,
             help="The approximate sample-to-detector distance.")
     parser.add_argument(
-            "--radius", type=int, default=None,
+            "--start_radius", type=int, default=0,
+            help="The maximum radius to analyze.")
+    parser.add_argument(
+            "--end_radius", type=int, default=None,
             help="The maximum radius to analyze.")
     parser.add_argument(
             "--height", type=float, default=None,
@@ -540,7 +547,8 @@ if __name__ == "__main__":
     distance_approx = args.distance_approx
     doublet_width = args.doublet_width
     visualize = args.visualize
-    radius = args.radius
+    start_radius = args.start_radius
+    end_radius = args.end_radius
     save = args.save
     print_result= args.print_result
     doublet_only = args.doublet_only
@@ -557,7 +565,8 @@ if __name__ == "__main__":
             center=center,
             doublet_width=doublet_width,
             visualize=visualize,
-            radius=radius,
+            start_radius=start_radius,
+            end_radius=end_radius,
             save=save,
             print_result=print_result,
             doublet_only=doublet_only,
