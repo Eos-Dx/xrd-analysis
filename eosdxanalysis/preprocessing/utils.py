@@ -469,7 +469,7 @@ def polar_meshgrid(
     return output
 
 def warp_polar_preprocessor(
-        image, center=None, radius=None,
+        image, center=None, start_radius=None, end_radius=None,
         azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
         start_angle=None, end_angle=None, res=1):
     """
@@ -517,8 +517,10 @@ def warp_polar_preprocessor(
             num=AZIMUTHAL_POINT_COUNT_DEFAULT*res)
 
     # Set radius
-    if not radius:
-        radius = np.max(image.shape)/2*res
+    if not start_radius:
+        start_radius = 0
+    if not end_radius:
+        end_radius = np.max(image.shape)/2*res
     if not azimuthal_point_count:
         azimuthal_point_count = AZIMUTHAL_POINT_COUNT*res
     if (start_angle is None) and (end_angle is None):
@@ -535,13 +537,15 @@ def warp_polar_preprocessor(
 
     azimuthal_step = 2*np.pi/azimuthal_point_count
 
-    radial_range = np.arange(radius)
+    radial_range = np.arange(start_radius, end_radius)
 
     # Perform a polar warp on the input image for entire azimuthal range
-    output_shape = (AZIMUTHAL_POINT_COUNT_DEFAULT*res, radius*res)
+    output_shape = (AZIMUTHAL_POINT_COUNT_DEFAULT*res, end_radius*res)
     polar_image = warp_polar(
-            image, center=center, radius=radius,
+            image, center=center, radius=end_radius,
             output_shape=output_shape, preserve_range=True)
+
+    polar_image = polar_image[start_radius:end_radius, :]
 
     # Interpolate if subset is needed
     interp = RegularGridInterpolator(
@@ -559,7 +563,7 @@ def warp_polar_preprocessor(
     return polar_image_subset
 
 def azimuthal_integration(
-        image, center=None, radius=None,
+        image, center=None, start_radius=None, end_radius=None,
         azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
         start_angle=None, end_angle=None, res=1):
     """
@@ -598,7 +602,8 @@ def azimuthal_integration(
     polar_image_subset = warp_polar_preprocessor(
         image,
         center=center,
-        radius=radius,
+        start_radius=start_radius,
+        end_radius=end_radius,
         azimuthal_point_count=azimuthal_point_count,
         start_angle=start_angle,
         end_angle=end_angle,
@@ -610,7 +615,7 @@ def azimuthal_integration(
     return profile_1d
 
 def radial_intensity(
-        image, center=None, radius=None,
+        image, center=None, start_radius=None, end_radius=None,
         azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
         start_angle=None, end_angle=None, res=1):
     """
@@ -649,7 +654,8 @@ def radial_intensity(
     polar_image_subset = warp_polar_preprocessor(
         image,
         center=center,
-        radius=radius,
+        start_radius=start_radius,
+        end_radius=end_radius,
         azimuthal_point_count=azimuthal_point_count,
         start_angle=start_angle,
         end_angle=end_angle,
