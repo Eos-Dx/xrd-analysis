@@ -252,15 +252,34 @@ def radial_profile_unit_conversion(radial_count,
     radial_range_m = np.arange(radial_count) * PIXEL_SIZE
     radial_range_m = radial_range_m.reshape(-1,1)
     sample_distance = np.array(sample_distance).reshape(-1,1)
-    theta_range = 0.5*np.arctan2(radial_range_m, sample_distance)
+    sample_distance_mm = sample_distance * 1e3
+    radial_range_mm = radial_range_m * 1e3
 
     if radial_units == "q_per_nm":
-        q_range_per_nm = 4 * np.pi * np.sin(theta_range) / wavelength_nm
+        q_range_per_nm = q_conversion(
+                sample_distance_mm, radial_range_mm, wavelength_nm)
 
         return q_range_per_nm
 
     if radial_units == "two_theta":
-        return 2*theta_range
+        two_theta_range = two_theta_conversion(sample_distance_mm, radial_range_mm)
+        return two_theta_range
 
     if radial_units == "um":
         return radial_range_m * 1e6
+
+def two_theta_conversion(sample_distance_mm, real_position_mm):
+    """
+    Convert real position to two*theta
+    """
+    two_theta = np.arctan2(real_position_mm, sample_distance_mm)
+    return two_theta
+
+def q_conversion(sample_distance_mm, real_position_mm, wavelength_nm):
+    """
+    Convert real position to q
+    """
+    two_theta = two_theta_conversion(sample_distance_mm, real_position_mm)
+    theta = two_theta / 2
+    q = 4*np.pi*np.sin(theta) / wavelength_nm
+    return q
