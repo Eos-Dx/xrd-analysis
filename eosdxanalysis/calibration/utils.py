@@ -227,9 +227,9 @@ class DiffractionUnitsConversion(object):
 
         return bragg_peak_pixel_location
 
-def radial_profile_unit_conversion(radial_count,
-        sample_distance,
-        wavelength_nm,
+def radial_profile_unit_conversion(radial_count=None,
+        sample_distance=None,
+        wavelength_nm=None,
         radial_units="q_per_nm"):
     """
     Convert radial profile from pixel lengths to:
@@ -251,35 +251,41 @@ def radial_profile_unit_conversion(radial_count,
     """
     radial_range_m = np.arange(radial_count) * PIXEL_SIZE
     radial_range_m = radial_range_m.reshape(-1,1)
-    sample_distance = np.array(sample_distance).reshape(-1,1)
+    # sample_distance = np.array(sample_distance).reshape(-1,1)
     sample_distance_mm = sample_distance * 1e3
     radial_range_mm = radial_range_m * 1e3
 
+
     if radial_units == "q_per_nm":
         q_range_per_nm = q_conversion(
-                sample_distance_mm, radial_range_mm, wavelength_nm)
-
+            real_position_mm=radial_range_mm,
+            sample_distance_mm=sample_distance_mm,
+            wavelength_nm=wavelength_nm)
         return q_range_per_nm
 
     if radial_units == "two_theta":
-        two_theta_range = two_theta_conversion(sample_distance_mm, radial_range_mm)
+        two_theta_range = two_theta_conversion(
+                sample_distance_mm, radial_range_mm)
         return two_theta_range
 
     if radial_units == "um":
         return radial_range_m * 1e6
 
-def two_theta_conversion(sample_distance_mm, real_position_mm):
+def two_theta_conversion(real_position_mm=None, sample_distance_mm=None):
     """
     Convert real position to two*theta
     """
     two_theta = np.arctan2(real_position_mm, sample_distance_mm)
     return two_theta
 
-def q_conversion(sample_distance_mm, real_position_mm, wavelength_nm):
+def q_conversion(
+        real_position_mm=None, sample_distance_mm=None, wavelength_nm=None):
     """
     Convert real position to q
     """
-    two_theta = two_theta_conversion(sample_distance_mm, real_position_mm)
+    two_theta = two_theta_conversion(
+            real_position_mm=real_position_mm,
+            sample_distance_mm=sample_distance_mm)
     theta = two_theta / 2
     q = 4*np.pi*np.sin(theta) / wavelength_nm
     return q

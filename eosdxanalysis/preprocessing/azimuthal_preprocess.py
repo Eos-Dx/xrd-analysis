@@ -29,6 +29,8 @@ from eosdxanalysis.preprocessing.image_processing import pad_image
 
 from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
+DEFAULT_DET_XSIZE = 256
+
 
 def run_azimuthal_preprocessing(
         input_path, wavelength_nm,
@@ -39,8 +41,22 @@ def run_azimuthal_preprocessing(
         beam_rmax=15, visualize=False,
         azimuthal_mean=True,
         azimuthal_sum=False,
-        file_format=None):
+        file_format=None,
+        det1_center=None,
+        det_xspacing=None,
+        det_xsize=None):
     """
+    Parameters
+    ----------
+
+    det1_center : tuple
+        Center of diffraction pattern on detector 1 in pixel coordinates
+
+    det_xspacing : float
+        Horizontal distance between detectors in pixel units
+
+    det_xsize : float
+        Horizontal length of detector in pixel units
     """
     if not (azimuthal_mean ^ azimuthal_sum):
         raise ValueError("Choose azimuthal_mean or azimuthal_sum.")
@@ -118,15 +134,21 @@ def run_azimuthal_preprocessing(
                     "Unrecognized file format: {}\n".format(
                         file_format.strip(".")) + "Must be ``txt`` or ``tiff``.")
 
-        # Find the center
-        center = find_center(image)
+        if type(det1_center) != type(None):
+            if all([det_xspacing, det_xsize]):
+                center = (det1_center[0], - (det_xsize - det1_center[1]) - det_xspacing)
+        else:
+            # Find the center
+            center = find_center(image)
 
-        # Block out the beam
-        beam_mask = create_circular_mask(
-                image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
-
-        masked_image = image.copy()
-        masked_image[beam_mask] = np.nan
+        if beam_rmax > 0:
+            # Block out the beam
+            beam_mask = create_circular_mask(
+                    image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
+            masked_image = image.copy()
+            masked_image[beam_mask] = np.nan
+        else:
+            masked_image = image
 
         # Enlarge the image
         padding_amount = (np.sqrt(2)*np.max(image.shape)).astype(int)
@@ -142,10 +164,10 @@ def run_azimuthal_preprocessing(
 
         if azimuthal_mean:
             radial_profile = azimuthal_integration(
-                    enlarged_masked_image, center=new_center, radius=padding_amount)
+                    enlarged_masked_image, center=new_center, end_radius=padding_amount)
         elif azimuthal_sum:
             radial_profile = radial_intensity(
-                    enlarged_masked_image, center=new_center, radius=padding_amount)
+                    enlarged_masked_image, center=new_center, end_radius=padding_amount)
 
         # Save data to file
         # Get approximate sample distance from folder name
@@ -177,9 +199,9 @@ def run_azimuthal_preprocessing(
 
             # Combine radial profile intensity and q-units
             q_range = radial_profile_unit_conversion(
-                    radial_profile.size,
-                    wavelength_nm,
-                    sample_distance_m,
+                    radial_count=radial_profile.size,
+                    sample_distance=sample_distance_m,
+                    wavelength_nm=wavelength_nm,
                     radial_units="q_per_nm")
             results = np.hstack([q_range.reshape(-1,1), radial_profile.reshape(-1,1)])
             np.savetxt(data_output_filepath, results)
@@ -190,6 +212,7 @@ def run_azimuthal_preprocessing(
             q_range = radial_profile_unit_conversion(
                     radial_profile.size,
                     sample_distance_m,
+                    wavelength_nm,
                     radial_units="q_per_nm")
             results = np.hstack([q_range.reshape(-1,1), radial_profile.reshape(-1,1)])
             np.savetxt(data_output_filepath, results)
@@ -276,6 +299,16 @@ if __name__ == '__main__':
     parser.add_argument(
             "--file_format", type=str, default=None, required=False,
             help="File format: ``txt`` or ``tiff``.")
+    parser.add_argument(
+            "--det1_center", type=str, default=None, required=False,
+            help="Center of diffraction pattern on detector 1 in pixel coordinates.")
+    parser.add_argument(
+            "--det_xspacing", type=float, default=None, required=False,
+            help="Horizontal distance between detectors.")
+    parser.add_argument(
+            "--det_xsize", type=float, default=DEFAULT_DET_XSIZE, required=False,
+            help="Horizontal length of detector 1.")
+
 
     args = parser.parse_args()
 
@@ -293,9 +326,19 @@ if __name__ == '__main__':
     azimuthal_mean = args.azimuthal_mean
     azimuthal_sum = args.azimuthal_sum
     file_format = args.file_format
+    det1_center_arg = args.det1_center
+    if det1_center_arg != None:
+        det1_center = np.array(det1_center_arg.split(",")).astype(float)
+        if len(det1_center) != 2:
+            raise ValueError("Detector 1 center must be a tuple.")
+    else:
+        det1_center = None
+    det_xspacing = args.det_xspacing
+    det_xsize = args.det_xsize
 
     if not (azimuthal_sum or azimuthal_mean):
         azimuthal_mean = True
+
 
     run_azimuthal_preprocessing(
         input_path=input_path,
@@ -309,4 +352,7 @@ if __name__ == '__main__':
         azimuthal_mean=azimuthal_mean,
         azimuthal_sum=azimuthal_sum,
         file_format=file_format,
+        det1_center=det1_center,
+        det_xspacing=det_xspacing,
+        det_xsize=det_xsize,
         )
