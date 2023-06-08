@@ -16,10 +16,12 @@ from skimage.transform import warp
 from skimage.transform import EuclideanTransform
 
 from scipy.signal import find_peaks
+from scipy.ndimage import uniform_filter1d
 
 from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
 from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
+from eosdxanalysis.calibration.utils import real_position_from_q
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
@@ -34,6 +36,7 @@ DEFAULT_WAVELENGTH_NM = 0.15418 # Wavelength in nanometers (1.5418 Angstroms)
 BEAM_RMAX = 10 # Pixel radius to block out beam
 RMAX = 110 # Pixel radius to ignore beyond this value
 DISTANCE_APPROX = 10e-3
+DOUBLET_HEIGHT = 5
 DOUBLET_WIDTH = 5
 DOUBLET_APPROX_MIN_FACTOR = 0.5
 DOUBLET_APPROX_MAX_FACTOR = 2.0
@@ -41,6 +44,7 @@ OUTPUT_SHAPE = (360,128)
 DEFAULT_SINGLET_HEIGHT = 4
 DEFAULT_SINGLET_WIDTH = 4
 DEFAULT_FILE_FORMAT = "txt"
+DEFAULT_FILTER_SIZE = 16
 
 
 class Calibration(object):
@@ -77,7 +81,8 @@ class Calibration(object):
             distance_approx=DISTANCE_APPROX, output_shape=OUTPUT_SHAPE,
             doublet_approx_min_factor=DOUBLET_APPROX_MIN_FACTOR,
             doublet_approx_max_factor=DOUBLET_APPROX_MAX_FACTOR,
-            doublet_width=DOUBLET_WIDTH, visualize=False, start_radius=None,
+            doublet_width=DOUBLET_WIDTH, doublet_height=DOUBLET_HEIGHT,
+            visualize=False, start_radius=None,
             end_radius=None, padding=None, height=None, save=False,
             image_fullpath=None, doublet_only=False):
         """
@@ -183,13 +188,13 @@ class Calibration(object):
             end_index = radial_profile.size - 1 if end_index >= radial_profile.size else end_index
             radial_profile_subset = radial_profile[start_index:end_index]
 
-            if height is None:
+            if doublet_height is None:
                 # Get the height of the peak based on distance estimate
-                height = radial_profile[doublet_pixel_location_approx]
+                doublet_height = radial_profile[doublet_pixel_location_approx]
 
             doublet_peak_indices_approx, properties = find_peaks(
                     radial_profile_subset, width=doublet_width,
-                    height=height)
+                    height=doublet_height)
 
             # Check how many prominent peaks were found
             prominences = properties.get("prominences")
@@ -423,6 +428,7 @@ def sample_distance_calibration(
             rmax=RMAX,
             distance_approx=DISTANCE_APPROX,
             center=None,
+            doublet_height=DOUBLET_HEIGHT,
             doublet_width=DOUBLET_WIDTH,
             visualize=False,
             start_radius=None,
@@ -430,6 +436,7 @@ def sample_distance_calibration(
             save=False,
             print_result=False,
             doublet_only=False,
+            sample_distance=None,
             file_format=DEFAULT_FILE_FORMAT):
 
     if file_format != "txt" and file_format != "tiff" and file_format != "npy":
@@ -454,6 +461,7 @@ def sample_distance_calibration(
             rmax=rmax,
             distance_approx=distance_approx,
             center=center,
+            doublet_height=doublet_height,
             doublet_width=doublet_width,
             visualize=visualize,
             start_radius=start_radius,
@@ -466,6 +474,72 @@ def sample_distance_calibration(
         print("{} m".format(sample_distance))
 
     return sample_distance
+
+def detector_spacing_calibration(
+        image_fullpath=None,
+        calibration_material=None,
+        wavelength_nm=DEFAULT_WAVELENGTH_NM,
+        pixel_size=PIXEL_SIZE,
+        sample_distance=None,
+        beam_center=None,
+        filter_size=16,
+        strip_width=8):
+    """
+    Calculate the detector spacing
+    """
+    if file_format != "txt" and file_format != "tiff" and file_format != "npy":
+        raise ValueError("Choose ``txt``, ``npy``, or ``tiff`` file format.")
+
+    # Instantiate Calibration class
+    calibrator = Calibration(calibration_material=material,
+            wavelength_nm=wavelength_nm, pixel_size=pixel_size)
+
+    # Load calibration image
+    if file_format == "txt":
+        image = np.loadtxt(image_fullpath, dtype=np.float64)
+    if file_format == "npy":
+        image = np.load(image_fullpath)
+    elif file_format == "tiff":
+        image = io.imread(image_fullpath).astype(np.float64)
+
+    # Get q-peaks reference
+    q_peaks_ref_per_ang = calibrator.q_peaks_ref
+
+    # Average the doublets
+    doublets = np.array(q_peaks_ref_per_ang.get("doublets"))
+    if doublets.size > 0:
+        doublet_q_per_ang = np.mean(doublets)
+        doublet_q_per_nm = 10*doublet_q_per_ang
+
+    start_row = int(beam_center[0] - strip_width/2)
+    end_row = int(beam_center[0] + strip_width/2)
+    horizontal_strip = image[start_row:end_row, :]
+
+    horizontal_profile = np.mean(horizontal_strip, axis=0)
+    filtered_profile =  uniform_filter1d(horizontal_profile, filter_size)
+
+    try:
+        peak_location = np.where(filtered_profile == np.max(filtered_profile))[0][0]
+    except ValueError as err:
+        raise ValueError("Doublet peak not found.")
+
+    # Calculate distance from beam center to doublet peak in pixel units
+    beam_doublet_distance_m = real_position_from_q(
+            q_per_nm=doublet_q_per_nm, sample_distance_m=sample_distance,
+            wavelength_nm=wavelength_nm)
+
+    detector_size_m = 256*PIXEL_SIZE
+    beam_position_m = beam_center[1]*PIXEL_SIZE
+    doublet_position_det2_m = peak_location*PIXEL_SIZE
+    # beam_doublet_distance = (detector_size - beam_position) + detector_spacing + \
+    #       doublet_position_det2_m
+    detector_spacing_m = beam_doublet_distance_m - (detector_size_m - beam_position_m) - \
+            doublet_position_det2_m
+
+    if print_result:
+        print("{} m".format(detector_spacing_m))
+
+    return detector_spacing_m
 
 if __name__ == "__main__":
     """
@@ -507,6 +581,9 @@ if __name__ == "__main__":
             "--doublet_width", type=int, default=DOUBLET_WIDTH,
             help="The doublet width to look for.")
     parser.add_argument(
+            "--doublet_height", type=int, default=DOUBLET_HEIGHT,
+            help="The doublet height to look for.")
+    parser.add_argument(
             "--distance_approx", type=float, default=DISTANCE_APPROX,
             help="The approximate sample-to-detector distance.")
     parser.add_argument(
@@ -531,6 +608,18 @@ if __name__ == "__main__":
             "--doublet_only", action="store_true",
             help="Calibrate distance according to doublet peak location only.")
     parser.add_argument(
+            "--secondary_detector", action="store_true",
+            help="Calibrate the secondary detector position.")
+    parser.add_argument(
+            "--beam_center", type=str, default=None,
+            help="The y-position of the beam.")
+    parser.add_argument(
+            "--sample_distance", type=float, default=None,
+            help="The distance between the sample and the detector.")
+    parser.add_argument(
+            "--filter_size", type=int, default=DEFAULT_FILTER_SIZE,
+            help="The size of the uniform filter.")
+    parser.add_argument(
             "--file_format", type=str, default=DEFAULT_FILE_FORMAT, required=False,
             help="The data file format:``txt`` (default), or  ``tiff``.")
 
@@ -545,6 +634,7 @@ if __name__ == "__main__":
     center = ",".split(args.center) if args.center else None
     rmax = args.rmax
     distance_approx = args.distance_approx
+    doublet_height = args.doublet_height
     doublet_width = args.doublet_width
     visualize = args.visualize
     start_radius = args.start_radius
@@ -553,22 +643,43 @@ if __name__ == "__main__":
     print_result= args.print_result
     doublet_only = args.doublet_only
     file_format = args.file_format
+    secondary_detector = args.secondary_detector
 
-    sample_distance_calibration(
-            image_fullpath=image_fullpath,
-            calibration_material=material,
-            wavelength_nm=wavelength_nm,
-            pixel_size=pixel_size,
-            beam_rmax=beam_rmax,
-            rmax=rmax,
-            distance_approx=distance_approx,
-            center=center,
-            doublet_width=doublet_width,
-            visualize=visualize,
-            start_radius=start_radius,
-            end_radius=end_radius,
-            save=save,
-            print_result=print_result,
-            doublet_only=doublet_only,
-            file_format=file_format,
-            )
+    # In case primary_detector = False
+    sample_distance = args.sample_distance
+    beam_center_arg = args.beam_center
+    if beam_center_arg:
+        beam_center = np.array(beam_center_arg.strip("( )").split(",")).astype(float)
+    else:
+        beam_center = None
+    filter_size = args.filter_size
+
+    if not secondary_detector:
+        sample_distance_calibration(
+                image_fullpath=image_fullpath,
+                calibration_material=material,
+                wavelength_nm=wavelength_nm,
+                pixel_size=pixel_size,
+                beam_rmax=beam_rmax,
+                rmax=rmax,
+                distance_approx=distance_approx,
+                center=center,
+                doublet_height=doublet_height,
+                doublet_width=doublet_width,
+                visualize=visualize,
+                start_radius=start_radius,
+                end_radius=end_radius,
+                save=save,
+                print_result=print_result,
+                doublet_only=doublet_only,
+                file_format=file_format,
+                )
+    else:
+        detector_spacing_calibration(
+                image_fullpath=image_fullpath,
+                calibration_material=material,
+                wavelength_nm=wavelength_nm,
+                sample_distance=sample_distance,
+                beam_center=beam_center,
+                filter_size=filter_size,
+                )
