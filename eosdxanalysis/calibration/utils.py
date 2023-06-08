@@ -289,3 +289,22 @@ def q_conversion(
     theta = two_theta / 2
     q = 4*np.pi*np.sin(theta) / wavelength_nm
     return q
+
+def real_position_from_two_theta(two_theta=None, sample_distance_m=None):
+    """
+    two_theta : float
+        radians
+
+    sample_distance_m
+    """
+    position_m = sample_distance_m * np.tan(two_theta)
+    return position_m
+
+def real_position_from_q(q_per_nm=None, sample_distance_m=None, wavelength_nm=None):
+    """
+    """
+    theta = np.arcsin(q_per_nm * wavelength_nm / 4 / np.pi)
+    two_theta = 2*theta
+    position_m = real_position_from_two_theta(
+            two_theta=two_theta, sample_distance_m=sample_distance_m)
+    return position_m
