@@ -379,6 +379,10 @@ class PreprocessData(object):
                                             filename)
                 output_file_path = os.path.join(plan_output_path,
                                             output_filename)
+
+                # replace nan with 0
+                output = np.nan_to_num(output, nan=0)
+
                 np.savetxt(output_file_path,
                                 np.round(output).astype(np.uint32), fmt='%i')
 
@@ -487,6 +491,8 @@ class PreprocessData(object):
         # Use filtered_image results
         eye_roi = np.copy(filtered_image)
         eye_roi[~eye_mask] = 0
+        # replace nan with 0
+        eye_roi = np.nan_to_num(eye_roi, nan=0.0)
 
         # Find the peaks in the 9A region using eye roi
         peak_location_radius_9A_theory = feature_pixel_location(9e-10)
