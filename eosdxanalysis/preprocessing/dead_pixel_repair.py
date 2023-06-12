@@ -78,8 +78,10 @@ def dead_pixel_repair_dir(
     # Loop over files list
     for filepath in filepath_list:
         filename = os.path.basename(filepath)
-        # image = np.loadtxt(filepath, dtype=np.float64)
-        image = np.load(filepath, allow_pickle=True)
+        if file_format in ["txt", "tif", "tiff"]:
+            image = np.loadtxt(filepath, dtype=np.float64)
+        elif file_format == "npy":
+            image = np.load(filepath, allow_pickle=True)
 
         # Find the center
         center = find_center(image)
@@ -99,8 +101,10 @@ def dead_pixel_repair_dir(
 
         # Save results
         data_output_filepath = os.path.join(output_path, filename)
-        # np.savetxt(data_output_filepath, output_image)
-        np.save(data_output_filepath, output_image)
+        if file_format in ["txt", "tif", "tiff"]:
+            np.savetxt(data_output_filepath, output_image)
+        elif file_format == "npy":
+            np.save(data_output_filepath, output_image)
 
 
 if __name__ == '__main__':
