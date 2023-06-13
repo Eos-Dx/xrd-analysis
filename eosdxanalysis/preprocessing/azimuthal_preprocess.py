@@ -174,12 +174,12 @@ def run_azimuthal_preprocessing(
         if input_dataframe_filepath:
             orig_filename = input_df.loc[filename, "orig_file_name"]
             if orig_filename:
-                output_filename = orig_filename
+                output_filename = "{}.txt".format(orig_filename)
             else:
                 # Blind data
-                output_filename = filename
+                output_filename = "{}.txt".format(filename)
         else:
-            output_filename = filename
+            output_filename = "{}.txt".format(filename)
 
         # Get approximate sample distance from folder name
         sample_distance_approx_list = np.unique(
