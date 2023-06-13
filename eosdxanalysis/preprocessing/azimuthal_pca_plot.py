@@ -25,43 +25,28 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 
 
-
-def run_pca_plot(
-        input_path=None, input_dataframe_filepath=None, annotate=False,
-        distance_mm="29", scaling=None, output_path=None,
+def preprocess_data(
+        input_path=None, input_dataframe_filepath=None,
+        distance_mm=None, scaling=None, output_path=None,
         patient_dataframe_filepath=None, estimator_filepath=None,
-        q_min=None, q_max=None, display=False):
+        q_min=None, q_max=None, display=False, q_array_len=256):
+    """
+    Notes
+    -----
 
-    ##############
-    # Load data
-    ##############
-
+    1. Interpolate to uniform q-range
+    2. Rescale by sum
+    """
+    # Open dataframe
     if input_dataframe_filepath:
         input_path = os.path.basename(input_dataframe_filepath)
         input_df = pd.read_csv(input_dataframe_filepath, index_col="Filename")
         filepath_list = input_df["Filepath"].tolist()
-
     elif input_path:
         filepath_list = glob.glob(os.path.join(
             input_path, "radial_*.txt"
             ))
         filepath_list.sort()
-
-    # Associate file with patient with diagnosis
-    filename_list = [os.path.basename(filepath) for filepath in filepath_list]
-    assert(len(filename_list) == len(filepath_list))
-    df = pd.DataFrame(data={}, index=filepath_list)
-    df["Filename"] = filename_list
-    df["Sample_ID"] = df["Filename"].astype(str).str.replace(
-            "radial_", "").str.replace(
-                    "\.txt.*", "", regex=True)
-
-
-    # Get patient diagnoses
-    df_patients = pd.read_csv(patient_dataframe_filepath, index_col="Patient_ID")
-    df_ext = pd.merge(df, df_patients, left_on="Sample_ID", right_on="Sample_ID")
-
-    df_ext.index = df["Filename"]
 
     # Get the size from the first file
     shape_orig = np.loadtxt(filepath_list[0]).shape
@@ -70,12 +55,13 @@ def run_pca_plot(
 
     X_unscaled = np.zeros((dataset_size, radial_profile_size))
 
-    # Get diagnoses
-    y = df_ext["Diagnosis"].replace("non_cancer", 0).replace("cancer", 1).values
+    filename_list = [os.path.basename(filepath) \
+            for filepath in filepath_list]
+
+    dataset_size = len(filepath_list)
 
     # Set q-range
-    array_len=256
-    q_range = np.linspace(q_min, q_max, num=array_len)
+    q_range = np.linspace(q_min, q_max, num=q_array_len)
 
     # TODO: Refactor this code
     # Read mean radial intensity data from files
@@ -102,14 +88,13 @@ def run_pca_plot(
         # Store data in array
         X_unscaled[idx,:] = mean_intensity_profile
 
-    # Rescale each sample to the same q-range
-    for idx in range(X_unscaled.shape[0]):
+        # Rescale each sample to the same q-range
         sample_values = X_unscaled[idx,:]
         sample_interp = interp1d(sample_q_range, sample_values)
         interp_profile = sample_interp(q_range)
-        X_unscaled[idx,:array_len] = interp_profile
+        X_unscaled[idx,:q_array_len] = interp_profile
 
-    X_unscaled = X_unscaled[:, :array_len]
+    X_unscaled = X_unscaled[:, :q_array_len]
 
     if scaling == "sum":
         X_sum = np.sum(X_unscaled, axis=1).reshape(-1,1)
@@ -119,6 +104,73 @@ def run_pca_plot(
         X = X_unscaled/X_max
     else:
         X = X_unscaled
+
+    return X, q_range
+
+def run_pca_plot(
+        input_path=None, input_dataframe_filepath=None, annotate=False,
+        distance_mm=None, scaling=None, output_path=None,
+        patient_dataframe_filepath=None, estimator_filepath=None,
+        q_min=None, q_max=None, q_array_len=None, display=False):
+
+    ##############
+    # Load data
+    ##############
+
+    if input_dataframe_filepath:
+        input_path = os.path.basename(input_dataframe_filepath)
+        input_df = pd.read_csv(input_dataframe_filepath, index_col="Filename")
+        filepath_list = input_df["Filepath"].tolist()
+
+    elif input_path:
+        filepath_list = glob.glob(os.path.join(
+            input_path, "radial_*.txt"
+            ))
+        filepath_list.sort()
+
+    # Associate file with patient with diagnosis
+    filename_list = [os.path.basename(filepath) for filepath in filepath_list]
+    assert(len(filename_list) == len(filepath_list))
+    df = pd.DataFrame(data={}, index=filepath_list)
+    df["Filename"] = filename_list
+    df["Sample_ID"] = df["Filename"].astype(str).str.replace(
+            "radial_", "").str.replace(
+                    "\.txt.*", "", regex=True)
+    if False:
+        df["Patient_ID"] = df["Sample_ID"].str.split("_").str[0]
+        df["Patient_ID"] = df["Patient_ID"].str.replace(
+                "LS[0-9]{2}-", "", regex=True).str.replace(
+                        "^0", "", regex=True)
+    df["Patient_ID"] = df["Sample_ID"].str.split("_").str[3].astype(int)
+
+    # Get patient diagnoses
+    df_patients = pd.read_csv(patient_dataframe_filepath, index_col="Patient_ID")
+    if True:
+        df_patients.index = df_patients.index.astype(str).str.replace(
+                "LS[0-9]{2}-", "", regex=True).str.replace(
+                        "^0", "", regex=True).astype(int)
+    df_ext = pd.merge(df, df_patients, left_on="Patient_ID", right_index=True)
+
+    df_ext.index = df["Filename"]
+
+
+    # Get diagnoses
+    # y = df_ext["Diagnosis"].replace("non_cancer", 0).replace("cancer", 1).values.astype(int)
+    y = df_ext["Sample_ID"].str.extract("(S[CT])").replace("SC", 0).replace("ST", 1).values.flatten()
+
+    X, q_range = preprocess_data(
+        input_path=input_path,
+        input_dataframe_filepath=input_dataframe_filepath,
+        distance_mm=distance_mm,
+        scaling=scaling,
+        output_path=output_path,
+        patient_dataframe_filepath=patient_dataframe_filepath,
+        estimator_filepath=estimator_filepath,
+        q_min=q_min,
+        q_max=q_max,
+        display=display,
+        q_array_len=q_array_len,
+        )
 
     ##########
     # 3-D PCA
@@ -163,7 +215,7 @@ def run_pca_plot(
     for idx in range(n_components):
         # print(dict(zip(feature_list, pca_components[idx,:])))
         print("PC{}".format(idx))
-        for jdx in range(array_len):
+        for jdx in range(q_array_len):
             print("{},{:.2f},{}".format(
                 jdx, q_range[jdx], pca_3d_components[idx,jdx]))
 
@@ -270,7 +322,7 @@ def run_pca_plot(
         for idx in range(n_components):
             # print(dict(zip(feature_list, pca_components[idx,:])))
             print("PC{}".format(idx))
-            for jdx in range(array_len):
+            for jdx in range(q_array_len):
                 print("{},{:.2f},{}".format(
                     jdx, q_range[jdx], pca_2d_components[idx,jdx]))
 
@@ -381,6 +433,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--q_range", type=str, required=True,
             help="Specify q-range as ``min-max`` string.")
+    parser.add_argument(
+            "--q_array_len", type=int, default=256,
+            help="Specify q-range array length.")
 
     args = parser.parse_args()
 
@@ -396,6 +451,7 @@ if __name__ == '__main__':
     q_range_min_max = args.q_range
     if q_range_min_max:
         q_min, q_max = q_range_min_max.split("-")
+    q_array_len = args.q_array_len
     display = args.display
 
     run_pca_plot(
@@ -407,7 +463,8 @@ if __name__ == '__main__':
             output_path=output_path,
             patient_dataframe_filepath=patient_dataframe_filepath,
             estimator_filepath=estimator_filepath,
-            q_min=int(q_min),
-            q_max=int(q_max),
+            q_min=float(q_min),
+            q_max=float(q_max),
+            q_array_len=q_array_len,
             display=display,
             )
