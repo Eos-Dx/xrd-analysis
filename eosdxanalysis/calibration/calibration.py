@@ -284,7 +284,8 @@ class Calibration(object):
             theta_n = np.arcsin(q_peaks_found*wavelength_angstroms/(4*np.pi))
             Y = np.tan(2*theta_n).reshape(-1,1)
             # Set x values as the measured r peaks
-            X = (singlet_peak_indices_approx * PIXEL_SIZE).reshape(-1,1)
+            X = (singlet_peak_indices_approx[:len(q_peaks_found_indices)] * \
+                    PIXEL_SIZE).reshape(-1,1)
 
             # Now perform linear regression, line goes through the origin
             # so intercept = 0
@@ -320,6 +321,7 @@ class Calibration(object):
             # Construct calibration results file content
             results_dict = {
                     "sample_distance_m": sample_distance_m,
+                    "beam_center": center,
                     }
 
             # Write calibration results to file
@@ -483,7 +485,9 @@ def detector_spacing_calibration(
         sample_distance=None,
         beam_center=None,
         filter_size=16,
-        strip_width=8):
+        strip_width=8,
+        save=False,
+        doublet_only=False):
     """
     Calculate the detector spacing
     """
@@ -518,23 +522,57 @@ def detector_spacing_calibration(
     horizontal_profile = np.mean(horizontal_strip, axis=0)
     filtered_profile =  uniform_filter1d(horizontal_profile, filter_size)
 
-    try:
-        peak_location = np.where(filtered_profile == np.max(filtered_profile))[0][0]
-    except ValueError as err:
-        raise ValueError("Doublet peak not found.")
+    if doublet_only:
+        try:
+            peak_location = np.where(filtered_profile == np.max(filtered_profile))[0][0]
+        except ValueError as err:
+            raise ValueError("Doublet peak not found.")
 
-    # Calculate distance from beam center to doublet peak in pixel units
-    beam_doublet_distance_m = real_position_from_q(
-            q_per_nm=doublet_q_per_nm, sample_distance_m=sample_distance,
-            wavelength_nm=wavelength_nm)
+        if visualize:
+            plt.plot(filtered_profile)
+            plt.scatter(peak_location, filtered_profile[peak_location])
+            plt.show()
 
-    detector_size_m = 256*PIXEL_SIZE
-    beam_position_m = beam_center[1]*PIXEL_SIZE
-    doublet_position_det2_m = peak_location*PIXEL_SIZE
-    # beam_doublet_distance = (detector_size - beam_position) + detector_spacing + \
-    #       doublet_position_det2_m
-    detector_spacing_m = beam_doublet_distance_m - (detector_size_m - beam_position_m) - \
-            doublet_position_det2_m
+        # Calculate distance from beam center to doublet peak in pixel units
+        beam_doublet_distance_m = real_position_from_q(
+                q_per_nm=doublet_q_per_nm, sample_distance_m=sample_distance,
+                wavelength_nm=wavelength_nm)
+
+        detector_size_m = 256*PIXEL_SIZE
+        beam_position_m = beam_center[1]*PIXEL_SIZE
+        doublet_position_det2_m = peak_location*PIXEL_SIZE
+        # beam_doublet_distance = (detector_size - beam_position) + detector_spacing + \
+        #       doublet_position_det2_m
+        detector_spacing_m = beam_doublet_distance_m - (detector_size_m - beam_position_m) - \
+                doublet_position_det2_m
+    else:
+        raise NotImplementedError
+
+    if save:
+        # Get the parent path of the calibration image
+        image_path = os.path.dirname(image_fullpath)
+        image_filename = os.path.basename(image_fullpath)
+        parent_path = os.path.dirname(image_path)
+
+        # Create the calibration results directory
+        calibration_results_dir = "calibration_results"
+        calibration_results_path = os.path.join(
+                parent_path, calibration_results_dir)
+        os.makedirs(calibration_results_path, exist_ok=True)
+
+        # Set the calibration results output file properties
+        output_filename = "{}.json".format(image_filename)
+        output_filepath = os.path.join(
+                calibration_results_path, output_filename)
+
+        # Construct calibration results file content
+        results_dict = {
+                "detector_spacing_m": detector_spacing_m,
+                }
+
+        # Write calibration results to file
+        with open(output_filepath, "w") as outfile:
+            outfile.writelines(json.dumps(results_dict, indent=4))
 
     if print_result:
         print("{} m".format(detector_spacing_m))
@@ -682,4 +720,6 @@ if __name__ == "__main__":
                 sample_distance=sample_distance,
                 beam_center=beam_center,
                 filter_size=filter_size,
+                save=save,
+                doublet_only=doublet_only,
                 )
