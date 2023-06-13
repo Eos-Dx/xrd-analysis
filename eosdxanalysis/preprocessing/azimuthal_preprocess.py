@@ -81,12 +81,13 @@ def run_azimuthal_preprocessing(
             filepath_list= glob.glob(os.path.join(input_path, "*.*"))
         # Sort files list
         filepath_list.sort()
+        parent_path = os.path.dirname(input_path)
     elif input_dataframe_filepath:
-        input_path = os.path.basename(input_dataframe_filepath)
-        input_df = pd.read_csv(input_dataframe_filepath, index_col="Filename")
+        input_path = os.path.dirname(input_dataframe_filepath)
+        input_df = pd.read_csv(
+                input_dataframe_filepath, index_col="Filename").fillna("")
         filepath_list = input_df["Filepath"].tolist()
-
-    parent_path = os.path.dirname(input_path)
+        parent_path = input_path
 
     # Set timestamp
     timestr = "%Y%m%dT%H%M%S.%f"
@@ -170,14 +171,25 @@ def run_azimuthal_preprocessing(
                     enlarged_masked_image, center=new_center, end_radius=padding_amount)
 
         # Save data to file
+        if input_dataframe_filepath:
+            orig_filename = input_df.loc[filename, "orig_file_name"]
+            if orig_filename:
+                output_filename = orig_filename
+            else:
+                # Blind data
+                output_filename = filename
+        else:
+            output_filename = filename
+
         # Get approximate sample distance from folder name
         sample_distance_approx_list = np.unique(
                 re.findall(r"dist_[0-9]{2,3}mm", filepath, re.IGNORECASE))
         if len(sample_distance_approx_list) != 1:
-            data_output_filename = "radial_{}.txt".format(filename)
+            data_output_filename = "radial_{}.txt".format(output_filename)
         else:
             sample_distance_approx = sample_distance_approx_list[0].lower()
-            data_output_filename = "radial_{}_{}".format(sample_distance_approx, filename)
+            data_output_filename = "radial_{}_{}".format(
+                    sample_distance_approx, output_filename)
         data_output_filepath = os.path.join(data_output_path,
                 data_output_filename)
 
@@ -206,13 +218,13 @@ def run_azimuthal_preprocessing(
             results = np.hstack([q_range.reshape(-1,1), radial_profile.reshape(-1,1)])
             np.savetxt(data_output_filepath, results)
         elif input_dataframe_filepath:
-            sample_distance_m = input_df.loc[filename, "Sample_Distance_m"]
+            sample_distance_m = input_df.loc[filename, "sample_distance_m"]
 
             # Combine radial profile intensity and q-units
             q_range = radial_profile_unit_conversion(
-                    radial_profile.size,
-                    sample_distance_m,
-                    wavelength_nm,
+                    radial_count=radial_profile.size,
+                    sample_distance=sample_distance_m,
+                    wavelength_nm=wavelength_nm,
                     radial_units="q_per_nm")
             results = np.hstack([q_range.reshape(-1,1), radial_profile.reshape(-1,1)])
             np.savetxt(data_output_filepath, results)
@@ -225,7 +237,7 @@ def run_azimuthal_preprocessing(
             np.savetxt(data_output_filepath, radial_profile)
 
         # Save image preview to file
-        plot_title = "Radial Intensity Profile\n{}".format(filename)
+        plot_title = "Radial Intensity Profile\n{}".format(output_filename)
         fig = plt.figure(plot_title)
 
         if sample_distance_m:
@@ -267,7 +279,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Set up parser arguments
     parser.add_argument(
-            "--input_path", type=str, required=True,
+            "--input_path", type=str, required=False,
             help="The path to data to extract features from")
     parser.add_argument(
             "--wavelength_nm", type=float, required=True,
@@ -339,6 +351,8 @@ if __name__ == '__main__':
     if not (azimuthal_sum or azimuthal_mean):
         azimuthal_mean = True
 
+    if not input_path and not input_dataframe_filepath:
+        raise ValueError("Input path or dataframe is required.")
 
     run_azimuthal_preprocessing(
         input_path=input_path,
