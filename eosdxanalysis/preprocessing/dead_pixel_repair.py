@@ -12,6 +12,13 @@ from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+from sklearn.base import OneToOneFeatureMixin
+from sklearn.base import TransformerMixin
+from sklearn.base import BaseEstimator
+
+from sklearn.utils import gen_batches
+
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
@@ -21,6 +28,88 @@ DEFAULT_DEAD_PIXEL_THRESHOLD = 1e4
 DEFAULT_BEAM_RMAX = 15
 
 
+class DeadPixelRepair(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
+    """Adapted from scikit-learn transforms
+    Repair dead pixel areas of detector
+    Replace dead pixels by np.nan
+    """
+
+    def __init__(self, *, copy=True):
+        self.copy = copy
+
+    def fit(self, X, y=None, sample_weight=None):
+        """Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The data used to compute the mean and standard deviation
+            used for later scaling along the features axis.
+        y : None
+            Ignored.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Individual weights for each sample.
+
+        Returns
+        -------
+        self : object
+            Fitted scaler.
+        """
+        return self
+
+    def transform(
+            self, X, copy=True,
+            beam_rmax=DEFAULT_BEAM_RMAX,
+            dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD):
+        """Parameters
+        ----------
+        X : {array-like, sparse matrix of shape (n_samples, n_features)
+            The data used to scale along the features axis.
+        copy : bool, default=None
+            Copy the input X or not.
+        Returns
+        -------
+        X_tr : {ndarray, sparse matrix} of shape (n_samples, n_features)
+            Transformed array.
+        """
+        if copy is True:
+            # Create a copy of the data, otherwise overwrite
+            result = np.zeros_like(X)
+
+        # Loop over all samples using batches
+        for idx in range(X.shape[0]):
+            image = X[idx, ...].reshape(X.shape[1:])
+            center = find_center(image)
+
+            # Block out the beam
+            beam_mask = create_circular_mask(
+                    image.shape[0], image.shape[1], center=center,
+                    rmax=beam_rmax)
+
+            masked_image = image.copy()
+            masked_image[beam_mask] = np.nan
+
+            # Find dead pixels
+            dead_pixel_locations = masked_image > dead_pixel_threshold
+
+
+            # Set repaired output image based on ``copy`` value
+            if copy is True:
+                output_image = image.copy()
+            else:
+                output_image = image
+
+            output_image[dead_pixel_locations] = np.nan
+
+            # Store repaired output image in appropriate array
+            if copy is True:
+                result[idx, ...] = output_image
+            else:
+                # Overwrite data
+                X[idx, ...] = output_image
+
+        if copy is True:
+            return result
+        else:
+            return X
 
 def dead_pixel_repair_dir(
             input_path=None,
@@ -28,9 +117,47 @@ def dead_pixel_repair_dir(
             overwrite=False,
             beam_rmax=DEFAULT_BEAM_RMAX,
             dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD,
-            file_format=None):
+            file_format=None,
+            verbose=False):
     """
     Repairs dead pixels in images contained in a directory
+
+    Parameters
+    ----------
+
+    input_path : str
+        Path to input files to repair.
+
+    output_path : str
+        Output path to save repaired files.
+
+    overwrite : bool
+        Set to ``True`` to overwrite files in place.
+
+    beam_rmax : int
+        Set radius around beam center to ignore when finding dead pixels.
+
+    dead_pixel_threshold : int
+        Pixels above this threshold value are considered dead pixels.
+
+    file_format : str
+        Choice of "txt" (default), "tiff", or "npy".
+
+    verbose : bool
+        Print information about the repair process.
+
+    Notes
+    -----
+
+    Repairs dead pixels on the detector, which have very high pixel values.
+
+    Replaces dead pixels with nan values.
+
+    Blocks beam area when finding dead pixels.
+
+    Saves repaired files to specified output directory or
+    overwrites data in place.
+
     """
 
     parent_path = os.path.dirname(input_path)
@@ -56,6 +183,9 @@ def dead_pixel_repair_dir(
         # Sort files list
         filepath_list.sort()
 
+    if verbose is True:
+        print("Found {} files to repair.".format(len(filepath_list)))
+
     # Store output directory info
     # Create output directory if it does not exist
     if not output_path and not overwrite:
@@ -73,7 +203,8 @@ def dead_pixel_repair_dir(
 
     os.makedirs(output_path, exist_ok=True)
 
-    print("Saving data to\n{}".format(output_path))
+    if verbose is True:
+        print("Saving data to\n{}".format(output_path))
 
     # Loop over files list
     for filepath in filepath_list:
@@ -145,6 +276,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--file_format", type=str, default=None, required=False,
             help="The file format to use (txt, tiff, or npy).")
+    parser.add_argument(
+            "--verbose", action="store_true",
+            help="Verbose output.")
 
     args = parser.parse_args()
 
@@ -160,6 +294,7 @@ if __name__ == '__main__':
     visualize = args.visualize
     overwrite = args.overwrite
     file_format = args.file_format
+    verbose = args.verbose
 
     if input_path and find_dead_pixels:
         dead_pixel_repair_dir(
@@ -168,7 +303,8 @@ if __name__ == '__main__':
             overwrite=overwrite,
             beam_rmax=beam_rmax,
             dead_pixel_threshold=dead_pixel_threshold,
-            file_format=file_format
+            file_format=file_format,
+            verbose=verbose,
             )
     else:
         raise NotImplementedError()
