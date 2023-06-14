@@ -16,6 +16,7 @@ from scipy.interpolate import RegularGridInterpolator
 
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.image_processing import crop_image
+from eosdxanalysis.preprocessing.image_processing import enlarge_image
 from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
 from eosdxanalysis.preprocessing.center_finding import circular_average
@@ -28,7 +29,6 @@ from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import gen_rotation_line
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import polar_meshgrid
-from eosdxanalysis.preprocessing.utils import azimuthal_integration
 from eosdxanalysis.preprocessing.utils import unwarp_polar
 from eosdxanalysis.preprocessing.utils import find_center
 from eosdxanalysis.preprocessing.utils import find_centroid
@@ -53,6 +53,9 @@ from eosdxanalysis.preprocessing.dead_pixel_repair import DeadPixelRepair
 from eosdxanalysis.preprocessing.dead_pixel_repair import dead_pixel_repair_dir
 from eosdxanalysis.preprocessing.dead_pixel_repair import DEFAULT_BEAM_RMAX
 from eosdxanalysis.preprocessing.dead_pixel_repair import DEFAULT_DEAD_PIXEL_THRESHOLD
+
+from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration
+from eosdxanalysis.preprocessing.azimuthal_integration import radial_intensity_sum
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -731,151 +734,6 @@ class TestUtils(unittest.TestCase):
 
         self.assertTrue(np.array_equal(known_angle, test_angle))
 
-    def test_azimuthal_integration_peak_position_conservation(self):
-        """
-        Use a synthetic pattern with known peak location
-        and check that azimuthal integration yields a peak in the
-        same location.
-        """
-        shape = (256,256)
-        x_start = -shape[1]/2 - 0.5
-        x_end = -x_start
-        y_start = x_start
-        y_end = x_end
-        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
-        RR = np.sqrt(XX**2 + YY**2)
-
-        known_peak_location = 20
-        test_image = np.exp(-(RR - known_peak_location)**2)
-
-        profile_1d = azimuthal_integration(test_image)
-
-        calculated_peak_location = np.where(profile_1d == np.max(profile_1d))[0]
-
-        self.assertEqual(calculated_peak_location, known_peak_location)
-
-    def test_azimuthal_integration_half_image_peak_position_conservation(self):
-        """
-        Use a synthetic half-image test pattern with known peak location
-        and check that azimuthal integration yields a peak in the
-        same location with the expected value.
-        """
-        shape = (256,256)
-        x_start = -shape[1]/2 - 0.5
-        x_end = -x_start
-        y_start = x_start
-        y_end = x_end
-        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
-        RR = np.sqrt(XX**2 + YY**2)
-        TT = np.arctan2(YY, XX)
-
-        known_peak_location = 20
-        test_image = np.exp(-(RR - known_peak_location)**2)
-        test_image[TT < 0] = 0
-
-        profile_1d = azimuthal_integration(
-                test_image,
-                azimuthal_point_count=90,
-                start_angle=-np.pi,
-                end_angle=0)
-
-        calculated_peak_location = np.where(profile_1d == np.max(profile_1d))[0]
-
-        self.assertEqual(calculated_peak_location, known_peak_location)
-
-    def test_azimuthal_integration_half_image_peak_value_conservation(self):
-        """
-        Use a synthetic half-image test pattern with known peak location
-        and check that azimuthal integration yields a peak in the
-        same location with the expected value.
-        """
-        shape = (256,256)
-        x_start = -shape[1]/2 - 0.5
-        x_end = -x_start
-        y_start = x_start
-        y_end = x_end
-        rows, cols = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
-        RR = np.sqrt(rows**2 + cols**2)
-        TT = np.arctan2(-rows, cols)
-
-        known_peak_location = 20
-        test_image_full = np.exp(-(RR - known_peak_location)**2)
-        test_image_half = test_image_full.copy()
-        test_image_half[TT < 0] = 0
-
-        profile_1d_full = azimuthal_integration(
-                test_image_full,
-                azimuthal_point_count=180,
-                start_angle=-np.pi,
-                end_angle=np.pi)
-        profile_1d_half = azimuthal_integration(
-                test_image_half,
-                azimuthal_point_count=90,
-                start_angle=0,
-                end_angle=np.pi)
-
-        peak_value_full = np.max(profile_1d_full)
-        peak_value_half = np.max(profile_1d_half)
-
-        self.assertTrue(np.isclose(peak_value_full, peak_value_half, atol=1e-2))
-
-        calculated_peak_location_full = np.where(
-                profile_1d_full == np.max(profile_1d_full))[0]
-        calculated_peak_location_half = np.where(
-                profile_1d_half == np.max(profile_1d_half))[0]
-
-        self.assertEqual(calculated_peak_location_full, known_peak_location)
-        self.assertEqual(calculated_peak_location_half, known_peak_location)
-
-    def test_azimuthal_integration(self):
-        """
-        """
-        test_input_path = self.test_input_path
-
-        # Load images
-        input_filepath_list = glob.glob(
-                os.path.join(test_input_path, "924*.txt"))
-        input_filepath_list.sort()
-
-        for input_filepath in input_filepath_list:
-            # Load the image file
-            input_filename = os.path.basename(input_filepath)
-            image = np.loadtxt(input_filepath, dtype=np.uint32)
-
-            # Calculate beam radius
-
-        self.fail("Finish writing test.")
-
-    def test_azimuthal_integration_scaling(self):
-        """
-        Ensure azimuthal integration scales properly
-        """
-        # Create test image such that the inner annulus is 1
-        # and the outer annulus is 0
-        # The resulting azimuthal integration profile should
-        # be a step function
-        size = 256
-        test_image = np.zeros((size, size))
-        mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
-        test_image[mask] = 1
-
-        profile_1d = azimuthal_integration(test_image)
-        profile_size = profile_1d.size
-        step_function = np.zeros(profile_size)
-        step_function[:profile_size//2] = 1
-
-        # Take the difference
-        diff = abs(step_function - profile_1d)
-
-        # Test that the 1-D integrated profile is close to a step function
-        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
-
-    #     In this test we receive only 4 values (0, 1, 0.003, 0.77)
-        values = np.unique(profile_1d)
-        self.assertEqual(values.size, 4)
-
-    #     Ensure we do not receive the value arround 0.5
-        self.assertFalse(np.isclose(values, 0.5, atol=0.1).any())
 
 class TestDenoising(unittest.TestCase):
 
@@ -2980,6 +2838,157 @@ class TestDeadPixelRepair(unittest.TestCase):
 
         # Delete output files
         shutil.rmtree(output_path)
+
+
+class TestAzimuthalIntegration(unittest.TestCase):
+
+    def test_azimuthal_integration_peak_position_conservation(self):
+        """
+        Use a synthetic pattern with known peak location
+        and check that azimuthal integration yields a peak in the
+        same location.
+        """
+        shape = (256,256)
+        x_start = -shape[1]/2 - 0.5
+        x_end = -x_start
+        y_start = x_start
+        y_end = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        RR = np.sqrt(XX**2 + YY**2)
+
+        known_peak_location = 20
+        test_image = np.exp(-(RR - known_peak_location)**2)
+
+        profile_1d = azimuthal_integration(test_image)
+
+        calculated_peak_location = np.where(profile_1d == np.max(profile_1d))[0]
+
+        self.assertEqual(calculated_peak_location, known_peak_location)
+
+    def test_azimuthal_integration_half_image_peak_position_conservation(self):
+        """
+        Use a synthetic half-image test pattern with known peak location
+        and check that azimuthal integration yields a peak in the
+        same location with the expected value.
+        """
+        shape = (256,256)
+        x_start = -shape[1]/2 - 0.5
+        x_end = -x_start
+        y_start = x_start
+        y_end = x_end
+        YY, XX = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        RR = np.sqrt(XX**2 + YY**2)
+        TT = np.arctan2(YY, XX)
+
+        known_peak_location = 20
+        test_image = np.exp(-(RR - known_peak_location)**2)
+        test_image[TT < 0] = 0
+
+        profile_1d = azimuthal_integration(
+                test_image,
+                azimuthal_point_count=90,
+                start_angle=-np.pi,
+                end_angle=0)
+
+        calculated_peak_location = np.where(profile_1d == np.max(profile_1d))[0]
+
+        self.assertEqual(calculated_peak_location, known_peak_location)
+
+    def test_azimuthal_integration_half_image_peak_value_conservation(self):
+        """
+        Use a synthetic half-image test pattern with known peak location
+        and check that azimuthal integration yields a peak in the
+        same location with the expected value.
+        """
+        shape = (256,256)
+        x_start = -shape[1]/2 - 0.5
+        x_end = -x_start
+        y_start = x_start
+        y_end = x_end
+        rows, cols = np.mgrid[y_start:y_end:shape[0]*1j, x_start:x_end:shape[1]*1j]
+        RR = np.sqrt(rows**2 + cols**2)
+        TT = np.arctan2(-rows, cols)
+
+        known_peak_location = 20
+        test_image_full = np.exp(-(RR - known_peak_location)**2)
+        test_image_half = test_image_full.copy()
+        test_image_half[TT < 0] = 0
+
+        profile_1d_full = azimuthal_integration(
+                test_image_full,
+                azimuthal_point_count=180,
+                start_angle=-np.pi,
+                end_angle=np.pi)
+        profile_1d_half = azimuthal_integration(
+                test_image_half,
+                azimuthal_point_count=90,
+                start_angle=0,
+                end_angle=np.pi)
+
+        peak_value_full = np.max(profile_1d_full)
+        peak_value_half = np.max(profile_1d_half)
+
+        self.assertTrue(np.isclose(peak_value_full, peak_value_half, atol=1e-2))
+
+        calculated_peak_location_full = np.where(
+                profile_1d_full == np.max(profile_1d_full))[0]
+        calculated_peak_location_half = np.where(
+                profile_1d_half == np.max(profile_1d_half))[0]
+
+        self.assertEqual(calculated_peak_location_full, known_peak_location)
+        self.assertEqual(calculated_peak_location_half, known_peak_location)
+
+    def test_azimuthal_integration(self):
+        """
+        """
+        test_input_path = self.test_input_path
+
+        # Load images
+        input_filepath_list = glob.glob(
+                os.path.join(test_input_path, "924*.txt"))
+        input_filepath_list.sort()
+
+        for input_filepath in input_filepath_list:
+            # Load the image file
+            input_filename = os.path.basename(input_filepath)
+            image = np.loadtxt(input_filepath, dtype=np.uint32)
+
+            # Calculate beam radius
+
+        self.fail("Finish writing test.")
+
+    def test_azimuthal_integration_scaling(self):
+        """
+        Ensure azimuthal integration scales properly
+        """
+        # Create test image such that the inner annulus is 1
+        # and the outer annulus is 0
+        # The resulting azimuthal integration profile should
+        # be a step function
+        size = 256
+        res = 1
+        test_image = np.zeros((size, size))
+        mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
+        test_image[mask] = 1
+
+        end_radius = int(np.max(test_image.shape)/2*res)
+
+        profile_1d = azimuthal_integration(
+                test_image, end_radius=end_radius)
+        profile_size = profile_1d.size
+        step_function = np.zeros(end_radius)
+        step_function[:end_radius//2] = 1
+
+        # Take the difference
+        diff = abs(step_function - profile_1d)
+
+        # Test that the 1-D integrated profile is close to a step function
+        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
+
+        # In this test we receive only 5 values
+        # 0., 0.0032228, 0.55451952, 0.99823135, and 1
+        values = np.unique(profile_1d)
+        self.assertEqual(values.size, 5)
 
 if __name__ == '__main__':
     unittest.main()
