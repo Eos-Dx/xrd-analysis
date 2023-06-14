@@ -28,14 +28,95 @@ DEFAULT_DEAD_PIXEL_THRESHOLD = 1e4
 DEFAULT_BEAM_RMAX = 15
 
 
+def dead_pixel_repair(
+        image,
+        center=None,
+        beam_rmax=DEFAULT_BEAM_RMAX,
+        dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD,
+        copy=False):
+    """
+    Function to repair dead pixels by replacing high-intensity pixels
+    away from the beam with np.nan values.
+
+    Parameters
+    ----------
+
+    image : 2D {array-like}
+        Input image to repair.
+
+    center : (float, float)
+        Center of diffraction pattern (row, column).
+
+    beam_rmax : int
+        Set radius around beam center to ignore when finding dead pixels.
+
+    dead_pixel_threshold : float
+        Pixels above this threshold value are considered dead pixels.
+
+    copy : bool
+        Creates copy of array if True (default = False).
+
+    Returns
+    -------
+
+    output_image : 2D array-like
+        Repaired image.
+
+    """
+    if copy:
+        image = image.copy()
+
+    if not center:
+        center = find_center(image)
+
+    # Block out the beam
+    beam_mask = create_circular_mask(
+            image.shape[0], image.shape[1], center=center,
+            rmax=beam_rmax)
+
+    masked_image = image.copy()
+    masked_image[beam_mask] = np.nan
+
+    # Find dead pixels
+    dead_pixel_locations = masked_image > dead_pixel_threshold
+
+    image[dead_pixel_locations] = np.nan
+
+    return image
+
+
 class DeadPixelRepair(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
     """Adapted from scikit-learn transforms
     Repair dead pixel areas of detector
     Replace dead pixels by np.nan
     """
 
-    def __init__(self, *, copy=True):
+    def __init__(self, *,
+            copy=True,
+            center=None,
+            beam_rmax=DEFAULT_BEAM_RMAX,
+            dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD,
+            ):
+
+        """
+        Parameters
+        ----------
+        copy : bool
+            Creates copy of array if True (default = False).
+
+        center : {(float, float)}
+            Center of diffraction pattern (row, column).
+
+        beam_rmax : int
+            Set radius around beam center to ignore when finding dead pixels.
+
+        dead_pixel_threshold : float
+            Pixels above this threshold value are considered dead pixels.
+        """
         self.copy = copy
+        self.center = center
+        self.beam_rmax = beam_rmax
+        self.dead_pixel_threshold = dead_pixel_threshold
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -55,13 +136,10 @@ class DeadPixelRepair(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
         """
         return self
 
-    def transform(
-            self, X, copy=True,
-            beam_rmax=DEFAULT_BEAM_RMAX,
-            dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD):
+    def transform(self, X, copy=True):
         """Parameters
         ----------
-        X : {array-like, sparse matrix of shape (n_samples, n_features)
+        X : {array-like}, sparse matrix of shape (n_samples, n_features)
             The data used to scale along the features axis.
         copy : bool, default=None
             Copy the input X or not.
@@ -70,6 +148,10 @@ class DeadPixelRepair(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
         X_tr : {ndarray, sparse matrix} of shape (n_samples, n_features)
             Transformed array.
         """
+        center = self.center
+        beam_rmax = self.beam_rmax
+        dead_pixel_threshold = self.dead_pixel_threshold
+
         if copy is True:
             # Create a copy of the data, otherwise overwrite
             result = np.zeros_like(X)
@@ -77,27 +159,13 @@ class DeadPixelRepair(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
         # Loop over all samples using batches
         for idx in range(X.shape[0]):
             image = X[idx, ...].reshape(X.shape[1:])
-            center = find_center(image)
 
-            # Block out the beam
-            beam_mask = create_circular_mask(
-                    image.shape[0], image.shape[1], center=center,
-                    rmax=beam_rmax)
+            if not center:
+                center = find_center(image)
 
-            masked_image = image.copy()
-            masked_image[beam_mask] = np.nan
-
-            # Find dead pixels
-            dead_pixel_locations = masked_image > dead_pixel_threshold
-
-
-            # Set repaired output image based on ``copy`` value
-            if copy is True:
-                output_image = image.copy()
-            else:
-                output_image = image
-
-            output_image[dead_pixel_locations] = np.nan
+            output_image = dead_pixel_repair(
+                    image, center=center, beam_rmax=beam_rmax,
+                    dead_pixel_threshold=dead_pixel_threshold)
 
             # Store repaired output image in appropriate array
             if copy is True:
@@ -115,6 +183,7 @@ def dead_pixel_repair_dir(
             input_path=None,
             output_path=None,
             overwrite=False,
+            center=None,
             beam_rmax=DEFAULT_BEAM_RMAX,
             dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD,
             file_format=None,
@@ -214,21 +283,12 @@ def dead_pixel_repair_dir(
         elif file_format == "npy":
             image = np.load(filepath, allow_pickle=True)
 
-        # Find the center
-        center = find_center(image)
+        if not center:
+            center = find_center(image)
 
-        # Block out the beam
-        beam_mask = create_circular_mask(
-                image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
-
-        masked_image = image.copy()
-        masked_image[beam_mask] = np.nan
-
-        # Find dead pixels
-        dead_pixel_locations = masked_image > dead_pixel_threshold
-
-        output_image = image.copy()
-        output_image[dead_pixel_locations] = np.nan
+        output_image = dead_pixel_repair(
+                image, center=center, beam_rmax=beam_rmax,
+                dead_pixel_threshold=dead_pixel_threshold)
 
         # Save results
         data_output_filepath = os.path.join(output_path, filename)
@@ -268,6 +328,10 @@ if __name__ == '__main__':
             default=DEFAULT_DEAD_PIXEL_THRESHOLD,
             help="Set pixel value of dead pixels.")
     parser.add_argument(
+            "--center", type=str,
+            default=None,
+            help="Set diffraction pattern center for entire dataset.")
+    parser.add_argument(
             "--visualize", action="store_true",
             help="Visualize plots.")
     parser.add_argument(
@@ -295,12 +359,15 @@ if __name__ == '__main__':
     overwrite = args.overwrite
     file_format = args.file_format
     verbose = args.verbose
+    center_kwarg = args.center
+    center = center_kwarg.strip("()").split(",") if center_kwarg else None
 
     if input_path and find_dead_pixels:
         dead_pixel_repair_dir(
             input_path=input_path,
             output_path=output_path,
             overwrite=overwrite,
+            center=center,
             beam_rmax=beam_rmax,
             dead_pixel_threshold=dead_pixel_threshold,
             file_format=file_format,
