@@ -25,16 +25,120 @@ from sklearn.base import TransformerMixin
 from sklearn.base import BaseEstimator
 
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
-from eosdxanalysis.preprocessing.utils import radial_intensity
+from eosdxanalysis.preprocessing.utils import radial_intensity_sum
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
+from eosdxanalysis.preprocessing.utils import warp_polar_preprocessor
 from eosdxanalysis.preprocessing.utils import AZIMUTHAL_POINT_COUNT_DEFAULT
-
-from eosdxanalysis.preprocessing.image_processing import pad_image
 
 from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 DEFAULT_DET_XSIZE = 256
+
+
+def azimuthal_integration(
+        image, center=None, start_radius=None, end_radius=None,
+        azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
+        start_angle=None, end_angle=None, res=1):
+    """
+    Performs 2D -> 1D azimuthal integration yielding mean intensity as a
+    function of radius
+
+    Parameters
+    ----------
+
+    image : ndarray
+        Diffraction image.
+
+    center : (num, num)
+        Center of diffraction pattern.
+
+    radius : int
+
+    azimuthal_point_count : int
+        Number of points in azimuthal dimension.
+
+    start_angle : float
+        Radians
+
+    end_angle : float
+        Radians
+
+    res : int
+        Resolution
+
+    Returns
+    -------
+
+    profile_1d : (n,1)-array float
+        n = azimuthal_point_count
+    """
+    polar_image_subset = warp_polar_preprocessor(
+        image,
+        center=center,
+        start_radius=start_radius,
+        end_radius=end_radius,
+        azimuthal_point_count=azimuthal_point_count,
+        start_angle=start_angle,
+        end_angle=end_angle,
+        res=1)
+
+    # Calculate the mean
+    profile_1d = np.nanmean(polar_image_subset, axis=0)
+
+    return profile_1d
+
+def radial_intensity_sum(
+        image, center=None, start_radius=None, end_radius=None,
+        azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
+        start_angle=None, end_angle=None, res=1):
+    """
+    Performs 2D -> 1D radial intensity summation yielding total intensity
+    as a function of radius.
+
+    Parameters
+    ----------
+
+    image : ndarray
+        Diffraction image.
+
+    center : (num, num)
+        Center of diffraction pattern.
+
+    radius : int
+
+    azimuthal_point_count : int
+        Number of points in azimuthal dimension.
+
+    start_angle : float
+        Radians
+
+    end_angle : float
+        Radians
+
+    res : int
+        Resolution
+
+    Returns
+    -------
+
+    profile_1d : (n,1)-array float
+        n = azimuthal_point_count
+    """
+    polar_image_subset = warp_polar_preprocessor(
+        image,
+        center=center,
+        start_radius=start_radius,
+        end_radius=end_radius,
+        azimuthal_point_count=azimuthal_point_count,
+        start_angle=start_angle,
+        end_angle=end_angle,
+        res=1)
+
+    # Calculate the sum
+    profile_1d = np.nansum(polar_image_subset, axis=0)
+
+    return profile_1d
 
 
 class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
@@ -43,8 +147,46 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
     Replace dead pixels by np.nan
     """
 
-    def __init__(self, *, copy=True):
+    def __init__(self, *, copy=True,
+            center=None, start_radius=None, end_radius=None,
+            azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
+            start_angle=None, end_angle=None, res=1):
+        """
+        Parameters
+        ----------
+        copy : bool
+            Creates copy of array if True (default = False).
+
+        center : (num, num)
+            Center of diffraction pattern.
+
+        start_radius : int
+
+        end_radius : int
+
+        azimuthal_point_count : int
+            Number of points in azimuthal dimension.
+
+        start_angle : float
+            Radians
+
+        end_angle : float
+            Radians
+
+        res : int
+            Resolution
+
+        center : {(float, float)}
+            Center of diffraction pattern (row, column).
+        """
         self.copy = copy
+        self.center = center
+        self.start_radius = start_radius
+        self.end_radius = end_radius
+        self.azimuthal_point_count = azimuthal_point_count
+        self.start_angle = start_angle
+        self.end_angle = end_angle
+        self.res = res
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -64,11 +206,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         """
         return self
 
-    def transform(
-            self, X, copy=True, center=None, start_radius=None, end_radius=None,
-            azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
-            start_angle=None, end_angle=None, res=1):
-
+    def transform( self, X, copy=True):
         """Parameters
         ----------
         X : {array-like, sparse matrix of shape (n_samples, n_features)
@@ -89,7 +227,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
             image = X[idx, ...].reshape(X.shape[1:])
             center = find_center(image)
 
-            radial_profile = run_azimuthal_integration()
+            radial_profile = azimuthal_integration()
 
             # Set radial profile data based on ``copy`` value
             if copy is True:
@@ -109,8 +247,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         else:
             return X
 
-
-def run_azimuthal_preprocessing(
+def azimuthal_preprocess_dir(
         input_path, wavelength_nm,
         output_path=None,
         input_dataframe_filepath=None,
@@ -120,14 +257,15 @@ def run_azimuthal_preprocessing(
         azimuthal_mean=True,
         azimuthal_sum=False,
         file_format=None,
-        det1_center=None,
+        center=None,
         det_xspacing=None,
-        det_xsize=None):
+        det_xsize=None,
+        fill=np.nan):
     """
     Parameters
     ----------
 
-    det1_center : tuple
+    center : tuple
         Center of diffraction pattern on detector 1 in pixel coordinates
 
     det_xspacing : float
@@ -213,33 +351,26 @@ def run_azimuthal_preprocessing(
                     "Unrecognized file format: {}\n".format(
                         file_format.strip(".")) + "Must be ``txt`` or ``tiff``.")
 
-        if type(det1_center) != type(None):
-            if all([det_xspacing, det_xsize]):
-                center = (det1_center[0], - (det_xsize - det1_center[1]) - det_xspacing)
-        else:
-            # Find the center
-            center = find_center(image)
-
         if beam_rmax > 0:
             # Block out the beam
             beam_mask = create_circular_mask(
                     image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
             masked_image = image.copy()
-            masked_image[beam_mask] = np.nan
+            masked_image[beam_mask] = fill
         else:
             masked_image = image
 
-        # Enlarge the image
-        padding_amount = (np.sqrt(2)*np.max(image.shape)).astype(int)
-        padding_top = padding_amount
-        padding_bottom = padding_amount
-        padding_left = padding_amount
-        padding_right = padding_amount
-        padding = (padding_top, padding_bottom, padding_left, padding_right)
-        enlarged_masked_image = pad_image(
-                masked_image, padding=padding, nan=True)
+        # Center of diffraction pattern
+        if not center:
+            # Second detector case
+            if all([det_xspacing, det_xsize]):
+                center = (det1_center[0], - (det_xsize - det1_center[1]) - det_xspacing)
+            # First detector case
+            else:
+                center = find_center(image)
 
-        new_center = (padding_top + center[0], padding_left + center[1])
+        enlarged_masked_image, new_center, padding_amount = enlarge_image(
+                masked_image, center=center)
 
         if azimuthal_mean:
             radial_profile = azimuthal_integration(
