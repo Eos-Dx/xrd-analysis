@@ -245,7 +245,11 @@ def dead_pixel_repair_dir(
 
     # Store output directory info
     # Create output directory if it does not exist
-    if not output_path and not overwrite:
+    if output_path:
+        pass
+    elif overwrite and not output_path:
+        output_path = input_path
+    else:
         # Create preprocessing results directory
         results_dir = "preprocessed_results"
         results_path = os.path.join(parent_path, results_dir)
@@ -255,8 +259,9 @@ def dead_pixel_repair_dir(
         output_dir = "preprocessed_results_{}".format(
                 timestamp)
         output_path = os.path.join(results_path, output_dir)
-    elif overwrite:
-        output_path = input_path
+
+    # Set copy for call to dead_pixel_repair
+    copy = overwrite
 
     os.makedirs(output_path, exist_ok=True)
 
@@ -275,7 +280,7 @@ def dead_pixel_repair_dir(
             center = find_center(image)
 
         output_image = dead_pixel_repair(
-                image, center=center, beam_rmax=beam_rmax,
+                image, copy=copy, center=center, beam_rmax=beam_rmax,
                 dead_pixel_threshold=dead_pixel_threshold)
 
         # Save results
