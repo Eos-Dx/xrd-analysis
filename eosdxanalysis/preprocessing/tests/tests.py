@@ -50,6 +50,9 @@ from eosdxanalysis.preprocessing.feature_extraction import FeatureExtraction
 
 from eosdxanalysis.preprocessing.dead_pixel_repair import dead_pixel_repair
 from eosdxanalysis.preprocessing.dead_pixel_repair import DeadPixelRepair
+from eosdxanalysis.preprocessing.dead_pixel_repair import dead_pixel_repair_dir
+from eosdxanalysis.preprocessing.dead_pixel_repair import DEFAULT_BEAM_RMAX
+from eosdxanalysis.preprocessing.dead_pixel_repair import DEFAULT_DEAD_PIXEL_THRESHOLD
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
@@ -2914,6 +2917,69 @@ class TestDeadPixelRepair(unittest.TestCase):
         self.assertTrue(
                 np.array_equal(
                     repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_dir(self):
+        """
+        """
+        TEST_IMAGE_DIR = "test_images"
+        TEST_DIR = "test_dead_pixel_repair_images"
+        INPUT_DIR = "input"
+        OUTPUT_DIR = "output"
+        REPAIRED_DIR = "repaired"
+
+        # Set input path
+        input_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, INPUT_DIR)
+        # Set known repaired path
+        repaired_path = os.path.join(
+                TEST_IMAGE_PATH, TEST_DIR, REPAIRED_DIR)
+        # Set output path
+        output_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR)
+
+        # Create output path if it does not exist
+        # os.makedirs(output_path, exist_ok=True)
+        # print("Created {}".format(output_path))
+
+        # Run dead pixel repair for directory
+        dead_pixel_repair_dir(
+            input_path=input_path,
+            output_path=output_path,
+            overwrite=False,
+            center=None,
+            beam_rmax=0,
+            dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD,
+            file_format=None,
+            verbose=False)
+
+        # Get list of output file paths
+        output_filepath_list = glob.glob(os.path.join(output_path, "*"))
+        output_filepath_list.sort()
+
+        # Get list of repaired file paths
+        repaired_filepath_list = glob.glob(os.path.join(repaired_path, "*"))
+        repaired_filepath_list.sort()
+
+        # Check that there are some output files
+        self.assertTrue(len(output_filepath_list) > 0)
+
+        # Check the output files
+        for idx in range(len(output_filepath_list)):
+            output_filepath = output_filepath_list[idx]
+            output_image = np.loadtxt(output_filepath)
+
+            repaired_filepath = repaired_filepath_list[idx]
+            repaired_image = np.loadtxt(repaired_filepath)
+
+            # Ensure images are non-zero
+            self.assertTrue(np.nansum(output_image) > 0)
+            self.assertTrue(np.nansum(repaired_image) > 0)
+
+            # Ensure output and known repaired image are equal
+            self.assertTrue(
+                    np.array_equal(
+                        output_image, repaired_image, equal_nan=True))
+
+        # Delete output files
+        shutil.rmtree(output_path)
 
 if __name__ == '__main__':
     unittest.main()
