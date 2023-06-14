@@ -520,7 +520,7 @@ def warp_polar_preprocessor(
     if not start_radius:
         start_radius = 0
     if not end_radius:
-        end_radius = np.max(image.shape)/2*res
+        end_radius = int(np.max(image.shape)/2*res)
     if not azimuthal_point_count:
         azimuthal_point_count = AZIMUTHAL_POINT_COUNT*res
     if (start_angle is None) and (end_angle is None):
@@ -545,7 +545,7 @@ def warp_polar_preprocessor(
             image, center=center, radius=end_radius,
             output_shape=output_shape, preserve_range=True)
 
-    polar_image = polar_image[start_radius:end_radius, :]
+    polar_image = polar_image[:, start_radius:end_radius]
 
     # Interpolate if subset is needed
     interp = RegularGridInterpolator(
