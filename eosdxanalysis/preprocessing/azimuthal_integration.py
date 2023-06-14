@@ -24,8 +24,6 @@ from sklearn.base import OneToOneFeatureMixin
 from sklearn.base import TransformerMixin
 from sklearn.base import BaseEstimator
 
-from eosdxanalysis.preprocessing.utils import azimuthal_integration
-from eosdxanalysis.preprocessing.utils import radial_intensity_sum
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
 from eosdxanalysis.preprocessing.utils import warp_polar_preprocessor
