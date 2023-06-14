@@ -24,6 +24,8 @@ from sklearn.base import OneToOneFeatureMixin
 from sklearn.base import TransformerMixin
 from sklearn.base import BaseEstimator
 
+from eosdxanalysis.preprocessing.image_processing import enlarge_image
+
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
 from eosdxanalysis.preprocessing.utils import warp_polar_preprocessor
@@ -245,7 +247,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         else:
             return X
 
-def azimuthal_preprocess_dir(
+def azimuthal_integration_dir(
         input_path, wavelength_nm,
         output_path=None,
         input_dataframe_filepath=None,
@@ -349,6 +351,16 @@ def azimuthal_preprocess_dir(
                     "Unrecognized file format: {}\n".format(
                         file_format.strip(".")) + "Must be ``txt`` or ``tiff``.")
 
+        # Center of diffraction pattern
+        if not center:
+            # Second detector case
+            if all([det_xspacing, det_xsize]):
+                center = (center[0], - (det_xsize - center[1]) - det_xspacing)
+            # First detector case
+            else:
+                center = find_center(image)
+
+        # Beam masking
         if beam_rmax > 0:
             # Block out the beam
             beam_mask = create_circular_mask(
@@ -358,15 +370,6 @@ def azimuthal_preprocess_dir(
         else:
             masked_image = image
 
-        # Center of diffraction pattern
-        if not center:
-            # Second detector case
-            if all([det_xspacing, det_xsize]):
-                center = (det1_center[0], - (det_xsize - det1_center[1]) - det_xspacing)
-            # First detector case
-            else:
-                center = find_center(image)
-
         enlarged_masked_image, new_center, padding_amount = enlarge_image(
                 masked_image, center=center)
 
@@ -374,7 +377,7 @@ def azimuthal_preprocess_dir(
             radial_profile = azimuthal_integration(
                     enlarged_masked_image, center=new_center, end_radius=padding_amount)
         elif azimuthal_sum:
-            radial_profile = radial_intensity(
+            radial_profile = radial_intensity_sum(
                     enlarged_masked_image, center=new_center, end_radius=padding_amount)
 
         # Save data to file
@@ -519,7 +522,7 @@ if __name__ == '__main__':
             "--file_format", type=str, default=None, required=False,
             help="File format: ``txt`` or ``tiff``.")
     parser.add_argument(
-            "--det1_center", type=str, default=None, required=False,
+            "--center", type=str, default=None, required=False,
             help="Center of diffraction pattern on detector 1 in pixel coordinates.")
     parser.add_argument(
             "--det_xspacing", type=float, default=None, required=False,
@@ -545,13 +548,13 @@ if __name__ == '__main__':
     azimuthal_mean = args.azimuthal_mean
     azimuthal_sum = args.azimuthal_sum
     file_format = args.file_format
-    det1_center_arg = args.det1_center
-    if det1_center_arg != None:
-        det1_center = np.array(det1_center_arg.split(",")).astype(float)
-        if len(det1_center) != 2:
+    center_kwarg = args.center
+    if center_kwarg != None:
+        center = np.array(center_kwarg.split(",")).astype(float)
+        if len(center) != 2:
             raise ValueError("Detector 1 center must be a tuple.")
     else:
-        det1_center = None
+        center = None
     det_xspacing = args.det_xspacing
     det_xsize = args.det_xsize
 
@@ -561,7 +564,7 @@ if __name__ == '__main__':
     if not input_path and not input_dataframe_filepath:
         raise ValueError("Input path or dataframe is required.")
 
-    run_azimuthal_preprocessing(
+    azimuthal_integration_dir(
         input_path=input_path,
         wavelength_nm=wavelength_nm,
         output_path=output_path,
@@ -573,7 +576,7 @@ if __name__ == '__main__':
         azimuthal_mean=azimuthal_mean,
         azimuthal_sum=azimuthal_sum,
         file_format=file_format,
-        det1_center=det1_center,
+        center=center,
         det_xspacing=det_xspacing,
         det_xsize=det_xsize,
         )
