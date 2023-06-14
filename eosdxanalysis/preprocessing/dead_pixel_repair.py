@@ -152,10 +152,6 @@ class DeadPixelRepair(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
         beam_rmax = self.beam_rmax
         dead_pixel_threshold = self.dead_pixel_threshold
 
-        if copy is True:
-            # Create a copy of the data, otherwise overwrite
-            result = np.zeros_like(X)
-
         # Loop over all samples using batches
         for idx in range(X.shape[0]):
             image = X[idx, ...].reshape(X.shape[1:])
@@ -164,20 +160,12 @@ class DeadPixelRepair(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
                 center = find_center(image)
 
             output_image = dead_pixel_repair(
-                    image, center=center, beam_rmax=beam_rmax,
+                    image, copy=copy, center=center, beam_rmax=beam_rmax,
                     dead_pixel_threshold=dead_pixel_threshold)
 
-            # Store repaired output image in appropriate array
-            if copy is True:
-                result[idx, ...] = output_image
-            else:
-                # Overwrite data
-                X[idx, ...] = output_image
+            X[idx, ...] = output_image
 
-        if copy is True:
-            return result
-        else:
-            return X
+        return X
 
 def dead_pixel_repair_dir(
             input_path=None,
