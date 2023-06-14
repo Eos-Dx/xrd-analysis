@@ -48,6 +48,8 @@ from eosdxanalysis.preprocessing.beam_utils import beam_extent
 
 from eosdxanalysis.preprocessing.feature_extraction import FeatureExtraction
 
+from eosdxanalysis.preprocessing.dead_pixel_repair import dead_pixel_repair
+
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 from eosdxanalysis.calibration.utils import DiffractionUnitsConversion
@@ -2777,6 +2779,69 @@ class TestPolarMeshgrid(unittest.TestCase):
         known_image[~image_mask] = 0
 
         self.assertTrue(np.array_equal(meshgrid, known_image))
+
+class TestDeadPixelRepair(unittest.TestCase):
+
+    def test_dead_pixel_repair_single_high_value_pixel_no_beam_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image[int(size/2),int(size/2)] = np.nan
+
+        # Repair test image
+        repaired_image = dead_pixel_repair(
+                test_image,
+                center=None,
+                beam_rmax=0,
+                dead_pixel_threshold=1e3,
+                copy=True)
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.nansum(repaired_image) == size**2-1)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_single_high_value_pixel_away_from_center(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the center.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image[int(size/2),int(size/2)] = np.nan
+
+        # Repair test image
+        repaired_image = dead_pixel_repair(
+                test_image,
+                center=(0,0),
+                beam_rmax=1,
+                dead_pixel_threshold=1e3,
+                copy=True)
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.nansum(repaired_image) == size**2-1)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image, equal_nan=True))
 
 if __name__ == '__main__':
     unittest.main()
