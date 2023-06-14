@@ -2929,11 +2929,11 @@ class TestDeadPixelRepair(unittest.TestCase):
 
         # Set input path
         input_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, INPUT_DIR)
+        # Set output path
+        output_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR)
         # Set known repaired path
         repaired_path = os.path.join(
                 TEST_IMAGE_PATH, TEST_DIR, REPAIRED_DIR)
-        # Set output path
-        output_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR)
 
         # Create output path if it does not exist
         # os.makedirs(output_path, exist_ok=True)

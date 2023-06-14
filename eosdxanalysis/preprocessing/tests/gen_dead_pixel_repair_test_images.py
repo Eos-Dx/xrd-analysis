@@ -5,14 +5,16 @@ import numpy as np
 FILE_PATH = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(FILE_PATH, "..")
 MODULE_DATA_PATH = os.path.join(MODULE_PATH, "data")
+TEST_IMAGE_DIR = "test_images"
+TEST_DIR = "test_dead_pixel_repair_images"
 TEST_DATA_DIR = "input"
 REPAIRED_DIR = "repaired"
 
 # Set output path
-test_data_path = os.path.join(FILE_PATH, TEST_DATA_DIR)
+test_data_path = os.path.join(FILE_PATH, TEST_IMAGE_DIR, TEST_DIR, TEST_DATA_DIR)
 
 # Set repaired_output_path
-repaired_data_path = os.path.join(FILE_PATH, REPAIRED_DIR)
+repaired_data_path = os.path.join(FILE_PATH, TEST_IMAGE_DIR, TEST_DIR, REPAIRED_DIR)
 
 # Create directory
 os.makedirs(test_data_path, exist_ok=True)
