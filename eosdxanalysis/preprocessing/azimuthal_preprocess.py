@@ -20,16 +20,94 @@ from skimage import io
 
 from scipy.signal import find_peaks
 
+from sklearn.base import OneToOneFeatureMixin
+from sklearn.base import TransformerMixin
+from sklearn.base import BaseEstimator
+
 from eosdxanalysis.preprocessing.utils import azimuthal_integration
 from eosdxanalysis.preprocessing.utils import radial_intensity
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
+from eosdxanalysis.preprocessing.utils import AZIMUTHAL_POINT_COUNT_DEFAULT
 
 from eosdxanalysis.preprocessing.image_processing import pad_image
 
 from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 DEFAULT_DET_XSIZE = 256
+
+
+class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
+    """Adapted from scikit-learn transforms
+    Repair dead pixel areas of detector
+    Replace dead pixels by np.nan
+    """
+
+    def __init__(self, *, copy=True):
+        self.copy = copy
+
+    def fit(self, X, y=None, sample_weight=None):
+        """Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The data used to compute the mean and standard deviation
+            used for later scaling along the features axis.
+        y : None
+            Ignored.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Individual weights for each sample.
+
+        Returns
+        -------
+        self : object
+            Fitted scaler.
+        """
+        return self
+
+    def transform(
+            self, X, copy=True, center=None, start_radius=None, end_radius=None,
+            azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
+            start_angle=None, end_angle=None, res=1):
+
+        """Parameters
+        ----------
+        X : {array-like, sparse matrix of shape (n_samples, n_features)
+            The data used to scale along the features axis.
+        copy : bool, default=None
+            Copy the input X or not.
+        Returns
+        -------
+        X_tr : {ndarray, sparse matrix} of shape (n_samples, n_features)
+            Transformed array.
+        """
+        if copy is True:
+            # Create a copy of the data, otherwise overwrite
+            result = np.zeros_like(X)
+
+        # Loop over all samples using batches
+        for idx in range(X.shape[0]):
+            image = X[idx, ...].reshape(X.shape[1:])
+            center = find_center(image)
+
+            radial_profile = run_azimuthal_integration()
+
+            # Set radial profile data based on ``copy`` value
+            if copy is True:
+                output_data = radial_profile.copy()
+            else:
+                output_data = radial_profile
+
+            # Store radial profile data in appropriate array
+            if copy is True:
+                result[idx, ...] = output_data
+            else:
+                # Overwrite data
+                X[idx, ...] = output_data
+
+        if copy is True:
+            return result
+        else:
+            return X
 
 
 def run_azimuthal_preprocessing(
