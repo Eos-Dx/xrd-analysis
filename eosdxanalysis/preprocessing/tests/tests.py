@@ -2955,14 +2955,17 @@ class TestAzimuthalIntegration(unittest.TestCase):
         TEST_DIR = "test_azimuthal_integration"
         INPUT_DIR = "input"
         OUTPUT_DIR = "output"
+        PREPROCESSED_DATA_DIR = "preprocessed_data"
         KNOWN_RESULTS_DIR = "known_results"
 
         # Set input path
         input_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, INPUT_DIR)
         # Set output path
-        output_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR)
+        output_path = os.path.join(
+                TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR, PREPROCESSED_DATA_DIR)
         # Set known results path
-        known_results_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, KNOWN_RESULTS_DIR)
+        known_results_path = os.path.join(
+                TEST_IMAGE_PATH, TEST_DIR, KNOWN_RESULTS_DIR)
 
         # Run azimuthal integration on input directory
         azimuthal_integration_dir(
@@ -2973,23 +2976,23 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
         # Load input images
         input_filepath_list = glob.glob(
-                os.path.join(input_path, "*"))
+                os.path.join(input_path, "*.*"))
         input_filepath_list.sort()
 
         # Load output images
         output_filepath_list = glob.glob(
-                os.path.join(output_path, "*"))
+                os.path.join(output_path, "*.*"))
         output_filepath_list.sort()
 
         # Load known results images
         known_results_filepath_list = glob.glob(
-                os.path.join(known_results_path, "*"))
+                os.path.join(known_results_path, "*.*"))
         known_results_filepath_list .sort()
 
         # Check that there are a non-zero number of files
-        self.assertTrue(len(input_filepath_list)) > 0
-        self.assertTrue(len(output_filepath_list)) > 0
-        self.assertTrue(len(known_results_filepath_list)) > 0
+        self.assertTrue(len(input_filepath_list) > 0)
+        self.assertTrue(len(output_filepath_list) > 0)
+        self.assertTrue(len(known_results_filepath_list) > 0)
 
         for idx in range(len(input_filepath_list)):
             # Load the azimuthal integration test results
@@ -3001,7 +3004,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
             known_results_radial_data = np.loadtxt(known_results_filepath)
 
             # Check that the test results equal the known results
-            np.array_equal(known_results_radial_data, test_results_radial_data)
+            np.array_equal(test_results_radial_data, known_results_radial_data)
 
     def test_azimuthal_integration_scaling(self):
         """
