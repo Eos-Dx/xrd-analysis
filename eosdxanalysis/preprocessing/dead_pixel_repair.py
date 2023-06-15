@@ -19,7 +19,7 @@ from sklearn.base import BaseEstimator
 
 from sklearn.utils import gen_batches
 
-from eosdxanalysis.preprocessing.utils import azimuthal_integration
+from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
 
