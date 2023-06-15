@@ -248,12 +248,16 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
             return X
 
 def azimuthal_integration_dir(
-        input_path, wavelength_nm,
+        input_path,
         output_path=None,
+        wavelength_nm=None,
+        sample_distance_m = None,
         input_dataframe_filepath=None,
         sample_distance_filepath=None,
         find_sample_distance_filepath=None,
-        beam_rmax=15, visualize=False,
+        autofind_center=False,
+        beam_rmax=15,
+        visualize=False,
         file_format=None,
         center=None,
         det_xspacing=None,
@@ -272,7 +276,17 @@ def azimuthal_integration_dir(
     det_xsize : float
         Horizontal length of detector in pixel units
     """
-    sample_distance_m = None
+    # Ensure center is given or autofind is set
+    if center is None and not autofind_center:
+        raise ValueError("Must specify center or set ``autofind_center=True``.")
+
+    # Ensure wavelength is given if required
+    if any([
+        sample_distance_filepath, find_sample_distance_filepath,
+        sample_distance_m]):
+        if not wavelength_nm:
+            raise ValueError(
+                    "Must specify wavelength for conversion to momentum transfer units q.")
 
     if input_path:
         # Given single input path
@@ -348,7 +362,7 @@ def azimuthal_integration_dir(
                         file_format.strip(".")) + "Must be ``txt`` or ``tiff``.")
 
         # Center of diffraction pattern
-        if not center:
+        if autofind_center:
             # Second detector case
             if all([det_xspacing, det_xsize]):
                 center = (center[0], - (det_xsize - center[1]) - det_xspacing)
@@ -484,14 +498,17 @@ if __name__ == '__main__':
             "--input_path", type=str, required=False,
             help="The path to data to extract features from")
     parser.add_argument(
+            "--output_path", type=str, default=None, required=False,
+            help="The output path to save radial profiles and peak features")
+    parser.add_argument(
             "--wavelength_nm", type=float, required=True,
             help="Wavelength in nanometers.")
     parser.add_argument(
+            "--sample_distance_m", type=float, required=True,
+            help="Sample distance in meters.")
+    parser.add_argument(
             "--input_dataframe_filepath", type=str, required=False,
             help="The dataframe containing file paths to extract features from")
-    parser.add_argument(
-            "--output_path", type=str, default=None, required=False,
-            help="The output path to save radial profiles and peak features")
     parser.add_argument(
             "--sample_distance_filepath", type=str, default=None, required=False,
             help="The path to calibrated sample distance.")
@@ -511,6 +528,9 @@ if __name__ == '__main__':
             "--center", type=str, default=None, required=False,
             help="Center of diffraction pattern on detector 1 in pixel coordinates.")
     parser.add_argument(
+            "--autofind_center", action="store_true",
+            help="Center of diffraction pattern on detector 1 in pixel coordinates.")
+    parser.add_argument(
             "--det_xspacing", type=float, default=None, required=False,
             help="Horizontal distance between detectors.")
     parser.add_argument(
@@ -522,9 +542,10 @@ if __name__ == '__main__':
 
     input_path = os.path.abspath(args.input_path) if args.input_path \
             else None
-    wavelength_nm = args.wavelength_nm
     output_path = os.path.abspath(args.output_path) if args.output_path \
             else None
+    wavelength_nm = args.wavelength_nm
+    sample_distance_m = args.sample_distance_m
     input_dataframe_filepath = os.path.abspath(args.input_dataframe_filepath) \
             if args.input_dataframe_filepath else None
     beam_rmax = args.beam_rmax
@@ -539,6 +560,7 @@ if __name__ == '__main__':
             raise ValueError("Detector 1 center must be a tuple.")
     else:
         center = None
+    autofind_center = args.autofind_center
     det_xspacing = args.det_xspacing
     det_xsize = args.det_xsize
 
@@ -547,8 +569,9 @@ if __name__ == '__main__':
 
     azimuthal_integration_dir(
         input_path=input_path,
-        wavelength_nm=wavelength_nm,
         output_path=output_path,
+        wavelength_nm=wavelength_nm,
+        sample_distance_m=sample_distance_m,
         input_dataframe_filepath=input_dataframe_filepath,
         find_sample_distance_filepath=find_sample_distance_filepath,
         sample_distance_filepath=sample_distance_filepath,
@@ -556,6 +579,7 @@ if __name__ == '__main__':
         visualize=visualize,
         file_format=file_format,
         center=center,
+        autofind_center=autofind_center,
         det_xspacing=det_xspacing,
         det_xsize=det_xsize,
         )
