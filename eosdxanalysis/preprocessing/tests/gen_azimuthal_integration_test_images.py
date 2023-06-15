@@ -37,33 +37,31 @@ test_image1 = np.exp(-(RR - known_peak_location)**2)
 
 center = np.array(shape)/2 - 0.5
 
-test_radial_profile1 = azimuthal_integration(test_image1, center=center)
+test_radial_profile1 = azimuthal_integration(
+        test_image1,
+        center=center)
 
 # Test image 2: Half 2D Gaussian
-test_image2 = np.exp(-(RR - known_peak_location)**2)
+test_image2 = test_image1.copy()
 test_image2[TT < 0] = 0
 
 center = np.array(shape)/2 - 0.5
 
-test_radial_profile2 = azimuthal_integration(
-        test_image2,
-        center=center,
-        azimuthal_point_count=90,
-        start_angle=-np.pi,
-        end_angle=0)
-
+# Azimuthal integration
 test_image_list = [test_image1, test_image2]
-test_radial_profile_list = [test_radial_profile1, test_radial_profile2]
 
 for idx in range(len(test_image_list)):
     test_image = test_image_list[idx]
-    test_radial_profile = test_radial_profile_list[idx]
+
+    test_radial_profile = azimuthal_integration(
+        test_image,
+        center=center)
 
     # Save the test image
     test_image_filepath = "test_image{}.txt".format(idx)
     test_image_output_filepath =  os.path.join(
             test_data_path, test_image_filepath)
-    np.savetxt(test_image_output_filepath, test_image1)
+    np.savetxt(test_image_output_filepath, test_image)
 
     # Save the azimuthal integration profile
     known_results_data_filename = "radial_profile{}.txt".format(idx)
