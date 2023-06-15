@@ -1,4 +1,4 @@
-﻿eosdxanalysis.preprocessing.tests.tests
+eosdxanalysis.preprocessing.tests.tests
 =======================================
 
 .. automodule:: eosdxanalysis.preprocessing.tests.tests
@@ -26,9 +26,11 @@
    .. autosummary::
    
       TestAngleFinding
+      TestAzimuthalIntegration
       TestBeamUtils
       TestCenterFinding
       TestCreateCircularMask
+      TestDeadPixelRepair
       TestDenoising
       TestFeatureExtraction
       TestFeatureExtractionCLI

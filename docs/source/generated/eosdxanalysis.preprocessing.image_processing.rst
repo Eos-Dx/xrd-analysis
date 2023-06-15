@@ -15,6 +15,7 @@
    
       bright_pixel_count
       crop_image
+      enlarge_image
       pad_image
    
    

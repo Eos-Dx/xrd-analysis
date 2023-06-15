@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>crop_image &#8212; Eos Dx Analysis 2.56.0 documentation</title>
+    <title>crop_image &#8212; Eos Dx Analysis 2.57.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -38,7 +38,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.image_processing.crop_image';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="pad_image" href="eosdxanalysis.preprocessing.image_processing.pad_image.html" />
+    <link rel="next" title="enlarge_image" href="eosdxanalysis.preprocessing.image_processing.enlarge_image.html" />
     <link rel="prev" title="bright_pixel_count" href="eosdxanalysis.preprocessing.image_processing.bright_pixel_count.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
@@ -91,7 +91,7 @@
 
   
   
-    <p class="title logo__title">Eos Dx Analysis 2.56.0 documentation</p>
+    <p class="title logo__title">Eos Dx Analysis 2.57.0 documentation</p>
   
 </a>
     
@@ -321,6 +321,11 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.enlarge_image.html">
+   enlarge_image
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="eosdxanalysis.preprocessing.image_processing.pad_image.html">
    pad_image
   </a>
@@ -351,11 +356,6 @@
  </li>
 </ul>
 <ul class="nav bd-sidenav">
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.azimuthal_integration.html">
-   azimuthal_integration
-  </a>
- </li>
  <li class="toctree-l1">
   <a class="reference internal" href="eosdxanalysis.preprocessing.utils.count_intervals.html">
    count_intervals
@@ -407,11 +407,6 @@
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.radial_intensity.html">
-   radial_intensity
-  </a>
- </li>
- <li class="toctree-l1">
   <a class="reference internal" href="eosdxanalysis.preprocessing.utils.unwarp_polar.html">
    unwarp_polar
   </a>
@@ -434,13 +429,13 @@
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.PIXEL_SIZE.html">
-   PIXEL_SIZE
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.END_ANGLE_DEFAULT.html">
+   END_ANGLE_DEFAULT
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.WAVELENGTH.html">
-   WAVELENGTH
+  <a class="reference internal" href="eosdxanalysis.preprocessing.utils.START_ANGLE_DEFAULT.html">
+   START_ANGLE_DEFAULT
   </a>
  </li>
 </ul>
@@ -496,10 +491,10 @@
           <p class="prev-next-title">bright_pixel_count</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.image_processing.pad_image.html" title="next page">
+  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.image_processing.enlarge_image.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">pad_image</p>
+      <p class="prev-next-title">enlarge_image</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>
