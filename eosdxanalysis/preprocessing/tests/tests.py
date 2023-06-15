@@ -2962,7 +2962,9 @@ class TestAzimuthalIntegration(unittest.TestCase):
         input_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, INPUT_DIR)
         # Set output path
         output_path = os.path.join(
-                TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR, PREPROCESSED_DATA_DIR)
+                TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR)
+        # Test data path
+        test_data_path = os.path.join(output_path, PREPROCESSED_DATA_DIR)
         # Set known results path
         known_results_path = os.path.join(
                 TEST_IMAGE_PATH, TEST_DIR, KNOWN_RESULTS_DIR)
@@ -2976,6 +2978,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
                 input_path=input_path,
                 output_path=output_path,
                 center=center,
+                beam_rmax=0,
                 )
 
         # Load input images
@@ -2984,9 +2987,9 @@ class TestAzimuthalIntegration(unittest.TestCase):
         input_filepath_list.sort()
 
         # Load output images
-        output_filepath_list = glob.glob(
-                os.path.join(output_path, "*.*"))
-        output_filepath_list.sort()
+        test_data_filepath_list = glob.glob(
+                os.path.join(test_data_path, "*.*"))
+        test_data_filepath_list.sort()
 
         # Load known results images
         known_results_filepath_list = glob.glob(
@@ -2995,12 +2998,12 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
         # Check that there are a non-zero number of files
         self.assertTrue(len(input_filepath_list) > 0)
-        self.assertTrue(len(output_filepath_list) > 0)
+        self.assertTrue(len(test_data_filepath_list) > 0)
         self.assertTrue(len(known_results_filepath_list) > 0)
 
         for idx in range(len(input_filepath_list)):
             # Load the azimuthal integration test results
-            output_filepath = output_filepath_list[idx]
+            output_filepath = test_data_filepath_list[idx]
             test_results_radial_data = np.loadtxt(output_filepath)
 
             # Load known azimuthal integration results
