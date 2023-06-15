@@ -2886,8 +2886,11 @@ class TestAzimuthalIntegration(unittest.TestCase):
         test_image = np.exp(-(RR - known_peak_location)**2)
         test_image[TT < 0] = 0
 
+        center = np.array(shape)/2 - 0.5
+
         profile_1d = azimuthal_integration(
                 test_image,
+                center=center,
                 azimuthal_point_count=90,
                 start_angle=-np.pi,
                 end_angle=0)
@@ -2916,13 +2919,17 @@ class TestAzimuthalIntegration(unittest.TestCase):
         test_image_half = test_image_full.copy()
         test_image_half[TT < 0] = 0
 
+        center = np.array(shape)/2 - 0.5
+
         profile_1d_full = azimuthal_integration(
                 test_image_full,
+                center=center,
                 azimuthal_point_count=180,
                 start_angle=-np.pi,
                 end_angle=np.pi)
         profile_1d_half = azimuthal_integration(
                 test_image_half,
+                center=center,
                 azimuthal_point_count=90,
                 start_angle=0,
                 end_angle=np.pi)
@@ -2968,15 +2975,18 @@ class TestAzimuthalIntegration(unittest.TestCase):
         # The resulting azimuthal integration profile should
         # be a step function
         size = 256
+        shape = (size, size)
         res = 1
-        test_image = np.zeros((size, size))
+        test_image = np.zeros(shape)
         mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
         test_image[mask] = 1
 
         end_radius = int(np.max(test_image.shape)/2*res)
 
+        center = np.array(shape)/2 - 0.5
+
         profile_1d = azimuthal_integration(
-                test_image, end_radius=end_radius)
+                test_image, center=center, end_radius=end_radius)
         profile_size = profile_1d.size
         step_function = np.zeros(end_radius)
         step_function[:end_radius//2] = 1
