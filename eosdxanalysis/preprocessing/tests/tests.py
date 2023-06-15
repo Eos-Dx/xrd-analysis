@@ -2859,7 +2859,9 @@ class TestAzimuthalIntegration(unittest.TestCase):
         known_peak_location = 20
         test_image = np.exp(-(RR - known_peak_location)**2)
 
-        profile_1d = azimuthal_integration(test_image)
+        center = np.array(shape)/2 - 0.5
+
+        profile_1d = azimuthal_integration(test_image, center=center)
 
         calculated_peak_location = np.where(profile_1d == np.max(profile_1d))[0]
 
