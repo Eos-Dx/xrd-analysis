@@ -20,36 +20,280 @@ from skimage import io
 
 from scipy.signal import find_peaks
 
-from eosdxanalysis.preprocessing.utils import azimuthal_integration
-from eosdxanalysis.preprocessing.utils import radial_intensity
+from sklearn.base import OneToOneFeatureMixin
+from sklearn.base import TransformerMixin
+from sklearn.base import BaseEstimator
+
+from eosdxanalysis.preprocessing.image_processing import enlarge_image
+
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
-
-from eosdxanalysis.preprocessing.image_processing import pad_image
+from eosdxanalysis.preprocessing.utils import warp_polar_preprocessor
+from eosdxanalysis.preprocessing.utils import AZIMUTHAL_POINT_COUNT_DEFAULT
 
 from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 DEFAULT_DET_XSIZE = 256
 
 
-def run_azimuthal_preprocessing(
-        input_path, wavelength_nm,
+def azimuthal_integration(
+        image, center=None, beam_rmax=0, start_radius=None, end_radius=None,
+        azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
+        start_angle=None, end_angle=None, res=1, fill=np.nan):
+    """
+    Performs 2D -> 1D azimuthal integration yielding mean intensity as a
+    function of radius
+
+    Parameters
+    ----------
+
+    image : ndarray
+        Diffraction image.
+
+    center : (num, num)
+        Center of diffraction pattern.
+
+    radius : int
+
+    azimuthal_point_count : int
+        Number of points in azimuthal dimension.
+
+    start_angle : float
+        Radians
+
+    end_angle : float
+        Radians
+
+    res : int
+        Resolution
+
+    Returns
+    -------
+
+    profile_1d : (n,1)-array float
+        n = azimuthal_point_count
+    """
+    # Beam masking
+    if beam_rmax > 0:
+        # Block out the beam
+        beam_mask = create_circular_mask(
+                image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
+        masked_image = image.copy()
+        masked_image[beam_mask] = fill
+    else:
+        masked_image = image
+
+    # Warp polar
+    polar_image_subset = warp_polar_preprocessor(
+        masked_image,
+        center=center,
+        start_radius=start_radius,
+        end_radius=end_radius,
+        azimuthal_point_count=azimuthal_point_count,
+        start_angle=start_angle,
+        end_angle=end_angle,
+        res=1)
+
+    # Calculate the mean
+    profile_1d = np.nanmean(polar_image_subset, axis=0)
+
+    return profile_1d
+
+def radial_intensity_sum(
+        image, center=None, start_radius=None, end_radius=None,
+        azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
+        start_angle=None, end_angle=None, res=1):
+    """
+    Performs 2D -> 1D radial intensity summation yielding total intensity
+    as a function of radius.
+
+    Parameters
+    ----------
+
+    image : ndarray
+        Diffraction image.
+
+    center : (num, num)
+        Center of diffraction pattern.
+
+    radius : int
+
+    azimuthal_point_count : int
+        Number of points in azimuthal dimension.
+
+    start_angle : float
+        Radians
+
+    end_angle : float
+        Radians
+
+    res : int
+        Resolution
+
+    Returns
+    -------
+
+    profile_1d : (n,1)-array float
+        n = azimuthal_point_count
+    """
+    polar_image_subset = warp_polar_preprocessor(
+        image,
+        center=center,
+        start_radius=start_radius,
+        end_radius=end_radius,
+        azimuthal_point_count=azimuthal_point_count,
+        start_angle=start_angle,
+        end_angle=end_angle,
+        res=1)
+
+    # Calculate the sum
+    profile_1d = np.nansum(polar_image_subset, axis=0)
+
+    return profile_1d
+
+
+class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
+    """Adapted from scikit-learn transforms
+    Repair dead pixel areas of detector
+    Replace dead pixels by np.nan
+    """
+
+    def __init__(self, *, copy=True,
+            center=None, beam_rmax=0, start_radius=None, end_radius=None,
+            azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
+            start_angle=None, end_angle=None, res=1, fill=np.nan):
+        """
+        Parameters
+        ----------
+        copy : bool
+            Creates copy of array if True (default = False).
+
+        center : (num, num)
+            Center of diffraction pattern.
+
+        start_radius : int
+
+        end_radius : int
+
+        azimuthal_point_count : int
+            Number of points in azimuthal dimension.
+
+        start_angle : float
+            Radians
+
+        end_angle : float
+            Radians
+
+        res : int
+            Resolution
+
+        center : {(float, float)}
+            Center of diffraction pattern (row, column).
+        """
+        self.copy = copy
+        self.center = center
+        self.beam_rmax = beam_rmax
+        self.start_radius = start_radius
+        self.end_radius = end_radius
+        self.azimuthal_point_count = azimuthal_point_count
+        self.start_angle = start_angle
+        self.end_angle = end_angle
+        self.res = res
+        self.fill = fill
+
+    def fit(self, X, y=None, sample_weight=None):
+        """Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The data used to compute the mean and standard deviation
+            used for later scaling along the features axis.
+        y : None
+            Ignored.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Individual weights for each sample.
+
+        Returns
+        -------
+        self : object
+            Fitted scaler.
+        """
+        return self
+
+    def transform( self, X, copy=True):
+        """Parameters
+        ----------
+        X : {array-like, sparse matrix of shape (n_samples, n_features)
+            The data used to scale along the features axis.
+        copy : bool, default=None
+            Copy the input X or not.
+        Returns
+        -------
+        X_tr : {ndarray, sparse matrix} of shape (n_samples, n_features)
+            Transformed array.
+        """
+        center = self.center
+        beam_rmax = self.beam_rmax
+        start_radius = self.start_radius
+        end_radius = self.end_radius
+        azimuthal_point_count = self.azimuthal_point_count
+        start_angle = self.start_angle
+        end_angle = self.end_angle
+        res = self.res
+        fill = self.fill
+
+        if copy is True:
+            X = X.copy()
+
+        if not end_radius:
+            end_radius = int(np.max(image.shape)/2*res)
+
+        results = np.zeros((X.shape[0], end_radius))
+
+        # Loop over all samples using batches
+        for idx in range(X.shape[0]):
+            image = X[idx, ...].reshape(X.shape[1:])
+            if type(center) != tuple:
+                center = find_center(image)
+
+            radial_profile = azimuthal_integration(
+                    image,
+                    center=center,
+                    beam_rmax=beam_rmax,
+                    start_radius=start_radius,
+                    end_radius=end_radius,
+                    azimuthal_point_count=azimuthal_point_count,
+                    start_angle=start_angle,
+                    end_angle=end_angle,
+                    res=res,
+                    fill=fill,
+                    )
+
+            results[idx, ...] = radial_profile
+
+        return results
+
+def azimuthal_integration_dir(
+        input_path,
         output_path=None,
+        wavelength_nm=None,
+        sample_distance_m = None,
         input_dataframe_filepath=None,
         sample_distance_filepath=None,
         find_sample_distance_filepath=None,
-        beam_rmax=15, visualize=False,
-        azimuthal_mean=True,
-        azimuthal_sum=False,
+        autofind_center=False,
+        beam_rmax=0,
+        visualize=False,
         file_format=None,
-        det1_center=None,
+        center=None,
         det_xspacing=None,
-        det_xsize=None):
+        det_xsize=None,
+        fill=np.nan,
+        verbose=False):
     """
     Parameters
     ----------
 
-    det1_center : tuple
+    center : tuple
         Center of diffraction pattern on detector 1 in pixel coordinates
 
     det_xspacing : float
@@ -58,9 +302,17 @@ def run_azimuthal_preprocessing(
     det_xsize : float
         Horizontal length of detector in pixel units
     """
-    if not (azimuthal_mean ^ azimuthal_sum):
-        raise ValueError("Choose azimuthal_mean or azimuthal_sum.")
-    sample_distance_m = None
+    # Ensure center is given or autofind is set
+    if center is None and not autofind_center:
+        raise ValueError("Must specify center or set ``autofind_center=True``.")
+
+    # Ensure wavelength is given if required
+    if any([
+        sample_distance_filepath, find_sample_distance_filepath,
+        sample_distance_m]):
+        if not wavelength_nm:
+            raise ValueError(
+                    "Must specify wavelength for conversion to momentum transfer units q.")
 
     if input_path:
         # Given single input path
@@ -116,14 +368,16 @@ def run_azimuthal_preprocessing(
     image_output_path = os.path.join(output_path, image_output_dir)
     os.makedirs(image_output_path, exist_ok=True)
 
-    print("Saving data to\n{}".format(data_output_path))
-    print("Saving images to\n{}".format(image_output_path))
+    if verbose:
+        print("Saving data to\n{}".format(data_output_path))
+        print("Saving images to\n{}".format(image_output_path))
 
     # Loop over files list
     for filepath in filepath_list:
         filename = os.path.basename(filepath)
         if file_format is None:
-            file_root, file_format = os.path.splitext(filename)
+            file_root, file_ext = os.path.splitext(filename)
+            file_format = file_ext[1:]
         if file_format == "txt":
             image = np.loadtxt(filepath, dtype=np.float64)
         elif file_format == "npy":
@@ -135,40 +389,17 @@ def run_azimuthal_preprocessing(
                     "Unrecognized file format: {}\n".format(
                         file_format.strip(".")) + "Must be ``txt`` or ``tiff``.")
 
-        if type(det1_center) != type(None):
+        # Center of diffraction pattern
+        if autofind_center:
+            # Second detector case
             if all([det_xspacing, det_xsize]):
-                center = (det1_center[0], - (det_xsize - det1_center[1]) - det_xspacing)
-        else:
-            # Find the center
-            center = find_center(image)
+                center = (center[0], - (det_xsize - center[1]) - det_xspacing)
+            # First detector case
+            else:
+                center = find_center(image)
 
-        if beam_rmax > 0:
-            # Block out the beam
-            beam_mask = create_circular_mask(
-                    image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
-            masked_image = image.copy()
-            masked_image[beam_mask] = np.nan
-        else:
-            masked_image = image
-
-        # Enlarge the image
-        padding_amount = (np.sqrt(2)*np.max(image.shape)).astype(int)
-        padding_top = padding_amount
-        padding_bottom = padding_amount
-        padding_left = padding_amount
-        padding_right = padding_amount
-        padding = (padding_top, padding_bottom, padding_left, padding_right)
-        enlarged_masked_image = pad_image(
-                masked_image, padding=padding, nan=True)
-
-        new_center = (padding_top + center[0], padding_left + center[1])
-
-        if azimuthal_mean:
-            radial_profile = azimuthal_integration(
-                    enlarged_masked_image, center=new_center, end_radius=padding_amount)
-        elif azimuthal_sum:
-            radial_profile = radial_intensity(
-                    enlarged_masked_image, center=new_center, end_radius=padding_amount)
+        radial_profile = azimuthal_integration(
+                image, center=center, beam_rmax=beam_rmax)
 
         # Save data to file
         if input_dataframe_filepath:
@@ -185,7 +416,7 @@ def run_azimuthal_preprocessing(
         sample_distance_approx_list = np.unique(
                 re.findall(r"dist_[0-9]{2,3}mm", filepath, re.IGNORECASE))
         if len(sample_distance_approx_list) != 1:
-            data_output_filename = "radial_{}.txt".format(output_filename)
+            data_output_filename = "radial_{}".format(output_filename)
         else:
             sample_distance_approx = sample_distance_approx_list[0].lower()
             data_output_filename = "radial_{}_{}".format(
@@ -282,14 +513,17 @@ if __name__ == '__main__':
             "--input_path", type=str, required=False,
             help="The path to data to extract features from")
     parser.add_argument(
+            "--output_path", type=str, default=None, required=False,
+            help="The output path to save radial profiles and peak features")
+    parser.add_argument(
             "--wavelength_nm", type=float, required=True,
             help="Wavelength in nanometers.")
     parser.add_argument(
+            "--sample_distance_m", type=float, required=True,
+            help="Sample distance in meters.")
+    parser.add_argument(
             "--input_dataframe_filepath", type=str, required=False,
             help="The dataframe containing file paths to extract features from")
-    parser.add_argument(
-            "--output_path", type=str, default=None, required=False,
-            help="The output path to save radial profiles and peak features")
     parser.add_argument(
             "--sample_distance_filepath", type=str, default=None, required=False,
             help="The path to calibrated sample distance.")
@@ -297,22 +531,19 @@ if __name__ == '__main__':
             "--find_sample_distance_filepath", action="store_true",
             help="Automatically try to find sample distance file.")
     parser.add_argument(
-            "--beam_rmax", type=int, default=15, required=True,
+            "--beam_rmax", type=int, default=0, required=True,
             help="The maximum beam radius in pixel lengths.")
     parser.add_argument(
             "--visualize", action="store_true",
             help="Visualize plots.")
     parser.add_argument(
-            "--azimuthal_mean", action="store_true",
-            help="Use azimuthal mean.")
-    parser.add_argument(
-            "--azimuthal_sum", action="store_true",
-            help="Use azimuthal sum.")
-    parser.add_argument(
             "--file_format", type=str, default=None, required=False,
             help="File format: ``txt`` or ``tiff``.")
     parser.add_argument(
-            "--det1_center", type=str, default=None, required=False,
+            "--center", type=str, default=None, required=False,
+            help="Center of diffraction pattern on detector 1 in pixel coordinates.")
+    parser.add_argument(
+            "--autofind_center", action="store_true",
             help="Center of diffraction pattern on detector 1 in pixel coordinates.")
     parser.add_argument(
             "--det_xspacing", type=float, default=None, required=False,
@@ -320,53 +551,55 @@ if __name__ == '__main__':
     parser.add_argument(
             "--det_xsize", type=float, default=DEFAULT_DET_XSIZE, required=False,
             help="Horizontal length of detector 1.")
+    parser.add_argument(
+            "--verbose", action="store_true",
+            help="Print helpfuls tatements.")
 
 
     args = parser.parse_args()
 
     input_path = os.path.abspath(args.input_path) if args.input_path \
             else None
-    wavelength_nm = args.wavelength_nm
     output_path = os.path.abspath(args.output_path) if args.output_path \
             else None
+    wavelength_nm = args.wavelength_nm
+    sample_distance_m = args.sample_distance_m
     input_dataframe_filepath = os.path.abspath(args.input_dataframe_filepath) \
             if args.input_dataframe_filepath else None
     beam_rmax = args.beam_rmax
     find_sample_distance_filepath = args.find_sample_distance_filepath 
     sample_distance_filepath = args.sample_distance_filepath
     visualize = args.visualize
-    azimuthal_mean = args.azimuthal_mean
-    azimuthal_sum = args.azimuthal_sum
     file_format = args.file_format
-    det1_center_arg = args.det1_center
-    if det1_center_arg != None:
-        det1_center = np.array(det1_center_arg.split(",")).astype(float)
-        if len(det1_center) != 2:
+    center_kwarg = args.center
+    if center_kwarg != None:
+        center = np.array(center_kwarg.split(",")).astype(float)
+        if len(center) != 2:
             raise ValueError("Detector 1 center must be a tuple.")
     else:
-        det1_center = None
+        center = None
+    autofind_center = args.autofind_center
     det_xspacing = args.det_xspacing
     det_xsize = args.det_xsize
+    verbose = args.verbose
 
-    if not (azimuthal_sum or azimuthal_mean):
-        azimuthal_mean = True
-
-    if not input_path and not input_dataframe_filepath:
+    if not (input_path ^ input_dataframe_filepath):
         raise ValueError("Input path or dataframe is required.")
 
-    run_azimuthal_preprocessing(
+    azimuthal_integration_dir(
         input_path=input_path,
-        wavelength_nm=wavelength_nm,
         output_path=output_path,
+        wavelength_nm=wavelength_nm,
+        sample_distance_m=sample_distance_m,
         input_dataframe_filepath=input_dataframe_filepath,
         find_sample_distance_filepath=find_sample_distance_filepath,
         sample_distance_filepath=sample_distance_filepath,
         beam_rmax=beam_rmax,
         visualize=visualize,
-        azimuthal_mean=azimuthal_mean,
-        azimuthal_sum=azimuthal_sum,
         file_format=file_format,
-        det1_center=det1_center,
+        center=center,
+        autofind_center=autofind_center,
         det_xspacing=det_xspacing,
         det_xsize=det_xsize,
+        verbose=verbose,
         )
