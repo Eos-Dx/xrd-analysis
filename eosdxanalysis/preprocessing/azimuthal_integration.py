@@ -398,7 +398,7 @@ def azimuthal_integration_dir(
         sample_distance_approx_list = np.unique(
                 re.findall(r"dist_[0-9]{2,3}mm", filepath, re.IGNORECASE))
         if len(sample_distance_approx_list) != 1:
-            data_output_filename = "radial_{}.txt".format(output_filename)
+            data_output_filename = "radial_{}".format(output_filename)
         else:
             sample_distance_approx = sample_distance_approx_list[0].lower()
             data_output_filename = "radial_{}_{}".format(
