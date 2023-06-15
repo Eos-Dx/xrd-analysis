@@ -9,10 +9,9 @@ from skimage.transform import warp_polar
 
 from scipy.interpolate import RegularGridInterpolator
 
-
+START_ANGLE_DEFAULT = -np.pi
+END_ANGLE_DEFAULT = np.pi
 AZIMUTHAL_POINT_COUNT_DEFAULT = 360
-PIXEL_SIZE=55e-6 # Size of pixel in meters
-WAVELENGTH = 0.1540562e-9 # Cu K_alpha source wavelength in meters
 
 
 def find_centroid(points):
@@ -508,32 +507,27 @@ def warp_polar_preprocessor(
     if type(res) != int:
         raise ValueError("Scale must be an integer")
 
-    START_ANGLE_DEFAULT = -np.pi
-    END_ANGLE_DEFAULT = np.pi
-
     AZIMUTHAL_SPACE_DEFAULT = np.linspace(
             START_ANGLE_DEFAULT,
             END_ANGLE_DEFAULT,
             num=AZIMUTHAL_POINT_COUNT_DEFAULT*res)
 
+    # Set center
+    if type(center) == type(None):
+        raise ValueError("Center cannot be none.")
+
     # Set radius
     if not start_radius:
         start_radius = 0
     if not end_radius:
-        end_radius = np.max(image.shape)/2*res
+        end_radius = int(np.max(image.shape)/2*res)
     if not azimuthal_point_count:
-        azimuthal_point_count = AZIMUTHAL_POINT_COUNT*res
+        azimuthal_point_count = AZIMUTHAL_POINT_COUNT_DEFAULT*res
     if (start_angle is None) and (end_angle is None):
         start_angle = START_ANGLE_DEFAULT
         end_angle = END_ANGLE_DEFAULT
     if start_angle > end_angle:
         raise ValueError("Start angle must be greater than end angle")
-    # Set center
-    if type(center) == type(None):
-        center = find_center(image)
-
-    # TODO: Enlarge image and fill with nans
-    # enlarged_image = enlarge_image(image, center)
 
     azimuthal_step = 2*np.pi/azimuthal_point_count
 
@@ -543,9 +537,10 @@ def warp_polar_preprocessor(
     output_shape = (AZIMUTHAL_POINT_COUNT_DEFAULT*res, end_radius*res)
     polar_image = warp_polar(
             image, center=center, radius=end_radius,
+            mode="constant", cval=np.nan,
             output_shape=output_shape, preserve_range=True)
 
-    polar_image = polar_image[start_radius:end_radius, :]
+    polar_image = polar_image[:, start_radius:end_radius]
 
     # Interpolate if subset is needed
     interp = RegularGridInterpolator(
@@ -561,107 +556,3 @@ def warp_polar_preprocessor(
     polar_image_subset = interp((AA, RR))
 
     return polar_image_subset
-
-def azimuthal_integration(
-        image, center=None, start_radius=None, end_radius=None,
-        azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
-        start_angle=None, end_angle=None, res=1):
-    """
-    Performs 2D -> 1D azimuthal integration yielding mean intensity as a
-    function of radius
-
-    Parameters
-    ----------
-
-    image : ndarray
-        Diffraction image.
-
-    center : (num, num)
-        Center of diffraction pattern.
-
-    radius : int
-
-    azimuthal_point_count : int
-        Number of points in azimuthal dimension.
-
-    start_angle : float
-        Radians
-
-    end_angle : float
-        Radians
-
-    res : int
-        Resolution
-
-    Returns
-    -------
-
-    profile_1d : (n,1)-array float
-        n = azimuthal_point_count
-    """
-    polar_image_subset = warp_polar_preprocessor(
-        image,
-        center=center,
-        start_radius=start_radius,
-        end_radius=end_radius,
-        azimuthal_point_count=azimuthal_point_count,
-        start_angle=start_angle,
-        end_angle=end_angle,
-        res=1)
-
-    # Calculate the mean
-    profile_1d = np.nanmean(polar_image_subset, axis=0)
-
-    return profile_1d
-
-def radial_intensity(
-        image, center=None, start_radius=None, end_radius=None,
-        azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
-        start_angle=None, end_angle=None, res=1):
-    """
-    Performs 2D -> 1D radial intensity summation yielding total intensity
-    as a function of radius.
-
-    Parameters
-    ----------
-
-    image : ndarray
-        Diffraction image.
-
-    center : (num, num)
-        Center of diffraction pattern.
-
-    radius : int
-
-    azimuthal_point_count : int
-        Number of points in azimuthal dimension.
-
-    start_angle : float
-        Radians
-
-    end_angle : float
-        Radians
-
-    res : int
-        Resolution
-
-    Returns
-    -------
-
-    profile_1d : (n,1)-array float
-        n = azimuthal_point_count
-    """
-    polar_image_subset = warp_polar_preprocessor(
-        image,
-        center=center,
-        start_radius=start_radius,
-        end_radius=end_radius,
-        azimuthal_point_count=azimuthal_point_count,
-        start_angle=start_angle,
-        end_angle=end_angle,
-        res=1)
-
-    # Calculate the sum
-    profile_1d = np.nansum(polar_image_subset, axis=0)
-
-    return profile_1d

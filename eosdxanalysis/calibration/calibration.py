@@ -24,7 +24,7 @@ from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 from eosdxanalysis.calibration.utils import real_position_from_q
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
-from eosdxanalysis.preprocessing.utils import azimuthal_integration
+from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration
 
 from eosdxanalysis.preprocessing.utils import find_center
 
@@ -273,6 +273,7 @@ class Calibration(object):
                 if correct in ("Y", "y", "yes", "Yes"):
                     # Stop the loop
                     peak_id_loop = False
+                    q_peaks_found_indices = singlet_peak_indices_approx
                 else:
                     q_peaks_found_indices_list = input(
                         "Please enter the indices of the found peaks: ")

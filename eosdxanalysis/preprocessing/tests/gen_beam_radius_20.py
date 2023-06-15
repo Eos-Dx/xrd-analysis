@@ -2,7 +2,7 @@
 Generates a synthetic diffraction image with beam radius 20
 """
 
-from eosdxanalysis.preprocessing.utils import azimuthal_integration
+from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration
 
 import numpy as np
 
