@@ -516,6 +516,10 @@ def warp_polar_preprocessor(
             END_ANGLE_DEFAULT,
             num=AZIMUTHAL_POINT_COUNT_DEFAULT*res)
 
+    # Set center
+    if type(center) == type(None):
+        raise ValueError("Center cannot be none.")
+
     # Set radius
     if not start_radius:
         start_radius = 0
@@ -528,9 +532,6 @@ def warp_polar_preprocessor(
         end_angle = END_ANGLE_DEFAULT
     if start_angle > end_angle:
         raise ValueError("Start angle must be greater than end angle")
-    # Set center
-    if type(center) == type(None):
-        center = find_center(image)
 
     # TODO: Enlarge image and fill with nans
     # enlarged_image = enlarge_image(image, center)
