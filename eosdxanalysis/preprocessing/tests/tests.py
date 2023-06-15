@@ -55,6 +55,7 @@ from eosdxanalysis.preprocessing.dead_pixel_repair import DEFAULT_BEAM_RMAX
 from eosdxanalysis.preprocessing.dead_pixel_repair import DEFAULT_DEAD_PIXEL_THRESHOLD
 
 from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration
+from eosdxanalysis.preprocessing.azimuthal_integration import AzimuthalIntegration
 from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration_dir
 from eosdxanalysis.preprocessing.azimuthal_integration import radial_intensity_sum
 
@@ -3036,6 +3037,49 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
         profile_1d = azimuthal_integration(
                 test_image, center=center, end_radius=end_radius)
+        profile_size = profile_1d.size
+        step_function = np.zeros(end_radius)
+        step_function[:end_radius//2] = 1
+
+        # Take the difference
+        diff = abs(step_function - profile_1d)
+
+        # Test that the 1-D integrated profile is close to a step function
+        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
+
+        # In this test we receive only 5 values
+        # 0., 0.0032228, 0.55451952, 0.99823135, and 1
+        values = np.unique(profile_1d)
+        self.assertEqual(values.size, 5)
+
+    def test_azimuthal_integration_transformer_scaling(self):
+        """
+        Ensure azimuthal integration scales properly
+        """
+        # Create test image such that the inner annulus is 1
+        # and the outer annulus is 0
+        # The resulting azimuthal integration profile should
+        # be a step function
+        size = 256
+        shape = (size, size)
+        res = 1
+        test_image = np.zeros(shape)
+        mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
+        test_image[mask] = 1
+
+        end_radius = int(np.max(test_image.shape)/2*res)
+
+        center = np.array(shape)/2 - 0.5
+
+        test_image_array = test_image.reshape(
+                (1, test_image.shape[0], test_image.shape[1]))
+
+        azimuthalintegration = AzimuthalIntegration(
+                center=center, end_radius=end_radius)
+
+        results = azimuthalintegration.transform(
+                test_image_array)
+        profile_1d = results[0, ...]
         profile_size = profile_1d.size
         step_function = np.zeros(end_radius)
         step_function[:end_radius//2] = 1
