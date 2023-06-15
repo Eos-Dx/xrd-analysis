@@ -3004,7 +3004,9 @@ class TestAzimuthalIntegration(unittest.TestCase):
             known_results_radial_data = np.loadtxt(known_results_filepath)
 
             # Check that the test results equal the known results
-            np.array_equal(test_results_radial_data, known_results_radial_data)
+            self.assertTrue(
+                    np.array_equal(
+                        test_results_radial_data, known_results_radial_data))
 
     def test_azimuthal_integration_scaling(self):
         """
