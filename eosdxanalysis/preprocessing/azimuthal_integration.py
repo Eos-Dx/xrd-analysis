@@ -349,7 +349,8 @@ def azimuthal_integration_dir(
     for filepath in filepath_list:
         filename = os.path.basename(filepath)
         if file_format is None:
-            file_root, file_format = os.path.splitext(filename)
+            file_root, file_ext = os.path.splitext(filename)
+            file_format = file_ext[1:]
         if file_format == "txt":
             image = np.loadtxt(filepath, dtype=np.float64)
         elif file_format == "npy":
