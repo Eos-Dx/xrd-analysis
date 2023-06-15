@@ -37,9 +37,9 @@ DEFAULT_DET_XSIZE = 256
 
 
 def azimuthal_integration(
-        image, center=None, start_radius=None, end_radius=None,
+        image, center=None, beam_rmax=0, start_radius=None, end_radius=None,
         azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
-        start_angle=None, end_angle=None, res=1):
+        start_angle=None, end_angle=None, res=1, fill=np.nan):
     """
     Performs 2D -> 1D azimuthal integration yielding mean intensity as a
     function of radius
@@ -73,8 +73,19 @@ def azimuthal_integration(
     profile_1d : (n,1)-array float
         n = azimuthal_point_count
     """
+    # Beam masking
+    if beam_rmax > 0:
+        # Block out the beam
+        beam_mask = create_circular_mask(
+                image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
+        masked_image = image.copy()
+        masked_image[beam_mask] = fill
+    else:
+        masked_image = image
+
+    # Warp polar
     polar_image_subset = warp_polar_preprocessor(
-        image,
+        masked_image,
         center=center,
         start_radius=start_radius,
         end_radius=end_radius,
@@ -148,9 +159,9 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
     """
 
     def __init__(self, *, copy=True,
-            center=None, start_radius=None, end_radius=None,
+            center=None, beam_rmax=0, start_radius=None, end_radius=None,
             azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
-            start_angle=None, end_angle=None, res=1):
+            start_angle=None, end_angle=None, res=1, fill=np.nan):
         """
         Parameters
         ----------
@@ -181,12 +192,14 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         """
         self.copy = copy
         self.center = center
+        self.beam_rmax = beam_rmax
         self.start_radius = start_radius
         self.end_radius = end_radius
         self.azimuthal_point_count = azimuthal_point_count
         self.start_angle = start_angle
         self.end_angle = end_angle
         self.res = res
+        self.fill = fill
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -218,6 +231,16 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         X_tr : {ndarray, sparse matrix} of shape (n_samples, n_features)
             Transformed array.
         """
+        center = self.center
+        beam_rmax = self.beam_rmax
+        start_radius = self.start_radius
+        end_radius = self.end_radius
+        azimuthal_point_count = self.azimuthal_point_count
+        start_angle = self.start_angle
+        end_angle = self.end_angle
+        res = self.res
+        fill = self.fill
+
         if copy is True:
             # Create a copy of the data, otherwise overwrite
             result = np.zeros_like(X)
@@ -227,7 +250,18 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
             image = X[idx, ...].reshape(X.shape[1:])
             center = find_center(image)
 
-            radial_profile = azimuthal_integration()
+            radial_profile = azimuthal_integration(
+                    image,
+                    center=center,
+                    beam_rmax=beam_rmax,
+                    start_radius=start_radius,
+                    end_radius=end_radius,
+                    azimuthal_point_count=azimuthal_point_count,
+                    start_angle=start_angle,
+                    end_angle=end_angle,
+                    res=res,
+                    fill=fill,
+                    )
 
             # Set radial profile data based on ``copy`` value
             if copy is True:
@@ -256,7 +290,7 @@ def azimuthal_integration_dir(
         sample_distance_filepath=None,
         find_sample_distance_filepath=None,
         autofind_center=False,
-        beam_rmax=15,
+        beam_rmax=0,
         visualize=False,
         file_format=None,
         center=None,
@@ -371,17 +405,8 @@ def azimuthal_integration_dir(
             else:
                 center = find_center(image)
 
-        # Beam masking
-        if beam_rmax > 0:
-            # Block out the beam
-            beam_mask = create_circular_mask(
-                    image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
-            masked_image = image.copy()
-            masked_image[beam_mask] = fill
-        else:
-            masked_image = image
-
-        radial_profile = azimuthal_integration(masked_image, center=center)
+        radial_profile = azimuthal_integration(
+                image, center=center, beam_rmax=beam_rmax)
 
         # Save data to file
         if input_dataframe_filepath:
@@ -513,7 +538,7 @@ if __name__ == '__main__':
             "--find_sample_distance_filepath", action="store_true",
             help="Automatically try to find sample distance file.")
     parser.add_argument(
-            "--beam_rmax", type=int, default=15, required=True,
+            "--beam_rmax", type=int, default=0, required=True,
             help="The maximum beam radius in pixel lengths.")
     parser.add_argument(
             "--visualize", action="store_true",
