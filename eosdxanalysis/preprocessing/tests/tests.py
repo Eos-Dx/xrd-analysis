@@ -2967,11 +2967,15 @@ class TestAzimuthalIntegration(unittest.TestCase):
         known_results_path = os.path.join(
                 TEST_IMAGE_PATH, TEST_DIR, KNOWN_RESULTS_DIR)
 
+        size = 256
+        shape = (size, size)
+        center = np.array(shape)/2 - 0.5
+
         # Run azimuthal integration on input directory
         azimuthal_integration_dir(
                 input_path=input_path,
                 output_path=output_path,
-                autofind_center=True,
+                center=center,
                 )
 
         # Load input images
