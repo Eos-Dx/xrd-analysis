@@ -9,10 +9,9 @@ from skimage.transform import warp_polar
 
 from scipy.interpolate import RegularGridInterpolator
 
-
+START_ANGLE_DEFAULT = -np.pi
+END_ANGLE_DEFAULT = np.pi
 AZIMUTHAL_POINT_COUNT_DEFAULT = 360
-PIXEL_SIZE=55e-6 # Size of pixel in meters
-WAVELENGTH = 0.1540562e-9 # Cu K_alpha source wavelength in meters
 
 
 def find_centroid(points):
@@ -508,9 +507,6 @@ def warp_polar_preprocessor(
     if type(res) != int:
         raise ValueError("Scale must be an integer")
 
-    START_ANGLE_DEFAULT = -np.pi
-    END_ANGLE_DEFAULT = np.pi
-
     AZIMUTHAL_SPACE_DEFAULT = np.linspace(
             START_ANGLE_DEFAULT,
             END_ANGLE_DEFAULT,
@@ -526,7 +522,7 @@ def warp_polar_preprocessor(
     if not end_radius:
         end_radius = int(np.max(image.shape)/2*res)
     if not azimuthal_point_count:
-        azimuthal_point_count = AZIMUTHAL_POINT_COUNT*res
+        azimuthal_point_count = AZIMUTHAL_POINT_COUNT_DEFAULT*res
     if (start_angle is None) and (end_angle is None):
         start_angle = START_ANGLE_DEFAULT
         end_angle = END_ANGLE_DEFAULT
