@@ -71,7 +71,7 @@ def crop_image(img,height,width,center=None):
 
     return cropped_img
 
-def enlarge_image(image, center):
+def enlarge_image(image, center, nan=True):
     # Enlarge the image
     padding_amount = (np.sqrt(2)*np.max(image.shape)).astype(int)
     padding_top = padding_amount
@@ -80,7 +80,7 @@ def enlarge_image(image, center):
     padding_right = padding_amount
     padding = (padding_top, padding_bottom, padding_left, padding_right)
     enlarged_image = pad_image(
-            image, padding=padding, nan=True)
+            image, padding=padding, nan=nan)
     new_center = (padding_top + center[0], padding_left + center[1])
 
     return enlarged_image, new_center, padding_amount
