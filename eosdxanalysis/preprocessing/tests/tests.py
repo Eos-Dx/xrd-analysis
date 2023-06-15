@@ -55,6 +55,7 @@ from eosdxanalysis.preprocessing.dead_pixel_repair import DEFAULT_BEAM_RMAX
 from eosdxanalysis.preprocessing.dead_pixel_repair import DEFAULT_DEAD_PIXEL_THRESHOLD
 
 from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration
+from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration_dir
 from eosdxanalysis.preprocessing.azimuthal_integration import radial_intensity_sum
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
@@ -2947,24 +2948,60 @@ class TestAzimuthalIntegration(unittest.TestCase):
         self.assertEqual(calculated_peak_location_full, known_peak_location)
         self.assertEqual(calculated_peak_location_half, known_peak_location)
 
-    def test_azimuthal_integration(self):
+    def test_azimuthal_integration_dir(self):
         """
         """
-        test_input_path = self.test_input_path
+        TEST_IMAGE_DIR = "test_images"
+        TEST_DIR = "test_azimuthal_integration"
+        INPUT_DIR = "input"
+        OUTPUT_DIR = "output"
+        KNOWN_RESULTS_DIR = "known_results"
 
-        # Load images
+        # Set input path
+        input_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, INPUT_DIR)
+        # Set output path
+        output_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR)
+        # Set known results path
+        known_results_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, KNOWN_RESULTS_DIR)
+
+        # Run azimuthal integration on input directory
+        azimuthal_integration_dir(
+                input_path=input_path,
+                output_path=output_path,
+                autofind_center=True,
+                )
+
+        # Load input images
         input_filepath_list = glob.glob(
-                os.path.join(test_input_path, "924*.txt"))
+                os.path.join(input_path, "*"))
         input_filepath_list.sort()
 
-        for input_filepath in input_filepath_list:
-            # Load the image file
-            input_filename = os.path.basename(input_filepath)
-            image = np.loadtxt(input_filepath, dtype=np.uint32)
+        # Load output images
+        output_filepath_list = glob.glob(
+                os.path.join(output_path, "*"))
+        output_filepath_list.sort()
 
-            # Calculate beam radius
+        # Load known results images
+        known_results_filepath_list = glob.glob(
+                os.path.join(known_results_path, "*"))
+        known_results_filepath_list .sort()
 
-        self.fail("Finish writing test.")
+        # Check that there are a non-zero number of files
+        self.assertTrue(len(input_filepath_list)) > 0
+        self.assertTrue(len(output_filepath_list)) > 0
+        self.assertTrue(len(known_results_filepath_list)) > 0
+
+        for idx in range(len(input_filepath_list)):
+            # Load the azimuthal integration test results
+            output_filepath = output_filepath_list[idx]
+            test_results_radial_data = np.loadtxt(output_filepath)
+
+            # Load known azimuthal integration results
+            known_results_filepath = known_results_filepath_list[idx]
+            known_results_radial_data = np.loadtxt(known_results_filepath)
+
+            # Check that the test results equal the known results
+            np.array_equal(known_results_radial_data, test_results_radial_data)
 
     def test_azimuthal_integration_scaling(self):
         """
