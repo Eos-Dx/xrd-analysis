@@ -381,11 +381,7 @@ def azimuthal_integration_dir(
         else:
             masked_image = image
 
-        enlarged_masked_image, new_center, padding_amount = enlarge_image(
-                masked_image, center=center)
-
-        radial_profile = azimuthal_integration(
-                enlarged_masked_image, center=new_center, end_radius=padding_amount)
+        radial_profile = azimuthal_integration(masked_image, center=center)
 
         # Save data to file
         if input_dataframe_filepath:
