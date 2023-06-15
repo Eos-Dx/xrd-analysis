@@ -242,13 +242,18 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         fill = self.fill
 
         if copy is True:
-            # Create a copy of the data, otherwise overwrite
-            result = np.zeros_like(X)
+            X = X.copy()
+
+        if not end_radius:
+            end_radius = int(np.max(image.shape)/2*res)
+
+        results = np.zeros((X.shape[0], end_radius))
 
         # Loop over all samples using batches
         for idx in range(X.shape[0]):
             image = X[idx, ...].reshape(X.shape[1:])
-            center = find_center(image)
+            if type(center) != tuple:
+                center = find_center(image)
 
             radial_profile = azimuthal_integration(
                     image,
@@ -263,23 +268,9 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
                     fill=fill,
                     )
 
-            # Set radial profile data based on ``copy`` value
-            if copy is True:
-                output_data = radial_profile.copy()
-            else:
-                output_data = radial_profile
+            results[idx, ...] = radial_profile
 
-            # Store radial profile data in appropriate array
-            if copy is True:
-                result[idx, ...] = output_data
-            else:
-                # Overwrite data
-                X[idx, ...] = output_data
-
-        if copy is True:
-            return result
-        else:
-            return X
+        return results
 
 def azimuthal_integration_dir(
         input_path,
@@ -296,7 +287,8 @@ def azimuthal_integration_dir(
         center=None,
         det_xspacing=None,
         det_xsize=None,
-        fill=np.nan):
+        fill=np.nan,
+        verbose=False):
     """
     Parameters
     ----------
@@ -376,8 +368,9 @@ def azimuthal_integration_dir(
     image_output_path = os.path.join(output_path, image_output_dir)
     os.makedirs(image_output_path, exist_ok=True)
 
-    print("Saving data to\n{}".format(data_output_path))
-    print("Saving images to\n{}".format(image_output_path))
+    if verbose:
+        print("Saving data to\n{}".format(data_output_path))
+        print("Saving images to\n{}".format(image_output_path))
 
     # Loop over files list
     for filepath in filepath_list:
@@ -558,6 +551,9 @@ if __name__ == '__main__':
     parser.add_argument(
             "--det_xsize", type=float, default=DEFAULT_DET_XSIZE, required=False,
             help="Horizontal length of detector 1.")
+    parser.add_argument(
+            "--verbose", action="store_true",
+            help="Print helpfuls tatements.")
 
 
     args = parser.parse_args()
@@ -585,6 +581,7 @@ if __name__ == '__main__':
     autofind_center = args.autofind_center
     det_xspacing = args.det_xspacing
     det_xsize = args.det_xsize
+    verbose = args.verbose
 
     if not (input_path ^ input_dataframe_filepath):
         raise ValueError("Input path or dataframe is required.")
@@ -604,4 +601,5 @@ if __name__ == '__main__':
         autofind_center=autofind_center,
         det_xspacing=det_xspacing,
         det_xsize=det_xsize,
+        verbose=verbose,
         )
