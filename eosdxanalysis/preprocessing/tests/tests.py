@@ -3051,5 +3051,32 @@ class TestAzimuthalIntegration(unittest.TestCase):
         values = np.unique(profile_1d)
         self.assertEqual(values.size, 5)
 
+    def test_azimuthal_integration_output_shape(self):
+        """
+        Ensure azimuthal integration scales properly
+        """
+        # Create test image such that the inner annulus is 1
+        # and the outer annulus is 0
+        # The resulting azimuthal integration profile should
+        # be a step function
+        size = 256
+        shape = (size, size)
+        res = 1
+        test_image = np.zeros(shape)
+        mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
+        test_image[mask] = 1
+
+        start_radius = 10
+        end_radius = int(np.max(test_image.shape)/2*res)
+
+        center = np.array(shape)/2 - 0.5
+
+        profile_1d = azimuthal_integration(
+                test_image, center=center, start_radius=start_radius,
+                end_radius=end_radius)
+        profile_size = profile_1d.size
+
+        self.assertEqual(profile_size, end_radius-start_radius)
+
 if __name__ == '__main__':
     unittest.main()
