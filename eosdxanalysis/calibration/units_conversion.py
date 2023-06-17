@@ -4,10 +4,18 @@ Functions to help with calibration code
 
 import numpy as np
 
+from sklearn.base import OneToOneFeatureMixin
+from sklearn.base import TransformerMixin
+from sklearn.base import BaseEstimator
 
-PIXEL_SIZE = 55e-6 # Pixel width in meters (it is 55 um)
-WAVELENGTH = 1.5418E-10 # Wavelength in meters (1.5418 Angstroms)
-WAVELEN_ANGSTROMS = WAVELENGTH * 1e10 # Wavelength in Angstroms
+
+class MomentumTransferConversion(
+        OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
+    """Adapted from scikit-learn transforms
+    Sample units conversion.
+    Converts from real-space pixel units to momentum transfer (q) units.
+    """
+
 
 
 class DiffractionUnitsConversion(object):
