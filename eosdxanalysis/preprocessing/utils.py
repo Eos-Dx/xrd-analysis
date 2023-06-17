@@ -534,7 +534,7 @@ def warp_polar_preprocessor(
     radial_range = np.arange(start_radius, end_radius)
 
     # Perform a polar warp on the input image for entire azimuthal range
-    output_shape = (AZIMUTHAL_POINT_COUNT_DEFAULT*res, end_radius*res)
+    output_shape = (azimuthal_point_count, end_radius*res)
     polar_image = warp_polar(
             image, center=center, radius=end_radius,
             mode="constant", cval=np.nan,
@@ -549,7 +549,7 @@ def warp_polar_preprocessor(
     azimuthal_space_subset = np.linspace(
             start_angle,
             end_angle,
-            num=azimuthal_point_count*res)
+            num=azimuthal_point_count)
 
     AA, RR = np.meshgrid(azimuthal_space_subset, radial_range, indexing="ij", sparse=True)
 
