@@ -31,58 +31,17 @@ from eosdxanalysis.preprocessing.utils import find_center
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.utils import quadrant_fold
 
-PIXEL_SIZE = 55e-6 # Pixel width in meters (it is 55 um)
-DEFAULT_WAVELENGTH_NM = 0.15418 # Wavelength in nanometers (1.5418 Angstroms)
-BEAM_RMAX = 10 # Pixel radius to block out beam
-RMAX = 110 # Pixel radius to ignore beyond this value
-DISTANCE_APPROX = 10e-3
-DOUBLET_HEIGHT = 5
-DOUBLET_WIDTH = 5
-DOUBLET_APPROX_MIN_FACTOR = 0.5
-DOUBLET_APPROX_MAX_FACTOR = 2.0
-OUTPUT_SHAPE = (360,128)
-DEFAULT_SINGLET_HEIGHT = 4
-DEFAULT_SINGLET_WIDTH = 4
 DEFAULT_FILE_FORMAT = "txt"
-DEFAULT_FILTER_SIZE = 16
 
 
-class SampleDistanceCalibration(object):
-    """
-    Calibration class to perform calibration for a set of calibration images
-
-    q units are per Angstrom
-    """
-
-    def __init__(self,
-            calibration_material, wavelength_nm=DEFAULT_WAVELENGTH_NM,
-            pixel_size=PIXEL_SIZE):
-        """
-        Initialize Calibration class
-        """
-        # Store source wavelength
-        self.wavelength_nm = wavelength_nm
-
-        # Store calibration material name
-        self.calibration_material = calibration_material
-
-        # Store pixel width
-        self.pixel_size = pixel_size
-
-        # Look up calibration material q-peaks reference data
-        try:
-            self.q_peaks_ref = q_peaks_ref_dict[calibration_material]
-        except KeyError as err:
-            print("Calibration material {} not found!".format(
-                                            calibration_material))
-        return super().__init__()
 
 def sample_detector_distance(
-        self, image, center=None, beam_rmax=BEAM_RMAX, rmax=RMAX,
-        distance_approx=DISTANCE_APPROX, output_shape=OUTPUT_SHAPE,
-        doublet_approx_min_factor=DOUBLET_APPROX_MIN_FACTOR,
-        doublet_approx_max_factor=DOUBLET_APPROX_MAX_FACTOR,
-        doublet_width=DOUBLET_WIDTH, doublet_height=DOUBLET_HEIGHT,
+        image, center=None, beam_rmax=None,
+        distance_approx=None, pixel_size=None,
+        wavelength_nm=None, calibration_material=None,
+        doublet_approx_min_factor=None,
+        doublet_approx_max_factor=None,
+        doublet_width=None, doublet_height=None,
         visualize=False, start_radius=None,
         end_radius=None, padding=None, height=None, save=False,
         image_fullpath=None, doublet_only=False):
@@ -117,49 +76,18 @@ def sample_detector_distance(
     visualize : bool
         Flag to display plots image and azimuthal integration profile.
     """
-    wavelength_nm = self.wavelength_nm
-    q_peaks_ref = self.q_peaks_ref
-    pixel_size = self.pixel_size
+
+    # Look up calibration material q-peaks reference data
+    try:
+        q_peaks_ref = q_peaks_ref_dict[calibration_material]
+    except KeyError as err:
+        print("Calibration material {} not found!".format(
+                                        calibration_material))
 
     wavelength_angstroms = wavelength_nm*1e1
 
-    # Calculate 1-d azimuthal integration profile
-    if center is None:
-        # Find the image center
-        center = find_center(image)
-
-    if start_radius is None:
-        start_radius = 0
-    if end_radius is None:
-        end_radius = int(np.around(np.max([
-            np.sqrt(2)*image.shape[0],
-            np.sqrt(2)*image.shape[1],
-            ])))
-
-    # Mask the beam
-    mask = create_circular_mask(
-            image.shape[1], image.shape[0], center=center,
-            rmax=beam_rmax)
-    masked_image = np.copy(image)
-    # Set the masked part to the minimum of the beam area
-    # to avoid creating another peak
-    masked_image[mask] = np.nan
-
-    # Enlarge or pad the image with nans so as not to average with zeros
-
-    padding_amount = (np.sqrt(2)*np.max(image.shape)).astype(int)
-    padding_top = padding_amount
-    padding_bottom = padding_amount
-    padding_left = padding_amount
-    padding_right = padding_amount
-    padding = (padding_top, padding_bottom, padding_left, padding_right)
-    enlarged_masked_image = pad_image(
-            masked_image, padding=padding, nan=True)
-
-    new_center = (padding_top + center[0], padding_left + center[1])
-
     radial_profile = azimuthal_integration(
-            enlarged_masked_image, center=new_center,
+            image, center=center, beam_rmax=beam_rmax,
             start_radius=start_radius, end_radius=end_radius)
 
     # Use the doublet peak location only
@@ -417,17 +345,18 @@ def sample_detector_distance(
 
     return sample_distance_m
 
+
 def sample_distance_calibration_dir(
             image_fullpath=None,
             calibration_material=None,
-            wavelength_nm=DEFAULT_WAVELENGTH_NM,
-            pixel_size=PIXEL_SIZE,
-            beam_rmax=BEAM_RMAX,
-            rmax=RMAX,
-            distance_approx=DISTANCE_APPROX,
+            wavelength_nm=None,
+            pixel_size=None,
+            beam_rmax=None,
+            rmax=None,
+            distance_approx=None,
             center=None,
-            doublet_height=DOUBLET_HEIGHT,
-            doublet_width=DOUBLET_WIDTH,
+            doublet_height=None,
+            doublet_width=None,
             visualize=False,
             start_radius=None,
             end_radius=None,
@@ -476,8 +405,8 @@ def sample_distance_calibration_dir(
 def detector_spacing_calibration(
         image_fullpath=None,
         calibration_material=None,
-        wavelength_nm=DEFAULT_WAVELENGTH_NM,
-        pixel_size=PIXEL_SIZE,
+        wavelength_nm=None,
+        pixel_size=None,
         sample_distance=None,
         beam_center=None,
         filter_size=16,
@@ -597,28 +526,28 @@ if __name__ == "__main__":
             "--material", type=str, default="silver_behenate",
             help="The calibration material")
     parser.add_argument(
-            "--pixel_size", type=float, default=PIXEL_SIZE,
+            "--pixel_size", type=float,
             help="The physical pixel size in meters.")
     parser.add_argument(
-            "--wavelength_nm", type=float, default=DEFAULT_WAVELENGTH_NM,
+            "--wavelength_nm", type=float, required=True,
             help="The wavelength in nanometers.")
     parser.add_argument(
             "--center", type=str, default=None,
             help="The center of the diffraction pattern.")
     parser.add_argument(
-            "--beam_rmax", type=int, default=BEAM_RMAX,
+            "--beam_rmax", type=int,
             help="The radius to block out the beam.")
     parser.add_argument(
-            "--rmax", type=int, default=RMAX,
+            "--rmax", type=int,
             help="The radius to block out the beam.")
     parser.add_argument(
-            "--doublet_width", type=int, default=DOUBLET_WIDTH,
+            "--doublet_width", type=int,
             help="The doublet width to look for.")
     parser.add_argument(
-            "--doublet_height", type=int, default=DOUBLET_HEIGHT,
+            "--doublet_height", type=int,
             help="The doublet height to look for.")
     parser.add_argument(
-            "--distance_approx", type=float, default=DISTANCE_APPROX,
+            "--distance_approx", type=float,
             help="The approximate sample-to-detector distance.")
     parser.add_argument(
             "--start_radius", type=int, default=0,
@@ -651,7 +580,7 @@ if __name__ == "__main__":
             "--sample_distance", type=float, default=None,
             help="The distance between the sample and the detector.")
     parser.add_argument(
-            "--filter_size", type=int, default=DEFAULT_FILTER_SIZE,
+            "--filter_size", type=int,
             help="The size of the uniform filter.")
     parser.add_argument(
             "--file_format", type=str, default=DEFAULT_FILE_FORMAT, required=False,
