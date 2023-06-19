@@ -34,6 +34,7 @@ from eosdxanalysis.preprocessing.utils import AZIMUTHAL_POINT_COUNT_DEFAULT
 from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 DEFAULT_DET_XSIZE = 256
+RES_DEFAULT = 1
 
 
 def azimuthal_integration(
@@ -102,7 +103,7 @@ def azimuthal_integration(
 def radial_intensity_sum(
         image, center=None, start_radius=None, end_radius=None,
         azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
-        start_angle=None, end_angle=None, res=1):
+        start_angle=None, end_angle=None, res=RES_DEFAULT):
     """
     Performs 2D -> 1D radial intensity summation yielding total intensity
     as a function of radius.
@@ -161,7 +162,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
     def __init__(self, *, copy=True,
             center=None, beam_rmax=0, start_radius=None, end_radius=None,
             azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
-            start_angle=None, end_angle=None, res=1, fill=np.nan):
+            start_angle=None, end_angle=None, res=RES_DEFAULT, fill=np.nan):
         """
         Parameters
         ----------
