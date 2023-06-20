@@ -61,7 +61,7 @@ from eosdxanalysis.preprocessing.azimuthal_integration import radial_intensity_s
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
-from eosdxanalysis.calibration.utils import DiffractionUnitsConversion
+from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
 
 TEST_PATH = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(TEST_PATH, "..")
@@ -754,7 +754,7 @@ class TestDenoising(unittest.TestCase):
         threshold = 5
         filtered_image = filter_hot_spots(
                 test_image, threshold, detection_method="absolute",
-                filter_method="median")
+                fill="median")
 
         self.assertTrue(np.array_equal(filtered_image, np.ones((size,size))))
 
@@ -787,7 +787,7 @@ class TestDenoising(unittest.TestCase):
             filtered_image = filter_hot_spots(
                     test_image, threshold, detection_method="absolute",
                     filter_size=filter_size,
-                    filter_method="invalid")
+                    fill="invalid")
 
     def test_filter_hot_spots_zero_method(self):
         """
@@ -817,7 +817,7 @@ class TestDenoising(unittest.TestCase):
         filtered_image = filter_hot_spots(
                 test_image, threshold, detection_method="absolute",
                 filter_size=filter_size,
-                filter_method="zero")
+                fill="zero")
 
         self.assertFalse(np.array_equal(filtered_image, test_image))
 
