@@ -31,7 +31,7 @@ from eosdxanalysis.preprocessing.utils import find_center
 from eosdxanalysis.preprocessing.utils import warp_polar_preprocessor
 from eosdxanalysis.preprocessing.utils import AZIMUTHAL_POINT_COUNT_DEFAULT
 
-from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
+from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conversion
 
 DEFAULT_DET_XSIZE = 256
 RES_DEFAULT = 1
