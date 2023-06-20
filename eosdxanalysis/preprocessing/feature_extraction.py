@@ -12,7 +12,7 @@ import pandas as pd
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
-from eosdxanalysis.calibration.utils import DiffractionUnitsConversion
+from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
 
 
 class FeatureExtraction(object):
