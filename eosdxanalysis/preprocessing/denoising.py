@@ -66,7 +66,7 @@ def find_hot_spots(
 def filter_hot_spots(
         masked_image, threshold=0.75, detection_method="relative",
         max_hot_spots=10, hot_spot_coords_array=None, filter_size=5,
-        filter_method="median"):
+        fill="median"):
     """
     Parameters
     ----------
@@ -87,10 +87,11 @@ def filter_hot_spots(
         zero (not recommended if performing subsequent image processing).
 
     """
-    filter_method_list = ["median", "zero"]
-    if filter_method not in filter_method_list:
+    fill_list = ["median", "zero", "nan"]
+    if fill not in fill_list:
         raise ValueError(
-                "Invalid filter method ({})!".format(filter_method))
+                "Invalid fill value ({})! Choose from {}".format(
+                    fill, fill_list))
 
     if hot_spot_coords_array is None:
         hot_spot_coords_array = find_hot_spots(
@@ -107,10 +108,12 @@ def filter_hot_spots(
                 hot_spot_coords[1]+filter_size//2+1)
 
         hot_spot_roi = filtered_image[hot_spot_roi_rows, hot_spot_roi_cols]
-        if filter_method == "zero":
+        if fill == "zero":
             filtered_image[hot_spot_roi_rows, hot_spot_roi_cols] = 0
-        elif filter_method == "median":
+        elif fill == "median":
             filtered_image[hot_spot_roi_rows, hot_spot_roi_cols] = np.median(
                     hot_spot_roi)
+        elif fill == "nan":
+            filtered_image[hot_spot_roi_rows, hot_spot_roi_cols] = np.nan
 
     return filtered_image
