@@ -15,6 +15,60 @@ class MomentumTransferConversion(
     Sample units conversion.
     Converts from real-space pixel units to momentum transfer (q) units.
     """
+    def __init__(self, *, copy=True):
+        """
+        Parameters
+        ----------
+        copy : bool
+            Creates copy of array if True (default = False).
+        """
+        self.copy = copy
+
+    def fit(self, X, y=None, sample_weight=None):
+        """Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The data used to compute the mean and standard deviation
+            used for later scaling along the features axis.
+        y : None
+            Ignored.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Individual weights for each sample.
+
+        Returns
+        -------
+        self : object
+            Fitted scaler.
+        """
+        return self
+
+    def transform( self, X, copy=True):
+        """Transforms radial data from intensity versus pixel position
+        to intensity versus q value.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix of shape (n_samples, n_features)
+            The data used to scale along the features axis.
+        copy : bool, default=None
+            Copy the input X or not.
+        Returns
+        -------
+        X_tr : {ndarray, sparse matrix} of shape (n_samples, n_features)
+            Transformed array.
+        """
+        q_res = self.q_res
+
+        if copy is True:
+            X = X.copy()
+
+        # Loop over all samples using batches
+        for idx in range(X.shape[0]):
+            pixel_values = X[idx, :, 0].flatten()
+            q_values = radial_profile_unit_conversion()
+
+        return results
+
 
 
 
@@ -238,6 +292,7 @@ class DiffractionUnitsConversion(object):
 def radial_profile_unit_conversion(radial_count=None,
         sample_distance=None,
         wavelength_nm=None,
+        pixel_size=None,
         radial_units="q_per_nm"):
     """
     Convert radial profile from pixel lengths to:
@@ -257,7 +312,7 @@ def radial_profile_unit_conversion(radial_count=None,
     radial_units : str
         Choice of "q_per_nm" (default), "two_theta", or "um".
     """
-    radial_range_m = np.arange(radial_count) * PIXEL_SIZE
+    radial_range_m = np.arange(radial_count) * pixel_size
     radial_range_m = radial_range_m.reshape(-1,1)
     # sample_distance = np.array(sample_distance).reshape(-1,1)
     sample_distance_mm = sample_distance * 1e3
