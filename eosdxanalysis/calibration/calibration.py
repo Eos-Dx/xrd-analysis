@@ -215,7 +215,7 @@ def sample_detector_distance(
         Y = np.tan(2*theta_n).reshape(-1,1)
         # Set x values as the measured r peaks
         X = (singlet_peak_indices_approx[:len(q_peaks_found_indices)] * \
-                PIXEL_SIZE).reshape(-1,1)
+                pixel_size).reshape(-1,1)
 
         # Now perform linear regression, line goes through the origin
         # so intercept = 0
@@ -463,9 +463,9 @@ def detector_spacing_calibration(
                 q_per_nm=doublet_q_per_nm, sample_distance_m=sample_distance,
                 wavelength_nm=wavelength_nm)
 
-        detector_size_m = 256*PIXEL_SIZE
-        beam_position_m = beam_center[1]*PIXEL_SIZE
-        doublet_position_det2_m = peak_location*PIXEL_SIZE
+        detector_size_m = 256*pixel_size
+        beam_position_m = beam_center[1]*pixel_size
+        doublet_position_det2_m = peak_location*pixel_size
         # beam_doublet_distance = (detector_size - beam_position) + detector_spacing + \
         #       doublet_position_det2_m
         detector_spacing_m = beam_doublet_distance_m - (detector_size_m - beam_position_m) - \
