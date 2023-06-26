@@ -10,9 +10,9 @@ import numpy as np
 
 from eosdxanalysis.preprocessing.utils import find_center
 
-from eosdxanalysis.calibration.calibration import SampleDistanceCalibration
+from eosdxanalysis.calibration.calibration import sample_detector_distance
 
-from eosdxanalysis.calibration.utils import DiffractionUnitsConversion
+from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
 
 
 TEST_IMAGE_PATH = os.path.join("eosdxanalysis","calibration","tests","test_images")
@@ -49,12 +49,9 @@ class TestSampleDistanceCalibration(unittest.TestCase):
         test_image = np.loadtxt(test_image_fullpath)
         known_distance_mm = 10 # mm
 
-        # Set up the calibrator class
-        calibrator = SampleDistanceCalibration(calibration_material="silver_behenate")
-
         # Calculate the detector distance (units in meters)
         detector_distance_m, linreg = \
-                calibrator.single_sample_detector_distance(test_image, r_max=80)
+                sample_detector_distance(test_image, end_radius=80)
 
         detector_distance_mm = detector_distance_m * 1e3
 
