@@ -20,8 +20,11 @@ from scipy.ndimage import uniform_filter1d
 
 from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
-from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
-from eosdxanalysis.calibration.utils import real_position_from_q
+from eosdxanalysis.calibration.materials import CALIBRATION_MATERIAL_LIST
+
+from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conversion
+from eosdxanalysis.calibration.units_conversion import real_position_from_q
+from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration
@@ -31,20 +34,38 @@ from eosdxanalysis.preprocessing.utils import find_center
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.utils import quadrant_fold
 
-DEFAULT_FILE_FORMAT = "txt"
 
+DEFAULT_SINGLET_HEIGHT = 5
+DEFAULT_SINGLET_WIDTH = 2
+
+VALID_FILE_FORMATS = [
+        "txt",
+        "tif",
+        "tiff",
+        "npy",
+        ]
 
 
 def sample_detector_distance(
-        image, center=None, beam_rmax=None,
-        distance_approx=None, pixel_size=None,
-        wavelength_nm=None, calibration_material=None,
+        image,
+        center=None,
+        beam_rmax=None,
+        distance_approx=None,
+        pixel_size=None,
+        wavelength_nm=None,
+        calibration_material=None,
         doublet_approx_min_factor=None,
         doublet_approx_max_factor=None,
-        doublet_width=None, doublet_height=None,
-        visualize=False, start_radius=None,
-        end_radius=None, padding=None, height=None, save=False,
-        image_fullpath=None, doublet_only=False):
+        doublet_width=None,
+        doublet_height=None,
+        visualize=False,
+        start_radius=None,
+        end_radius=None,
+        padding=None,
+        height=None,
+        save=False,
+        image_fullpath=None,
+        doublet_only=False):
     """
     Calculate the sample-to-detector distance for a calibration sample
 
@@ -64,9 +85,6 @@ def sample_detector_distance(
     beam_rmax : int
         Maximum beam extent
 
-    rmax : int
-        Maximum radius to analyze
-
     distance_approx : float
         Approximate sample-to-detector distance
 
@@ -76,6 +94,9 @@ def sample_detector_distance(
     visualize : bool
         Flag to display plots image and azimuthal integration profile.
     """
+    if calibration_material not in CALIBRATION_MATERIAL_LIST:
+        raise ValueError("{} not in calibration material library.".format(
+            calibration_material))
 
     # Look up calibration material q-peaks reference data
     try:
@@ -85,6 +106,10 @@ def sample_detector_distance(
                                         calibration_material))
 
     wavelength_angstroms = wavelength_nm*1e1
+
+    # Set center if None
+    if type(center) is type(None):
+        center = find_center(image, rmin=start_radius, rmax=end_radius)
 
     radial_profile = azimuthal_integration(
             image, center=center, beam_rmax=beam_rmax,
@@ -252,6 +277,7 @@ def sample_detector_distance(
         results_dict = {
                 "sample_distance_m": sample_distance_m,
                 "beam_center": center,
+                "score": score,
                 }
 
         # Write calibration results to file
@@ -259,19 +285,19 @@ def sample_detector_distance(
             outfile.writelines(json.dumps(results_dict, indent=4))
 
     if visualize:
-        # Calculate to q-range
+        # Convert to q-range
         q_range = radial_profile_unit_conversion(
-                radial_profile.size,
-                wavelength_nm,
-                sample_distance_m,
+                radial_count=radial_profile.size,
+                sample_distance=sample_distance_m,
+                wavelength_nm=wavelength_nm,
+                pixel_size=pixel_size,
                 radial_units="q_per_nm")
-
 
         title = "Beam masked image [dB+1]"
         fig = plt.figure(title)
         plt.title(title)
 
-        plt.imshow(20*np.log10(masked_image.astype(np.float64)+1), cmap="gray")
+        plt.imshow(20*np.log10(image.astype(np.float64)+1), cmap="gray")
         # Beam center
         plt.scatter(center[1], center[0], color="green")
         if doublet_peak_index:
@@ -295,7 +321,6 @@ def sample_detector_distance(
         plt.xlabel("Horizontal Position [pixel length]")
         plt.ylabel("Vertical Position [pixel length]")
 
-
         title = "Radial Intensity Profile versus real-space distance"
         fig = plt.figure(title)
         plt.title(title)
@@ -315,7 +340,6 @@ def sample_detector_distance(
 
         plt.xlabel("Position [pixel length]")
         plt.ylabel(r"Mean intensity [photon count, dB+1]")
-
 
         # Plot azimuthal integration 1-D profile [q]
 
@@ -345,14 +369,12 @@ def sample_detector_distance(
 
     return sample_distance_m
 
-
-def sample_distance_calibration_dir(
+def sample_distance_calibration_on_a_file(
             image_fullpath=None,
             calibration_material=None,
             wavelength_nm=None,
             pixel_size=None,
             beam_rmax=None,
-            rmax=None,
             distance_approx=None,
             center=None,
             doublet_height=None,
@@ -364,28 +386,36 @@ def sample_distance_calibration_dir(
             print_result=False,
             doublet_only=False,
             sample_distance=None,
-            file_format=DEFAULT_FILE_FORMAT):
+            ):
 
-    if file_format != "txt" and file_format != "tiff" and file_format != "npy":
-        raise ValueError("Choose ``txt``, ``npy``, or ``tiff`` file format.")
+    try:
+        file_format = os.path.splitext(image_fullpath)[1][1:]
+    except:
+        raise ValueError("Error getting file format extension. \
+                Check if input file path is valid.")
 
-    # Instantiate Calibration class
-    calibrator = Calibration(calibration_material=material,
-            wavelength_nm=wavelength_nm, pixel_size=pixel_size)
+    if file_format not in VALID_FILE_FORMATS:
+        raise ValueError("{} is not a valid file format! \
+                Choose from: {}.".format(
+                    file_format,
+                    VALID_FILE_FORMATS,
+                    ))
 
     # Load calibration image
     if file_format == "txt":
         image = np.loadtxt(image_fullpath, dtype=np.float64)
     if file_format == "npy":
         image = np.load(image_fullpath)
-    elif file_format == "tiff":
+    elif file_format in ["tif", "tiff"]:
         image = io.imread(image_fullpath).astype(np.float64)
 
     # Run calibration procedure
-    sample_distance = calibrator.sample_detector_distance(
+    sample_distance = sample_detector_distance(
             image,
+            calibration_material=calibration_material,
             beam_rmax=beam_rmax,
-            rmax=rmax,
+            pixel_size=pixel_size,
+            wavelength_nm=wavelength_nm,
             distance_approx=distance_approx,
             center=center,
             doublet_height=doublet_height,
@@ -416,20 +446,22 @@ def detector_spacing_calibration(
     """
     Calculate the detector spacing
     """
-    if file_format != "txt" and file_format != "tiff" and file_format != "npy":
-        raise ValueError("Choose ``txt``, ``npy``, or ``tiff`` file format.")
+    try:
+        file_format = os.path.splitext(image_fullpath)[1][1:]
+    except:
+        raise ValueError("Error getting file format extension. \
+                Check if input file path is valid.")
 
-    # Instantiate Calibration class
-    calibrator = Calibration(calibration_material=material,
+    if file_format not in VALID_FILE_FORMATS:
+        raise ValueError("{} is not a valid file format! \
+                Choose from: {}.".format(
+                    file_format,
+                    VALID_FILE_FORMATS,
+                    ))
+
+    # Instantiate DiffractionUnitsConversion class
+    calibrator = DiffractionUnitsConversion(
             wavelength_nm=wavelength_nm, pixel_size=pixel_size)
-
-    # Load calibration image
-    if file_format == "txt":
-        image = np.loadtxt(image_fullpath, dtype=np.float64)
-    if file_format == "npy":
-        image = np.load(image_fullpath)
-    elif file_format == "tiff":
-        image = io.imread(image_fullpath).astype(np.float64)
 
     # Get q-peaks reference
     q_peaks_ref_per_ang = calibrator.q_peaks_ref
@@ -523,10 +555,10 @@ if __name__ == "__main__":
             "--image_fullpath", type=str, required=True,
             help="The full path to the raw image data")
     parser.add_argument(
-            "--material", type=str, default="silver_behenate",
+            "--calibration_material", type=str, required=True,
             help="The calibration material")
     parser.add_argument(
-            "--pixel_size", type=float,
+            "--pixel_size", type=float, required=True,
             help="The physical pixel size in meters.")
     parser.add_argument(
             "--wavelength_nm", type=float, required=True,
@@ -536,10 +568,7 @@ if __name__ == "__main__":
             help="The center of the diffraction pattern.")
     parser.add_argument(
             "--beam_rmax", type=int,
-            help="The radius to block out the beam.")
-    parser.add_argument(
-            "--rmax", type=int,
-            help="The radius to block out the beam.")
+            help="The radius to block out the beam (in pixel units).")
     parser.add_argument(
             "--doublet_width", type=int,
             help="The doublet width to look for.")
@@ -578,24 +607,20 @@ if __name__ == "__main__":
             help="The y-position of the beam.")
     parser.add_argument(
             "--sample_distance", type=float, default=None,
-            help="The distance between the sample and the detector.")
+            help="The distance between the sample and the detector (multi-detector case).")
     parser.add_argument(
             "--filter_size", type=int,
             help="The size of the uniform filter.")
-    parser.add_argument(
-            "--file_format", type=str, default=DEFAULT_FILE_FORMAT, required=False,
-            help="The data file format:``txt`` (default), or  ``tiff``.")
 
     args = parser.parse_args()
 
     # Set variables based on input arguments
     image_fullpath = args.image_fullpath
-    material = args.material
+    calibration_material = args.calibration_material
     wavelength_nm = args.wavelength_nm
     pixel_size = args.pixel_size
     beam_rmax = args.beam_rmax
     center = ",".split(args.center) if args.center else None
-    rmax = args.rmax
     distance_approx = args.distance_approx
     doublet_height = args.doublet_height
     doublet_width = args.doublet_width
@@ -605,7 +630,6 @@ if __name__ == "__main__":
     save = args.save
     print_result= args.print_result
     doublet_only = args.doublet_only
-    file_format = args.file_format
     secondary_detector = args.secondary_detector
 
     # In case primary_detector = False
@@ -618,13 +642,12 @@ if __name__ == "__main__":
     filter_size = args.filter_size
 
     if not secondary_detector:
-        sample_distance_calibration_dir(
+        sample_distance_calibration_on_a_file(
                 image_fullpath=image_fullpath,
-                calibration_material=material,
+                calibration_material=calibration_material,
                 wavelength_nm=wavelength_nm,
                 pixel_size=pixel_size,
                 beam_rmax=beam_rmax,
-                rmax=rmax,
                 distance_approx=distance_approx,
                 center=center,
                 doublet_height=doublet_height,
@@ -635,12 +658,11 @@ if __name__ == "__main__":
                 save=save,
                 print_result=print_result,
                 doublet_only=doublet_only,
-                file_format=file_format,
                 )
     else:
         detector_spacing_calibration(
                 image_fullpath=image_fullpath,
-                calibration_material=material,
+                calibration_material=calibration_material,
                 wavelength_nm=wavelength_nm,
                 sample_distance=sample_distance,
                 beam_center=beam_center,
