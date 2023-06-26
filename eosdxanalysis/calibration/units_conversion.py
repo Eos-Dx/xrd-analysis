@@ -70,8 +70,6 @@ class MomentumTransferConversion(
         return results
 
 
-
-
 class DiffractionUnitsConversion(object):
     """
     Class to handle converting units for X-ray diffraction measurements
@@ -94,15 +92,15 @@ class DiffractionUnitsConversion(object):
     """
 
     def __init__(
-            self, source_wavelength=None, pixel_length=None,
-            sample_distance=None, n=1):
+            self, source_wavelength_nm=None, pixel_length=None,
+            sample_distance_mm=None, n=1):
         """
         Initialize the DiffractionUnitConversion class
         """
         # Store machine parameters
-        self.source_wavelength = source_wavelength
+        self.source_wavelength_nm = source_wavelength_nm
         self.pixel_length = pixel_length
-        self.sample_distance = sample_distance
+        self.sample_distance_mm = sample_distance_mm
 
         # Set defaults
         self.n = n
@@ -128,14 +126,14 @@ class DiffractionUnitsConversion(object):
         peak on a diffraction pattern.
         """
         # Set the source wavelength
-        source_wavelength = self.source_wavelength
+        source_wavelength_nm = self.source_wavelength_nm
 
         # Check if source wavelength was provided
-        if not source_wavelength:
+        if not source_wavelength_nm:
             raise ValueError("Source wavelength is required!")
 
         # Calculate the Bragg angle for the n-th order Bragg peak
-        theta = np.arcsin(n*source_wavelength/(2*molecular_spacing))
+        theta = np.arcsin(n*source_wavelength_nm/(2*molecular_spacing))
 
         # Store theta and two*theta
         self.theta = theta
@@ -171,19 +169,18 @@ class DiffractionUnitsConversion(object):
 
         return two_theta
 
-
     def q_spacing_from_theta(self, theta):
         """
         Calculate q-spacing from molecular spacing
         """
         # Set the source wavelength
-        source_wavelength = self.source_wavelength
+        source_wavelength_nm = self.source_wavelength_nm
 
         # Check if source wavelength was provided
-        if not source_wavelength:
+        if not source_wavelength_nm:
             raise ValueError("Source wavelength is required!")
 
-        q_spacing = 4*np.pi/source_wavelength * np.sin(theta)
+        q_spacing = 4*np.pi/source_wavelength_nm * np.sin(theta)
         return q_spacing
 
     def q_spacing_from_molecular_spacing(self, molecular_spacing, n=1):
@@ -191,10 +188,10 @@ class DiffractionUnitsConversion(object):
         Calculate q-spacing from two-theta
         """
         # Set the source wavelength
-        source_wavelength = self.source_wavelength
+        source_wavelength_nm = self.source_wavelength_nm
 
         # Check if source wavelength was provided
-        if not source_wavelength:
+        if not source_wavelength_nm:
             raise ValueError("Source wavelength is required!")
 
         # Get or calculate theta
@@ -232,11 +229,11 @@ class DiffractionUnitsConversion(object):
 
         """
         # Get machine parameters
-        source_wavelength = self.source_wavelength
-        sample_distance = self.sample_distance
+        source_wavelength_nm = self.source_wavelength_nm
+        sample_distance_mm = self.sample_distance_mm
 
         # Check if required machine parameters were provided
-        if not all([self.source_wavelength, self.sample_distance]):
+        if not all([self.source_wavelength_nm, self.sample_distance_mm]):
             raise ValueError(
                     "Missing source wavelength and sample-to-detector distance!"
                     " You must initialize the class with machine parameters for"
@@ -244,7 +241,7 @@ class DiffractionUnitsConversion(object):
 
         # Calculate the distance in meters
         two_theta = self.two_theta_from_molecular_spacing(molecular_spacing)
-        bragg_peak_location = sample_distance * np.tan(two_theta)
+        bragg_peak_location = sample_distance_mm * np.tan(two_theta)
 
         return bragg_peak_location
 
@@ -290,7 +287,7 @@ class DiffractionUnitsConversion(object):
         return bragg_peak_pixel_location
 
 def radial_profile_unit_conversion(radial_count=None,
-        sample_distance=None,
+        sample_distance_mm=None,
         wavelength_nm=None,
         pixel_size=None,
         radial_units="q_per_nm"):
@@ -314,10 +311,7 @@ def radial_profile_unit_conversion(radial_count=None,
     """
     radial_range_m = np.arange(radial_count) * pixel_size
     radial_range_m = radial_range_m.reshape(-1,1)
-    # sample_distance = np.array(sample_distance).reshape(-1,1)
-    sample_distance_mm = sample_distance * 1e3
     radial_range_mm = radial_range_m * 1e3
-
 
     if radial_units == "q_per_nm":
         q_range_per_nm = q_conversion(
@@ -353,21 +347,21 @@ def q_conversion(
     q = 4*np.pi*np.sin(theta) / wavelength_nm
     return q
 
-def real_position_from_two_theta(two_theta=None, sample_distance_m=None):
+def real_position_from_two_theta(two_theta=None, sample_distance_mm=None):
     """
     two_theta : float
         radians
 
     sample_distance_m
     """
-    position_m = sample_distance_m * np.tan(two_theta)
-    return position_m
+    position_mm = sample_distance_mm * np.tan(two_theta)
+    return position_mm
 
-def real_position_from_q(q_per_nm=None, sample_distance_m=None, wavelength_nm=None):
+def real_position_from_q(q_per_nm=None, sample_distance_mm=None, wavelength_nm=None):
     """
     """
     theta = np.arcsin(q_per_nm * wavelength_nm / 4 / np.pi)
     two_theta = 2*theta
-    position_m = real_position_from_two_theta(
-            two_theta=two_theta, sample_distance_m=sample_distance_m)
-    return position_m
+    position_mm = real_position_from_two_theta(
+            two_theta=two_theta, sample_distance_mm=sample_distance_mm)
+    return position_mm
