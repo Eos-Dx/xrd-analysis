@@ -520,7 +520,7 @@ def warp_polar_preprocessor(
     if not start_radius:
         start_radius = 0
     if not end_radius:
-        end_radius = int(np.max(image.shape)/2*res)
+        end_radius = int(np.sqrt(2)*np.max(image.shape)*res)
     if not azimuthal_point_count:
         azimuthal_point_count = AZIMUTHAL_POINT_COUNT_DEFAULT*res
     if (start_angle is None) and (end_angle is None):
