@@ -277,6 +277,7 @@ def azimuthal_integration_dir(
         input_path,
         output_path=None,
         wavelength_nm=None,
+        pixel_size=None,
         sample_distance_m = None,
         input_dataframe_filepath=None,
         sample_distance_filepath=None,
@@ -441,22 +442,28 @@ def azimuthal_integration_dir(
                 sample_distance_results = json.loads(distance_fp.read())
                 sample_distance_m = sample_distance_results["sample_distance_m"]
 
+            sample_distance_mm = sample_distance_m * 1e3
+
             # Combine radial profile intensity and q-units
             q_range = radial_profile_unit_conversion(
                     radial_count=radial_profile.size,
-                    sample_distance=sample_distance_m,
+                    sample_distance_mm=sample_distance_mm,
                     wavelength_nm=wavelength_nm,
+                    pixel_size=pixel_size,
                     radial_units="q_per_nm")
             results = np.hstack([q_range.reshape(-1,1), radial_profile.reshape(-1,1)])
             np.savetxt(data_output_filepath, results)
         elif input_dataframe_filepath:
             sample_distance_m = input_df.loc[filename, "sample_distance_m"]
 
+            sample_distance_mm = sample_distance_m * 1e3
+
             # Combine radial profile intensity and q-units
             q_range = radial_profile_unit_conversion(
                     radial_count=radial_profile.size,
-                    sample_distance=sample_distance_m,
+                    sample_distance_mm=sample_distance_mm,
                     wavelength_nm=wavelength_nm,
+                    pixel_size=pixel_size,
                     radial_units="q_per_nm")
             results = np.hstack([q_range.reshape(-1,1), radial_profile.reshape(-1,1)])
             np.savetxt(data_output_filepath, results)
@@ -520,7 +527,10 @@ if __name__ == '__main__':
             "--wavelength_nm", type=float, required=True,
             help="Wavelength in nanometers.")
     parser.add_argument(
-            "--sample_distance_m", type=float, required=True,
+            "--pixel_size", type=float, required=True,
+            help="The physical pixel size in meters.")
+    parser.add_argument(
+            "--sample_distance_m", type=float,
             help="Sample distance in meters.")
     parser.add_argument(
             "--input_dataframe_filepath", type=str, required=False,
@@ -564,6 +574,7 @@ if __name__ == '__main__':
     output_path = os.path.abspath(args.output_path) if args.output_path \
             else None
     wavelength_nm = args.wavelength_nm
+    pixel_size = args.pixel_size
     sample_distance_m = args.sample_distance_m
     input_dataframe_filepath = os.path.abspath(args.input_dataframe_filepath) \
             if args.input_dataframe_filepath else None
@@ -584,13 +595,14 @@ if __name__ == '__main__':
     det_xsize = args.det_xsize
     verbose = args.verbose
 
-    if not (input_path ^ input_dataframe_filepath):
+    if type(input_path) is None and type(input_dataframe_filepath) is None:
         raise ValueError("Input path or dataframe is required.")
 
     azimuthal_integration_dir(
         input_path=input_path,
         output_path=output_path,
         wavelength_nm=wavelength_nm,
+        pixel_size=pixel_size,
         sample_distance_m=sample_distance_m,
         input_dataframe_filepath=input_dataframe_filepath,
         find_sample_distance_filepath=find_sample_distance_filepath,
