@@ -373,10 +373,11 @@ def run_pca_plot(
             # Annotate data points with filenames
             for i, filepath in enumerate(filepath_list[:]):
                 filename = os.path.basename(filepath).format(distance_mm)
-                annotation = filename.replace(
-                        "radial_",
+                annotation = re.sub(
+                        "radial_dist_[0-9]{1,3}mm_SLA1_",
                         "",
-                        ).replace(".txt", "")
+                        filename).replace(".txt", "")
+
                 ax.text(
                     X_pca[i,pc_a], X_pca[i,pc_b],
                     annotation,
