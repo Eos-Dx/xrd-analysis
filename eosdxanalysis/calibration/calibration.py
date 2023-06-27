@@ -37,6 +37,10 @@ from eosdxanalysis.preprocessing.utils import quadrant_fold
 
 DEFAULT_SINGLET_HEIGHT = 5
 DEFAULT_SINGLET_WIDTH = 2
+DEFAULT_DOUBLET_APPROX_MIN_FACTOR = 0.5
+DEFAULT_DOUBLET_APPROX_MAX_FACTOR = 2.0
+DEFAULT_DOUBLET_WIDTH = 4
+DEFAULT_DOUBLET_HEIGHT = 8
 
 VALID_FILE_FORMATS = [
         "txt",
@@ -54,10 +58,10 @@ def sample_detector_distance(
         pixel_size=None,
         wavelength_nm=None,
         calibration_material=None,
-        doublet_approx_min_factor=None,
-        doublet_approx_max_factor=None,
-        doublet_width=None,
-        doublet_height=None,
+        doublet_approx_min_factor=DEFAULT_DOUBLET_APPROX_MIN_FACTOR,
+        doublet_approx_max_factor=DEFAULT_DOUBLET_APPROX_MAX_FACTOR,
+        doublet_width=DEFAULT_DOUBLET_WIDTH,
+        doublet_height=DEFAULT_DOUBLET_HEIGHT,
         visualize=False,
         start_radius=None,
         end_radius=None,
@@ -152,10 +156,11 @@ def sample_detector_distance(
 
         # Check how many prominent peaks were found
         prominences = properties.get("prominences")
-        if prominences.size >= 1:
-            # Get the peak index of the doublet in the main array
-            doublet_peak_index = doublet_peak_indices_approx[0] + start_index
-        else:
+        try:
+            if prominences.size >= 1:
+                # Get the peak index of the doublet in the main array
+                doublet_peak_index = doublet_peak_indices_approx[0] + start_index
+        except:
             raise ValueError("Doublet peak not found.")
 
         # Now use location of doublet to calculate sample-to-detector distance
@@ -277,7 +282,7 @@ def sample_detector_distance(
         results_dict = {
                 "sample_distance_m": sample_distance_m,
                 "beam_center": center,
-                "score": score,
+                "score": score if not doublet_only else None,
                 }
 
         # Write calibration results to file
@@ -286,9 +291,10 @@ def sample_detector_distance(
 
     if visualize:
         # Convert to q-range
+        sample_distance_mm = sample_distance_m * 1e3
         q_range = radial_profile_unit_conversion(
                 radial_count=radial_profile.size,
-                sample_distance=sample_distance_m,
+                sample_distance_mm=sample_distance_mm,
                 wavelength_nm=wavelength_nm,
                 pixel_size=pixel_size,
                 radial_units="q_per_nm")
@@ -377,8 +383,8 @@ def sample_distance_calibration_on_a_file(
             beam_rmax=None,
             distance_approx=None,
             center=None,
-            doublet_height=None,
-            doublet_width=None,
+            doublet_height=DEFAULT_DOUBLET_HEIGHT,
+            doublet_width=DEFAULT_DOUBLET_WIDTH,
             visualize=False,
             start_radius=None,
             end_radius=None,
@@ -570,10 +576,10 @@ if __name__ == "__main__":
             "--beam_rmax", type=int,
             help="The radius to block out the beam (in pixel units).")
     parser.add_argument(
-            "--doublet_width", type=int,
+            "--doublet_width", default=DEFAULT_DOUBLET_WIDTH,
             help="The doublet width to look for.")
     parser.add_argument(
-            "--doublet_height", type=int,
+            "--doublet_height", default=DEFAULT_DOUBLET_HEIGHT,
             help="The doublet height to look for.")
     parser.add_argument(
             "--distance_approx", type=float,
