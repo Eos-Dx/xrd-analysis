@@ -47,7 +47,7 @@ def main(
         random_state=0, test_size=None, score_agg="max"):
 
     # Set class_weight
-    class_weight = balanced if balanced else None
+    class_weight = "balanced" if balanced else None
 
     # Set rng
     rng = default_rng(random_state)
@@ -79,8 +79,9 @@ def main(
         else:
             X = df[feature_list].values
 
-        diagnosis_series = (df["Diagnosis"] == "cancer").astype(int)
-        df["y_true"] = diagnosis_series
+        # diagnosis_series = (df["Diagnosis"] == "cancer").astype(int)
+        # df["y_true"] = diagnosis_series
+        df["y_true"] = df["Cancer"]
 
         # Get training labels
         y = df["y_true"].values
@@ -130,14 +131,17 @@ def main(
             X_test = poly.fit_transform(X_test_orig)
         else:
             df_train = df
-            X_train = X
+            if degree == 1:
+                X_train = X
+            else:
+                X_train = poly.fit_transform(X)
             y_train = y
 
         # Create classifier
         logreg = LogisticRegression(
-                C=1,class_weight=class_weight, solver="newton-cg",
+                C=1, class_weight=class_weight, solver="newton-cg",
                 max_iter=max_iter)
-        clf = make_pipeline(StandardScaler(), logreg)
+        clf = make_pipeline(logreg)
 
         # Train model
         clf.fit(X_train, y_train)
@@ -149,24 +153,10 @@ def main(
             model_output_filepath = os.path.join(output_path, model_output_filename)
             dump(clf, model_output_filepath)
 
-        # Get patient-wise performance
-        # Get patient labels
-        y_true_patients = df_train.groupby("Patient_ID")["y_true"].max()
+        y_true = df["y_true"].values
+        y_score = clf.decision_function(X_train)
 
-        # Get patient-wise predictions
-        y_score_measurements = clf.decision_function(X_train)
-        df_train["y_score"] = y_score_measurements
-        # Calculate patient scores
-        if score_agg == "max":
-            y_score_patients = df_train.groupby("Patient_ID")["y_score"].max()
-        elif score_agg == "min":
-            y_score_patients = df_train.groupby("Patient_ID")["y_score"].min()
-        elif score_agg == "mean":
-            y_score_patients = df_train.groupby("Patient_ID")["y_score"].mean()
-        else:
-            raise ValueError("Invalid ``score_agg`` keyword")
-
-        fpr, tpr, thresholds = roc_curve(y_true_patients, y_score_patients)
+        fpr, tpr, thresholds = roc_curve(y_true, y_score)
 
         # Find threshold closest to ideal classifier
         distances = np.sqrt((1-tpr)**2 + fpr**2)
@@ -183,22 +173,17 @@ def main(
         optimal_threshold = optimal_threshold_array[0]
 
         # Generate predictions for optimal threshold
-        y_pred_patients = (y_score_patients.values >= optimal_threshold).astype(int)
-
-        # Get the number of predicted "old" patients that have a healthy diagnosis
-        train_patients_diagnosis_series = df_train.groupby("Patient_ID")["Diagnosis"].max()
-        df_train_patients = pd.DataFrame(data=train_patients_diagnosis_series, columns={"Diagnosis"})
-        df_train_patients["y_train_pred"] = y_pred_patients
+        y_pred = (y_score >= optimal_threshold).astype(int)
 
         # Generate scores for optimal threshold
-        accuracy = accuracy_score(y_true_patients, y_pred_patients)
-        precision = precision_score(y_true_patients, y_pred_patients)
-        sensitivity = recall_score(y_true_patients, y_pred_patients)
+        accuracy = accuracy_score(y_true, y_pred)
+        precision = precision_score(y_true, y_pred)
+        sensitivity = recall_score(y_true, y_pred)
         specificity = recall_score(
-                y_true_patients, y_pred_patients, pos_label=0)
+                y_true, y_pred, pos_label=0)
 
         # Generate performance counts
-        tn, fp, fn, tp = confusion_matrix(y_true_patients, y_pred_patients).ravel()
+        tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
 
         # Print metrics
         print("tn,fp,fn,tp,threshold,accuracy,precision,sensitivity,specificity")
@@ -207,7 +192,7 @@ def main(
             optimal_threshold, accuracy, precision, sensitivity,
             specificity))
 
-        PrecisionRecallDisplay.from_predictions(y_true_patients, y_score_patients)
+        PrecisionRecallDisplay.from_predictions(y_true, y_score)
         fig_pr = plt.gcf()
         title = "Logistic Regression Precision-Recall Curve Degree {}".format(degree)
         fig_pr.suptitle(title)
@@ -215,7 +200,7 @@ def main(
         fig_pr_filepath = os.path.join(output_path, fig_pr_filename)
         fig_pr.savefig(fig_pr_filepath)
 
-        RocCurveDisplay.from_predictions(y_true_patients, y_score_patients)
+        RocCurveDisplay.from_predictions(y_true, y_score)
         fig_roc = plt.gcf()
         title = "Logistic Regression ROC Curve Degree {}".format(degree)
         fig_roc.suptitle(title)
@@ -224,6 +209,57 @@ def main(
         fig_roc.savefig(fig_roc_filepath)
 
         plt.show()
+
+        if degree == 1:
+            # Plot decision boundary
+            plot_title = "Logistic Regression Decision Boundary"
+
+            x = np.arange(-2, 2, 0.25)
+            y = np.arange(-20, 20, 0.25)
+            XX, YY = np.meshgrid(x, y)
+
+            coef = clf["logisticregression"].coef_[0]
+            intercept = clf["logisticregression"].intercept_
+
+            ZZ = (intercept + coef[0] * XX + coef[1] * YY) / coef[2]
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            ax.plot_surface(XX, YY, ZZ, color="orange", alpha=0.5)
+
+            # Plot data
+            colors = {
+                    1: "red",
+                    0: "blue",
+                    }
+
+            pc_a = 0
+            pc_b = 1
+            pc_c = 2
+
+            for diagnosis in colors.keys():
+                X_diagnosis = df_train.loc[df_train["y_true"] == diagnosis][["PC0", "PC1", "PC2"]].values
+                label = "cancer" if diagnosis == 1 else "non-cancer"
+                ax.scatter(
+                        X_diagnosis[:,pc_a],
+                        X_diagnosis[:,pc_b],
+                        X_diagnosis[:,pc_c],
+                        c=colors[diagnosis], label=label, s=10)
+
+            ax.set_xlabel("PC{}".format(pc_a))
+            ax.set_ylabel("PC{}".format(pc_b))
+            ax.set_zlabel("PC{}".format(pc_c))
+
+            ax.set_xlim([-20, 20])
+            ax.set_ylim([-20, 20])
+            ax.set_zlim([-20, 20])
+
+            ax.set_title(plot_title)
+            ax.legend()
+
+            fig.tight_layout()
+
+            plt.show()
 
         if test_size:
             ###############################
