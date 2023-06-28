@@ -15,7 +15,8 @@ class MomentumTransferUnitsConversion(
     Sample units conversion.
     Converts from real-space pixel units to momentum transfer (q) units.
     """
-    def __init__(self, *, copy=True):
+    def __init__(self, *, copy=True,
+            wavelength_nm=None, pixel_size=None):
         """
         Parameters
         ----------
@@ -26,6 +27,8 @@ class MomentumTransferUnitsConversion(
             Array of sample distances in meters. Must be same shape as X.
         """
         self.copy = copy
+        self.wavelength_nm = wavelength_nm
+        self.pixel_size = pixel_size
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -45,7 +48,7 @@ class MomentumTransferUnitsConversion(
         """
         return self
 
-    def transform( self, X, copy=True, sample_distance_m=None):
+    def transform(self, X, copy=True, sample_distance_m=None):
         """Transforms radial data from intensity versus pixel position
         to intensity versus q value.
 
@@ -60,18 +63,27 @@ class MomentumTransferUnitsConversion(
         X_tr : {ndarray, sparse matrix} of shape (n_samples, n_features)
             Transformed array.
         """
-        q_res = self.q_res
+        wavelength_nm = self.wavelength_nm
+        pixel_size = self.pixel_size
 
-        if not np.array_equal(sample_distance_m.shape, X.shape):
-            raise ValueError("Sample distance array must be same shape as input data.")
+        if not np.array_equal(sample_distance_m.shape[0], X.shape[0]):
+            raise ValueError("Sample distance array must be same size number of samples.")
 
         if copy is True:
             X = X.copy()
 
-        # Loop over all samples using batches
-        for idx in range(X.shape[0]):
-            pixel_values = X[idx, :, 0].flatten()
-            q_values = radial_profile_unit_conversion()
+        sample_distance_mm = sample_distance_m
+
+        radial_count = X.shape[1]
+        q_range = radial_profile_unit_conversion(
+                radial_count=radial_count,
+                sample_distance_mm=sample_distance_mm,
+                wavelength_nm=wavelength_nm,
+                pixel_size=pixel_size,
+                radial_units="q_per_nm").T
+
+        # Add q-ranges into dataset
+        results = np.dstack([q_range, X])
 
         return results
 
