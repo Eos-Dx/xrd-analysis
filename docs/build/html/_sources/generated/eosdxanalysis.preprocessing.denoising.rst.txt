@@ -13,12 +13,19 @@
 
    .. autosummary::
    
-      filter_hot_spots
-      find_hot_spots
+      filter_outlier_pixel_values
+      filter_outlier_pixel_values_dir
+      find_outlier_pixel_values
    
    
 
    
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      FilterOutlierPixelValues
    
    
 
