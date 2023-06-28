@@ -558,10 +558,16 @@ class TestPreprocessData(unittest.TestCase):
         params_filter = json.loads(params_hot_spot_filter)
         params_no_filter = json.loads(params_hot_spot_no_filter)
 
-        preprocessor_filter = PreprocessData(filename=input_filename,
-                input_path=test_input_path, output_path=test_output_filtered_path, params=params_filter)
-        preprocessor_no_filter = PreprocessData(filename=input_filename,
-                                      input_path=test_input_path, output_path=test_output_unfiltered_path, params=params_no_filter)
+        preprocessor_filter = PreprocessData(
+                filename=input_filename,
+                input_path=test_input_path,
+                output_path=test_output_filtered_path,
+                params=params_filter)
+        preprocessor_no_filter = PreprocessData(
+                filename=input_filename,
+                input_path=test_input_path,
+                output_path=test_output_unfiltered_path,
+                params=params_no_filter)
 
         # Preprocess data, saving to a file
         preprocessor_filter.preprocess()
@@ -589,8 +595,10 @@ class TestPreprocessData(unittest.TestCase):
 
         # Finding the hot spots
         threshold = 400
-        filtered_hot_spot_coords = find_hot_spots(preprocessed_filtered_image, threshold)
-        unfiltered_hot_spot_coords = find_hot_spots(preprocessed_unfiltered_image, threshold)
+        filtered_hot_spot_coords = find_outlier_pixel_values(
+                preprocessed_filtered_image, threshold=threshold, absolute=True)
+        unfiltered_hot_spot_coords = find_outlier_pixel_values(
+                preprocessed_unfiltered_image, threshold=threshold, absolute=True)
 
         self.assertTrue(unfiltered_hot_spot_coords.size > 0)
         self.assertTrue(filtered_hot_spot_coords.size == 0)
