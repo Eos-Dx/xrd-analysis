@@ -15,7 +15,7 @@ class MomentumTransferUnitsConversion(
     Sample units conversion.
     Converts from real-space pixel units to momentum transfer (q) units.
     """
-    def __init__(self, *, copy=True, sample_distance_m=None):
+    def __init__(self, *, copy=True):
         """
         Parameters
         ----------
@@ -26,7 +26,6 @@ class MomentumTransferUnitsConversion(
             Array of sample distances in meters. Must be same shape as X.
         """
         self.copy = copy
-        self.sample_distance_m = sample_distance_m
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -46,7 +45,7 @@ class MomentumTransferUnitsConversion(
         """
         return self
 
-    def transform( self, X, copy=True):
+    def transform( self, X, copy=True, sample_distance_m=None):
         """Transforms radial data from intensity versus pixel position
         to intensity versus q value.
 
@@ -62,7 +61,6 @@ class MomentumTransferUnitsConversion(
             Transformed array.
         """
         q_res = self.q_res
-        sample_distance_m = self.sample_distance_m
 
         if not np.array_equal(sample_distance_m.shape, X.shape):
             raise ValueError("Sample distance array must be same shape as input data.")
