@@ -30,8 +30,8 @@ from eosdxanalysis.preprocessing.utils import find_centroid
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import get_angle
 from eosdxanalysis.preprocessing.utils import find_maxima
-from eosdxanalysis.preprocessing.denoising import find_hot_spots
-from eosdxanalysis.preprocessing.denoising import filter_hot_spots
+from eosdxanalysis.preprocessing.denoising import find_outlier_pixel_values
+from eosdxanalysis.preprocessing.denoising import filter_outlier_pixel_values
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.utils import quadrant_fold
 from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
@@ -294,15 +294,10 @@ class PreprocessData(object):
                     self.calculated_center = calculated_center
                     mask = create_circular_mask(
                             h, w, center=calculated_center, rmin=beam_rmax)
-                    masked_image = plan_image.copy()
-                    masked_image[~mask] = 0
-                    hot_spot_coords_array = find_hot_spots(masked_image, hot_spot_threshold,
-                            detection_method=hot_spot_detection_method)
-                    # Filter hot spots on original image, not masked image
-                    plan_image = filter_hot_spots(
+                    # Filter hot spots on original image
+                    plan_image = filter_outlier_pixel_values(
                             plan_image, threshold=hot_spot_threshold,
-                            hot_spot_coords_array=hot_spot_coords_array,
-                            filter_method="median")
+                            absolute=True, fill_method="median")
 
                 if median_filter_size:
                     # Use a beam-masked image to filter hot spots
