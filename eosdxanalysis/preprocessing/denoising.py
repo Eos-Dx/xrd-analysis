@@ -28,6 +28,7 @@ from eosdxanalysis.preprocessing.utils import find_center
 DEFAULT_BEAM_RMAX = 15
 DEFAULT_THRESHOLD = 0.75
 DEFAULT_RELATIVE_THRESHOLD = True
+DEFAULT_DEAD_PIXEL_THRESHOLD = 1e3
 DEFAULT_THRESHOLD_TYPE = "max"
 DEFAULT_MAX_PIXELS = 10
 DEFAULT_FILTER_SIZE = 5
@@ -285,7 +286,8 @@ def filter_outlier_pixel_values_dir(
             beam_rmax=DEFAULT_BEAM_RMAX,
             dead_pixel_threshold=DEFAULT_THRESHOLD,
             file_format=None,
-            verbose=False):
+            verbose=False,
+            fill="nan"):
     """
     Repairs dead pixels in images contained in a directory
 
@@ -389,9 +391,32 @@ def filter_outlier_pixel_values_dir(
         if not center:
             center = find_center(image)
 
-        output_image = dead_pixel_repair(
-                image, copy=copy, center=center, beam_rmax=beam_rmax,
-                dead_pixel_threshold=dead_pixel_threshold)
+        # Beam masking
+        if beam_rmax > 0:
+            # Block out the beam
+            beam_mask = create_circular_mask(
+                    image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
+            masked_image = image.copy()
+            masked_image[beam_mask] = 0
+        else:
+            masked_image = image
+
+        coords_array = find_outlier_pixel_values(
+                masked_image,
+                threshold=dead_pixel_threshold)
+
+        output_image = filter_outlier_pixel_values(
+                masked_image,
+                threshold=dead_pixel_threshold,
+                relative_threshold=None,
+                threshold_type="absolute",
+                max_pixels=None,
+                coords_array=coords_array,
+                filter_size=None,
+                fill=fill)
+
+        output_image = image.copy()
+        output_image[coords_array] = fill
 
         # Save results
         data_output_filepath = os.path.join(output_path, filename)
@@ -466,7 +491,7 @@ if __name__ == '__main__':
     center = center_kwarg.strip("()").split(",") if center_kwarg else None
 
     if input_path and find_dead_pixels:
-        dead_pixel_repair_dir(
+        filter_outlier_pixel_values_dir(
             input_path=input_path,
             output_path=output_path,
             overwrite=overwrite,
