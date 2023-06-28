@@ -8,11 +8,15 @@ import os
 import unittest
 import numpy as np
 
+from scipy.interpolate import interp1d
+
 from eosdxanalysis.preprocessing.utils import find_center
 
 from eosdxanalysis.calibration.calibration import sample_detector_distance
 
 from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
+from eosdxanalysis.calibration.units_conversion import MomentumTransferUnitsConversion
+from eosdxanalysis.calibration.units_conversion import real_position_from_q
 
 
 TEST_IMAGE_PATH = os.path.join("eosdxanalysis","calibration","tests","test_images")
@@ -116,6 +120,60 @@ class TestDiffractionUnitsConversion(unittest.TestCase):
         self.assertTrue(
                 np.isclose(
                     bragg_peak_pixel_location, known_pixel_location, atol=0.5))
+
+
+class TestMomentumTransferUnitsConversion(unittest.TestCase):
+
+    def test_agbh_first_q_peak_units_conversion(self):
+        """
+        AgBH has the first peak at 1.076 per nm
+        """
+        wavelength_nm = 0.1540562
+        pixel_size = 55e-6
+        unitsconversion = MomentumTransferUnitsConversion(
+                wavelength_nm=wavelength_nm,
+                pixel_size=pixel_size,
+                )
+
+        array_len = int(np.sqrt(2)*256)
+        q_per_nm = 1.076
+        sample_distance_mm = 180
+
+        # Calculate real position
+        position_mm = real_position_from_q(
+                q_per_nm=q_per_nm,
+                sample_distance_mm=sample_distance_mm,
+                wavelength_nm=wavelength_nm,
+                )
+
+        # Calculate pixel position
+        position_m = position_mm / 1e3
+        pixel_position = position_m / pixel_size
+
+        # Create a Gaussian at this pixel position
+        X = np.array(
+                [[np.exp(-((np.arange(array_len) - pixel_position)/(array_len/4))**2)]]
+                ).reshape(1, array_len)
+
+        sample_distance_m = np.array(sample_distance_mm).reshape(X.shape[0], 1)
+
+        # Perform units conversion
+        X_q = unitsconversion.transform(X, sample_distance_m=sample_distance_m)
+
+        # Check that the size of X_q is correct
+        self.assertEqual(X_q.shape, (1, array_len, 2))
+
+        # Check tht the peak value is correct
+        test_peak_pixel_location = np.where(X_q[0, :, 1] == np.max(X_q[0, :, 1]))[0]
+
+        # Check the pixel location is the same
+        self.assertTrue(np.isclose(test_peak_pixel_location, pixel_position, atol=0.5))
+
+        # Check the q-peak value is close to the reference value
+        # Interpolate
+        q_interp = interp1d(np.arange(array_len), X_q[0, :, 0])
+        test_q_per_nm = q_interp(pixel_position)
+        self.assertTrue(np.isclose(test_q_per_nm, q_per_nm))
 
 
 if __name__ == '__main__':
