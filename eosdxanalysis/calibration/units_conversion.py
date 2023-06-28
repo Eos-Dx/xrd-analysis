@@ -9,20 +9,24 @@ from sklearn.base import TransformerMixin
 from sklearn.base import BaseEstimator
 
 
-class MomentumTransferConversion(
+class MomentumTransferUnitsConversion(
         OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
     """Adapted from scikit-learn transforms
     Sample units conversion.
     Converts from real-space pixel units to momentum transfer (q) units.
     """
-    def __init__(self, *, copy=True):
+    def __init__(self, *, copy=True, sample_distance_m=None):
         """
         Parameters
         ----------
         copy : bool
             Creates copy of array if True (default = False).
+
+        sample_distance_m : array_like
+            Array of sample distances in meters. Must be same shape as X.
         """
         self.copy = copy
+        self.sample_distance_m = sample_distance_m
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -58,6 +62,10 @@ class MomentumTransferConversion(
             Transformed array.
         """
         q_res = self.q_res
+        sample_distance_m = self.sample_distance_m
+
+        if not np.array_equal(sample_distance_m.shape, X.shape):
+            raise ValueError("Sample distance array must be same shape as input data.")
 
         if copy is True:
             X = X.copy()
