@@ -21,8 +21,8 @@ from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 
 from eosdxanalysis.preprocessing.center_finding import circular_average
 
-from eosdxanalysis.preprocessing.denoising import filter_hot_spots
-from eosdxanalysis.preprocessing.denoising import find_hot_spots
+from eosdxanalysis.preprocessing.denoising import filter_outlier_pixel_values
+from eosdxanalysis.preprocessing.denoising import find_outlier_pixel_values
 
 from eosdxanalysis.preprocessing.utils import count_intervals
 from eosdxanalysis.preprocessing.utils import create_circular_mask
@@ -48,12 +48,6 @@ from eosdxanalysis.preprocessing.beam_utils import beam_extent
 
 from eosdxanalysis.preprocessing.feature_extraction import FeatureExtraction
 
-from eosdxanalysis.preprocessing.dead_pixel_repair import dead_pixel_repair
-from eosdxanalysis.preprocessing.dead_pixel_repair import DeadPixelRepair
-from eosdxanalysis.preprocessing.dead_pixel_repair import dead_pixel_repair_dir
-from eosdxanalysis.preprocessing.dead_pixel_repair import DEFAULT_BEAM_RMAX
-from eosdxanalysis.preprocessing.dead_pixel_repair import DEFAULT_DEAD_PIXEL_THRESHOLD
-
 from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration
 from eosdxanalysis.preprocessing.azimuthal_integration import AzimuthalIntegration
 from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration_dir
@@ -61,7 +55,7 @@ from eosdxanalysis.preprocessing.azimuthal_integration import radial_intensity_s
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
-from eosdxanalysis.calibration.utils import DiffractionUnitsConversion
+from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
 
 TEST_PATH = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(TEST_PATH, "..")
@@ -564,10 +558,16 @@ class TestPreprocessData(unittest.TestCase):
         params_filter = json.loads(params_hot_spot_filter)
         params_no_filter = json.loads(params_hot_spot_no_filter)
 
-        preprocessor_filter = PreprocessData(filename=input_filename,
-                input_path=test_input_path, output_path=test_output_filtered_path, params=params_filter)
-        preprocessor_no_filter = PreprocessData(filename=input_filename,
-                                      input_path=test_input_path, output_path=test_output_unfiltered_path, params=params_no_filter)
+        preprocessor_filter = PreprocessData(
+                filename=input_filename,
+                input_path=test_input_path,
+                output_path=test_output_filtered_path,
+                params=params_filter)
+        preprocessor_no_filter = PreprocessData(
+                filename=input_filename,
+                input_path=test_input_path,
+                output_path=test_output_unfiltered_path,
+                params=params_no_filter)
 
         # Preprocess data, saving to a file
         preprocessor_filter.preprocess()
@@ -595,8 +595,10 @@ class TestPreprocessData(unittest.TestCase):
 
         # Finding the hot spots
         threshold = 400
-        filtered_hot_spot_coords = find_hot_spots(preprocessed_filtered_image, threshold)
-        unfiltered_hot_spot_coords = find_hot_spots(preprocessed_unfiltered_image, threshold)
+        filtered_hot_spot_coords = find_outlier_pixel_values(
+                preprocessed_filtered_image, threshold=threshold, absolute=True)
+        unfiltered_hot_spot_coords = find_outlier_pixel_values(
+                preprocessed_unfiltered_image, threshold=threshold, absolute=True)
 
         self.assertTrue(unfiltered_hot_spot_coords.size > 0)
         self.assertTrue(filtered_hot_spot_coords.size == 0)
@@ -752,9 +754,9 @@ class TestDenoising(unittest.TestCase):
         self.assertEqual(np.max(test_image), hot_spot_value)
 
         threshold = 5
-        filtered_image = filter_hot_spots(
-                test_image, threshold, detection_method="absolute",
-                filter_method="median")
+        filtered_image = filter_outlier_pixel_values(
+                test_image, threshold=threshold, absolute=True,
+                fill_method="median")
 
         self.assertTrue(np.array_equal(filtered_image, np.ones((size,size))))
 
@@ -784,14 +786,14 @@ class TestDenoising(unittest.TestCase):
 
         threshold = 5
         with self.assertRaises(ValueError):
-            filtered_image = filter_hot_spots(
-                    test_image, threshold, detection_method="absolute",
+            filtered_image = filter_outlier_pixel_values(
+                    test_image, threshold, absolute=True,
                     filter_size=filter_size,
-                    filter_method="invalid")
+                    fill_method="invalid")
 
     def test_filter_hot_spots_zero_method(self):
         """
-        Test hot spot filter using the ignore method
+        Test hot spot filter using the zero method
         """
         size = 256
         filter_size = 5
@@ -814,10 +816,10 @@ class TestDenoising(unittest.TestCase):
         self.assertEqual(np.max(test_image), hot_spot_value)
 
         threshold = 5
-        filtered_image = filter_hot_spots(
-                test_image, threshold, detection_method="absolute",
+        filtered_image = filter_outlier_pixel_values(
+                test_image, threshold=threshold, absolute=True,
                 filter_size=filter_size,
-                filter_method="zero")
+                fill_method="zero")
 
         self.assertFalse(np.array_equal(filtered_image, test_image))
 

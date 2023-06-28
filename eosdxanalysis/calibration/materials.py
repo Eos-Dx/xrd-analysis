@@ -28,3 +28,5 @@ q_peaks_ref_dict = {
                 ],
         }
 }
+
+CALIBRATION_MATERIAL_LIST = q_peaks_ref_dict.keys()
