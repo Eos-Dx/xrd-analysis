@@ -27,146 +27,188 @@ from eosdxanalysis.preprocessing.utils import find_center
 
 DEFAULT_BEAM_RMAX = 15
 DEFAULT_THRESHOLD = 0.75
-DEFAULT_RELATIVE_THRESHOLD = True
-DEFAULT_DEAD_PIXEL_THRESHOLD = 1e3
-DEFAULT_THRESHOLD_TYPE = "max"
-DEFAULT_MAX_PIXELS = 10
+DEFAULT_ABSOLUTE = False
+DEFAULT_LIMIT_TYPE = "max"
 DEFAULT_FILTER_SIZE = 5
+DEFAULT_FILL_METHOD = "median"
 
 
 def find_outlier_pixel_values(
-        masked_image,
-        threshold=DEFAULT_THRESHOLD,
-        relative_threshold=DEFAULT_RELATIVE_THRESHOLD,
-        threshold_type=DEFAULT_THRESHOLD_TYPE,
-        max_pixels=DEFAULT_MAX_PIXELS):
+        image : np.ndarray,
+        mask : np.ndarray = None,
+        threshold : float = DEFAULT_THRESHOLD,
+        absolute : bool = DEFAULT_ABSOLUTE,
+        limit_type : str = DEFAULT_LIMIT_TYPE,
+        ):
     """
-    Faulty pixels can be too high or too low.
+    Filters outlier pixels with values that are either too high or too low.
 
     Parameters
     ----------
 
-    masked_image : ndarray
-        Image with beam removed (zeroed)
+    image : ndarray
+        Input image.
+
+    mask : ndarray
+        Areas = 1 will be masked (ignored). Must be same shape as input image.
 
     threshold : number
-        Any pixels with photon count greater than ``intensity_threshold`` are
-        considered hot spots. If using ``relative`` detection method,
-        ``intensity_threshold = threshold * max(masked_image)``. If using
-        ``absolute`` detection method, ``intensity_threshold = threshold``.
+        Threshold to use for detecting outlier pixel values. If relative limit
+        type is used, threshold must be in the range [0, 1].
 
-    threshold_type : str
-        Choice of ``max`` or ``min``. If ``max``, pixels above the threshold
-        value will be filtered.
+    absolute : bool
+        Use absolute threshold (default = False).
 
-    detection_method : str
-        Choice of ``relative`` or ``absolute`` threshold.
-
-    max_faulty_pixels : int
-        If more than ``max_faulty_pixels`` are found, only the first
-        ``max_faulty_pixels`` are returned.
+    limit_type : str
+        Choice of ``max`` (default) or ``min``. If ``max``, pixels with values above the
+        threshold will be identified as outliers.
 
     Returns
     -------
 
-    coords_array
+    coords_array : ndarray
+        Coordinates of outliers in the following paired format:
+            np.array([array of row indices, array of column indices])
 
     """
-    if relative_threshold:
-        intensity_threshold = threshold * np.max(masked_image)
+    if mask:
+        working_image = image.copy()
+        working_image[mask] = np.nan
     else:
-        intensity_threshold = threshold
+        working_image = image
 
-    if threshold_type == "max":
+    if absolute:
+        intensity_threshold = threshold
+    else:
+        intensity_threshold = threshold * np.nanmax(working_image)
+
+    if limit_type == "max":
         coords_array = np.array(
-                np.where(masked_image > intensity_threshold)).T
-    elif threshold_type == "min":
+                np.where(working_image > intensity_threshold)).T
+    elif limit_type == "min":
         coords_array = np.array(
-                np.where(masked_image < intensity_threshold)).T
-    elif threshold_type == "minmax":
-        max_coords_array = np.array(
-                np.where(masked_image > intensity_threshold)).T
-        min_coords_array = np.array(
-                np.where(masked_image < intensity_threshold)).T
-        coords_array = np.vstack(
-                max_coords_array, min_coords_array)
+                np.where(working_image < intensity_threshold)).T
     else:
         raise ValueError(
-                "``threshold_type`` must be ``min`` or ``max``, or ``minmax``.")
+                "``threshold_type`` must be ``min`` or ``max``.")
 
-    # Check if more than the maximum number of hot spots were found
-    if len(coords_array) > max_pixels:
-        # Sort by intensity, take the first ``max_pixels``
-        intensities_all = np.sort(
-                masked_image[coords_array])[::-1]
-        intensities = intensities_all[:max_pixels]
-
-        # Get the coordinates of the first ``max_pixels``
-        coords_array = np.array(
-                np.where(
-                    masked_image == intensities)).T
-
-    return coords_array
+    return np.asanyarray(coords_array)
 
 def filter_outlier_pixel_values(
-        masked_image,
-        threshold=DEFAULT_THRESHOLD,
-        relative_threshold=DEFAULT_RELATIVE_THRESHOLD,
-        threshold_type=DEFAULT_THRESHOLD_TYPE,
-        max_pixels=DEFAULT_MAX_PIXELS,
-        coords_array=None,
-        filter_size=DEFAULT_FILTER_SIZE,
-        fill=None):
+        image : np.ndarray,
+        mask : np.ndarray = None,
+        threshold : float = DEFAULT_THRESHOLD,
+        absolute : bool = DEFAULT_ABSOLUTE,
+        limit_type : str = DEFAULT_LIMIT_TYPE,
+        coords_array : np.ndarray = None,
+        filter_size : int = DEFAULT_FILTER_SIZE,
+        fill_method : str = DEFAULT_FILL_METHOD,
+        ):
 
     """
+    Filters outlier pixels with values that are either too high or too low.
+
     Parameters
     ----------
 
-    masked_image : ndarray
-        Image with beam removed (zeroed)
+    image : ndarray
+        Input image.
 
-    threshold : int
-        Any pixels with photon count greater than ``threshold`` are
-        considered hot spots.
+    mask : ndarray
+        Areas = 1 will be masked (ignored). Must be same shape as input image.
+
+    threshold : number
+        Threshold to use for detecting outlier pixel values. If relative limit
+        type is used, threshold must be in the range [0, 1].
+
+    absolute : bool
+        Use absolute threshold (default = False).
+
+    limit_type : str
+        Choice of ``max`` (default) or ``min``. If ``max``, pixels with values above the
+        threshold will be identified as outliers.
+
+    coords_array : ndarray
+        Coordinates of outliers in the following paired format:
+            np.array([array of row indices, array of column indices])
 
     filter_size : int
-        Size of filter ``filter_size`` by ``filter_size``.
+        Size of filter to use for pixels with outlier values.
 
-    method : str
-        Choice of ``median`` which sets all pixels near the hot spot to the
-        median value, or ``zero``, which sets all pixels near the hot spot to
-        zero (not recommended if performing subsequent image processing).
+    fill_method : str
+        Method to fill in region of interest surrounding pixels with outlier
+        values. Choice of ``median`` (default), ``zero``, or ``nan``.
+
+    Returns
+    -------
+
+    filtered_image : ndarray
+        Image with outliers removed.
 
     """
-    fill_list = ["median", "zero", "nan"]
-    if fill not in fill_list:
+    # Check fill method
+    FILL_METHOD_LIST = ["median", "zero", "nan"]
+    if fill_method not in FILL_METHOD_LIST:
         raise ValueError(
-                "Invalid fill value ({})! Choose from {}".format(
-                    fill, fill_list))
+                "Invalid fill method ({})! Choose from {}".format(
+                    fill_method, FILL_METHOD_LIST))
 
+    # Find outlier pixel values if coordinates not provided
     if coords_array is None:
         coords_array = find_outlier_pixel_values(
-                masked_image, threshold=threshold,
-                relative_threshold=relative_threshold, max_pixels=max_pixels,
-                threshold_type=threshold_type)
-    filtered_image = masked_image.copy()
+                image,
+                mask=mask,
+                threshold=threshold,
+                absolute=absolute,
+                limit_type=limit_type,
+                )
 
-    for hot_spot_coords in coords_array:
-        hot_spot_roi_rows = slice(
-                hot_spot_coords[0]-filter_size//2,
-                hot_spot_coords[0]+filter_size//2+1)
-        hot_spot_roi_cols = slice(
-                hot_spot_coords[1]-filter_size//2,
-                hot_spot_coords[1]+filter_size//2+1)
+    # Work from unmasked image
+    filtered_image = image.copy()
 
-        hot_spot_roi = filtered_image[hot_spot_roi_rows, hot_spot_roi_cols]
-        if fill == "zero":
-            filtered_image[hot_spot_roi_rows, hot_spot_roi_cols] = 0
-        elif fill == "median":
-            filtered_image[hot_spot_roi_rows, hot_spot_roi_cols] = np.median(
-                    hot_spot_roi)
-        elif fill == "nan":
-            filtered_image[hot_spot_roi_rows, hot_spot_roi_cols] = np.nan
+    # Filter outliers
+    for outlier_coords in coords_array:
+        # Extract region of interest slices based on filter size
+        outlier_roi_rows = slice(
+                outlier_coords[0]-filter_size//2,
+                outlier_coords[0]+filter_size//2+1)
+        outlier_roi_cols = slice(
+                outlier_coords[1]-filter_size//2,
+                outlier_coords[1]+filter_size//2+1)
+
+        # Get outlier region of interest
+        outlier_roi = filtered_image[outlier_roi_rows, outlier_roi_cols].copy()
+
+        if fill_method == "zero":
+            # Set values in region of interest around outlier pixel to zero
+            filtered_image[outlier_roi_rows, outlier_roi_cols] = 0
+        elif fill_method in ["median", "mean"]:
+            # Set values in region of interest around outlier pixel to median
+            # of neighbors (border)
+
+            # Get borders
+            border_roi_rows = slice(
+                    outlier_coords[0]-filter_size//2-1,
+                    outlier_coords[0]+filter_size//2+2)
+            border_roi_cols = slice(
+                    outlier_coords[1]-filter_size//2-1,
+                    outlier_coords[1]+filter_size//2+2)
+
+            # Get the border region of interest
+            border_roi = filtered_image[border_roi_rows, border_roi_cols].copy()
+            # Set interior to nan
+            border_roi[1:-1, 1:-1] = np.nan
+            # Set outlier region of interest to median of border region of 
+            # interest
+            if fill_method == "median":
+                filtered_image[outlier_roi_rows, outlier_roi_cols] = \
+                        np.nanmedian(outlier_roi)
+            elif fill_method == "mean":
+                filtered_image[outlier_roi_rows, outlier_roi_cols] = \
+                        np.nanmean(outlier_roi)
+        elif fill_method == "nan":
+            # Set values in region of inteest around outlier pixel to nan
+            filtered_image[outlier_roi_rows, outlier_roi_cols] = np.nan
 
     return filtered_image
 
@@ -181,13 +223,12 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
             copy=True,
             center=None,
             beam_rmax=DEFAULT_BEAM_RMAX,
-            threshold=DEFAULT_THRESHOLD,
-            relative_threshold=DEFAULT_RELATIVE_THRESHOLD,
-            threshold_type=DEFAULT_THRESHOLD_TYPE,
-            max_pixels=DEFAULT_MAX_PIXELS,
-            coords_array=None,
-            filter_size=DEFAULT_FILTER_SIZE,
-            fill=None,
+            threshold : float = DEFAULT_THRESHOLD,
+            absolute : bool = DEFAULT_ABSOLUTE,
+            limit_type : str = DEFAULT_LIMIT_TYPE,
+            coords_array : np.ndarray = None,
+            filter_size : int = DEFAULT_FILTER_SIZE,
+            fill_method : str = DEFAULT_FILL_METHOD,
             ):
 
         """
@@ -207,12 +248,11 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         self.center = center
         self.beam_rmax = beam_rmax
         self.threshold = threshold
-        self.relative_threshold = relative_threshold
-        self.threshold_type = threshold_type
-        self.max_pixels = max_pixels
+        self.absolute = absolute
+        self.limit_type = limit_type
         self.coords_array = coords_array
         self.filter_size = filter_size
-        self.fill = fill
+        self.fill_method = fill_method
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -232,7 +272,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         """
         return self
 
-    def transform(self, X, copy=True):
+    def transform(self, X, copy=True, mask : np.ndarray = None):
         """Parameters
         ----------
         X : {array-like}, sparse matrix of shape (n_samples, n_features)
@@ -247,12 +287,11 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         center = self.center
         beam_rmax = self.beam_rmax
         threshold = self.threshold
-        relative_threshold = self.relative_threshold
-        threshold_type = self.threshold_type
-        max_pixels = self.max_pixels
+        absolute = self.absolute
+        limit_type = self.limit_type
         coords_array = self.coords_array
         filter_size = self.filter_size
-        fill = self.fill
+        fill_method= self.fill_method
 
         if copy:
             X = X.copy()
@@ -264,15 +303,22 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
             if not center:
                 center = find_center(image)
 
+            # Beam masking
+            if beam_rmax > 0 and not mask:
+                # Block out the beam
+                mask = create_circular_mask(
+                        image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
+
             output_image = filter_outlier_pixel_values(
-                    image, center=center,
+                    X,
+                    mask=mask,
                     threshold=threshold,
-                    relative_threshold=relative_threshold,
-                    threshold_type=threshold_type,
-                    max_pixels=max_pixels,
-                    coords_array=None,
+                    absolute=absolute,
+                    limit_type=limit_type,
+                    coords_array=coords_array,
                     filter_size=filter_size,
-                    fill=None)
+                    fill_method=fill_method,
+                    )
 
             X[idx, ...] = output_image
 
@@ -284,7 +330,6 @@ def filter_outlier_pixel_values_dir(
             overwrite=False,
             center=None,
             beam_rmax=DEFAULT_BEAM_RMAX,
-            dead_pixel_threshold=DEFAULT_THRESHOLD,
             file_format=None,
             verbose=False,
             fill="nan"):
@@ -403,11 +448,11 @@ def filter_outlier_pixel_values_dir(
 
         coords_array = find_outlier_pixel_values(
                 masked_image,
-                threshold=dead_pixel_threshold)
+                threshold=threshold)
 
         output_image = filter_outlier_pixel_values(
                 masked_image,
-                threshold=dead_pixel_threshold,
+                threshold=threshold,
                 relative_threshold=None,
                 threshold_type="absolute",
                 max_pixels=None,
@@ -452,10 +497,6 @@ if __name__ == '__main__':
             "--beam_rmax", type=int, default=DEFAULT_BEAM_RMAX,
             help="Radius of beam to ignore.")
     parser.add_argument(
-            "--dead_pixel_threshold", type=float,
-            default=DEFAULT_DEAD_PIXEL_THRESHOLD,
-            help="Set pixel value of dead pixels.")
-    parser.add_argument(
             "--center", type=str,
             default=None,
             help="Set diffraction pattern center for entire dataset.")
@@ -480,9 +521,7 @@ if __name__ == '__main__':
     output_path = os.path.abspath(args.output_path) if args.output_path \
             else None
     hot_spot_coords_approx = args.hot_spot_coords_approx
-    find_dead_pixels = args.find_dead_pixels
     beam_rmax = args.beam_rmax
-    dead_pixel_threshold = args.dead_pixel_threshold
     visualize = args.visualize
     overwrite = args.overwrite
     file_format = args.file_format
@@ -490,16 +529,14 @@ if __name__ == '__main__':
     center_kwarg = args.center
     center = center_kwarg.strip("()").split(",") if center_kwarg else None
 
-    if input_path and find_dead_pixels:
-        filter_outlier_pixel_values_dir(
-            input_path=input_path,
-            output_path=output_path,
-            overwrite=overwrite,
-            center=center,
-            beam_rmax=beam_rmax,
-            dead_pixel_threshold=dead_pixel_threshold,
-            file_format=file_format,
-            verbose=verbose,
-            )
-    else:
-        raise NotImplementedError()
+    filter_outlier_pixel_values_dir(
+        input_path=input_path,
+        output_path=output_path,
+        overwrite=overwrite,
+        center=center,
+        beam_rmax=beam_rmax,
+        threshold=threshold,
+        threshold_type=threshold_type,
+        file_format=file_format,
+        verbose=verbose,
+        )
