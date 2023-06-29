@@ -468,9 +468,14 @@ def polar_meshgrid(
     return output
 
 def warp_polar_preprocessor(
-        image, center=None, start_radius=None, end_radius=None,
-        azimuthal_point_count=AZIMUTHAL_POINT_COUNT_DEFAULT,
-        start_angle=None, end_angle=None, res=1):
+        image : np.ndarray,
+        center : np.ndarray = None,
+        start_radius : int = None,
+        end_radius: int = None,
+        start_angle : float = None,
+        end_angle : float = None,
+        radial_point_count : int = None,
+        azimuthal_point_count : int = AZIMUTHAL_POINT_COUNT_DEFAULT):
     """
     Performs warp polar preprocessing for azimuthal integration
     and radial intensity functions.
@@ -481,44 +486,49 @@ def warp_polar_preprocessor(
     image : ndarray
         Diffraction image.
 
-    center : (num, num)
-        Center of diffraction pattern.
+    center : ndarray
+        Row and column indices of diffraction pattern center.
 
-    radius : int
+    start_radius : int
+        Start radius.
+
+    end_radius : int
+        End radius (non-inclusive).
+
+    start_angle : float
+        Start angle in radians. 0 radians is 3 o'clock, direction is
+        counter-clockwise.
+
+    end_angle : float
+        End angle in radians (non-inclusive). 0 radians is 3 o'clock, direction
+        is counter-clockwise.
 
     azimuthal_point_count : int
         Number of points in azimuthal dimension.
 
-    start_angle : float
-        Radians
-
-    end_angle : float
-        Radians
-
-    res : int
-        Resolution
+    radial_point_count : int
+        Number of points in radial dimension.
 
     Returns
     -------
 
     profile_1d : (n,1)-array float
-        n = azimuthal_point_count
+        Returns radial profile, where ``n`` is the ``azimuthal_point_count``.
+
     """
-    if type(res) != int:
-        raise ValueError("Scale must be an integer")
-
-
     # Set center
     if type(center) == type(None):
-        center = find_center(image)
+        raise ValueError("Center cannot be none.")
 
     # Set radius
     if not start_radius:
         start_radius = 0
     if not end_radius:
-        end_radius = int(np.sqrt(2)*np.max(image.shape)*res)
+        end_radius = int(np.sqrt(2)*np.max(image.shape))
+    if not radial_point_count:
+        radial_point_count = end_radius - start_radius
     if not azimuthal_point_count:
-        azimuthal_point_count = AZIMUTHAL_POINT_COUNT_DEFAULT*res
+        azimuthal_point_count = AZIMUTHAL_POINT_COUNT_DEFAULT
     if (start_angle is None) and (end_angle is None):
         start_angle = START_ANGLE_DEFAULT
         end_angle = END_ANGLE_DEFAULT
@@ -527,15 +537,18 @@ def warp_polar_preprocessor(
 
     azimuthal_step = 2*np.pi/azimuthal_point_count
 
-    azimuthal_range = np.linspace(
-            start_angle,
-            end_angle,
-            num=azimuthal_point_count)
-
     radial_range = np.arange(start_radius, end_radius)
 
+    full_azimuthal_point_count = int(
+            2*np.pi/(end_angle - start_angle)*azimuthal_point_count)
+
+    full_azimuthal_range = np.linspace(
+            -np.pi,
+            np.pi,
+            num=full_azimuthal_point_count)
+
     # Perform a polar warp on the input image for entire azimuthal range
-    output_shape = (azimuthal_point_count, end_radius*res)
+    output_shape = (full_azimuthal_point_count, end_radius)
     polar_image = warp_polar(
             image, center=center, radius=end_radius,
             mode="constant", cval=np.nan,
@@ -545,14 +558,15 @@ def warp_polar_preprocessor(
 
     # Interpolate if subset is needed
     interp = RegularGridInterpolator(
-            (azimuthal_range, radial_range), polar_image)
+            (full_azimuthal_range, radial_range), polar_image)
 
     azimuthal_space_subset = np.linspace(
             start_angle,
             end_angle,
             num=azimuthal_point_count)
 
-    AA, RR = np.meshgrid(azimuthal_space_subset, radial_range, indexing="ij", sparse=True)
+    AA, RR = np.meshgrid(
+            azimuthal_space_subset, radial_range, indexing="ij", sparse=True)
 
     polar_image_subset = interp((AA, RR))
 
