@@ -25,7 +25,7 @@ from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integrat
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
 
-DEFAULT_BEAM_RMAX = 15
+DEFAULT_BEAM_RMAX = 0
 DEFAULT_THRESHOLD = 0.75
 DEFAULT_ABSOLUTE = False
 DEFAULT_LIMIT_TYPE = "max"
@@ -71,7 +71,7 @@ def find_outlier_pixel_values(
             np.array([array of row indices, array of column indices])
 
     """
-    if mask:
+    if type(mask) == np.ndarray:
         working_image = image.copy()
         working_image[mask] = np.nan
     else:
@@ -154,7 +154,7 @@ def filter_outlier_pixel_values(
                     fill_method, FILL_METHOD_LIST))
 
     # Find outlier pixel values if coordinates not provided
-    if coords_array is None:
+    if type(coords_array) is type(None):
         coords_array = find_outlier_pixel_values(
                 image,
                 mask=mask,
@@ -222,7 +222,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
     def __init__(self, *,
             copy=True,
             center=None,
-            beam_rmax=DEFAULT_BEAM_RMAX,
+            beam_rmax : int = DEFAULT_BEAM_RMAX,
             threshold : float = DEFAULT_THRESHOLD,
             absolute : bool = DEFAULT_ABSOLUTE,
             limit_type : str = DEFAULT_LIMIT_TYPE,
@@ -304,13 +304,13 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
                 center = find_center(image)
 
             # Beam masking
-            if beam_rmax > 0 and not mask:
+            if beam_rmax > 0 and type(mask) == type(None):
                 # Block out the beam
                 mask = create_circular_mask(
                         image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
 
-            output_image = filter_outlier_pixel_values(
-                    X,
+            filtered_image = filter_outlier_pixel_values(
+                    image,
                     mask=mask,
                     threshold=threshold,
                     absolute=absolute,
@@ -320,7 +320,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
                     fill_method=fill_method,
                     )
 
-            X[idx, ...] = output_image
+            X[idx, ...] = filtered_image
 
         return X
 
