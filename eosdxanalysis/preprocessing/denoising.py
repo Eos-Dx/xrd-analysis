@@ -25,7 +25,7 @@ from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integrat
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
 
-DEFAULT_BEAM_RMAX = 15
+DEFAULT_BEAM_RMAX = 0
 DEFAULT_THRESHOLD = 0.75
 DEFAULT_ABSOLUTE = False
 DEFAULT_LIMIT_TYPE = "max"
@@ -71,7 +71,7 @@ def find_outlier_pixel_values(
             np.array([array of row indices, array of column indices])
 
     """
-    if mask:
+    if type(mask) == np.ndarray:
         working_image = image.copy()
         working_image[mask] = np.nan
     else:
@@ -154,7 +154,7 @@ def filter_outlier_pixel_values(
                     fill_method, FILL_METHOD_LIST))
 
     # Find outlier pixel values if coordinates not provided
-    if coords_array is None:
+    if type(coords_array) is type(None):
         coords_array = find_outlier_pixel_values(
                 image,
                 mask=mask,
@@ -170,11 +170,11 @@ def filter_outlier_pixel_values(
     for outlier_coords in coords_array:
         # Extract region of interest slices based on filter size
         outlier_roi_rows = slice(
-                outlier_coords[0]-filter_size//2,
-                outlier_coords[0]+filter_size//2+1)
+                int(outlier_coords[0]-filter_size//2),
+                int(outlier_coords[0]+filter_size//2+1))
         outlier_roi_cols = slice(
-                outlier_coords[1]-filter_size//2,
-                outlier_coords[1]+filter_size//2+1)
+                int(outlier_coords[1]-filter_size//2),
+                int(outlier_coords[1]+filter_size//2+1))
 
         # Get outlier region of interest
         outlier_roi = filtered_image[outlier_roi_rows, outlier_roi_cols].copy()
@@ -188,11 +188,11 @@ def filter_outlier_pixel_values(
 
             # Get borders
             border_roi_rows = slice(
-                    outlier_coords[0]-filter_size//2-1,
-                    outlier_coords[0]+filter_size//2+2)
+                    int(outlier_coords[0]-filter_size//2-1),
+                    int(outlier_coords[0]+filter_size//2+2))
             border_roi_cols = slice(
-                    outlier_coords[1]-filter_size//2-1,
-                    outlier_coords[1]+filter_size//2+2)
+                    int(outlier_coords[1]-filter_size//2-1),
+                    int(outlier_coords[1]+filter_size//2+2))
 
             # Get the border region of interest
             border_roi = filtered_image[border_roi_rows, border_roi_cols].copy()
@@ -222,7 +222,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
     def __init__(self, *,
             copy=True,
             center=None,
-            beam_rmax=DEFAULT_BEAM_RMAX,
+            beam_rmax : int = DEFAULT_BEAM_RMAX,
             threshold : float = DEFAULT_THRESHOLD,
             absolute : bool = DEFAULT_ABSOLUTE,
             limit_type : str = DEFAULT_LIMIT_TYPE,
@@ -304,13 +304,13 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
                 center = find_center(image)
 
             # Beam masking
-            if beam_rmax > 0 and not mask:
+            if beam_rmax > 0 and type(mask) == type(None):
                 # Block out the beam
                 mask = create_circular_mask(
                         image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
 
-            output_image = filter_outlier_pixel_values(
-                    X,
+            filtered_image = filter_outlier_pixel_values(
+                    image,
                     mask=mask,
                     threshold=threshold,
                     absolute=absolute,
@@ -320,7 +320,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
                     fill_method=fill_method,
                     )
 
-            X[idx, ...] = output_image
+            X[idx, ...] = filtered_image
 
         return X
 
@@ -330,9 +330,14 @@ def filter_outlier_pixel_values_dir(
             overwrite=False,
             center=None,
             beam_rmax=DEFAULT_BEAM_RMAX,
+            threshold : float = DEFAULT_THRESHOLD,
+            absolute : bool = DEFAULT_ABSOLUTE,
+            limit_type = DEFAULT_LIMIT_TYPE,
+            coords_array : np.ndarray = None,
+            filter_size : int = DEFAULT_FILTER_SIZE,
+            fill_method : str = DEFAULT_FILL_METHOD,
             file_format=None,
-            verbose=False,
-            fill="nan"):
+            verbose=False):
     """
     Repairs dead pixels in images contained in a directory
 
@@ -439,36 +444,28 @@ def filter_outlier_pixel_values_dir(
         # Beam masking
         if beam_rmax > 0:
             # Block out the beam
-            beam_mask = create_circular_mask(
+            mask = create_circular_mask(
                     image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
-            masked_image = image.copy()
-            masked_image[beam_mask] = 0
+
         else:
-            masked_image = image
+            mask = None
 
-        coords_array = find_outlier_pixel_values(
-                masked_image,
-                threshold=threshold)
-
-        output_image = filter_outlier_pixel_values(
-                masked_image,
+        filtered_image = filter_outlier_pixel_values(
+                image,
+                mask=mask,
                 threshold=threshold,
-                relative_threshold=None,
-                threshold_type="absolute",
-                max_pixels=None,
+                absolute=absolute,
+                limit_type=limit_type,
                 coords_array=coords_array,
-                filter_size=None,
-                fill=fill)
-
-        output_image = image.copy()
-        output_image[coords_array] = fill
+                filter_size=filter_size,
+                fill_method=fill_method)
 
         # Save results
         data_output_filepath = os.path.join(output_path, filename)
         if file_format in ["txt", "tif", "tiff"]:
-            np.savetxt(data_output_filepath, output_image)
+            np.savetxt(data_output_filepath, filtered_image)
         elif file_format == "npy":
-            np.save(data_output_filepath, output_image)
+            np.save(data_output_filepath, filtered_image)
 
 
 if __name__ == '__main__':
@@ -497,6 +494,12 @@ if __name__ == '__main__':
             "--beam_rmax", type=int, default=DEFAULT_BEAM_RMAX,
             help="Radius of beam to ignore.")
     parser.add_argument(
+            "--threshold", type=float, required=False,
+            help="Threshold to use to identify outlier pixel values.")
+    parser.add_argument(
+            "--limit_type", type=str, default="max",
+            help="Threshold limit type. Choice of ``max`` (default) or ``min``.")
+    parser.add_argument(
             "--center", type=str,
             default=None,
             help="Set diffraction pattern center for entire dataset.")
@@ -522,6 +525,8 @@ if __name__ == '__main__':
             else None
     hot_spot_coords_approx = args.hot_spot_coords_approx
     beam_rmax = args.beam_rmax
+    threshold = args.threshold
+    limit_type = args.limit_type
     visualize = args.visualize
     overwrite = args.overwrite
     file_format = args.file_format
@@ -536,7 +541,7 @@ if __name__ == '__main__':
         center=center,
         beam_rmax=beam_rmax,
         threshold=threshold,
-        threshold_type=threshold_type,
+        limit_type=limit_type,
         file_format=file_format,
         verbose=verbose,
         )
