@@ -22,6 +22,7 @@ from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 from eosdxanalysis.preprocessing.center_finding import circular_average
 
 from eosdxanalysis.preprocessing.denoising import filter_outlier_pixel_values
+from eosdxanalysis.preprocessing.denoising import filter_outlier_pixel_values_dir
 from eosdxanalysis.preprocessing.denoising import find_outlier_pixel_values
 from eosdxanalysis.preprocessing.denoising import FilterOutlierPixelValues
 
@@ -937,8 +938,8 @@ class TestDenoising(unittest.TestCase):
         # Create known result
         known_repaired_image[int(size/2),int(size/2)] = np.nan
 
-        pixel_repair = DeadPixelRepair(
-                center=(0,0), beam_rmax=1, dead_pixel_threshold=1e3)
+        pixel_repair = FilterOutlierPixelValues(
+                threshold=1e3, absolute=True, filter_size=1, fill_method="nan")
 
         # Reshape
         test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
@@ -958,7 +959,7 @@ class TestDenoising(unittest.TestCase):
                 np.array_equal(
                     repaired_image, known_repaired_image, equal_nan=True))
 
-    def test_dead_pixel_repair_dir(self):
+    def test_dead_pixel_repair_filter_outlier_pixel_values_dir(self):
         """
         """
         TEST_IMAGE_DIR = "test_images"
@@ -972,7 +973,7 @@ class TestDenoising(unittest.TestCase):
         # Set output path
         output_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR)
         # Set known repaired path
-        repaired_path = os.path.join(
+        known_repaired_path = os.path.join(
                 TEST_IMAGE_PATH, TEST_DIR, REPAIRED_DIR)
 
         # Create output path if it does not exist
@@ -980,23 +981,23 @@ class TestDenoising(unittest.TestCase):
         # print("Created {}".format(output_path))
 
         # Run dead pixel repair for directory
-        dead_pixel_repair_dir(
+        filter_outlier_pixel_values_dir(
             input_path=input_path,
             output_path=output_path,
+            filter_size=1,
+            absolute=True,
             overwrite=False,
-            center=None,
-            beam_rmax=0,
-            dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD,
-            file_format=None,
-            verbose=False)
+            threshold=1e3,
+            verbose=False,
+            fill_method="nan")
 
         # Get list of output file paths
         output_filepath_list = glob.glob(os.path.join(output_path, "*"))
         output_filepath_list.sort()
 
         # Get list of repaired file paths
-        repaired_filepath_list = glob.glob(os.path.join(repaired_path, "*"))
-        repaired_filepath_list.sort()
+        known_repaired_filepath_list = glob.glob(os.path.join(known_repaired_path, "*"))
+        known_repaired_filepath_list.sort()
 
         # Check that there are some output files
         self.assertTrue(len(output_filepath_list) > 0)
@@ -1006,17 +1007,17 @@ class TestDenoising(unittest.TestCase):
             output_filepath = output_filepath_list[idx]
             output_image = np.loadtxt(output_filepath)
 
-            repaired_filepath = repaired_filepath_list[idx]
-            repaired_image = np.loadtxt(repaired_filepath)
+            known_repaired_filepath = known_repaired_filepath_list[idx]
+            known_repaired_image = np.loadtxt(known_repaired_filepath)
 
             # Ensure images are non-zero
             self.assertTrue(np.nansum(output_image) > 0)
-            self.assertTrue(np.nansum(repaired_image) > 0)
+            self.assertTrue(np.nansum(known_repaired_image) > 0)
 
             # Ensure output and known repaired image are equal
             self.assertTrue(
                     np.array_equal(
-                        output_image, repaired_image, equal_nan=True))
+                        output_image, known_repaired_image, equal_nan=True))
 
         # Delete output files
         shutil.rmtree(output_path)
