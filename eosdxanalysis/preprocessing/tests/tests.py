@@ -22,7 +22,9 @@ from eosdxanalysis.preprocessing.image_processing import bright_pixel_count
 from eosdxanalysis.preprocessing.center_finding import circular_average
 
 from eosdxanalysis.preprocessing.denoising import filter_outlier_pixel_values
+from eosdxanalysis.preprocessing.denoising import filter_outlier_pixel_values_dir
 from eosdxanalysis.preprocessing.denoising import find_outlier_pixel_values
+from eosdxanalysis.preprocessing.denoising import FilterOutlierPixelValues
 
 from eosdxanalysis.preprocessing.utils import count_intervals
 from eosdxanalysis.preprocessing.utils import create_circular_mask
@@ -824,6 +826,202 @@ class TestDenoising(unittest.TestCase):
         self.assertFalse(np.array_equal(filtered_image, test_image))
 
         self.assertTrue(np.array_equal(filtered_image, known_result))
+
+    def test_dead_pixel_repair_single_high_value_pixel_no_beam_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image[int(size/2),int(size/2)] = np.nan
+
+        # Repair test image
+        repaired_image = filter_outlier_pixel_values(
+                test_image,
+                threshold=1e3,
+                absolute=True,
+                fill_method="nan",
+                filter_size=1)
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.nansum(repaired_image) == size**2-1)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_single_high_value_pixel_away_from_center(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the center.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image[int(size/2),int(size/2)] = np.nan
+
+        # Repair test image
+        repaired_image = filter_outlier_pixel_values(
+                test_image,
+                threshold=1e3,
+                absolute=True,
+                fill_method="nan",
+                filter_size=1)
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.nansum(repaired_image) == size**2-1)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_transform_single_high_value_pixel_no_beam_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image[int(size/2),int(size/2)] = np.nan
+
+        pixel_repair = FilterOutlierPixelValues(
+                threshold=1e3, absolute=True, filter_size=1, fill_method="nan")
+
+        # Reshape
+        test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
+        known_repaired_image = known_repaired_image.reshape(
+            (1, known_repaired_image.shape[0], known_repaired_image.shape[1]))
+
+        # Repair test image
+        repaired_image = pixel_repair.transform(
+                test_image,
+                copy=True)
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.nansum(repaired_image) == size**2-1)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_transform_single_high_value_pixel_away_from_center(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the center.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image[int(size/2),int(size/2)] = np.nan
+
+        pixel_repair = FilterOutlierPixelValues(
+                threshold=1e3, absolute=True, filter_size=1, fill_method="nan")
+
+        # Reshape
+        test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
+        known_repaired_image = known_repaired_image.reshape(
+            (1, known_repaired_image.shape[0], known_repaired_image.shape[1]))
+
+        # Repair test image
+        repaired_image = pixel_repair.transform(
+                test_image,
+                copy=True)
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.nansum(repaired_image) == size**2-1)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_filter_outlier_pixel_values_dir(self):
+        """
+        """
+        TEST_IMAGE_DIR = "test_images"
+        TEST_DIR = "test_dead_pixel_repair_images"
+        INPUT_DIR = "input"
+        OUTPUT_DIR = "output"
+        REPAIRED_DIR = "repaired"
+
+        # Set input path
+        input_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, INPUT_DIR)
+        # Set output path
+        output_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR)
+        # Set known repaired path
+        known_repaired_path = os.path.join(
+                TEST_IMAGE_PATH, TEST_DIR, REPAIRED_DIR)
+
+        # Create output path if it does not exist
+        # os.makedirs(output_path, exist_ok=True)
+        # print("Created {}".format(output_path))
+
+        # Run dead pixel repair for directory
+        filter_outlier_pixel_values_dir(
+            input_path=input_path,
+            output_path=output_path,
+            filter_size=1,
+            absolute=True,
+            overwrite=False,
+            threshold=1e3,
+            verbose=False,
+            fill_method="nan")
+
+        # Get list of output file paths
+        output_filepath_list = glob.glob(os.path.join(output_path, "*"))
+        output_filepath_list.sort()
+
+        # Get list of repaired file paths
+        known_repaired_filepath_list = glob.glob(os.path.join(known_repaired_path, "*"))
+        known_repaired_filepath_list.sort()
+
+        # Check that there are some output files
+        self.assertTrue(len(output_filepath_list) > 0)
+
+        # Check the output files
+        for idx in range(len(output_filepath_list)):
+            output_filepath = output_filepath_list[idx]
+            output_image = np.loadtxt(output_filepath)
+
+            known_repaired_filepath = known_repaired_filepath_list[idx]
+            known_repaired_image = np.loadtxt(known_repaired_filepath)
+
+            # Ensure images are non-zero
+            self.assertTrue(np.nansum(output_image) > 0)
+            self.assertTrue(np.nansum(known_repaired_image) > 0)
+
+            # Ensure output and known repaired image are equal
+            self.assertTrue(
+                    np.array_equal(
+                        output_image, known_repaired_image, equal_nan=True))
+
+        # Delete output files
+        shutil.rmtree(output_path)
+
 
 
 class TestImageProcessing(unittest.TestCase):
@@ -2645,203 +2843,6 @@ class TestPolarMeshgrid(unittest.TestCase):
         known_image[~image_mask] = 0
 
         self.assertTrue(np.array_equal(meshgrid, known_image))
-
-class TestDeadPixelRepair(unittest.TestCase):
-
-    def test_dead_pixel_repair_single_high_value_pixel_no_beam_copy(self):
-        """
-        Test dead pixel repair on an image with a single high value pixel
-        away from the diffraction pattern center with beam radius = 0
-        and no diffraction pattern specified.
-        """
-        size = 5
-        test_image = np.ones((size,size))
-        known_repaired_image = test_image.copy()
-
-        # Create test image
-        test_image[int(size/2),int(size/2)] = 1e6
-        # Create known result
-        known_repaired_image[int(size/2),int(size/2)] = np.nan
-
-        # Repair test image
-        repaired_image = dead_pixel_repair(
-                test_image,
-                center=None,
-                beam_rmax=0,
-                dead_pixel_threshold=1e3,
-                copy=True)
-
-        # Check that repaired image is non-zero
-        self.assertTrue(np.nansum(repaired_image) == size**2-1)
-
-        # Check that repaired image matches known result
-        self.assertTrue(
-                np.array_equal(
-                    repaired_image, known_repaired_image, equal_nan=True))
-
-    def test_dead_pixel_repair_single_high_value_pixel_away_from_center(self):
-        """
-        Test dead pixel repair on an image with a single high value pixel
-        away from the center.
-        """
-        size = 5
-        test_image = np.ones((size,size))
-        known_repaired_image = test_image.copy()
-
-        # Create test image
-        test_image[int(size/2),int(size/2)] = 1e6
-        # Create known result
-        known_repaired_image[int(size/2),int(size/2)] = np.nan
-
-        # Repair test image
-        repaired_image = dead_pixel_repair(
-                test_image,
-                center=(0,0),
-                beam_rmax=1,
-                dead_pixel_threshold=1e3,
-                copy=True)
-
-        # Check that repaired image is non-zero
-        self.assertTrue(np.nansum(repaired_image) == size**2-1)
-
-        # Check that repaired image matches known result
-        self.assertTrue(
-                np.array_equal(
-                    repaired_image, known_repaired_image, equal_nan=True))
-
-    def test_dead_pixel_repair_transform_single_high_value_pixel_no_beam_copy(self):
-        """
-        Test dead pixel repair on an image with a single high value pixel
-        away from the diffraction pattern center with beam radius = 0
-        and no diffraction pattern specified.
-        """
-        size = 5
-        test_image = np.ones((size,size))
-        known_repaired_image = test_image.copy()
-
-        # Create test image
-        test_image[int(size/2),int(size/2)] = 1e6
-        # Create known result
-        known_repaired_image[int(size/2),int(size/2)] = np.nan
-
-        pixel_repair = DeadPixelRepair(
-                center=None, beam_rmax=0, dead_pixel_threshold=1e3)
-
-        # Reshape
-        test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
-        known_repaired_image = known_repaired_image.reshape(
-            (1, known_repaired_image.shape[0], known_repaired_image.shape[1]))
-
-        # Repair test image
-        repaired_image = pixel_repair.transform(
-                test_image,
-                copy=True)
-
-        # Check that repaired image is non-zero
-        self.assertTrue(np.nansum(repaired_image) == size**2-1)
-
-        # Check that repaired image matches known result
-        self.assertTrue(
-                np.array_equal(
-                    repaired_image, known_repaired_image, equal_nan=True))
-
-    def test_dead_pixel_repair_transform_single_high_value_pixel_away_from_center(self):
-        """
-        Test dead pixel repair on an image with a single high value pixel
-        away from the center.
-        """
-        size = 5
-        test_image = np.ones((size,size))
-        known_repaired_image = test_image.copy()
-
-        # Create test image
-        test_image[int(size/2),int(size/2)] = 1e6
-        # Create known result
-        known_repaired_image[int(size/2),int(size/2)] = np.nan
-
-        pixel_repair = DeadPixelRepair(
-                center=(0,0), beam_rmax=1, dead_pixel_threshold=1e3)
-
-        # Reshape
-        test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
-        known_repaired_image = known_repaired_image.reshape(
-            (1, known_repaired_image.shape[0], known_repaired_image.shape[1]))
-
-        # Repair test image
-        repaired_image = pixel_repair.transform(
-                test_image,
-                copy=True)
-
-        # Check that repaired image is non-zero
-        self.assertTrue(np.nansum(repaired_image) == size**2-1)
-
-        # Check that repaired image matches known result
-        self.assertTrue(
-                np.array_equal(
-                    repaired_image, known_repaired_image, equal_nan=True))
-
-    def test_dead_pixel_repair_dir(self):
-        """
-        """
-        TEST_IMAGE_DIR = "test_images"
-        TEST_DIR = "test_dead_pixel_repair_images"
-        INPUT_DIR = "input"
-        OUTPUT_DIR = "output"
-        REPAIRED_DIR = "repaired"
-
-        # Set input path
-        input_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, INPUT_DIR)
-        # Set output path
-        output_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR)
-        # Set known repaired path
-        repaired_path = os.path.join(
-                TEST_IMAGE_PATH, TEST_DIR, REPAIRED_DIR)
-
-        # Create output path if it does not exist
-        # os.makedirs(output_path, exist_ok=True)
-        # print("Created {}".format(output_path))
-
-        # Run dead pixel repair for directory
-        dead_pixel_repair_dir(
-            input_path=input_path,
-            output_path=output_path,
-            overwrite=False,
-            center=None,
-            beam_rmax=0,
-            dead_pixel_threshold=DEFAULT_DEAD_PIXEL_THRESHOLD,
-            file_format=None,
-            verbose=False)
-
-        # Get list of output file paths
-        output_filepath_list = glob.glob(os.path.join(output_path, "*"))
-        output_filepath_list.sort()
-
-        # Get list of repaired file paths
-        repaired_filepath_list = glob.glob(os.path.join(repaired_path, "*"))
-        repaired_filepath_list.sort()
-
-        # Check that there are some output files
-        self.assertTrue(len(output_filepath_list) > 0)
-
-        # Check the output files
-        for idx in range(len(output_filepath_list)):
-            output_filepath = output_filepath_list[idx]
-            output_image = np.loadtxt(output_filepath)
-
-            repaired_filepath = repaired_filepath_list[idx]
-            repaired_image = np.loadtxt(repaired_filepath)
-
-            # Ensure images are non-zero
-            self.assertTrue(np.nansum(output_image) > 0)
-            self.assertTrue(np.nansum(repaired_image) > 0)
-
-            # Ensure output and known repaired image are equal
-            self.assertTrue(
-                    np.array_equal(
-                        output_image, repaired_image, equal_nan=True))
-
-        # Delete output files
-        shutil.rmtree(output_path)
 
 
 class TestAzimuthalIntegration(unittest.TestCase):
