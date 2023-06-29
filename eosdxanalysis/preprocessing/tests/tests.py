@@ -2919,37 +2919,37 @@ class TestAzimuthalIntegration(unittest.TestCase):
         TT = np.arctan2(-rows, cols)
 
         known_peak_location = 20
-        test_image_full = np.exp(-(RR - known_peak_location)**2)
-        test_image_half = test_image_full.copy()
-        test_image_half[TT < 0] = 0
+        test_image_full_ring = np.exp(-(RR - known_peak_location)**2)
+        test_image_half_ring = test_image_full_ring.copy()
+        test_image_half_ring[TT < 0] = 0
 
         center = np.array(shape)/2 - 0.5
 
-        profile_1d_full = azimuthal_integration(
-                test_image_full,
+        profile_1d_full_ring = azimuthal_integration(
+                test_image_full_ring,
                 center=center,
                 azimuthal_point_count=180,
                 start_angle=-np.pi,
                 end_angle=np.pi)
-        profile_1d_half = azimuthal_integration(
-                test_image_half,
+        profile_1d_half_ring = azimuthal_integration(
+                test_image_half_ring,
                 center=center,
                 azimuthal_point_count=90,
                 start_angle=0,
                 end_angle=np.pi)
 
-        peak_value_full = np.max(profile_1d_full)
-        peak_value_half = np.max(profile_1d_half)
+        peak_value_full_ring = np.nanmax(profile_1d_full_ring)
+        peak_value_half_ring = np.nanmax(profile_1d_half_ring)
 
-        self.assertTrue(np.isclose(peak_value_full, peak_value_half, atol=1e-2))
+        self.assertTrue(np.isclose(peak_value_full_ring, peak_value_half_ring, atol=1e-2))
 
-        calculated_peak_location_full = np.where(
-                profile_1d_full == np.nanmax(profile_1d_full))[0]
-        calculated_peak_location_half = np.where(
-                profile_1d_half == np.nanmax(profile_1d_half))[0]
+        calculated_peak_location_full_ring = np.where(
+                profile_1d_full_ring == np.nanmax(profile_1d_full_ring))[0]
+        calculated_peak_location_half_ring = np.where(
+                profile_1d_half_ring == np.nanmax(profile_1d_half_ring))[0]
 
-        self.assertEqual(calculated_peak_location_full, known_peak_location)
-        self.assertEqual(calculated_peak_location_half, known_peak_location)
+        self.assertEqual(calculated_peak_location_full_ring, known_peak_location)
+        self.assertEqual(calculated_peak_location_half_ring, known_peak_location)
 
     def test_azimuthal_integration_dir(self):
         """
@@ -3016,7 +3016,8 @@ class TestAzimuthalIntegration(unittest.TestCase):
             # Check that the test results equal the known results
             self.assertTrue(
                     np.array_equal(
-                        test_results_radial_data, known_results_radial_data))
+                        test_results_radial_data, known_results_radial_data,
+                        equal_nan=True))
 
     def test_azimuthal_integration_scaling(self):
         """
@@ -3028,12 +3029,11 @@ class TestAzimuthalIntegration(unittest.TestCase):
         # be a step function
         size = 256
         shape = (size, size)
-        res = 1
         test_image = np.zeros(shape)
         mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
         test_image[mask] = 1
 
-        end_radius = int(np.max(test_image.shape)/2*res)
+        end_radius = int(np.max(test_image.shape)/2)
 
         center = np.array(shape)/2 - 0.5
 
@@ -3064,12 +3064,11 @@ class TestAzimuthalIntegration(unittest.TestCase):
         # be a step function
         size = 256
         shape = (size, size)
-        res = 1
         test_image = np.zeros(shape)
         mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
         test_image[mask] = 1
 
-        end_radius = int(np.max(test_image.shape)/2*res)
+        end_radius = int(np.max(test_image.shape)/2)
 
         center = np.array(shape)/2 - 0.5
 
@@ -3107,13 +3106,12 @@ class TestAzimuthalIntegration(unittest.TestCase):
         # be a step function
         size = 256
         shape = (size, size)
-        res = 1
         test_image = np.zeros(shape)
         mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
         test_image[mask] = 1
 
         start_radius = 10
-        end_radius = int(np.max(test_image.shape)/2*res)
+        end_radius = int(np.max(test_image.shape)/2)
 
         center = np.array(shape)/2 - 0.5
 
