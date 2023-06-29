@@ -2867,7 +2867,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
         profile_1d = azimuthal_integration(test_image, center=center)
 
-        calculated_peak_location = np.where(profile_1d == np.max(profile_1d))[0]
+        calculated_peak_location = np.where(profile_1d == np.nanmax(profile_1d))[0]
 
         self.assertEqual(calculated_peak_location, known_peak_location)
 
@@ -2899,7 +2899,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
                 start_angle=-np.pi,
                 end_angle=0)
 
-        calculated_peak_location = np.where(profile_1d == np.max(profile_1d))[0]
+        calculated_peak_location = np.where(profile_1d == np.nanmax(profile_1d))[0]
 
         self.assertEqual(calculated_peak_location, known_peak_location)
 
@@ -2944,9 +2944,9 @@ class TestAzimuthalIntegration(unittest.TestCase):
         self.assertTrue(np.isclose(peak_value_full, peak_value_half, atol=1e-2))
 
         calculated_peak_location_full = np.where(
-                profile_1d_full == np.max(profile_1d_full))[0]
+                profile_1d_full == np.nanmax(profile_1d_full))[0]
         calculated_peak_location_half = np.where(
-                profile_1d_half == np.max(profile_1d_half))[0]
+                profile_1d_half == np.nanmax(profile_1d_half))[0]
 
         self.assertEqual(calculated_peak_location_full, known_peak_location)
         self.assertEqual(calculated_peak_location_half, known_peak_location)
