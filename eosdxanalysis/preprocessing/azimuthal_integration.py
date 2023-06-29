@@ -246,7 +246,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
             X = X.copy()
 
         if not end_radius:
-            end_radius = int(np.max(image.shape)/2*res)
+            end_radius = int(np.sqrt(2)*np.max(X.shape[1:])*res)
 
         results = np.zeros((X.shape[0], end_radius))
 
