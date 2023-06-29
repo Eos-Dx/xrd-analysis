@@ -507,14 +507,10 @@ def warp_polar_preprocessor(
     if type(res) != int:
         raise ValueError("Scale must be an integer")
 
-    AZIMUTHAL_SPACE_DEFAULT = np.linspace(
-            START_ANGLE_DEFAULT,
-            END_ANGLE_DEFAULT,
-            num=AZIMUTHAL_POINT_COUNT_DEFAULT*res)
 
     # Set center
     if type(center) == type(None):
-        raise ValueError("Center cannot be none.")
+        center = find_center(image)
 
     # Set radius
     if not start_radius:
@@ -531,6 +527,11 @@ def warp_polar_preprocessor(
 
     azimuthal_step = 2*np.pi/azimuthal_point_count
 
+    azimuthal_range = np.linspace(
+            start_angle,
+            end_angle,
+            num=azimuthal_point_count)
+
     radial_range = np.arange(start_radius, end_radius)
 
     # Perform a polar warp on the input image for entire azimuthal range
@@ -544,7 +545,7 @@ def warp_polar_preprocessor(
 
     # Interpolate if subset is needed
     interp = RegularGridInterpolator(
-            (AZIMUTHAL_SPACE_DEFAULT, radial_range), polar_image)
+            (azimuthal_range, radial_range), polar_image)
 
     azimuthal_space_subset = np.linspace(
             start_angle,
