@@ -3145,11 +3145,14 @@ class TestPreprocessingPipeline(unittest.TestCase):
         threshold = 5
         absolute = True
         fill_method = "median"
+        filter_size = 1
 
         # Instantiate the image repair transformer
         imrepair = FilterOutlierPixelValues(
                 threshold=threshold,
-                absolute=absolute)
+                absolute=absolute,
+                fill_method=fill_method,
+                filter_size=filter_size)
         # Create a classifier from the pipeline
         clf = make_pipeline(imrepair)
 
@@ -3160,7 +3163,7 @@ class TestPreprocessingPipeline(unittest.TestCase):
 
         # Check if the image repair was successful
         self.assertTrue(np.array_equal(repaired_image, np.ones((size,size))))
-        
+
 
 if __name__ == '__main__':
     unittest.main()
