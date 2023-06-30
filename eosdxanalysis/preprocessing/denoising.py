@@ -202,10 +202,10 @@ def filter_outlier_pixel_values(
             # interest
             if fill_method == "median":
                 filtered_image[outlier_roi_rows, outlier_roi_cols] = \
-                        np.nanmedian(outlier_roi)
+                        np.nanmedian(border_roi)
             elif fill_method == "mean":
                 filtered_image[outlier_roi_rows, outlier_roi_cols] = \
-                        np.nanmean(outlier_roi)
+                        np.nanmean(border_roi)
         elif fill_method == "nan":
             # Set values in region of inteest around outlier pixel to nan
             filtered_image[outlier_roi_rows, outlier_roi_cols] = np.nan
