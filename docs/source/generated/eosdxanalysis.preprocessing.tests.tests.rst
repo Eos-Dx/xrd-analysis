@@ -39,6 +39,7 @@
       TestPolarMeshgrid
       TestPreprocessData
       TestPreprocessingCLI
+      TestPreprocessingPipeline
       TestUtils
    
    
