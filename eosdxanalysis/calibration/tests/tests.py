@@ -78,18 +78,18 @@ class TestDiffractionUnitsConversion(unittest.TestCase):
         """
 
         # Set machine parameters
-        source_wavelength = 1
-        sample_to_detector_distance = 1e-3
+        source_wavelength_nm = 1
+        sample_distance_mm = 1
 
         # Set molecular spacing
         molecular_spacing = 2.3
 
         # Set known 2*theta
-        known_two_theta = 2*np.arcsin(source_wavelength/(2*molecular_spacing))
+        known_two_theta = 2*np.arcsin(source_wavelength_nm/(2*molecular_spacing))
 
         conversion_class = DiffractionUnitsConversion(
-                source_wavelength=source_wavelength,
-                sample_to_detector_distance=sample_to_detector_distance)
+                source_wavelength_nm=source_wavelength_nm,
+                sample_distance_mm=sample_distance_mm)
 
         two_theta = conversion_class.two_theta_from_molecular_spacing(
                 molecular_spacing)
@@ -101,9 +101,9 @@ class TestDiffractionUnitsConversion(unittest.TestCase):
         Test Bragg peak pixel location function
         """
         # Set parameters
-        source_wavelength = 1.5418e-10
+        source_wavelength_nm = 0.15418
         pixel_length = 55e-6
-        distance = 10e-3
+        sample_distance_mm = 10
         molecular_spacing = 9.8e-10
 
         # Set known location
@@ -111,8 +111,8 @@ class TestDiffractionUnitsConversion(unittest.TestCase):
 
         # Initialize diffraction units class
         units_class = DiffractionUnitsConversion(
-                source_wavelength=source_wavelength, pixel_length=pixel_length,
-                sample_to_detector_distance=distance)
+                source_wavelength_nm=source_wavelength_nm, pixel_length=pixel_length,
+                sample_distance_mm=sample_distance_mm)
 
         bragg_peak_pixel_location = \
                 units_class.bragg_peak_pixel_location_from_molecular_spacing(
