@@ -14,6 +14,8 @@ from scipy.ndimage import center_of_mass
 
 from scipy.interpolate import RegularGridInterpolator
 
+from sklearn.pipeline import make_pipeline
+
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import enlarge_image
@@ -57,7 +59,10 @@ from eosdxanalysis.preprocessing.azimuthal_integration import radial_intensity_s
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
+from eosdxanalysis.calibration.units_conversion import MomentumTransferUnitsConversion
+
 from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
+from eosdxanalysis.calibration.units_conversion import q_conversion
 
 TEST_PATH = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(TEST_PATH, "..")
@@ -827,7 +832,7 @@ class TestDenoising(unittest.TestCase):
 
         self.assertTrue(np.array_equal(filtered_image, known_result))
 
-    def test_dead_pixel_repair_single_high_value_pixel_no_beam_copy(self):
+    def test_dead_pixel_repair_single_high_value_pixel_nan_copy(self):
         """
         Test dead pixel repair on an image with a single high value pixel
         away from the diffraction pattern center with beam radius = 0
@@ -857,6 +862,37 @@ class TestDenoising(unittest.TestCase):
         self.assertTrue(
                 np.array_equal(
                     repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_single_high_value_pixel_median_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image = np.ones((size,size))
+
+        # Repair test image
+        repaired_image = filter_outlier_pixel_values(
+                test_image,
+                threshold=1e3,
+                absolute=True,
+                fill_method="median",
+                filter_size=1)
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.sum(repaired_image) == size**2)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image))
 
     def test_dead_pixel_repair_single_high_value_pixel_away_from_center(self):
         """
@@ -888,7 +924,7 @@ class TestDenoising(unittest.TestCase):
                 np.array_equal(
                     repaired_image, known_repaired_image, equal_nan=True))
 
-    def test_dead_pixel_repair_transform_single_high_value_pixel_no_beam_copy(self):
+    def test_dead_pixel_repair_transform_single_high_value_pixel_nan_copy(self):
         """
         Test dead pixel repair on an image with a single high value pixel
         away from the diffraction pattern center with beam radius = 0
@@ -906,15 +942,20 @@ class TestDenoising(unittest.TestCase):
         pixel_repair = FilterOutlierPixelValues(
                 threshold=1e3, absolute=True, filter_size=1, fill_method="nan")
 
-        # Reshape
-        test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
-        known_repaired_image = known_repaired_image.reshape(
-            (1, known_repaired_image.shape[0], known_repaired_image.shape[1]))
+        # Store data in dataframe
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data=data)
 
         # Repair test image
-        repaired_image = pixel_repair.transform(
-                test_image,
+        df_results = pixel_repair.transform(
+                df,
                 copy=True)
+
+        repaired_image = df_results.loc[0]["measurement_data"]
 
         # Check that repaired image is non-zero
         self.assertTrue(np.nansum(repaired_image) == size**2-1)
@@ -923,6 +964,53 @@ class TestDenoising(unittest.TestCase):
         self.assertTrue(
                 np.array_equal(
                     repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_transform_single_high_value_pixel_median_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image = np.ones((size,size))
+
+        # Set repair parameters
+        threshold = 1e3
+        absolute = True
+        filter_size = 1
+        fill_method = "median"
+
+        pixel_repair = FilterOutlierPixelValues(
+                threshold=threshold, absolute=absolute, filter_size=filter_size,
+                fill_method=fill_method)
+
+        # Store data in dataframe
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data=data)
+
+        # Repair test image
+        df_results = pixel_repair.transform(
+                df,
+                copy=True)
+
+        repaired_image = df_results.loc[0]["measurement_data"]
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.sum(repaired_image) == size**2)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.allclose(
+                    repaired_image, known_repaired_image))
 
     def test_dead_pixel_repair_transform_single_high_value_pixel_away_from_center(self):
         """
@@ -941,15 +1029,20 @@ class TestDenoising(unittest.TestCase):
         pixel_repair = FilterOutlierPixelValues(
                 threshold=1e3, absolute=True, filter_size=1, fill_method="nan")
 
-        # Reshape
-        test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
-        known_repaired_image = known_repaired_image.reshape(
-            (1, known_repaired_image.shape[0], known_repaired_image.shape[1]))
+        # Store data in dataframe
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data=data)
 
         # Repair test image
-        repaired_image = pixel_repair.transform(
-                test_image,
+        df_results = pixel_repair.transform(
+                df,
                 copy=True)
+
+        repaired_image = df_results.loc[0]["measurement_data"]
 
         # Check that repaired image is non-zero
         self.assertTrue(np.nansum(repaired_image) == size**2-1)
@@ -1021,7 +1114,6 @@ class TestDenoising(unittest.TestCase):
 
         # Delete output files
         shutil.rmtree(output_path)
-
 
 
 class TestImageProcessing(unittest.TestCase):
@@ -3122,6 +3214,235 @@ class TestAzimuthalIntegration(unittest.TestCase):
         profile_size = profile_1d.size
 
         self.assertEqual(profile_size, end_radius-start_radius)
+
+
+class TestPreprocessingPipeline(unittest.TestCase):
+
+    def setUp(self):
+        """Create test image
+        """
+        # Create test image
+        size = 256
+        shape = (size, size)
+        test_image = np.zeros(shape)
+        hot_spot_coords = (20,40)
+        hot_spot_value = 10
+        test_image[hot_spot_coords] = hot_spot_value
+
+        # Create a disk
+        mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
+        test_image[mask] = 1
+
+        # Known repaired image
+        known_repaired_image = np.zeros((size,size))
+        known_repaired_image[mask] = 1
+
+        # Set image repair parameters
+        threshold = 5
+        absolute = True
+        fill_method = "median"
+        filter_size = 1
+
+        # Set azimuthal integration parameters
+        center = np.array(shape)/2 - 0.5
+        end_radius = int(np.max(test_image.shape)/2)
+
+        # Create step function for known result of azimuthal integration
+        known_profile_1d = np.zeros(end_radius)
+        known_profile_1d[:end_radius//2] = 1
+
+        # Set units conversion parameters
+        wavelength_nm = 0.1540562
+        pixel_size = 55e-6
+        sample_distance_mm = np.array([150])
+        sample_distance_m = sample_distance_mm * 1e-3
+
+        # Create known 1D azimuthal profile versus q
+        radial_range = np.arange(end_radius)
+        real_position_m = radial_range * pixel_size
+        real_position_mm = real_position_m * 1e3
+        q_range = q_conversion(
+                real_position_mm=real_position_mm,
+                sample_distance_mm=sample_distance_mm,
+                wavelength_nm=wavelength_nm)
+        known_profile_1d_vs_q = np.vstack([q_range, known_profile_1d]).T
+
+        self.size = size
+        self.shape = shape
+        self.hot_spot_value = hot_spot_value
+        self.test_image = test_image
+        self.known_repaired_image = known_repaired_image
+        self.known_profile_1d = known_profile_1d
+        self.known_profile_1d_vs_q = known_profile_1d_vs_q
+
+        # Image repair parameters
+        self.threshold = threshold
+        self.absolute = absolute
+        self.fill_method = fill_method
+        self.filter_size = filter_size
+
+        # Azimuthal integration parameters
+        self.center = center
+        self.end_radius = end_radius
+
+        # Units conversion parameters
+        self.wavelength_nm = wavelength_nm
+        self.pixel_size = pixel_size
+        self.sample_distance_m = sample_distance_m
+
+    def test_image_repair_pipeline(self):
+        """
+        Test pipeline with image repair transformer
+        """
+        size = self.size
+        test_image = self.test_image
+        known_repaired_image = self.known_repaired_image
+
+        # Image repair parameters
+        threshold = self.threshold
+        absolute = self.absolute
+        fill_method = self.fill_method
+        filter_size = self.filter_size
+
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data)
+
+        # Instantiate the image repair transformer
+        imrepair = FilterOutlierPixelValues(
+                threshold=threshold,
+                absolute=absolute,
+                fill_method=fill_method,
+                filter_size=filter_size)
+        # Create a classifier from the pipeline
+        clf = make_pipeline(imrepair)
+
+        # Transform the data
+        X_repaired = clf.transform(df)
+
+        repaired_image = X_repaired.loc[0]["measurement_data"]
+
+        # Check if the image repair was successful
+        self.assertTrue(np.array_equal(repaired_image, known_repaired_image))
+
+    def test_image_repair_azimuthal_integration_pipeline(self):
+        """Test pipeline with image repair and azimuthal integration
+        transformers.
+        """
+        shape = self.shape
+        test_image = self.test_image
+        known_profile_1d = self.known_profile_1d
+
+        # Image repair parameters
+        threshold = self.threshold
+        absolute = self.absolute
+        fill_method = self.fill_method
+        filter_size = self.filter_size
+
+        # Aimuthal integration parameters
+        center = self.center
+        end_radius = self.end_radius
+
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data)
+
+        # Instantiate the image repair transformer
+        imrepair = FilterOutlierPixelValues(
+                threshold=threshold,
+                absolute=absolute,
+                fill_method=fill_method,
+                filter_size=filter_size)
+        azint = AzimuthalIntegration(
+                center=center, end_radius=end_radius)
+        # Create a classifier from the pipeline
+        clf = make_pipeline(imrepair, azint)
+
+        # Transform the data
+        df_results = clf.transform(df)
+
+        profile_1d = df_results.loc[0]["profile_data"]
+
+        # Check if the preprocessing pipeline was successful
+
+        # Take the difference
+        diff = abs(known_profile_1d - profile_1d)
+
+        # Test that the 1-D integrated profile is close to a step function
+        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
+
+    def test_image_repair_azimuthal_integration_units_conversion_pipeline(self):
+        """Test pipeline with image repair, azimuthal integration, and
+        units conversion transformers.
+        """
+        shape = self.shape
+        test_image = self.test_image
+        known_profile_1d = self.known_profile_1d
+        known_profile_1d_vs_q = self.known_profile_1d_vs_q
+
+        # Image repair parameters
+        threshold = self.threshold
+        absolute = self.absolute
+        fill_method = self.fill_method
+        filter_size = self.filter_size
+
+        # Aimuthal integration parameters
+        center = self.center
+        end_radius = self.end_radius
+
+        # Units conversion parameters
+        wavelength_nm = self.wavelength_nm
+        pixel_size = self.pixel_size
+        sample_distance_m = self.sample_distance_m
+
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                "sample_distance_m": sample_distance_m
+                }
+        df = pd.DataFrame(data)
+
+        # Instantiate the image repair transformer
+        imrepair = FilterOutlierPixelValues(
+                threshold=threshold,
+                absolute=absolute,
+                fill_method=fill_method,
+                filter_size=filter_size)
+        azint = AzimuthalIntegration(
+                center=center, end_radius=end_radius)
+        uconv = MomentumTransferUnitsConversion(
+                wavelength_nm=wavelength_nm,
+                pixel_size=pixel_size,
+                )
+        # Create a classifier from the pipeline
+        clf = make_pipeline(imrepair, azint, uconv)
+
+        # Transform the data
+        df_results = clf.transform(df)
+
+        q_range = df_results.loc[0, "q_range"]
+        profile_1d = df_results.loc[0, "profile_data"]
+        profile_1d_vs_q = np.vstack([q_range, profile_1d]).T
+
+        # Check if the preprocessing pipeline was successful
+
+        # Ensure the q-ranges are the same
+        self.assertTrue(
+                np.allclose(profile_1d_vs_q[:,0], known_profile_1d_vs_q[:,0]))
+
+        # Take the difference
+        diff = abs(known_profile_1d_vs_q[:,1] - profile_1d_vs_q[:,1])
+
+        # Test that the 1-D integrated profile is close to a step function
+        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
+
 
 if __name__ == '__main__':
     unittest.main()

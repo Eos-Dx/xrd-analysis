@@ -7,6 +7,7 @@ import os
 
 import unittest
 import numpy as np
+import pandas as pd
 
 from scipy.interpolate import interp1d
 
@@ -77,18 +78,18 @@ class TestDiffractionUnitsConversion(unittest.TestCase):
         """
 
         # Set machine parameters
-        source_wavelength = 1
-        sample_to_detector_distance = 1e-3
+        source_wavelength_nm = 1
+        sample_distance_mm = 1
 
         # Set molecular spacing
         molecular_spacing = 2.3
 
         # Set known 2*theta
-        known_two_theta = 2*np.arcsin(source_wavelength/(2*molecular_spacing))
+        known_two_theta = 2*np.arcsin(source_wavelength_nm/(2*molecular_spacing))
 
         conversion_class = DiffractionUnitsConversion(
-                source_wavelength=source_wavelength,
-                sample_to_detector_distance=sample_to_detector_distance)
+                source_wavelength_nm=source_wavelength_nm,
+                sample_distance_mm=sample_distance_mm)
 
         two_theta = conversion_class.two_theta_from_molecular_spacing(
                 molecular_spacing)
@@ -100,9 +101,9 @@ class TestDiffractionUnitsConversion(unittest.TestCase):
         Test Bragg peak pixel location function
         """
         # Set parameters
-        source_wavelength = 1.5418e-10
+        source_wavelength_nm = 0.15418
         pixel_length = 55e-6
-        distance = 10e-3
+        sample_distance_mm = 10
         molecular_spacing = 9.8e-10
 
         # Set known location
@@ -110,8 +111,8 @@ class TestDiffractionUnitsConversion(unittest.TestCase):
 
         # Initialize diffraction units class
         units_class = DiffractionUnitsConversion(
-                source_wavelength=source_wavelength, pixel_length=pixel_length,
-                sample_to_detector_distance=distance)
+                source_wavelength_nm=source_wavelength_nm, pixel_length=pixel_length,
+                sample_distance_mm=sample_distance_mm)
 
         bragg_peak_pixel_location = \
                 units_class.bragg_peak_pixel_location_from_molecular_spacing(
@@ -151,29 +152,45 @@ class TestMomentumTransferUnitsConversion(unittest.TestCase):
         pixel_position = position_m / pixel_size
 
         # Create a Gaussian at this pixel position
-        X = np.array(
-                [[np.exp(-((np.arange(array_len) - pixel_position)/(array_len/4))**2)]]
-                ).reshape(1, array_len)
+        X = np.exp(-((np.arange(array_len) - pixel_position)/(array_len/4))**2)
 
-        sample_distance_m = np.array(sample_distance_mm).reshape(X.shape[0], 1)
+        sample_distance_m = np.array(sample_distance_mm) * 1e-3
 
-        # Perform units conversion
-        X_q = unitsconversion.transform(X, sample_distance_m=sample_distance_m)
+        # Store data in dataframe
+        profile_data = [X]
+        sample_distance_data = [sample_distance_m]
+
+        data = {
+                "profile_data": profile_data,
+                "sample_distance_m": sample_distance_data,
+                }
+        df = pd.DataFrame(data=data)
+
+        # Convert units
+        df_results = unitsconversion.transform(
+                df,
+                copy=True)
+
+        q_range = df_results.loc[0]["q_range"]
 
         # Check that the size of X_q is correct
-        self.assertEqual(X_q.shape, (1, array_len, 2))
+        self.assertEqual(q_range.size, array_len)
 
-        # Check tht the peak value is correct
-        test_peak_pixel_location = np.where(X_q[0, :, 1] == np.max(X_q[0, :, 1]))[0]
+        # Check that the peak value is correct
+        peak_value = np.nanmax(X)
+        test_peak_pixel_location = np.where(X == peak_value)[0]
 
-        # Check the pixel location is the same
+        # Check that the pixel location is the same
         self.assertTrue(np.isclose(test_peak_pixel_location, pixel_position, atol=0.5))
+
+        test_q_per_nm = q_range[test_peak_pixel_location]
+        self.assertTrue(np.isclose(test_q_per_nm, q_per_nm, atol=0.01))
 
         # Check the q-peak value is close to the reference value
         # Interpolate
-        q_interp = interp1d(np.arange(array_len), X_q[0, :, 0])
-        test_q_per_nm = q_interp(pixel_position)
-        self.assertTrue(np.isclose(test_q_per_nm, q_per_nm))
+        q_interp = interp1d(q_range, X)
+        test_q_peak_value = q_interp(test_q_per_nm)
+        self.assertTrue(np.isclose(test_q_peak_value, peak_value))
 
 
 if __name__ == '__main__':
