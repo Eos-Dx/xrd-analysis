@@ -942,15 +942,20 @@ class TestDenoising(unittest.TestCase):
         pixel_repair = FilterOutlierPixelValues(
                 threshold=1e3, absolute=True, filter_size=1, fill_method="nan")
 
-        # Reshape
-        test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
-        known_repaired_image = known_repaired_image.reshape(
-            (1, known_repaired_image.shape[0], known_repaired_image.shape[1]))
+        # Store data in dataframe
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data=data)
 
         # Repair test image
-        repaired_image = pixel_repair.transform(
-                test_image,
+        df_results = pixel_repair.transform(
+                df,
                 copy=True)
+
+        repaired_image = df_results.loc[0]["measurement_data"]
 
         # Check that repaired image is non-zero
         self.assertTrue(np.nansum(repaired_image) == size**2-1)
@@ -984,17 +989,20 @@ class TestDenoising(unittest.TestCase):
                 threshold=threshold, absolute=absolute, filter_size=filter_size,
                 fill_method=fill_method)
 
-        # Reshape
-        test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
-        known_repaired_image = known_repaired_image.reshape(
-            (1, known_repaired_image.shape[0], known_repaired_image.shape[1]))
+        # Store data in dataframe
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data=data)
 
         # Repair test image
-        repaired_image_array = pixel_repair.transform(
-                test_image,
+        df_results = pixel_repair.transform(
+                df,
                 copy=True)
 
-        repaired_image = repaired_image_array[0, ...]
+        repaired_image = df_results.loc[0]["measurement_data"]
 
         # Check that repaired image is non-zero
         self.assertTrue(np.sum(repaired_image) == size**2)
@@ -1021,15 +1029,20 @@ class TestDenoising(unittest.TestCase):
         pixel_repair = FilterOutlierPixelValues(
                 threshold=1e3, absolute=True, filter_size=1, fill_method="nan")
 
-        # Reshape
-        test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
-        known_repaired_image = known_repaired_image.reshape(
-            (1, known_repaired_image.shape[0], known_repaired_image.shape[1]))
+        # Store data in dataframe
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data=data)
 
         # Repair test image
-        repaired_image = pixel_repair.transform(
-                test_image,
+        df_results = pixel_repair.transform(
+                df,
                 copy=True)
+
+        repaired_image = df_results.loc[0]["measurement_data"]
 
         # Check that repaired image is non-zero
         self.assertTrue(np.nansum(repaired_image) == size**2-1)
