@@ -14,6 +14,8 @@ from scipy.ndimage import center_of_mass
 
 from scipy.interpolate import RegularGridInterpolator
 
+from sklearn.pipeline import make_pipeline
+
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.image_processing import crop_image
 from eosdxanalysis.preprocessing.image_processing import enlarge_image
@@ -3121,6 +3123,44 @@ class TestAzimuthalIntegration(unittest.TestCase):
         profile_size = profile_1d.size
 
         self.assertEqual(profile_size, end_radius-start_radius)
+
+
+class TestPreprocessingPipeline(unittest.TestCase):
+
+    def test_image_repair(self):
+        """
+        Test image repair transformer
+        """
+        # Create test image
+        size = 256
+        test_image = np.ones((size,size))
+        hot_spot_coords = (20,40)
+        hot_spot_value = 10
+        test_image[hot_spot_coords] = hot_spot_value
+
+        self.assertEqual(np.max(test_image), hot_spot_value)
+
+        X = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
+
+        threshold = 5
+        absolute = True
+        fill_method = "median"
+
+        # Instantiate the image repair transformer
+        imrepair = FilterOutlierPixelValues(
+                threshold=threshold,
+                absolute=absolute)
+        # Create a classifier from the pipeline
+        clf = make_pipeline(imrepair)
+
+        # Transform the data
+        X_repaired = clf.transform(X)
+
+        repaired_image = X_repaired[0, ...]
+
+        # Check if the image repair was successful
+        self.assertTrue(np.array_equal(repaired_image, np.ones((size,size))))
+        
 
 if __name__ == '__main__':
     unittest.main()
