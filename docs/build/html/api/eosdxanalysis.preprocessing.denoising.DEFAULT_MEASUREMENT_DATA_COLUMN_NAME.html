@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>filter_outlier_pixel_values &#8212; Eos Dx Analysis 2.60.0 documentation</title>
+    <title>DEFAULT_MEASUREMENT_DATA_COLUMN_NAME &#8212; Eos Dx Analysis 2.60.0 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -35,11 +35,11 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.denoising.filter_outlier_pixel_values';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.denoising.DEFAULT_MEASUREMENT_DATA_COLUMN_NAME';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="filter_outlier_pixel_values_dir" href="eosdxanalysis.preprocessing.denoising.filter_outlier_pixel_values_dir.html" />
-    <link rel="prev" title="RMIN_BEAM" href="eosdxanalysis.preprocessing.center_finding.RMIN_BEAM.html" />
+    <link rel="next" title="DEFAULT_THRESHOLD" href="eosdxanalysis.preprocessing.denoising.DEFAULT_THRESHOLD.html" />
+    <link rel="prev" title="DEFAULT_LIMIT_TYPE" href="eosdxanalysis.preprocessing.denoising.DEFAULT_LIMIT_TYPE.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
   </head>
@@ -297,9 +297,9 @@
   </a>
  </li>
 </ul>
-<ul class="current nav bd-sidenav">
- <li class="toctree-l1 current active">
-  <a class="current reference internal" href="#">
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.filter_outlier_pixel_values.html">
    filter_outlier_pixel_values
   </a>
  </li>
@@ -321,7 +321,7 @@
   </a>
  </li>
 </ul>
-<ul class="nav bd-sidenav">
+<ul class="current nav bd-sidenav">
  <li class="toctree-l1">
   <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.DEFAULT_ABSOLUTE.html">
    DEFAULT_ABSOLUTE
@@ -347,8 +347,8 @@
    DEFAULT_LIMIT_TYPE
   </a>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.DEFAULT_MEASUREMENT_DATA_COLUMN_NAME.html">
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
    DEFAULT_MEASUREMENT_DATA_COLUMN_NAME
   </a>
  </li>
@@ -515,39 +515,20 @@
             
             <article class="bd-article" role="main">
               
-  <section id="filter-outlier-pixel-values">
-<h1>filter_outlier_pixel_values<a class="headerlink" href="#filter-outlier-pixel-values" title="Permalink to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.denoising.filter_outlier_pixel_values">
-<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">filter_outlier_pixel_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.75</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absolute</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'max'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'median'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.filter_outlier_pixel_values" title="Permalink to this definition">#</a></dt>
-<dd><p>Filters outlier pixels with values that are either too high or too low.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<em>ndarray</em>) – Input image.</p></li>
-<li><p><strong>mask</strong> (<em>ndarray</em>) – Areas = 1 will be masked (ignored). Must be same shape as input image.</p></li>
-<li><p><strong>threshold</strong> (<em>number</em>) – Threshold to use for detecting outlier pixel values. If relative limit
-type is used, threshold must be in the range [0, 1].</p></li>
-<li><p><strong>absolute</strong> (<em>bool</em>) – Use absolute threshold (default = False).</p></li>
-<li><p><strong>limit_type</strong> (<em>str</em>) – Choice of <code class="docutils literal notranslate"><span class="pre">max</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">min</span></code>. If <code class="docutils literal notranslate"><span class="pre">max</span></code>, pixels with values above the
-threshold will be identified as outliers.</p></li>
-<li><p><strong>coords_array</strong> (<em>ndarray</em>) – <dl class="simple">
-<dt>Coordinates of outliers in the following paired format:</dt><dd><p>np.array([array of row indices, array of column indices])</p>
-</dd>
-</dl>
-</p></li>
-<li><p><strong>filter_size</strong> (<em>int</em>) – Size of filter to use for pixels with outlier values.</p></li>
-<li><p><strong>fill_method</strong> (<em>str</em>) – Method to fill in region of interest surrounding pixels with outlier
-values. Choice of <code class="docutils literal notranslate"><span class="pre">median</span></code> (default), <code class="docutils literal notranslate"><span class="pre">zero</span></code>, or <code class="docutils literal notranslate"><span class="pre">nan</span></code>.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>filtered_image</strong> – Image with outliers removed.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>ndarray</p>
-</dd>
-</dl>
+  <section id="default-measurement-data-column-name">
+<h1>DEFAULT_MEASUREMENT_DATA_COLUMN_NAME<a class="headerlink" href="#default-measurement-data-column-name" title="Permalink to this heading">#</a></h1>
+<dl class="py data">
+<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.denoising.DEFAULT_MEASUREMENT_DATA_COLUMN_NAME">
+<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">DEFAULT_MEASUREMENT_DATA_COLUMN_NAME</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'measurement_data'</span></em><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.DEFAULT_MEASUREMENT_DATA_COLUMN_NAME" title="Permalink to this definition">#</a></dt>
+<dd><p>str(object=’’) -&gt; str
+str(bytes_or_buffer[, encoding[, errors]]) -&gt; str</p>
+<p>Create a new string object from the given object. If encoding or
+errors is specified, then the object must expose a data buffer
+that will be decoded using the given encoding and error handler.
+Otherwise, returns the result of object.__str__() (if defined)
+or repr(object).
+encoding defaults to sys.getdefaultencoding().
+errors defaults to ‘strict’.</p>
 </dd></dl>
 
 </section>
@@ -560,17 +541,17 @@ values. Choice of <code class="docutils literal notranslate"><span class="pre">m
             <footer class="bd-footer-article">
                 <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.center_finding.RMIN_BEAM.html" title="previous page">
+  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.denoising.DEFAULT_LIMIT_TYPE.html" title="previous page">
       <i class="fas fa-angle-left"></i>
       <div class="prev-next-info">
           <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">RMIN_BEAM</p>
+          <p class="prev-next-title">DEFAULT_LIMIT_TYPE</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.denoising.filter_outlier_pixel_values_dir.html" title="next page">
+  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.denoising.DEFAULT_THRESHOLD.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">filter_outlier_pixel_values_dir</p>
+      <p class="prev-next-title">DEFAULT_THRESHOLD</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>
@@ -590,7 +571,7 @@ values. Choice of <code class="docutils literal notranslate"><span class="pre">m
 <div class="toc-item">
   
 <div class="tocsection sourcelink">
-    <a href="../_sources/api/eosdxanalysis.preprocessing.denoising.filter_outlier_pixel_values.rst.txt">
+    <a href="../_sources/api/eosdxanalysis.preprocessing.denoising.DEFAULT_MEASUREMENT_DATA_COLUMN_NAME.rst.txt">
         <i class="fas fa-file-alt"></i> Show Source
     </a>
 </div>
