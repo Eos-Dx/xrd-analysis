@@ -3291,7 +3291,12 @@ class TestPreprocessingPipeline(unittest.TestCase):
         fill_method = self.fill_method
         filter_size = self.filter_size
 
-        X = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data)
 
         # Instantiate the image repair transformer
         imrepair = FilterOutlierPixelValues(
@@ -3303,9 +3308,9 @@ class TestPreprocessingPipeline(unittest.TestCase):
         clf = make_pipeline(imrepair)
 
         # Transform the data
-        X_repaired = clf.transform(X)
+        X_repaired = clf.transform(df)
 
-        repaired_image = X_repaired[0, ...]
+        repaired_image = X_repaired.loc[0]["measurement_data"]
 
         # Check if the image repair was successful
         self.assertTrue(np.array_equal(repaired_image, known_repaired_image))
@@ -3328,7 +3333,12 @@ class TestPreprocessingPipeline(unittest.TestCase):
         center = self.center
         end_radius = self.end_radius
 
-        X = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data)
 
         # Instantiate the image repair transformer
         imrepair = FilterOutlierPixelValues(
@@ -3342,9 +3352,9 @@ class TestPreprocessingPipeline(unittest.TestCase):
         clf = make_pipeline(imrepair, azint)
 
         # Transform the data
-        X_trans = clf.transform(X)
+        df_results = clf.transform(df)
 
-        profile_1d = X_trans[0, ...]
+        profile_1d = df_results.loc[0]["profile_data"]
 
         # Check if the preprocessing pipeline was successful
 
