@@ -155,7 +155,7 @@ class TestMomentumTransferUnitsConversion(unittest.TestCase):
                 [[np.exp(-((np.arange(array_len) - pixel_position)/(array_len/4))**2)]]
                 ).reshape(1, array_len)
 
-        sample_distance_m = np.array(sample_distance_mm).reshape(X.shape[0], 1)
+        sample_distance_m = np.array(sample_distance_mm).reshape(X.shape[0], 1) * 1e-3
 
         # Perform units conversion
         X_q = unitsconversion.transform(X, sample_distance_m=sample_distance_m)
