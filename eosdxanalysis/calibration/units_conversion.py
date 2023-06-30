@@ -3,10 +3,14 @@ Functions to help with calibration code
 """
 
 import numpy as np
+import pandas as pd
 
 from sklearn.base import OneToOneFeatureMixin
 from sklearn.base import TransformerMixin
 from sklearn.base import BaseEstimator
+
+
+DEFAULT_Q_RANGE_COLUMN_NAME = "q_range"
 
 
 class MomentumTransferUnitsConversion(
@@ -16,7 +20,8 @@ class MomentumTransferUnitsConversion(
     Converts from real-space pixel units to momentum transfer (q) units.
     """
     def __init__(self, *, copy=True,
-            wavelength_nm=None, pixel_size=None):
+            wavelength_nm=None, pixel_size=None,
+            q_range_column_name=DEFAULT_Q_RANGE_COLUMN_NAME):
         """
         Parameters
         ----------
@@ -29,6 +34,8 @@ class MomentumTransferUnitsConversion(
         self.copy = copy
         self.wavelength_nm = wavelength_nm
         self.pixel_size = pixel_size
+        self.q_range_column_name = q_range_column_name
+
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -48,7 +55,7 @@ class MomentumTransferUnitsConversion(
         """
         return self
 
-    def transform(self, X, copy=True, sample_distance_m=None):
+    def transform(self, X, copy=True):
         """Transforms radial data from intensity versus pixel position
         to intensity versus q value.
 
@@ -65,27 +72,29 @@ class MomentumTransferUnitsConversion(
         """
         wavelength_nm = self.wavelength_nm
         pixel_size = self.pixel_size
+        q_range_column_name = self.q_range_column_name
 
-        if not np.array_equal(sample_distance_m.shape[0], X.shape[0]):
-            raise ValueError("Sample distance array must be same size number of samples.")
+        if type(X) != type(pd.DataFrame()):
+            raise ValueError("Input ``X`` must be a dataframe.")
 
         if copy is True:
             X = X.copy()
 
-        sample_distance_mm = sample_distance_m
+        sample_distance_mm = X["sample_distance_m"].values * 1e3
+        profile_data = X["profile_data"].values
 
-        radial_count = X.shape[1]
+        radial_count = profile_data[0].shape[0]
         q_range = radial_profile_unit_conversion(
                 radial_count=radial_count,
                 sample_distance_mm=sample_distance_mm,
                 wavelength_nm=wavelength_nm,
                 pixel_size=pixel_size,
-                radial_units="q_per_nm").T
+                radial_units="q_per_nm").flatten()
 
         # Add q-ranges into dataset
-        results = np.dstack([q_range, X])
+        X[q_range_column_name] = [q_range] * X.shape[0]
 
-        return results
+        return X
 
 
 class DiffractionUnitsConversion(object):

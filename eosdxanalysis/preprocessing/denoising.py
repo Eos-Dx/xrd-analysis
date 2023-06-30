@@ -10,6 +10,7 @@ import glob
 from datetime import datetime
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
 from scipy.ndimage import generic_filter
@@ -31,6 +32,7 @@ DEFAULT_ABSOLUTE = False
 DEFAULT_LIMIT_TYPE = "max"
 DEFAULT_FILTER_SIZE = 5
 DEFAULT_FILL_METHOD = "median"
+DEFAULT_MEASUREMENT_DATA_COLUMN_NAME = "measurement_data"
 
 
 def find_outlier_pixel_values(
@@ -202,10 +204,10 @@ def filter_outlier_pixel_values(
             # interest
             if fill_method == "median":
                 filtered_image[outlier_roi_rows, outlier_roi_cols] = \
-                        np.nanmedian(outlier_roi)
+                        np.nanmedian(border_roi)
             elif fill_method == "mean":
                 filtered_image[outlier_roi_rows, outlier_roi_cols] = \
-                        np.nanmean(outlier_roi)
+                        np.nanmean(border_roi)
         elif fill_method == "nan":
             # Set values in region of inteest around outlier pixel to nan
             filtered_image[outlier_roi_rows, outlier_roi_cols] = np.nan
@@ -229,6 +231,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
             coords_array : np.ndarray = None,
             filter_size : int = DEFAULT_FILTER_SIZE,
             fill_method : str = DEFAULT_FILL_METHOD,
+            measurement_data_column_name : str = DEFAULT_MEASUREMENT_DATA_COLUMN_NAME,
             ):
 
         """
@@ -253,6 +256,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         self.coords_array = coords_array
         self.filter_size = filter_size
         self.fill_method = fill_method
+        self.measurement_data_column_name = measurement_data_column_name
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -292,13 +296,15 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         coords_array = self.coords_array
         filter_size = self.filter_size
         fill_method= self.fill_method
+        measurement_data_column_name = self.measurement_data_column_name
 
         if copy:
             X = X.copy()
 
         # Loop over all samples using batches
         for idx in range(X.shape[0]):
-            image = X[idx, ...].reshape(X.shape[1:])
+
+            image = X.loc[idx, "measurement_data"]
 
             if not center:
                 center = find_center(image)
@@ -320,7 +326,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
                     fill_method=fill_method,
                     )
 
-            X[idx, ...] = filtered_image
+            X.loc[idx][measurement_data_column_name] = filtered_image
 
         return X
 

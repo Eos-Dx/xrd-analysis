@@ -35,6 +35,7 @@ from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conve
 
 DEFAULT_DET_XSIZE = 256
 RES_DEFAULT = 1
+DEFAULT_PROFILE_DATA_COLUMN_NAME = "profile_data"
 
 
 def azimuthal_integration(
@@ -197,7 +198,9 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
             end_angle : float = None,
             radial_point_count : int = None,
             azimuthal_point_count : int = AZIMUTHAL_POINT_COUNT_DEFAULT,
-            fill : np.float = np.nan):
+            fill : np.float = np.nan,
+            profile_data_column_name : str = DEFAULT_PROFILE_DATA_COLUMN_NAME,
+            ):
         """
         Parameters
         ----------
@@ -233,6 +236,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         self.radial_point_count = radial_point_count
         self.azimuthal_point_count = azimuthal_point_count
         self.fill = fill
+        self.profile_data_column_name = profile_data_column_name
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -273,6 +277,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         radial_point_count = self.radial_point_count
         azimuthal_point_count = self.azimuthal_point_count
         fill = self.fill
+        profile_data_column_name = self.profile_data_column_name
 
         if copy is True:
             X = X.copy()
@@ -284,7 +289,8 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
 
         # Loop over all samples using batches
         for idx in range(X.shape[0]):
-            image = X[idx, ...].reshape(X.shape[1:])
+            image = X.loc[idx, "measurement_data"]
+
             if type(center) != tuple:
                 center = find_center(image)
 
@@ -301,9 +307,9 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
                     fill=fill,
                     )
 
-            results[idx, ...] = radial_profile
+            X.insert(idx, profile_data_column_name, [radial_profile])
 
-        return results
+        return X
 
 def azimuthal_integration_dir(
         input_path,
