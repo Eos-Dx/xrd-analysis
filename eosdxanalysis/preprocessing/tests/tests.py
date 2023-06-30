@@ -829,7 +829,7 @@ class TestDenoising(unittest.TestCase):
 
         self.assertTrue(np.array_equal(filtered_image, known_result))
 
-    def test_dead_pixel_repair_single_high_value_pixel_no_beam_copy(self):
+    def test_dead_pixel_repair_single_high_value_pixel_nan_copy(self):
         """
         Test dead pixel repair on an image with a single high value pixel
         away from the diffraction pattern center with beam radius = 0
@@ -859,6 +859,37 @@ class TestDenoising(unittest.TestCase):
         self.assertTrue(
                 np.array_equal(
                     repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_single_high_value_pixel_median_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image = np.ones((size,size))
+
+        # Repair test image
+        repaired_image = filter_outlier_pixel_values(
+                test_image,
+                threshold=1e3,
+                absolute=True,
+                fill_method="median",
+                filter_size=1)
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.sum(repaired_image) == size**2)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image))
 
     def test_dead_pixel_repair_single_high_value_pixel_away_from_center(self):
         """
@@ -890,7 +921,7 @@ class TestDenoising(unittest.TestCase):
                 np.array_equal(
                     repaired_image, known_repaired_image, equal_nan=True))
 
-    def test_dead_pixel_repair_transform_single_high_value_pixel_no_beam_copy(self):
+    def test_dead_pixel_repair_transform_single_high_value_pixel_nan_copy(self):
         """
         Test dead pixel repair on an image with a single high value pixel
         away from the diffraction pattern center with beam radius = 0
@@ -925,6 +956,50 @@ class TestDenoising(unittest.TestCase):
         self.assertTrue(
                 np.array_equal(
                     repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_transform_single_high_value_pixel_median_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image = np.ones((size,size))
+
+        # Set repair parameters
+        threshold = 1e3
+        absolute = True
+        filter_size = 1
+        fill_method = "median"
+
+        pixel_repair = FilterOutlierPixelValues(
+                threshold=threshold, absolute=absolute, filter_size=filter_size,
+                fill_method=fill_method)
+
+        # Reshape
+        test_image = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
+        known_repaired_image = known_repaired_image.reshape(
+            (1, known_repaired_image.shape[0], known_repaired_image.shape[1]))
+
+        # Repair test image
+        repaired_image_array = pixel_repair.transform(
+                test_image,
+                copy=True)
+
+        repaired_image = repaired_image_array[0, ...]
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.sum(repaired_image) == size**2)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.allclose(
+                    repaired_image, known_repaired_image))
 
     def test_dead_pixel_repair_transform_single_high_value_pixel_away_from_center(self):
         """
@@ -3164,6 +3239,64 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Check if the image repair was successful
         self.assertTrue(np.array_equal(repaired_image, np.ones((size,size))))
 
+    def test_image_repair_azimuthal_integration_pipeline(self):
+        """Test pipeline with image repair and azimuthal integration
+        transformers.
+        """
+        # Create test image such that the inner annulus is 1
+        # and the outer annulus is 0
+        # The resulting azimuthal integration profile should
+        # be a step function
+        size = 256
+        shape = (size, size)
+        test_image = np.zeros(shape)
+        mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
+        test_image[mask] = 1
+
+        # Add hot spot
+        hot_spot_coords = (20,40)
+        hot_spot_value = 10
+        test_image[hot_spot_coords] = hot_spot_value
+
+        X = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
+
+        # Set azimuthal integration parameters
+        end_radius = int(np.max(test_image.shape)/2)
+        center = np.array(shape)/2 - 0.5
+
+        # Create step function for known result of azimuthal integration
+        step_function = np.zeros(end_radius)
+        step_function[:end_radius//2] = 1
+
+        # Set image repair parameters
+        threshold = 5
+        absolute = True
+        fill_method = "median"
+        filter_size = 1
+
+        # Instantiate the image repair transformer
+        imrepair = FilterOutlierPixelValues(
+                threshold=threshold,
+                absolute=absolute,
+                fill_method=fill_method,
+                filter_size=filter_size)
+        azint = AzimuthalIntegration(
+                center=center, end_radius=end_radius)
+        # Create a classifier from the pipeline
+        clf = make_pipeline(imrepair, azint)
+
+        # Transform the data
+        X_trans = clf.transform(X)
+
+        profile_1d = X_trans[0, ...]
+
+        # Check if the preprocessing pipeline was successful
+
+        # Take the difference
+        diff = abs(step_function - profile_1d)
+
+        # Test that the 1-D integrated profile is close to a step function
+        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
 
 if __name__ == '__main__':
     unittest.main()
