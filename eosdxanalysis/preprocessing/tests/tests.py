@@ -3127,9 +3127,9 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
 class TestPreprocessingPipeline(unittest.TestCase):
 
-    def test_image_repair(self):
+    def test_image_repair_pipeline(self):
         """
-        Test image repair transformer
+        Test pipeline with image repair transformer
         """
         # Create test image
         size = 256
