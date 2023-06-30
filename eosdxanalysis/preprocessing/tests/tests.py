@@ -59,7 +59,10 @@ from eosdxanalysis.preprocessing.azimuthal_integration import radial_intensity_s
 
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
+from eosdxanalysis.calibration.units_conversion import MomentumTransferUnitsConversion
+
 from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
+from eosdxanalysis.calibration.units_conversion import q_conversion
 
 TEST_PATH = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(TEST_PATH, "..")
@@ -3235,12 +3238,29 @@ class TestPreprocessingPipeline(unittest.TestCase):
         known_profile_1d = np.zeros(end_radius)
         known_profile_1d[:end_radius//2] = 1
 
+        # Set units conversion parameters
+        wavelength_nm = 0.1540562
+        pixel_size = 55e-6
+        sample_distance_mm = np.array([150])
+        sample_distance_m = sample_distance_mm * 1e-3
+
+        # Create known 1D azimuthal profile versus q
+        radial_range = np.arange(end_radius)
+        real_position_m = radial_range * pixel_size
+        real_position_mm = real_position_m * 1e3
+        q_range = q_conversion(
+                real_position_mm=real_position_mm,
+                sample_distance_mm=sample_distance_mm,
+                wavelength_nm=wavelength_nm)
+        known_profile_1d_vs_q = np.vstack([q_range, known_profile_1d]).T
+
         self.size = size
         self.shape = shape
         self.hot_spot_value = hot_spot_value
         self.test_image = test_image
         self.known_repaired_image = known_repaired_image
         self.known_profile_1d = known_profile_1d
+        self.known_profile_1d_vs_q = known_profile_1d_vs_q
 
         # Image repair parameters
         self.threshold = threshold
@@ -3251,6 +3271,11 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Azimuthal integration parameters
         self.center = center
         self.end_radius = end_radius
+
+        # Units conversion parameters
+        self.wavelength_nm = wavelength_nm
+        self.pixel_size = pixel_size
+        self.sample_distance_m = sample_distance_m
 
     def test_image_repair_pipeline(self):
         """
@@ -3305,7 +3330,6 @@ class TestPreprocessingPipeline(unittest.TestCase):
 
         X = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
 
-
         # Instantiate the image repair transformer
         imrepair = FilterOutlierPixelValues(
                 threshold=threshold,
@@ -3334,7 +3358,67 @@ class TestPreprocessingPipeline(unittest.TestCase):
         """Test pipeline with image repair, azimuthal integration, and
         units conversion transformers.
         """
-        self.fail("Finish writing test.")
+        shape = self.shape
+        test_image = self.test_image
+        known_profile_1d = self.known_profile_1d
+        known_profile_1d_vs_q = self.known_profile_1d_vs_q
+
+        # Image repair parameters
+        threshold = self.threshold
+        absolute = self.absolute
+        fill_method = self.fill_method
+        filter_size = self.filter_size
+
+        # Aimuthal integration parameters
+        center = self.center
+        end_radius = self.end_radius
+
+        # Units conversion parameters
+        wavelength_nm = self.wavelength_nm
+        pixel_size = self.pixel_size
+        sample_distance_m = self.sample_distance_m
+
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                "sample_distance_m": sample_distance_m
+                }
+        df = pd.DataFrame(data)
+
+        # Instantiate the image repair transformer
+        imrepair = FilterOutlierPixelValues(
+                threshold=threshold,
+                absolute=absolute,
+                fill_method=fill_method,
+                filter_size=filter_size)
+        azint = AzimuthalIntegration(
+                center=center, end_radius=end_radius)
+        uconv = MomentumTransferUnitsConversion(
+                wavelength_nm=wavelength_nm,
+                pixel_size=pixel_size,
+                )
+        # Create a classifier from the pipeline
+        clf = make_pipeline(imrepair, azint, uconv)
+
+        # Transform the data
+        df_results = clf.transform(df)
+
+        q_range = df_results.loc[0, "q_range"]
+        profile_1d = df_results.loc[0, "profile_data"]
+        profile_1d_vs_q = np.vstack([q_range, profile_1d]).T
+
+        # Check if the preprocessing pipeline was successful
+
+        # Ensure the q-ranges are the same
+        self.assertTrue(
+                np.allclose(profile_1d_vs_q[:,0], known_profile_1d_vs_q[:,0]))
+
+        # Take the difference
+        diff = abs(known_profile_1d_vs_q[:,1] - profile_1d_vs_q[:,1])
+
+        # Test that the 1-D integrated profile is close to a step function
+        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
 
 
 if __name__ == '__main__':
