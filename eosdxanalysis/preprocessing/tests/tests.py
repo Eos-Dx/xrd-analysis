@@ -1023,7 +1023,6 @@ class TestDenoising(unittest.TestCase):
         shutil.rmtree(output_path)
 
 
-
 class TestImageProcessing(unittest.TestCase):
 
     def test_sensible_intensity_ranges(self):
