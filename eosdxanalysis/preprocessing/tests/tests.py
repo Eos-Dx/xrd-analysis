@@ -3202,25 +3202,71 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
 class TestPreprocessingPipeline(unittest.TestCase):
 
-    def test_image_repair_pipeline(self):
-        """
-        Test pipeline with image repair transformer
+    def setUp(self):
+        """Create test image
         """
         # Create test image
         size = 256
-        test_image = np.ones((size,size))
+        shape = (size, size)
+        test_image = np.zeros(shape)
         hot_spot_coords = (20,40)
         hot_spot_value = 10
         test_image[hot_spot_coords] = hot_spot_value
 
-        self.assertEqual(np.max(test_image), hot_spot_value)
+        # Create a disk
+        mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
+        test_image[mask] = 1
 
-        X = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
+        # Known repaired image
+        known_repaired_image = np.zeros((size,size))
+        known_repaired_image[mask] = 1
 
+        # Set image repair parameters
         threshold = 5
         absolute = True
         fill_method = "median"
         filter_size = 1
+
+        # Set azimuthal integration parameters
+        center = np.array(shape)/2 - 0.5
+        end_radius = int(np.max(test_image.shape)/2)
+
+        # Create step function for known result of azimuthal integration
+        known_profile_1d = np.zeros(end_radius)
+        known_profile_1d[:end_radius//2] = 1
+
+        self.size = size
+        self.shape = shape
+        self.hot_spot_value = hot_spot_value
+        self.test_image = test_image
+        self.known_repaired_image = known_repaired_image
+        self.known_profile_1d = known_profile_1d
+
+        # Image repair parameters
+        self.threshold = threshold
+        self.absolute = absolute
+        self.fill_method = fill_method
+        self.filter_size = filter_size
+
+        # Azimuthal integration parameters
+        self.center = center
+        self.end_radius = end_radius
+
+    def test_image_repair_pipeline(self):
+        """
+        Test pipeline with image repair transformer
+        """
+        size = self.size
+        test_image = self.test_image
+        known_repaired_image = self.known_repaired_image
+
+        # Image repair parameters
+        threshold = self.threshold
+        absolute = self.absolute
+        fill_method = self.fill_method
+        filter_size = self.filter_size
+
+        X = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
 
         # Instantiate the image repair transformer
         imrepair = FilterOutlierPixelValues(
@@ -3237,42 +3283,28 @@ class TestPreprocessingPipeline(unittest.TestCase):
         repaired_image = X_repaired[0, ...]
 
         # Check if the image repair was successful
-        self.assertTrue(np.array_equal(repaired_image, np.ones((size,size))))
+        self.assertTrue(np.array_equal(repaired_image, known_repaired_image))
 
     def test_image_repair_azimuthal_integration_pipeline(self):
         """Test pipeline with image repair and azimuthal integration
         transformers.
         """
-        # Create test image such that the inner annulus is 1
-        # and the outer annulus is 0
-        # The resulting azimuthal integration profile should
-        # be a step function
-        size = 256
-        shape = (size, size)
-        test_image = np.zeros(shape)
-        mask = create_circular_mask(size, size, rmin=0, rmax=size/4)
-        test_image[mask] = 1
+        shape = self.shape
+        test_image = self.test_image
+        known_profile_1d = self.known_profile_1d
 
-        # Add hot spot
-        hot_spot_coords = (20,40)
-        hot_spot_value = 10
-        test_image[hot_spot_coords] = hot_spot_value
+        # Image repair parameters
+        threshold = self.threshold
+        absolute = self.absolute
+        fill_method = self.fill_method
+        filter_size = self.filter_size
+
+        # Aimuthal integration parameters
+        center = self.center
+        end_radius = self.end_radius
 
         X = test_image.reshape((1, test_image.shape[0], test_image.shape[1]))
 
-        # Set azimuthal integration parameters
-        end_radius = int(np.max(test_image.shape)/2)
-        center = np.array(shape)/2 - 0.5
-
-        # Create step function for known result of azimuthal integration
-        step_function = np.zeros(end_radius)
-        step_function[:end_radius//2] = 1
-
-        # Set image repair parameters
-        threshold = 5
-        absolute = True
-        fill_method = "median"
-        filter_size = 1
 
         # Instantiate the image repair transformer
         imrepair = FilterOutlierPixelValues(
@@ -3293,10 +3325,17 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Check if the preprocessing pipeline was successful
 
         # Take the difference
-        diff = abs(step_function - profile_1d)
+        diff = abs(known_profile_1d - profile_1d)
 
         # Test that the 1-D integrated profile is close to a step function
         self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
+
+    def test_image_repair_azimuthal_integration_units_conversion_pipeline(self):
+        """Test pipeline with image repair, azimuthal integration, and
+        units conversion transformers.
+        """
+        self.fail("Finish writing test.")
+
 
 if __name__ == '__main__':
     unittest.main()
