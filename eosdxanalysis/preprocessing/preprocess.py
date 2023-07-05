@@ -280,12 +280,16 @@ class PreprocessData(object):
                 # Calculate array center
                 array_center = np.array(plan_image.shape)/2-0.5
                 self.array_center = array_center
+                # Reset center variables
                 center = tuple()
                 calculated_center = tuple()
+                self.calculated_center = tuple()
+                # Reset angle
                 angle = None
 
                 filename = os.path.basename(file_path)
 
+                # Reset masked image variable
                 masked_image = None
                 if hot_spot_threshold:
                     # Use a beam-masked image to filter hot spots
