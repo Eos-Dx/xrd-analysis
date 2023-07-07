@@ -31,6 +31,7 @@
       TestCenterFinding
       TestCreateCircularMask
       TestDenoising
+      TestDenoisingCLI
       TestFeatureExtraction
       TestFeatureExtractionCLI
       TestImageProcessing
