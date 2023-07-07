@@ -494,17 +494,24 @@ if __name__ == '__main__':
             "--hot_spot_coords_approx", type=tuple,
             help="Approximate hot spot coordinates.")
     parser.add_argument(
-            "--find_dead_pixels", action="store_true",
-            help="Try to find the dead pixels automatically.")
-    parser.add_argument(
             "--beam_rmax", type=int, default=DEFAULT_BEAM_RMAX,
             help="Radius of beam to ignore.")
     parser.add_argument(
             "--threshold", type=float, required=False,
             help="Threshold to use to identify outlier pixel values.")
     parser.add_argument(
+            "--absolute", action="store_true",
+            help="Use absolute threshold value.")
+    parser.add_argument(
             "--limit_type", type=str, default="max",
             help="Threshold limit type. Choice of ``max`` (default) or ``min``.")
+    parser.add_argument(
+            "--fill_method", type=str, default=DEFAULT_FILL_METHOD,
+            help="Replace values according to this method. Choice of ``nan`` (default)" + \
+            "``zero``, ``mean``, or ``median``.")
+    parser.add_argument(
+            "--filter_size", type=int, default=DEFAULT_FILTER_SIZE,
+            help="Size of filter to use.")
     parser.add_argument(
             "--center", type=str,
             default=None,
@@ -532,6 +539,9 @@ if __name__ == '__main__':
     hot_spot_coords_approx = args.hot_spot_coords_approx
     beam_rmax = args.beam_rmax
     threshold = args.threshold
+    absolute = args.absolute
+    fill_method = args.fill_method
+    filter_size = args.filter_size
     limit_type = args.limit_type
     visualize = args.visualize
     overwrite = args.overwrite
@@ -547,6 +557,9 @@ if __name__ == '__main__':
         center=center,
         beam_rmax=beam_rmax,
         threshold=threshold,
+        absolute=absolute,
+        fill_method=fill_method,
+        filter_size=filter_size,
         limit_type=limit_type,
         file_format=file_format,
         verbose=verbose,
