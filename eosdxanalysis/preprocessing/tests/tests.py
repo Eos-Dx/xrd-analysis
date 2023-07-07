@@ -1116,6 +1116,530 @@ class TestDenoising(unittest.TestCase):
         shutil.rmtree(output_path)
 
 
+class TestDenoisingCLI(unittest.TestCase):
+
+
+    def setUp(self):
+        test_path = os.path.join(TEST_IMAGE_PATH, "test_cli_images")
+        self.test_path = test_path
+
+        # Specify parameters file without plans
+        params_file = os.path.join(test_path, "params.txt")
+        self.params_file = params_file
+        with open(params_file, "r") as param_fp:
+            params = param_fp.read()
+        self.params = params
+
+        # Specify parameters file with plans
+        params_with_plans_file = os.path.join(test_path, "params_with_plans.txt")
+        self.params_with_plans_file = params_with_plans_file
+        with open(params_with_plans_file, "r") as param_fp:
+            params_with_plans = param_fp.read()
+        self.params_with_plans = params_with_plans
+
+        # Create test images
+        input_path="input"
+
+        # Set up test image
+        size = 256
+        test_image = np.ones((size,size))
+        hot_spot_coords = (20,40)
+        hot_spot_value = 10
+        test_image[hot_spot_coords] = hot_spot_value
+
+        # Set the filename
+        filename = "test_cli.txt"
+        # Set the full output path
+        fullpath = os.path.join(test_path, input_path, filename)
+        # Save the image to file
+        np.savetxt(fullpath, test_image, fmt="%d")
+
+        # Set the input and output pathectories
+        test_input_path = os.path.join(test_path, "input")
+        test_output_path = os.path.join(test_path, "output")
+        # Create the test output pathectory
+        os.makedirs(test_output_path, exist_ok=True)
+
+        self.test_input_path = test_input_path
+        self.test_output_path = test_output_path
+
+        input_file_path_list = glob.glob(os.path.join(test_input_path, "*.txt"))
+        input_file_path_list.sort()
+
+        threshold = 5
+
+        self.input_file_path_list = input_file_path_list
+        self.size = size
+        self.hot_spot_value = hot_spot_value
+        self.threshold = threshold
+
+        self.test_image = test_image
+
+    def test_filter_hot_spots_median_method(self):
+        """
+        Test hot spot filter using the median method
+        """
+        size = self.size
+        test_image = self.test_image
+        hot_spot_value = self.hot_spot_value
+        threshold = self.threshold
+
+        test_input_path = self.test_input_path
+        test_output_path = self.test_output_path
+        input_file_path_list = self.input_file_path_list
+
+        # Set up the command
+        command = ["python", "eosdxanalysis/preprocessing/denoising.py",
+                    "--input_path", test_input_path,
+                    "--output_path", test_output_path,
+                    "--threshold", str(threshold),
+                    "--absolute",
+                    "--fill_method", "median",
+                    ]
+
+        # Run the command
+        subprocess.run(command)
+
+        # Check that output files exist
+        # First get list of files
+        num_files = len(input_file_path_list)
+
+        # Check that number of files is > 0
+        self.assertTrue(num_files > 0)
+        # Check that number of input and output files is the same
+        output_file_path_list = glob.glob(os.path.join(test_output_path, "*.txt"))
+        output_file_path_list.sort()
+
+        self.assertEqual(num_files, len(output_file_path_list))
+
+        for idx in range(num_files):
+            # Load data
+            input_image = np.loadtxt(input_file_path_list[idx])
+            output_image = np.loadtxt(output_file_path_list[idx])
+
+            # Check that data are positive
+            self.assertTrue(input_image[input_image > 0].all())
+            self.assertTrue(output_image[output_image > 0].all())
+
+            # Check that the maximum value of the output is less than the
+            # maximum value of the input
+            self.assertTrue(np.max(output_image) < np.max(input_image))
+
+            # Check that output means are smaller than input means
+            self.assertTrue(np.mean(output_image) < np.mean(input_image))
+
+            self.assertEqual(np.max(test_image), hot_spot_value)
+
+            self.assertTrue(np.array_equal(output_image, np.ones((size,size))))
+
+    def test_filter_hot_spots_invalid_method(self):
+        """
+        Test hot spot filter using an invalid method
+        """
+        size = self.size
+        test_image = self.test_image
+        hot_spot_value = self.hot_spot_value
+        threshold = self.threshold
+
+        test_input_path = self.test_input_path
+        test_output_path = self.test_output_path
+        input_file_path_list = self.input_file_path_list
+
+        # Set up the command
+        command = ["python", "eosdxanalysis/preprocessing/denoising.py",
+                    "--input_path", test_input_path,
+                    "--output_path", test_output_path,
+                    "--threshold", str(threshold),
+                    "--absolute",
+                    "--fill_method", "invalid",
+                    ]
+
+        with self.assertRaises(subprocess.CalledProcessError):
+            # Run the command
+            subprocess.check_call(command)
+
+    def test_filter_hot_spots_zero_method(self):
+        """
+        Test hot spot filter using the zero method
+        """
+        size = self.size
+        test_image = self.test_image
+        hot_spot_value = self.hot_spot_value
+        threshold = self.threshold
+
+        test_input_path = self.test_input_path
+        test_output_path = self.test_output_path
+        input_file_path_list = self.input_file_path_list
+
+        # Set up the command
+        command = ["python", "eosdxanalysis/preprocessing/denoising.py",
+                    "--input_path", test_input_path,
+                    "--output_path", test_output_path,
+                    "--threshold", str(threshold),
+                    "--absolute",
+                    "--fill_method", "zero",
+                    "--filter_size", str(1),
+                    ]
+
+        # Run the command
+        subprocess.run(command)
+
+        # Check that output files exist
+        # First get list of files
+        num_files = len(input_file_path_list)
+
+        # Check that number of files is > 0
+        self.assertTrue(num_files > 0)
+        # Check that number of input and output files is the same
+        output_file_path_list = glob.glob(os.path.join(test_output_path, "*.txt"))
+        output_file_path_list.sort()
+
+        self.assertEqual(num_files, len(output_file_path_list))
+
+        known_filtered_image = np.ones((size, size))
+        known_filtered_image[test_image == hot_spot_value] = 0
+
+        for idx in range(num_files):
+            # Load data
+            input_image = np.loadtxt(input_file_path_list[idx])
+            output_image = np.loadtxt(output_file_path_list[idx])
+
+            # Check that data are positive
+            self.assertTrue(input_image[input_image > 0].all())
+            self.assertTrue(output_image[output_image > 0].all())
+
+            # Check that the maximum value of the output is less than the
+            # maximum value of the input
+            self.assertTrue(np.max(output_image) < np.max(input_image))
+
+            # Check that output means are smaller than input means
+            self.assertTrue(np.mean(output_image) < np.mean(input_image))
+
+            self.assertEqual(np.max(test_image), hot_spot_value)
+
+            self.assertTrue(np.array_equal(output_image, known_filtered_image))
+
+    def test_dead_pixel_repair_single_high_value_pixel_nan_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = self.size
+        test_image = self.test_image
+        hot_spot_value = self.hot_spot_value
+        threshold = self.threshold
+
+        test_input_path = self.test_input_path
+        test_output_path = self.test_output_path
+        input_file_path_list = self.input_file_path_list
+
+        # Set up the command
+        command = ["python", "eosdxanalysis/preprocessing/denoising.py",
+                    "--input_path", test_input_path,
+                    "--output_path", test_output_path,
+                    "--threshold", str(threshold),
+                    "--absolute",
+                    "--fill_method", "nan",
+                    "--filter_size", str(1),
+                    ]
+
+        # Run the command
+        subprocess.run(command)
+
+        # Check that output files exist
+        # First get list of files
+        num_files = len(input_file_path_list)
+
+        # Check that number of files is > 0
+        self.assertTrue(num_files > 0)
+        # Check that number of input and output files is the same
+        output_file_path_list = glob.glob(os.path.join(test_output_path, "*.txt"))
+        output_file_path_list.sort()
+
+        self.assertEqual(num_files, len(output_file_path_list))
+
+        known_filtered_image = np.ones((size, size))
+        known_filtered_image[test_image == hot_spot_value] = np.nan
+
+        for idx in range(num_files):
+            # Load data
+            input_image = np.loadtxt(input_file_path_list[idx])
+            output_image = np.loadtxt(output_file_path_list[idx])
+
+            # Check that data are positive
+            self.assertTrue(input_image[input_image > 0].all())
+            self.assertTrue(output_image[output_image > 0].all())
+
+            # Check that the maximum value of the output is less than the
+            # maximum value of the input
+            self.assertTrue(np.nanmax(output_image) < np.nanmax(input_image))
+
+            # Check that output means are smaller than input means
+            self.assertTrue(np.nanmean(output_image) < np.nanmean(input_image))
+
+            self.assertEqual(np.nanmax(test_image), hot_spot_value)
+
+            # Check that repaired image matches known result
+            self.assertTrue(
+                    np.allclose(
+                        output_image, known_filtered_image, equal_nan=True))
+
+    def test_dead_pixel_repair_single_high_value_pixel_median_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image = np.ones((size,size))
+
+        # Repair test image
+        repaired_image = filter_outlier_pixel_values(
+                test_image,
+                threshold=1e3,
+                absolute=True,
+                fill_method="median",
+                filter_size=1)
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.sum(repaired_image) == size**2)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image))
+
+    def test_dead_pixel_repair_single_high_value_pixel_away_from_center(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the center.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image[int(size/2),int(size/2)] = np.nan
+
+        # Repair test image
+        repaired_image = filter_outlier_pixel_values(
+                test_image,
+                threshold=1e3,
+                absolute=True,
+                fill_method="nan",
+                filter_size=1)
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.nansum(repaired_image) == size**2-1)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_transform_single_high_value_pixel_nan_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image[int(size/2),int(size/2)] = np.nan
+
+        pixel_repair = FilterOutlierPixelValues(
+                threshold=1e3, absolute=True, filter_size=1, fill_method="nan")
+
+        # Store data in dataframe
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data=data)
+
+        # Repair test image
+        df_results = pixel_repair.transform(
+                df,
+                copy=True)
+
+        repaired_image = df_results.loc[0]["measurement_data"]
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.nansum(repaired_image) == size**2-1)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_transform_single_high_value_pixel_median_copy(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the diffraction pattern center with beam radius = 0
+        and no diffraction pattern specified.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image = np.ones((size,size))
+
+        # Set repair parameters
+        threshold = 1e3
+        absolute = True
+        filter_size = 1
+        fill_method = "median"
+
+        pixel_repair = FilterOutlierPixelValues(
+                threshold=threshold, absolute=absolute, filter_size=filter_size,
+                fill_method=fill_method)
+
+        # Store data in dataframe
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data=data)
+
+        # Repair test image
+        df_results = pixel_repair.transform(
+                df,
+                copy=True)
+
+        repaired_image = df_results.loc[0]["measurement_data"]
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.sum(repaired_image) == size**2)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.allclose(
+                    repaired_image, known_repaired_image))
+
+    def test_dead_pixel_repair_transform_single_high_value_pixel_away_from_center(self):
+        """
+        Test dead pixel repair on an image with a single high value pixel
+        away from the center.
+        """
+        size = 5
+        test_image = np.ones((size,size))
+        known_repaired_image = test_image.copy()
+
+        # Create test image
+        test_image[int(size/2),int(size/2)] = 1e6
+        # Create known result
+        known_repaired_image[int(size/2),int(size/2)] = np.nan
+
+        pixel_repair = FilterOutlierPixelValues(
+                threshold=1e3, absolute=True, filter_size=1, fill_method="nan")
+
+        # Store data in dataframe
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                }
+        df = pd.DataFrame(data=data)
+
+        # Repair test image
+        df_results = pixel_repair.transform(
+                df,
+                copy=True)
+
+        repaired_image = df_results.loc[0]["measurement_data"]
+
+        # Check that repaired image is non-zero
+        self.assertTrue(np.nansum(repaired_image) == size**2-1)
+
+        # Check that repaired image matches known result
+        self.assertTrue(
+                np.array_equal(
+                    repaired_image, known_repaired_image, equal_nan=True))
+
+    def test_dead_pixel_repair_filter_outlier_pixel_values_dir(self):
+        """
+        """
+        TEST_IMAGE_DIR = "test_images"
+        TEST_DIR = "test_dead_pixel_repair_images"
+        INPUT_DIR = "input"
+        OUTPUT_DIR = "output"
+        REPAIRED_DIR = "repaired"
+
+        # Set input path
+        input_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, INPUT_DIR)
+        # Set output path
+        output_path = os.path.join(TEST_IMAGE_PATH, TEST_DIR, OUTPUT_DIR)
+        # Set known repaired path
+        known_repaired_path = os.path.join(
+                TEST_IMAGE_PATH, TEST_DIR, REPAIRED_DIR)
+
+        # Create output path if it does not exist
+        # os.makedirs(output_path, exist_ok=True)
+        # print("Created {}".format(output_path))
+
+        # Run dead pixel repair for directory
+        filter_outlier_pixel_values_dir(
+            input_path=input_path,
+            output_path=output_path,
+            filter_size=1,
+            absolute=True,
+            overwrite=False,
+            threshold=1e3,
+            verbose=False,
+            fill_method="nan")
+
+        # Get list of output file paths
+        output_filepath_list = glob.glob(os.path.join(output_path, "*"))
+        output_filepath_list.sort()
+
+        # Get list of repaired file paths
+        known_repaired_filepath_list = glob.glob(os.path.join(known_repaired_path, "*"))
+        known_repaired_filepath_list.sort()
+
+        # Check that there are some output files
+        self.assertTrue(len(output_filepath_list) > 0)
+
+        # Check the output files
+        for idx in range(len(output_filepath_list)):
+            output_filepath = output_filepath_list[idx]
+            output_image = np.loadtxt(output_filepath)
+
+            known_repaired_filepath = known_repaired_filepath_list[idx]
+            known_repaired_image = np.loadtxt(known_repaired_filepath)
+
+            # Ensure images are non-zero
+            self.assertTrue(np.nansum(output_image) > 0)
+            self.assertTrue(np.nansum(known_repaired_image) > 0)
+
+            # Ensure output and known repaired image are equal
+            self.assertTrue(
+                    np.array_equal(
+                        output_image, known_repaired_image, equal_nan=True))
+
+    def tearDown(self):
+        # Delete output files
+        test_output_path = self.test_output_path
+        shutil.rmtree(test_output_path)
+
+
 class TestImageProcessing(unittest.TestCase):
 
     def test_sensible_intensity_ranges(self):
