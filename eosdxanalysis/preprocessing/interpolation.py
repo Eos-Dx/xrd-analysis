@@ -11,6 +11,7 @@ from sklearn.base import BaseEstimator
 
 DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
 DEFAULT_INTERPOLATED_RADIAL_PROFILE_DATA_COLUMN_NAME = "interpolated_radial_profile_data"
+DEFAULT_Q_RANGE_COLUMN_NAME = "q_range"
 DEFAULT_RESOLUTION = 256
 
 
@@ -74,6 +75,8 @@ class Interpolator(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
                     DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME,
             interpolated_radial_profile_data_column_name : str = \
                     DEFAULT_INTERPOLATED_RADIAL_PROFILE_DATA_COLUMN_NAME,
+            q_range_column_name : str = \
+                   DEFAULT_Q_RANGE_COLUMN_NAME,
             ):
 
         """Parameters
@@ -99,6 +102,7 @@ class Interpolator(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
         self.radial_profile_data_column_name = radial_profile_data_column_name
         self.interpolated_radial_profile_data_column_name = \
                 interpolated_radial_profile_data_column_name
+        self.q_range_column_name = q_range_column_name
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -136,6 +140,7 @@ class Interpolator(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
         radial_profile_data_column_name = self.radial_profile_data_column_name
         interpolated_radial_profile_data_column_name = \
                 self.interpolated_radial_profile_data_column_name
+        q_range_column_name = self.q_range_column_name
 
         if copy:
             X = X.copy()
@@ -150,7 +155,10 @@ class Interpolator(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
         # Loop over all samples using batches
         for idx in range(X.shape[0]):
 
-            radial_profile = X.loc[idx, radial_profile_data_column_name]
+            radial_intensity = X.loc[idx, radial_profile_data_column_name]
+            q_range = X.loc[idx, q_range_column_name]
+
+            radial_profile = np.vstack([q_range, radial_intensity]).T
 
             interpolated_result = interpolate_radial_profile(
                     radial_profile,
@@ -159,9 +167,7 @@ class Interpolator(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
                     resolution=resolution,
                     )
 
-            X.insert(
-                    idx,
-                    interpolated_radial_profile_data_column_name,
-                    [interpolated_result])
+            X.at[idx, interpolated_radial_profile_data_column_name] = \
+                    interpolated_result
 
         return X
