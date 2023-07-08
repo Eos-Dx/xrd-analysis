@@ -57,6 +57,8 @@ from eosdxanalysis.preprocessing.azimuthal_integration import AzimuthalIntegrati
 from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration_dir
 from eosdxanalysis.preprocessing.azimuthal_integration import radial_intensity_sum
 
+from eosdxanalysis.preprocessing.interpolation import Interpolator
+
 from eosdxanalysis.simulations.utils import feature_pixel_location
 
 from eosdxanalysis.calibration.units_conversion import MomentumTransferUnitsConversion
@@ -3693,6 +3695,65 @@ class TestAzimuthalIntegration(unittest.TestCase):
         self.assertEqual(profile_size, end_radius-start_radius)
 
 
+class TestInterpolation(unittest.TestCase):
+    
+    def test_interpolation(self):
+        """
+        Ensure interpolation works properly
+        """
+        # Create test radial profile step function
+        # Size of radial profile input
+        orig_resolution = 362
+        # Size of interpolated radial profile output
+        desired_resolution = 256
+
+        # Create step function radial profile
+        radial_profile = np.zeros(orig_resolution)
+        radial_profile[:orig_resolution//2] = 1
+
+        # Set up original q-range
+        orig_q_start = 0
+        orig_q_end = 5
+        orig_q_range = np.linspace(
+                orig_q_start, orig_q_end, endpoint=True, num=orig_resolution)
+
+        # Set up desired q-range
+        desired_q_start = 0
+        desired_q_end = 4
+
+        radial_profile = np.vstack([orig_q_range, radial_profile]).T
+        radial_profile_data = [radial_profile]
+
+        data = {
+                "radial_profile_data": radial_profile_data,
+                }
+        df = pd.DataFrame(data=data)
+
+        interpolator = Interpolator(
+                q_start=desired_q_start,
+                q_end=desired_q_end,
+                resolution=desired_resolution)
+
+        # Repair test image
+        df_results = interpolator.transform(
+                df,
+                copy=True)
+
+        interpolated_profile = df_results.loc[0]["interpolated_radial_profile_data"]
+
+
+        # Check the shape
+        self.assertEqual(interpolated_profile.shape[0], desired_resolution)
+
+        # Ensure there are mostly 1s, then 0s, and at most 3 other values
+        ones_count = (interpolated_profile == 1).sum()
+        zeros_count = (interpolated_profile == 0).sum()
+        other_count = desired_resolution - ones_count - zeros_count
+
+        self.assertTrue(ones_count > zeros_count > other_count)
+        self.assertTrue(other_count <= 3)
+
+
 class TestPreprocessingPipeline(unittest.TestCase):
 
     def setUp(self):
@@ -3919,6 +3980,77 @@ class TestPreprocessingPipeline(unittest.TestCase):
 
         # Test that the 1-D integrated profile is close to a step function
         self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
+
+    def test_image_repair_azimuthal_integration_units_conversion_interpolation_pipeline(self):
+        """Test pipeline with image repair, azimuthal integration,
+        units conversion, and interpolation transformers.
+        """
+        shape = self.shape
+        test_image = self.test_image
+        known_profile_1d = self.known_profile_1d
+        known_profile_1d_vs_q = self.known_profile_1d_vs_q
+
+        # Image repair parameters
+        threshold = self.threshold
+        absolute = self.absolute
+        fill_method = self.fill_method
+        filter_size = self.filter_size
+
+        # Aimuthal integration parameters
+        center = self.center
+        end_radius = self.end_radius
+
+        # Units conversion parameters
+        wavelength_nm = self.wavelength_nm
+        pixel_size = self.pixel_size
+        sample_distance_m = self.sample_distance_m
+
+        measurement_data = [test_image]
+
+        data = {
+                "measurement_data": measurement_data,
+                "sample_distance_m": sample_distance_m
+                }
+        df = pd.DataFrame(data)
+
+        # Instantiate the image repair transformer
+        imrepair = FilterOutlierPixelValues(
+                threshold=threshold,
+                absolute=absolute,
+                fill_method=fill_method,
+                filter_size=filter_size)
+        azint = AzimuthalIntegration(
+                center=center, end_radius=end_radius)
+        uconv = MomentumTransferUnitsConversion(
+                wavelength_nm=wavelength_nm,
+                pixel_size=pixel_size,
+                )
+        interp = Interpolator(
+                )
+        # Create a classifier from the pipeline
+        clf = make_pipeline(imrepair, azint, uconv, interp)
+
+        # Transform the data
+        df_results = clf.transform(df)
+
+        q_range = df_results.loc[0, "q_range"]
+        profile_1d = df_results.loc[0, "profile_data"]
+        profile_1d_vs_q = np.vstack([q_range, profile_1d]).T
+
+        # Check if the preprocessing pipeline was successful
+
+        # Ensure the q-ranges are the same
+        self.assertTrue(
+                np.allclose(profile_1d_vs_q[:,0], known_profile_1d_vs_q[:,0]))
+
+        # Take the difference
+        diff = abs(known_profile_1d_vs_q[:,1] - profile_1d_vs_q[:,1])
+
+        # Test that the 1-D integrated profile is close to a step function
+        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
+
+        # Test the interpolation was successful
+        self.fail("Finish writing test.")
 
 
 if __name__ == '__main__':
