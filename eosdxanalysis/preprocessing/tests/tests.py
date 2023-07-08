@@ -3915,7 +3915,7 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Transform the data
         df_results = clf.transform(df)
 
-        profile_1d = df_results.loc[0]["profile_data"]
+        profile_1d = df_results.loc[0]["radial_profile_data"]
 
         # Check if the preprocessing pipeline was successful
 
@@ -3976,7 +3976,7 @@ class TestPreprocessingPipeline(unittest.TestCase):
         df_results = clf.transform(df)
 
         q_range = df_results.loc[0, "q_range"]
-        profile_1d = df_results.loc[0, "profile_data"]
+        profile_1d = df_results.loc[0, "radial_profile_data"]
         profile_1d_vs_q = np.vstack([q_range, profile_1d]).T
 
         # Check if the preprocessing pipeline was successful
