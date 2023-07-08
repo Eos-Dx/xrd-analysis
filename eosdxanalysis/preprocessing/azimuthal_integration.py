@@ -35,7 +35,7 @@ from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conve
 
 DEFAULT_DET_XSIZE = 256
 RES_DEFAULT = 1
-DEFAULT_PROFILE_DATA_COLUMN_NAME = "profile_data"
+DEFAULT_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
 
 
 def azimuthal_integration(
