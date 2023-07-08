@@ -326,7 +326,10 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
                     fill_method=fill_method,
                     )
 
-            X.loc[idx][measurement_data_column_name] = filtered_image
+            X.insert(
+                    idx,
+                    measurement_data_column_name,
+                    [filtered_image])
 
         return X
 
