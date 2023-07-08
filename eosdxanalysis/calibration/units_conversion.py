@@ -81,7 +81,7 @@ class MomentumTransferUnitsConversion(
             X = X.copy()
 
         sample_distance_mm = X["sample_distance_m"].values * 1e3
-        profile_data = X["profile_data"].values
+        profile_data = X["radial_profile_data"].values
 
         radial_count = profile_data[0].shape[0]
         q_range = radial_profile_unit_conversion(
