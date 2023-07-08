@@ -3806,9 +3806,12 @@ class TestPreprocessingPipeline(unittest.TestCase):
         known_profile_1d_vs_q = np.vstack([q_range, known_profile_1d]).T
 
         # Set interpolation parameters
-        q_start = 0
-        q_end = 5
-        q_resolution = end_radius
+        desired_q_start = 0
+        desired_q_end = 1.5
+        desired_q_resolution = end_radius
+        desired_q_range = np.linspace(
+                desired_q_start, desired_q_end, endpoint=True,
+                num=desired_q_resolution)
 
         self.size = size
         self.shape = shape
@@ -3834,9 +3837,10 @@ class TestPreprocessingPipeline(unittest.TestCase):
         self.sample_distance_m = sample_distance_m
 
         # Interpolation parameters
-        self.q_start = q_start
-        self.q_end = q_end
-        self.q_resolution = q_resolution
+        self.desired_q_start = desired_q_start
+        self.desired_q_end = desired_q_end
+        self.desired_q_resolution = desired_q_resolution
+        self.desired_q_range = desired_q_range
 
     def test_image_repair_pipeline(self):
         """
@@ -4016,9 +4020,10 @@ class TestPreprocessingPipeline(unittest.TestCase):
         sample_distance_m = self.sample_distance_m
 
         # Interpolation parameters
-        q_start = self.q_start
-        q_end = self.q_end
-        q_resolution = self.q_resolution
+        desired_q_start = self.desired_q_start
+        desired_q_end = self.desired_q_end
+        desired_q_resolution = self.desired_q_resolution
+        desired_q_range = self.desired_q_range
 
         measurement_data = [test_image]
 
@@ -4041,9 +4046,9 @@ class TestPreprocessingPipeline(unittest.TestCase):
                 pixel_size=pixel_size,
                 )
         interp = Interpolator(
-                q_start=q_start,
-                q_end=q_end,
-                resolution=q_resolution,
+                q_start=desired_q_start,
+                q_end=desired_q_end,
+                resolution=desired_q_resolution,
                 )
         # Create a classifier from the pipeline
         clf = make_pipeline(imrepair, azint, uconv, interp)
@@ -4051,9 +4056,9 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Transform the data
         df_results = clf.transform(df)
 
-        q_range = df_results.loc[0, "q_range"]
-        profile_1d = df_results.loc[0, "profile_data"]
-        profile_1d_vs_q = np.vstack([q_range, profile_1d]).T
+        orig_q_range = df_results.loc[0, "q_range"]
+        profile_1d = df_results.loc[0, "radial_profile_data"]
+        profile_1d_vs_q = np.vstack([orig_q_range, profile_1d]).T
 
         # Check if the preprocessing pipeline was successful
 
@@ -4067,8 +4072,20 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Test that the 1-D integrated profile is close to a step function
         self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
 
-        # Test the interpolation was successful
-        self.fail("Finish writing test.")
+        # Ensure the interpolation was successful
+        interp_profile = df_results.loc[0, "interpolated_radial_profile_data"]
+
+        # Check if the values are interpolated
+        q_test = 0.7
+        interp_idx = np.searchsorted(desired_q_range, q_test, side="left")
+        interp_intensity = interp_profile[interp_idx]
+
+        orig_idx = np.searchsorted(orig_q_range, q_test, side="left")
+        orig_intensity = profile_1d[orig_idx]
+
+        self.assertTrue(
+                np.isclose(interp_intensity, orig_intensity,
+                    atol=2/desired_q_resolution))
 
 
 if __name__ == '__main__':
