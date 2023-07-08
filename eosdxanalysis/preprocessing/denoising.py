@@ -305,7 +305,6 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         X[measurement_data_column_name] = \
                 X[measurement_data_column_name].astype(object)
 
-
         # Loop over all samples using batches
         for idx in range(X.shape[0]):
 
