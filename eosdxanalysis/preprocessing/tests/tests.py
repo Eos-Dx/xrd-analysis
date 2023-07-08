@@ -3792,8 +3792,8 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Set units conversion parameters
         wavelength_nm = 0.1540562
         pixel_size = 55e-6
-        sample_distance_mm = np.array([150])
-        sample_distance_m = sample_distance_mm * 1e-3
+        sample_distance_mm = 150
+        sample_distance_m = [sample_distance_mm * 1e-3]
 
         # Create known 1D azimuthal profile versus q
         radial_range = np.arange(end_radius)
@@ -3804,6 +3804,11 @@ class TestPreprocessingPipeline(unittest.TestCase):
                 sample_distance_mm=sample_distance_mm,
                 wavelength_nm=wavelength_nm)
         known_profile_1d_vs_q = np.vstack([q_range, known_profile_1d]).T
+
+        # Set interpolation parameters
+        q_start = 0
+        q_end = 5
+        q_resolution = end_radius
 
         self.size = size
         self.shape = shape
@@ -3827,6 +3832,11 @@ class TestPreprocessingPipeline(unittest.TestCase):
         self.wavelength_nm = wavelength_nm
         self.pixel_size = pixel_size
         self.sample_distance_m = sample_distance_m
+
+        # Interpolation parameters
+        self.q_start = q_start
+        self.q_end = q_end
+        self.q_resolution = q_resolution
 
     def test_image_repair_pipeline(self):
         """
@@ -4005,6 +4015,11 @@ class TestPreprocessingPipeline(unittest.TestCase):
         pixel_size = self.pixel_size
         sample_distance_m = self.sample_distance_m
 
+        # Interpolation parameters
+        q_start = self.q_start
+        q_end = self.q_end
+        q_resolution = self.q_resolution
+
         measurement_data = [test_image]
 
         data = {
@@ -4026,6 +4041,9 @@ class TestPreprocessingPipeline(unittest.TestCase):
                 pixel_size=pixel_size,
                 )
         interp = Interpolator(
+                q_start=q_start,
+                q_end=q_end,
+                resolution=q_resolution,
                 )
         # Create a classifier from the pipeline
         clf = make_pipeline(imrepair, azint, uconv, interp)
