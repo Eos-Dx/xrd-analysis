@@ -35,6 +35,7 @@
       TestFeatureExtraction
       TestFeatureExtractionCLI
       TestImageProcessing
+      TestInterpolation
       TestOutputSaturationBugFix
       TestPeakFinding
       TestPolarMeshgrid
