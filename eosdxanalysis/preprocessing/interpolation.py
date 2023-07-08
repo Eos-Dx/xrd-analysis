@@ -140,6 +140,13 @@ class Interpolator(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
         if copy:
             X = X.copy()
 
+        # Create new empty column
+        X[interpolated_radial_profile_data_column_name] = np.nan
+
+        # Set column data type to object
+        X[interpolated_radial_profile_data_column_name] = \
+                X[interpolated_radial_profile_data_column_name].astype(object)
+
         # Loop over all samples using batches
         for idx in range(X.shape[0]):
 
