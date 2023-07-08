@@ -35,7 +35,7 @@ from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conve
 
 DEFAULT_DET_XSIZE = 256
 RES_DEFAULT = 1
-DEFAULT_PROFILE_DATA_COLUMN_NAME = "profile_data"
+DEFAULT_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
 
 
 def azimuthal_integration(
@@ -282,6 +282,13 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         if copy is True:
             X = X.copy()
 
+        # Create new empty column
+        X[profile_data_column_name] = np.nan
+
+        # Set column data type to object
+        X[profile_data_column_name] = \
+                X[profile_data_column_name].astype(object)
+
         if not end_radius:
             end_radius = int(np.sqrt(2)*np.max(X.shape[1:]))
 
@@ -307,7 +314,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
                     fill=fill,
                     )
 
-            X.insert(idx, profile_data_column_name, [radial_profile])
+            X.at[idx, profile_data_column_name] = radial_profile
 
         return X
 

@@ -301,10 +301,14 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         if copy:
             X = X.copy()
 
+        # Set column data type to object
+        X[measurement_data_column_name] = \
+                X[measurement_data_column_name].astype(object)
+
         # Loop over all samples using batches
         for idx in range(X.shape[0]):
 
-            image = X.loc[idx, "measurement_data"]
+            image = X.loc[idx, measurement_data_column_name]
 
             if not center:
                 center = find_center(image)
@@ -326,7 +330,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
                     fill_method=fill_method,
                     )
 
-            X.loc[idx][measurement_data_column_name] = filtered_image
+            X.at[idx, measurement_data_column_name] = filtered_image
 
         return X
 
