@@ -95,7 +95,7 @@ class MomentumTransferUnitsConversion(
                 radial_units="q_per_nm").T
 
         # Add q-ranges into dataset
-        X[q_range_column_name] = [q_range] * X.shape[0]
+        X[q_range_column_name] = q_range.tolist()
 
         return X
 
