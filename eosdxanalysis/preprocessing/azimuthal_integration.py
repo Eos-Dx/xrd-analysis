@@ -293,12 +293,6 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         X[profile_data_column_name] = \
                 X[profile_data_column_name].astype(object)
 
-        if not radial_point_count:
-            radial_point_count = int(np.sqrt(2)*np.max(
-                X[:1][measurement_data_column_name].values[0].shape))
-
-        results = np.zeros((X.shape[0], radial_point_count))
-
         # Loop over all samples using batches
         for idx in X.index:
 
