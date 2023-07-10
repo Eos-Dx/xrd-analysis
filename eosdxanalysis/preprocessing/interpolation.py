@@ -153,7 +153,7 @@ class Interpolator(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
                 X[interpolated_radial_profile_data_column_name].astype(object)
 
         # Loop over all samples using batches
-        for idx in range(X.shape[0]):
+        for idx in X.index:
 
             radial_intensity = X.loc[idx, radial_profile_data_column_name]
             q_range = X.loc[idx, q_range_column_name]
