@@ -4054,10 +4054,10 @@ class TestPreprocessingPipeline(unittest.TestCase):
         clf = make_pipeline(imrepair, azint, uconv, interp)
 
         # Transform the data
-        df_results = clf.transform(df)
+        df_uconv = clf[:3].transform(df)
 
-        orig_q_range = df_results.loc[0, "q_range"]
-        profile_1d = df_results.loc[0, "radial_profile_data"]
+        orig_q_range = df_uconv.loc[0, "q_range"]
+        profile_1d = df_uconv.loc[0, "radial_profile_data"]
         profile_1d_vs_q = np.vstack([orig_q_range, profile_1d]).T
 
         # Check if the preprocessing pipeline was successful
@@ -4072,8 +4072,10 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Test that the 1-D integrated profile is close to a step function
         self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
 
+        X_interp = clf.transform(df)
+
         # Ensure the interpolation was successful
-        interp_profile = df_results.loc[0, "interpolated_radial_profile_data"]
+        interp_profile = X_interp[0, :]
 
         # Check if the values are interpolated
         q_test = 0.7
