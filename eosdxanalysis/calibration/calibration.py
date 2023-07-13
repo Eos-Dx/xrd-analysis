@@ -25,6 +25,7 @@ from eosdxanalysis.calibration.materials import CALIBRATION_MATERIAL_LIST
 from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conversion
 from eosdxanalysis.calibration.units_conversion import real_position_from_q
 from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
+from eosdxanalysis.calibration.units_conversion import DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration
@@ -280,7 +281,7 @@ def sample_detector_distance(
 
         # Construct calibration results file content
         results_dict = {
-                "sample_distance_m": sample_distance_m,
+                DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME: sample_distance_m,
                 "beam_center": center,
                 "score": score if not doublet_only else None,
                 }
