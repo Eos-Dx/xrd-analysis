@@ -11,6 +11,8 @@ from sklearn.base import BaseEstimator
 
 
 DEFAULT_Q_RANGE_COLUMN_NAME = "q_range"
+DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME = "calculated_distance"
+DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
 
 
 class MomentumTransferUnitsConversion(
@@ -21,7 +23,9 @@ class MomentumTransferUnitsConversion(
     """
     def __init__(self, *, copy=True,
             wavelength_nm=None, pixel_size=None,
-            q_range_column_name=DEFAULT_Q_RANGE_COLUMN_NAME):
+            q_range_column_name=DEFAULT_Q_RANGE_COLUMN_NAME,
+            sample_distance_column_name=DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME,
+            radial_profile_data_column_name=DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME):
         """
         Parameters
         ----------
@@ -35,7 +39,8 @@ class MomentumTransferUnitsConversion(
         self.wavelength_nm = wavelength_nm
         self.pixel_size = pixel_size
         self.q_range_column_name = q_range_column_name
-
+        self.sample_distance_column_name = sample_distance_column_name
+        self.radial_profile_data_column_name = radial_profile_data_column_name
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -73,6 +78,8 @@ class MomentumTransferUnitsConversion(
         wavelength_nm = self.wavelength_nm
         pixel_size = self.pixel_size
         q_range_column_name = self.q_range_column_name
+        sample_distance_column_name = self.sample_distance_column_name
+        radial_profile_data_column_name = self.radial_profile_data_column_name
 
         if type(X) != type(pd.DataFrame()):
             raise ValueError("Input ``X`` must be a dataframe.")
@@ -80,19 +87,22 @@ class MomentumTransferUnitsConversion(
         if copy is True:
             X = X.copy()
 
-        sample_distance_mm = X["sample_distance_m"].values * 1e3
-        profile_data = X["radial_profile_data"].values
+        # Extract sample distance and radial profile data
+        sample_distance_mm = X[sample_distance_column_name].values * 1e3
+        profile_data = X[radial_profile_data_column_name].values
 
+        # Take first profile length as radial count
         radial_count = profile_data[0].shape[0]
+
         q_range = radial_profile_unit_conversion(
                 radial_count=radial_count,
                 sample_distance_mm=sample_distance_mm,
                 wavelength_nm=wavelength_nm,
                 pixel_size=pixel_size,
-                radial_units="q_per_nm").flatten()
+                radial_units="q_per_nm").T
 
         # Add q-ranges into dataset
-        X[q_range_column_name] = [q_range] * X.shape[0]
+        X[q_range_column_name] = q_range.tolist()
 
         return X
 

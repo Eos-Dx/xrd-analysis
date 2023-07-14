@@ -153,10 +153,10 @@ class Interpolator(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
                 X[interpolated_radial_profile_data_column_name].astype(object)
 
         # Loop over all samples using batches
-        for idx in range(X.shape[0]):
+        for idx in X.index:
 
             radial_intensity = X.loc[idx, radial_profile_data_column_name]
-            q_range = X.loc[idx, q_range_column_name]
+            q_range = np.asarray(X.loc[idx, q_range_column_name])
 
             radial_profile = np.vstack([q_range, radial_intensity]).T
 
@@ -168,6 +168,10 @@ class Interpolator(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
                     )
 
             X.at[idx, interpolated_radial_profile_data_column_name] = \
-                    interpolated_result
+                    interpolated_result.tolist()
+
+        # Return interpolated data only
+        X = np.asarray(
+                X[interpolated_radial_profile_data_column_name].values.tolist())
 
         return X

@@ -11,7 +11,7 @@ from scipy.interpolate import RegularGridInterpolator
 
 START_ANGLE_DEFAULT = -np.pi
 END_ANGLE_DEFAULT = np.pi
-AZIMUTHAL_POINT_COUNT_DEFAULT = 360
+DEFAULT_AZIMUTHAL_POINT_COUNT = 360
 
 
 def find_centroid(points):
@@ -475,7 +475,7 @@ def warp_polar_preprocessor(
         start_angle : float = None,
         end_angle : float = None,
         radial_point_count : int = None,
-        azimuthal_point_count : int = AZIMUTHAL_POINT_COUNT_DEFAULT):
+        azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT):
     """
     Performs warp polar preprocessing for azimuthal integration
     and radial intensity functions.
@@ -528,7 +528,7 @@ def warp_polar_preprocessor(
     if not radial_point_count:
         radial_point_count = end_radius - start_radius
     if not azimuthal_point_count:
-        azimuthal_point_count = AZIMUTHAL_POINT_COUNT_DEFAULT
+        azimuthal_point_count = DEFAULT_AZIMUTHAL_POINT_COUNT
     if (start_angle is None) and (end_angle is None):
         start_angle = START_ANGLE_DEFAULT
         end_angle = END_ANGLE_DEFAULT
