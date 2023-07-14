@@ -29,12 +29,13 @@ from eosdxanalysis.preprocessing.image_processing import enlarge_image
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
 from eosdxanalysis.preprocessing.utils import warp_polar_preprocessor
-from eosdxanalysis.preprocessing.utils import AZIMUTHAL_POINT_COUNT_DEFAULT
+from eosdxanalysis.preprocessing.utils import DEFAULT_AZIMUTHAL_POINT_COUNT
 
 from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conversion
 
 DEFAULT_DET_XSIZE = 256
 RES_DEFAULT = 1
+DEFAULT_MEASUREMENT_DATA_COLUMN_NAME = "measurement_data"
 DEFAULT_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
 
 
@@ -47,7 +48,7 @@ def azimuthal_integration(
         start_angle : float = None,
         end_angle : float = None,
         radial_point_count : int = None,
-        azimuthal_point_count : int = AZIMUTHAL_POINT_COUNT_DEFAULT,
+        azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT,
         fill : np.float = np.nan):
 
     """
@@ -121,7 +122,7 @@ def radial_intensity_sum(
         start_angle : float = None,
         end_angle : float = None,
         radial_point_count : int = None,
-        azimuthal_point_count : int = AZIMUTHAL_POINT_COUNT_DEFAULT,
+        azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT,
         fill : np.float = np.nan):
     """
     Performs 2D -> 1D radial intensity summation yielding total intensity
@@ -197,8 +198,9 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
             start_angle : float = None,
             end_angle : float = None,
             radial_point_count : int = None,
-            azimuthal_point_count : int = AZIMUTHAL_POINT_COUNT_DEFAULT,
+            azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT,
             fill : np.float = np.nan,
+            measurement_data_column_name : str = DEFAULT_MEASUREMENT_DATA_COLUMN_NAME,
             profile_data_column_name : str = DEFAULT_PROFILE_DATA_COLUMN_NAME,
             ):
         """
@@ -236,6 +238,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         self.radial_point_count = radial_point_count
         self.azimuthal_point_count = azimuthal_point_count
         self.fill = fill
+        self.measurement_data_column_name = measurement_data_column_name
         self.profile_data_column_name = profile_data_column_name
 
     def fit(self, X, y=None, sample_weight=None):
@@ -277,6 +280,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         radial_point_count = self.radial_point_count
         azimuthal_point_count = self.azimuthal_point_count
         fill = self.fill
+        measurement_data_column_name = self.measurement_data_column_name
         profile_data_column_name = self.profile_data_column_name
 
         if copy is True:
@@ -289,14 +293,10 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         X[profile_data_column_name] = \
                 X[profile_data_column_name].astype(object)
 
-        if not end_radius:
-            end_radius = int(np.sqrt(2)*np.max(X.shape[1:]))
-
-        results = np.zeros((X.shape[0], end_radius))
-
         # Loop over all samples using batches
-        for idx in range(X.shape[0]):
-            image = X.loc[idx, "measurement_data"]
+        for idx in X.index:
+
+            image = X.loc[idx, measurement_data_column_name]
 
             if type(center) != tuple:
                 center = find_center(image)
