@@ -86,6 +86,8 @@ def azimuthal_integration(
     profile_1d : (n,1)-array float
         Returns radial profile, where ``n`` is the ``azimuthal_point_count``.
     """
+    # Set dtype to np.float64
+    image = image.astype(np.float64).copy()
     # Beam masking
     if beam_rmax > 0:
         # Block out the beam
