@@ -1054,6 +1054,72 @@ class TestDenoising(unittest.TestCase):
                 np.array_equal(
                     repaired_image, known_repaired_image, equal_nan=True))
 
+    def test_denoising_center_finding_per_sample(self):
+        """
+        Ensure denoising calculates center for each sample
+        """
+        # Create two test images, both disc step functions, with
+        # different centers.
+
+        size = 256
+        shape = (size, size)
+
+        center_1 = (size//4, size//4)
+        center_2 = (3*size//4, size//2)
+
+        test_image_1 = np.zeros(shape)
+        test_image_2 = np.zeros(shape)
+
+        mask_1 = create_circular_mask(
+                size, size, center=center_1, rmin=0, rmax=size/4)
+        mask_2 = create_circular_mask(
+                size, size, center=center_2, rmin=0, rmax=size/4)
+
+        test_image_1[mask_1] = 1
+        test_image_2[mask_2] = 1
+
+        # Add beam
+        test_image_1[center_1] = 1e7
+        test_image_2[center_2] = 1e7
+
+        known_repaired_image_1 = test_image_1.copy()
+        known_repaired_image_2 = test_image_2.copy()
+
+        # Set hot spot coordinates
+        hot_spot_coords_1 = (size//8, size//8)
+        hot_spot_coords_2 = (3*size//8, size//4)
+        
+        known_repaired_image_1[hot_spot_coords_1] = np.nan
+        known_repaired_image_2[hot_spot_coords_2] = np.nan
+
+        test_image_1[hot_spot_coords_1] = 1e6
+        test_image_2[hot_spot_coords_2] = 1e6
+
+        end_radius = size//2
+
+        center = None
+
+        df = pd.DataFrame()
+        df["measurement_data"] = np.nan
+        df["measurement_data"] = df["measurement_data"].astype(object)
+        df.at["test_image_1", "measurement_data"] = test_image_1
+        df.at["test_image_2", "measurement_data"] = test_image_2
+
+        pixel_repair = FilterOutlierPixelValues(
+                threshold=1e3, absolute=True, filter_size=1, fill_method="nan",
+                beam_rmax=15)
+
+        df_results = pixel_repair.transform(df)
+
+        repaired_image_1 = df_results.loc["test_image_1", "measurement_data"]
+        repaired_image_2 = df_results.loc["test_image_2", "measurement_data"]
+
+        # Ensure the images are repaired
+        self.assertTrue(
+                np.array_equal(repaired_image_1, known_repaired_image_1, equal_nan=True))
+        self.assertTrue(
+                np.array_equal(repaired_image_2, known_repaired_image_2, equal_nan=True))
+
     def test_dead_pixel_repair_filter_outlier_pixel_values_dir(self):
         """
         """
@@ -3644,15 +3710,17 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
         center = np.array(shape)/2 - 0.5
 
-        test_image_array = test_image.reshape(
-                (1, test_image.shape[0], test_image.shape[1]))
-
         azimuthalintegration = AzimuthalIntegration(
                 center=center, end_radius=end_radius)
 
-        results = azimuthalintegration.transform(
-                test_image_array)
-        profile_1d = results[0, ...]
+        df = pd.DataFrame()
+        df["measurement_data"] = np.nan
+        df["measurement_data"] = df["measurement_data"].astype(object)
+        df.at["test_image", "measurement_data"] = test_image
+
+        df_results = azimuthalintegration.transform(df)
+
+        profile_1d = df_results.iloc[0]["radial_profile_data"]
         profile_size = profile_1d.size
         step_function = np.zeros(end_radius)
         step_function[:end_radius//2] = 1
@@ -3693,6 +3761,55 @@ class TestAzimuthalIntegration(unittest.TestCase):
         profile_size = profile_1d.size
 
         self.assertEqual(profile_size, end_radius-start_radius)
+
+    def test_azimuthal_integration_center_finding_per_sample(self):
+        """
+        Ensure azimuthal integration calculates center for each sample
+        """
+        # Create two test images, both disc step functions, with
+        # different centers. Resulting radial profiles should be nearly
+        # identical.
+
+        size = 256
+        shape = (size, size)
+
+        center_1 = (size//4, size//4)
+        center_2 = (3*size//4, size//2)
+
+        test_image_1 = np.zeros(shape)
+        test_image_2 = np.zeros(shape)
+
+        mask_1 = create_circular_mask(
+                size, size, center=center_1, rmin=0, rmax=size/4)
+        mask_2 = create_circular_mask(
+                size, size, center=center_2, rmin=0, rmax=size/4)
+
+        test_image_1[mask_1] = 1
+        test_image_2[mask_2] = 1
+
+        end_radius = size//2
+
+        center = None
+
+        df = pd.DataFrame()
+        df["measurement_data"] = np.nan
+        df["measurement_data"] = df["measurement_data"].astype(object)
+        df.at["test_image_1", "measurement_data"] = test_image_1
+        df.at["test_image_2", "measurement_data"] = test_image_2
+
+        azimuthalintegration = AzimuthalIntegration(
+                center=center, end_radius=end_radius)
+
+        df_results = azimuthalintegration.transform(df)
+
+        radial_profile_1 = df_results.loc["test_image_1", "radial_profile_data"]
+        radial_profile_2 = df_results.loc["test_image_2", "radial_profile_data"]
+
+        # Take the difference
+        diff = abs(radial_profile_1 - radial_profile_2)
+
+        # Test that the 1-D integrated profile is close to a step function
+        self.assertTrue(np.isclose(np.sum(diff), 0, atol=1))
 
 
 class TestInterpolation(unittest.TestCase):

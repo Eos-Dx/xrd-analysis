@@ -276,7 +276,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         """
         return self
 
-    def transform(self, X, copy=True, mask : np.ndarray = None):
+    def transform(self, X, copy=True):
         """Parameters
         ----------
         X : {array-like}, sparse matrix of shape (n_samples, n_features)
@@ -298,6 +298,11 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         fill_method= self.fill_method
         measurement_data_column_name = self.measurement_data_column_name
 
+        mask = None
+
+        if type(X) != pd.DataFrame:
+            raise ValueError("Input must be a dataframe.")
+
         if copy:
             X = X.copy()
 
@@ -305,16 +310,21 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         X[measurement_data_column_name] = \
                 X[measurement_data_column_name].astype(object)
 
+        # Check if dataset-wide center is provided
+        _find_center = False
+        if type(center) != tuple:
+            _find_center = True
+
         # Loop over all samples using batches
         for idx in X.index:
 
             image = X.loc[idx, measurement_data_column_name]
 
-            if not center:
-                center = find_center(image)
+            if _find_center:
+                center = find_center(image, rmax=beam_rmax)
 
             # Beam masking
-            if beam_rmax > 0 and type(mask) == type(None):
+            if beam_rmax > 0:
                 # Block out the beam
                 mask = create_circular_mask(
                         image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
