@@ -285,6 +285,9 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         measurement_data_column_name = self.measurement_data_column_name
         profile_data_column_name = self.profile_data_column_name
 
+        if type(X) != pd.DataFrame:
+            raise ValueError("Input must be a dataframe.")
+
         if copy is True:
             X = X.copy()
 
@@ -295,13 +298,18 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         X[profile_data_column_name] = \
                 X[profile_data_column_name].astype(object)
 
+        # Check if dataset-wide center is provided
+        _find_center = False
+        if type(center) != tuple:
+            _find_center = True
+
         # Loop over all samples using batches
         for idx in X.index:
 
             image = X.loc[idx, measurement_data_column_name]
 
-            if type(center) != tuple:
-                center = find_center(image)
+            if _find_center:
+                center = find_center(image, rmax=beam_rmax)
 
             radial_profile = azimuthal_integration(
                     image,
