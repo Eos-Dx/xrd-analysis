@@ -3710,15 +3710,17 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
         center = np.array(shape)/2 - 0.5
 
-        test_image_array = test_image.reshape(
-                (1, test_image.shape[0], test_image.shape[1]))
-
         azimuthalintegration = AzimuthalIntegration(
                 center=center, end_radius=end_radius)
 
-        results = azimuthalintegration.transform(
-                test_image_array)
-        profile_1d = results[0, ...]
+        df = pd.DataFrame()
+        df["measurement_data"] = np.nan
+        df["measurement_data"] = df["measurement_data"].astype(object)
+        df.at["test_image", "measurement_data"] = test_image
+
+        df_results = azimuthalintegration.transform(df)
+
+        profile_1d = df_results.iloc[0]["radial_profile_data"]
         profile_size = profile_1d.size
         step_function = np.zeros(end_radius)
         step_function[:end_radius//2] = 1
