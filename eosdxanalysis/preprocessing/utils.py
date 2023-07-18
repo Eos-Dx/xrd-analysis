@@ -51,8 +51,12 @@ def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None)
         shape = img.shape
 
         # If rmax is provided, then only look in beam region of interest
-        if type(rmax) != None:
+        if type(rmax) != type(None):
             if rmax > 0:
+                if type(mask_center) == type(None):
+                    max_indices = np.array(
+                            np.where(img == np.nanmax(img))).T
+                    mask_center = find_centroid(max_indices)
                 beam_roi = create_circular_mask(shape[0], shape[1],
                         center=mask_center, rmin=rmin, rmax=rmax)
                 img_roi = np.copy(img)
