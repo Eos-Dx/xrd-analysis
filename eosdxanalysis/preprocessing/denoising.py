@@ -276,7 +276,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         """
         return self
 
-    def transform(self, X, copy=True, mask : np.ndarray = None):
+    def transform(self, X, copy=True):
         """Parameters
         ----------
         X : {array-like}, sparse matrix of shape (n_samples, n_features)
@@ -297,6 +297,8 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         filter_size = self.filter_size
         fill_method= self.fill_method
         measurement_data_column_name = self.measurement_data_column_name
+
+        mask = None
 
         if type(X) != pd.DataFrame:
             raise ValueError("Input must be a dataframe.")
@@ -322,7 +324,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
                 center = find_center(image, rmax=beam_rmax)
 
             # Beam masking
-            if beam_rmax > 0 and type(mask) == type(None):
+            if beam_rmax > 0:
                 # Block out the beam
                 mask = create_circular_mask(
                         image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
