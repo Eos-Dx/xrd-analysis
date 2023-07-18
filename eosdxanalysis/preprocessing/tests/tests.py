@@ -1078,9 +1078,19 @@ class TestDenoising(unittest.TestCase):
         test_image_1[mask_1] = 1
         test_image_2[mask_2] = 1
 
-        # Add noise
+        # Add beam
+        test_image_1[center_1] = 1e7
+        test_image_2[center_2] = 1e7
+
+        known_repaired_image_1 = test_image_1.copy()
+        known_repaired_image_2 = test_image_2.copy()
+
+        # Set hot spot coordinates
         hot_spot_coords_1 = (size//8, size//8)
         hot_spot_coords_2 = (3*size//8, size//4)
+        
+        known_repaired_image_1[hot_spot_coords_1] = np.nan
+        known_repaired_image_2[hot_spot_coords_2] = np.nan
 
         test_image_1[hot_spot_coords_1] = 1e6
         test_image_2[hot_spot_coords_2] = 1e6
@@ -1096,16 +1106,19 @@ class TestDenoising(unittest.TestCase):
         df.at["test_image_2", "measurement_data"] = test_image_2
 
         pixel_repair = FilterOutlierPixelValues(
-                threshold=1e3, absolute=True, filter_size=1, fill_method="nan")
+                threshold=1e3, absolute=True, filter_size=1, fill_method="nan",
+                beam_rmax=15)
 
         df_results = pixel_repair.transform(df)
 
         repaired_image_1 = df_results.loc["test_image_1", "measurement_data"]
         repaired_image_2 = df_results.loc["test_image_2", "measurement_data"]
 
-        # Ensure the images are the same
-        self.assertTrue(np.array_equal(repaired_image_1, test_image_1))
-        self.assertTrue(np.array_equal(repaired_image_2, test_image_2))
+        # Ensure the images are repaired
+        self.assertTrue(
+                np.array_equal(repaired_image_1, known_repaired_image_1, equal_nan=True))
+        self.assertTrue(
+                np.array_equal(repaired_image_2, known_repaired_image_2, equal_nan=True))
 
     def test_dead_pixel_repair_filter_outlier_pixel_values_dir(self):
         """
