@@ -47,25 +47,25 @@ def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None)
     numpy array of row coordinates, second element numpy array of
     column coordinates. We reshape to (n,2).
     """
-    if method == "max_centroid":
-        shape = img.shape
+    shape = img.shape
 
-        # If rmax is provided, then only look in beam region of interest
-        if type(rmax) != type(None):
-            if rmax > 0:
-                if type(mask_center) == type(None):
-                    max_indices = np.array(
-                            np.where(img == np.nanmax(img))).T
-                    mask_center = find_centroid(max_indices)
-                beam_roi = create_circular_mask(shape[0], shape[1],
-                        center=mask_center, rmin=rmin, rmax=rmax)
-                img_roi = np.copy(img)
-                img_roi[~beam_roi]=0
-            elif rmax == 0:
-                img_roi = img
-        else:
+    # If rmax is provided, then only look in beam region of interest
+    if type(rmax) != type(None):
+        if rmax > 0:
+            if type(mask_center) == type(None):
+                max_indices = np.array(
+                        np.where(img == np.nanmax(img))).T
+                mask_center = find_centroid(max_indices)
+            beam_roi = create_circular_mask(shape[0], shape[1],
+                    center=mask_center, rmin=rmin, rmax=rmax)
+            img_roi = np.copy(img)
+            img_roi[~beam_roi]=0
+        elif rmax == 0:
             img_roi = img
+    else:
+        img_roi = img
 
+    if method == "max_centroid":
         # Find pixels with maximum intensity within beam region of interest (roi)
         # Take tranpose so each rows is coordinates for each point
         max_indices = np.array(np.where(img_roi == np.nanmax(img_roi))).T
@@ -74,8 +74,21 @@ def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None)
         center = find_centroid(max_indices)
 
         return center
+    elif method == "center_of_mass":
+        # Set up meshgrid
+        row_space = np.linspace(0, shape[0], endpoint=False, num=shape[0])
+        col_space = np.linspace(0, shape[1], endpoint=False, num=shape[1])
+
+        YY, XX = np.meshgrid(col_space, row_space)
+
+        # Calculate row and column center of mass
+        img_sum = np.nansum(img)
+        row_com = np.nansum(img * XX) / img_sum
+        col_com = np.nansum(img * YY) / img_sum
+
+        return tuple([row_com, col_com])
     else:
-        raise NotImplementedError("Please choose another method.")
+        raise NotImplementedError("Please choose another center finding method.")
 
 def create_circular_mask(nrows, ncols, center=None, rmin=0, rmax=None, mode="min"):
     """
