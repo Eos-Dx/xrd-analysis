@@ -152,9 +152,15 @@ def plot_data_dir(input_directory, output_directory, scaling="linear",
             image = median_filter(image, size=median_filter_size)
 
         if scaling == "linear":
+            image += abs(np.nanmin(image))
+            image[np.isnan(image)] = 0
             output_image = image
-        if scaling == "dB1":
+        elif scaling == "dB1":
             # Load image and convert to [dB+1]
+            # Handle negative counts
+            image += abs(np.nanmin(image))
+            image[np.isnan(image)] = 0
+            # Take dB of image + 1, setting nan values to zero
             image_dB1 = 20*np.log10(image+1)
             output_image = image_dB1
 
