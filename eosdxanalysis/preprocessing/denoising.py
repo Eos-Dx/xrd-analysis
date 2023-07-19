@@ -74,7 +74,7 @@ def find_outlier_pixel_values(
 
     """
     if type(mask) == np.ndarray:
-        working_image = image.copy()
+        working_image = image.astype(np.float64).copy()
         working_image[mask] = np.nan
     else:
         working_image = image
