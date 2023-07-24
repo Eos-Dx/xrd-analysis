@@ -3910,7 +3910,7 @@ class TestPreprocessingPipeline(unittest.TestCase):
         wavelength_nm = 0.1540562
         pixel_size = 55e-6
         sample_distance_mm = 150
-        sample_distance_m = [sample_distance_mm * 1e-3]
+        calculated_distance = [sample_distance_mm * 1e-3]
 
         # Create known 1D azimuthal profile versus q
         radial_range = np.arange(end_radius)
@@ -3951,7 +3951,7 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Units conversion parameters
         self.wavelength_nm = wavelength_nm
         self.pixel_size = pixel_size
-        self.sample_distance_m = sample_distance_m
+        self.calculated_distance = calculated_distance
 
         # Interpolation parameters
         self.desired_q_start = desired_q_start
@@ -4068,13 +4068,13 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Units conversion parameters
         wavelength_nm = self.wavelength_nm
         pixel_size = self.pixel_size
-        sample_distance_m = self.sample_distance_m
+        calculated_distance = self.calculated_distance
 
         measurement_data = [test_image]
 
         data = {
                 "measurement_data": measurement_data,
-                "sample_distance_m": sample_distance_m
+                "calculated_distance": calculated_distance
                 }
         df = pd.DataFrame(data)
 
@@ -4134,7 +4134,7 @@ class TestPreprocessingPipeline(unittest.TestCase):
         # Units conversion parameters
         wavelength_nm = self.wavelength_nm
         pixel_size = self.pixel_size
-        sample_distance_m = self.sample_distance_m
+        calculated_distance = self.calculated_distance
 
         # Interpolation parameters
         desired_q_start = self.desired_q_start
@@ -4146,7 +4146,7 @@ class TestPreprocessingPipeline(unittest.TestCase):
 
         data = {
                 "measurement_data": measurement_data,
-                "sample_distance_m": sample_distance_m
+                "calculated_distance": calculated_distance
                 }
         df = pd.DataFrame(data)
 
