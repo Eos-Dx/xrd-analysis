@@ -14,6 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from scipy.ndimage import generic_filter
+from scipy.signal import medfilt2d
 
 from sklearn.base import OneToOneFeatureMixin
 from sklearn.base import TransformerMixin
@@ -33,6 +34,7 @@ DEFAULT_LIMIT_TYPE = "max"
 DEFAULT_FILTER_SIZE = 5
 DEFAULT_FILL_METHOD = "median"
 DEFAULT_MEASUREMENT_DATA_COLUMN_NAME = "measurement_data"
+DEFAULT_MEDIAN_FILTER_SIZE = None
 
 
 def find_outlier_pixel_values(
@@ -232,6 +234,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
             filter_size : int = DEFAULT_FILTER_SIZE,
             fill_method : str = DEFAULT_FILL_METHOD,
             measurement_data_column_name : str = DEFAULT_MEASUREMENT_DATA_COLUMN_NAME,
+            median_filter_size : int = DEFAULT_MEDIAN_FILTER_SIZE,
             ):
 
         """
@@ -257,6 +260,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         self.filter_size = filter_size
         self.fill_method = fill_method
         self.measurement_data_column_name = measurement_data_column_name
+        self.median_filter_size = median_filter_size
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -297,6 +301,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         filter_size = self.filter_size
         fill_method= self.fill_method
         measurement_data_column_name = self.measurement_data_column_name
+        median_filter_size = self.median_filter_size
 
         mask = None
 
@@ -340,6 +345,10 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
                     fill_method=fill_method,
                     )
 
+            if type(median_filter_size) == int:
+                filtered_image = medfilt2d(
+                        filtered_image, kernel_size=median_filter_size)
+
             X.at[idx, measurement_data_column_name] = filtered_image
 
         return X
@@ -355,6 +364,7 @@ def filter_outlier_pixel_values_dir(
             limit_type = DEFAULT_LIMIT_TYPE,
             coords_array : np.ndarray = None,
             filter_size : int = DEFAULT_FILTER_SIZE,
+            median_filter_size : int = DEFAULT_MEDIAN_FILTER_SIZE,
             fill_method : str = DEFAULT_FILL_METHOD,
             file_format=None,
             verbose=False):
@@ -480,6 +490,10 @@ def filter_outlier_pixel_values_dir(
                 filter_size=filter_size,
                 fill_method=fill_method)
 
+        if type(median_filter_size) == int:
+            filtered_image = medfilt2d(
+                    filtered_image, kernel_size=median_filter_size)
+
         # Save results
         data_output_filepath = os.path.join(output_path, filename)
         if file_format in ["txt", "tif", "tiff"]:
@@ -527,6 +541,9 @@ if __name__ == '__main__':
             "--filter_size", type=int, default=DEFAULT_FILTER_SIZE,
             help="Size of filter to use.")
     parser.add_argument(
+            "--median_filter_size", type=int, default=DEFAULT_MEDIAN_FILTER_SIZE,
+            help="Size of median filter to use.")
+    parser.add_argument(
             "--center", type=str,
             default=None,
             help="Set diffraction pattern center for entire dataset.")
@@ -556,6 +573,7 @@ if __name__ == '__main__':
     absolute = args.absolute
     fill_method = args.fill_method
     filter_size = args.filter_size
+    median_filter_size = args.median_filter_size
     limit_type = args.limit_type
     visualize = args.visualize
     overwrite = args.overwrite
@@ -574,6 +592,7 @@ if __name__ == '__main__':
         absolute=absolute,
         fill_method=fill_method,
         filter_size=filter_size,
+        median_filter_size=median_filter_size,
         limit_type=limit_type,
         file_format=file_format,
         verbose=verbose,
