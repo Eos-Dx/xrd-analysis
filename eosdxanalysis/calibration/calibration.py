@@ -24,7 +24,6 @@ from eosdxanalysis.calibration.materials import CALIBRATION_MATERIAL_LIST
 
 from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conversion
 from eosdxanalysis.calibration.units_conversion import real_position_from_q
-from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
 from eosdxanalysis.calibration.units_conversion import DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
@@ -466,25 +465,45 @@ def detector_spacing_calibration(
                     VALID_FILE_FORMATS,
                     ))
 
-    # Instantiate DiffractionUnitsConversion class
-    calibrator = DiffractionUnitsConversion(
-            wavelength_nm=wavelength_nm, pixel_size=pixel_size)
 
-    # Get q-peaks reference
-    q_peaks_ref_per_ang = calibrator.q_peaks_ref
+    # Look up calibration material q-peaks reference data
+    try:
+        q_peaks_ref = q_peaks_ref_dict[calibration_material]
+    except KeyError as err:
+        print("Calibration material {} not found!".format(
+                                        calibration_material))
+
+    wavelength_angstroms = wavelength_nm*1e1
+
+    singlets = np.array(q_peaks_ref.get("singlets")).flatten()
 
     # Average the doublets
-    doublets = np.array(q_peaks_ref_per_ang.get("doublets"))
+    doublets = np.array(q_peaks_ref.get("doublets"))
     if doublets.size > 0:
-        doublet_q_per_ang = np.mean(doublets)
-        doublet_q_per_nm = 10*doublet_q_per_ang
+        doublets_avg = np.array(np.mean(doublets)).flatten()
+    singlets = np.array(q_peaks_ref.get("singlets")).flatten()
+    # Join the singlets and doublets averages into a single array
+    q_peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
+
+    # Load calibration image
+    if file_format == "txt":
+        image = np.loadtxt(image_fullpath, dtype=np.float64)
+    if file_format == "npy":
+        image = np.load(image_fullpath)
+    elif file_format in ["tif", "tiff"]:
+        image = io.imread(image_fullpath).astype(np.float64)
 
     start_row = int(beam_center[0] - strip_width/2)
     end_row = int(beam_center[0] + strip_width/2)
     horizontal_strip = image[start_row:end_row, :]
 
     horizontal_profile = np.mean(horizontal_strip, axis=0)
-    filtered_profile =  uniform_filter1d(horizontal_profile, filter_size)
+    if type(filter_size) == int:
+        filtered_profile =  uniform_filter1d(horizontal_profile, filter_size)
+    else:
+        filtered_profile = horizontal_profile
+
+    doublet_q_per_nm = doublets_avg[0] * 10
 
     if doublet_only:
         try:
@@ -497,12 +516,16 @@ def detector_spacing_calibration(
             plt.scatter(peak_location, filtered_profile[peak_location])
             plt.show()
 
+        sample_distance_mm = sample_distance * 1e3
+
         # Calculate distance from beam center to doublet peak in pixel units
-        beam_doublet_distance_m = real_position_from_q(
-                q_per_nm=doublet_q_per_nm, sample_distance_m=sample_distance,
+        beam_doublet_distance_mm = real_position_from_q(
+                q_per_nm=doublet_q_per_nm, sample_distance_mm=sample_distance_mm,
                 wavelength_nm=wavelength_nm)
 
-        detector_size_m = 256*pixel_size
+        beam_doublet_distance_m = beam_doublet_distance_mm * 1e-3
+
+        detector_size_m = image.shape[0]*pixel_size
         beam_position_m = beam_center[1]*pixel_size
         doublet_position_det2_m = peak_location*pixel_size
         # beam_doublet_distance = (detector_size - beam_position) + detector_spacing + \
@@ -542,6 +565,7 @@ def detector_spacing_calibration(
         print("{} m".format(detector_spacing_m))
 
     return detector_spacing_m
+
 
 if __name__ == "__main__":
     """
@@ -671,6 +695,7 @@ if __name__ == "__main__":
                 image_fullpath=image_fullpath,
                 calibration_material=calibration_material,
                 wavelength_nm=wavelength_nm,
+                pixel_size=pixel_size,
                 sample_distance=sample_distance,
                 beam_center=beam_center,
                 filter_size=filter_size,
