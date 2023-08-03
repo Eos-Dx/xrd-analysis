@@ -9,7 +9,7 @@
 project = 'Eos Dx Analysis'
 copyright = '2022, Eos Dx, Inc.'
 author = 'Eos Dx, Inc.'
-release = '2.66.3'
+release = '2.67.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
