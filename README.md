@@ -1,5 +1,5 @@
 # xrd-analysis
-Software for Eos Dx, Inc. sample preprocessing and analysis. Last updated for v2.66.2.
+Software for Eos Dx, Inc. sample preprocessing and analysis. Last updated for v2.66.3.
 
 ## Documentation
 
