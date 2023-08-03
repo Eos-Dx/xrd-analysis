@@ -402,3 +402,12 @@ def real_position_from_q(q_per_nm=None, sample_distance_mm=None, wavelength_nm=N
     position_mm = real_position_from_two_theta(
             two_theta=two_theta, sample_distance_mm=sample_distance_mm)
     return position_mm
+
+def sample_distance_from_q(
+        q_per_nm=None, wavelength_nm=None, real_position_mm=None):
+    """
+    """
+    theta = np.arcsin(q_per_nm * wavelength_nm / (4*np.pi))
+    two_theta = 2 * theta
+    sample_distance_mm = real_position_mm / np.tan(two_theta)
+    return sample_distance_mm
