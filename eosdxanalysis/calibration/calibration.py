@@ -206,7 +206,7 @@ def sample_detector_distance(
             else:
                 print("Please enter in a new height and width.")
                 singlet_height_input = input("Height: ")
-                singlet_width_input = input("Width:" )
+                singlet_width_input = input("Width: " )
                 if singlet_height_input != "":
                     singlet_height = int(singlet_height_input)
                 if singlet_width_input != "":
@@ -281,7 +281,7 @@ def sample_detector_distance(
         # Construct calibration results file content
         results_dict = {
                 DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME: sample_distance_m,
-                "beam_center": center,
+                "beam_center": list(center),
                 "score": score if not doublet_only else None,
                 }
 
@@ -443,10 +443,11 @@ def detector_spacing_calibration(
         calibration_material=None,
         wavelength_nm=None,
         pixel_size=None,
+        doublet_height=DEFAULT_DOUBLET_HEIGHT,
+        doublet_width=DEFAULT_DOUBLET_WIDTH,
         sample_distance=None,
         beam_center=None,
         filter_size=16,
-        strip_width=8,
         save=False,
         doublet_only=False):
     """
@@ -464,7 +465,6 @@ def detector_spacing_calibration(
                     file_format,
                     VALID_FILE_FORMATS,
                     ))
-
 
     # Look up calibration material q-peaks reference data
     try:
@@ -493,22 +493,26 @@ def detector_spacing_calibration(
     elif file_format in ["tif", "tiff"]:
         image = io.imread(image_fullpath).astype(np.float64)
 
-    start_row = int(beam_center[0] - strip_width/2)
-    end_row = int(beam_center[0] + strip_width/2)
-    horizontal_strip = image[start_row:end_row, :]
+    # Perform azimuthal integration
+    radial_profile = azimuthal_integration(
+            image,
+            center=beam_center)
 
-    horizontal_profile = np.mean(horizontal_strip, axis=0)
     if type(filter_size) == int:
-        filtered_profile =  uniform_filter1d(horizontal_profile, filter_size)
+        filtered_profile =  uniform_filter1d(radial_profile, filter_size)
     else:
-        filtered_profile = horizontal_profile
+        filtered_profile = radial_profile
 
     doublet_q_per_nm = doublets_avg[0] * 10
 
     if doublet_only:
+        doublet_peak_indices_approx, properties = find_peaks(
+                filtered_profile, width=doublet_width,
+                height=doublet_height)
+
         try:
-            peak_location = np.where(filtered_profile == np.max(filtered_profile))[0][0]
-        except ValueError as err:
+            peak_location = doublet_peak_indices_approx[0]
+        except:
             raise ValueError("Doublet peak not found.")
 
         if visualize:
@@ -530,7 +534,7 @@ def detector_spacing_calibration(
         doublet_position_det2_m = peak_location*pixel_size
         # beam_doublet_distance = (detector_size - beam_position) + detector_spacing + \
         #       doublet_position_det2_m
-        detector_spacing_m = beam_doublet_distance_m - (detector_size_m - beam_position_m) - \
+        detector_spacing_m = beam_doublet_distance_m + beam_position_m - detector_size_m - \
                 doublet_position_det2_m
     else:
         raise NotImplementedError
@@ -635,7 +639,7 @@ if __name__ == "__main__":
             help="Calibrate the secondary detector position.")
     parser.add_argument(
             "--beam_center", type=str, default=None,
-            help="The y-position of the beam.")
+            help="The position of the beam on detector 1.")
     parser.add_argument(
             "--sample_distance", type=float, default=None,
             help="The distance between the sample and the detector (multi-detector case).")
@@ -651,7 +655,13 @@ if __name__ == "__main__":
     wavelength_nm = args.wavelength_nm
     pixel_size = args.pixel_size
     beam_rmax = args.beam_rmax
-    center = ",".split(args.center) if args.center else None
+    if type(beam_rmax) == type(None):
+        beam_rmax = 0
+    center_arg = args.center
+    if center_arg:
+        center = np.array(center_arg.strip("( )").split(",")).astype(float)
+    else:
+        center = None
     distance_approx = args.distance_approx
     doublet_height = args.doublet_height
     doublet_width = args.doublet_width
@@ -698,6 +708,8 @@ if __name__ == "__main__":
                 pixel_size=pixel_size,
                 sample_distance=sample_distance,
                 beam_center=beam_center,
+                doublet_height=doublet_height,
+                doublet_width=doublet_width,
                 filter_size=filter_size,
                 save=save,
                 doublet_only=doublet_only,
