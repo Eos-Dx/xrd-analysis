@@ -23,6 +23,7 @@
       polar_meshgrid
       quadrant_fold
       radial_integration
+      relative_center
       unwarp_polar
       warp_polar_preprocessor
       zerocross1d
