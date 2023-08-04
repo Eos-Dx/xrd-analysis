@@ -39,7 +39,13 @@ def find_centroid(points):
     # Return centroid
     return tuple(np.nanmean(points,axis=0))
 
-def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None):
+def find_center(
+        img,
+        mask_center=None,
+        method="max_centroid",
+        rmin=0,
+        rmax=None,
+        percentile=None):
     """
     Find the center of an image in matrix notation
 
@@ -87,6 +93,16 @@ def find_center(img, mask_center=None, method="max_centroid", rmin=0, rmax=None)
         col_com = np.nansum(img * YY) / img_sum
 
         return tuple([row_com, col_com])
+    elif method == "percentile_centroid":
+        if type(percentile) != float or percentile > 1 or percentile < 0:
+            raise ValueError("``percentile`` must be a float from 0 to 1.")
+        img_roi_percentile = np.nanmax(img_roi) * percentile
+        percentile_indices = np.array(np.where(img_roi >= img_roi_percentile)).T
+
+        # Find centroid of max intensity
+        center = find_centroid(percentile_indices)
+
+        return center
     else:
         raise NotImplementedError("Please choose another center finding method.")
 
@@ -596,3 +612,13 @@ def warp_polar_preprocessor(
     polar_image_subset = interp((AA, RR))
 
     return polar_image_subset
+
+def relative_center(
+        center_det1 : tuple = None,
+        detector_spacing : float = None,
+        detector_size : int = None,
+        pixel_size : float = None):
+    """Calculate the relative beam position with respect to detector 2.
+    """
+    new_center = center_det1[0], (-detector_size + center_det1[1]) - detector_spacing/pixel_size
+    return new_center
