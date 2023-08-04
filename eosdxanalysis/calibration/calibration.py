@@ -16,7 +16,7 @@ from skimage.transform import warp
 from skimage.transform import EuclideanTransform
 
 from scipy.signal import find_peaks
-from scipy.ndimage import uniform_filter1d
+from scipy.ndimage import convolve1d
 
 from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
@@ -28,8 +28,10 @@ from eosdxanalysis.calibration.units_conversion import DEFAULT_SAMPLE_DISTANCE_C
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.azimuthal_integration import azimuthal_integration
+from eosdxanalysis.preprocessing.azimuthal_integration import DEFAULT_DET_XSIZE
 
 from eosdxanalysis.preprocessing.utils import find_center
+from eosdxanalysis.preprocessing.utils import relative_center
 
 from eosdxanalysis.preprocessing.image_processing import pad_image
 from eosdxanalysis.preprocessing.utils import quadrant_fold
@@ -41,6 +43,7 @@ DEFAULT_DOUBLET_APPROX_MIN_FACTOR = 0.5
 DEFAULT_DOUBLET_APPROX_MAX_FACTOR = 2.0
 DEFAULT_DOUBLET_WIDTH = 4
 DEFAULT_DOUBLET_HEIGHT = 8
+DEFAULT_STRIP_WIDTH = 16
 
 VALID_FILE_FORMATS = [
         "txt",
@@ -48,7 +51,6 @@ VALID_FILE_FORMATS = [
         "tiff",
         "npy",
         ]
-
 
 def sample_detector_distance(
         image,
@@ -446,8 +448,11 @@ def detector_spacing_calibration(
         doublet_height=DEFAULT_DOUBLET_HEIGHT,
         doublet_width=DEFAULT_DOUBLET_WIDTH,
         sample_distance=None,
+        strip_width=DEFAULT_STRIP_WIDTH,
         beam_center=None,
         filter_size=16,
+        start_radius=None,
+        end_radius=None,
         save=False,
         doublet_only=False):
     """
@@ -493,15 +498,17 @@ def detector_spacing_calibration(
     elif file_format in ["tif", "tiff"]:
         image = io.imread(image_fullpath).astype(np.float64)
 
-    # Perform azimuthal integration
-    radial_profile = azimuthal_integration(
-            image,
-            center=beam_center)
+    start_row = int(beam_center[0] - strip_width/2)
+    end_row = int(beam_center[0] + strip_width/2)
+    horizontal_strip = image[start_row:end_row, :]
+
+    horizontal_profile = np.mean(horizontal_strip, axis=0)
 
     if type(filter_size) == int:
-        filtered_profile =  uniform_filter1d(radial_profile, filter_size)
+        weights = np.ones(filter_size)/filter_size
+        filtered_profile = convolve1d(horizontal_profile, weights, cval=np.nan)
     else:
-        filtered_profile = radial_profile
+        filtered_profile = horizontal_profile
 
     doublet_q_per_nm = doublets_avg[0] * 10
 
@@ -710,6 +717,8 @@ if __name__ == "__main__":
                 beam_center=beam_center,
                 doublet_height=doublet_height,
                 doublet_width=doublet_width,
+                start_radius=start_radius,
+                end_radius=end_radius,
                 filter_size=filter_size,
                 save=save,
                 doublet_only=doublet_only,
