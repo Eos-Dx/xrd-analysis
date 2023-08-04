@@ -50,7 +50,6 @@ def azimuthal_integration(
         radial_point_count : int = None,
         azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT,
         fill : np.float = np.nan):
-
     """
     Performs 2D -> 1D azimuthal integration yielding mean intensity as a
     function of radius
