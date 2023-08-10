@@ -516,7 +516,8 @@ def warp_polar_preprocessor(
         start_angle : float = None,
         end_angle : float = None,
         radial_point_count : int = None,
-        azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT):
+        azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT,
+        fill : np.float = np.nan):
     """
     Performs warp polar preprocessing for azimuthal integration
     and radial intensity functions.
@@ -592,7 +593,7 @@ def warp_polar_preprocessor(
     output_shape = (full_azimuthal_point_count, end_radius)
     polar_image = warp_polar(
             image, center=center, radius=end_radius,
-            mode="constant", cval=np.nan,
+            mode="constant", cval=fill,
             output_shape=output_shape, preserve_range=True)
 
     polar_image = polar_image[:, start_radius:end_radius]
