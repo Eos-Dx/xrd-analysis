@@ -107,7 +107,8 @@ def azimuthal_integration(
         start_angle=start_angle,
         end_angle=end_angle,
         radial_point_count=radial_point_count,
-        azimuthal_point_count=azimuthal_point_count)
+        azimuthal_point_count=azimuthal_point_count,
+        fill=fill)
 
     # Calculate the mean
     profile_1d = np.nanmean(polar_image_subset, axis=0)
