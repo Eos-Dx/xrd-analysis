@@ -68,7 +68,6 @@ def sample_detector_distance(
         start_radius=None,
         end_radius=None,
         padding=None,
-        height=None,
         save=False,
         image_fullpath=None,
         doublet_only=False):
@@ -119,7 +118,7 @@ def sample_detector_distance(
 
     radial_profile = azimuthal_integration(
             image, center=center, beam_rmax=beam_rmax,
-            start_radius=start_radius, end_radius=end_radius)
+            start_radius=start_radius, end_radius=end_radius, fill=0)
 
     # Use the doublet peak location only
     doublet_peak_index = None
@@ -612,10 +611,10 @@ if __name__ == "__main__":
             "--beam_rmax", type=int,
             help="The radius to block out the beam (in pixel units).")
     parser.add_argument(
-            "--doublet_width", default=DEFAULT_DOUBLET_WIDTH,
+            "--doublet_width", type=float, default=DEFAULT_DOUBLET_WIDTH,
             help="The doublet width to look for.")
     parser.add_argument(
-            "--doublet_height", default=DEFAULT_DOUBLET_HEIGHT,
+            "--doublet_height", type=float, default=DEFAULT_DOUBLET_HEIGHT,
             help="The doublet height to look for.")
     parser.add_argument(
             "--distance_approx", type=float,
@@ -626,9 +625,6 @@ if __name__ == "__main__":
     parser.add_argument(
             "--end_radius", type=int, default=None,
             help="The maximum radius to analyze.")
-    parser.add_argument(
-            "--height", type=float, default=None,
-            help="The height of the doublet peak")
     parser.add_argument(
             "--visualize", action="store_true",
             help="Plot calibration results to screen")
