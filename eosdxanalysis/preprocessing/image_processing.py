@@ -1,6 +1,8 @@
 import numpy as np
-import skimage
 from scipy.ndimage import map_coordinates
+from scipy.interpolate import interp1d
+from skimage.transform import AffineTransform
+from skimage.transform import warp
 
 """
 Functions for image processing
@@ -111,3 +113,34 @@ def bright_pixel_count(image, qmin=0, qmax=1, offset=0):
         qcount = (image_rescaled >= qmin).sum()
 
     return qcount
+
+def concatenate_detector_images(image1, image2, detector_spacing, pixel_size):
+    """Code to concatenate images from two detectors.
+    Uses skimage.transform.EuclideanTransform to shift second detector
+    by arbitrary number of pixel lengths.
+    """
+    if image1.shape != image2.shape:
+        raise ValueError("Input images must be the same shape")
+
+    # Set translation parameters
+    trans_x = detector_spacing / pixel_size
+    trans_y = 0
+
+    # Construct transform matrix
+    tform = AffineTransform(translation=(trans_x, trans_y))
+
+    # Set output shape
+    output_shape = (image2.shape[0], image2.shape[1] + int(np.floor(trans_x)))
+
+    # Translate image2
+    image2_trans = warp(
+            image2,
+            tform.inverse,
+            cval=np.nan,
+            preserve_range=True,
+            output_shape=output_shape)
+
+    # Concatenate images
+    images_combined = np.hstack([image1, image2_trans])
+
+    return images_combined
