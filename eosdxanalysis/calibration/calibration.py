@@ -118,7 +118,7 @@ def sample_detector_distance(
 
     radial_profile = azimuthal_integration(
             image, center=center, beam_rmax=beam_rmax,
-            start_radius=start_radius, end_radius=end_radius, fill=0)
+            start_radius=start_radius, end_radius=end_radius, fill=np.nan)
 
     # Use the doublet peak location only
     doublet_peak_index = None
