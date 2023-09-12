@@ -45,7 +45,8 @@ def find_center(
         method="max_centroid",
         rmin=0,
         rmax=None,
-        percentile=None):
+        percentile=None,
+        threshold=1e6):
     """
     Find the center of an image in matrix notation
 
@@ -78,6 +79,15 @@ def find_center(
 
         # Find centroid of max intensity
         center = find_centroid(max_indices)
+
+        return center
+    elif method == "trunc_centroid":
+        # Find pixels with maximum intensity within beam region of interest (roi)
+        # Take tranpose so each rows is coordinates for each point
+        trunc_max_indices = np.array(np.where(img_roi >= threshold)).T
+
+        # Find centroid of truncated maximum intensity
+        center = find_centroid(trunc_max_indices)
 
         return center
     elif method == "center_of_mass":
