@@ -37,6 +37,7 @@ DEFAULT_DET_XSIZE = 256
 RES_DEFAULT = 1
 DEFAULT_MEASUREMENT_DATA_COLUMN_NAME = "measurement_data"
 DEFAULT_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
+DEFAULT_CENTER_METHOD = "trunc_centroid"
 
 
 def azimuthal_integration(
@@ -118,6 +119,7 @@ def azimuthal_integration(
 def radial_intensity_sum(
         image : np.ndarray,
         center : np.ndarray = None,
+        center_method : str = DEFAULT_CENTER_METHOD,
         beam_rmax : int = 0,
         start_radius : int = None,
         end_radius: int = None,
@@ -309,7 +311,8 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
             image = X.loc[idx, measurement_data_column_name]
 
             if _find_center:
-                center = find_center(image, rmax=beam_rmax)
+                center = find_center(
+                        image, rmax=beam_rmax, method="trunc_centroid")
 
             radial_profile = azimuthal_integration(
                     image,
