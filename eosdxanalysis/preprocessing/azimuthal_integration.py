@@ -240,8 +240,8 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         """
         self.copy = copy
         self.center = center
-        self.cetner_method = center_method
-        self.cetner_method_threshold = center_method_threshold
+        self.center_method = center_method
+        self.center_method_threshold = center_method_threshold
         self.beam_rmax = beam_rmax
         self.start_radius = start_radius
         self.end_radius = end_radius
