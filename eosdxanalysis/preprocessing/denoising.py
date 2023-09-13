@@ -28,6 +28,7 @@ from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
 
 DEFAULT_BEAM_RMAX = 0
+DEFAULT_CENTER_METHOD = "trunc_centroid"
 DEFAULT_THRESHOLD = 0.75
 DEFAULT_ABSOLUTE = False
 DEFAULT_LIMIT_TYPE = "max"
@@ -226,6 +227,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
     def __init__(self, *,
             copy=True,
             center=None,
+            center_method : str = DEFAULT_CENTER_METHOD,
             beam_rmax : int = DEFAULT_BEAM_RMAX,
             threshold : float = DEFAULT_THRESHOLD,
             absolute : bool = DEFAULT_ABSOLUTE,
@@ -252,6 +254,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         """
         self.copy = copy
         self.center = center
+        self.center_method = center_method
         self.beam_rmax = beam_rmax
         self.threshold = threshold
         self.absolute = absolute
@@ -293,6 +296,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
             Transformed array.
         """
         center = self.center
+        center_method = self.center_method
         beam_rmax = self.beam_rmax
         threshold = self.threshold
         absolute = self.absolute
@@ -326,7 +330,8 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
             image = X.loc[idx, measurement_data_column_name]
 
             if _find_center:
-                center = find_center(image, rmax=beam_rmax)
+                center = find_center(
+                        image, rmax=beam_rmax, method=center_method)
 
             # Beam masking
             if beam_rmax > 0:
