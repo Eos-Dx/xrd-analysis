@@ -9,8 +9,8 @@ from skimage.transform import warp_polar
 
 from scipy.interpolate import RegularGridInterpolator
 
-START_ANGLE_DEFAULT = -np.pi
-END_ANGLE_DEFAULT = np.pi
+START_ANGLE_DEFAULT = 0
+END_ANGLE_DEFAULT = 2*np.pi
 DEFAULT_AZIMUTHAL_POINT_COUNT = 360
 
 
@@ -595,8 +595,8 @@ def warp_polar_preprocessor(
             2*np.pi/(end_angle - start_angle)*azimuthal_point_count)
 
     full_azimuthal_range = np.linspace(
-            -np.pi,
-            np.pi,
+            0,
+            2*np.pi,
             num=full_azimuthal_point_count)
 
     # Perform a polar warp on the input image for entire azimuthal range
@@ -606,7 +606,7 @@ def warp_polar_preprocessor(
             mode="constant", cval=fill,
             output_shape=output_shape, preserve_range=True)
 
-    polar_image = polar_image[:, start_radius:end_radius]
+    polar_image = polar_image[::-1, start_radius:end_radius]
 
     # Interpolate if subset is needed
     interp = RegularGridInterpolator(
