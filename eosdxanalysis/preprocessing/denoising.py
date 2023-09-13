@@ -28,6 +28,8 @@ from eosdxanalysis.preprocessing.utils import create_circular_mask
 from eosdxanalysis.preprocessing.utils import find_center
 
 DEFAULT_BEAM_RMAX = 0
+DEFAULT_CENTER_METHOD = "trunc_centroid"
+DEFAULT_CENTER_METHOD_THRESHOLD = 1e6
 DEFAULT_THRESHOLD = 0.75
 DEFAULT_ABSOLUTE = False
 DEFAULT_LIMIT_TYPE = "max"
@@ -226,6 +228,8 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
     def __init__(self, *,
             copy=True,
             center=None,
+            center_method : str = DEFAULT_CENTER_METHOD,
+            center_method_threshold : float = DEFAULT_CENTER_METHOD_THRESHOLD,
             beam_rmax : int = DEFAULT_BEAM_RMAX,
             threshold : float = DEFAULT_THRESHOLD,
             absolute : bool = DEFAULT_ABSOLUTE,
@@ -252,6 +256,8 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         """
         self.copy = copy
         self.center = center
+        self.center_method = center_method
+        self.center_method_threshold = center_method_threshold
         self.beam_rmax = beam_rmax
         self.threshold = threshold
         self.absolute = absolute
@@ -293,6 +299,8 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
             Transformed array.
         """
         center = self.center
+        center_method = self.center_method
+        center_method_threshold = self.center_method_threshold
         beam_rmax = self.beam_rmax
         threshold = self.threshold
         absolute = self.absolute
@@ -326,7 +334,9 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
             image = X.loc[idx, measurement_data_column_name]
 
             if _find_center:
-                center = find_center(image, rmax=beam_rmax)
+                center = find_center(
+                        image, rmax=beam_rmax, method=center_method,
+                        threshold=center_method_threshold)
 
             # Beam masking
             if beam_rmax > 0:
