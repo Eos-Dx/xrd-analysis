@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>DEFAULT_FILTER_SIZE &#8212; Eos Dx Analysis 2.71.1 documentation</title>
+    <title>DEFAULT_CENTER_METHOD &#8212; Eos Dx Analysis 2.71.1 documentation</title>
   <script>
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
@@ -35,11 +35,11 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.denoising.DEFAULT_FILTER_SIZE';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/eosdxanalysis.preprocessing.denoising.DEFAULT_CENTER_METHOD';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="DEFAULT_LIMIT_TYPE" href="eosdxanalysis.preprocessing.denoising.DEFAULT_LIMIT_TYPE.html" />
-    <link rel="prev" title="DEFAULT_FILL_METHOD" href="eosdxanalysis.preprocessing.denoising.DEFAULT_FILL_METHOD.html" />
+    <link rel="next" title="DEFAULT_CENTER_METHOD_THRESHOLD" href="eosdxanalysis.preprocessing.denoising.DEFAULT_CENTER_METHOD_THRESHOLD.html" />
+    <link rel="prev" title="DEFAULT_BEAM_RMAX" href="eosdxanalysis.preprocessing.denoising.DEFAULT_BEAM_RMAX.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="docsearch:language" content="en">
   </head>
@@ -332,8 +332,8 @@
    DEFAULT_BEAM_RMAX
   </a>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.DEFAULT_CENTER_METHOD.html">
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
    DEFAULT_CENTER_METHOD
   </a>
  </li>
@@ -347,8 +347,8 @@
    DEFAULT_FILL_METHOD
   </a>
  </li>
- <li class="toctree-l1 current active">
-  <a class="current reference internal" href="#">
+ <li class="toctree-l1">
+  <a class="reference internal" href="eosdxanalysis.preprocessing.denoising.DEFAULT_FILTER_SIZE.html">
    DEFAULT_FILTER_SIZE
   </a>
  </li>
@@ -540,23 +540,20 @@
             
             <article class="bd-article" role="main">
               
-  <section id="default-filter-size">
-<h1>DEFAULT_FILTER_SIZE<a class="headerlink" href="#default-filter-size" title="Permalink to this heading">#</a></h1>
+  <section id="default-center-method">
+<h1>DEFAULT_CENTER_METHOD<a class="headerlink" href="#default-center-method" title="Permalink to this heading">#</a></h1>
 <dl class="py data">
-<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.denoising.DEFAULT_FILTER_SIZE">
-<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">DEFAULT_FILTER_SIZE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.DEFAULT_FILTER_SIZE" title="Permalink to this definition">#</a></dt>
-<dd><p>int([x]) -&gt; integer
-int(x, base=10) -&gt; integer</p>
-<p>Convert a number or string to an integer, or return 0 if no arguments
-are given.  If x is a number, return x.__int__().  For floating point
-numbers, this truncates towards zero.</p>
-<p>If x is not a number or if base is given, then x must be a string,
-bytes, or bytearray instance representing an integer literal in the
-given base.  The literal can be preceded by ‘+’ or ‘-’ and be surrounded
-by whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.
-Base 0 means to interpret the base from the string as an integer literal.
-&gt;&gt;&gt; int(‘0b100’, base=0)
-4</p>
+<dt class="sig sig-object py" id="eosdxanalysis.preprocessing.denoising.DEFAULT_CENTER_METHOD">
+<span class="sig-prename descclassname"><span class="pre">eosdxanalysis.preprocessing.denoising.</span></span><span class="sig-name descname"><span class="pre">DEFAULT_CENTER_METHOD</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'trunc_centroid'</span></em><a class="headerlink" href="#eosdxanalysis.preprocessing.denoising.DEFAULT_CENTER_METHOD" title="Permalink to this definition">#</a></dt>
+<dd><p>str(object=’’) -&gt; str
+str(bytes_or_buffer[, encoding[, errors]]) -&gt; str</p>
+<p>Create a new string object from the given object. If encoding or
+errors is specified, then the object must expose a data buffer
+that will be decoded using the given encoding and error handler.
+Otherwise, returns the result of object.__str__() (if defined)
+or repr(object).
+encoding defaults to sys.getdefaultencoding().
+errors defaults to ‘strict’.</p>
 </dd></dl>
 
 </section>
@@ -569,17 +566,17 @@ Base 0 means to interpret the base from the string as an integer literal.
             <footer class="bd-footer-article">
                 <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.denoising.DEFAULT_FILL_METHOD.html" title="previous page">
+  <a class='left-prev' id="prev-link" href="eosdxanalysis.preprocessing.denoising.DEFAULT_BEAM_RMAX.html" title="previous page">
       <i class="fas fa-angle-left"></i>
       <div class="prev-next-info">
           <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">DEFAULT_FILL_METHOD</p>
+          <p class="prev-next-title">DEFAULT_BEAM_RMAX</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.denoising.DEFAULT_LIMIT_TYPE.html" title="next page">
+  <a class='right-next' id="next-link" href="eosdxanalysis.preprocessing.denoising.DEFAULT_CENTER_METHOD_THRESHOLD.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">DEFAULT_LIMIT_TYPE</p>
+      <p class="prev-next-title">DEFAULT_CENTER_METHOD_THRESHOLD</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>
@@ -599,7 +596,7 @@ Base 0 means to interpret the base from the string as an integer literal.
 <div class="toc-item">
   
 <div class="tocsection sourcelink">
-    <a href="../_sources/api/eosdxanalysis.preprocessing.denoising.DEFAULT_FILTER_SIZE.rst.txt">
+    <a href="../_sources/api/eosdxanalysis.preprocessing.denoising.DEFAULT_CENTER_METHOD.rst.txt">
         <i class="fas fa-file-alt"></i> Show Source
     </a>
 </div>
