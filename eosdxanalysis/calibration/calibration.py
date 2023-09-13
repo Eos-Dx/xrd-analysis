@@ -245,7 +245,7 @@ def sample_detector_distance(
         theta_n = np.arcsin(q_peaks_found*wavelength_angstroms/(4*np.pi))
         Y = np.tan(2*theta_n).reshape(-1,1)
         # Set x values as the measured r peaks
-        X = (singlet_peak_indices_approx[:len(q_peaks_found_indices)] * \
+        X = (singlet_peak_indices_approx[:len(q_peaks_found)] * \
                 pixel_size).reshape(-1,1)
 
         # Now perform linear regression, line goes through the origin
