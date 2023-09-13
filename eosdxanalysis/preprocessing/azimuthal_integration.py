@@ -36,6 +36,7 @@ from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conve
 DEFAULT_DET_XSIZE = 256
 RES_DEFAULT = 1
 DEFAULT_CENTER_METHOD = "trunc_centroid"
+DEFAULT_CENTER_METHOD_THRESHOLD = 1e6
 DEFAULT_MEASUREMENT_DATA_COLUMN_NAME = "measurement_data"
 DEFAULT_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
 DEFAULT_CENTER_METHOD = "trunc_centroid"
@@ -197,6 +198,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
     def __init__(self, *, copy=True,
             center : np.ndarray = None,
             center_method : str = DEFAULT_CENTER_METHOD,
+            center_method_threshold : float = DEFAULT_CENTER_METHOD_THRESHOLD,
             beam_rmax : int = 0,
             start_radius : int = None,
             end_radius: int = None,
@@ -239,6 +241,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         self.copy = copy
         self.center = center
         self.cetner_method = center_method
+        self.cetner_method_threshold = center_method_threshold
         self.beam_rmax = beam_rmax
         self.start_radius = start_radius
         self.end_radius = end_radius
@@ -282,6 +285,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         """
         center = self.center
         center_method = self.center_method
+        center_method_threshold = self.center_method_threshold
         beam_rmax = self.beam_rmax
         start_radius = self.start_radius
         end_radius = self.end_radius
@@ -318,7 +322,8 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
 
             if _find_center:
                 center = find_center(
-                        image, rmax=beam_rmax, method=center_method)
+                        image, rmax=beam_rmax, method=center_method,
+                        threshold=center_method_threshold)
 
             radial_profile = azimuthal_integration(
                     image,
