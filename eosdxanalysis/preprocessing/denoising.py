@@ -331,7 +331,7 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
         # Loop over all samples using batches
         for idx in X.index:
 
-            image = X.loc[idx, measurement_data_column_name]
+            image = X.loc[idx, measurement_data_column_name].astype(np.float64)
 
             if _find_center:
                 center = find_center(
