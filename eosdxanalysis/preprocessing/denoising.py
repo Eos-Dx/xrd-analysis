@@ -6,6 +6,7 @@ Methods for denoising the diffraction pattern
 import os
 import argparse
 import glob
+import re
 
 from datetime import datetime
 
@@ -160,7 +161,7 @@ def filter_outlier_pixel_values(
                     fill_method, FILL_METHOD_LIST))
 
     # Find outlier pixel values if coordinates not provided
-    if type(coords_array) is type(None):
+    if type(coords_array) == type(None):
         coords_array = find_outlier_pixel_values(
                 image,
                 mask=mask,
@@ -173,7 +174,7 @@ def filter_outlier_pixel_values(
     filtered_image = image.copy()
 
     # Filter outliers
-    for outlier_coords in coords_array:
+    for outlier_coords in coords_array.T:
         # Extract region of interest slices based on filter size
         outlier_roi_rows = slice(
                 int(outlier_coords[0]-filter_size//2),
@@ -500,7 +501,7 @@ def filter_outlier_pixel_values_dir(
                 filter_size=filter_size,
                 fill_method=fill_method)
 
-        if type(median_filter_size) == int:
+        if type(median_filter_size) == type(int):
             filtered_image = medfilt2d(
                     filtered_image, kernel_size=median_filter_size)
 
@@ -527,10 +528,13 @@ if __name__ == '__main__':
             help="The path to measurement file with dead pixels.")
     parser.add_argument(
             "--output_path", type=str, default=None, required=False,
-            help="The output path to save radial profiles and peak features")
+            help="The output path to save the denoised images.")
     parser.add_argument(
             "--hot_spot_coords_approx", type=tuple,
             help="Approximate hot spot coordinates.")
+    parser.add_argument(
+            "--coords_array", type=str,
+            help="List of coordinate pairs \"(row1, col1), (row2, col2), ...\"")
     parser.add_argument(
             "--beam_rmax", type=int, default=DEFAULT_BEAM_RMAX,
             help="Radius of beam to ignore.")
@@ -578,6 +582,15 @@ if __name__ == '__main__':
     output_path = os.path.abspath(args.output_path) if args.output_path \
             else None
     hot_spot_coords_approx = args.hot_spot_coords_approx
+    coords_array_arg = args.coords_array
+    if type(coords_array_arg) != type(None):
+        row_coords = np.array(
+                re.findall("\(([0-9]+), ?[0-9]+\)", coords_array_arg)).astype(int)
+        col_coords = np.array(
+                re.findall("\([0-9]+, ?([0-9]+)\)", coords_array_arg)).astype(int)
+        coords_array = np.stack([row_coords, col_coords])
+    else:
+        coords_array = None
     beam_rmax = args.beam_rmax
     threshold = args.threshold
     absolute = args.absolute
@@ -597,6 +610,7 @@ if __name__ == '__main__':
         output_path=output_path,
         overwrite=overwrite,
         center=center,
+        coords_array=coords_array,
         beam_rmax=beam_rmax,
         threshold=threshold,
         absolute=absolute,
