@@ -44,6 +44,8 @@ DEFAULT_DOUBLET_APPROX_MAX_FACTOR = 2.0
 DEFAULT_DOUBLET_WIDTH = 4
 DEFAULT_DOUBLET_HEIGHT = 8
 DEFAULT_STRIP_WIDTH = 16
+DEFAULT_CENTER_METHOD = "trunc_centroid"
+DEFAULT_CENTER_METHOD_THRESHOLD = 1e6
 
 VALID_FILE_FORMATS = [
         "txt",
@@ -55,6 +57,8 @@ VALID_FILE_FORMATS = [
 def sample_detector_distance(
         image,
         center=None,
+        center_method : str = DEFAULT_CENTER_METHOD,
+        center_method_threshold : float = DEFAULT_CENTER_METHOD_THRESHOLD,
         beam_rmax=None,
         distance_approx=None,
         pixel_size=None,
@@ -114,7 +118,8 @@ def sample_detector_distance(
 
     # Set center if None
     if type(center) is type(None):
-        center = find_center(image, rmin=start_radius, rmax=end_radius)
+        center = find_center(image, rmin=start_radius, rmax=end_radius,
+                method=center_method, threshold=center_method_threshold)
 
     radial_profile = azimuthal_integration(
             image, center=center, beam_rmax=beam_rmax,
@@ -384,6 +389,8 @@ def sample_distance_calibration_on_a_file(
             beam_rmax=None,
             distance_approx=None,
             center=None,
+            center_method : str = DEFAULT_CENTER_METHOD,
+            center_method_threshold : float = DEFAULT_CENTER_METHOD_THRESHOLD,
             doublet_height=DEFAULT_DOUBLET_HEIGHT,
             doublet_width=DEFAULT_DOUBLET_WIDTH,
             visualize=False,
@@ -425,6 +432,8 @@ def sample_distance_calibration_on_a_file(
             wavelength_nm=wavelength_nm,
             distance_approx=distance_approx,
             center=center,
+            center_method=center_method,
+            center_method_threshold=center_method_threshold,
             doublet_height=doublet_height,
             doublet_width=doublet_width,
             visualize=visualize,
@@ -605,6 +614,13 @@ if __name__ == "__main__":
             "--wavelength_nm", type=float, required=True,
             help="The wavelength in nanometers.")
     parser.add_argument(
+            "--center_method", type=str, default=DEFAULT_CENTER_METHOD,
+            help="The center finding method.")
+    parser.add_argument(
+            "--center_method_threshold", type=float,
+            default=DEFAULT_CENTER_METHOD_THRESHOLD,
+            help="The center method threshold.")
+    parser.add_argument(
             "--center", type=str, default=None,
             help="The center of the diffraction pattern.")
     parser.add_argument(
@@ -665,6 +681,8 @@ if __name__ == "__main__":
         center = np.array(center_arg.strip("( )").split(",")).astype(float)
     else:
         center = None
+    center_method = args.center_method
+    center_method_threshold = args.center_method_threshold
     distance_approx = args.distance_approx
     doublet_height = args.doublet_height
     doublet_width = args.doublet_width
@@ -694,6 +712,8 @@ if __name__ == "__main__":
                 beam_rmax=beam_rmax,
                 distance_approx=distance_approx,
                 center=center,
+                center_method=center_method,
+                center_method_threshold=center_method_threshold,
                 doublet_height=doublet_height,
                 doublet_width=doublet_width,
                 visualize=visualize,
