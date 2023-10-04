@@ -99,7 +99,13 @@ def find_outlier_pixel_values(
         raise ValueError(
                 "``threshold_type`` must be ``min`` or ``max``.")
 
-    return np.asanyarray(coords_array)
+    if type(coords_array) == type(None):
+        return
+    elif type(coords_array) == np.ndarray:
+        if coords_array.size == 0:
+            return
+        else:
+            return np.asanyarray(coords_array)
 
 def filter_outlier_pixel_values(
         image : np.ndarray,
@@ -170,54 +176,57 @@ def filter_outlier_pixel_values(
                 limit_type=limit_type,
                 )
 
-    # Work from unmasked image
-    filtered_image = image.copy()
+    if type(coords_array) == type(None):
+        return
+    else:
+        # Work from unmasked image
+        filtered_image = image.copy()
 
-    # Filter outliers
-    for outlier_coords in coords_array.T:
-        # Extract region of interest slices based on filter size
-        outlier_roi_rows = slice(
-                int(outlier_coords[0]-filter_size//2),
-                int(outlier_coords[0]+filter_size//2+1))
-        outlier_roi_cols = slice(
-                int(outlier_coords[1]-filter_size//2),
-                int(outlier_coords[1]+filter_size//2+1))
+        # Filter outliers
+        for outlier_coords in coords_array.T:
+            # Extract region of interest slices based on filter size
+            outlier_roi_rows = slice(
+                    int(outlier_coords[0]-filter_size//2),
+                    int(outlier_coords[0]+filter_size//2+1))
+            outlier_roi_cols = slice(
+                    int(outlier_coords[1]-filter_size//2),
+                    int(outlier_coords[1]+filter_size//2+1))
 
-        # Get outlier region of interest
-        outlier_roi = filtered_image[outlier_roi_rows, outlier_roi_cols].copy()
+            # Get outlier region of interest
+            outlier_roi = filtered_image[outlier_roi_rows, outlier_roi_cols].copy()
 
-        if fill_method == "zero":
-            # Set values in region of interest around outlier pixel to zero
-            filtered_image[outlier_roi_rows, outlier_roi_cols] = 0
-        elif fill_method in ["median", "mean"]:
-            # Set values in region of interest around outlier pixel to median
-            # of neighbors (border)
+            if fill_method == "zero":
+                # Set values in region of interest around outlier pixel to zero
+                filtered_image[outlier_roi_rows, outlier_roi_cols] = 0
+            elif fill_method in ["median", "mean"]:
+                # Set values in region of interest around outlier pixel to median
+                # of neighbors (border)
 
-            # Get borders
-            border_roi_rows = slice(
-                    int(outlier_coords[0]-filter_size//2-1),
-                    int(outlier_coords[0]+filter_size//2+2))
-            border_roi_cols = slice(
-                    int(outlier_coords[1]-filter_size//2-1),
-                    int(outlier_coords[1]+filter_size//2+2))
+                # Get borders
+                border_roi_rows = slice(
+                        int(outlier_coords[0]-filter_size//2-1),
+                        int(outlier_coords[0]+filter_size//2+2))
+                border_roi_cols = slice(
+                        int(outlier_coords[1]-filter_size//2-1),
+                        int(outlier_coords[1]+filter_size//2+2))
 
-            # Get the border region of interest
-            border_roi = filtered_image[border_roi_rows, border_roi_cols].copy()
-            # Set interior to nan
-            border_roi[1:-1, 1:-1] = np.nan
-            # Set outlier region of interest to median of border region of 
-            # interest
-            if fill_method == "median":
-                filtered_image[outlier_roi_rows, outlier_roi_cols] = \
-                        np.nanmedian(border_roi)
-            elif fill_method == "mean":
-                filtered_image[outlier_roi_rows, outlier_roi_cols] = \
-                        np.nanmean(border_roi)
-        elif fill_method == "nan":
-            # Set values in region of inteest around outlier pixel to nan
-            filtered_image[outlier_roi_rows, outlier_roi_cols] = np.nan
+                # Get the border region of interest
+                border_roi = filtered_image[border_roi_rows, border_roi_cols].copy()
+                # Set interior to nan
+                border_roi[1:-1, 1:-1] = np.nan
+                # Set outlier region of interest to median of border region of
+                # interest
+                if fill_method == "median":
+                    filtered_image[outlier_roi_rows, outlier_roi_cols] = \
+                            np.nanmedian(border_roi)
+                elif fill_method == "mean":
+                    filtered_image[outlier_roi_rows, outlier_roi_cols] = \
+                            np.nanmean(border_roi)
+            elif fill_method == "nan":
+                # Set values in region of inteest around outlier pixel to nan
+                filtered_image[outlier_roi_rows, outlier_roi_cols] = np.nan
 
-    return filtered_image
+        return filtered_image
 
 
 class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
