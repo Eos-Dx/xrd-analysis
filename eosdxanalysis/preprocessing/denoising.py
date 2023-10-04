@@ -177,7 +177,7 @@ def filter_outlier_pixel_values(
                 )
 
     if type(coords_array) == type(None):
-        return
+        return image
     else:
         # Work from unmasked image
         filtered_image = image.copy()
