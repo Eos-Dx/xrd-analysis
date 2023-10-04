@@ -119,8 +119,8 @@ def concatenate_detector_images(image1, image2, detector_spacing, pixel_size):
     Uses skimage.transform.EuclideanTransform to shift second detector
     by arbitrary number of pixel lengths.
     """
-    if image1.shape != image2.shape:
-        raise ValueError("Input images must be the same shape")
+    if image1.shape[0] != image2.shape[0]:
+        raise ValueError("Input images must have the same number of rows.")
 
     # Set translation parameters
     trans_x = detector_spacing / pixel_size
