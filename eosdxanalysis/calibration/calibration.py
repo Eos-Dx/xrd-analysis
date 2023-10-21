@@ -305,11 +305,11 @@ def sample_detector_distance(
                 pixel_size=pixel_size,
                 radial_units="q_per_nm")
 
-        title = "Beam masked image [dB+1]"
+        title = "2D Measurement [dB+1]"
         fig = plt.figure(title)
         plt.title(title)
 
-        plt.imshow(20*np.log10(image.astype(np.float64)+1), cmap="gray")
+        plt.imshow(20*np.log10(image.astype(np.float64)+1))
         # Beam center
         plt.scatter(center[1], center[0], color="green")
         if doublet_peak_index:
@@ -319,7 +319,7 @@ def sample_detector_distance(
                     radius=doublet_peak_index,
                     linestyle="--",
                     fill=False,
-                    color="red",
+                    color="green",
                     label="Doublet peak location:\n" + \
                             "Real-Space: {} pixel lengths\n".format(doublet_peak_index) + \
                             "Theoretical: {} ".format(
@@ -328,7 +328,26 @@ def sample_detector_distance(
                     )
             ax = plt.gca()
             ax.add_artist(circle)
+
             plt.legend()
+
+        # Single rings
+        # Convert to per nm
+        q_peaks_arr = np.array(q_peaks_avg) * 10
+        for q_peak in q_peaks_arr:
+            radius=real_position_from_q(
+                    q_per_nm=q_peak,
+                    sample_distance_mm=sample_distance_m*1e3,
+                    wavelength_nm=wavelength_nm) / (pixel_size * 1e3)
+            circle = plt.Circle(
+                (center[1], center[0]),
+                radius=radius,
+                linestyle="--",
+                fill=False,
+                color="green",
+                )
+            ax = plt.gca()
+            ax.add_artist(circle)
 
         plt.xlabel("Horizontal Position [pixel length]")
         plt.ylabel("Vertical Position [pixel length]")
