@@ -30,7 +30,7 @@ class GaussianFit(object):
         """
         pass
 
-    
+    @classmethod
     def best_fit(self, xdata, ydata, p0=None, p_bounds=None):
         """
         xdata = space
@@ -41,9 +41,11 @@ class GaussianFit(object):
                 p0=p0, p_bounds=p_bounds)
         return popt, pcov
 
+    @classmethod
     def initial_parameters(self, calculated_distance=None):
         pass
 
+    @classmethod
     def parameter_bounds(self, calculated_distance=None):
         pass
 
