@@ -13,6 +13,7 @@ Steps:
 import numpy as np
 
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
 from eosdxanalysis.calibration.units_conversion import real_position_from_q
 from eosdxanalysis.calibration.units_conversion import sample_distance_from_q
@@ -80,26 +81,63 @@ class TissueGaussianFit(object):
         q_peak_per_nm = peaks_dict.get(tissue_category)
 
         # Compute initial guess for where the peak is
-        mu0_mm = real_position_from_q(
+        mu0_est_mm = real_position_from_q(
                 q_per_nm=q_peak_per_nm,
                 sample_distance_mm=sample_distance_mm,
                 wavelength_nm=wavelength_nm)
         # Convert to pixel space
-        mu0 = mu0_mm * MM2M / pixel_size
+        mu0_est = mu0_est_mm * MM2M / pixel_size
 
         # Compute initial guess for peak amplitude
         # Convert real position to pixel location
-        peak_guess_idx = int(mu0_mm * MM2M / pixel_size)
-        amplitude0 = radial_profile[peak_guess_idx]
+        peak_guess_idx = int(mu0_est_mm * MM2M / pixel_size)
+        amplitude0_est = radial_profile[peak_guess_idx]
 
         # Compute initial guess for sigma by calculating full-width at half max
         # using amplitude0 as the guess for max
-        half_max0 = amplitude0/2
+        half_max0_est = amplitude0_est/2
         # Compute half width half_max0 locations right and left
-        hwhm_right0 = np.where(radial_profile[peak_guess_idx:] < half_max0)[0][0]
-        hwhm_left0 = np.where(radial_profile[:peak_guess_idx] > half_max0)[0][0]
-        fwhm0 = hwhm_right0 - hwhm_left0
-        sigma0 = fwhm0
+        hwhm_right0_est = np.where(radial_profile[peak_guess_idx:] < half_max0_est)[0][0]
+        hwhm_left0_est = np.where(radial_profile[:peak_guess_idx] > half_max0_est)[0][0]
+        fwhm0_est = 2*np.max([hwhm_right0_est - mu0_est, mu0_est - hwhm_left0_est])
+        sigma0_est = fwhm0_est
+
+
+        # Now use find_peaks to find maximum near this m0
+        if tissue_category == "control-like":
+            # Now get better estimates using find_peaks
+            subset_left_idx = int(mu0_est - sigma0_est)
+            subset_right_idx = int(mu0_est + sigma0_est)
+            radial_profile_subset = radial_profile[
+                    subset_left_idx:subset_right_idx]
+            width = 0
+        elif tissue_category == "tumor-like":
+            # Now get better estimates using find_peaks
+            subset_left_idx = int(mu0_est - 20)
+            subset_right_idx = int(mu0_est + 20)
+            radial_profile_subset = radial_profile[
+                    subset_left_idx:subset_right_idx]
+            width = 2
+        peak_indices_approx, properties = find_peaks(radial_profile_subset)
+
+        if peak_indices_approx.size == 1:
+            peak_idx = peak_indices_approx[-1] + subset_left_idx
+
+            mu0 = peak_idx
+            amplitude0 = radial_profile[peak_idx]
+            # Compute refined guess for sigma by calculating full-width at half max
+            # using amplitude0 as the guess for max
+            half_max0 = amplitude0/2
+            # Compute half width half_max0 locations right and left
+            hwhm_right0 = np.where(radial_profile[peak_idx:] < half_max0)[0][0]
+            hwhm_left0 = np.where(radial_profile[:peak_idx] > half_max0)[0][0]
+            fwhm0 = hwhm_right0 - hwhm_left0
+            sigma0 = fwhm0
+
+        else:
+            mu0 = mu0_est
+            sigma0 = sigma0_est
+            amplitude0 = amplitude0_est
 
         # Collect parameters
         p0 = np.array([mu0, sigma0, amplitude0])
@@ -117,8 +155,8 @@ class TissueGaussianFit(object):
         to generate parameter bounds for curve fitting.
         """
 
-        bound_lower = 0.8 * p0
-        bound_upper = 1.2 * p0
+        bound_lower = 0.5 * p0
+        bound_upper = 2.0 * p0
         bounds = bound_lower, bound_upper
 
         return bounds
@@ -176,9 +214,14 @@ class TissueGaussianFit(object):
         # Run curve fitting
         mu0 = p0[0]
         sigma = p0[1]
-        x_start = int(mu0 - sigma/2)
-        x_end = int(mu0 + sigma/2)
-        xdata = np.arange(x_start, x_end)
+        if tissue_category == "control-like":
+            x_start = int(mu0 - sigma)
+            x_end = int(mu0 + sigma)
+            xdata = np.arange(x_start, x_end)
+        elif tissue_category == "tumor-like":
+            x_start = int(mu0 - 20)
+            x_end = int(mu0 + 20)
+            xdata = np.arange(x_start, x_end)
         ydata = radial_profile[xdata]
         popt, pcov = self.best_fit(xdata, ydata, p0=p0, bounds=bounds)
 
