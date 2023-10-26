@@ -29,7 +29,7 @@ q_h2o_per_nm = 20
 # Tissue categories
 peaks_dict = {
         "control-like": q_fat_per_nm,
-        "tumor_like": q_h2o_per_nm,
+        "tumor-like": q_h2o_per_nm,
         "mixed": [q_fat_per_nm, q_h2o_per_nm],
         }
 
