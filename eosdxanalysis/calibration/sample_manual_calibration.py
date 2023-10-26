@@ -28,8 +28,8 @@ q_h2o_per_nm = 20
 
 # Tissue categories
 peaks_dict = {
-        "control-like": [q_fat_per_nm],
-        "tumor_like": [q_h2o_per_nm],
+        "control-like": q_fat_per_nm,
+        "tumor_like": q_h2o_per_nm,
         "mixed": [q_fat_per_nm, q_h2o_per_nm],
         }
 
@@ -48,18 +48,16 @@ class TissueGaussianFit(object):
         self.pixel_size = pixel_size
         return super().__init__()
 
-    @classmethod
-    def best_fit(self, xdata, ydata, p0=None, p_bounds=None):
+    def best_fit(self, xdata, ydata, p0=None, bounds=None):
         """
         xdata = detector space
         ydata = sample values
         """
         popt, pcov = curve_fit(
                 self.gaussian_function, xdata, ydata,
-                p0=p0, p_bounds=p_bounds)
+                p0=p0, bounds=bounds)
         return popt, pcov
 
-    @classmethod
     def initial_parameters(
             self,
             radial_profile,
@@ -79,13 +77,15 @@ class TissueGaussianFit(object):
 
         # Collect sample parameters
         sample_distance_mm = calculated_distance * M2MM
-        q_peak_per_nm = tissue_category.get(tissue_category)
+        q_peak_per_nm = peaks_dict.get(tissue_category)
 
         # Compute initial guess for where the peak is
         mu0_mm = real_position_from_q(
                 q_per_nm=q_peak_per_nm,
                 sample_distance_mm=sample_distance_mm,
                 wavelength_nm=wavelength_nm)
+        # Convert to pixel space
+        mu0 = mu0_mm * MM2M / pixel_size
 
         # Compute initial guess for peak amplitude
         # Convert real position to pixel location
@@ -97,35 +97,49 @@ class TissueGaussianFit(object):
         half_max0 = amplitude0/2
         # Compute half width half_max0 locations right and left
         hwhm_right0 = np.where(radial_profile[peak_guess_idx:] < half_max0)[0][0]
-        hwhm_left0 = np.where(radial_profile[:peak_guess_idx] < half_max0)[0][0]
+        hwhm_left0 = np.where(radial_profile[:peak_guess_idx] > half_max0)[0][0]
         fwhm0 = hwhm_right0 - hwhm_left0
         sigma0 = fwhm0
 
         # Collect parameters
-        p0 = np.array([mu0_mm, sigma0, amplitude0])
+        p0 = np.array([mu0, sigma0, amplitude0])
 
         return p0
 
-    @classmethod
     def parameter_bounds(
             self,
             radial_profile,
+            p0,
             calculated_distance=None,
             tissue_category=None):
         """
         Use the initial guess and some multiplicative factors
         to generate parameter bounds for curve fitting.
         """
+
+        bound_lower = 0.8 * p0
+        bound_upper = 1.2 * p0
+        bounds = bound_lower, bound_upper
+
+        return bounds
+
+    def initial_parameters_and_bounds(
+            self,
+            radial_profile,
+            calculated_distance=None,
+            tissue_category=None):
+
         p0 = self.initial_parameters(
             radial_profile,
             calculated_distance=calculated_distance,
             tissue_category=tissue_category)
+        bounds = self.parameter_bounds(
+            radial_profile,
+            p0,
+            calculated_distance=calculated_distance,
+            tissue_category=tissue_category)
 
-        p_bound_lower = 0.8 * p0
-        p_bound_upper = 1.2 * p0
-        p_bounds = p_bound_lower, p_bound_upper
-
-        return p_bounds
+        return p0, bounds
 
     @classmethod
     def gaussian_function(self, x, mu, sigma, amplitude):
@@ -148,25 +162,25 @@ class TissueGaussianFit(object):
             raise ValueError(f"{tissue_category} not a valid tissue category.")
 
         # Collect sample parameters
-        q_peak_per_nm = tissue_category.get(tissue_category)
+        q_peak_per_nm = peaks_dict.get(tissue_category)
 
         # Get machine parameters
         wavelength_nm = self.wavelength_nm
         pixel_size = self.pixel_size
 
-        p0 = self.initial_parameters(
-            radial_profile,
-            calculated_distance=calculated_distance,
-            tissue_category=tissue_category)
-        pbounds = self.parameter_bounds(
+        p0, bounds = self.initial_parameters_and_bounds(
             radial_profile,
             calculated_distance=calculated_distance,
             tissue_category=tissue_category)
 
         # Run curve fitting
-        xdata = np.arange(radial_profile.size)
-        ydata = radial_profile
-        popt, pcov = self.best_fit(xdata, ydata, p0=p0, pbounds=pbounds)
+        mu0 = p0[0]
+        sigma = p0[1]
+        x_start = int(mu0 - sigma/2)
+        x_end = int(mu0 + sigma/2)
+        xdata = np.arange(x_start, x_end)
+        ydata = radial_profile[xdata]
+        popt, pcov = self.best_fit(xdata, ydata, p0=p0, bounds=bounds)
 
         # TODO: Check for bad fit
 
