@@ -9,10 +9,13 @@ from sklearn.base import OneToOneFeatureMixin
 from sklearn.base import TransformerMixin
 from sklearn.base import BaseEstimator
 
+from eosdxanalysis.calibration.sample_manual_calibration import TissueGaussianFit
+
 
 DEFAULT_Q_RANGE_COLUMN_NAME = "q_range"
 DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME = "calculated_distance"
 DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
+DEFAULT_TISSUE_CATEGORY_COLUMN_NAME = "cancer_tissue"
 
 
 class MomentumTransferUnitsConversion(
@@ -106,6 +109,109 @@ class MomentumTransferUnitsConversion(
 
         return X
 
+
+class GaussianFittingMomentumTransferUnitsConversion(
+        OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
+    """Adapted from scikit-learn transforms
+    Sample units conversion.
+    Converts from real-space pixel units to momentum transfer (q) units.
+
+    Uses peak fitting.
+    """
+    def __init__(self, *, copy=True,
+            wavelength_nm=None, pixel_size=None,
+            q_range_column_name=DEFAULT_Q_RANGE_COLUMN_NAME,
+            sample_distance_column_name=DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME,
+            tissue_category_column_name=DEFAULT_TISSUE_CATEGORY_COLUMN_NAME,
+            radial_profile_data_column_name=DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME):
+        """
+        Parameters
+        ----------
+        copy : bool
+            Creates copy of array if True (default = False).
+
+        sample_distance_m : array_like
+            Array of sample distances in meters. Must be same shape as X.
+        """
+        self.copy = copy
+        self.wavelength_nm = wavelength_nm
+        self.pixel_size = pixel_size
+        self.q_range_column_name = q_range_column_name
+        self.sample_distance_column_name = sample_distance_column_name
+        self.tissue_category_column_name = tissue_category_column_name
+        self.radial_profile_data_column_name = radial_profile_data_column_name
+
+    def fit(self, X, y=None, sample_weight=None):
+        """Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The data used to compute the mean and standard deviation
+            used for later scaling along the features axis.
+        y : None
+            Ignored.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Individual weights for each sample.
+
+        Returns
+        -------
+        self : object
+            Fitted scaler.
+        """
+        return self
+
+    def transform(self, X, copy=True):
+        """Transforms radial data from intensity versus pixel position
+        to intensity versus q value.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix of shape (n_samples, n_features)
+            The data used to scale along the features axis.
+        copy : bool, default=None
+            Copy the input X or not.
+        Returns
+        -------
+        X_tr : {ndarray, sparse matrix} of shape (n_samples, n_features)
+            Transformed array.
+        """
+        wavelength_nm = self.wavelength_nm
+        pixel_size = self.pixel_size
+        q_range_column_name = self.q_range_column_name
+        sample_distance_column_name = self.sample_distance_column_name
+        tissue_category_column_name = self.tissue_category_column_name
+        radial_profile_data_column_name = self.radial_profile_data_column_name
+
+        if type(X) != type(pd.DataFrame()):
+            raise ValueError("Input ``X`` must be a dataframe.")
+
+        if copy is True:
+            X = X.copy()
+
+        fitter = TissueGaussianFit(
+                wavelength_nm=wavelength_nm,
+                pixel_size=pixel_size)
+
+        X[q_range_column_name] = np.nan
+        X[q_range_column_name] = X[q_range_column_name].astype(object)
+
+        for idx in X.index:
+            sample_distance = X.loc[idx, sample_distance_column_name]
+            profile_data = X.loc[idx, radial_profile_data_column_name]
+            tissue_category = X.loc[idx, tissue_category_column_name]
+            tissue_category = "tumor-like" if tissue_category else "control-like"
+
+            # Strip nans
+            profile_data = profile_data[~np.isnan(profile_data)]
+
+            q_range = fitter.calculate_q_range_from_peak_fitting(
+                    profile_data,
+                    calculated_distance=sample_distance,
+                    tissue_category=tissue_category)
+
+            # Add q-ranges into dataset
+            X.at[idx, q_range_column_name] = q_range.ravel().tolist()
+
+        return X
 
 class DiffractionUnitsConversion(object):
     """
@@ -381,8 +487,8 @@ def q_conversion(
             real_position_mm=real_position_mm,
             sample_distance_mm=sample_distance_mm)
     theta = two_theta / 2
-    q = 4*np.pi*np.sin(theta) / wavelength_nm
-    return q
+    q_per_nm = 4*np.pi*np.sin(theta) / wavelength_nm
+    return q_per_nm
 
 def real_position_from_two_theta(two_theta=None, sample_distance_mm=None):
     """
