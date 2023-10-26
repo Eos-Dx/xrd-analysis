@@ -125,6 +125,17 @@ def sample_detector_distance(
             image, center=center, beam_rmax=beam_rmax,
             start_radius=start_radius, end_radius=end_radius, fill=np.nan)
 
+    # Average the doublets
+    doublets = np.array(q_peaks_ref.get("doublets"))
+    if doublets.size > 0:
+        doublets_avg = np.array(np.mean(doublets)).flatten()
+    singlets = np.array(q_peaks_ref.get("singlets")).flatten()
+    # Join the singlets and doublets averages into a single array
+    q_peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
+
+    singlet_height = DEFAULT_SINGLET_HEIGHT
+    singlet_width = DEFAULT_SINGLET_WIDTH
+
     # Use the doublet peak location only
     doublet_peak_index = None
     if doublet_only:
@@ -174,17 +185,6 @@ def sample_detector_distance(
 
         sample_distance_m = doublet_distance / np.tan(2*theta_n)
     else:
-        # Average the doublets
-        doublets = np.array(q_peaks_ref.get("doublets"))
-        if doublets.size > 0:
-            doublets_avg = np.array(np.mean(doublets)).flatten()
-        singlets = np.array(q_peaks_ref.get("singlets")).flatten()
-        # Join the singlets and doublets averages into a single array
-        q_peaks_avg = np.sort(np.concatenate([singlets, doublets_avg]))
-
-        singlet_height = DEFAULT_SINGLET_HEIGHT
-        singlet_width = DEFAULT_SINGLET_WIDTH
-
         peak_finding_loop = True
         while peak_finding_loop:
             # Find peaks
