@@ -119,16 +119,11 @@ def azimuthal_integration(
     # Remove nans
     nan_bool = np.isnan(profile_1d)
     nan_coords = np.where(nan_bool)
-    first_nan_idx = nan_coords[0][0]
-    last_nan_idx = nan_coords[0][-1]
-    if (~np.isnan(profile_1d[first_nan_idx:last_nan_idx])).any():
-        raise ValueError("There is a nan value in the middle of the array")
-    if last_nan_idx < (profile_1d.size - 1):
-        if (~np.isnan(profile_1d[last_nan_idx+1:])).any():
-            raise ValueError("There is a nan value in the middle of the array")
-    if all([type(radial_point_count) == type(None),
-        type(end_radius) == type(None)]):
-        profile_1d = profile_1d[:first_nan_idx]
+
+    # Get last non-nan index
+    valid_coords = np.where(~nan_bool)
+    last_valid_idx = valid_coords[0][-1]
+    profile_1d = profile_1d[:last_valid_idx+1]
 
     return profile_1d
 
