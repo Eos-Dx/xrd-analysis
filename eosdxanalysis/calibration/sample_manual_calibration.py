@@ -95,13 +95,16 @@ class TissueGaussianFit(object):
 
         # Compute initial guess for sigma by calculating full-width at half max
         # using amplitude0 as the guess for max
-        half_max0_est = amplitude0_est/2
+        sub_max0_est = 2/3 * amplitude0_est
         # Compute half width half_max0 locations right and left
-        hwhm_right0_est = np.where(radial_profile[peak_guess_idx:] < half_max0_est)[0][0]
-        hwhm_left0_est = np.where(radial_profile[:peak_guess_idx] > half_max0_est)[0][0]
-        fwhm0_est = 2*np.max([hwhm_right0_est - mu0_est, mu0_est - hwhm_left0_est])
-        sigma0_est = fwhm0_est
-
+        swsm_right0_est = np.where(
+                radial_profile[peak_guess_idx:] < sub_max0_est)[0][0]
+        swsm_left0_est_offset = np.where(
+                radial_profile[:peak_guess_idx] < sub_max0_est)[0][-1]
+        swsm_left0_est = radial_profile[:peak_guess_idx].size \
+                - swsm_left0_est_offset
+        swsm0_est = np.min([swsm_right0_est, swsm_left0_est])
+        sigma0_est = 3/2 * swsm0_est
 
         # Now use find_peaks to find maximum near this m0
         if tissue_category == "control-like":
@@ -127,12 +130,14 @@ class TissueGaussianFit(object):
             amplitude0 = radial_profile[peak_idx]
             # Compute refined guess for sigma by calculating full-width at half max
             # using amplitude0 as the guess for max
-            half_max0 = amplitude0/2
+            half_max0 = 2/3 * amplitude0
             # Compute half width half_max0 locations right and left
-            hwhm_right0 = np.where(radial_profile[peak_idx:] < half_max0)[0][0]
-            hwhm_left0 = np.where(radial_profile[:peak_idx] > half_max0)[0][0]
-            fwhm0 = hwhm_right0 - hwhm_left0
-            sigma0 = fwhm0
+            swsm_right0 = np.where(radial_profile[peak_idx:] < half_max0)[0][0]
+            swsm_left0_offset = np.where(
+                    radial_profile[:peak_idx] < half_max0)[0][-1]
+            swsm_left0 = radial_profile[:peak_idx].size - swsm_left0_offset
+            swsm0 = np.min([swsm_right0, swsm_left0])
+            sigma0 = 3/2 * swsm0
 
         else:
             mu0 = mu0_est
@@ -198,6 +203,9 @@ class TissueGaussianFit(object):
         # Validate tissue category
         if tissue_category not in peaks_dict.keys():
             raise ValueError(f"{tissue_category} not a valid tissue category.")
+
+        if tissue_category == "mixed":
+            raise NotImplementedError()
 
         # Collect sample parameters
         q_peak_per_nm = peaks_dict.get(tissue_category)
