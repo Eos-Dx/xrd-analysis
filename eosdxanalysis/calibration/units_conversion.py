@@ -198,7 +198,6 @@ class GaussianFittingMomentumTransferUnitsConversion(
             sample_distance = X.loc[idx, sample_distance_column_name]
             profile_data = X.loc[idx, radial_profile_data_column_name]
             tissue_category = X.loc[idx, tissue_category_column_name]
-            tissue_category = "tumor-like" if tissue_category else "control-like"
 
             # Strip nans
             profile_data = profile_data[~np.isnan(profile_data)]
