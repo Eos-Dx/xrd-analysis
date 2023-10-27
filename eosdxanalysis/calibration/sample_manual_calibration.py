@@ -364,32 +364,30 @@ class TissueGaussianFit(object):
         sample_distance_mm = calculated_distance * M2MM
         q_peak_per_nm = peaks_dict.get(tissue_category)
 
-        # Run curve fitting
-        mu0 = p0[0]
-        sigma = p0[1]
-        if tissue_category == "control-like":
-            x_start = int(mu0 - sigma)
-            x_end = int(mu0 + sigma)
-            xdata = np.arange(x_start, x_end)
-        elif tissue_category == "tumor-like":
-            x_start = int(mu0 - sigma/2)
-            x_end = int(mu0 + sigma/2)
-            xdata = np.arange(x_start, x_end)
-        elif tissue_category == "mixed":
-            x_start = int(mu0 - sigma/2)
-            x_end = int(mu0 + sigma/2)
-            xdata = np.arange(x_start, x_end)
-
-        ydata = radial_profile[xdata]
-        popt, pcov = self.best_fit(
-                xdata,
-                ydata, p0=p0,
-                bounds=bounds,
-                tissue_category=tissue_category)
 
         # TODO: Check for bad fit
 
         if tissue_category in ["control-like", "tumor-like"]:
+            # Run curve fitting
+            # Narrow the input range
+            mu0 = p0[0]
+            sigma0 = p0[1]
+            if tissue_category == "control-like":
+                x_start = int(mu0 - sigma0)
+                x_end = int(mu0 + sigma0)
+                xdata = np.arange(x_start, x_end)
+            elif tissue_category == "tumor-like":
+                x_start = int(mu0 - sigma0/2)
+                x_end = int(mu0 + sigma0/2)
+                xdata = np.arange(x_start, x_end)
+
+            ydata = radial_profile[xdata]
+            popt, pcov = self.best_fit(
+                    xdata,
+                    ydata, p0=p0,
+                    bounds=bounds,
+                    tissue_category=tissue_category)
+
             # Collect parameters
             mu_fit, sigma_fit, amplitude_fit = popt
 
@@ -401,27 +399,50 @@ class TissueGaussianFit(object):
                     q_per_nm=q_peak_per_nm,
                     wavelength_nm=wavelength_nm,
                     real_position_mm=real_position_mm)
+
         elif tissue_category == "mixed":
-            # Collect parameters
-            mu_fat_fit, sigma_fat_fit, amplitude_fat_fit, \
-                    mu_h2o_fit, sigma_h2o_fit, amplitude_h2o_fit = popt
+            # Run curve fitting
+            # Narrow the input range
+            mu0_fat = p0[0]
+            sigma0_fat = p0[1]
+            mu0_h2o = p0[3]
+            sigma0_h2o = p0[4]
+            x_start = int(mu0_fat - sigma0_fat/2)
+            x_end = int(mu0_h2o + sigma0_h2o/2)
+            xdata = np.arange(x_start, x_end)
 
-            # Convert the Gaussian peak location from detector space to real space
-            real_position_fat_mm = mu_fat_fit * pixel_size * M2MM
-            real_position_h2o_mm = mu_h2o_fit * pixel_size * M2MM
+            ydata = radial_profile[xdata]
+            try:
+                popt, pcov = self.best_fit(
+                        xdata,
+                        ydata, p0=p0,
+                        bounds=bounds,
+                        tissue_category=tissue_category)
 
-            # Calculate sample distance from Gaussian peak location
-            sample_distance_fat_mm = sample_distance_from_q(
-                    q_per_nm=q_peak_per_nm[0],
-                    wavelength_nm=wavelength_nm,
-                    real_position_mm=real_position_fat_mm)
-            sample_distance_h2o_mm = sample_distance_from_q(
-                    q_per_nm=q_peak_per_nm[1],
-                    wavelength_nm=wavelength_nm,
-                    real_position_mm=real_position_h2o_mm)
-            sample_distance_mm = np.mean([
-                    sample_distance_fat_mm,
-                    sample_distance_h2o_mm])
+                # Collect parameters
+                mu_fat_fit, sigma_fat_fit, amplitude_fat_fit, \
+                        mu_h2o_fit, sigma_h2o_fit, amplitude_h2o_fit = popt
+
+                # Convert the Gaussian peak location from detector space to real space
+                real_position_fat_mm = mu_fat_fit * pixel_size * M2MM
+                real_position_h2o_mm = mu_h2o_fit * pixel_size * M2MM
+
+                # Calculate sample distance from Gaussian peak location
+                sample_distance_fat_mm = sample_distance_from_q(
+                        q_per_nm=q_peak_per_nm[0],
+                        wavelength_nm=wavelength_nm,
+                        real_position_mm=real_position_fat_mm)
+                sample_distance_h2o_mm = sample_distance_from_q(
+                        q_per_nm=q_peak_per_nm[1],
+                        wavelength_nm=wavelength_nm,
+                        real_position_mm=real_position_h2o_mm)
+                sample_distance_mm = np.mean([
+                        sample_distance_fat_mm,
+                        sample_distance_h2o_mm])
+
+            except RuntimeError:
+                # Use provided sample distance
+                sample_distance_mm = calculated_distance * M2MM
 
         return sample_distance_mm
 
