@@ -60,7 +60,7 @@ class TissueGaussianFit(object):
                     p0=p0, bounds=bounds)
         elif tissue_category == "mixed":
             popt, pcov = curve_fit(
-                    self.gaussian_function, xdata, ydata,
+                    self.double_gaussian_function, xdata, ydata,
                     p0=p0, bounds=bounds)
         return popt, pcov
 
@@ -174,45 +174,63 @@ class TissueGaussianFit(object):
 
             # Compute initial guess for sigma by calculating full-width at half max
             # using the amplitude0 guesses for max
-            # Fat
-            sub_max0_fat_est = 2/3 * amplitude0_fat_est
-            # Compute half width half_max0 locations right and left
-            swsm_right0_fat_est = np.where(
-                    radial_profile[peak_fat_guess_idx:] < sub_max0_fat_est)[0][0]
-            swsm_left0_fat_est_offset = np.where(
-                    radial_profile[:peak_fat_guess_idx] < sub_max0_fat_est)[0][-1]
-            swsm_left0_fat_est = radial_profile[:peak_fat_guess_idx].size \
-                    - swsm_left0_fat_est_offset
-            swsm0_fat_est = np.min([swsm_right0_fat_est, swsm_left0_fat_est])
-            sigma0_fat_est = 3/2 * swsm0_fat_est
-            # Water
-            sub_max0_h2o_est = 2/3 * amplitude0_h2o_est
-            # Compute half width half_max0 locations right and left
-            swsm_right0_h2o_est = np.where(
-                    radial_profile[peak_h2o_guess_idx:] < sub_max0_h2o_est)[0][0]
-            swsm_left0_h2o_est_offset = np.where(
-                    radial_profile[:peak_h2o_guess_idx] < sub_max0_h2o_est)[0][-1]
-            swsm_left0_h2o_est = radial_profile[:peak_h2o_guess_idx].size \
-                    - swsm_left0_h2o_est_offset
-            swsm0_h2o_est = np.min([swsm_right0_h2o_est, swsm_left0_h2o_est])
-            sigma0_h2o_est = 3/2 * swsm0_h2o_est
+            try:
+                # Fat
+                sub_max0_fat_est = 2/3 * amplitude0_fat_est
+                # Compute half width half_max0 locations right and left
+                swsm_right0_fat_est = np.where(
+                        radial_profile[peak_fat_guess_idx:] < sub_max0_fat_est)[0][0]
+                swsm_left0_fat_est_offset = np.where(
+                        radial_profile[:peak_fat_guess_idx] < sub_max0_fat_est)[0][-1]
+                swsm_left0_fat_est = radial_profile[:peak_fat_guess_idx].size \
+                        - swsm_left0_fat_est_offset
+                swsm0_fat_est = np.min([swsm_right0_fat_est, swsm_left0_fat_est])
+                sigma0_fat_est = 3/2 * swsm0_fat_est
+            except:
+                sigma0_fat_est = 10
+            try:
+                # Water
+                sub_max0_h2o_est = 2/3 * amplitude0_h2o_est
+                # Compute half width half_max0 locations right and left
+                swsm_right0_h2o_est = np.where(
+                        radial_profile[peak_h2o_guess_idx:] < sub_max0_h2o_est)[0][0]
+                swsm_left0_h2o_est_offset = np.where(
+                        radial_profile[:peak_h2o_guess_idx] < sub_max0_h2o_est)[0][-1]
+                swsm_left0_h2o_est = radial_profile[:peak_h2o_guess_idx].size \
+                        - swsm_left0_h2o_est_offset
+                swsm0_h2o_est = np.min([swsm_right0_h2o_est, swsm_left0_h2o_est])
+                sigma0_h2o_est = 3/2 * swsm0_h2o_est
+            except:
+                sigma0_h2o_est = 10
 
-            # Now use find_peaks to find maximum near the m0 values
-            # Now get better estimates using find_peaks
-            # Fat
-            subset_fat_left_idx = int(mu0_fat_est - sigma0_fat_est)
-            subset_fat_right_idx = int(mu0_fat_est + sigma0_fat_est)
-            radial_profile_fat_subset = radial_profile[
-                    subset_fat_left_idx:subset_fat_right_idx]
-            width_fat = 0
-            peak_fat_indices_approx, properties_fat = find_peaks(radial_profile_fat_subset)
-            # Water
-            subset_h2o_left_idx = int(mu0_h2o_est - sigma0_h2o_est)
-            subset_h2o_right_idx = int(mu0_h2o_est + sigma0_h2o_est)
-            radial_profile_h2o_subset = radial_profile[
-                    subset_h2o_left_idx:subset_h2o_right_idx]
-            width_h2o = 0
-            peak_h2o_indices_approx, properties_h2o = find_peaks(radial_profile_h2o_subset)
+            try:
+                # Now use find_peaks to find maximum near the m0 values
+                # Now get better estimates using find_peaks
+                # Fat
+                subset_fat_left_idx = int(mu0_fat_est - sigma0_fat_est)
+                subset_fat_right_idx = int(mu0_fat_est + sigma0_fat_est)
+                radial_profile_fat_subset = radial_profile[
+                        subset_fat_left_idx:subset_fat_right_idx]
+                width_fat = 0
+                peak_fat_indices_approx, properties_fat = find_peaks(radial_profile_fat_subset)
+            except:
+                # Fat
+                mu0_fat = mu0_fat_est
+                sigma0_fat = sigma0_fat_est
+                amplitude0_fat = amplitude0_fat_est
+            try:
+                # Water
+                subset_h2o_left_idx = int(mu0_h2o_est - sigma0_h2o_est)
+                subset_h2o_right_idx = int(mu0_h2o_est + sigma0_h2o_est)
+                radial_profile_h2o_subset = radial_profile[
+                        subset_h2o_left_idx:subset_h2o_right_idx]
+                width_h2o = 0
+                peak_h2o_indices_approx, properties_h2o = find_peaks(radial_profile_h2o_subset)
+            except:
+                # Water
+                mu0_h2o = mu0_h2o_est
+                sigma0_h2o = sigma0_h2o_est
+                amplitude0_h2o = amplitude0_h2o_est
 
             # Fat
             if peak_fat_indices_approx.size == 1:
@@ -335,10 +353,16 @@ class TissueGaussianFit(object):
             tissue_category=None):
         """Calculate the sample distance based on peak fitting
         """
+        wavelength_nm = self.wavelength_nm
+        pixel_size = self.pixel_size
+
         p0, bounds = self.initial_parameters_and_bounds(
             radial_profile,
             calculated_distance=calculated_distance,
             tissue_category=tissue_category)
+
+        sample_distance_mm = calculated_distance * M2MM
+        q_peak_per_nm = peaks_dict.get(tissue_category)
 
         # Run curve fitting
         mu0 = p0[0]
@@ -365,17 +389,39 @@ class TissueGaussianFit(object):
 
         # TODO: Check for bad fit
 
-        # Collect parameters
-        mu_fit, sigma_fit, amplitude_fit = popt
+        if tissue_category in ["control-like", "tumor-like"]:
+            # Collect parameters
+            mu_fit, sigma_fit, amplitude_fit = popt
 
-        # Convert the Gaussian peak location from detector space to real space
-        real_position_mm = mu_fit * pixel_size * M2MM
+            # Convert the Gaussian peak location from detector space to real space
+            real_position_mm = mu_fit * pixel_size * M2MM
 
-        # Calculate sample distance from Gaussian peak location
-        sample_distance_mm = sample_distance_from_q(
-                q_per_nm=q_peak_per_nm,
-                wavelength_nm=wavelength_nm,
-                real_position_mm=real_position_mm)
+            # Calculate sample distance from Gaussian peak location
+            sample_distance_mm = sample_distance_from_q(
+                    q_per_nm=q_peak_per_nm,
+                    wavelength_nm=wavelength_nm,
+                    real_position_mm=real_position_mm)
+        elif tissue_category == "mixed":
+            # Collect parameters
+            mu_fat_fit, sigma_fat_fit, amplitude_fat_fit, \
+                    mu_h2o_fit, sigma_h2o_fit, amplitude_h2o_fit = popt
+
+            # Convert the Gaussian peak location from detector space to real space
+            real_position_fat_mm = mu_fat_fit * pixel_size * M2MM
+            real_position_h2o_mm = mu_h2o_fit * pixel_size * M2MM
+
+            # Calculate sample distance from Gaussian peak location
+            sample_distance_fat_mm = sample_distance_from_q(
+                    q_per_nm=q_peak_per_nm[0],
+                    wavelength_nm=wavelength_nm,
+                    real_position_mm=real_position_fat_mm)
+            sample_distance_h2o_mm = sample_distance_from_q(
+                    q_per_nm=q_peak_per_nm[1],
+                    wavelength_nm=wavelength_nm,
+                    real_position_mm=real_position_h2o_mm)
+            sample_distance_mm = np.mean([
+                    sample_distance_fat_mm,
+                    sample_distance_h2o_mm])
 
         return sample_distance_mm
 
@@ -387,6 +433,10 @@ class TissueGaussianFit(object):
         """
         Perform peak fitting.
         """
+        # Get machine parameters
+        wavelength_nm = self.wavelength_nm
+        pixel_size = self.pixel_size
+
         # Validate tissue category
         if tissue_category not in peaks_dict.keys():
             raise ValueError(f"{tissue_category} not a valid tissue category.")
