@@ -180,7 +180,7 @@ def filter_outlier_pixel_values(
         return image
     else:
         # Work from unmasked image
-        filtered_image = image.copy()
+        filtered_image = image.copy().astype(np.float64)
 
         # Filter outliers
         for outlier_coords in coords_array.T:
@@ -201,7 +201,6 @@ def filter_outlier_pixel_values(
             elif fill_method in ["median", "mean"]:
                 # Set values in region of interest around outlier pixel to median
                 # of neighbors (border)
-
                 # Get borders
                 border_roi_rows = slice(
                         int(outlier_coords[0]-filter_size//2-1),
