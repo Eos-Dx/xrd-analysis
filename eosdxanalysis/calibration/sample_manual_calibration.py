@@ -150,6 +150,12 @@ class TissueGaussianFit(object):
                 sigma0 = sigma0_est
                 amplitude0 = amplitude0_est
 
+            # Collect parameters
+            p0 = np.array(
+                        [mu0,
+                        sigma0,
+                        amplitude0,])
+
         elif tissue_category == "mixed":
             # Mixed tissue type has two peaks
             # Compute initial guess for where the peaks are
@@ -263,26 +269,29 @@ class TissueGaussianFit(object):
                 # using amplitude0 as the guess for max
                 half_max0_h2o = 2/3 * amplitude0_h2o
                 # Compute half width half_max0 locations right and left
-                swsm_right0_h2o = np.where(radial_profile[peak_h2o_idx:] < half_max0_h2o)[0][0]
-                swsm_left0_h2o_offset = np.where(
-                        radial_profile[:peak_h2o_idx] < half_max0_h2o)[0][-1]
-                swsm_left0_h2o = radial_profile[:peak_h2o_idx].size - swsm_left0_h2o_offset
-                swsm0_h2o = np.min([swsm_right0_h2o, swsm_left0_h2o])
-                sigma0_h2o = 3/2 * swsm0_h2o
+                try:
+                    swsm_right0_h2o = np.where(radial_profile[peak_h2o_idx:] < half_max0_h2o)[0][0]
+                    swsm_left0_h2o_offset = np.where(
+                            radial_profile[:peak_h2o_idx] < half_max0_h2o)[0][-1]
+                    swsm_left0_h2o = radial_profile[:peak_h2o_idx].size - swsm_left0_h2o_offset
+                    swsm0_h2o = np.min([swsm_right0_h2o, swsm_left0_h2o])
+                    sigma0_h2o = 3/2 * swsm0_h2o
+                except:
+                    sigma0_h2o = sigma0_h2o_est
 
             else:
                 mu0_h2o = mu0_h2o_est
                 sigma0_h2o = sigma0_h2o_est
                 amplitude0_h2o = amplitude0_h2o_est
 
-        # Collect parameters
-        p0 = np.array(
-                    [mu0_fat,
-                    sigma0_fat,
-                    amplitude0_fat,
-                    mu0_h2o,
-                    sigma0_h2o,
-                    amplitude0_h2o])
+            # Collect parameters
+            p0 = np.array(
+                        [mu0_fat,
+                        sigma0_fat,
+                        amplitude0_fat,
+                        mu0_h2o,
+                        sigma0_h2o,
+                        amplitude0_h2o])
 
         return p0
 
