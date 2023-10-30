@@ -476,4 +476,4 @@ class TissueGaussianFit(object):
                 pixel_size=pixel_size,
                 radial_units="q_per_nm")
 
-        return q_range
+        return q_range, sample_distance_mm
