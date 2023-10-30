@@ -97,15 +97,15 @@ class MomentumTransferUnitsConversion(
         sample_distance_mm = X[sample_distance_column_name].values * 1e3
         profile_data = X[radial_profile_data_column_name].values
 
-        # Take first profile length as radial count
-        radial_count = profile_data[0].shape[0]
-
-        q_range = radial_profile_unit_conversion(
-                radial_count=radial_count,
-                sample_distance_mm=sample_distance_mm,
-                wavelength_nm=wavelength_nm,
-                pixel_size=pixel_size,
-                radial_units="q_per_nm").T
+        for idx in X.index:
+            profile = X.loc[idx, "radial_profile_data"]
+            radial_count = profile.size
+            q_range = radial_profile_unit_conversion(
+                    radial_count=radial_count,
+                    sample_distance_mm=sample_distance_mm,
+                    wavelength_nm=wavelength_nm,
+                    pixel_size=pixel_size,
+                    radial_units="q_per_nm").T
 
         # Add q-ranges into dataset
         X[q_range_column_name] = q_range.tolist()
