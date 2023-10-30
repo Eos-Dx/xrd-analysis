@@ -16,7 +16,7 @@ DEFAULT_Q_RANGE_COLUMN_NAME = "q_range"
 DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME = "calculated_distance"
 DEFAULT_RECALCULATED_DISTANCE_COLUMN_NAME = "recalculated_distance"
 DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
-DEFAULT_TISSUE_CATEGORY_COLUMN_NAME = "cancer_tissue"
+DEFAULT_TISSUE_CATEGORY_COLUMN_NAME = "tissue_category"
 MM2M = 1e-3
 
 class MomentumTransferUnitsConversion(
