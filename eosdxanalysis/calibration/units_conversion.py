@@ -9,11 +9,18 @@ from sklearn.base import OneToOneFeatureMixin
 from sklearn.base import TransformerMixin
 from sklearn.base import BaseEstimator
 
+from eosdxanalysis.calibration.sample_manual_calibration import TissueGaussianFit
+
+from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
+
 
 DEFAULT_Q_RANGE_COLUMN_NAME = "q_range"
 DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME = "calculated_distance"
+DEFAULT_RECALCULATED_DISTANCE_COLUMN_NAME = "recalculated_distance"
 DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
-
+DEFAULT_TISSUE_CATEGORY_COLUMN_NAME = "tissue_category"
+MM2M = 1e-3
+M2MM = 1e3
 
 class MomentumTransferUnitsConversion(
         OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
@@ -87,25 +94,135 @@ class MomentumTransferUnitsConversion(
         if copy is True:
             X = X.copy()
 
-        # Extract sample distance and radial profile data
-        sample_distance_mm = X[sample_distance_column_name].values * 1e3
-        profile_data = X[radial_profile_data_column_name].values
+        X[q_range_column_name] = np.nan
+        X[q_range_column_name] = X[q_range_column_name].astype(object)
 
-        # Take first profile length as radial count
-        radial_count = profile_data[0].shape[0]
+        for idx in X.index:
+            # Extract sample distance and radial profile data
+            sample_distance_mm = X.loc[idx, sample_distance_column_name] * M2MM
+            profile = X.loc[idx, "radial_profile_data"]
+            radial_count = profile.size
+            q_range = radial_profile_unit_conversion(
+                    radial_count=radial_count,
+                    sample_distance_mm=sample_distance_mm,
+                    wavelength_nm=wavelength_nm,
+                    pixel_size=pixel_size,
+                    radial_units="q_per_nm")
 
-        q_range = radial_profile_unit_conversion(
-                radial_count=radial_count,
-                sample_distance_mm=sample_distance_mm,
-                wavelength_nm=wavelength_nm,
-                pixel_size=pixel_size,
-                radial_units="q_per_nm").T
-
-        # Add q-ranges into dataset
-        X[q_range_column_name] = q_range.tolist()
+            # Add q-range into dataframe
+            X.at[idx, q_range_column_name] = q_range.ravel()
 
         return X
 
+
+class GaussianFittingMomentumTransferUnitsConversion(
+        OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
+    """Adapted from scikit-learn transforms
+    Sample units conversion.
+    Converts from real-space pixel units to momentum transfer (q) units.
+
+    Uses peak fitting.
+    """
+    def __init__(self, *, copy=True,
+            wavelength_nm=None, pixel_size=None,
+            q_range_column_name=DEFAULT_Q_RANGE_COLUMN_NAME,
+            sample_distance_column_name=DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME,
+            recalculated_distance_column_name=DEFAULT_RECALCULATED_DISTANCE_COLUMN_NAME,
+            tissue_category_column_name=DEFAULT_TISSUE_CATEGORY_COLUMN_NAME,
+            radial_profile_data_column_name=DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME):
+        """
+        Parameters
+        ----------
+        copy : bool
+            Creates copy of array if True (default = False).
+
+        sample_distance_m : array_like
+            Array of sample distances in meters. Must be same shape as X.
+        """
+        self.copy = copy
+        self.wavelength_nm = wavelength_nm
+        self.pixel_size = pixel_size
+        self.q_range_column_name = q_range_column_name
+        self.sample_distance_column_name = sample_distance_column_name
+        self.recalculated_distance_column_name = recalculated_distance_column_name
+        self.tissue_category_column_name = tissue_category_column_name
+        self.radial_profile_data_column_name = radial_profile_data_column_name
+
+    def fit(self, X, y=None, sample_weight=None):
+        """Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The data used to compute the mean and standard deviation
+            used for later scaling along the features axis.
+        y : None
+            Ignored.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Individual weights for each sample.
+
+        Returns
+        -------
+        self : object
+            Fitted scaler.
+        """
+        return self
+
+    def transform(self, X, copy=True):
+        """Transforms radial data from intensity versus pixel position
+        to intensity versus q value.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix of shape (n_samples, n_features)
+            The data used to scale along the features axis.
+        copy : bool, default=None
+            Copy the input X or not.
+        Returns
+        -------
+        X_tr : {ndarray, sparse matrix} of shape (n_samples, n_features)
+            Transformed array.
+        """
+        wavelength_nm = self.wavelength_nm
+        pixel_size = self.pixel_size
+        q_range_column_name = self.q_range_column_name
+        sample_distance_column_name = self.sample_distance_column_name
+        recalculated_distance_column_name = self.recalculated_distance_column_name
+        tissue_category_column_name = self.tissue_category_column_name
+        radial_profile_data_column_name = self.radial_profile_data_column_name
+
+        if type(X) != type(pd.DataFrame()):
+            raise ValueError("Input ``X`` must be a dataframe.")
+
+        if copy is True:
+            X = X.copy()
+
+        fitter = TissueGaussianFit(
+                wavelength_nm=wavelength_nm,
+                pixel_size=pixel_size)
+
+        X[q_range_column_name] = np.nan
+        X[q_range_column_name] = X[q_range_column_name].astype(object)
+
+        for idx in X.index:
+            sample_distance = X.loc[idx, sample_distance_column_name]
+            profile_data = X.loc[idx, radial_profile_data_column_name]
+            tissue_category = X.loc[idx, tissue_category_column_name]
+
+            # Strip nans
+            profile_data = profile_data[~np.isnan(profile_data)]
+
+            q_range, recalculated_sample_distance_mm = \
+                    fitter.calculate_q_range_from_peak_fitting(
+                        profile_data,
+                        calculated_distance=sample_distance,
+                        tissue_category=tissue_category)
+            recalculated_distance = recalculated_sample_distance_mm * MM2M
+
+            # Add q-ranges into dataframe
+            X.at[idx, q_range_column_name] = q_range.ravel().tolist()
+            # Add recalculated sample distance into dataframe
+            X.at[idx, recalculated_distance_column_name] = recalculated_distance
+
+        return X
 
 class DiffractionUnitsConversion(object):
     """
@@ -323,91 +440,3 @@ class DiffractionUnitsConversion(object):
 
         return bragg_peak_pixel_location
 
-def radial_profile_unit_conversion(radial_count=None,
-        sample_distance_mm=None,
-        wavelength_nm=None,
-        pixel_size=None,
-        radial_units="q_per_nm"):
-    """
-    Convert radial profile from pixel lengths to:
-    - q_per_nm
-    - two_theta
-    - um
-
-    Parameters
-    ----------
-
-    radial_count : int
-        Number of radial points.
-
-    sample_distance : float
-        Meters.
-
-    radial_units : str
-        Choice of "q_per_nm" (default), "two_theta", or "um".
-    """
-    radial_range_m = np.arange(radial_count) * pixel_size
-    radial_range_m = radial_range_m.reshape(-1,1)
-    radial_range_mm = radial_range_m * 1e3
-
-    if radial_units == "q_per_nm":
-        q_range_per_nm = q_conversion(
-            real_position_mm=radial_range_mm,
-            sample_distance_mm=sample_distance_mm,
-            wavelength_nm=wavelength_nm)
-        return q_range_per_nm
-
-    if radial_units == "two_theta":
-        two_theta_range = two_theta_conversion(
-                sample_distance_mm, radial_range_mm)
-        return two_theta_range
-
-    if radial_units == "um":
-        return radial_range_m * 1e6
-
-def two_theta_conversion(real_position_mm=None, sample_distance_mm=None):
-    """
-    Convert real position to two*theta
-    """
-    two_theta = np.arctan2(real_position_mm, sample_distance_mm)
-    return two_theta
-
-def q_conversion(
-        real_position_mm=None, sample_distance_mm=None, wavelength_nm=None):
-    """
-    Convert real position to q
-    """
-    two_theta = two_theta_conversion(
-            real_position_mm=real_position_mm,
-            sample_distance_mm=sample_distance_mm)
-    theta = two_theta / 2
-    q = 4*np.pi*np.sin(theta) / wavelength_nm
-    return q
-
-def real_position_from_two_theta(two_theta=None, sample_distance_mm=None):
-    """
-    two_theta : float
-        radians
-
-    sample_distance_m
-    """
-    position_mm = sample_distance_mm * np.tan(two_theta)
-    return position_mm
-
-def real_position_from_q(q_per_nm=None, sample_distance_mm=None, wavelength_nm=None):
-    """
-    """
-    theta = np.arcsin(q_per_nm * wavelength_nm / 4 / np.pi)
-    two_theta = 2*theta
-    position_mm = real_position_from_two_theta(
-            two_theta=two_theta, sample_distance_mm=sample_distance_mm)
-    return position_mm
-
-def sample_distance_from_q(
-        q_per_nm=None, wavelength_nm=None, real_position_mm=None):
-    """
-    """
-    theta = np.arcsin(q_per_nm * wavelength_nm / (4*np.pi))
-    two_theta = 2 * theta
-    sample_distance_mm = real_position_mm / np.tan(two_theta)
-    return sample_distance_mm
