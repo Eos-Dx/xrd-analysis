@@ -14,9 +14,10 @@ from eosdxanalysis.calibration.sample_manual_calibration import TissueGaussianFi
 
 DEFAULT_Q_RANGE_COLUMN_NAME = "q_range"
 DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME = "calculated_distance"
+DEFAULT_RECALCULATED_DISTANCE_COLUMN_NAME = "recalculated_distance"
 DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
 DEFAULT_TISSUE_CATEGORY_COLUMN_NAME = "cancer_tissue"
-
+MM2M = 1e-3
 
 class MomentumTransferUnitsConversion(
         OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
@@ -178,6 +179,7 @@ class GaussianFittingMomentumTransferUnitsConversion(
         pixel_size = self.pixel_size
         q_range_column_name = self.q_range_column_name
         sample_distance_column_name = self.sample_distance_column_name
+        recalculated_distance_column_name = self.recalculated_distance_column_name
         tissue_category_column_name = self.tissue_category_column_name
         radial_profile_data_column_name = self.radial_profile_data_column_name
 
@@ -202,13 +204,17 @@ class GaussianFittingMomentumTransferUnitsConversion(
             # Strip nans
             profile_data = profile_data[~np.isnan(profile_data)]
 
-            q_range = fitter.calculate_q_range_from_peak_fitting(
-                    profile_data,
-                    calculated_distance=sample_distance,
-                    tissue_category=tissue_category)
+            q_range, recalculated_sample_distance_mm = \
+                    fitter.calculate_q_range_from_peak_fitting(
+                        profile_data,
+                        calculated_distance=sample_distance,
+                        tissue_category=tissue_category)
+            recalculated_distance = recalculated_sample_distance_mm * MM2M
 
-            # Add q-ranges into dataset
+            # Add q-ranges into dataframe
             X.at[idx, q_range_column_name] = q_range.ravel().tolist()
+            # Add recalculated sample distance into dataframe
+            X.at[idx, recalculated_distance_column_name] = recalculated_distance
 
         return X
 
@@ -428,91 +434,3 @@ class DiffractionUnitsConversion(object):
 
         return bragg_peak_pixel_location
 
-def radial_profile_unit_conversion(radial_count=None,
-        sample_distance_mm=None,
-        wavelength_nm=None,
-        pixel_size=None,
-        radial_units="q_per_nm"):
-    """
-    Convert radial profile from pixel lengths to:
-    - q_per_nm
-    - two_theta
-    - um
-
-    Parameters
-    ----------
-
-    radial_count : int
-        Number of radial points.
-
-    sample_distance : float
-        Meters.
-
-    radial_units : str
-        Choice of "q_per_nm" (default), "two_theta", or "um".
-    """
-    radial_range_m = np.arange(radial_count) * pixel_size
-    radial_range_m = radial_range_m.reshape(-1,1)
-    radial_range_mm = radial_range_m * 1e3
-
-    if radial_units == "q_per_nm":
-        q_range_per_nm = q_conversion(
-            real_position_mm=radial_range_mm,
-            sample_distance_mm=sample_distance_mm,
-            wavelength_nm=wavelength_nm)
-        return q_range_per_nm
-
-    if radial_units == "two_theta":
-        two_theta_range = two_theta_conversion(
-                sample_distance_mm, radial_range_mm)
-        return two_theta_range
-
-    if radial_units == "um":
-        return radial_range_m * 1e6
-
-def two_theta_conversion(real_position_mm=None, sample_distance_mm=None):
-    """
-    Convert real position to two*theta
-    """
-    two_theta = np.arctan2(real_position_mm, sample_distance_mm)
-    return two_theta
-
-def q_conversion(
-        real_position_mm=None, sample_distance_mm=None, wavelength_nm=None):
-    """
-    Convert real position to q
-    """
-    two_theta = two_theta_conversion(
-            real_position_mm=real_position_mm,
-            sample_distance_mm=sample_distance_mm)
-    theta = two_theta / 2
-    q_per_nm = 4*np.pi*np.sin(theta) / wavelength_nm
-    return q_per_nm
-
-def real_position_from_two_theta(two_theta=None, sample_distance_mm=None):
-    """
-    two_theta : float
-        radians
-
-    sample_distance_m
-    """
-    position_mm = sample_distance_mm * np.tan(two_theta)
-    return position_mm
-
-def real_position_from_q(q_per_nm=None, sample_distance_mm=None, wavelength_nm=None):
-    """
-    """
-    theta = np.arcsin(q_per_nm * wavelength_nm / 4 / np.pi)
-    two_theta = 2*theta
-    position_mm = real_position_from_two_theta(
-            two_theta=two_theta, sample_distance_mm=sample_distance_mm)
-    return position_mm
-
-def sample_distance_from_q(
-        q_per_nm=None, wavelength_nm=None, real_position_mm=None):
-    """
-    """
-    theta = np.arcsin(q_per_nm * wavelength_nm / (4*np.pi))
-    two_theta = 2 * theta
-    sample_distance_mm = real_position_mm / np.tan(two_theta)
-    return sample_distance_mm
