@@ -123,6 +123,7 @@ class GaussianFittingMomentumTransferUnitsConversion(
             wavelength_nm=None, pixel_size=None,
             q_range_column_name=DEFAULT_Q_RANGE_COLUMN_NAME,
             sample_distance_column_name=DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME,
+            recalculated_distance_column_name=DEFAULT_RECALCULATED_DISTANCE_COLUMN_NAME,
             tissue_category_column_name=DEFAULT_TISSUE_CATEGORY_COLUMN_NAME,
             radial_profile_data_column_name=DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME):
         """
@@ -139,6 +140,7 @@ class GaussianFittingMomentumTransferUnitsConversion(
         self.pixel_size = pixel_size
         self.q_range_column_name = q_range_column_name
         self.sample_distance_column_name = sample_distance_column_name
+        self.recalculated_distance_column_name = recalculated_distance_column_name
         self.tissue_category_column_name = tissue_category_column_name
         self.radial_profile_data_column_name = radial_profile_data_column_name
 
