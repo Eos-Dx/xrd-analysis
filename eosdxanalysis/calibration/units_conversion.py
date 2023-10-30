@@ -93,11 +93,12 @@ class MomentumTransferUnitsConversion(
         if copy is True:
             X = X.copy()
 
-        # Extract sample distance and radial profile data
-        sample_distance_mm = X[sample_distance_column_name].values * 1e3
-        profile_data = X[radial_profile_data_column_name].values
+        X[q_range_column_name] = np.nan
+        X[q_range_column_name] = X[q_range_column_name].astype(object)
 
         for idx in X.index:
+            # Extract sample distance and radial profile data
+            sample_distance_mm = X.loc[idx, sample_distance_column_name] * MM2M
             profile = X.loc[idx, "radial_profile_data"]
             radial_count = profile.size
             q_range = radial_profile_unit_conversion(
@@ -105,10 +106,10 @@ class MomentumTransferUnitsConversion(
                     sample_distance_mm=sample_distance_mm,
                     wavelength_nm=wavelength_nm,
                     pixel_size=pixel_size,
-                    radial_units="q_per_nm").T
+                    radial_units="q_per_nm")
 
-        # Add q-ranges into dataset
-        X[q_range_column_name] = q_range.tolist()
+            # Add q-range into dataframe
+            X.at[idx, q_range_column_name] = q_range.ravel()
 
         return X
 
