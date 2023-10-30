@@ -17,7 +17,7 @@ from eosdxanalysis.calibration.calibration import sample_detector_distance
 
 from eosdxanalysis.calibration.units_conversion import DiffractionUnitsConversion
 from eosdxanalysis.calibration.units_conversion import MomentumTransferUnitsConversion
-from eosdxanalysis.calibration.units_conversion import real_position_from_q
+from eosdxanalysis.calibration.utils import real_position_from_q
 
 
 TEST_IMAGE_PATH = os.path.join("eosdxanalysis","calibration","tests","test_images")
