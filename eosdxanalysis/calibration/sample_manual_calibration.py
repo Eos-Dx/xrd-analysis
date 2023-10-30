@@ -15,9 +15,9 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
-from eosdxanalysis.calibration.units_conversion import real_position_from_q
-from eosdxanalysis.calibration.units_conversion import sample_distance_from_q
-from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conversion
+from eosdxanalysis.calibration.utils import real_position_from_q
+from eosdxanalysis.calibration.utils import sample_distance_from_q
+from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 
 M2MM = 1e3

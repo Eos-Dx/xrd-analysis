@@ -22,8 +22,8 @@ from eosdxanalysis.calibration.materials import q_peaks_ref_dict
 
 from eosdxanalysis.calibration.materials import CALIBRATION_MATERIAL_LIST
 
-from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conversion
-from eosdxanalysis.calibration.units_conversion import real_position_from_q
+from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
+from eosdxanalysis.calibration.utils import real_position_from_q
 from eosdxanalysis.calibration.units_conversion import DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME
 
 from eosdxanalysis.preprocessing.utils import create_circular_mask
