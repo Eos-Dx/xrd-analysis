@@ -20,6 +20,7 @@ DEFAULT_RECALCULATED_DISTANCE_COLUMN_NAME = "recalculated_distance"
 DEFAULT_RADIAL_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
 DEFAULT_TISSUE_CATEGORY_COLUMN_NAME = "tissue_category"
 MM2M = 1e-3
+M2MM = 1e3
 
 class MomentumTransferUnitsConversion(
         OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
@@ -98,7 +99,7 @@ class MomentumTransferUnitsConversion(
 
         for idx in X.index:
             # Extract sample distance and radial profile data
-            sample_distance_mm = X.loc[idx, sample_distance_column_name] * MM2M
+            sample_distance_mm = X.loc[idx, sample_distance_column_name] * M2MM
             profile = X.loc[idx, "radial_profile_data"]
             radial_count = profile.size
             q_range = radial_profile_unit_conversion(
