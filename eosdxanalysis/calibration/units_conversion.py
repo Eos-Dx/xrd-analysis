@@ -11,6 +11,8 @@ from sklearn.base import BaseEstimator
 
 from eosdxanalysis.calibration.sample_manual_calibration import TissueGaussianFit
 
+from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
+
 
 DEFAULT_Q_RANGE_COLUMN_NAME = "q_range"
 DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME = "calculated_distance"
