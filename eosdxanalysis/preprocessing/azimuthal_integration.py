@@ -31,7 +31,7 @@ from eosdxanalysis.preprocessing.utils import find_center
 from eosdxanalysis.preprocessing.utils import warp_polar_preprocessor
 from eosdxanalysis.preprocessing.utils import DEFAULT_AZIMUTHAL_POINT_COUNT
 
-from eosdxanalysis.calibration.units_conversion import radial_profile_unit_conversion
+from eosdxanalysis.calibration.utils import radial_profile_unit_conversion
 
 DEFAULT_DET_XSIZE = 256
 RES_DEFAULT = 1
@@ -115,6 +115,15 @@ def azimuthal_integration(
 
     # Calculate the mean
     profile_1d = np.nanmean(polar_image_subset, axis=0)
+
+    # Remove nans
+    nan_bool = np.isnan(profile_1d)
+    nan_coords = np.where(nan_bool)
+
+    # Get last non-nan index
+    valid_coords = np.where(~nan_bool)
+    last_valid_idx = valid_coords[0][-1]
+    profile_1d = profile_1d[:last_valid_idx+1]
 
     return profile_1d
 
