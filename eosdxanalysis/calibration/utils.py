@@ -1,3 +1,8 @@
+"""Common utility functions
+"""
+import numpy as np
+
+
 def relative_beam_center(
         beam_center : tuple = None,
         pixel_size : float = None,
