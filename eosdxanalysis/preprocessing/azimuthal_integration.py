@@ -122,8 +122,11 @@ def azimuthal_integration(
 
     # Get last non-nan index
     valid_coords = np.where(~nan_bool)
-    last_valid_idx = valid_coords[0][-1]
-    profile_1d = profile_1d[:last_valid_idx+1]
+    try:
+        last_valid_idx = valid_coords[0][-1]
+        profile_1d = profile_1d[:last_valid_idx+1]
+    except:
+        pass
 
     return profile_1d
 
