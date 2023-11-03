@@ -39,6 +39,7 @@ DEFAULT_CENTER_METHOD = "trunc_centroid"
 DEFAULT_CENTER_METHOD_THRESHOLD = 1e6
 DEFAULT_MEASUREMENT_DATA_COLUMN_NAME = "measurement_data"
 DEFAULT_PROFILE_DATA_COLUMN_NAME = "radial_profile_data"
+DEFAULT_CENTER_DATA_COLUMN_NAME = "center"
 DEFAULT_CENTER_METHOD = "trunc_centroid"
 
 
@@ -221,6 +222,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
             fill : np.float = np.nan,
             measurement_data_column_name : str = DEFAULT_MEASUREMENT_DATA_COLUMN_NAME,
             profile_data_column_name : str = DEFAULT_PROFILE_DATA_COLUMN_NAME,
+            center_data_column_name : str = DEFAULT_CENTER_DATA_COLUMN_NAME,
             ):
         """
         Parameters
@@ -264,6 +266,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         self.fill = fill
         self.measurement_data_column_name = measurement_data_column_name
         self.profile_data_column_name = profile_data_column_name
+        self.center_data_column_name = center_data_column_name
 
     def fit(self, X, y=None, sample_weight=None):
         """Parameters
@@ -308,6 +311,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         fill = self.fill
         measurement_data_column_name = self.measurement_data_column_name
         profile_data_column_name = self.profile_data_column_name
+        center_data_column_name = self.center_data_column_name
 
         if type(X) != pd.DataFrame:
             raise ValueError("Input must be a dataframe.")
@@ -332,7 +336,9 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
 
             image = X.loc[idx, measurement_data_column_name]
 
-            if _find_center:
+            center = tuple(X.loc[idx, center_data_column_name])
+
+            if _find_center and np.isnan(center).any():
                 center = find_center(
                         image, rmax=beam_rmax, method=center_method,
                         threshold=center_method_threshold)
