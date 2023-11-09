@@ -336,12 +336,14 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
 
             image = X.loc[idx, measurement_data_column_name]
 
-            center = tuple(X.loc[idx, center_data_column_name])
+            center = X.loc[idx, center_data_column_name]
 
             if _find_center and np.isnan(center).any():
                 center = find_center(
                         image, rmax=beam_rmax, method=center_method,
                         threshold=center_method_threshold)
+
+            center = tuple(center)
 
             radial_profile = azimuthal_integration(
                     image,
