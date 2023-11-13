@@ -331,6 +331,9 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
         if type(center) != tuple:
             _find_center = True
 
+        if center_data_column_name not in X.columns:
+            X[center_data_column_name] = np.nan
+
         # Loop over all samples using batches
         for idx in X.index:
 
