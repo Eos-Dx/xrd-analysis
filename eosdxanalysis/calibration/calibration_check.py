@@ -82,12 +82,15 @@ def run_visual_calibration_check(
     elif file_format in ["tif", "tiff"]:
         image = io.imread(image_fullpath).astype(np.float64)
 
+    filename = os.path.basename(image_fullpath)
+
     doublet_peak_position = real_position_from_q(
             q_per_nm=q_doublets_per_nm,
             sample_distance_mm=sample_distance_mm,
             wavelength_nm=wavelength_nm)
     doublet_peak_index = doublet_peak_position * 1e-3 / pixel_size
-    title = "2D Measurement [dB+1]"
+
+    title = f"Calibration Check {filename}"
     fig = plt.figure(title)
     plt.title(title)
 
