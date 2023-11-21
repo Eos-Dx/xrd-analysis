@@ -24,6 +24,8 @@ VALID_FILE_FORMATS = [
         "npy",
         ]
 
+DEFAULT_INNER_RING_COUNT = 8
+
 
 def run_visual_calibration_check(
         image_fullpath,
@@ -32,6 +34,7 @@ def run_visual_calibration_check(
         sample_distance_mm=None,
         wavelength_nm=None,
         pixel_size=None,
+        inner_ring_count=DEFAULT_INNER_RING_COUNT,
         origin=None,
         save=None,
         ):
@@ -50,6 +53,10 @@ def run_visual_calibration_check(
     if q_doublets.size > 0:
         q_doublets_avg = np.array(np.mean(q_doublets)).flatten()
     q_singlets = np.array(q_peaks_ref.get("singlets")).flatten()
+    if inner_ring_count > q_singlets.size:
+        raise ValueError(
+                f"Inner ring count {inner_ring_count} is greater than "
+                        "the number of inner rings {q_singlets.size}")
     # Join the singlets and doublets averages into a single array
     q_peaks_avg = np.sort(np.concatenate([q_singlets, q_doublets_avg]))
 
@@ -64,12 +71,12 @@ def run_visual_calibration_check(
     try:
         file_format = os.path.splitext(image_fullpath)[1][1:]
     except:
-        raise ValueError("Error getting file format extension. \
-                Check if input file path is valid.")
+        raise ValueError("Error getting file format extension. "
+                "Check if input file path is valid.")
 
     if file_format not in VALID_FILE_FORMATS:
-        raise ValueError("{} is not a valid file format! \
-                Choose from: {}.".format(
+        raise ValueError("{} is not a valid file format! "
+                "Choose from: {}.".format(
                     file_format,
                     VALID_FILE_FORMATS,
                     ))
@@ -121,7 +128,7 @@ def run_visual_calibration_check(
     # Single rings
     # Convert from per angstrom to per nm
     q_peaks_arr = np.array(q_peaks_avg) * 1e1
-    for q_peak in q_peaks_arr[:10]:
+    for q_peak in q_peaks_arr[:inner_ring_count]:
         radius=real_position_from_q(
                 q_per_nm=q_peak,
                 sample_distance_mm=sample_distance_mm,
@@ -208,9 +215,12 @@ if __name__ == "__main__":
             "--sample_distance_mm", type=float,
             help="The sample-to-detector distance in [mm].")
     parser.add_argument(
+            "--inner_ring_count", type=int, default=DEFAULT_INNER_RING_COUNT,
+            help="The number of inner rings to display.")
+    parser.add_argument(
             "--save", action="store_true",
-            help="Save the center in matrix notation and \
-                    sample-to-detector distance in [mm].")
+            help="Save the center in matrix notation and "
+                    "sample-to-detector distance in [mm].")
 
 
     args = parser.parse_args()
@@ -238,6 +248,7 @@ if __name__ == "__main__":
         origin = "lower"
 
     sample_distance_mm = args.sample_distance_mm
+    inner_ring_count = args.inner_ring_count
     save = args.save
 
     # Run visuali calibration check
@@ -248,6 +259,7 @@ if __name__ == "__main__":
         sample_distance_mm=sample_distance_mm,
         wavelength_nm=wavelength_nm,
         pixel_size=pixel_size,
+        inner_ring_count=inner_ring_count,
         origin=origin,
         save=save,
         )
