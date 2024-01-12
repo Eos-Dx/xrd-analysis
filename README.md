@@ -1,5 +1,5 @@
 # xrd-analysis
-Software for Eos Dx, Inc. sample preprocessing and analysis. Last updated for v2.77.2.
+Software for Eos Dx, Inc. sample preprocessing and analysis. Last updated for v2.77.3.
 
 ## Documentation
 
@@ -38,7 +38,7 @@ First follow steps here to set up GitHub account and use SSH keys for access: ht
 
 Install the ``eosdxanalysis`` python package as follows:
 1. Clone this repository: ``git clone https://github.com/Eos-Dx/xrd-analysis``
-2. Change into the ``eosdxanalysis`` directory.
+2. Change into the ``xrd-analysis`` directory.
 3. Install using pip: ``pip install -e .``
 
 ## GitHub Workflow
