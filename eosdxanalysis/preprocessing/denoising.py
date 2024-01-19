@@ -342,14 +342,13 @@ class FilterOutlierPixelValues(OneToOneFeatureMixin, TransformerMixin, BaseEstim
 
             image = X.loc[idx, measurement_data_column_name].astype(np.float64)
 
-            if _find_center:
-                center = find_center(
-                        image, rmax=beam_rmax, method=center_method,
-                        threshold=center_method_threshold)
-
             # Beam masking
             if beam_rmax > 0:
                 # Block out the beam
+                if _find_center:
+                    center = find_center(
+                        image, rmax=beam_rmax, method=center_method,
+                        threshold=center_method_threshold)
                 mask = create_circular_mask(
                         image.shape[0], image.shape[1], center=center, rmax=beam_rmax)
 
