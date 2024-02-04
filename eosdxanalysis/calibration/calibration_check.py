@@ -167,7 +167,7 @@ def run_visual_calibration_check(
         # Construct calibration results file content
         sample_distance_m = sample_distance_mm * MM2M
         if origin == "lower":
-            center = 256 - center[0], 256 - center[1]
+            center = (256-1) - center[0], (256-1) - center[1]
         results_dict = {
                 DEFAULT_SAMPLE_DISTANCE_COLUMN_NAME: sample_distance_m,
                 "beam_center": list(center),
