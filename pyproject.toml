@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "eosdxanalysis"
-version = "2.77.4"
+version = "2.77.5"
 authors = [
   { name="Jonathan Friedman", email="jfriedman@eosdx.com" },
 ]

@@ -10,4 +10,5 @@ dependencies:
   - scikit-learn=1.2.2
   - scipy=1.9.1
   - sphinx=5.1.1
-  - sphinx-automodapi=0.41.1
+  - sphinx-automodapi=0.16.0
+  - pydata-sphinx-theme=0.15.2
