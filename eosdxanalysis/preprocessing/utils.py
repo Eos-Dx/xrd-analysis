@@ -209,8 +209,6 @@ def unwarp_polar(img, origin=None, output_shape=None, rmax=None, order=1):
 
     return output
 
-
-
 def gen_rotation_line(center=[0,0],angle=0.0,radius=100.0):
     """
     Function to generate line for plotting purposes using x,y coordinates.
@@ -527,7 +525,7 @@ def warp_polar_preprocessor(
         end_angle : float = None,
         radial_point_count : int = None,
         azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT,
-        fill : np.float = np.nan):
+        fill : float = np.nan):
     """
     Performs warp polar preprocessing for azimuthal integration
     and radial intensity functions.

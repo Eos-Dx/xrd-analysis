@@ -53,7 +53,7 @@ def azimuthal_integration(
         end_angle : float = None,
         radial_point_count : int = None,
         azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT,
-        fill : np.float = np.nan):
+        fill : float = np.nan):
     """
     Performs 2D -> 1D azimuthal integration yielding mean intensity as a
     function of radius
@@ -141,7 +141,7 @@ def radial_intensity_sum(
         end_angle : float = None,
         radial_point_count : int = None,
         azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT,
-        fill : np.float = np.nan):
+        fill : float = np.nan):
     """
     Performs 2D -> 1D radial intensity summation yielding total intensity
     as a function of radius.
@@ -219,7 +219,7 @@ class AzimuthalIntegration(OneToOneFeatureMixin, TransformerMixin, BaseEstimator
             end_angle : float = None,
             radial_point_count : int = None,
             azimuthal_point_count : int = DEFAULT_AZIMUTHAL_POINT_COUNT,
-            fill : np.float = np.nan,
+            fill : float = np.nan,
             measurement_data_column_name : str = DEFAULT_MEASUREMENT_DATA_COLUMN_NAME,
             profile_data_column_name : str = DEFAULT_PROFILE_DATA_COLUMN_NAME,
             center_data_column_name : str = DEFAULT_CENTER_DATA_COLUMN_NAME,
