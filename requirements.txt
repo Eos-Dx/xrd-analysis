@@ -12,6 +12,7 @@ cffi @ file:///home/conda/feedstock_root/build_artifacts/cffi_1696001724357/work
 cfgv @ file:///home/conda/feedstock_root/build_artifacts/cfgv_1629909281805/work
 charset-normalizer @ file:///home/conda/feedstock_root/build_artifacts/charset-normalizer_1698833585322/work
 click @ file:///home/conda/feedstock_root/build_artifacts/click_1692311806742/work
+cloudpickle @ file:///home/conda/feedstock_root/build_artifacts/cloudpickle_1697464713350/work
 colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1666700638685/work
 conda @ file:///home/conda/feedstock_root/build_artifacts/conda_1708705604379/work
 conda-libmamba-solver @ file:///home/conda/feedstock_root/build_artifacts/conda-libmamba-solver_1706566000184/work/src
@@ -45,6 +46,7 @@ jsonpointer @ file:///home/conda/feedstock_root/build_artifacts/jsonpointer_1695
 kiwisolver @ file:///home/conda/feedstock_root/build_artifacts/kiwisolver_1695379920604/work
 lazy_loader @ file:///home/conda/feedstock_root/build_artifacts/lazy_loader_1692295373316/work
 libmambapy @ file:///home/conda/feedstock_root/build_artifacts/mamba-split_1703178593403/work/libmambapy
+llvmlite==0.42.0
 MarkupSafe @ file:///home/conda/feedstock_root/build_artifacts/markupsafe_1706899926732/work
 matplotlib @ file:///home/conda/feedstock_root/build_artifacts/matplotlib-suite_1708026439111/work
 mccabe @ file:///home/conda/feedstock_root/build_artifacts/mccabe_1643049622439/work
@@ -53,6 +55,7 @@ munkres==1.1.4
 mypy-extensions @ file:///home/conda/feedstock_root/build_artifacts/mypy_extensions_1675543315189/work
 networkx @ file:///home/conda/feedstock_root/build_artifacts/networkx_1698504735452/work
 nodeenv @ file:///home/conda/feedstock_root/build_artifacts/nodeenv_1683892983968/work
+numba @ file:///home/conda/feedstock_root/build_artifacts/numba_1707024788644/work
 numpy @ file:///home/conda/feedstock_root/build_artifacts/numpy_1707225376651/work/dist/numpy-1.26.4-cp311-cp311-linux_x86_64.whl#sha256=d08e1c9e5833ae7780563812aa73e2497db1ee3bd5510d3becb8aa18aa2d0c7c
 numpydoc @ file:///home/conda/feedstock_root/build_artifacts/numpydoc_1702057563287/work
 packaging @ file:///home/conda/feedstock_root/build_artifacts/packaging_1696202382185/work
@@ -87,8 +90,10 @@ ruamel.yaml.clib @ file:///home/conda/feedstock_root/build_artifacts/ruamel.yaml
 scikit-image @ file:///home/conda/feedstock_root/build_artifacts/scikit-image_1697028611470/work/dist/scikit_image-0.22.0-cp311-cp311-linux_x86_64.whl#sha256=53d8b95f752df47007e9e71dd1c9805b9334e1e4791cf48e3762abb922636f04
 scikit-learn @ file:///home/conda/feedstock_root/build_artifacts/scikit-learn_1708073809211/work
 scipy @ file:///home/conda/feedstock_root/build_artifacts/scipy-split_1706041487672/work/dist/scipy-1.12.0-cp311-cp311-linux_x86_64.whl#sha256=c4f0d8ecd4373069a033d0ee818c2fe5959c8828937fa46deb00a478190f703a
+shap @ file:///home/conda/feedstock_root/build_artifacts/shap_1704716525202/work
 sip @ file:///home/conda/feedstock_root/build_artifacts/sip_1697300428897/work
 six @ file:///home/conda/feedstock_root/build_artifacts/six_1620240208055/work
+slicer @ file:///home/conda/feedstock_root/build_artifacts/slicer_1608146800664/work
 snowballstemmer @ file:///home/conda/feedstock_root/build_artifacts/snowballstemmer_1637143057757/work
 Sphinx @ file:///home/conda/feedstock_root/build_artifacts/sphinx_1694647393084/work
 sphinxcontrib-applehelp @ file:///home/conda/feedstock_root/build_artifacts/sphinxcontrib-applehelp_1705126298355/work
