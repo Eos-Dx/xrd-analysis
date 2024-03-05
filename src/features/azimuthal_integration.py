@@ -95,7 +95,9 @@ def azimuthal_integration(data, center):
 
     # Calculate the distances of each pixel from the center
     x_indices, y_indices = np.indices(data.shape)
-    distances = np.sqrt((x_indices - center[0]) ** 2 / +((y_indices - center[1]) ** 2))
+    distances = np.sqrt(
+        (x_indices - center[0]) ** 2 / +((y_indices - center[1]) ** 2)
+    )
 
     # Define the number of bins (adjust as needed)
     num_bins = int(np.ceil(max_distance))
