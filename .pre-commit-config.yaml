@@ -13,6 +13,7 @@ repos:
     rev: 7.0.0 # Update this to the latest version
     hooks:
       - id: flake8
+        args: ['--max-line-length=90']
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2 # Update this to the latest version
     hooks:
