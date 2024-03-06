@@ -20,6 +20,7 @@ repos:
       - id: isort
         name: isort (Python imports)
         additional_dependencies: [toml]
+        args: ["--profile", "black", "--filter-files"]
   - repo: https://github.com/econchick/interrogate
     rev: 1.5.0 # Update this to the latest version
     hooks:
