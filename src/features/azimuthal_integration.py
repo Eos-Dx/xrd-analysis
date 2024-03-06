@@ -3,9 +3,11 @@ This file includes functions and classes essential for azimuthal integration
 """
 
 from dataclasses import dataclass
+from functools import wraps
 
-import numpy as np
 import pandas as pd
+from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+from pyFAI.detectors import Detector
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -13,6 +15,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 class AzimuthalIntegration(BaseEstimator, TransformerMixin):
     """Transformer class for azimuthal integration to be used in
     sklearn pipeline"""
+
+    pixel_size: float
 
     def fit(self, X, y=None):
         """
@@ -52,80 +56,125 @@ class AzimuthalIntegration(BaseEstimator, TransformerMixin):
         if not isinstance(X, pd.DataFrame):
             raise TypeError("Input must be a pandas DataFrame")
         X_copy = X.copy()
-        X_copy["profile"] = X_copy.apply(azimuthal_integration_df, axis=1)
+
+        detector = Detector(pixel1=self.pixel_size, pixel2=self.pixel_size)
+
+        integration_results = X_copy.apply(
+            lambda row: azimuthal_integration_row(row, detector), axis=1
+        )
+
+        # Extract q_range and profile arrays from the integration_results
+        X_copy["q_range"] = integration_results.apply(lambda x: x[0])
+        X_copy["profile"] = integration_results.apply(lambda x: x[1])
         return X_copy
 
 
-def azimuthal_integration_df(row):
+def azimuthal_integration_row(row, detector=None):
     """
-    Performs azimuthal integration on a single row of a DataFrame.
+    Perform azimuthal integration on a single row of a DataFrame.
 
     Parameters:
     - row : pandas.Series
         A row from a pandas DataFrame, expected to contain 'measurement_data'
-        (a 2D array) and 'center' (a tuple of (x, y) representing the center of
-        integration).
+        (a 2D array), 'center' (a tuple of (x, y) representing the center of
+        integration), 'wavelength' and 'calculated_distance'.
+    - detector : pyFAI.detectors.Detector
+        The detector used for integration.
 
     Returns:
-    - numpy.ndarray
-        The azimuthal integration profile for the given row.
+    - q_range : numpy.ndarray
+        The array of q values (momentum transfer) resulting
+        from the integration.
+    - I : numpy.ndarray
+        The intensity values resulting from the integration.
     """
+
+    if not detector:
+        pixel_size = row["pixel_size"] * (10**-6)
+        detector = Detector(pixel1=pixel_size, pixel2=pixel_size)
+
     data = row["measurement_data"]
-    center = row["center"]
+    center = (row["center"][1], row["center"][0])
+    sample_distance_mm = row["calculated_distance"] * (10**3)
+    wavelength_m = row["wavelength"] * (10**-9)
 
-    return azimuthal_integration(data, center)
+    ai = initialize_azimuthal_integrator(
+        detector, wavelength_m, sample_distance_mm, center
+    )
+
+    return azimuthal_integration(data, ai=ai)
 
 
-def azimuthal_integration(data, center):
+def azimuthal_integration(data, ai=None):
     """
-    Calculates the azimuthal integration profile for a given 2D array
-    and center.
+    Perform azimuthal integration on a 2D array of measurement data.
 
     Parameters:
     - data : numpy.ndarray
         The 2D array of measurement data to integrate.
+    - ai : pyFAI.azimuthalIntegrator.AzimuthalIntegrator.
+
+    Returns:
+    - q_range : numpy.ndarray
+        The array of q values (momentum transfer) resulting
+        from the integration.
+    - I : numpy.ndarray
+        The intensity values resulting from the integration.
+    """
+
+    res = ai.integrate1d(data, 300)
+
+    q_range = res[0]
+    intensity = res[1]
+
+    return q_range, intensity
+
+
+def memoize_integrator(func):
+    """
+    Memoization decorator for initializing azimuthal integrator.
+
+    Parameters:
+    - func : function
+        The function to be memoized.
+
+    Returns:
+    - memoized_integrator : function
+        The memoized version of the function.
+    """
+    cache = {}
+
+    @wraps(func)
+    def memoized_integrator(detector, wavelength, sample_dist, center):
+        key = (wavelength, sample_dist, tuple(center))
+        if key not in cache:
+            cache[key] = func(detector, wavelength, sample_dist, center)
+        return cache[key]
+
+    return memoized_integrator
+
+
+@memoize_integrator
+def initialize_azimuthal_integrator(detector, wavelength, sample_dist, center):
+    """
+    Initializes an azimuthal integrator with given parameters.
+
+    Parameters:
+    - detector : pyFAI.detectors.Detector
+        The detector used for integration.
+    - wavelength : float
+        The wavelength of the incident X-ray beam.
+    - sample_dist : float
+        The sample-to-detector distance.
     - center : tuple
         A tuple of (x, y) coordinates representing the center point
         for integration.
 
     Returns:
-    - azimuthal_integrated_values : numpy.ndarray
-        An array of azimuthal integrated values.
+    - ai : pyFAI.azimuthalIntegrator.AzimuthalIntegrator
+        An instance of the PyFAI AzimuthalIntegrator.
     """
-
-    # Calculate the distances of each pixel from the center
-    data = np.nan_to_num(data)
-    x_indices, y_indices = np.indices(data.shape)
-    distances = np.sqrt(
-        (x_indices - center[0]) ** 2 + ((y_indices - center[1]) ** 2)
-    )
-
-    max_distance = np.max(distances)
-    max_distance_ceil = int(np.ceil(max_distance))
-
-    # Define the number of bins (adjust as needed)
-    num_bins = (
-        max_distance_ceil + 1
-        if max_distance < max_distance_ceil - 0.5
-        else max_distance_ceil + 2
-    )
-
-    half_step_sequence = np.arange(0.5, num_bins - 0.5, 1)
-    bins = np.hstack(([0], half_step_sequence))
-
-    # Bin the pixel values based on their distances from the center
-    binned_values, _ = np.histogram(distances, bins=bins, weights=data)
-    bin_counts, _ = np.histogram(distances, bins=bins)
-
-    # Perform azimuthal integration and normalize
-    azimuthal_integrated_values = binned_values / bin_counts
-
-    with np.errstate(divide="ignore", invalid="ignore"):
-        azimuthal_integrated_values = np.divide(
-            binned_values,
-            bin_counts,
-            out=np.zeros_like(binned_values, dtype=np.float64),
-            where=bin_counts != 0,
-        )
-
-    return azimuthal_integrated_values
+    ai = AzimuthalIntegrator(detector=detector)
+    ai.wavelength = wavelength
+    ai.setFit2D(sample_dist, center[0], center[1])
+    return ai

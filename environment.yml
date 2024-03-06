@@ -16,7 +16,9 @@ dependencies:
   - numpy
   - numpydoc
   - pandas
+  - pocl
   - pre-commit
+  - pyFAI
   - pytest
   - scikit-image
   - scikit-learn
