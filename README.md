@@ -6,13 +6,24 @@ Repository for collaboration of EOSDX team
 To start working with this repo:
 
 Install the packages using conda:
+```bash
 conda env create -f environment.yml
+```
+
+Activate the environment:
+```bash
+conda activate eosdx
+```
 
 Install environment for pre-commit:
+```bash
 pre-commit install
+```
 
 Install the editable package locally:
+```bash
 pip install -e .
+```
 
 Project Organization
 ------------
