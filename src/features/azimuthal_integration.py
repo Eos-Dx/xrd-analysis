@@ -11,6 +11,9 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 @dataclass
 class AzimuthalIntegration(BaseEstimator, TransformerMixin):
+    """Transformer class for azimuthal integration to be used in
+    sklearn pipeline"""
+
     def fit(self, X, y=None):
         """
         Fit method for the transformer. Since this transformer does not learn
@@ -89,19 +92,26 @@ def azimuthal_integration(data, center):
     - azimuthal_integrated_values : numpy.ndarray
         An array of azimuthal integrated values.
     """
-    max_distance = np.sqrt(
-        (data.shape[0] - center[0]) ** 2 + (data.shape[1] - center[1]) ** 2
-    )
 
     # Calculate the distances of each pixel from the center
+    data = np.nan_to_num(data)
     x_indices, y_indices = np.indices(data.shape)
     distances = np.sqrt(
-        (x_indices - center[0]) ** 2 / +((y_indices - center[1]) ** 2)
+        (x_indices - center[0]) ** 2 + ((y_indices - center[1]) ** 2)
     )
 
+    max_distance = np.max(distances)
+    max_distance_ceil = int(np.ceil(max_distance))
+
     # Define the number of bins (adjust as needed)
-    num_bins = int(np.ceil(max_distance))
-    bins = np.arange(num_bins + 1)
+    num_bins = (
+        max_distance_ceil + 1
+        if max_distance < max_distance_ceil - 0.5
+        else max_distance_ceil + 2
+    )
+
+    half_step_sequence = np.arange(0.5, num_bins - 0.5, 1)
+    bins = np.hstack(([0], half_step_sequence))
 
     # Bin the pixel values based on their distances from the center
     binned_values, _ = np.histogram(distances, bins=bins, weights=data)
@@ -109,5 +119,13 @@ def azimuthal_integration(data, center):
 
     # Perform azimuthal integration and normalize
     azimuthal_integrated_values = binned_values / bin_counts
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        azimuthal_integrated_values = np.divide(
+            binned_values,
+            bin_counts,
+            out=np.zeros_like(binned_values, dtype=np.float64),
+            where=bin_counts != 0,
+        )
 
     return azimuthal_integrated_values

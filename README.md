@@ -3,6 +3,17 @@ xrd-analysis
 
 Repository for collaboration of EOSDX team
 
+To start working with this repo:
+
+Install the packages using conda:
+conda env create -f environment.yml
+
+Install environment for pre-commit:
+pre-commit install
+
+Install the editable package locally:
+pip install -e .
+
 Project Organization
 ------------
 
