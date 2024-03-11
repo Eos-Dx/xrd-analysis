@@ -3,28 +3,32 @@ This file includes functions and classes essential for azimuthal integration
 """
 
 from dataclasses import dataclass
-from functools import wraps
+from functools import lru_cache, wraps
 
+import numpy as np
 import pandas as pd
+import pyFAI
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
 @dataclass
-class AzimuthalIntegration(BaseEstimator, TransformerMixin):
-    """Transformer class for azimuthal integration to be used in
-    sklearn pipeline"""
+class AzimuthalIntegration(TransformerMixin):
+    """
+    Transformer class for azimuthal integration to be used in
+    sklearn pipeline
+    """
 
     pixel_size: float
 
-    def fit(self, X, y=None):
+    def fit(self, x: pd.DataFrame, y=None):
         """
         Fit method for the transformer. Since this transformer does not learn
         from the data, the fit method does not perform any operations.
 
         Parameters:
-        - X : pandas.DataFrame
+        - x : pandas.DataFrame
             The data to fit.
         - y : Ignored
             Not used, present here for API consistency by convention.
@@ -33,12 +37,12 @@ class AzimuthalIntegration(BaseEstimator, TransformerMixin):
         - self : object
             Returns the instance itself.
         """
-        _ = X
+        _ = x
         _ = y
 
         return self
 
-    def transform(self, X):
+    def transform(self, x: pd.DataFrame) -> pd.DataFrame:
         """
         Applies azimuthal integration to each row of the DataFrame and adds
         the result as a new column.
@@ -53,20 +57,21 @@ class AzimuthalIntegration(BaseEstimator, TransformerMixin):
             A copy of the input DataFrame with an additional 'profile' column
             containing the results of the azimuthal integration.
         """
-        if not isinstance(X, pd.DataFrame):
+        if not isinstance(x, pd.DataFrame):
             raise TypeError("Input must be a pandas DataFrame")
-        X_copy = X.copy()
+
+        x_copy = x.copy()
 
         detector = Detector(pixel1=self.pixel_size, pixel2=self.pixel_size)
 
-        integration_results = X_copy.apply(
+        integration_results = x_copy.apply(
             lambda row: azimuthal_integration_row(row, detector), axis=1
         )
 
         # Extract q_range and profile arrays from the integration_results
-        X_copy["q_range"] = integration_results.apply(lambda x: x[0])
-        X_copy["profile"] = integration_results.apply(lambda x: x[1])
-        return X_copy
+        x_copy["q_range"] = integration_results.apply(lambda x: x[0])
+        x_copy["radial_profile"] = integration_results.apply(lambda x: x[1])
+        return x_copy
 
 
 def azimuthal_integration_row(row, detector=None):
@@ -105,7 +110,11 @@ def azimuthal_integration_row(row, detector=None):
     return azimuthal_integration(data, ai=ai)
 
 
-def azimuthal_integration(data, ai=None):
+def azimuthal_integration(
+    data: np.ndarray,
+    ai: pyFAI.azimuthalIntegrator.AzimuthalIntegrator,
+    npt=256,
+) -> tuple(np.array):
     """
     Perform azimuthal integration on a 2D array of measurement data.
 
@@ -113,6 +122,7 @@ def azimuthal_integration(data, ai=None):
     - data : numpy.ndarray
         The 2D array of measurement data to integrate.
     - ai : pyFAI.azimuthalIntegrator.AzimuthalIntegrator.
+    - npt: number of points in the resulting integrated spectrum.
 
     Returns:
     - q_range : numpy.ndarray
@@ -122,7 +132,7 @@ def azimuthal_integration(data, ai=None):
         The intensity values resulting from the integration.
     """
 
-    res = ai.integrate1d(data, 300)
+    res = ai.integrate1d(data, npt)
 
     q_range = res[0]
     intensity = res[1]
@@ -154,8 +164,10 @@ def memoize_integrator(func):
     return memoized_integrator
 
 
-@memoize_integrator
-def initialize_azimuthal_integrator(detector, wavelength, sample_dist, center):
+@lru_cache(maxsize=128)
+def initialize_azimuthal_integrator(
+    detector, wavelength: float, sample_dist: float, center: tuple
+) -> pyFAI.azimuthalIntegrator.AzimuthalIntegrator:
     """
     Initializes an azimuthal integrator with given parameters.
 
