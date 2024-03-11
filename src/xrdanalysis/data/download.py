@@ -29,10 +29,10 @@ class RequestDB:
     unzip_path: Union[str, Path] = UNZIP_PATH
 
 
-def download_data(api_key: str, form={}, url=URL):
+def download_data(api_key: str, form={}, url=URL, where="data.zip"):
     """
     The function download the required data from eosdx DB
-    :param api_key: the use API key
+    :param api_key: the API key as string
     :param form: JSON like dict request form, see API.md
     description for information
     form = {'key': 'your-access-key', 'cancer_tissue': True,
@@ -43,7 +43,7 @@ def download_data(api_key: str, form={}, url=URL):
     form["key"] = api_key
     response = requests.post(url, form, stream=True)
     block_size = 1024
-    with open("data.zip", "wb") as file:
+    with open(where, "wb") as file:
         for data in response.iter_content(block_size):
             file.write(data)
 
