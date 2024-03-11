@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from pyFAI.detectors import Detector
 
-from xrdanalysis.features.azimuthal_integration import (
+from xrdanalysis.data.azimuthal_integration import (
     AzimuthalIntegration,
     azimuthal_integration,
     azimuthal_integration_row,

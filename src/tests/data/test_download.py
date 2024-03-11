@@ -1,5 +1,12 @@
 """
 Test for data module
+
+To test functionality:
+from xrdanalysis.data.download import download_data, unzip_data, get_df
+key =  # MY API KEY
+download_data(key_api=key)
+unzip_data()
+df = set_df()
 """
 
 import numpy as np
