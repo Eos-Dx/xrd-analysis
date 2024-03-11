@@ -139,7 +139,7 @@ dmypy.json
 cython_debug/
 
 /data
-.idea
+.idea/
 
 bblinchevsky-ec2.pem
 eosdxanalysis/
