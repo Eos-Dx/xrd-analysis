@@ -8,11 +8,11 @@ Anastasia Zaytseva | [azaytzeva@eosdx.com](mailto:jfriedman@eosdx.com)
 This Eos Dx API has been specifically designed to cater to the needs of analytics and lab teams, providing them with access to measurement files and the corresponding data that are essential for their analysis processes. By leveraging this API, teams can optimize their workflow and efficiently retrieve the crucial information required for their analytical endeavors.
 
 ## Key Features
-1\. Seamless Data Retrieval: The API offers a seamless and intuitive interface for retrieving measurement files and their corresponding data. By providing the necessary parameters and filters, teams can effortlessly access the specific files and data points they require for their analysis.
+1. Seamless Data Retrieval: The API offers a seamless and intuitive interface for retrieving measurement files and their corresponding data. By providing the necessary parameters and filters, teams can effortlessly access the specific files and data points they require for their analysis.
 
-2\. Customizable Filters: The API supports a wide range of customizable filters, allowing users to narrow down their search and retrieve the most relevant measurement files and data. Whether it's based on study, data range, or any other specific criteria, the API empowers users to tailor their queries to meet their exact requirements.
+2. Customizable Filters: The API supports a wide range of customizable filters, allowing users to narrow down their search and retrieve the most relevant measurement files and data. Whether it's based on study, data range, or any other specific criteria, the API empowers users to tailor their queries to meet their exact requirements.
 
-3\. Efficient Query Execution: The API employs efficient query execution techniques to ensure optimal performance. By leveraging advanced data processing capabilities, the API minimizes response times and maximizes throughput, enabling users to retrieve their desired files and data in a timely manner.
+3. Efficient Query Execution: The API employs efficient query execution techniques to ensure optimal performance. By leveraging advanced data processing capabilities, the API minimizes response times and maximizes throughput, enabling users to retrieve their desired files and data in a timely manner.
 
 # Getting started
 This section provides instructions on how to make an API call using any Python environment.
@@ -52,21 +52,21 @@ This section outlines the format and contents of the API response. In this secti
 ## Response files
 When making a request to the API, the response will be a Zip-archive containing the following components:
 
-1\. Measurement Files Folder
+1. Measurement Files Folder
 
 This folder contains the measurement files in .npy format. Each file is named after the corresponding measurement's ID. These files store the actual measurement data.
 
 - `   `Format of files: .npy
 - `   `File names: Measurement ID (measurement\_id)
 
-2\. Calibration Files Folder
+2. Calibration Files Folder
 
 This folder contains the calibration files in .npy format. Each file is named after the calibration measurement's ID. These files store the calibration data associated with a measurement.
 
 - `   `Format of files: .npy
 - `   `File names: Calibration Measurement ID (calibration\_measurement\_id)
 
-3\. Description File
+3. Description File
 
 This file contains detailed information about every measurement. It provides additional metadata and attributes associated with each measurement. The CSV file serves as a reference for understanding the measurements and their corresponding data.
 
