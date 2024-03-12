@@ -55,23 +55,25 @@ class AzimuthalIntegration(TransformerMixin):
             A copy of the input DataFrame with an additional 'profile' column
             containing the results of the azimuthal integration.
         """
+        print(f'In transformer')
+
         if not isinstance(x, pd.DataFrame):
             raise TypeError("Input must be a pandas DataFrame")
 
         x_copy = x.copy()
 
         # Creating a PyFAI AzimuthalIntegrator instance
-        self.ai = pyFAI.AzimuthalIntegrator()
+        ai = pyFAI.AzimuthalIntegrator()
 
         # Assuming you have a detector
         detector = pyFAI.detectors.Detector(self.pixel_size, self.pixel_size)
-        self.ai.detector = detector
+        ai.detector = detector
 
         integration_results = x_copy.apply(
-            lambda row: perform_azimuthal_integration(row, self.ai, self.npt), axis=1
+            lambda row: perform_azimuthal_integration(row, ai, self.npt), axis=1
         )
 
         # Extract q_range and profile arrays from the integration_results
-        x_copy[["q_range", "radial_profile"]] = integration_results.apply(lambda x: pd.Series([x[0], x[1]]))
+        x_copy[["q_range", "radial_profile_data"]] = integration_results.apply(lambda x: pd.Series([x[0], x[1]]))
 
         return x_copy

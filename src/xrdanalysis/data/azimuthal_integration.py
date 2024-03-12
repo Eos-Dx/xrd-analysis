@@ -62,14 +62,14 @@ class AzimuthalIntegration(TransformerMixin):
         x_copy = x.copy()
 
         # Creating a PyFAI AzimuthalIntegrator instance
-        self.ai = pyFAI.AzimuthalIntegrator()
+        ai = pyFAI.AzimuthalIntegrator()
 
         # Assuming you have a detector
         detector = pyFAI.detectors.Detector(self.pixel_size, self.pixel_size)
-        self.ai.detector = detector
+        ai.detector = detector
 
         integration_results = x_copy.apply(
-            lambda row: perform_azimuthal_integration(row, self.ai, self.npt), axis=1
+            lambda row: perform_azimuthal_integration(row, ai, self.npt), axis=1
         )
 
         # Extract q_range and profile arrays from the integration_results
@@ -118,12 +118,7 @@ def perform_azimuthal_integration(row: pd.Series, ai: AzimuthalIntegrator, npt=2
     center = row["center"]
     center_column, center_row = center[1], center[0]
     sample_distance_mm = row["calculated_distance"] * (10 ** 3)
-    wavelength_m = row["wavelength"] * (10 ** -9)
-
-    # ai.setFit2D(centerX=center_column,
-    #             centerY=center_row,
-    #             wavelength=wavelength_m,
-    #             directDist=sample_distance_mm)
+    wavelength_m = row["wavelength"]
 
     ai_cached = initialize_azimuthal_integrator(ai,
                                                 center_column,
@@ -131,6 +126,7 @@ def perform_azimuthal_integration(row: pd.Series, ai: AzimuthalIntegrator, npt=2
                                                 wavelength_m,
                                                 sample_distance_mm)
 
-    q_range, profile = ai_cached.integrate1d(data, npt, unit="q_nm^-1")
-    return q_range, profile
+    radial, intensity = ai_cached.integrate1d(data, npt)
+
+    return radial, intensity
 
