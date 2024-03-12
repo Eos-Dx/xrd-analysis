@@ -19,6 +19,7 @@ dependencies:
   - pre-commit
   - pyFAI
   - pytest
+  - requests-mock
   - scikit-image
   - scikit-learn
   - scipy
