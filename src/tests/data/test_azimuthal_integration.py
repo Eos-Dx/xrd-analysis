@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import os
+from time import time
 from joblib import load
 from xrdanalysis.data.transformers import AzimuthalIntegration
 
@@ -31,7 +32,9 @@ def test_azimuthal_integration_transform(sample_data):
     """
     df = sample_data
     transformer = AzimuthalIntegration(pixel_size=55 * 10**-6)
+    a = time()
     transformed_df = transformer.transform(df)
+    print(time() - a)
 
     q_range_array_count = (
         transformed_df["q_range"]
