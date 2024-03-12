@@ -3,14 +3,12 @@ This file includes functions and classes essential for azimuthal integration
 """
 
 from dataclasses import dataclass
-from functools import lru_cache, wraps
-
-import numpy as np
+import time
 import pandas as pd
 import pyFAI
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import TransformerMixin
 
 
 @dataclass
@@ -21,6 +19,7 @@ class AzimuthalIntegration(TransformerMixin):
     """
 
     pixel_size: float
+    npt: int = 256
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -62,19 +61,24 @@ class AzimuthalIntegration(TransformerMixin):
 
         x_copy = x.copy()
 
-        detector = Detector(pixel1=self.pixel_size, pixel2=self.pixel_size)
+        # Creating a PyFAI AzimuthalIntegrator instance
+        self.ai = pyFAI.AzimuthalIntegrator()
+
+        # Assuming you have a detector
+        detector = pyFAI.detectors.Detector(self.pixel_size, self.pixel_size)
+        self.ai.detector = detector
 
         integration_results = x_copy.apply(
-            lambda row: azimuthal_integration_row(row, detector), axis=1
+            lambda row: perform_azimuthal_integration(row, self.ai, self.npt), axis=1
         )
 
         # Extract q_range and profile arrays from the integration_results
-        x_copy["q_range"] = integration_results.apply(lambda x: x[0])
-        x_copy["radial_profile"] = integration_results.apply(lambda x: x[1])
+        x_copy[["q_range", "radial_profile"]] = integration_results.apply(lambda x: pd.Series([x[0], x[1]]))
+
         return x_copy
 
 
-def azimuthal_integration_row(row, detector=None):
+def perform_azimuthal_integration(row: pd.Series, ai: AzimuthalIntegrator, npt=256):
     """
     Perform azimuthal integration on a single row of a DataFrame.
 
@@ -83,110 +87,31 @@ def azimuthal_integration_row(row, detector=None):
         A row from a pandas DataFrame, expected to contain 'measurement_data'
         (a 2D array), 'center' (a tuple of (x, y) representing the center of
         integration), 'wavelength' and 'calculated_distance'.
-    - detector : pyFAI.detectors.Detector
-        The detector used for integration.
-
-    Returns:
-    - q_range : numpy.ndarray
-        The array of q values (momentum transfer) resulting
-        from the integration.
-    - I : numpy.ndarray
-        The intensity values resulting from the integration.
-    """
-
-    if not detector:
-        pixel_size = row["pixel_size"] * (10**-6)
-        detector = Detector(pixel1=pixel_size, pixel2=pixel_size)
-
-    data = row["measurement_data"]
-    center = (row["center"][1], row["center"][0])
-    sample_distance_mm = row["calculated_distance"] * (10**3)
-    wavelength_m = row["wavelength"] * (10**-9)
-
-    ai = initialize_azimuthal_integrator(
-        detector, wavelength_m, sample_distance_mm, center
-    )
-
-    return azimuthal_integration(data, ai=ai)
-
-
-def azimuthal_integration(
-    data: np.ndarray,
-    ai: pyFAI.azimuthalIntegrator.AzimuthalIntegrator,
-    npt=256,
-) -> tuple(np.array):
-    """
-    Perform azimuthal integration on a 2D array of measurement data.
-
-    Parameters:
-    - data : numpy.ndarray
-        The 2D array of measurement data to integrate.
-    - ai : pyFAI.azimuthalIntegrator.AzimuthalIntegrator.
-    - npt: number of points in the resulting integrated spectrum.
-
-    Returns:
-    - q_range : numpy.ndarray
-        The array of q values (momentum transfer) resulting
-        from the integration.
-    - I : numpy.ndarray
-        The intensity values resulting from the integration.
-    """
-
-    res = ai.integrate1d(data, npt)
-
-    q_range = res[0]
-    intensity = res[1]
-
-    return q_range, intensity
-
-
-def memoize_integrator(func):
-    """
-    Memoization decorator for initializing azimuthal integrator.
-
-    Parameters:
-    - func : function
-        The function to be memoized.
-
-    Returns:
-    - memoized_integrator : function
-        The memoized version of the function.
-    """
-    cache = {}
-
-    @wraps(func)
-    def memoized_integrator(detector, wavelength, sample_dist, center):
-        key = (wavelength, sample_dist, tuple(center))
-        if key not in cache:
-            cache[key] = func(detector, wavelength, sample_dist, center)
-        return cache[key]
-
-    return memoized_integrator
-
-
-@lru_cache(maxsize=128)
-def initialize_azimuthal_integrator(
-    detector, wavelength: float, sample_dist: float, center: tuple
-) -> pyFAI.azimuthalIntegrator.AzimuthalIntegrator:
-    """
-    Initializes an azimuthal integrator with given parameters.
-
-    Parameters:
-    - detector : pyFAI.detectors.Detector
-        The detector used for integration.
-    - wavelength : float
-        The wavelength of the incident X-ray beam.
-    - sample_dist : float
-        The sample-to-detector distance.
-    - center : tuple
-        A tuple of (x, y) coordinates representing the center point
-        for integration.
-
-    Returns:
     - ai : pyFAI.azimuthalIntegrator.AzimuthalIntegrator
-        An instance of the PyFAI AzimuthalIntegrator.
+        The AzimuthalIntegrator used for integration.
+    - npt: int
+        number of points
+
+    Returns:
+    - q_range : numpy.ndarray
+        The array of q values (momentum transfer) resulting
+        from the integration.
+    - I : numpy.ndarray
+        The intensity values resulting from the integration.
     """
-    ai = AzimuthalIntegrator(detector=detector)
-    ai.wavelength = wavelength
-    ai.setFit2D(sample_dist, center[0], center[1])
-    return ai
+    pixel_size = row['pixel_size'] * 10**-6
+    if ai.detector.pixel1 != pixel_size or ai.detector.pixel2 != pixel_size:
+        raise ValueError('Pixel size are different in AI and df entry')
+    data = row["measurement_data"]
+    center = row["center"]
+    center_column, center_row = center[1], center[0]
+    sample_distance_mm = row["calculated_distance"] * (10 ** 3)
+    wavelength_m = row["wavelength"] * (10 ** -9)
+
+    ai.setFit2D(centerX=center_column,
+                centerY=center_row,
+                wavelength=wavelength_m,
+                directDist=sample_distance_mm)
+    q_range, profile = ai.integrate1d(data, npt=npt)
+    return q_range, profile
+
