@@ -2,101 +2,44 @@
 This file includes functions and classes essential for azimuthal integration
 """
 
-from dataclasses import dataclass
 from functools import lru_cache
 
 import pandas as pd
-import pyFAI
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
-from sklearn.base import TransformerMixin
+from pyFAI.detectors import Detector
 
 
-@dataclass
-class AzimuthalIntegration(TransformerMixin):
-    """
-    Transformer class for azimuthal integration to be used in
-    sklearn pipeline
-    """
-
-    pixel_size: float
-    npt: int = 256
-
-    def fit(self, x: pd.DataFrame, y=None):
-        """
-        Fit method for the transformer. Since this transformer does not learn
-        from the data, the fit method does not perform any operations.
-
-        Parameters:
-        - x : pandas.DataFrame
-            The data to fit.
-        - y : Ignored
-            Not used, present here for API consistency by convention.
-
-        Returns:
-        - self : object
-            Returns the instance itself.
-        """
-        _ = x
-        _ = y
-
-        return self
-
-    def transform(self, x: pd.DataFrame) -> pd.DataFrame:
-        """
-        Applies azimuthal integration to each row of the DataFrame and adds
-        the result as a new column.
-
-        Parameters:
-        - X : pandas.DataFrame
-            The data to transform. Must contain 'measurement_data' and 'center'
-            columns.
-
-        Returns:
-        - X_copy : pandas.DataFrame
-            A copy of the input DataFrame with an additional 'profile' column
-            containing the results of the azimuthal integration.
-        """
-        if not isinstance(x, pd.DataFrame):
-            raise TypeError("Input must be a pandas DataFrame")
-
-        x_copy = x.copy()
-
-        # Creating a PyFAI AzimuthalIntegrator instance
-        ai = pyFAI.AzimuthalIntegrator()
-
-        # Assuming you have a detector
-        detector = pyFAI.detectors.Detector(self.pixel_size, self.pixel_size)
-        ai.detector = detector
-
-        integration_results = x_copy.apply(
-            lambda row: perform_azimuthal_integration(row, ai, self.npt),
-            axis=1,
-        )
-
-        # Extract q_range and profile arrays from the integration_results
-        x_copy[["q_range", "radial_profile"]] = integration_results.apply(
-            lambda x: pd.Series([x[0], x[1]])
-        )
-
-        return x_copy
-
-
-@lru_cache(maxsize=None)  # Decorator to memoize the function call
+@lru_cache(maxsize=None)
 def initialize_azimuthal_integrator(
-    ai, center_column, center_row, wavelength_A, sample_distance_mm
+    pixel_size, center_column, center_row, wavelength_A, sample_distance_mm
 ):
+    """
+    Initializes an azimuthal integrator with given parameters.
+
+    Parameters:
+    - detector : pyFAI.detectors.Detector
+        The detector used for integration.
+    - wavelength : float
+        The wavelength of the incident X-ray beam.
+    - sample_dist : float
+        The sample-to-detector distance.
+    - center : tuple
+        A tuple of (x, y) coordinates representing the center point
+        for integration.
+
+    Returns:
+    - ai : pyFAI.azimuthalIntegrator.AzimuthalIntegrator
+        An instance of the PyFAI AzimuthalIntegrator.
+    """
+    detector = Detector(pixel_size, pixel_size)
+    ai = AzimuthalIntegrator(detector=detector)
     ai.setFit2D(
-        centerX=center_column,
-        centerY=center_row,
-        wavelength=wavelength_A,
-        directDist=sample_distance_mm,
+        sample_distance_mm, center_column, center_row, wavelength=wavelength_A
     )
     return ai
 
 
-def perform_azimuthal_integration(
-    row: pd.Series, ai: AzimuthalIntegrator, npt=256
-):
+def perform_azimuthal_integration(row: pd.Series, npt=256):
     """
     Perform azimuthal integration on a single row of a DataFrame.
 
@@ -117,9 +60,8 @@ def perform_azimuthal_integration(
     - I : numpy.ndarray
         The intensity values resulting from the integration.
     """
-    pixel_size = row["pixel_size"] * 10**-6
-    if ai.detector.pixel1 != pixel_size or ai.detector.pixel2 != pixel_size:
-        raise ValueError("Pixel size are different in AI and df entry")
+    interpolation_q_range = row.get("interpolation_q_range")
+    pixel_size = row["pixel_size"] * (10**-6)
     data = row["measurement_data"]
     center = row["center"]
     center_column, center_row = center[1], center[0]
@@ -127,9 +69,11 @@ def perform_azimuthal_integration(
     wavelength_A = row["wavelength"] * 10
 
     ai_cached = initialize_azimuthal_integrator(
-        ai, center_column, center_row, wavelength_A, sample_distance_mm
+        pixel_size, center_column, center_row, wavelength_A, sample_distance_mm
     )
 
-    radial, intensity = ai_cached.integrate1d(data, npt)
+    radial, intensity = ai_cached.integrate1d(
+        data, npt, radial_range=interpolation_q_range
+    )
 
     return radial, intensity
