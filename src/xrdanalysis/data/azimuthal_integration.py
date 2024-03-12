@@ -78,6 +78,18 @@ class AzimuthalIntegration(TransformerMixin):
         return x_copy
 
 
+from functools import lru_cache
+
+
+@lru_cache(maxsize=None)  # Decorator to memoize the function call
+def initialize_azimuthal_integrator(ai, center_column, center_row, wavelength_m, sample_distance_mm):
+    ai.setFit2D(centerX=center_column,
+                centerY=center_row,
+                wavelength=wavelength_m,
+                directDist=sample_distance_mm)
+    return ai
+
+
 def perform_azimuthal_integration(row: pd.Series, ai: AzimuthalIntegrator, npt=256):
     """
     Perform azimuthal integration on a single row of a DataFrame.
@@ -108,10 +120,17 @@ def perform_azimuthal_integration(row: pd.Series, ai: AzimuthalIntegrator, npt=2
     sample_distance_mm = row["calculated_distance"] * (10 ** 3)
     wavelength_m = row["wavelength"] * (10 ** -9)
 
-    ai.setFit2D(centerX=center_column,
-                centerY=center_row,
-                wavelength=wavelength_m,
-                directDist=sample_distance_mm)
-    q_range, profile = ai.integrate1d(data, npt=npt)
+    # ai.setFit2D(centerX=center_column,
+    #             centerY=center_row,
+    #             wavelength=wavelength_m,
+    #             directDist=sample_distance_mm)
+
+    ai_cached = initialize_azimuthal_integrator(ai,
+                                                center_column,
+                                                center_row,
+                                                wavelength_m,
+                                                sample_distance_mm)
+
+    q_range, profile = ai_cached.integrate1d(data, npt, unit="q_nm^-1")
     return q_range, profile
 
