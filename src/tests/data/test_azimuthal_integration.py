@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 import os
 from joblib import load
-from xrdanalysis.data.azimuthal_integration import AzimuthalIntegration
+from xrdanalysis.data.transformers import AzimuthalIntegration
 
 
 @pytest.fixture
