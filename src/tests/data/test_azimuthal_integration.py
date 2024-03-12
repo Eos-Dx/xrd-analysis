@@ -2,12 +2,14 @@
 Test for azimuthal integration
 """
 
+import os
+from time import time
+
 import numpy as np
 import pandas as pd
 import pytest
-import os
-from time import time
 from joblib import load
+
 from xrdanalysis.data.transformers import AzimuthalIntegration
 
 
@@ -17,9 +19,12 @@ def sample_data():
     Fixture providing a sample DataFrame with measurement data.
 
     Returns:
-        pd.DataFrame: DataFrame containing measurement data along with other related information.
+        pd.DataFrame: DataFrame containing measurement data along with other
+        related information.
     """
-    file_path = os.path.join(os.path.dirname(__file__), 'test_integration_data.joblib')
+    file_path = os.path.join(
+        os.path.dirname(__file__), "test_integration_data.joblib"
+    )
     df = load(file_path)
     df = pd.concat([df] * 10, ignore_index=True)
     return df
