@@ -42,7 +42,7 @@ def test_azimuthal_integration_transform(sample_data):
         .sum()
     )
     profile_array_count = (
-        transformed_df["radial_profile"]
+        transformed_df["radial_profile_data"]
         .apply(lambda x: isinstance(x, np.ndarray))
         .sum()
     )
@@ -51,4 +51,4 @@ def test_azimuthal_integration_transform(sample_data):
     assert profile_array_count == len(df)
 
     assert "q_range" in transformed_df.columns
-    assert "radial_profile" in transformed_df.columns
+    assert "radial_profile_data" in transformed_df.columns
