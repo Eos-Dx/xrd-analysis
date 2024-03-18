@@ -46,56 +46,50 @@ class MLBlindContainer:
 
 
 @dataclass
-class MLCluster:
+class MLDataCluster:
     df: pd.DataFrame
-    q_range: np.ndarray
-    q_cluster: int
+    q_cluster: int  # cluster number
     normalizer: Normalizer = None
-    std: StandardScaler = None
+    scaler: StandardScaler = None
     model: Union[XGBClassifier, RandomForestClassifier] = None
-    accuracy: float = 0
-    roc_auc: float = 0
     X_test: np.ndarray = None
     y_test: np.ndarray = None
     train_func: Callable = None
-    important_features: np.array = None
-    model_reduced: Union[XGBClassifier, RandomForestClassifier] = None
+    shap_values: np.array = None  # SHAP values
 
-    def predict_proba(self, reduced=False):
+    def accuracy(self):
+        """
+        return NamedTuple of values such as:
+        accurac, roc_auc, etc.
+        """
+        # TODO: make it
+        pass
+
+    def predict_proba(self):
         transformed_data = np.vstack(self.df[SCALED_DATA].values)
-        if reduced:
-            model = self.model_reduced
-            transformed_data = transformed_data[:, self.important_features]
-        else:
-            model = self.model
-        res = model.predict_proba(transformed_data)[:, 1]
+        res = self.model.predict_proba(transformed_data)[:, 1]
         self.df["prediction_proba"] = res
 
-    def predict(self, reduced=False):
+    def predict(self):
         transformed_data = np.vstack(self.df[SCALED_DATA].values)
-        if reduced:
-            model = self.model_reduced
-            transformed_data = transformed_data[:, self.important_features]
-        else:
-            model = self.model
-        res = model.predict(transformed_data)
+        res = self.model.predict(transformed_data)
         self.df["prediction"] = res
 
-    def calc_accuracy(self, reduced=False):
-        self.predict(reduced)
+    def calc_accuracy(self):
+        self.predict()
         y_data = self.df["cancer_diagnosis"].astype(int).values
         accuracy = accuracy_score(
             y_data, self.df["prediction"].astype(int).values
         )
-        self.accuracy = round(accuracy, 3)
+        return round(accuracy, 3)
 
-    def calc_roc_auc(self, reduced=False):
-        self.predict_proba(reduced)
+    def calc_roc_auc(self):
+        self.predict_proba()
         y_data = self.df["cancer_diagnosis"].astype(int).values
         roc_auc = roc_auc_score(
             y_data, self.df["prediction_proba"].astype(float).values
         )
-        self.roc_auc = round(roc_auc, 3)
+        return round(roc_auc, 3)
 
     def model_train(
         self,
@@ -124,8 +118,16 @@ class MLCluster:
     def q_min_max(self):
         return self.q_range[0]
 
+    @property
+    def q_range(self):
+        """
+        return q_range for this cluster as np.array
+        """
+        # TODO: make it work
+        pass
+
 
 @dataclass
-class MLClusterContainer:
+class MLDataClusterContainer:
     model_name: str
-    clusters: Dict[int, MLCluster]
+    clusters: Dict[int, MLDataCluster]
