@@ -2,16 +2,15 @@
 This file includes functions and classes essential for azimuthal integration
 """
 
-from functools import lru_cache
-
+from functools import cache
 import pandas as pd
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
 
 
-@lru_cache(maxsize=None)
+@cache
 def initialize_azimuthal_integrator(
-    pixel_size, center_column, center_row, wavelength_A, sample_distance_mm
+    pixel_size, center_column, center_row, wavelength, sample_distance_mm
 ):
     """
     Initializes an azimuthal integrator with given parameters.
@@ -34,12 +33,12 @@ def initialize_azimuthal_integrator(
     detector = Detector(pixel_size, pixel_size)
     ai = AzimuthalIntegrator(detector=detector)
     ai.setFit2D(
-        sample_distance_mm, center_column, center_row, wavelength=wavelength_A
+        sample_distance_mm, center_column, center_row, wavelength=wavelength
     )
     return ai
 
 
-def perform_azimuthal_integration(row: pd.Series, npt=256):
+def perform_azimuthal_integration(row: pd.Series, npt=256, mask=None):
     """
     Perform azimuthal integration on a single row of a DataFrame.
 
@@ -66,14 +65,14 @@ def perform_azimuthal_integration(row: pd.Series, npt=256):
     center = row["center"]
     center_column, center_row = center[1], center[0]
     sample_distance_mm = row["calculated_distance"] * (10**3)
-    wavelength_A = row["wavelength"] * 10
+    wavelength = row["wavelength"] * 10
 
     ai_cached = initialize_azimuthal_integrator(
-        pixel_size, center_column, center_row, wavelength_A, sample_distance_mm
+        pixel_size, center_column, center_row, wavelength, sample_distance_mm
     )
 
     radial, intensity = ai_cached.integrate1d(
-        data, npt, radial_range=interpolation_q_range
+        data, npt, radial_range=interpolation_q_range, mask=mask
     )
 
     return radial, intensity
