@@ -1,6 +1,7 @@
+from typing import Tuple
+
 import numpy as np
 from skimage.measure import label, regionprops
-from typing import Tuple
 
 
 def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
