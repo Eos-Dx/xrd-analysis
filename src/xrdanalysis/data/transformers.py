@@ -21,10 +21,17 @@ from xrdanalysis.data.utility_functions import get_center
 class AzimuthalIntegration(TransformerMixin):
     """
     Transformer class for azimuthal integration to be used in
-    sklearn pipeline
+    sklearn pipeline.
+
+    Attributes:
+        faulty_pixels (Tuple[int]): A tuple containing the
+            coordinates of faulty pixels.
+        npt (int): The number of points for azimuthal integration.
+            Defaults to 256.
+        mode (str): The integration mode, either "1D" or "2D".
+            Defaults to "1D".
     """
 
-    pixel_size: float
     faulty_pixels: Tuple[int]
     npt: int = 256
     mode: str = "1D"
@@ -93,21 +100,46 @@ class AzimuthalIntegration(TransformerMixin):
 
 class DataPreparation(TransformerMixin):
     """
-    Transformer class to prepare raw dataframe according to
-    the standard
+    Transformer class to prepare raw DataFrame according to the standard.
+
+    Methods:
+        fit: Fits the transformer to the data. Since this transformer does
+        not learn from the data, this method does not perform any operations.
+        transform: Transforms the input DataFrame to adhere to the
+        standard format.
     """
 
-    def fit(self, x):
-        self.x = x
+    def fit(self, x: pd.DataFrame, y=None):
+        """
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
+
+        Parameters:
+        - x : pandas.DataFrame
+            The data to fit.
+        - y : Ignored
+            Not used, present here for API consistency by convention.
+
+        Returns:
+        - self : object
+            Returns the instance itself.
+        """
+        _ = x
+        _ = y
+
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        columns to be returned
-        'study_name', 'study_id', 'cancer_tissue', 'cancer_diagnosis',
-        'patient_id', 'wavelength','pixel_size', 'calibration_manual_distance',
-        'center_col', 'center_row', 'calculated_distance', 'measurement_data',
-        'center'
+        Transforms the input DataFrame to adhere to the standard format.
+
+        Parameters:
+        - df: pandas.DataFrame
+            The raw DataFrame to be transformed.
+
+        Returns:
+        - dfc: pandas.DataFrame
+            The transformed DataFrame with selected columns.
         """
         dfc = df.copy()
         dfc = dfc[
@@ -158,17 +190,74 @@ class DataPreparation(TransformerMixin):
 
 
 class Clusterization(TransformerMixin):
+    """
+    Transformer class to perform clusterization and remove outliers
+    from the DataFrame.
+
+    Attributes:
+        n_clusters (int): The number of clusters to use in K-Means clustering.
+        z_score_threshold (float): The threshold for Z-score based outlier
+            removal.
+        direction (str): The direction of outlier removal, either "both",
+                         "positive", or "negative".
+
+    Methods:
+        fit: Fits the transformer to the data. Since this transformer does not
+            learn from the data, this method does not perform any operations.
+        transform: Transforms the input DataFrame by performing clusterization
+                   and outlier removal.
+    """
 
     def __init__(self, n_clusters, z_score_threshold, direction):
+        """
+        Initialize the Clusterization transformer with parameters.
+
+        Parameters:
+        - n_clusters (int): The number of clusters to use in K-Means
+            clustering.
+        - z_score_threshold (float): The threshold for Z-score based outlier
+            removal.
+        - direction (str): The direction of outlier removal, either "both",
+                           "positive", or "negative".
+        """
         self.n_clusters = n_clusters
         self.z_score_threshold = z_score_threshold
         self.direction = direction
 
-    def fit(self, x):
-        self.x = x
+    def fit(self, x: pd.DataFrame, y=None):
+        """
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
+
+        Parameters:
+        - x : pandas.DataFrame
+            The data to fit.
+        - y : Ignored
+            Not used, present here for API consistency by convention.
+
+        Returns:
+        - self : object
+            Returns the instance itself.
+        """
+        _ = x
+        _ = y
+
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Transforms the input DataFrame by performing clusterization
+        and outlier removal.
+
+        Parameters:
+        - df : pandas.DataFrame
+            The input DataFrame.
+
+        Returns:
+        - df_filtered : pandas.DataFrame
+            The transformed DataFrame with outliers removed.
+        """
+
         def remove_outliers_by_cluster(
             dataframe, z_score_threshold, direction="negative", num_clusters=4
         ):
