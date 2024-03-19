@@ -3,6 +3,7 @@ This file includes functions and classes essential for azimuthal integration
 """
 
 from functools import cache
+
 import pandas as pd
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
@@ -38,7 +39,9 @@ def initialize_azimuthal_integrator(
     return ai
 
 
-def perform_azimuthal_integration(row: pd.Series, npt=256, mask=None):
+def perform_azimuthal_integration(
+    row: pd.Series, npt=256, mask=None, mode="1D"
+):
     """
     Perform azimuthal integration on a single row of a DataFrame.
 
@@ -71,8 +74,13 @@ def perform_azimuthal_integration(row: pd.Series, npt=256, mask=None):
         pixel_size, center_column, center_row, wavelength, sample_distance_mm
     )
 
-    radial, intensity = ai_cached.integrate1d(
-        data, npt, radial_range=interpolation_q_range, mask=mask
-    )
-
-    return radial, intensity
+    if mode == "1D":
+        radial, intensity = ai_cached.integrate1d(
+            data, npt, radial_range=interpolation_q_range, mask=mask
+        )
+        return radial, intensity
+    elif mode == "2D":
+        intensity, radial, azimuthal = ai_cached.integrate2d(
+            data, npt, radial_range=interpolation_q_range, mask=mask
+        )
+        return radial, intensity, azimuthal
