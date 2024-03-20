@@ -12,8 +12,10 @@ import numpy as np
 import pandas as pd
 import requests
 
-UNZIP_PATH = Path("./unzipped_data/")
-URL = "https://api.eosdx.com/api/getmultiple"
+UNZIP_PATH_DATA = Path("./unzipped_data/")
+UNZIP_PATH_BLIND_DATA = Path("./unzipped_blind_data/")
+URL_DATA = "https://api.eosdx.com/api/getmultiple"
+URL_BLIND_DATA = "https://api.eosdx.com/api/getblinddata"
 
 
 @dataclass
@@ -25,11 +27,12 @@ class RequestDB:
 
     api_key: str
     form: Dict[str, str]
-    url: str = URL
-    unzip_path: Union[str, Path] = UNZIP_PATH
+    file_name: str
+    url: str
+    unzip_path: Union[str, Path]
 
 
-def download_data(api_key: str, form={}, url=URL, where="data.zip"):
+def download_data(api_key: str, form: Dict[str, str], url: str, file_name: str):
     """
     The function download the required data from eosdx DB
     :param api_key: the API key as string
@@ -37,26 +40,36 @@ def download_data(api_key: str, form={}, url=URL, where="data.zip"):
     description for information
     form = {'key': 'your-access-key', 'cancer_tissue': True,
      'measurement_id': '< 3', 'measurement_date': '2023-04-07'}
-    :param url: sharepoint
+
+    for blind data
+    form = {'study': '2', # 1 for california, 2 for keele, 3 for mice data
+           'key': key, #
+           'machine': '3', # 1 for Cu, 2 for Mo in california, 3 for keele,
+           'manual_distance': '160'}
+
+    :param url:
+    URL_DATA = "https://api.eosdx.com/api/getmultiple"
+    URL_BLIND_DATA = "https://api.eosdx.com/api/getblinddata"
+    :file_name: name of file where the data will be downloaded
     :return: None
     """
     form["key"] = api_key
     response = requests.post(url, form, stream=True)
     block_size = 1024
-    with open(where, "wb") as file:
+    with open(file_name, "wb") as file:
         for data in response.iter_content(block_size):
             file.write(data)
 
 
-def unzip_data(unzip_path=UNZIP_PATH):
+def unzip_data(file_name: str, unzip_path: str):
     """
     unzip data downloaded from the server to unzip_path folder
     """
-    with zipfile.ZipFile("data.zip", "r") as zf:
+    with zipfile.ZipFile(file_name, "r") as zf:
         zf.extractall(unzip_path)
 
 
-def form_df(unzip_path=UNZIP_PATH) -> pd.DataFrame:
+def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
     """
     generates pandas dataframe according to the data downloaded from the DB
     using eosdx API
@@ -81,6 +94,7 @@ def get_df(request: RequestDB) -> pd.DataFrame:
     This is function that makes a requst to the DB and returns
     pandas dataframe
     """
-    download_data(api_key=request.api_key, form=request.form, url=request.url)
-    unzip_data(request.unzip_path)
+    download_data(api_key=request.api_key, form=request.form,
+                  url=request.url, file_name=request.file_name)
+    unzip_data(file_name=request.file_name, unzip_path=request.unzip_path)
     return form_df(request.unzip_path)
