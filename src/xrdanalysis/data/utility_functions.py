@@ -1,11 +1,24 @@
+from typing import Tuple
+
 import numpy as np
 from skimage.measure import label, regionprops
-from typing import Tuple
 
 
 def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
     """
-    Takes SAXS data and determines center of the beam
+    Takes SAXS data and determines the center of the beam.
+
+    Parameters:
+    - data : numpy.ndarray
+        The input SAXS data.
+    - threshold : float, optional
+        The threshold factor for identifying the center of the beam.
+        Defaults to 3.0 times the average value of the input data.
+
+    Returns:
+    - center : tuple of float
+        The coordinates of the center of the beam in the input data.
+        If no center is found, returns (np.NaN, np.NaN).
     """
     average_value = np.nanmean(data)
 
