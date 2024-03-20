@@ -22,7 +22,15 @@ URL_BLIND_DATA = "https://api.eosdx.com/api/getblinddata"
 class RequestDB:
     """
     RequestDB is a dataclass used to store essential info for
-    requests to the server
+    requests to the server.
+
+    Attributes:
+        api_key (str): The API key used for authentication.
+        form (Dict[str, str]): A dictionary containing form data for the
+        request.
+        url (str): The URL of the server. Defaults to a predefined URL.
+        unzip_path (Union[str, Path]): The path where downloaded files should
+        be unzipped. Defaults to a predefined path.
     """
 
     api_key: str
@@ -34,7 +42,7 @@ class RequestDB:
 
 def download_data(api_key: str, form: Dict[str, str], url: str, file_name: str):
     """
-    The function download the required data from eosdx DB
+    Download the required data from the EOSDX DB.
     :param api_key: the API key as string
     :param form: JSON like dict request form, see API.md
     description for information
@@ -63,7 +71,11 @@ def download_data(api_key: str, form: Dict[str, str], url: str, file_name: str):
 
 def unzip_data(file_name: str, unzip_path: str):
     """
-    unzip data downloaded from the server to unzip_path folder
+    Unzip data downloaded from the server to the specified unzip_path folder.
+
+    :param unzip_path: The path where the data will be extracted.
+                       Defaults to UNZIP_PATH if not provided.
+    :return: None
     """
     with zipfile.ZipFile(file_name, "r") as zf:
         zf.extractall(unzip_path)
@@ -71,8 +83,12 @@ def unzip_data(file_name: str, unzip_path: str):
 
 def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
     """
-    generates pandas dataframe according to the data downloaded from the DB
-    using eosdx API
+    Generates a pandas DataFrame according to the data downloaded from the DB
+    using the EOSDX API.
+
+    :param unzip_path: The path where the downloaded data is extracted.
+    Defaults to UNZIP_PATH if not provided.
+    :return: A pandas DataFrame containing the data.
     """
     df = pd.read_csv(unzip_path / "description.csv")
     # MANDATORY!!!
@@ -91,8 +107,13 @@ def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
 
 def get_df(request: RequestDB) -> pd.DataFrame:
     """
-    This is function that makes a requst to the DB and returns
-    pandas dataframe
+    Makes a request to the database using the provided RequestDB object
+    and returns a pandas DataFrame.
+
+    :param request: A RequestDB object containing essential information
+    for the request.
+    :return: A pandas DataFrame containing the data retrieved from
+    the database.
     """
     download_data(api_key=request.api_key, form=request.form,
                   url=request.url, file_name=request.file_name)
