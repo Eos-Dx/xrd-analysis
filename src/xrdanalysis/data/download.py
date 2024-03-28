@@ -40,7 +40,9 @@ class RequestDB:
     unzip_path: Union[str, Path]
 
 
-def download_data(api_key: str, form: Dict[str, str], url: str, file_name: str):
+def download_data(
+    api_key: str, form: Dict[str, str], url: str, file_name: str
+):
     """
     Download the required data from the EOSDX DB.
     :param api_key: the API key as string
@@ -115,7 +117,11 @@ def get_df(request: RequestDB) -> pd.DataFrame:
     :return: A pandas DataFrame containing the data retrieved from
     the database.
     """
-    download_data(api_key=request.api_key, form=request.form,
-                  url=request.url, file_name=request.file_name)
+    download_data(
+        api_key=request.api_key,
+        form=request.form,
+        url=request.url,
+        file_name=request.file_name,
+    )
     unzip_data(file_name=request.file_name, unzip_path=request.unzip_path)
     return form_df(request.unzip_path)
