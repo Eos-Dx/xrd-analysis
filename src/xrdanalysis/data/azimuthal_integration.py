@@ -54,7 +54,7 @@ def perform_azimuthal_integration(
                 A 2D array containing the measurement data.
             - 'center' : tuple
                 A tuple of two floats representing the center coordinates
-                (y, x)for the integration.
+                (y, x) for the integration.
             - 'wavelength' : float
                 The wavelength of the incident X-ray beam, in nanometers.
             - 'calculated_distance' : float
