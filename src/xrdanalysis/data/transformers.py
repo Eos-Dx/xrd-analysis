@@ -76,12 +76,14 @@ class AzimuthalIntegration(TransformerMixin):
 
         x_copy = x.copy()
 
-        # Initialize the mask array for a 256x256 detector
-        mask = np.zeros((256, 256), dtype=np.uint8)
-
         # Mark the faulty pixels in the mask
-        for y, x in self.faulty_pixels:
-            mask[y, x] = 1
+        if self.faulty_pixels is not None:
+            # Initialize the mask array for a 256x256 detector
+            mask = np.zeros((256, 256), dtype=np.uint8)
+            for y, x in self.faulty_pixels:
+                mask[y, x] = 1
+        else:
+            mask = None
 
         integration_results = x_copy.apply(
             lambda row: perform_azimuthal_integration(
@@ -98,6 +100,21 @@ class AzimuthalIntegration(TransformerMixin):
         return x_copy
 
 
+COLUMNS_DEF = ["calibration_measurement_id",
+               "study_name",
+               "study_id",
+               "cancer_tissue",
+               "cancer_diagnosis",
+               "patient_id",
+               "wavelength",
+               "pixel_size",
+               "calibration_manual_distance",
+               "calculated_distance",
+               "measurement_data",
+               "center"
+        ]
+
+
 class DataPreparation(TransformerMixin):
     """
     Transformer class to prepare raw DataFrame according to the standard.
@@ -109,6 +126,7 @@ class DataPreparation(TransformerMixin):
         standard format.
     """
 
+    columns = COLUMNS_DEF
     def fit(self, x: pd.DataFrame, y=None):
         """
         Fit method for the transformer. Since this transformer does not learn
@@ -142,11 +160,20 @@ class DataPreparation(TransformerMixin):
             The transformed DataFrame with selected columns.
         """
         dfc = df.copy()
-        dfc = dfc[
-            ~dfc["center_col"].isna()
-            | ~dfc["center_row"].isna()
-            | ~dfc["calculated_distance"].isna()
-        ]
+        if 'center_col' in dfc.columns:
+            dfc = dfc[~dfc["center_col"].isna()]
+            no_center_col = False
+        else:
+            no_center_col = True
+
+        if 'center_row' in dfc.columns:
+            dfc = dfc[~dfc["center_row"].isna()]
+            no_center_row = False
+        else:
+            no_center_row = True
+
+        if 'calculated_distance' in dfc.columns:
+            dfc = dfc[~dfc["calculated_distance"].isna()]
 
         def is_all_none(array):
             return all(x is None for x in array)
@@ -159,7 +186,8 @@ class DataPreparation(TransformerMixin):
             lambda x: np.nan_to_num(x)
         )
 
-        dfc["center"] = dfc["measurement_data"].apply(get_center)
+        if 'center' not in dfc.columns:
+            dfc["center"] = dfc["measurement_data"].apply(get_center)
 
         def is_nan_pair(x):
             if isinstance(x, tuple) and len(x) == 2:
@@ -170,23 +198,15 @@ class DataPreparation(TransformerMixin):
         # (np.NaN, np.NaN)
         dfc = dfc[~dfc["center"].apply(is_nan_pair)]
 
-        columns = [
-            "study_name",
-            "study_id",
-            "cancer_tissue",
-            "cancer_diagnosis",
-            "patient_id",
-            "wavelength",
-            "pixel_size",
-            "calibration_manual_distance",
-            "center_col",
-            "center_row",
-            "calculated_distance",
-            "measurement_data",
-            "center",
-        ]
 
-        return dfc[columns]
+
+        if not no_center_col:
+            self.columns.append('center_col')
+
+        if not no_center_row:
+            self.columns.append('center_row')
+
+        return dfc[self.columns]
 
 
 class Clusterization(TransformerMixin):
