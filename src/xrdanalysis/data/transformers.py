@@ -32,7 +32,7 @@ class AzimuthalIntegration(TransformerMixin):
             Defaults to "1D".
     """
 
-    faulty_pixels: Tuple[int]
+    faulty_pixels: Tuple[int] = ()
     npt: int = 256
     mode: str = "1D"
 
