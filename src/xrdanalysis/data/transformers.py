@@ -28,13 +28,18 @@ class AzimuthalIntegration(TransformerMixin):
             coordinates of faulty pixels.
         npt (int): The number of points for azimuthal integration.
             Defaults to 256.
-        mode (str): The integration mode, either "1D" or "2D".
+        integration_mode (str): The integration mode, either "1D" or "2D".
             Defaults to "1D".
+        transformation_mode (str): The transformation mode, either 'dataframe'
+            returns a dataframe for further analysis or 'pipeline' to use in
+            sklearn pipeline.
+            Defaults to 'dataframe'.
     """
 
     faulty_pixels: Tuple[int] = None
     npt: int = 256
-    mode: str = "1D"
+    integration_mode: str = "1D"
+    transformation_mode: str = "dataframe"
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -87,15 +92,23 @@ class AzimuthalIntegration(TransformerMixin):
 
         integration_results = x_copy.apply(
             lambda row: perform_azimuthal_integration(
-                row, self.npt, mask, self.mode
+                row, self.npt, mask, self.integration_mode
             ),
             axis=1,
         )
 
-        # Extract q_range and profile arrays from the integration_results
-        x_copy[["q_range", "radial_profile_data"]] = integration_results.apply(
-            lambda x: pd.Series([x[0], x[1]])
-        )
+        if self.integration_mode == "1D":
+            # Extract q_range and profile arrays from the integration_results
+            x_copy[["q_range", "radial_profile_data"]] = (
+                integration_results.apply(lambda x: pd.Series([x[0], x[1]]))
+            )
+        elif self.integration_mode == "2D":
+            x_copy[
+                ["q_range", "radial_profile_data", "azimuthal_positions"]
+            ] = integration_results.apply(lambda x: pd.Series([x[0], x[1]]))
+
+        if self.transformation_mode == "pipeline":
+            x_copy = np.asarray(x_copy["radial_profile_data"].values.tolist())
 
         return x_copy
 
