@@ -9,6 +9,7 @@ dependencies:
   - click
   - coverage
   - flake8
+  - h5py
   - interrogate
   - ipykernel
   - ipympl
