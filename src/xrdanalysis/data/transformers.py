@@ -105,7 +105,7 @@ class AzimuthalIntegration(TransformerMixin):
         elif self.integration_mode == "2D":
             x_copy[
                 ["q_range", "radial_profile_data", "azimuthal_positions"]
-            ] = integration_results.apply(lambda x: pd.Series([x[0], x[1]]))
+            ] = integration_results.apply(lambda x: pd.Series([x[0], x[1], x[2]]))
 
         if self.transformation_mode == "pipeline":
             x_copy = np.asarray(x_copy["radial_profile_data"].values.tolist())
