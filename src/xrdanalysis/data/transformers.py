@@ -3,18 +3,22 @@ The transformer classes are stored here
 """
 
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Dict, List
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
 from scipy.stats import zscore
 from sklearn.base import TransformerMixin
 from sklearn.cluster import KMeans
+from sklearn.preprocessing import Normalizer, StandardScaler
+
 
 from xrdanalysis.data.azimuthal_integration import (
     perform_azimuthal_integration,
 )
 from xrdanalysis.data.utility_functions import get_center
+from xrdanalysis.data.containers import MLCluster, MLClusterContainer
 
 
 @dataclass
@@ -112,7 +116,7 @@ COLUMNS_DEF = ["calibration_measurement_id",
                "calculated_distance",
                "measurement_data",
                "center"
-        ]
+               ]
 
 
 class DataPreparation(TransformerMixin):
@@ -126,7 +130,9 @@ class DataPreparation(TransformerMixin):
         standard format.
     """
 
-    columns = COLUMNS_DEF
+    def __init__(self, columns=COLUMNS_DEF):
+        self.columns = columns
+
     def fit(self, x: pd.DataFrame, y=None):
         """
         Fit method for the transformer. Since this transformer does not learn
@@ -197,8 +203,6 @@ class DataPreparation(TransformerMixin):
         # Apply the function and filter out the rows where 'center' is
         # (np.NaN, np.NaN)
         dfc = dfc[~dfc["center"].apply(is_nan_pair)]
-
-
 
         if not no_center_col:
             self.columns.append('center_col')
@@ -347,3 +351,100 @@ class Clusterization(TransformerMixin):
             direction=self.direction,
             num_clusters=self.n_clusters,
         )
+
+
+class InterpolatorClusters(TransformerMixin):
+    def __init__(self,
+                 perc_min: float,
+                 perc_max: float,
+                 resolution: int,
+                 faulty_pixel_array: List,
+                 model_names: str):
+        self.perc_min = perc_min
+        self.perc_max = perc_max
+        self.q_resolution = resolution
+        self.model_names = model_names
+        self.faulty_pixel_array = faulty_pixel_array
+
+    def fit(self, x: pd.DataFrame):
+        self.x = x
+        return self
+
+    def transform(self, df) -> Dict[str, MLClusterContainer]:
+        def do_interpolation(df,
+                             cluster_label,
+                             perc_min,
+                             perc_max,
+                             q_resolution):
+            cluster_indices = df[df['q_cluster_label'] == cluster_label].index
+            dfc = df.loc[cluster_indices].copy()
+            q_max_min = np.min(dfc['q_range_max'])
+            q_min = q_max_min * perc_min
+            q_max = q_max_min * perc_max
+            q_range = (q_min, q_max)
+            dfc["interpolation_q_range"] = [q_range] * len(dfc)
+
+            azimuth = AzimuthalIntegration(
+                faulty_pixels=self.faulty_pixel_array,
+                npt=q_resolution)
+            dfc = azimuth.transform(dfc)
+
+            return MLCluster(df=dfc,
+                             q_cluster=cluster_label,
+                             q_range=dfc['q_range'])
+
+        dfc = df.copy()
+        clusters_global = {}
+        clusters = {}
+        for cluster_label in dfc['q_cluster_label'].unique():
+            clusters[cluster_label] = do_interpolation(dfc, cluster_label,
+                                                       self.perc_min,
+                                                       self.perc_max,
+                                                       self.q_resolution)
+
+        for model_name in self.model_names:
+            clusters_global[model_name] = MLClusterContainer(model_name,
+                                                             deepcopy(clusters))
+
+        return clusters_global
+
+
+class NormScalerClusters(TransformerMixin):
+
+    def __init__(self, model_names: List[str], do_fit=True):
+        self.model_names = model_names
+        self.do_fit = do_fit
+
+    def fit(self, x):
+        self.x = x
+        return self
+
+    def transform(self, containers: Dict[str, MLClusterContainer]) -> Dict[str, MLClusterContainer]:
+
+        def do_norm_scale(cluster: MLCluster, std=None, norm=None, do_fit=True):
+            if not norm:
+                norm = Normalizer(norm="l2")
+            if not std:
+                std = StandardScaler()
+            dfc = cluster.df.copy()
+            dfc['radial_profile_data_norm'] = \
+                dfc['radial_profile_data'].apply(lambda x: norm.transform([x])[0])
+
+            matrix_2d = np.vstack(dfc['radial_profile_data_norm'].values)
+            if do_fit:
+                scaled_data = std.fit_transform(matrix_2d)
+            else:
+                scaled_data = std.transform(matrix_2d)
+
+            dfc['radial_profile_data_norm_scaled'] = \
+                [arr for arr in scaled_data]
+
+            cluster.df = dfc
+            cluster.normalizer = norm
+            cluster.std = std
+
+        for container in containers.values():
+            for cluster in container.clusters.values():
+                do_norm_scale(cluster, do_fit=self.do_fit)
+        return containers
+
