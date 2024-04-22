@@ -1,61 +1,84 @@
+<<<<<<< HEAD
 # xrd-analysis
 Software for Eos Dx, Inc. sample preprocessing and analysis. Last updated for v2.77.5.
+=======
+xrd-analysis
+==============================
+>>>>>>> f1b68e8c2981c9492f42f2d96f7777ae0adeaf3b
 
-## Documentation
+Repository for collaboration of EOSDX team
 
-Open ``xrd-analysis/eosdxanalysis/docs/build/html/index.html`` in your web browser.
+To start working with this repo:
 
-# Codebase
-The python package is named ``eosdxanalysis``.
-
-The ``eosdxanalysis`` main modules are ``calibration``, ``models``, ``preprocessing``, ``simulations``, and ``visualization``.
-
-* ``calibration`` contains code to calibrate measurements based on machine parameters and calibration measurements.
-
-* ``models`` contains learning models, such as logistic regression, K-means, as well as function fitting models and function transforms (Fourier).
-
-* ``preprocessing`` contains image preprocessing code to process batches of raw x-ray diffraction measurement data.
-
-* ``simulations`` contains code based on the physics of x-ray diffraction.
-
-* ``visualization`` contains code to visualize measurements and results of learning models.
-
-# Contributing
-
-## Development Environment Setup
-Use miniforge (https://github.com/conda-forge/miniforge) and create environment with environment.yml file from xrd-analysis repository:
-
+Install the packages using conda:
 ```bash
-conda env create --name eos --file environment.yaml
-conda activate eos
+conda env create -f environment.yml
 ```
 
-Note: Remove the line containing ``sphinx-automodapi=0.41.1`` if install fails.
-
-## Installation
-
-First follow steps here to set up GitHub account and use SSH keys for access: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/testing-your-ssh-connection
-
-Install the ``eosdxanalysis`` python package as follows:
-1. Clone this repository: ``git clone https://github.com/Eos-Dx/xrd-analysis``
-2. Change into the ``xrd-analysis`` directory.
-3. Install using pip: ``pip install -e .``
-
-## GitHub Workflow
-Use the GitHub commandline interface to speed up development. Make sure to follow best practices.
-1. Create an issue, and optionally add a label: ``gh issue create``
-2. Create a branch named according to the issue type, description, and issue number:
-``git checkout -b feature/brilliant-new-feature/42``
-3. Solve the issue and include tests and documentation if appropriate.
-4. Make some commits: ``git add name_of_file_changed; git commit -m "adds new brilliant feature"``
-5. Create a pull request and note its number: ``gh pr create``
-6. Merge the pull request and reference the issue: ``gh pr merge 43 --body "Solves #42"``
-
-## Preprocessing
-
-### Preprocessing Raw Data
-In the shell, run the following commands from the ``xrd-analysis`` directory to preprocess raw data,
+Activate the environment:
 ```bash
-python /path/to/eosdxanalysis/preprocessing/preprocess.py --input_path "INPUT_PATH" --data_dir "DATA_DIR" --params_file "PARAMETERS_FILE_PATH"
+conda activate eosdx
 ```
-where ``/path/to/eosdxanalysis/preprocessing/preprocess.py`` is the path to ``preprocess.py``, ``INPUT_PATH`` contains the data directory ``DATA_DIR``, and ``PARAMETERS_FILE_PATH`` is the path to the parameters file. See full documentation for details.
+
+Install environment for pre-commit:
+```bash
+pre-commit install
+```
+
+Install the editable package locally:
+```bash
+pip install -e .
+```
+
+Project Organization
+------------
+
+    ├── LICENSE
+    ├── Makefile           <- Makefile with commands like `make data` or `make train`
+    ├── README.md          <- The top-level README for developers using this project.
+    ├── data
+    │   ├── external       <- Data from third party sources.
+    │   ├── interim        <- Intermediate data that has been transformed.
+    │   ├── processed      <- The final, canonical data sets for modeling.
+    │   └── raw            <- The original, immutable data dump.
+    │
+    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
+    │
+    ├── models             <- Trained and serialized models, model predictions, or model summaries
+    │
+    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
+    │                         the creator's initials, and a short `-` delimited description, e.g.
+    │                         `1.0-jqp-initial-data-exploration`.
+    │
+    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+    │
+    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
+    │   └── figures        <- Generated graphics and figures to be used in reporting
+    │
+    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
+    │                         generated with `pip freeze > requirements.txt`
+    │
+    ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
+    ├── src/xrdanalysis    <- Source code for use in this project.
+    │   ├── __init__.py    <- Makes src a Python module
+    │   │
+    │   ├── data           <- Scripts to download or generate data
+    │   │   └── make_dataset.py
+    │   │
+    │   ├── features       <- Scripts to turn raw data into features for modeling
+    │   │   └── build_features.py
+    │   │
+    │   ├── models         <- Scripts to train models and then use trained models to make
+    │   │   │                 predictions
+    │   │   ├── predict_model.py
+    │   │   └── train_model.py
+    │   │
+    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
+    │       └── visualize.py
+    │
+    └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
+
+
+--------
+
+<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>

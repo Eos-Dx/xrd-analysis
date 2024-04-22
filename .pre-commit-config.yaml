@@ -1,0 +1,28 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0 # Update this to the latest version
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/psf/black
+    rev: 24.2.0 # Update this to the latest version
+    hooks:
+      - id: black
+        language_version: python3
+        args: ['--line-length=79']
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0 # Update this to the latest version
+    hooks:
+      - id: flake8
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2 # Update this to the latest version
+    hooks:
+      - id: isort
+        name: isort (Python imports)
+        additional_dependencies: [toml]
+        args: ["--profile", "black", "--filter-files", "--line-length=79"]
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.5.0 # Update this to the latest version
+    hooks:
+      - id: interrogate
+        args: ["-vv", "--fail-under=80"] # Verbose output, fail if <80% documented

@@ -1,0 +1,31 @@
+name: eosdx
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11.7
+  - python-dotenv
+  - awscli
+  - black
+  - click
+  - coverage
+  - flake8
+  - h5py
+  - interrogate
+  - ipykernel
+  - ipympl
+  - isort
+  - matplotlib
+  - numpy
+  - numpydoc
+  - pandas
+  - pre-commit
+  - pyFAI
+  - pytest
+  - requests-mock
+  - scikit-image
+  - scikit-learn
+  - scipy
+  - seaborn
+  - shap
+  - sphinx
+  - xgboost
