@@ -53,6 +53,8 @@ class MLCluster:
     roc_auc: float = 0
     X_test: np.ndarray = None
     y_test: np.ndarray = None
+    idx_test: np.array = None
+    idx_train: np.array = None
     train_func: Callable = None
     important_features: np.array = None
     model_reduced: Union[XGBClassifier, RandomForestClassifier] = None
