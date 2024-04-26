@@ -20,6 +20,7 @@ from xrdanalysis.data.azimuthal_integration import (
 from xrdanalysis.data.utility_functions import get_center
 from xrdanalysis.data.containers import MLCluster, MLClusterContainer
 
+
 @dataclass
 class AzimuthalIntegration(TransformerMixin):
     """
@@ -143,7 +144,8 @@ class DataPreparation(TransformerMixin):
         standard format.
     """
 
-    columns = COLUMNS_DEF
+    def __init__(self, columns=COLUMNS_DEF):
+        self.columns = columns
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -215,12 +217,6 @@ class DataPreparation(TransformerMixin):
         # Apply the function and filter out the rows where 'center' is
         # (np.NaN, np.NaN)
         dfc = dfc[~dfc["center"].apply(is_nan_pair)]
-
-        if not no_center_col:
-            self.columns.append("center_col")
-
-        if not no_center_row:
-            self.columns.append("center_row")
 
         return dfc[self.columns]
 
@@ -363,12 +359,6 @@ class Clusterization(TransformerMixin):
             direction=self.direction,
             num_clusters=self.n_clusters,
         )
-
-
-
-
-
-
 
 
 class InterpolatorClusters(TransformerMixin):
