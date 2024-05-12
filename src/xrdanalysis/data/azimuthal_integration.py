@@ -5,12 +5,13 @@ This file includes functions and classes essential for azimuthal integration
 from functools import cache
 
 import pandas as pd
+import pyFAI
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
 
 
 @cache
-def initialize_azimuthal_integrator(
+def initialize_azimuthal_integrator_df(
     pixel_size, center_column, center_row, wavelength, sample_distance_mm
 ):
     """
@@ -40,8 +41,30 @@ def initialize_azimuthal_integrator(
     return ai
 
 
+@cache
+def initialize_azimuthal_integrator_poni(file):
+    """
+    Initializes or gets a cached azimuthal integrator with given parameters.
+
+    Parameters:
+    - file: str
+        Path to poni file
+
+    Returns:
+    - ai : pyFAI.azimuthalIntegrator.AzimuthalIntegrator
+        An instance of the PyFAI AzimuthalIntegrator.
+    """
+    ai = pyFAI.load(file)
+    return ai
+
+
 def perform_azimuthal_integration(
-    row: pd.Series, npt=256, mask=None, mode="1D"
+    row: pd.Series,
+    npt=256,
+    mask=None,
+    mode="1D",
+    calibration_mode="dataframe",
+    poni_dir=None,
 ):
     """
     Perform azimuthal integration on a single row of a DataFrame.
@@ -67,6 +90,19 @@ def perform_azimuthal_integration(
                 for interpolation, where q is the momentum transfer,
                 in reciprocal nanometers.
                 If not provided, the full q range will be used.
+            OR
+            - 'calibration_measurement_id': int
+                Integer associated with the id of specific calibration,
+                used to name the poni file.
+            - 'measurement_data' : array_like
+                A 2D array containing the measurement data.
+            - 'ponifile': string
+                A string for ponifile usage
+            - 'interpolation_q_range' : tuple or None, optional
+                A tuple (q_min, q_max) specifying the range of q values
+                for interpolation, where q is the momentum transfer,
+                in reciprocal nanometers.
+                If not provided, the full q range will be used.
     - npt : int, optional (default=256)
         Number of points for integration.
     - mask : array_like, optional
@@ -75,6 +111,12 @@ def perform_azimuthal_integration(
     - mode : {'1D', '2D'}, optional (default='1D')
         Mode of integration, '1D' for 1-dimensional integration and '2D' for
         2-dimensional integration.
+    - calibration_mode : str, optional (default='dataframe')
+        Mode of calibration, 'dataframe' is used when calibration values are
+        columns in dataframe, 'poni' is used when calibration is in poni file.
+    - poni_dir : str or None, optional (default=None)
+        Directory path containing .poni files for calibration. Only applicable
+        when calibration_mode is set to 'poni'.
 
     Returns:
     - radial : numpy.ndarray
@@ -88,16 +130,27 @@ def perform_azimuthal_integration(
     """
 
     interpolation_q_range = row.get("interpolation_q_range")
-    pixel_size = row["pixel_size"] * (10**-6)
     data = row["measurement_data"]
-    center = row["center"]
-    center_column, center_row = center[1], center[0]
-    sample_distance_mm = row["calculated_distance"] * (10**3)
-    wavelength = row["wavelength"] * 10
 
-    ai_cached = initialize_azimuthal_integrator(
-        pixel_size, center_column, center_row, wavelength, sample_distance_mm
-    )
+    if calibration_mode == "dataframe":
+        pixel_size = row["pixel_size"] * (10**-6)
+        center = row["center"]
+        center_column, center_row = center[1], center[0]
+        sample_distance_mm = row["calculated_distance"] * (10**3)
+        wavelength = row["wavelength"] * 10
+
+        ai_cached = initialize_azimuthal_integrator_df(
+            pixel_size,
+            center_column,
+            center_row,
+            wavelength,
+            sample_distance_mm,
+        )
+    elif calibration_mode == "poni":
+        calibration_measurement_id = row["calibration_measurement_id"]
+        ai_cached = initialize_azimuthal_integrator_poni(
+            f"{poni_dir}/{calibration_measurement_id}.poni"
+        )
 
     if mode == "1D":
         radial, intensity = ai_cached.integrate1d(
