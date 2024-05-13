@@ -444,13 +444,11 @@ class InterpolatorClusters(TransformerMixin):
         clusters_global = {}
         clusters = {}
         for cluster_label in dfc["q_cluster_label"].unique():
+            azimuth = AzimuthalIntegration(
+                faulty_pixels=self.faulty_pixels_array, npt=self.q_resolution
+            )
             clusters[cluster_label] = interpolate_cluster(
-                dfc,
-                cluster_label,
-                self.perc_min,
-                self.perc_max,
-                self.q_resolution,
-                self.faulty_pixel_array,
+                dfc, cluster_label, self.perc_min, self.perc_max, azimuth
             )
 
         for model_name in self.model_names:

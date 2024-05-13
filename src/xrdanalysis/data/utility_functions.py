@@ -6,7 +6,6 @@ from skimage.measure import label, regionprops
 from sklearn.preprocessing import Normalizer, StandardScaler
 
 from xrdanalysis.data.containers import MLCluster
-from xrdanalysis.data.transformers import AzimuthalIntegration
 
 
 def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
@@ -143,9 +142,7 @@ def is_nan_pair(x):
     return False
 
 
-def interpolate_cluster(
-    df, cluster_label, perc_min, perc_max, q_resolution, faulty_pixels_array
-):
+def interpolate_cluster(df, cluster_label, perc_min, perc_max, azimuth):
     """
     Interpolate a cluster of azimuthal integration data.
 
@@ -156,8 +153,8 @@ def interpolate_cluster(
         q-range for interpolation.
         perc_max (float): The maximum percentage of the maximum
         q-range for interpolation.
-        q_resolution (int): The resolution for interpolation.
-        faulty_pixels_array (list): A list of faulty pixel coordinates.
+        azimuth (AzimuthalIntegration transformer): A transformer to
+        use for azimuthal integration
 
     Returns:
         MLCluster: Interpolated MLCluster object.
@@ -171,9 +168,6 @@ def interpolate_cluster(
     q_range = (q_min, q_max)
     dfc["interpolation_q_range"] = [q_range] * len(dfc)
 
-    azimuth = AzimuthalIntegration(
-        faulty_pixels=faulty_pixels_array, npt=q_resolution
-    )
     dfc = azimuth.transform(dfc)
 
     return MLCluster(df=dfc, q_cluster=cluster_label, q_range=dfc["q_range"])
