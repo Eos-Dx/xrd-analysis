@@ -21,16 +21,16 @@ URL_BLIND_DATA = "https://api.eosdx.com/api/getblinddata"
 @dataclass
 class RequestDB:
     """
-    RequestDB is a dataclass used to store essential info for
-    requests to the server.
+    RequestDB is a dataclass used to store essential
+    info for requests to the server.
 
-    Attributes:
+    Args:
         api_key (str): The API key used for authentication.
-        form (Dict[str, str]): A dictionary containing form data for the
-        request.
+        form (Dict[str, str]): A dictionary containing form data
+            for the request.
         url (str): The URL of the server. Defaults to a predefined URL.
-        unzip_path (Union[str, Path]): The path where downloaded files should
-        be unzipped. Defaults to a predefined path.
+        unzip_path (Union[str, Path]): The path where downloaded
+            files should be unzipped. Defaults to a predefined path.
     """
 
     api_key: str
@@ -45,23 +45,28 @@ def download_data(
 ):
     """
     Download the required data from the EOSDX DB.
-    :param api_key: the API key as string
-    :param form: JSON like dict request form, see API.md
-    description for information
-    form = {'key': 'your-access-key', 'cancer_tissue': True,
-     'measurement_id': '< 3', 'measurement_date': '2023-04-07'}
 
-    for blind data
-    form = {'study': '2', # 1 for california, 2 for keele, 3 for mice data
-           'key': key, #
-           'machine': '3', # 1 for Cu, 2 for Mo in california, 3 for keele,
-           'manual_distance': '160'}
-
-    :param url:
-    URL_DATA = "https://api.eosdx.com/api/getmultiple"
-    URL_BLIND_DATA = "https://api.eosdx.com/api/getblinddata"
-    :file_name: name of file where the data will be downloaded
-    :return: None
+    Args:
+        api_key (str): The API key as a string.
+        form (Dict[str, str]): JSON-like dict request form.
+            See API.md description for information.
+            Example for cancer tissue data:
+                form = {'key': 'your-access-key',
+                        'cancer_tissue': True,
+                        'measurement_id': '< 3',
+                        'measurement_date': '2023-04-07'}
+            Example for blind data:
+                form = {'study': '2',  # 1 for california, 2 for keele,
+                        3 for mice data
+                        'key': key,
+                        'machine': '3',  # 1 for Cu, 2 for Mo in california,
+                        3 for keele
+                        'manual_distance': '160'}
+        url (str): The URL of the server.
+            Example URLs:
+                URL_DATA = "https://api.eosdx.com/api/getmultiple"
+                URL_BLIND_DATA = "https://api.eosdx.com/api/getblinddata"
+        file_name (str): Name of the file where the data will be downloaded.
     """
     form["key"] = api_key
     response = requests.post(url, form, stream=True)
@@ -75,9 +80,9 @@ def unzip_data(file_name: str, unzip_path: str):
     """
     Unzip data downloaded from the server to the specified unzip_path folder.
 
-    :param unzip_path: The path where the data will be extracted.
-                       Defaults to UNZIP_PATH if not provided.
-    :return: None
+    Args:
+        unzip_path (Union[str, Path]): The path where the data will
+            be extracted. Defaults to UNZIP_PATH if not provided.
     """
     with zipfile.ZipFile(file_name, "r") as zf:
         zf.extractall(unzip_path)
@@ -85,12 +90,15 @@ def unzip_data(file_name: str, unzip_path: str):
 
 def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
     """
-    Generates a pandas DataFrame according to the data downloaded from the DB
-    using the EOSDX API.
+    Generates a pandas DataFrame according to the data downloaded
+    from the DB using the EOSDX API.
 
-    :param unzip_path: The path where the downloaded data is extracted.
-    Defaults to UNZIP_PATH if not provided.
-    :return: A pandas DataFrame containing the data.
+    Args:
+        unzip_path (Union[str, Path]): The path where the downloaded
+            data is extracted. Defaults to UNZIP_PATH if not provided.
+
+    Returns:
+        pd.DataFrame: A pandas DataFrame containing the data.
     """
     df = pd.read_csv(unzip_path / "description.csv")
     # MANDATORY!!!
@@ -109,13 +117,16 @@ def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
 
 def get_df(request: RequestDB) -> pd.DataFrame:
     """
-    Makes a request to the database using the provided RequestDB object
-    and returns a pandas DataFrame.
+    Makes a request to the database using the provided RequestDB
+    object and returns a pandas DataFrame.
 
-    :param request: A RequestDB object containing essential information
-    for the request.
-    :return: A pandas DataFrame containing the data retrieved from
-    the database.
+    Args:
+        request (RequestDB): A RequestDB object containing
+            essential information for the request.
+
+    Returns:
+        pd.DataFrame: A pandas DataFrame containing the data
+            retrieved from the database.
     """
     download_data(
         api_key=request.api_key,

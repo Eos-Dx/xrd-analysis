@@ -2,27 +2,27 @@ import os
 from typing import Tuple
 
 import numpy as np
+import pandas as pd
+from scipy.stats import zscore
 from skimage.measure import label, regionprops
 from sklearn.preprocessing import Normalizer, StandardScaler
 
-from xrdanalysis.data.containers import MLCluster
+from xrdanalysis.data_processing.containers import MLCluster
 
 
 def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
     """
     Takes SAXS data and determines the center of the beam.
 
-    Parameters:
-    - data : numpy.ndarray
-        The input SAXS data.
-    - threshold : float, optional
-        The threshold factor for identifying the center of the beam.
-        Defaults to 3.0 times the average value of the input data.
+    Args:
+        data (numpy.ndarray): The input SAXS data.
+        threshold (float, optional): The threshold factor for identifying
+            the center of the beam. Defaults to 3.0 times the average value
+            of the input data.
 
     Returns:
-    - center : tuple of float
-        The coordinates of the center of the beam in the input data.
-        If no center is found, returns (np.NaN, np.NaN).
+        tuple: The coordinates of the center of the beam in the input data.
+            If no center is found, returns (np.NaN, np.NaN).
     """
     average_value = np.nanmean(data)
 
@@ -62,7 +62,7 @@ def generate_poni(df, path):
 
     Args:
         df (DataFrame): Input DataFrame containing calibration measurement
-        IDs and corresponding .poni file content.
+            IDs and corresponding .poni file content.
         path (str): Path to the directory where .poni files will be saved.
 
     Returns:
@@ -98,11 +98,11 @@ def create_mask(faulty_pixels):
 
     Args:
         faulty_pixels (list of tuples or None): List of (y, x)
-        coordinates representing faulty pixels.
+            coordinates representing faulty pixels.
 
     Returns:
         numpy.ndarray or None: Mask array where 1 indicates a
-        faulty pixel and 0 indicates a good pixel.
+            faulty pixel and 0 indicates a good pixel.
     """
     if faulty_pixels is not None:
         # Initialize the mask array for a 256x256 detector
@@ -146,15 +146,15 @@ def interpolate_cluster(df, cluster_label, perc_min, perc_max, azimuth):
     """
     Interpolate a cluster of azimuthal integration data.
 
-    Parameters:
+    Args:
         df (DataFrame): Input DataFrame containing data to be interpolated.
         cluster_label (int): Label of the cluster to be interpolated.
         perc_min (float): The minimum percentage of the maximum
-        q-range for interpolation.
+            q-range for interpolation.
         perc_max (float): The maximum percentage of the maximum
-        q-range for interpolation.
+            q-range for interpolation.
         azimuth (AzimuthalIntegration transformer): A transformer to
-        use for azimuthal integration
+            use for azimuthal integration
 
     Returns:
         MLCluster: Interpolated MLCluster object.
@@ -179,17 +179,15 @@ def normalize_scale_cluster(
     """
     Normalize and scale a cluster of azimuthal integration data.
 
-    Parameters:
+    Args:
         cluster (MLCluster): The cluster to be normalized and scaled.
         std (StandardScaler or None, optional): StandardScaler instance
-        for scaling. If None, a new instance will be created. Defaults to None.
+            for scaling. If None, a new instance will be created.
+            Defaults to None.
         norm (Normalizer or None, optional): Normalizer instance for
-        normalization. If None, a new instance will be created. Defaults
-        to None.
+            normalization. If None, a new instance will be created.
+            Defaults to None.
         do_fit (bool, optional): Whether to fit the scaler. Defaults to True.
-
-    Returns:
-        None
     """
     if not norm:
         norm = Normalizer(norm="l2")
@@ -211,3 +209,61 @@ def normalize_scale_cluster(
     cluster.df = dfc
     cluster.normalizer = norm
     cluster.std = std
+
+
+def remove_outliers_by_cluster(
+    dataframe, z_score_threshold, direction="negative", num_clusters=4
+):
+    """
+    Remove outliers from a DataFrame by clustering and z-score thresholding.
+
+    Args:
+        dataframe (pd.DataFrame): The input DataFrame containing the data.
+        z_score_threshold (float): The threshold for Z-score based outlier
+            removal.
+        direction (str, optional): The direction of outlier removal, either
+            "both", "positive", or "negative". Defaults to "negative".
+        num_clusters (int, optional): The number of clusters to use. Defaults
+            to 4.
+
+    Returns:
+        pd.DataFrame: A DataFrame with outliers removed based on the specified
+            criteria.
+    """
+    # Create an empty DataFrame to store non-outlier values
+    filtered_data = pd.DataFrame(columns=dataframe.columns)
+
+    for cluster in range(num_clusters):
+        cluster_indices = dataframe[
+            dataframe["q_cluster_label"] == cluster
+        ].index
+
+        # Extract q_range_max values for the current cluster
+        q_range_max_values = dataframe.loc[cluster_indices, "q_range_max"]
+
+        # Calculate Z-scores for q_range_max values
+        z_scores = zscore(q_range_max_values)
+
+        # Determine indices of non-outliers based on the
+        # chosen direction
+        if direction == "both":
+            non_outlier_indices = np.abs(z_scores) < z_score_threshold
+        elif direction == "positive":
+            non_outlier_indices = z_scores < z_score_threshold
+        elif direction == "negative":
+            non_outlier_indices = z_scores > -z_score_threshold
+        else:
+            raise ValueError(
+                "Invalid direction. Use 'both', 'positive', \
+                                      or 'negative'."
+            )
+
+        # Add non-outlier values to the filtered_data DataFrame
+        filtered_data = pd.concat(
+            [
+                filtered_data,
+                dataframe.loc[cluster_indices[non_outlier_indices]],
+            ]
+        )
+
+    return filtered_data
