@@ -12,6 +12,6 @@ jobs:
       - name: Check for direct commits to main
         run: |
           if [ "$(git log -1 --pretty=%B)" != "Merge pull request"* ]; then
-            echo "Prevent commits to the main branch."
-            exit 2
+            echo "Direct commits to main are not allowed."
+            exit 1
           fi
