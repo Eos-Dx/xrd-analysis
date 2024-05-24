@@ -94,7 +94,7 @@ def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
     from the DB using the EOSDX API.
 
     Args:
-        unzip_path (Union[str, Path]): The path where the downloaded
+        unzip_path (Path): The path where the downloaded
             data is extracted. Defaults to UNZIP_PATH if not provided.
 
     Returns:
@@ -129,10 +129,10 @@ def get_df(request: RequestDB) -> pd.DataFrame:
             retrieved from the database.
     """
     download_data(
-        api_key=request.api_key,
-        form=request.form,
-        url=request.url,
-        file_name=request.file_name,
+        request.api_key,
+        request.form,
+        request.url,
+        request.file_name,
     )
-    unzip_data(file_name=request.file_name, unzip_path=request.unzip_path)
+    unzip_data(request.file_name, request.unzip_path)
     return form_df(request.unzip_path)
