@@ -221,16 +221,16 @@ def remove_outliers_by_cluster(
 
     Args:
         dataframe (pd.DataFrame): The input DataFrame containing the data.
-        z_score_threshold (float): The threshold for Z-score based outlier
-            removal.
+        z_score_threshold (float): The threshold for Z-score based
+            outlier removal.
         direction (str, optional): The direction of outlier removal, either
             "both", "positive", or "negative". Defaults to "negative".
-        num_clusters (int, optional): The number of clusters to use. Defaults
-            to 4.
+        num_clusters (int, optional): The number of clusters to use.
+            Defaults to 4.
 
     Returns:
-        pd.DataFrame: A DataFrame with outliers removed based on the specified
-            criteria.
+        pd.DataFrame: A DataFrame with outliers removed based
+            on the specified criteria.
     """
     # Create an empty DataFrame to store non-outlier values
     filtered_data = pd.DataFrame(columns=dataframe.columns)
@@ -246,8 +246,7 @@ def remove_outliers_by_cluster(
         # Calculate Z-scores for q_range_max values
         z_scores = zscore(q_range_max_values)
 
-        # Determine indices of non-outliers based on the
-        # chosen direction
+        # Determine indices of non-outliers based on the chosen direction
         if direction == "both":
             non_outlier_indices = np.abs(z_scores) < z_score_threshold
         elif direction == "positive":
@@ -259,12 +258,18 @@ def remove_outliers_by_cluster(
                 "Invalid direction. Use 'both', 'positive', or 'negative'."
             )
 
-        # Add non-outlier values to the filtered_data DataFrame
-        filtered_data = pd.concat(
-            [
-                filtered_data,
-                dataframe.loc[cluster_indices[non_outlier_indices]],
-            ]
-        )
+        # Select relevant entries from dataframe
+        selected_entries = dataframe.loc[cluster_indices[non_outlier_indices]]
+
+        # Exclude empty or all-NA columns
+        selected_entries = selected_entries.dropna(how="all", axis=1)
+
+        # Concatenate filtered_data with selected entries
+        if filtered_data.empty:
+            filtered_data = selected_entries
+        else:
+            filtered_data = pd.concat(
+                [filtered_data, selected_entries], ignore_index=True
+            )
 
     return filtered_data
