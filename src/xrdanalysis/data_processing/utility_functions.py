@@ -1,3 +1,5 @@
+"""Various utility functions used in different parts of codebase"""
+
 import os
 from typing import Tuple
 
@@ -127,7 +129,7 @@ def is_all_none(array):
     return all(x is None for x in array)
 
 
-def is_nan_pair(x):
+def is_nan_pair(pair):
     """
     Check if the input is a tuple of two NaN values.
 
@@ -137,8 +139,8 @@ def is_nan_pair(x):
     Returns:
         bool: True if the input is a tuple of two NaN values, False otherwise.
     """
-    if isinstance(x, tuple) and len(x) == 2:
-        return np.isnan(x[0]) and np.isnan(x[1])
+    if isinstance(pair, tuple) and len(pair) == 2:
+        return all(np.isnan(x) for x in pair)
     return False
 
 
@@ -254,8 +256,7 @@ def remove_outliers_by_cluster(
             non_outlier_indices = z_scores > -z_score_threshold
         else:
             raise ValueError(
-                "Invalid direction. Use 'both', 'positive', \
-                                      or 'negative'."
+                "Invalid direction. Use 'both', 'positive', or 'negative'."
             )
 
         # Add non-outlier values to the filtered_data DataFrame
