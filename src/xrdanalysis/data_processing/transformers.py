@@ -186,7 +186,7 @@ class DataPreparation(TransformerMixin):
 
         return self
 
-    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+    def transform(self, df: pd.DataFrame, no_poni=False) -> pd.DataFrame:
         """
         Transforms the input DataFrame to adhere to the standard format.
 
@@ -196,46 +196,24 @@ class DataPreparation(TransformerMixin):
         Returns:
             pandas.DataFrame: The transformed DataFrame with selected columns.
         """
-
         dfc = df.copy()
-        if "center_col" in dfc.columns:
-            dfc = dfc.dropna(subset="center_col")
-            no_center_col = False
-        else:
-            no_center_col = True
 
-        if "center_row" in dfc.columns:
-            dfc = dfc.dropna(subset="center_row")
-            no_center_row = False
-        else:
-            no_center_row = True
+        if "center" in dfc.columns:
+            dfc = dfc[~dfc["center"].isna()]
 
         if "calculated_distance" in dfc.columns:
-            dfc = dfc = dfc.dropna(subset="calculated_distance")
+            dfc = dfc[~dfc["calculated_distance"].isna()]
 
-        if "ponifile" in dfc.columns:
-            dfc = dfc = dfc.dropna(subset="ponifile")
-
-        # Apply this function to the 'measurement_data' column and
-        # filter the DataFrame
-        dfc = dfc[~dfc["measurement_data"].apply(is_all_none)]
+        if not no_poni:
+            if "ponifile" in dfc.columns:
+                dfc = dfc.dropna(subset="ponifile")
+        else:
+            if "ponifile" in self.columns:
+                self.columns.remove("ponifile")
 
         dfc["measurement_data"] = dfc["measurement_data"].apply(
             lambda x: np.nan_to_num(x)
         )
-
-        if "center" not in dfc.columns:
-            dfc["center"] = dfc["measurement_data"].apply(get_center)
-
-        # Apply the function and filter out the rows where 'center' is
-        # (np.NaN, np.NaN)
-        dfc = dfc[~dfc["center"].apply(is_nan_pair)]
-
-        if not no_center_col:
-            self.columns.append("center_col")
-
-        if not no_center_row:
-            self.columns.append("center_row")
 
         return dfc[self.columns]
 
