@@ -143,3 +143,4 @@ cython_debug/
 
 bblinchevsky-ec2.pem
 eosdxanalysis/
+.egg-info
