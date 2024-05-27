@@ -180,17 +180,8 @@ class DataPreparation(TransformerMixin):
             The transformed DataFrame with selected columns.
         """
         dfc = df.copy()
-        if "center_col" in dfc.columns:
-            dfc = dfc[~dfc["center_col"].isna()]
-            no_center_col = False
-        else:
-            no_center_col = True
-
-        if "center_row" in dfc.columns:
-            dfc = dfc[~dfc["center_row"].isna()]
-            no_center_row = False
-        else:
-            no_center_row = True
+        if "center" in dfc.columns:
+            dfc = dfc[~dfc["center"].isna()]
 
         if "calculated_distance" in dfc.columns:
             dfc = dfc[~dfc["calculated_distance"].isna()]
@@ -198,25 +189,11 @@ class DataPreparation(TransformerMixin):
         def is_all_none(array):
             return all(x is None for x in array)
 
-        # Apply this function to the 'measurement_data' column and
-        # filter the DataFrame
-        dfc = dfc[~dfc["measurement_data"].apply(is_all_none)]
+        # dfc = dfc[~dfc["measurement_data"].apply(is_all_none)]
 
         dfc["measurement_data"] = dfc["measurement_data"].apply(
             lambda x: np.nan_to_num(x)
         )
-
-        if "center" not in dfc.columns:
-            dfc["center"] = dfc["measurement_data"].apply(get_center)
-
-        def is_nan_pair(x):
-            if isinstance(x, tuple) and len(x) == 2:
-                return np.isnan(x[0]) and np.isnan(x[1])
-            return False
-
-        # Apply the function and filter out the rows where 'center' is
-        # (np.NaN, np.NaN)
-        dfc = dfc[~dfc["center"].apply(is_nan_pair)]
 
         return dfc[self.columns]
 
