@@ -13,7 +13,13 @@ import numpy as np
 import pytest
 import requests_mock
 
-from xrdanalysis.data.download import UNZIP_PATH, URL, RequestDB, download_data, form_df
+from xrdanalysis.data.download import (
+    UNZIP_PATH_DATA,
+    URL_DATA,
+    RequestDB,
+    download_data,
+    form_df,
+)
 
 
 @pytest.fixture
@@ -30,7 +36,10 @@ def sample_request_data():
     and URL formatting.
     """
     return RequestDB(
-        api_key="your_api_key", form={"key": "value"}, url="http://example.com"
+        api_key="your_api_key",
+        form={"key": "value"},
+        url="http://example.com",
+        file_name="data.zip",
     )
 
 
@@ -61,7 +70,7 @@ def test_requestdb_attributes(sample_request_data):
     assert sample_request_data.api_key == "your_api_key"
     assert sample_request_data.form == {"key": "value"}
     assert sample_request_data.url == "http://example.com"
-    assert sample_request_data.unzip_path == UNZIP_PATH
+    assert sample_request_data.unzip_path == UNZIP_PATH_DATA
 
 
 @pytest.fixture
@@ -85,10 +94,15 @@ def test_download_data(api_key, mock_response):
     This function tests function download_test
     """
     with requests_mock.Mocker() as m:
-        m.post(URL, json=mock_response)
+        m.post(URL_DATA, json=mock_response)
 
         # Call your function with the mocked request
-        download_data(api_key=api_key, url=URL)
+        download_data(
+            api_key=api_key,
+            url=URL_DATA,
+            form={"key": "value"},
+            file_name="data.zip",
+        )
 
         # Verify the request was made with the correct API key
         assert m.last_request.text == "key={}".format(api_key)

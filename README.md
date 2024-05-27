@@ -1,6 +1,4 @@
-xrd-analysis
-==============================
-
+# xrd-analysis
 Repository for collaboration of EOSDX team
 
 To start working with this repo:

@@ -9,8 +9,10 @@ dependencies:
   - click
   - coverage
   - flake8
+  - h5py
   - interrogate
   - ipykernel
+  - ipympl
   - isort
   - matplotlib
   - numpy

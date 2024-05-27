@@ -1,22 +1,18 @@
-from dataclasses import dataclass
-from typing import Callable, Dict, Union
-
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import (
-    RocCurveDisplay,
-    accuracy_score,
-    confusion_matrix,
-    precision_score,
-    recall_score,
-    roc_auc_score,
-    roc_curve,
-)
-from sklearn.preprocessing import Normalizer, StandardScaler
-from xgboost import XGBClassifier
 
-SCALED_DATA = "interpolated_radial_profile_data_norm_scaled"
+from sklearn.metrics import (accuracy_score, confusion_matrix,
+                             precision_score, recall_score, roc_curve,
+                             RocCurveDisplay, roc_auc_score)
+
+from sklearn.preprocessing import Normalizer, StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+from dataclasses import dataclass
+from typing import Dict, Union, Callable
+
+
+SCALED_DATA = 'radial_profile_data_norm_scaled'
 
 
 @dataclass
@@ -57,6 +53,8 @@ class MLCluster:
     roc_auc: float = 0
     X_test: np.ndarray = None
     y_test: np.ndarray = None
+    idx_test: np.array = None
+    idx_train: np.array = None
     train_func: Callable = None
     important_features: np.array = None
     model_reduced: Union[XGBClassifier, RandomForestClassifier] = None
@@ -69,7 +67,7 @@ class MLCluster:
         else:
             model = self.model
         res = model.predict_proba(transformed_data)[:, 1]
-        self.df["prediction_proba"] = res
+        self.df['prediction_proba'] = res
 
     def predict(self, reduced=False):
         transformed_data = np.vstack(self.df[SCALED_DATA].values)
@@ -79,39 +77,22 @@ class MLCluster:
         else:
             model = self.model
         res = model.predict(transformed_data)
-        self.df["prediction"] = res
+        self.df['prediction'] = res
 
     def calc_accuracy(self, reduced=False):
         self.predict(reduced)
         y_data = self.df["cancer_diagnosis"].astype(int).values
-        accuracy = accuracy_score(
-            y_data, self.df["prediction"].astype(int).values
-        )
+        accuracy = accuracy_score(y_data, self.df['prediction'].astype(int).values)
         self.accuracy = round(accuracy, 3)
 
     def calc_roc_auc(self, reduced=False):
         self.predict_proba(reduced)
         y_data = self.df["cancer_diagnosis"].astype(int).values
-        roc_auc = roc_auc_score(
-            y_data, self.df["prediction_proba"].astype(float).values
-        )
+        roc_auc = roc_auc_score(y_data, self.df['prediction_proba'].astype(float).values)
         self.roc_auc = round(roc_auc, 3)
 
-    def model_train(
-        self,
-        learning_rate=0.01,
-        n_estimators=100,
-        max_depth=10,
-        random_state=32,
-    ):
-        self.train_func(
-            self,
-            learning_rate=0.01,
-            n_estimators=100,
-            max_depth=10,
-            random_state=32,
-            split=0.3,
-        )
+    def model_train(self, **kwargs):
+        self.train_func(self, **kwargs)
 
     def set_df(self, df):
         self.df = df
