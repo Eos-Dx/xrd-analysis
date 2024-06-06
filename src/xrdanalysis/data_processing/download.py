@@ -3,6 +3,7 @@ This file includes functions and classes essential for dealing
 with EosDX DB for data extraction
 """
 
+import os
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,6 +34,7 @@ class RequestDB:
         url (str): The URL of the server. Defaults to a predefined URL.
         unzip_path (Union[str, Path]): The path where downloaded
             files should be unzipped. Defaults to a predefined path.
+        dataset_name (str): Name to save the dataset as.
     """
 
     api_key: str
@@ -40,6 +42,7 @@ class RequestDB:
     file_name: str
     url: str
     unzip_path: Union[str, Path]
+    dataset_name: str
 
 
 def download_data(
@@ -91,12 +94,15 @@ def unzip_data(file_name: str, unzip_path: str):
     """
     with zipfile.ZipFile(file_name, "r") as zf:
         zf.extractall(unzip_path)
+    os.remove(file_name)
 
 
-def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
+def form_df(
+    unzip_path=UNZIP_PATH_DATA, dataset_name="data.json"
+) -> pd.DataFrame:
     """
     Generates a pandas DataFrame according to the data downloaded
-    from the DB using the EOSDX API.
+    from the DB using the EOSDX API. Saves the df as a json file.
 
     Args:
         unzip_path (Path): The path where the downloaded
@@ -105,18 +111,21 @@ def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
     Returns:
         pd.DataFrame: A pandas DataFrame containing the data.
     """
-    df = pd.read_csv(unzip_path / "description.csv")
+    df = pd.read_csv(Path(unzip_path) / Path("description.csv"))
     # MANDATORY!!!
     df["measurement_data"] = np.nan
     df["measurement_data"] = df["measurement_data"].astype(object)
     df.set_index("measurement_id", inplace=True)
     # Define the path to the measurements directory as a Path object
-    meas_path = unzip_path / "measurements"
+    meas_path = Path(unzip_path) / Path("measurements")
     # Use apply with a lambda function to load the matrix and assign
     # it to 'measurement_data' column
     df["measurement_data"] = df.index.map(
-        lambda idx: np.load(meas_path / f"{idx}.npy", allow_pickle=True)
+        lambda idx: np.load(
+            Path(meas_path) / Path(f"{idx}.npy"), allow_pickle=True
+        )
     )
+    df.to_json(dataset_name)
     return df
 
 
@@ -140,4 +149,4 @@ def get_df(request: RequestDB) -> pd.DataFrame:
         request.file_name,
     )
     unzip_data(request.file_name, request.unzip_path)
-    return form_df(request.unzip_path)
+    return form_df(request.unzip_path, request.dataset_name)
