@@ -11,6 +11,7 @@ from typing import Dict, Union
 import numpy as np
 import pandas as pd
 import requests
+from tqdm import tqdm
 
 UNZIP_PATH_DATA = Path("./unzipped_data/")
 UNZIP_PATH_BLIND_DATA = Path("./unzipped_blind_data/")
@@ -28,6 +29,7 @@ class RequestDB:
         api_key (str): The API key used for authentication.
         form (Dict[str, str]): A dictionary containing form data
             for the request.
+        file_name (str): Name of the file where the data will be downloaded.
         url (str): The URL of the server. Defaults to a predefined URL.
         unzip_path (Union[str, Path]): The path where downloaded
             files should be unzipped. Defaults to a predefined path.
@@ -70,10 +72,13 @@ def download_data(
     """
     form["key"] = api_key
     response = requests.post(url, form, stream=True)
+    total_size = int(response.headers.get("content-length", 0))
     block_size = 1024
-    with open(file_name, "wb") as file:
-        for data in response.iter_content(block_size):
-            file.write(data)
+    with tqdm(total=total_size, unit="B", unit_scale=True) as progress_bar:
+        with open(file_name, "wb") as file:
+            for data in response.iter_content(block_size):
+                progress_bar.update(len(data))
+                file.write(data)
 
 
 def unzip_data(file_name: str, unzip_path: str):
