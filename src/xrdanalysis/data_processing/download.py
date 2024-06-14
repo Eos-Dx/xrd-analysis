@@ -49,7 +49,8 @@ class RequestDB:
     def __post_init__(self):
         print("Converting unzip_path, file_name to Path()")
         self.unzip_path = Path(self.unzip_path)
-        os.mkdir(self.unzip_path)
+        if not os.path.exists(self.unzip_path):
+            os.mkdir(self.unzip_path)
         self.file_name = Path(self.file_name)
         if not self.file_name.is_absolute():
             self.file_name = self.unzip_path / self.file_name
