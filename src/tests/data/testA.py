@@ -1,0 +1,1 @@
+from pyFAI.calibrant import CALIBRANT_FACTORY
