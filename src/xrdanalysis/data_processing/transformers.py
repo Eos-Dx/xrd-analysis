@@ -165,7 +165,8 @@ class DataPreparation(TransformerMixin):
             standard format.
     """
 
-    columns = COLUMNS_DEF
+    def __init__(self, columns=COLUMNS_DEF):
+        self.columns = columns
 
     def fit(self, x: pd.DataFrame, y=None):
         """
