@@ -144,9 +144,9 @@ def perform_azimuthal_integration(
         radial, intensity = ai_cached.integrate1d(
             data, npt, radial_range=interpolation_q_range, mask=mask
         )
-        return radial, intensity
+        return radial, intensity, ai_cached.dist
     elif mode == "2D":
         intensity, radial, azimuthal = ai_cached.integrate2d(
             data, npt, radial_range=interpolation_q_range, mask=mask
         )
-        return radial, intensity, azimuthal
+        return radial, intensity, azimuthal, ai_cached.dist

@@ -117,14 +117,14 @@ class AzimuthalIntegration(TransformerMixin):
 
         if self.integration_mode == "1D":
             # Extract q_range and profile arrays from the integration_results
-            x_copy[["q_range", "radial_profile_data"]] = (
-                integration_results.apply(lambda x: pd.Series([x[0], x[1]]))
+            x_copy[["q_range", "radial_profile_data", "calculated_distance"]] = (
+                integration_results.apply(lambda x: pd.Series([x[0], x[1], x[2]]))
             )
         elif self.integration_mode == "2D":
             x_copy[
-                ["q_range", "radial_profile_data", "azimuthal_positions"]
+                ["q_range", "radial_profile_data", "azimuthal_positions", "calculated_distance"]
             ] = integration_results.apply(
-                lambda x: pd.Series([x[0], x[1], x[2]])
+                lambda x: pd.Series([x[0], x[1], x[2], x[3]])
             )
 
         if self.transformation_mode == "pipeline":
@@ -162,7 +162,8 @@ class DataPreparation(TransformerMixin):
             standard format.
     """
 
-    columns = COLUMNS_DEF
+    def __init__(self, columns=COLUMNS_DEF):
+        self.columns = columns
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -198,15 +199,14 @@ class DataPreparation(TransformerMixin):
         if "center" in dfc.columns:
             dfc = dfc[~dfc["center"].isna()]
 
-        if "calculated_distance" in dfc.columns:
-            dfc = dfc[~dfc["calculated_distance"].isna()]
-
         if not no_poni:
             if "ponifile" in dfc.columns:
                 dfc = dfc.dropna(subset="ponifile")
         else:
             if "ponifile" in self.columns:
                 self.columns.remove("ponifile")
+            if "calculated_distance" in dfc.columns:
+                dfc = dfc[~dfc["calculated_distance"].isna()]
 
         dfc["measurement_data"] = dfc["measurement_data"].apply(
             lambda x: np.nan_to_num(x)
