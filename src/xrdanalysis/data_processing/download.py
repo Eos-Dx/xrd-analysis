@@ -3,15 +3,16 @@ This file includes functions and classes essential for dealing
 with EosDX DB for data extraction
 """
 
-import os
 import zipfile
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, Union
-
+import time
+import threading
 import numpy as np
 import pandas as pd
 import requests
+import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, Union
 from tqdm import tqdm
 
 UNZIP_PATH_DATA = Path("./unzipped_data/")
@@ -42,11 +43,33 @@ class RequestDB:
     file_name: str
     url: str
     unzip_path: Union[str, Path]
-    dataset_name: str
+    dataset_name: str = "data.json"
+
+    def __post_init__(self):
+        print("Converting unzip_path, file_name to Path()")
+        self.unzip_path = Path(self.unzip_path)
+        self.file_name = Path(self.file_name)
+        if not self.file_name.is_absolute():
+            self.file_name = self.unzip_path / self.file_name
+        print(f'File name is set to {self.file_name}')
+
+
+def monitor_elapsed_time(start_time, stop_event):
+    """
+    Function to monitor and print elapsed time in a separate thread.
+
+    Args:
+        start_time (float): The start time of the operation.
+        stop_event (threading.Event): Event object to signal the thread to stop.
+    """
+    while not stop_event.is_set():
+        elapsed_time = time.time() - start_time
+        print(f"Waiting for server to respond... Elapsed time: {elapsed_time:.2f} seconds", end="\r")
+        time.sleep(0.1)
 
 
 def download_data(
-    api_key: str, form: Dict[str, str], url: str, file_name: str
+        api_key: str, form: Dict[str, str], url: str, file_name: str
 ):
     """
     Download the required data from the EOSDX DB.
@@ -74,14 +97,31 @@ def download_data(
         file_name (str): Name of the file where the data will be downloaded.
     """
     form["key"] = api_key
+    start_time = time.time()
+
+    # Event object to control the monitor thread
+    stop_event = threading.Event()
+
+    # Create a separate thread to monitor elapsed time
+    monitor_thread = threading.Thread(target=monitor_elapsed_time, args=(start_time, stop_event))
+    monitor_thread.start()
+
     response = requests.post(url, form, stream=True)
-    total_size = int(response.headers.get("content-length", 0))
+
+    # Stop the monitor thread once response is received
+    stop_event.set()
+    monitor_thread.join()
+
+    print("\nResponse received")
+
+    total_size = int(response.headers.get('content-length', 0))
     block_size = 1024
     with tqdm(total=total_size, unit="B", unit_scale=True) as progress_bar:
         with open(file_name, "wb") as file:
             for data in response.iter_content(block_size):
                 progress_bar.update(len(data))
                 file.write(data)
+    print('Download completed')
 
 
 def unzip_data(file_name: str, unzip_path: str):
@@ -92,6 +132,7 @@ def unzip_data(file_name: str, unzip_path: str):
         unzip_path (Union[str, Path]): The path where the data will
             be extracted. Defaults to UNZIP_PATH if not provided.
     """
+    print(f'Unzipping {file_name}...')
     with zipfile.ZipFile(file_name, "r") as zf:
         zf.extractall(unzip_path)
     os.remove(file_name)
@@ -111,6 +152,7 @@ def form_df(
     Returns:
         pd.DataFrame: A pandas DataFrame containing the data.
     """
+    print(f'Forming data frame...')
     df = pd.read_csv(Path(unzip_path) / Path("description.csv"))
     # MANDATORY!!!
     df["measurement_data"] = np.nan
@@ -121,11 +163,12 @@ def form_df(
     # Use apply with a lambda function to load the matrix and assign
     # it to 'measurement_data' column
     df["measurement_data"] = df.index.map(
-        lambda idx: np.load(
-            Path(meas_path) / Path(f"{idx}.npy"), allow_pickle=True
-        )
+        lambda idx: np.load(meas_path / Path(f"{idx}.npy"),
+                            allow_pickle=True)
     )
-    df.to_json(dataset_name)
+    df_file_path = Path(unzip_path / dataset_name)
+    df.to_json(df_file_path)
+    print(f'Data frame is formed and saved as data {df_file_path}')
     return df
 
 
