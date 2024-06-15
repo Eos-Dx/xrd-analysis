@@ -113,6 +113,7 @@ def test_azimuthal_integration_1d(
     mock_perform_azimuthal_integration.side_effect = lambda *args, **kwargs: (
         [1, 2, 3],
         [4, 5, 6],
+        0.1,
     )
 
     transformer = AzimuthalIntegration(
@@ -124,6 +125,7 @@ def test_azimuthal_integration_1d(
 
     assert "q_range" in transformed_df.columns
     assert "radial_profile_data" in transformed_df.columns
+    assert transformed_df.iloc[0]["calculated_distance"] == 0.1
 
 
 @patch(
@@ -141,6 +143,7 @@ def test_azimuthal_integration_2d(
         [1, 2, 3],
         [4, 5, 6],
         [7, 8, 9],
+        0.1,
     )
 
     transformer = AzimuthalIntegration(
@@ -153,6 +156,7 @@ def test_azimuthal_integration_2d(
     assert "q_range" in transformed_df.columns
     assert "radial_profile_data" in transformed_df.columns
     assert "azimuthal_positions" in transformed_df.columns
+    assert transformed_df.iloc[0]["calculated_distance"] == 0.1
 
 
 @patch(
@@ -169,6 +173,7 @@ def test_azimuthal_integration_dataframe_mode(
     mock_perform_azimuthal_integration.side_effect = lambda *args, **kwargs: (
         [1, 2, 3],
         [4, 5, 6],
+        0.1,
     )
 
     transformer = AzimuthalIntegration(
@@ -183,6 +188,7 @@ def test_azimuthal_integration_dataframe_mode(
     assert "q_range" in transformed_df.columns
     assert "radial_profile_data" in transformed_df.columns
     assert set(transformed_df.columns).issuperset(sample_dataframe.columns)
+    assert transformed_df.iloc[0]["calculated_distance"] == 0.1
 
 
 @patch(
@@ -198,6 +204,7 @@ def test_azimuthal_integration_pipeline_mode(
     mock_perform_azimuthal_integration.side_effect = lambda *args, **kwargs: (
         [1, 2, 3],
         [4, 5, 6],
+        0.1,
     )
 
     transformer = AzimuthalIntegration(
@@ -227,6 +234,7 @@ def test_azimuthal_integration_poni_mode(
     mock_perform_azimuthal_integration.side_effect = lambda *args, **kwargs: (
         [1, 2, 3],
         [4, 5, 6],
+        0.1,
     )
     mock_generate_poni.return_value = "test_poni_directory"
 
@@ -241,13 +249,13 @@ def test_azimuthal_integration_poni_mode(
     assert isinstance(transformed_df, pd.DataFrame)
     assert "q_range" in transformed_df.columns
     assert "radial_profile_data" in transformed_df.columns
+    assert transformed_df.iloc[0]["calculated_distance"] == 0.1
 
 
 def test_data_preparation_transformer(sample_dataframe):
     """Data preparation transformer test"""
     transformer = DataPreparation()
     df = sample_dataframe.copy()
-    df.drop("center", axis=1, inplace=True)
 
     # Add necessary columns for testing
     transformed_df = transformer.transform(df)

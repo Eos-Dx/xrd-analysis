@@ -145,7 +145,8 @@ def unzip_data(file_name: str, unzip_path: str):
     print(f"Unzipping {file_name}...")
     with zipfile.ZipFile(file_name, "r") as zf:
         zf.extractall(unzip_path)
-    os.remove(file_name)
+    if os.path.exists(file_name):
+        os.remove(file_name)
 
 
 def form_df(

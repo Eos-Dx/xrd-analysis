@@ -73,6 +73,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
         """Test azimuthal integrator through DF"""
         # Mocked integrator object
         mock_ai = mock_initialize_ai_df.return_value
+        mock_ai.dist = np.array([0.1, 0.1, 0.1])
         mock_ai.integrate1d.return_value = (
             np.array([1, 2, 3]),
             np.array([4, 5, 6]),
@@ -89,12 +90,13 @@ class TestAzimuthalIntegration(unittest.TestCase):
             }
         )
 
-        radial, intensity = perform_azimuthal_integration(row)
+        radial, intensity, dist = perform_azimuthal_integration(row)
 
         mock_initialize_ai_df.assert_called_once()
         mock_ai.integrate1d.assert_called_once()
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
+        np.testing.assert_array_equal(dist, np.array([0.1, 0.1, 0.1]))
 
     @patch(
         (
@@ -106,6 +108,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
         """Test azimuthal integrator through poni"""
         # Mocked integrator object
         mock_ai = mock_initialize_ai_poni.return_value
+        mock_ai.dist = np.array([125, 126, 127])
         mock_ai.integrate1d.return_value = (
             np.array([1, 2, 3]),
             np.array([4, 5, 6]),
@@ -120,7 +123,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
             }
         )
 
-        radial, intensity = perform_azimuthal_integration(
+        radial, intensity, dist = perform_azimuthal_integration(
             row, calibration_mode="poni", poni_dir="/path/to/poni"
         )
 
@@ -130,6 +133,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
         mock_ai.integrate1d.assert_called_once()
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
+        np.testing.assert_array_equal(dist, np.array([125, 126, 127]))
 
     @patch(
         (
@@ -141,6 +145,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
         """Test azimuthal integrator in 2D"""
         # Mocked integrator object
         mock_ai = mock_initialize_ai_df.return_value
+        mock_ai.dist = np.array([0.1, 0.1, 0.1])
         mock_ai.integrate2d.return_value = (
             np.array([4, 5, 6]),
             np.array([1, 2, 3]),
@@ -158,7 +163,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
             }
         )
 
-        radial, intensity, azimuthal = perform_azimuthal_integration(
+        radial, intensity, azimuthal, dist = perform_azimuthal_integration(
             row, mode="2D"
         )
 
@@ -167,6 +172,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
         np.testing.assert_array_equal(azimuthal, np.array([7, 8, 9]))
+        np.testing.assert_array_equal(dist, np.array([0.1, 0.1, 0.1]))
 
     @patch(
         (
@@ -178,6 +184,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
         """Test azimuthal integrator with mask"""
         # Mocked integrator object
         mock_ai = mock_initialize_ai_df.return_value
+        mock_ai.dist = np.array([0.1, 0.1, 0.1])
         mock_ai.integrate1d.return_value = (
             np.array([1, 2, 3]),
             np.array([4, 5, 6]),
@@ -196,7 +203,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
         mask = np.random.randint(0, 2, (10, 10))
 
-        radial, intensity = perform_azimuthal_integration(row, mask=mask)
+        radial, intensity, dist = perform_azimuthal_integration(row, mask=mask)
 
         mock_initialize_ai_df.assert_called_once()
         mock_ai.integrate1d.assert_called_once_with(
@@ -204,6 +211,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
         )
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
+        np.testing.assert_array_equal(dist, np.array([0.1, 0.1, 0.1]))
 
     @patch(
         (
@@ -218,6 +226,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
         (are the default arguments provided?)"""
         # Mocked integrator object
         mock_ai = mock_initialize_ai_df.return_value
+        mock_ai.dist = np.array([0.1, 0.1, 0.1])
         mock_ai.integrate1d.return_value = (
             np.array([1, 2, 3]),
             np.array([4, 5, 6]),
@@ -233,7 +242,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
             }
         )
 
-        radial, intensity = perform_azimuthal_integration(row)
+        radial, intensity, dist = perform_azimuthal_integration(row)
 
         mock_initialize_ai_df.assert_called_once()
         mock_ai.integrate1d.assert_called_once_with(
@@ -241,3 +250,4 @@ class TestAzimuthalIntegration(unittest.TestCase):
         )
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
+        np.testing.assert_array_equal(dist, np.array([0.1, 0.1, 0.1]))

@@ -117,12 +117,19 @@ class AzimuthalIntegration(TransformerMixin):
 
         if self.integration_mode == "1D":
             # Extract q_range and profile arrays from the integration_results
-            x_copy[["q_range", "radial_profile_data", "calculated_distance"]] = (
-                integration_results.apply(lambda x: pd.Series([x[0], x[1], x[2]]))
+            x_copy[
+                ["q_range", "radial_profile_data", "calculated_distance"]
+            ] = integration_results.apply(
+                lambda x: pd.Series([x[0], x[1], x[2]])
             )
         elif self.integration_mode == "2D":
             x_copy[
-                ["q_range", "radial_profile_data", "azimuthal_positions", "calculated_distance"]
+                [
+                    "q_range",
+                    "radial_profile_data",
+                    "azimuthal_positions",
+                    "calculated_distance",
+                ]
             ] = integration_results.apply(
                 lambda x: pd.Series([x[0], x[1], x[2], x[3]])
             )
