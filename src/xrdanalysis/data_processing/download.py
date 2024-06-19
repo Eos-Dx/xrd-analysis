@@ -149,9 +149,7 @@ def unzip_data(file_name: str, unzip_path: str):
         os.remove(file_name)
 
 
-def form_df(
-    unzip_path=UNZIP_PATH_DATA, dataset_name="data.json"
-) -> pd.DataFrame:
+def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
     """
     Generates a pandas DataFrame according to the data downloaded
     from the DB using the EOSDX API. Saves the df as a json file.
@@ -176,10 +174,21 @@ def form_df(
     df["measurement_data"] = df.index.map(
         lambda idx: np.load(meas_path / Path(f"{idx}.npy"), allow_pickle=True)
     )
-    df_file_path = unzip_path / Path(dataset_name)
+    return df
+
+
+def save_df(df, path, dataset_name):
+    """Saves the df as a json file.
+
+    Args:
+        df (pd.DataFrame): A pandas DataFrame containing the data.
+        path (Path): The path where the downloaded
+            data is extracted. Defaults to UNZIP_PATH if not provided.
+        dataset_name (string): Filename to save the file to.
+    """
+    df_file_path = path / Path(dataset_name)
     df.to_json(df_file_path)
     print(f"Data frame is formed and saved as data {df_file_path}")
-    return df
 
 
 def get_df(request: RequestDB) -> pd.DataFrame:
@@ -202,4 +211,6 @@ def get_df(request: RequestDB) -> pd.DataFrame:
         request.file_name,
     )
     unzip_data(request.file_name, request.unzip_path)
-    return form_df(request.unzip_path, request.dataset_name)
+    df = form_df(request.unzip_path)
+    save_df(df, request.unzip_path, request.dataset_name)
+    return df

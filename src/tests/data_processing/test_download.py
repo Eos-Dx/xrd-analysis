@@ -1,5 +1,3 @@
-import os
-import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
@@ -46,7 +44,6 @@ def test_unzip_data(mock_zipfile):
     """Test for unzipping data"""
     mock_zip = MagicMock()
     mock_zipfile.return_value.__enter__.return_value = mock_zip
-    os.mkdir("unzipped_path")
 
     unzip_data("file.zip", "unzipped_path")
 
@@ -76,7 +73,6 @@ def test_form_df(mock_load, mock_read_csv):
         Path("unzipped_path") / "description.csv"
     )
     assert "measurement_data" in result_df.columns
-    assert os.path.exists(Path("unzipped_path/data.json"))
     assert np.array_equal(
         result_df.loc[1, "measurement_data"], np.array([1, 2, 3])
     )
@@ -92,7 +88,10 @@ def test_form_df(mock_load, mock_read_csv):
 @patch("xrdanalysis.data_processing.download.download_data")
 @patch("xrdanalysis.data_processing.download.unzip_data")
 @patch("xrdanalysis.data_processing.download.form_df")
-def test_get_df(mock_form_df, mock_unzip_data, mock_download_data):
+@patch("xrdanalysis.data_processing.download.save_df")
+def test_get_df(
+    mock_save_df, mock_form_df, mock_unzip_data, mock_download_data
+):
     """Test for encompassing function"""
     # Mock the DataFrame returned by form_df
     mock_df = pd.DataFrame({"measurement_id": [1, 2, 3]})
@@ -117,7 +116,8 @@ def test_get_df(mock_form_df, mock_unzip_data, mock_download_data):
     mock_unzip_data.assert_called_once_with(
         Path("unzipped_path/file.zip"), Path("unzipped_path")
     )
-    mock_form_df.assert_called_once_with(Path("unzipped_path"), "data.json")
+    mock_form_df.assert_called_once_with(Path("unzipped_path"))
+    mock_save_df.assert_called_once_with(
+        mock_df, Path("unzipped_path"), "data.json"
+    )
     assert result_df.equals(mock_df)
-    if os.path.exists("unzipped_path"):
-        shutil.rmtree("unzipped_path")
