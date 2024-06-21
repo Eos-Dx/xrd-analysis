@@ -2,6 +2,7 @@
 This file includes functions and classes essential for azimuthal integration
 """
 
+import os
 from functools import cache
 
 import pandas as pd
@@ -137,7 +138,7 @@ def perform_azimuthal_integration(
     elif calibration_mode == "poni":
         calibration_measurement_id = row["calibration_measurement_id"]
         ai_cached = initialize_azimuthal_integrator_poni(
-            f"{poni_dir}/{calibration_measurement_id}.poni"
+            os.path.join(poni_dir, f"{calibration_measurement_id}.poni")
         )
 
     if mode == "1D":
