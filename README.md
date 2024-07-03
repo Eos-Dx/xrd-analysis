@@ -8,11 +8,6 @@ Install the packages using conda:
 conda env create -f environment.yml
 ```
 
-Update the environment using conda:
-```bash
-conda env update -f environment.yml --prune
-```
-
 Activate the environment:
 ```bash
 conda activate eosdx
@@ -26,6 +21,11 @@ pre-commit install
 Install the editable package locally:
 ```bash
 pip install -e .
+```
+
+When required you can update the environment using conda:
+```bash
+conda env update -f environment.yml --prune
 ```
 
 Project Organization
