@@ -187,7 +187,7 @@ def save_df(df, path, dataset_name):
         dataset_name (string): Filename to save the file to.
     """
     df_file_path = path / Path(dataset_name)
-    df.to_json(df_file_path)
+    df.to_pickle(str(df_file_path) + ".pkl")
     print(f"Data frame is formed and saved as data {df_file_path}")
 
 
