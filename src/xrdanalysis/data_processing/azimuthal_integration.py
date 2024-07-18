@@ -85,6 +85,9 @@ def perform_azimuthal_integration(
                 interpolation, where q is the momentum transfer,
                 in reciprocal nanometers. If not provided, the
                 full q range will be used.
+            - 'azimuthal_range' (tuple or None, optional): A tuple
+                (min_deg, max_deg) specifying the range of degrees for
+                integration, degrees are in a range from -Pi to Pi.
             OR
             - 'calibration_measurement_id' (int): Integer associated with the
                 id of specific calibration, used to name the poni file.
@@ -96,6 +99,9 @@ def perform_azimuthal_integration(
                 for interpolation, where q is the momentum transfer,
                 in reciprocal nanometers. If not provided, the full
                 q range will be used.
+             - 'azimuthal_range' (tuple or None, optional): A tuple
+                (min_deg, max_deg) specifying the range of degrees for
+                integration, degrees are in a range from -180 to 180. 
         npt (int, optional): Number of points for integration. Defaults to 256.
         mask (array_like, optional): Mask array to be applied during
             integration, 1-s are for pixels to be masked, 0-s for pixels
@@ -119,6 +125,7 @@ def perform_azimuthal_integration(
     """
 
     interpolation_q_range = row.get("interpolation_q_range")
+    azimuthal_range = row.get("azimuthal_range")
     data = row["measurement_data"]
 
     if calibration_mode == "dataframe":
@@ -143,11 +150,19 @@ def perform_azimuthal_integration(
 
     if mode == "1D":
         radial, intensity = ai_cached.integrate1d(
-            data, npt, radial_range=interpolation_q_range, mask=mask
+            data,
+            npt,
+            radial_range=interpolation_q_range,
+            azimuth_range=azimuthal_range,
+            mask=mask,
         )
         return radial, intensity, ai_cached.dist
     elif mode == "2D":
         intensity, radial, azimuthal = ai_cached.integrate2d(
-            data, npt, radial_range=interpolation_q_range, mask=mask
+            data,
+            npt,
+            radial_range=interpolation_q_range,
+            azimuth_range=azimuthal_range,
+            mask=mask,
         )
         return radial, intensity, azimuthal, ai_cached.dist
