@@ -101,7 +101,7 @@ def perform_azimuthal_integration(
                 q range will be used.
              - 'azimuthal_range' (tuple or None, optional): A tuple
                 (min_deg, max_deg) specifying the range of degrees for
-                integration, degrees are in a range from -Pi to Pi.
+                integration, degrees are in a range from -180 to 180. 
         npt (int, optional): Number of points for integration. Defaults to 256.
         mask (array_like, optional): Mask array to be applied during
             integration, 1-s are for pixels to be masked, 0-s for pixels
