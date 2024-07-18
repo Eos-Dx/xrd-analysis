@@ -198,6 +198,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
                 "calculated_distance": 0.1,
                 "pixel_size": 100,
                 "interpolation_q_range": (0, 5),
+                "azimuthal_range": (-180, 180),
             }
         )
 
@@ -207,7 +208,11 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
         mock_initialize_ai_df.assert_called_once()
         mock_ai.integrate1d.assert_called_once_with(
-            row["measurement_data"], 256, radial_range=(0, 5), mask=mask
+            row["measurement_data"],
+            256,
+            radial_range=(0, 5),
+            azimuth_range=(-180, 180),
+            mask=mask,
         )
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
@@ -246,7 +251,11 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
         mock_initialize_ai_df.assert_called_once()
         mock_ai.integrate1d.assert_called_once_with(
-            row["measurement_data"], 256, radial_range=None, mask=None
+            row["measurement_data"],
+            256,
+            radial_range=None,
+            azimuth_range=None,
+            mask=None,
         )
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
