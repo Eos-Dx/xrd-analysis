@@ -353,7 +353,7 @@ class TestNormScalerClusters(unittest.TestCase):
         self.model_names = ["model1", "model2"]
         self.do_fit = True
         self.scaler = NormScalerClusters(
-            model_names=self.model_names, do_fit=self.do_fit
+            modelscales=self.model_names, do_fit=self.do_fit
         )
         self.containers = {
             "model1": MagicMock(spec=MLClusterContainer),
@@ -370,7 +370,7 @@ class TestNormScalerClusters(unittest.TestCase):
 
     def test_initialization(self):
         """Initialization test"""
-        self.assertEqual(self.scaler.model_names, self.model_names)
+        self.assertEqual(self.scaler.modelscales, self.model_names)
         self.assertEqual(self.scaler.do_fit, self.do_fit)
 
     @patch("xrdanalysis.data_processing.transformers.normalize_scale_cluster")

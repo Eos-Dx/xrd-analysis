@@ -230,3 +230,11 @@ class MLClusterContainer:
 
     model_name: str
     clusters: Dict[int, MLCluster]
+
+
+@dataclass
+class ModelScale:
+    norm: bool = True
+    normt: str = 'l1'
+
+

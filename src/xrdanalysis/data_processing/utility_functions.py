@@ -179,7 +179,7 @@ def interpolate_cluster(df, cluster_label, perc_min, perc_max, azimuth):
 
 
 def normalize_scale_cluster(
-    cluster: MLCluster, std=None, norm=None, do_fit=True
+    cluster: MLCluster, normt='l1', norm=True, std=None, do_fit=True
 ):
     """
     Normalize and scale a cluster of azimuthal integration data.
@@ -194,14 +194,17 @@ def normalize_scale_cluster(
             Defaults to None.
         do_fit (bool, optional): Whether to fit the scaler. Defaults to True.
     """
-    if not norm:
-        norm = Normalizer(norm="l2")
+    dfc = cluster.df.copy()
+    if norm:
+        norm = Normalizer(norm=normt)
+        dfc["radial_profile_data_norm"] = dfc["radial_profile_data"].apply(
+            lambda x: norm.transform([x])[0]
+        )
+    else:
+        dfc["radial_profile_data_norm"] = dfc["radial_profile_data"]
+
     if not std:
         std = StandardScaler()
-    dfc = cluster.df.copy()
-    dfc["radial_profile_data_norm"] = dfc["radial_profile_data"].apply(
-        lambda x: norm.transform([x])[0]
-    )
 
     matrix_2d = np.vstack(dfc["radial_profile_data_norm"].values)
     if do_fit:

@@ -14,7 +14,7 @@ from sklearn.cluster import KMeans
 from xrdanalysis.data_processing.azimuthal_integration import (
     perform_azimuthal_integration,
 )
-from xrdanalysis.data_processing.containers import MLClusterContainer
+from xrdanalysis.data_processing.containers import MLClusterContainer, ModelScale
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
     generate_poni,
@@ -379,7 +379,7 @@ class InterpolatorClusters(TransformerMixin):
         clusters = {}
         for cluster_label in dfc["q_cluster_label"].unique():
             azimuth = AzimuthalIntegration(
-                faulty_pixels=self.faulty_pixel_array, npt=self.q_resolution
+                faulty_pixels=self.faulty_pixel_array, npt=self.q_resolution, calibration_mode='poni'
             )
             clusters[cluster_label] = interpolate_cluster(
                 dfc, cluster_label, self.perc_min, self.perc_max, azimuth
@@ -398,7 +398,7 @@ class NormScalerClusters(TransformerMixin):
     integration data.
 
     Args:
-        model_names (List[str]): Names of the models.
+        modelscales (List[str]): Names of the models.
         do_fit (bool): Whether to fit the scaler. Defaults to True.
 
     Methods:
@@ -409,8 +409,8 @@ class NormScalerClusters(TransformerMixin):
             Perform normalization and scaling on the input data.
     """
 
-    def __init__(self, model_names: List[str], do_fit=True):
-        self.model_names = model_names
+    def __init__(self, modelscales: Dict[str, ModelScale], do_fit=True):
+        self.modelscales = modelscales
         self.do_fit = do_fit
 
     def fit(self, x):
@@ -442,7 +442,10 @@ class NormScalerClusters(TransformerMixin):
         Returns:
             dict: Dictionary containing normalized and scaled clusters.
         """
-        for container in containers.values():
+        for name, container in containers.items():
             for cluster in container.clusters.values():
-                normalize_scale_cluster(cluster, do_fit=self.do_fit)
+
+                normalize_scale_cluster(cluster, normt=self.modelscales[name].normt,
+                                        norm=self.modelscales[name].norm,
+                                        do_fit=self.do_fit)
         return containers
