@@ -75,6 +75,9 @@ def generate_poni(df, path):
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
 
+    if 'calibration_measurement_id' not in df.columns:
+        df['calibration_measurement_id'] = [f"{i + 1}_fake" for i in range(len(df))]
+
     df_cut = df[["calibration_measurement_id", "ponifile"]]
 
     df_unique = df_cut.drop_duplicates(subset="calibration_measurement_id")
