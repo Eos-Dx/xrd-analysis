@@ -238,3 +238,9 @@ class ModelScale:
     normt: str = 'l1'
 
 
+@dataclass
+class Limits:
+    q_min_saxs: float
+    q_max_saxs: float
+    q_min_waxs: float
+    q_max_waxs: float

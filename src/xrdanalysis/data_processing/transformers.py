@@ -14,7 +14,7 @@ from sklearn.cluster import KMeans
 from xrdanalysis.data_processing.azimuthal_integration import (
     perform_azimuthal_integration,
 )
-from xrdanalysis.data_processing.containers import MLClusterContainer, ModelScale
+from xrdanalysis.data_processing.containers import MLClusterContainer, ModelScale, Limits
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
     generate_poni,
@@ -165,8 +165,10 @@ class DataPreparation(TransformerMixin):
             standard format.
     """
 
-    def __init__(self, columns=COLUMNS_DEF):
+    def __init__(self, columns=COLUMNS_DEF,
+                 limits: Limits = None):
         self.columns = columns
+        self.limits = limits
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -211,10 +213,15 @@ class DataPreparation(TransformerMixin):
             if "calculated_distance" in dfc.columns:
                 dfc = dfc[~dfc["calculated_distance"].isna()]
 
-        dfc["measurement_data"] = dfc["measurement_data"].apply(
-            lambda x: np.nan_to_num(x)
-        )
+        if "measurement_data" in dfc.columns:
+            dfc["measurement_data"] = dfc["measurement_data"].apply(
+                lambda x: np.nan_to_num(x)
+            )
 
+        if self.limits:
+            limits_waxs = (self.limits.q_min_waxs, self.limits.q_max_waxs)
+            limits_saxs = (self.limits.q_min_saxs, self.limits.q_max_saxs)
+            dfc['interpolation_q_range'] = dfc['type_measurement'].apply(lambda x: limits_waxs if x == 'WAXS' else limits_saxs)
         return dfc[self.columns]
 
 
