@@ -109,8 +109,7 @@ def download_data(
             form = {
                 'study': '2',  # 1 for California, 2 for Keele, 3 for mice data
                 'key': key,
-                'machine': '3',  # 1 for Cu, 2 for Mo in California, 3 for \
-                Keele
+                'machine': '3', # 1 for Cu, 2 for Mo in California, 3 for Keele
                 'manual_distance': '160'
             }
 
