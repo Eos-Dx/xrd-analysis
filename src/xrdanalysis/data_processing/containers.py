@@ -14,20 +14,24 @@ SCALED_DATA = "radial_profile_data_norm_scaled"
 @dataclass
 class MLClusterBlind:
     """
-    Class to store information about an ML cluster for blind data.
+    Stores information about a machine learning cluster for blind data.
 
-    Args:
-        q_range (np.ndarray): The q-range of the cluster.
-        normalizer (Normalizer): The normalizer used for the data.
-        std (StandardScaler): The standard scaler used for the data.
-        model (Union[XGBClassifier, RandomForestClassifier]): The machine
-            learning model.
-        accuracy (float): The accuracy of the model.
-        roc_auc (float): The ROC AUC score of the model.
-        important_features (np.array, optional): Array of important features.
-            Defaults to None.
-        model_reduced (Union[XGBClassifier, RandomForestClassifier], optional):
-            The reduced machine learning model. Defaults to None.
+    :param q_range: The q-range of the cluster.
+    :type q_range: np.ndarray
+    :param normalizer: The normalizer used for the data.
+    :type normalizer: Normalizer
+    :param std: The standard scaler used for the data.
+    :type std: StandardScaler
+    :param model: The machine learning model.
+    :type model: Union[XGBClassifier, RandomForestClassifier]
+    :param accuracy: The accuracy of the model.
+    :type accuracy: float
+    :param roc_auc: The ROC AUC score of the model.
+    :type roc_auc: float
+    :param important_features: Array of important features, defaults to None.
+    :type important_features: np.ndarray, optional
+    :param model_reduced: The reduced machine learning model, defaults to None.
+    :type model_reduced: Union[XGBClassifier, RandomForestClassifier], optional
     """
 
     q_range: np.ndarray
@@ -43,21 +47,28 @@ class MLClusterBlind:
 @dataclass
 class MLBlindContainer:
     """
-    Container class to hold multiple MLClusterBlind instances.
+    Container for holding multiple `MLClusterBlind` instances.
 
-    Args:
-        model_name (str): The name of the model.
-        wavelength (int): The wavelength used in the analysis.
-        pixel_size (int): The pixel size used in the analysis.
-        faulty_pixel_array (np.array): Array of faulty pixel coordinates.
-        fill_method (str): The method used for filling missing data.
-        filter_size (int): The size of the filter used.
-        n_clusters (int): The number of clusters.
-        z_score_threshold (float): The threshold for Z-score based
-            outlier removal.
-        direction (str): The direction of outlier removal.
-        clusters (Dict[int, MLClusterBlind]): Dictionary of MLClusterBlind
-            instances.
+    :param model_name: The name of the model.
+    :type model_name: str
+    :param wavelength: The wavelength used in the analysis.
+    :type wavelength: int
+    :param pixel_size: The pixel size used in the analysis.
+    :type pixel_size: int
+    :param faulty_pixel_array: Array of faulty pixel coordinates.
+    :type faulty_pixel_array: np.ndarray
+    :param fill_method: The method used for filling missing data.
+    :type fill_method: str
+    :param filter_size: The size of the filter used.
+    :type filter_size: int
+    :param n_clusters: The number of clusters.
+    :type n_clusters: int
+    :param z_score_threshold: The threshold for Z-score based outlier removal.
+    :type z_score_threshold: float
+    :param direction: The direction of outlier removal.
+    :type direction: str
+    :param clusters: Dictionary of `MLClusterBlind` instances.
+    :type clusters: Dict[int, MLClusterBlind]
     """
 
     model_name: str
@@ -75,29 +86,34 @@ class MLBlindContainer:
 @dataclass
 class MLCluster:
     """
-    Class to store information about an ML cluster.
+    Stores information about a machine learning cluster.
 
-    Args:
-        df (pd.DataFrame): DataFrame containing the data.
-        q_range (np.ndarray): The q-range of the cluster.
-        q_cluster (int): The cluster label.
-        normalizer (Normalizer, optional): The normalizer
-            used for the data. Defaults to None.
-        std (StandardScaler, optional): The standard scaler used
-            for the data. Defaults to None.
-        model (Union[XGBClassifier, RandomForestClassifier], optional):
-            The machine learning model. Defaults to None.
-        accuracy (float, optional): The accuracy of the model. Defaults to 0.
-        roc_auc (float, optional): The ROC AUC score of the model.
-            Defaults to 0.
-        X_test (np.ndarray, optional): Test features. Defaults to None.
-        y_test (np.ndarray, optional): Test labels. Defaults to None.
-        train_func (Callable, optional): Function used to train the model.
-            Defaults to None.
-        important_features (np.array, optional): Array of important features.
-            Defaults to None.
-        model_reduced (Union[XGBClassifier, RandomForestClassifier], optional):
-            The reduced machine learning model. Defaults to None.
+    :param df: DataFrame containing the data.
+    :type df: pd.DataFrame
+    :param q_range: The q-range of the cluster.
+    :type q_range: np.ndarray
+    :param q_cluster: The cluster label.
+    :type q_cluster: int
+    :param normalizer: The normalizer used for the data, defaults to None.
+    :type normalizer: Normalizer, optional
+    :param std: The standard scaler used for the data, defaults to None.
+    :type std: StandardScaler, optional
+    :param model: The machine learning model, defaults to None.
+    :type model: Union[XGBClassifier, RandomForestClassifier], optional
+    :param accuracy: The accuracy of the model, defaults to 0.
+    :type accuracy: float, optional
+    :param roc_auc: The ROC AUC score of the model, defaults to 0.
+    :type roc_auc: float, optional
+    :param X_test: Test features, defaults to None.
+    :type X_test: np.ndarray, optional
+    :param y_test: Test labels, defaults to None.
+    :type y_test: np.ndarray, optional
+    :param train_func: Function used to train the model, defaults to None.
+    :type train_func: Callable, optional
+    :param important_features: Array of important features, defaults to None.
+    :type important_features: np.ndarray, optional
+    :param model_reduced: The reduced machine learning model, defaults to None.
+    :type model_reduced: Union[XGBClassifier, RandomForestClassifier], optional
     """
 
     df: pd.DataFrame
@@ -116,11 +132,10 @@ class MLCluster:
 
     def predict_proba(self, reduced=False):
         """
-        Predict the probability of the positive class for each sample.
+        Predicts the probability of the positive class for each sample.
 
-        Args:
-            reduced (bool, optional): Whether to use the reduced model.
-                Defaults to False.
+        :param reduced: Whether to use the reduced model, defaults to False.
+        :type reduced: bool, optional
         """
         transformed_data = np.vstack(self.df[SCALED_DATA].values)
         if reduced:
@@ -133,11 +148,10 @@ class MLCluster:
 
     def predict(self, reduced=False):
         """
-        Predict the class for each sample.
+        Predicts the class for each sample.
 
-        Args:
-            reduced (bool, optional): Whether to use
-                the reduced model. Defaults to False.
+        :param reduced: Whether to use the reduced model, defaults to False.
+        :type reduced: bool, optional
         """
         transformed_data = np.vstack(self.df[SCALED_DATA].values)
         if reduced:
@@ -150,11 +164,10 @@ class MLCluster:
 
     def calc_accuracy(self, reduced=False):
         """
-        Calculate the accuracy of the model.
+        Calculates the accuracy of the model.
 
-        Args:
-            reduced (bool, optional): Whether to use
-                the reduced model. Defaults to False.
+        :param reduced: Whether to use the reduced model, defaults to False.
+        :type reduced: bool, optional
         """
         self.predict(reduced)
         y_data = self.df["cancer_diagnosis"].astype(int).values
@@ -165,11 +178,10 @@ class MLCluster:
 
     def calc_roc_auc(self, reduced=False):
         """
-        Calculate the ROC AUC score of the model.
+        Calculates the ROC AUC score of the model.
 
-        Args:
-            reduced (bool, optional): Whether to use
-                the reduced model. Defaults to False.
+        :param reduced: Whether to use the reduced model, defaults to False.
+        :type reduced: bool, optional
         """
         self.predict_proba(reduced)
         y_data = self.df["cancer_diagnosis"].astype(int).values
@@ -179,40 +191,39 @@ class MLCluster:
         self.roc_auc = round(roc_auc, 3)
 
     def model_train(self, **kwargs):
-        """
-        Train the model using the provided training function.
+        r"""
+        Trains the model using the provided training function.
 
-        Args:
-            **kwargs: Additional arguments for the training function.
+        :param \**kwargs: Additional arguments for the training function.
         """
         self.train_func(self, **kwargs)
 
     def set_df(self, df):
         """
-        Set the DataFrame for the cluster.
+        Sets the DataFrame for the cluster.
 
-        Args:
-            df (pd.DataFrame): The DataFrame to set.
+        :param df: The DataFrame to set.
+        :type df: pd.DataFrame
         """
         self.df = df
 
     @property
     def q_max_min(self):
         """
-        Get the maximum q value.
+        Gets the maximum q value.
 
-        Returns:
-            float: The maximum q value.
+        :returns: The maximum q value.
+        :rtype: float
         """
         return self.q_range[-1]
 
     @property
     def q_min_max(self):
         """
-        Get the minimum q value.
+        Gets the minimum q value.
 
-        Returns:
-            float: The minimum q value.
+        :returns: The minimum q value.
+        :rtype: float
         """
         return self.q_range[0]
 
@@ -220,12 +231,12 @@ class MLCluster:
 @dataclass
 class MLClusterContainer:
     """
-    Container class to hold multiple MLCluster instances.
+    Container for holding multiple `MLCluster` instances.
 
-    Args:
-        model_name (str): The name of the model.
-        clusters (Dict[int, MLCluster]): Dictionary
-            of MLCluster instances.
+    :param model_name: The name of the model.
+    :type model_name: str
+    :param clusters: Dictionary of `MLCluster` instances.
+    :type clusters: Dict[int, MLCluster]
     """
 
     model_name: str

@@ -28,24 +28,27 @@ from xrdanalysis.data_processing.utility_functions import (
 class AzimuthalIntegration(TransformerMixin):
     """
     Transformer class for azimuthal integration to be used in
-    sklearn pipeline.
+    an sklearn pipeline.
 
-    Args:
-        faulty_pixels (Tuple[int]): A tuple containing the
-            coordinates of faulty pixels.
-        npt (int): The number of points for azimuthal integration.
-            Defaults to 256.
-        integration_mode (str): The integration mode, either "1D" or "2D".
-            Defaults to "1D".
-        transformation_mode (str): The transformation mode, either 'dataframe'
-            returns a dataframe for further analysis or 'pipeline' to use in
-            sklearn pipeline.
-            Defaults to 'dataframe'.
-        calibration_mode (str): Mode of calibration, 'dataframe'
-            is used when calibration values are columns in dataframe,
-            'poni' is used when calibration is in poni file.
-        poni_dir_path (str): Directory path containing where .poni files
-            for the rows will be saved.
+    :param faulty_pixels: A tuple containing the coordinates of faulty pixels.
+    :type faulty_pixels: Tuple[int]
+    :param npt: The number of points for azimuthal integration. Defaults to\
+        256.
+    :type npt: int
+    :param integration_mode: The integration mode, either "1D" or "2D".\
+        Defaults to "1D".
+    :type integration_mode: str
+    :param transformation_mode: The transformation mode, either 'dataframe'\
+        (returns a DataFrame for further analysis) or 'pipeline'\
+        (to use in an sklearn pipeline). Defaults to 'dataframe'.
+    :type transformation_mode: str
+    :param calibration_mode: Mode of calibration. 'dataframe' is used when\
+        calibration values are columns in the DataFrame, 'poni' is\
+        used when calibration is in a poni file.
+    :type calibration_mode: str
+    :param poni_dir_path: Directory path where .poni files for the rows will\
+        be saved.
+    :type poni_dir_path: str
     """
 
     faulty_pixels: Tuple[int] = None
@@ -57,17 +60,15 @@ class AzimuthalIntegration(TransformerMixin):
 
     def fit(self, x: pd.DataFrame, y=None):
         """
-        Fit method for the transformer. Since this transformer does
-        not learn from the data, the fit method does not perform
-        any operations.
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
 
-        Args:
-            x (pandas.DataFrame): The data to fit.
-            y: Ignored. Not used, present here for API consistency
-                by convention.
-
-        Returns:
-            object: Returns the instance itself.
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
         """
         _ = x
         _ = y
@@ -76,23 +77,18 @@ class AzimuthalIntegration(TransformerMixin):
 
     def transform(self, x: pd.DataFrame) -> pd.DataFrame:
         """
-        Applies azimuthal integration to each row of the
-        DataFrame and adds the result as a new column.
+        Applies azimuthal integration to each row of the DataFrame and adds
+        the result as a new column.
 
-        Args:
-            X (pandas.DataFrame): The data to transform.
-                Must contain 'measurement_data' and 'center' columns.
-
-        Returns:
-            pandas.DataFrame: Either a copy of the input DataFrame with an
-                additional 'radial_profile_data' column containing the results
-                of the azimuthal integration. 'q_range' column with q-ranges
-                and optionally 'azimuthal_positions' column for angles in 2D
-                integration or a dataframe with 'radial_profile_data' to be
-                used in pipeline.
+        :param X: The data to transform. Must contain 'measurement_data' and\
+            'center' columns.
+        :type X: pandas.DataFrame
+        :return: A copy of the input DataFrame with an additional\
+            'radial_profile_data' column containing the results of the\
+            azimuthal integration, and optionally 'q_range' and\
+            'azimuthal_positions' columns for 2D integration.
+        :rtype: pandas.DataFrame
         """
-        if not isinstance(x, pd.DataFrame):
-            raise TypeError("Input must be a pandas DataFrame")
 
         x_copy = x.copy()
 
@@ -160,14 +156,7 @@ COLUMNS_DEF = [
 
 class DataPreparation(TransformerMixin):
     """
-    Transformer class to prepare raw DataFrame according to the standard.
-
-    Methods:
-        fit: Fits the transformer to the data. Since this transformer does
-            not learn from the data, this method does not perform
-            any operations.
-        transform: Transforms the input DataFrame to adhere to the
-            standard format.
+    Transformer class to prepare a raw DataFrame according to the standard.
     """
 
     def __init__(self, columns=COLUMNS_DEF):
@@ -175,17 +164,15 @@ class DataPreparation(TransformerMixin):
 
     def fit(self, x: pd.DataFrame, y=None):
         """
-        Fit method for the transformer. Since this transformer does
-        not learn from the data, the fit method does not perform
-        any operations.
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
 
-        Args:
-            x (pandas.DataFrame): The data to fit.
-            y: Ignored. Not used, present here for API consistency
-                by convention.
-
-        Returns:
-            object: Returns the instance itself.
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
         """
         _ = x
         _ = y
@@ -196,11 +183,10 @@ class DataPreparation(TransformerMixin):
         """
         Transforms the input DataFrame to adhere to the standard format.
 
-        Args:
-            df (pandas.DataFrame): The raw DataFrame to be transformed.
-
-        Returns:
-            pandas.DataFrame: The transformed DataFrame with selected columns.
+        :param df: The raw DataFrame to be transformed.
+        :type df: pandas.DataFrame
+        :return: The transformed DataFrame with selected columns.
+        :rtype: pandas.DataFrame
         """
         dfc = df.copy()
 
@@ -228,31 +214,27 @@ class Clusterization(TransformerMixin):
     Transformer class to perform clusterization and remove outliers
     from the DataFrame.
 
-    Args:
-        n_clusters (int): The number of clusters to use in K-Means clustering.
-        z_score_threshold (float): The threshold for Z-score based outlier
-            removal.
-        direction (str): The direction of outlier removal, either "both",
-            "positive", or "negative".
-
-    Methods:
-        fit: Fits the transformer to the data. Since this transformer does not
-            learn from the data, this method does not perform any operations.
-        transform: Transforms the input DataFrame by performing clusterization
-                   and outlier removal.
+    :param n_clusters: The number of clusters to use in K-Means clustering.
+    :type n_clusters: int
+    :param z_score_threshold: The threshold for Z-score based outlier removal.
+    :type z_score_threshold: float
+    :param direction: The direction of outlier removal, either "both",\
+        "positive", or "negative".
+    :type direction: str
     """
 
     def __init__(self, n_clusters, z_score_threshold, direction):
         """
         Initialize the Clusterization transformer with parameters.
 
-        Args:
-            n_clusters (int): The number of clusters to use in
-                K-Means clustering.
-            z_score_threshold (float): The threshold for Z-score
-                based outlier removal.
-            direction (str): The direction of outlier removal, either
-                "both", "positive", or "negative".
+        :param n_clusters: The number of clusters to use in K-Means clustering.
+        :type n_clusters: int
+        :param z_score_threshold: The threshold for Z-score based outlier\
+            removal.
+        :type z_score_threshold: float
+        :param direction: The direction of outlier removal, either "both",\
+            "positive", or "negative".
+        :type direction: str
         """
         self.n_clusters = n_clusters
         self.z_score_threshold = z_score_threshold
@@ -260,17 +242,15 @@ class Clusterization(TransformerMixin):
 
     def fit(self, x: pd.DataFrame, y=None):
         """
-        Fit method for the transformer. Since this transformer does
-        not learn from the data, the fit method does not perform
-        any operations.
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
 
-        Args:
-            x (pandas.DataFrame): The data to fit.
-            y: Ignored. Not used, present here for API consistency
-                by convention.
-
-        Returns:
-            object: Returns the instance itself.
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
         """
         _ = x
         _ = y
@@ -279,14 +259,13 @@ class Clusterization(TransformerMixin):
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Transforms the input DataFrame by performing clusterization
+        Transforms the input DataFrame by performing clusterization\
         and outlier removal.
 
-        Args:
-            df (pandas.DataFrame): The input DataFrame.
-
-        Returns:
-            pandas.DataFrame: The transformed DataFrame with outliers removed.
+        :param df: The input DataFrame.
+        :type df: pandas.DataFrame
+        :return: The transformed DataFrame with outliers removed.
+        :rtype: pandas.DataFrame
         """
 
         dfc = df.copy()
@@ -321,20 +300,18 @@ class InterpolatorClusters(TransformerMixin):
     """
     Transformer class for interpolating clusters of azimuthal integration data.
 
-    Parameters:
-        perc_min (float): The minimum percentage of the
-            maximum q-range for interpolation.
-        perc_max (float): The maximum percentage of the
-            maximum q-range for interpolation.
-        resolution (int): The resolution for interpolation.
-        faulty_pixel_array (List): A list of faulty pixel coordinates.
-        model_names (str): Names of the models.
-
-    Methods:
-        fit(x: pd.DataFrame) -> self:
-            Fit the interpolator to the data.
-        transform(df) -> Dict[str, MLClusterContainer]:
-            Perform interpolation on the input data.
+    :param perc_min: The minimum percentage of the maximum q-range for\
+        interpolation.
+    :type perc_min: float
+    :param perc_max: The maximum percentage of the maximum q-range for\
+        interpolation.
+    :type perc_max: float
+    :param resolution: The resolution for interpolation.
+    :type resolution: int
+    :param faulty_pixel_array: A list of faulty pixel coordinates.
+    :type faulty_pixel_array: List
+    :param model_names: Names of the models.
+    :type model_names: str
     """
 
     def __init__(
@@ -353,17 +330,15 @@ class InterpolatorClusters(TransformerMixin):
 
     def fit(self, x: pd.DataFrame):
         """
-        Fit method for the transformer. Since this transformer does
-        not learn from the data, the fit method does not perform
-        any operations.
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
 
-        Args:
-            x (pandas.DataFrame): The data to fit.
-            y: Ignored. Not used, present here for API consistency
-                by convention.
-
-        Returns:
-            object: Returns the instance itself.
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
         """
         self.x = x
         return self
@@ -372,12 +347,10 @@ class InterpolatorClusters(TransformerMixin):
         """
         Perform interpolation on the input data.
 
-        Args:
-            df (pd.DataFrame): Input DataFrame containing data to
-                be interpolated.
-
-        Returns:
-            dict: Dictionary containing interpolated clusters.
+        :param df: Input DataFrame containing data to be interpolated.
+        :type df: pandas.DataFrame
+        :return: Dictionary containing interpolated clusters.
+        :rtype: dict
         """
         dfc = df.copy()
         clusters_global = {}
@@ -402,16 +375,10 @@ class NormScalerClusters(TransformerMixin):
     Transformer class for normalizing and scaling clusters of azimuthal
     integration data.
 
-    Args:
-        model_names (List[str]): Names of the models.
-        do_fit (bool): Whether to fit the scaler. Defaults to True.
-
-    Methods:
-        fit(x: pd.DataFrame) -> self:
-            Fit the scaler to the data.
-        transform(containers: Dict[str, MLClusterContainer])
-        -> Dict[str, MLClusterContainer]:
-            Perform normalization and scaling on the input data.
+    :param model_names: Names of the models.
+    :type model_names: List[str]
+    :param do_fit: Whether to fit the scaler. Defaults to True.
+    :type do_fit: bool
     """
 
     def __init__(self, model_names: List[str], do_fit=True):
@@ -420,17 +387,15 @@ class NormScalerClusters(TransformerMixin):
 
     def fit(self, x):
         """
-        Fit method for the transformer. Since this transformer does
-        not learn from the data, the fit method does not perform
-        any operations.
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
 
-        Args:
-            x (pandas.DataFrame): The data to fit.
-            y: Ignored. Not used, present here for API consistency
-                by convention.
-
-        Returns:
-            object: Returns the instance itself.
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
         """
         self.x = x
         return self
@@ -441,11 +406,10 @@ class NormScalerClusters(TransformerMixin):
         """
         Perform normalization and scaling on the input data.
 
-        Args:
-            containers (dict): Dictionary containing MLClusterContainers.
-
-        Returns:
-            dict: Dictionary containing normalized and scaled clusters.
+        :param containers: Dictionary containing MLClusterContainers.
+        :type containers: dict
+        :return: Dictionary containing normalized and scaled clusters.
+        :rtype: dict
         """
         for container in containers.values():
             for cluster in container.clusters.values():

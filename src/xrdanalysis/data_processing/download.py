@@ -25,18 +25,21 @@ URL_BLIND_DATA = "https://api.eosdx.com/api/getblinddata"
 @dataclass
 class RequestDB:
     """
-    RequestDB is a dataclass used to store essential
-    info for requests to the server.
+    A dataclass to store essential information for requests to the server.
 
-    Args:
-        api_key (str): The API key used for authentication.
-        form (Dict[str, str]): A dictionary containing form data
-            for the request.
-        file_name (str): Name of the file where the data will be downloaded.
-        url (str): The URL of the server. Defaults to a predefined URL.
-        unzip_path (Union[str, Path]): The path where downloaded
-            files should be unzipped. Defaults to a predefined path.
-        dataset_name (str): Name to save the dataset as.
+    :param api_key: The API key used for authentication.
+    :type api_key: str
+    :param form: A dictionary containing form data for the request.
+    :type form: Dict[str, str]
+    :param file_name: Name of the file where the data will be downloaded.
+    :type file_name: str
+    :param url: The URL of the server. Defaults to a predefined URL.
+    :type url: str
+    :param unzip_path: The path where downloaded files should be unzipped.
+        Defaults to a predefined path.
+    :type unzip_path: Union[str, Path]
+    :param dataset_name: Name to save the dataset as.
+    :type dataset_name: str
     """
 
     api_key: str
@@ -59,12 +62,12 @@ class RequestDB:
 
 def monitor_elapsed_time(start_time, stop_event):
     """
-    Function to monitor and print elapsed time in a separate thread.
+    Monitors and prints the elapsed time in a separate thread.
 
-    Args:
-        start_time (float): The start time of the operation.
-        stop_event (threading.Event): Event object to signal the
-        thread to stop.
+    :param start_time: The start time of the operation.
+    :type start_time: float
+    :param stop_event: Event object to signal the thread to stop.
+    :type stop_event: threading.Event
     """
     while not stop_event.is_set():
         elapsed_time = time.time() - start_time
@@ -80,29 +83,50 @@ def download_data(
     api_key: str, form: Dict[str, str], url: str, file_name: str
 ):
     """
-    Download the required data from the EOSDX DB.
+    Downloads the required data from the EOSDX DB.
 
-    Args:
-        api_key (str): The API key as a string.
-        form (Dict[str, str]): JSON-like dict request form.
-            See API.md description for information.
-            Example for cancer tissue data:
-                form = {'key': 'your-access-key',
-                        'cancer_tissue': True,
-                        'measurement_id': '< 3',
-                        'measurement_date': '2023-04-07'}
-            Example for blind data:
-                form = {'study': '2',  # 1 for california, 2 for keele,
-                        3 for mice data
-                        'key': key,
-                        'machine': '3',  # 1 for Cu, 2 for Mo in california,
-                        3 for keele
-                        'manual_distance': '160'}
-        url (str): The URL of the server.
-            Example URLs:
-                URL_DATA = "https://api.eosdx.com/api/getmultiple"
-                URL_BLIND_DATA = "https://api.eosdx.com/api/getblinddata"
-        file_name (str): Name of the file where the data will be downloaded.
+    :param api_key: The API key as a string.
+    :type api_key: str
+
+    :param form: JSON-like dictionary representing the request form.
+        See API.md for information.
+
+        Example for cancer tissue data:
+
+        .. code-block:: python
+
+            form = {
+                'key': 'your-access-key',
+                'cancer_tissue': True,
+                'measurement_id': '< 3',
+                'measurement_date': '2023-04-07'
+            }
+
+        Example for blind data:
+
+        .. code-block:: python
+
+            form = {
+                'study': '2',  # 1 for California, 2 for Keele, 3 for mice data
+                'key': key,
+                'machine': '3',  # 1 for Cu, 2 for Mo in California, 3 for \
+                Keele
+                'manual_distance': '160'
+            }
+
+    :type form: Dict[str, str]
+
+    :param url: The URL of the server.
+
+        Example URLs:
+
+        - URL_DATA = "https://api.eosdx.com/api/getmultiple"
+        - URL_BLIND_DATA = "https://api.eosdx.com/api/getblinddata"
+
+    :type url: str
+
+    :param file_name: Name of the file where the data will be downloaded.
+    :type file_name: str
     """
     form["key"] = api_key
     start_time = time.time()
@@ -136,11 +160,11 @@ def download_data(
 
 def unzip_data(file_name: str, unzip_path: str):
     """
-    Unzip data downloaded from the server to the specified unzip_path folder.
+    Unzips data downloaded from the server to the specified folder.
 
-    Args:
-        unzip_path (Union[str, Path]): The path where the data will
-            be extracted. Defaults to UNZIP_PATH if not provided.
+    :param unzip_path: The path where the data will be extracted.
+        Defaults to UNZIP_PATH if not provided.
+    :type unzip_path: Union[str, Path]
     """
     print(f"Unzipping {file_name}...")
     with zipfile.ZipFile(file_name, "r") as zf:
@@ -151,15 +175,13 @@ def unzip_data(file_name: str, unzip_path: str):
 
 def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
     """
-    Generates a pandas DataFrame according to the data downloaded
-    from the DB using the EOSDX API. Saves the df as a json file.
+    Generates a pandas DataFrame from the data downloaded using the EOSDX API.
 
-    Args:
-        unzip_path (Path): The path where the downloaded
-            data is extracted. Defaults to UNZIP_PATH if not provided.
-
-    Returns:
-        pd.DataFrame: A pandas DataFrame containing the data.
+    :param unzip_path: The path where the downloaded data is extracted.
+        Defaults to UNZIP_PATH if not provided.
+    :type unzip_path: Path
+    :returns: A pandas DataFrame containing the data.
+    :rtype: pd.DataFrame
     """
     print("Forming data frame...")
     df = pd.read_csv(unzip_path / Path("description.csv"))
@@ -178,13 +200,16 @@ def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
 
 
 def save_df(df, path, dataset_name):
-    """Saves the df as a json file.
+    """
+    Saves the DataFrame as a pickle file.
 
-    Args:
-        df (pd.DataFrame): A pandas DataFrame containing the data.
-        path (Path): The path where the downloaded
-            data is extracted. Defaults to UNZIP_PATH if not provided.
-        dataset_name (string): Filename to save the file to.
+    :param df: A pandas DataFrame containing the data.
+    :type df: pd.DataFrame
+    :param path: The path where the file will be saved.
+        Defaults to UNZIP_PATH if not provided.
+    :type path: Path
+    :param dataset_name: Filename to save the file as.
+    :type dataset_name: str
     """
     df_file_path = path / Path(dataset_name)
     df.to_pickle(str(df_file_path) + ".pkl")
@@ -193,16 +218,15 @@ def save_df(df, path, dataset_name):
 
 def get_df(request: RequestDB) -> pd.DataFrame:
     """
-    Makes a request to the database using the provided RequestDB
-    object and returns a pandas DataFrame.
+    Makes a request to the database using the provided `RequestDB` object\
+    and returns a pandas DataFrame.
 
-    Args:
-        request (RequestDB): A RequestDB object containing
-            essential information for the request.
-
-    Returns:
-        pd.DataFrame: A pandas DataFrame containing the data
-            retrieved from the database.
+    :param request: A `RequestDB` object containing essential information for\
+        the request.
+    :type request: RequestDB
+    :returns: A pandas DataFrame containing the data retrieved from the\
+        database.
+    :rtype: pd.DataFrame
     """
     download_data(
         request.api_key,
