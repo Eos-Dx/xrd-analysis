@@ -1,0 +1,1034 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>MATUR Docs &#8212; MATUR  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=649a27d8" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=658d757c" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=871844ef" />
+
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Welcome to MATUR’s documentation!" href="index.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to MATUR’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">MATUR Docs</a></li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+
+  <section id="matur-docs">
+<h1>MATUR Docs<a class="headerlink" href="#matur-docs" title="Link to this heading">¶</a></h1>
+<section id="module-xrdanalysis.data_processing.azimuthal_integration">
+<span id="azimuthal-integration"></span><h2>Azimuthal Integration<a class="headerlink" href="#module-xrdanalysis.data_processing.azimuthal_integration" title="Link to this heading">¶</a></h2>
+<p>This file includes functions and classes essential for azimuthal integration</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_df">
+<span class="sig-name descname"><span class="pre">initialize_azimuthal_integrator_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pixel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_row</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_distance_mm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_df" title="Link to this definition">¶</a></dt>
+<dd><p>Initializes or gets a cached azimuthal integrator with the    given parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pixel_size</strong> (<em>float</em>) – The size of a pixel on the detector, in meters.</p></li>
+<li><p><strong>center_column</strong> (<em>float</em>) – The column index of the center point for        integration.</p></li>
+<li><p><strong>center_row</strong> (<em>float</em>) – The row index of the center point for integration.</p></li>
+<li><p><strong>wavelength</strong> (<em>float</em>) – The wavelength of the incident X-ray beam, in        angstroms.</p></li>
+<li><p><strong>sample_distance_mm</strong> (<em>float</em>) – The sample-to-detector distance, in        millimeters.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>pyFAI.azimuthalIntegrator.AzimuthalIntegrator</strong>: An instance of            the PyFAI AzimuthalIntegrator.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_poni">
+<span class="sig-name descname"><span class="pre">initialize_azimuthal_integrator_poni</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_poni" title="Link to this definition">¶</a></dt>
+<dd><p>Initializes or gets a cached azimuthal integrator with the given    parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file</strong> (<em>str</em>) – Path to the poni file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>pyFAI.azimuthalIntegrator.AzimuthalIntegrator</strong>: An instance of            the PyFAI AzimuthalIntegrator.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.perform_azimuthal_integration">
+<span class="sig-name descname"><span class="pre">perform_azimuthal_integration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1D'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calibration_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">poni_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.perform_azimuthal_integration" title="Link to this definition">¶</a></dt>
+<dd><p>Perform azimuthal integration on a single row of a DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>row</strong> (<em>pandas.Series</em>) – <p>A row from a pandas DataFrame, expected to        contain the following columns:</p>
+<ul>
+<li><p><strong>measurement_data</strong> (<em>array_like</em>): A 2D array containing the            measurement data.</p></li>
+<li><p><strong>center</strong> (<em>tuple</em>): A tuple of two floats representing the center            coordinates (y, x) for the integration.</p></li>
+<li><p><strong>wavelength</strong> (<em>float</em>): The wavelength of the incident X-ray beam,            in nanometers.</p></li>
+<li><p><strong>calculated_distance</strong> (<em>float</em>): The calculated distance from the            sample to the detector, in meters.</p></li>
+<li><p><strong>pixel_size</strong> (<em>float</em>): The size of a pixel on the detector, in            micrometers.</p></li>
+<li><p><strong>interpolation_q_range</strong> (<em>tuple or None, optional</em>): A tuple            (q_min, q_max) specifying the range of q values for interpolation,            where q is the momentum transfer, in reciprocal nanometers.            If not provided, the full q range will be used.</p></li>
+<li><p><strong>azimuthal_range</strong> (<em>tuple or None, optional</em>): A tuple            (min_deg, max_deg) specifying the range of degrees for            integration. Degrees are in a range from -180 to 180.</p></li>
+</ul>
+<p><strong>OR</strong></p>
+<ul>
+<li><p><strong>calibration_measurement_id</strong> (<em>int</em>): Integer associated with the            ID of a specific calibration, used to name the poni file.</p></li>
+<li><p><strong>measurement_data</strong> (<em>array_like</em>): A 2D array containing the            measurement data.</p></li>
+<li><p><strong>ponifile</strong> (<em>str</em>): A string for poni file usage.</p></li>
+<li><p><strong>interpolation_q_range</strong> (<em>tuple or None, optional</em>): A tuple            (q_min, q_max) specifying the range of q values for interpolation,            where q is the momentum transfer, in reciprocal nanometers.            If not provided, the full q range will be used.</p></li>
+<li><p><strong>azimuthal_range</strong> (<em>tuple or None, optional</em>): A tuple            (min_deg, max_deg) specifying the range of degrees for            integration. Degrees are in a range from -180 to 180.</p></li>
+</ul>
+</p></li>
+<li><p><strong>npt</strong> (<em>int</em>) – Number of points for integration. Defaults to 256.</p></li>
+<li><p><strong>mask</strong> (<em>array_like</em>) – Mask array to be applied during integration.        1s are for pixels to be masked, 0s for pixels to be integrated.        Defaults to None.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – Mode of integration. ‘1D’ for 1-dimensional integration        and ‘2D’ for 2-dimensional integration. Defaults to ‘1D’.</p></li>
+<li><p><strong>calibration_mode</strong> (<em>str</em>) – Mode of calibration. ‘dataframe’ is used when        calibration values are columns in the dataframe, ‘poni’ is used when        calibration is in a poni file. Defaults to ‘dataframe’.</p></li>
+<li><p><strong>poni_dir</strong> (<em>str</em><em> or </em><em>None</em>) – Directory path containing .poni files for        calibration. Only applicable when calibration_mode is set to ‘poni’.        Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>numpy.ndarray</strong>: The array of radial q values (momentum transfer)            resulting from the integration.</p></li>
+<li><p><strong>numpy.ndarray</strong>: The intensity values resulting from the            integration.</p></li>
+<li><p><strong>numpy.ndarray, optional</strong>: The array of azimuthal angles (radians)            for 2D integration, returned only if mode is ‘2D’.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-xrdanalysis.data_processing.containers">
+<span id="containers"></span><h2>Containers<a class="headerlink" href="#module-xrdanalysis.data_processing.containers" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLBlindContainer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MLBlindContainer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faulty_pixel_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_score_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterBlind" title="xrdanalysis.data_processing.containers.MLClusterBlind"><span class="pre">MLClusterBlind</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLBlindContainer" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Container for holding multiple <cite>MLClusterBlind</cite> instances.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_name</strong> (<em>str</em>) – The name of the model.</p></li>
+<li><p><strong>wavelength</strong> (<em>int</em>) – The wavelength used in the analysis.</p></li>
+<li><p><strong>pixel_size</strong> (<em>int</em>) – The pixel size used in the analysis.</p></li>
+<li><p><strong>faulty_pixel_array</strong> (<em>np.ndarray</em>) – Array of faulty pixel coordinates.</p></li>
+<li><p><strong>fill_method</strong> (<em>str</em>) – The method used for filling missing data.</p></li>
+<li><p><strong>filter_size</strong> (<em>int</em>) – The size of the filter used.</p></li>
+<li><p><strong>n_clusters</strong> (<em>int</em>) – The number of clusters.</p></li>
+<li><p><strong>z_score_threshold</strong> (<em>float</em>) – The threshold for Z-score based outlier removal.</p></li>
+<li><p><strong>direction</strong> (<em>str</em>) – The direction of outlier removal.</p></li>
+<li><p><strong>clusters</strong> (<em>Dict</em><em>[</em><em>int</em><em>, </em><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterBlind" title="xrdanalysis.data_processing.containers.MLClusterBlind"><em>MLClusterBlind</em></a><em>]</em>) – Dictionary of <cite>MLClusterBlind</cite> instances.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MLCluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_cluster</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Normalizer</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">StandardScaler</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">XGBClassifier</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">RandomForestClassifier</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accuracy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roc_auc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">important_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_reduced</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">XGBClassifier</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">RandomForestClassifier</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Stores information about a machine learning cluster.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – DataFrame containing the data.</p></li>
+<li><p><strong>q_range</strong> (<em>np.ndarray</em>) – The q-range of the cluster.</p></li>
+<li><p><strong>q_cluster</strong> (<em>int</em>) – The cluster label.</p></li>
+<li><p><strong>normalizer</strong> (<em>Normalizer</em><em>, </em><em>optional</em>) – The normalizer used for the data, defaults to None.</p></li>
+<li><p><strong>std</strong> (<em>StandardScaler</em><em>, </em><em>optional</em>) – The standard scaler used for the data, defaults to None.</p></li>
+<li><p><strong>model</strong> (<em>Union</em><em>[</em><em>XGBClassifier</em><em>, </em><em>RandomForestClassifier</em><em>]</em><em>, </em><em>optional</em>) – The machine learning model, defaults to None.</p></li>
+<li><p><strong>accuracy</strong> (<em>float</em><em>, </em><em>optional</em>) – The accuracy of the model, defaults to 0.</p></li>
+<li><p><strong>roc_auc</strong> (<em>float</em><em>, </em><em>optional</em>) – The ROC AUC score of the model, defaults to 0.</p></li>
+<li><p><strong>X_test</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Test features, defaults to None.</p></li>
+<li><p><strong>y_test</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Test labels, defaults to None.</p></li>
+<li><p><strong>train_func</strong> (<em>Callable</em><em>, </em><em>optional</em>) – Function used to train the model, defaults to None.</p></li>
+<li><p><strong>important_features</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Array of important features, defaults to None.</p></li>
+<li><p><strong>model_reduced</strong> (<em>Union</em><em>[</em><em>XGBClassifier</em><em>, </em><em>RandomForestClassifier</em><em>]</em><em>, </em><em>optional</em>) – The reduced machine learning model, defaults to None.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.calc_accuracy">
+<span class="sig-name descname"><span class="pre">calc_accuracy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reduced</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.calc_accuracy" title="Link to this definition">¶</a></dt>
+<dd><p>Calculates the accuracy of the model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>reduced</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to use the reduced model, defaults to False.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.calc_roc_auc">
+<span class="sig-name descname"><span class="pre">calc_roc_auc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reduced</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.calc_roc_auc" title="Link to this definition">¶</a></dt>
+<dd><p>Calculates the ROC AUC score of the model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>reduced</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to use the reduced model, defaults to False.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.model_train">
+<span class="sig-name descname"><span class="pre">model_train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.model_train" title="Link to this definition">¶</a></dt>
+<dd><p>Trains the model using the provided training function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>**kwargs</strong> – Additional arguments for the training function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reduced</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.predict" title="Link to this definition">¶</a></dt>
+<dd><p>Predicts the class for each sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>reduced</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to use the reduced model, defaults to False.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.predict_proba">
+<span class="sig-name descname"><span class="pre">predict_proba</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reduced</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.predict_proba" title="Link to this definition">¶</a></dt>
+<dd><p>Predicts the probability of the positive class for each sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>reduced</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to use the reduced model, defaults to False.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.q_max_min">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">q_max_min</span></span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.q_max_min" title="Link to this definition">¶</a></dt>
+<dd><p>Gets the maximum q value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The maximum q value.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.q_min_max">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">q_min_max</span></span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.q_min_max" title="Link to this definition">¶</a></dt>
+<dd><p>Gets the minimum q value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The minimum q value.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.set_df">
+<span class="sig-name descname"><span class="pre">set_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.set_df" title="Link to this definition">¶</a></dt>
+<dd><p>Sets the DataFrame for the cluster.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>df</strong> (<em>pd.DataFrame</em>) – The DataFrame to set.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLClusterBlind">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MLClusterBlind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Normalizer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">StandardScaler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">XGBClassifier</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">RandomForestClassifier</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accuracy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roc_auc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">important_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_reduced</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">XGBClassifier</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">RandomForestClassifier</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLClusterBlind" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Stores information about a machine learning cluster for blind data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q_range</strong> (<em>np.ndarray</em>) – The q-range of the cluster.</p></li>
+<li><p><strong>normalizer</strong> (<em>Normalizer</em>) – The normalizer used for the data.</p></li>
+<li><p><strong>std</strong> (<em>StandardScaler</em>) – The standard scaler used for the data.</p></li>
+<li><p><strong>model</strong> (<em>Union</em><em>[</em><em>XGBClassifier</em><em>, </em><em>RandomForestClassifier</em><em>]</em>) – The machine learning model.</p></li>
+<li><p><strong>accuracy</strong> (<em>float</em>) – The accuracy of the model.</p></li>
+<li><p><strong>roc_auc</strong> (<em>float</em>) – The ROC AUC score of the model.</p></li>
+<li><p><strong>important_features</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Array of important features, defaults to None.</p></li>
+<li><p><strong>model_reduced</strong> (<em>Union</em><em>[</em><em>XGBClassifier</em><em>, </em><em>RandomForestClassifier</em><em>]</em><em>, </em><em>optional</em>) – The reduced machine learning model, defaults to None.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLClusterContainer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MLClusterContainer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster" title="xrdanalysis.data_processing.containers.MLCluster"><span class="pre">MLCluster</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLClusterContainer" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Container for holding multiple <cite>MLCluster</cite> instances.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_name</strong> (<em>str</em>) – The name of the model.</p></li>
+<li><p><strong>clusters</strong> (<em>Dict</em><em>[</em><em>int</em><em>, </em><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster" title="xrdanalysis.data_processing.containers.MLCluster"><em>MLCluster</em></a><em>]</em>) – Dictionary of <cite>MLCluster</cite> instances.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-xrdanalysis.data_processing.download">
+<span id="db-download"></span><h2>DB Download<a class="headerlink" href="#module-xrdanalysis.data_processing.download" title="Link to this heading">¶</a></h2>
+<p>This file includes functions and classes essential for dealing
+with EosDX DB for data extraction</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.download.RequestDB">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">RequestDB</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">form</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unzip_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'data.json'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.download.RequestDB" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A dataclass to store essential information for requests to the server.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>api_key</strong> (<em>str</em>) – The API key used for authentication.</p></li>
+<li><p><strong>form</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em>) – A dictionary containing form data for the request.</p></li>
+<li><p><strong>file_name</strong> (<em>str</em>) – Name of the file where the data will be downloaded.</p></li>
+<li><p><strong>url</strong> (<em>str</em>) – The URL of the server. Defaults to a predefined URL.</p></li>
+<li><p><strong>unzip_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>Path</em><em>]</em>) – The path where downloaded files should be unzipped.
+Defaults to a predefined path.</p></li>
+<li><p><strong>dataset_name</strong> (<em>str</em>) – Name to save the dataset as.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.download.download_data">
+<span class="sig-name descname"><span class="pre">download_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">form</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.download.download_data" title="Link to this definition">¶</a></dt>
+<dd><p>Downloads the required data from the EOSDX DB.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>api_key</strong> (<em>str</em>) – The API key as a string.</p></li>
+<li><p><strong>form</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em>) – <p>JSON-like dictionary representing the request form.
+See API.md for information.</p>
+<p>Example for cancer tissue data:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">form</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;key&#39;</span><span class="p">:</span> <span class="s1">&#39;your-access-key&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;cancer_tissue&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;measurement_id&#39;</span><span class="p">:</span> <span class="s1">&#39;&lt; 3&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;measurement_date&#39;</span><span class="p">:</span> <span class="s1">&#39;2023-04-07&#39;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Example for blind data:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">form</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;study&#39;</span><span class="p">:</span> <span class="s1">&#39;2&#39;</span><span class="p">,</span>  <span class="c1"># 1 for California, 2 for Keele, 3 for mice data</span>
+    <span class="s1">&#39;key&#39;</span><span class="p">:</span> <span class="n">key</span><span class="p">,</span>
+    <span class="s1">&#39;machine&#39;</span><span class="p">:</span> <span class="s1">&#39;3&#39;</span><span class="p">,</span>  <span class="c1"># 1 for Cu, 2 for Mo in California, 3 for                 Keele</span>
+    <span class="s1">&#39;manual_distance&#39;</span><span class="p">:</span> <span class="s1">&#39;160&#39;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p></li>
+<li><p><strong>url</strong> (<em>str</em>) – <p>The URL of the server.</p>
+<p>Example URLs:</p>
+<ul>
+<li><p>URL_DATA = “<a class="reference external" href="https://api.eosdx.com/api/getmultiple">https://api.eosdx.com/api/getmultiple</a>”</p></li>
+<li><p>URL_BLIND_DATA = “<a class="reference external" href="https://api.eosdx.com/api/getblinddata">https://api.eosdx.com/api/getblinddata</a>”</p></li>
+</ul>
+</p></li>
+<li><p><strong>file_name</strong> (<em>str</em>) – Name of the file where the data will be downloaded.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.download.form_df">
+<span class="sig-name descname"><span class="pre">form_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unzip_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">PosixPath('unzipped_data')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.download.form_df" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a pandas DataFrame from the data downloaded using the EOSDX API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>unzip_path</strong> (<em>Path</em>) – The path where the downloaded data is extracted.
+Defaults to UNZIP_PATH if not provided.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pandas DataFrame containing the data.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.download.get_df">
+<span class="sig-name descname"><span class="pre">get_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.download.RequestDB" title="xrdanalysis.data_processing.download.RequestDB"><span class="pre">RequestDB</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.download.get_df" title="Link to this definition">¶</a></dt>
+<dd><p>Makes a request to the database using the provided <cite>RequestDB</cite> object    and returns a pandas DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<a class="reference internal" href="#xrdanalysis.data_processing.download.RequestDB" title="xrdanalysis.data_processing.download.RequestDB"><em>RequestDB</em></a>) – A <cite>RequestDB</cite> object containing essential information for        the request.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pandas DataFrame containing the data retrieved from the        database.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.download.monitor_elapsed_time">
+<span class="sig-name descname"><span class="pre">monitor_elapsed_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop_event</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.download.monitor_elapsed_time" title="Link to this definition">¶</a></dt>
+<dd><p>Monitors and prints the elapsed time in a separate thread.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start_time</strong> (<em>float</em>) – The start time of the operation.</p></li>
+<li><p><strong>stop_event</strong> (<em>threading.Event</em>) – Event object to signal the thread to stop.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.download.save_df">
+<span class="sig-name descname"><span class="pre">save_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.download.save_df" title="Link to this definition">¶</a></dt>
+<dd><p>Saves the DataFrame as a pickle file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – A pandas DataFrame containing the data.</p></li>
+<li><p><strong>path</strong> (<em>Path</em>) – The path where the file will be saved.
+Defaults to UNZIP_PATH if not provided.</p></li>
+<li><p><strong>dataset_name</strong> (<em>str</em>) – Filename to save the file as.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.download.unzip_data">
+<span class="sig-name descname"><span class="pre">unzip_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unzip_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.download.unzip_data" title="Link to this definition">¶</a></dt>
+<dd><p>Unzips data downloaded from the server to the specified folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>unzip_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>Path</em><em>]</em>) – The path where the data will be extracted.
+Defaults to UNZIP_PATH if not provided.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-xrdanalysis.data_processing.transformers">
+<span id="transformers"></span><h2>Transformers<a class="headerlink" href="#module-xrdanalysis.data_processing.transformers" title="Link to this heading">¶</a></h2>
+<p>The transformer classes are stored here</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.AzimuthalIntegration">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AzimuthalIntegration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">faulty_pixels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integration_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1D'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transformation_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calibration_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">poni_dir_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'data/poni'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
+<p>Transformer class for azimuthal integration to be used in
+an sklearn pipeline.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>faulty_pixels</strong> (<em>Tuple</em><em>[</em><em>int</em><em>]</em>) – A tuple containing the coordinates of faulty pixels.</p></li>
+<li><p><strong>npt</strong> (<em>int</em>) – The number of points for azimuthal integration. Defaults to        256.</p></li>
+<li><p><strong>integration_mode</strong> (<em>str</em>) – The integration mode, either “1D” or “2D”.        Defaults to “1D”.</p></li>
+<li><p><strong>transformation_mode</strong> (<em>str</em>) – The transformation mode, either ‘dataframe’        (returns a DataFrame for further analysis) or ‘pipeline’        (to use in an sklearn pipeline). Defaults to ‘dataframe’.</p></li>
+<li><p><strong>calibration_mode</strong> (<em>str</em>) – Mode of calibration. ‘dataframe’ is used when        calibration values are columns in the DataFrame, ‘poni’ is        used when calibration is in a poni file.</p></li>
+<li><p><strong>poni_dir_path</strong> (<em>str</em>) – Directory path where .poni files for the rows will        be saved.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.AzimuthalIntegration.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Fit method for the transformer. Since this transformer does not learn
+from the data, the fit method does not perform any operations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>pandas.DataFrame</em>) – The data to fit.</p></li>
+<li><p><strong>y</strong> – Ignored. Not used, present here for API consistency by            convention.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the instance itself.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.AzimuthalIntegration.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration.transform" title="Link to this definition">¶</a></dt>
+<dd><p>Applies azimuthal integration to each row of the DataFrame and adds
+the result as a new column.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>X</strong> (<em>pandas.DataFrame</em>) – The data to transform. Must contain ‘measurement_data’ and            ‘center’ columns.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A copy of the input DataFrame with an additional            ‘radial_profile_data’ column containing the results of the            azimuthal integration, and optionally ‘q_range’ and            ‘azimuthal_positions’ columns for 2D integration.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.Clusterization">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Clusterization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_score_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.Clusterization" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
+<p>Transformer class to perform clusterization and remove outliers
+from the DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_clusters</strong> (<em>int</em>) – The number of clusters to use in K-Means clustering.</p></li>
+<li><p><strong>z_score_threshold</strong> (<em>float</em>) – The threshold for Z-score based outlier removal.</p></li>
+<li><p><strong>direction</strong> (<em>str</em>) – The direction of outlier removal, either “both”,        “positive”, or “negative”.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.Clusterization.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.Clusterization.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Fit method for the transformer. Since this transformer does not learn
+from the data, the fit method does not perform any operations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>pandas.DataFrame</em>) – The data to fit.</p></li>
+<li><p><strong>y</strong> – Ignored. Not used, present here for API consistency by            convention.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the instance itself.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.Clusterization.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.Clusterization.transform" title="Link to this definition">¶</a></dt>
+<dd><p>Transforms the input DataFrame by performing clusterization        and outlier removal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>df</strong> (<em>pandas.DataFrame</em>) – The input DataFrame.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The transformed DataFrame with outliers removed.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.DataPreparation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DataPreparation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['calibration_measurement_id',</span> <span class="pre">'study_name',</span> <span class="pre">'study_id',</span> <span class="pre">'cancer_tissue',</span> <span class="pre">'cancer_diagnosis',</span> <span class="pre">'patient_id',</span> <span class="pre">'wavelength',</span> <span class="pre">'pixel_size',</span> <span class="pre">'calibration_manual_distance',</span> <span class="pre">'calculated_distance',</span> <span class="pre">'measurement_data',</span> <span class="pre">'center',</span> <span class="pre">'ponifile']</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.DataPreparation" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
+<p>Transformer class to prepare a raw DataFrame according to the standard.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.DataPreparation.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.DataPreparation.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Fit method for the transformer. Since this transformer does not learn
+from the data, the fit method does not perform any operations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>pandas.DataFrame</em>) – The data to fit.</p></li>
+<li><p><strong>y</strong> – Ignored. Not used, present here for API consistency by            convention.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the instance itself.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.DataPreparation.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_poni</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.DataPreparation.transform" title="Link to this definition">¶</a></dt>
+<dd><p>Transforms the input DataFrame to adhere to the standard format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>df</strong> (<em>pandas.DataFrame</em>) – The raw DataFrame to be transformed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The transformed DataFrame with selected columns.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.InterpolatorClusters">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">InterpolatorClusters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">perc_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perc_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faulty_pixel_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.InterpolatorClusters" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
+<p>Transformer class for interpolating clusters of azimuthal integration data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>perc_min</strong> (<em>float</em>) – The minimum percentage of the maximum q-range for        interpolation.</p></li>
+<li><p><strong>perc_max</strong> (<em>float</em>) – The maximum percentage of the maximum q-range for        interpolation.</p></li>
+<li><p><strong>resolution</strong> (<em>int</em>) – The resolution for interpolation.</p></li>
+<li><p><strong>faulty_pixel_array</strong> (<em>List</em>) – A list of faulty pixel coordinates.</p></li>
+<li><p><strong>model_names</strong> (<em>str</em>) – Names of the models.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.InterpolatorClusters.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.InterpolatorClusters.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Fit method for the transformer. Since this transformer does not learn
+from the data, the fit method does not perform any operations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>pandas.DataFrame</em>) – The data to fit.</p></li>
+<li><p><strong>y</strong> – Ignored. Not used, present here for API consistency by            convention.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the instance itself.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.InterpolatorClusters.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterContainer" title="xrdanalysis.data_processing.containers.MLClusterContainer"><span class="pre">MLClusterContainer</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.InterpolatorClusters.transform" title="Link to this definition">¶</a></dt>
+<dd><p>Perform interpolation on the input data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>df</strong> (<em>pandas.DataFrame</em>) – Input DataFrame containing data to be interpolated.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary containing interpolated clusters.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.NormScalerClusters">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">NormScalerClusters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_fit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.NormScalerClusters" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
+<p>Transformer class for normalizing and scaling clusters of azimuthal
+integration data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_names</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – Names of the models.</p></li>
+<li><p><strong>do_fit</strong> (<em>bool</em>) – Whether to fit the scaler. Defaults to True.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.NormScalerClusters.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.NormScalerClusters.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Fit method for the transformer. Since this transformer does not learn
+from the data, the fit method does not perform any operations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>pandas.DataFrame</em>) – The data to fit.</p></li>
+<li><p><strong>y</strong> – Ignored. Not used, present here for API consistency by            convention.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the instance itself.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.NormScalerClusters.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">containers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterContainer" title="xrdanalysis.data_processing.containers.MLClusterContainer"><span class="pre">MLClusterContainer</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterContainer" title="xrdanalysis.data_processing.containers.MLClusterContainer"><span class="pre">MLClusterContainer</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.NormScalerClusters.transform" title="Link to this definition">¶</a></dt>
+<dd><p>Perform normalization and scaling on the input data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>containers</strong> (<em>dict</em>) – Dictionary containing MLClusterContainers.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary containing normalized and scaled clusters.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-xrdanalysis.data_processing.utility_functions">
+<span id="utilities"></span><h2>Utilities<a class="headerlink" href="#module-xrdanalysis.data_processing.utility_functions" title="Link to this heading">¶</a></h2>
+<p>Various utility functions used in different parts of codebase</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.create_mask">
+<span class="sig-name descname"><span class="pre">create_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">faulty_pixels</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.create_mask" title="Link to this definition">¶</a></dt>
+<dd><p>Creates a mask array to identify faulty pixels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>faulty_pixels</strong> (<em>list</em><em> of </em><em>tuples</em><em> or </em><em>None</em>) – List of (y, x) coordinates representing faulty        pixels, or None.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Mask array where 1 indicates a faulty pixel and 0 indicates a        good pixel, or None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.generate_poni">
+<span class="sig-name descname"><span class="pre">generate_poni</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.generate_poni" title="Link to this definition">¶</a></dt>
+<dd><p>Generates .poni files from the provided DataFrame and saves them to the    specified directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – Input DataFrame containing calibration measurement IDs and        corresponding .poni file content.</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – Path to the directory where .poni files will be saved.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to the directory where .poni files are saved.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.get_center">
+<span class="sig-name descname"><span class="pre">get_center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.get_center" title="Link to this definition">¶</a></dt>
+<dd><p>Determines the center of the beam in SAXS data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>np.ndarray</em>) – The input SAXS data.</p></li>
+<li><p><strong>threshold</strong> (<em>float</em><em>, </em><em>optional</em>) – The threshold factor for identifying the center of the        beam.
+Defaults to 3.0 times the average value of the input data.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The coordinates of the center of the beam in the input data.
+If no center is found, returns (np.NaN, np.NaN).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.interpolate_cluster">
+<span class="sig-name descname"><span class="pre">interpolate_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perc_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perc_max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">azimuth</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.interpolate_cluster" title="Link to this definition">¶</a></dt>
+<dd><p>Interpolates a cluster of azimuthal integration data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – Input DataFrame containing data to be interpolated.</p></li>
+<li><p><strong>cluster_label</strong> (<em>int</em>) – Label of the cluster to be interpolated.</p></li>
+<li><p><strong>perc_min</strong> (<em>float</em>) – The minimum percentage of the maximum q-range for        interpolation.</p></li>
+<li><p><strong>perc_max</strong> (<em>float</em>) – The maximum percentage of the maximum q-range for        interpolation.</p></li>
+<li><p><strong>azimuth</strong> (<em>Callable</em>) – A transformer to use for azimuthal integration.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Interpolated <cite>MLCluster</cite> object.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster" title="xrdanalysis.data_processing.containers.MLCluster">MLCluster</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.is_all_none">
+<span class="sig-name descname"><span class="pre">is_all_none</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.is_all_none" title="Link to this definition">¶</a></dt>
+<dd><p>Checks if all elements in the input array are None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>array</strong> (<em>iterable</em>) – Input array or iterable.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if all elements are None, False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.is_nan_pair">
+<span class="sig-name descname"><span class="pre">is_nan_pair</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pair</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.is_nan_pair" title="Link to this definition">¶</a></dt>
+<dd><p>Checks if the input is a tuple of two NaN values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>tuple</em><em> or </em><em>any</em>) – Input to check.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the input is a tuple of two NaN values, False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.normalize_scale_cluster">
+<span class="sig-name descname"><span class="pre">normalize_scale_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cluster</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster" title="xrdanalysis.data_processing.containers.MLCluster"><span class="pre">MLCluster</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_fit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.normalize_scale_cluster" title="Link to this definition">¶</a></dt>
+<dd><p>Normalizes and scales a cluster of azimuthal integration data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cluster</strong> (<a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster" title="xrdanalysis.data_processing.containers.MLCluster"><em>MLCluster</em></a>) – The cluster to be normalized and scaled.</p></li>
+<li><p><strong>std</strong> (<em>StandardScaler</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – StandardScaler instance for scaling.
+If None, a new instance will be created. Defaults to None.</p></li>
+<li><p><strong>norm</strong> (<em>Normalizer</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – Normalizer instance for normalization.
+If None, a new instance will be created. Defaults to None.</p></li>
+<li><p><strong>do_fit</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to fit the scaler. Defaults to True.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.remove_outliers_by_cluster">
+<span class="sig-name descname"><span class="pre">remove_outliers_by_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataframe</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_score_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'negative'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_clusters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.remove_outliers_by_cluster" title="Link to this definition">¶</a></dt>
+<dd><p>Removes outliers from a DataFrame by clustering and z-score thresholding.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataframe</strong> (<em>pd.DataFrame</em>) – The input DataFrame containing the data.</p></li>
+<li><p><strong>z_score_threshold</strong> (<em>float</em>) – The threshold for Z-score based outlier removal.</p></li>
+<li><p><strong>direction</strong> (<em>str</em><em>, </em><em>optional</em>) – The direction of outlier removal, either “both”,        “positive”, or “negative”. Defaults to “negative”.</p></li>
+<li><p><strong>num_clusters</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of clusters to use.        Defaults to 4.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A DataFrame with outliers removed based on the specified        criteria.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">MATUR Docs</a><ul>
+<li><a class="reference internal" href="#module-xrdanalysis.data_processing.azimuthal_integration">Azimuthal Integration</a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_df"><code class="docutils literal notranslate"><span class="pre">initialize_azimuthal_integrator_df()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_poni"><code class="docutils literal notranslate"><span class="pre">initialize_azimuthal_integrator_poni()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.perform_azimuthal_integration"><code class="docutils literal notranslate"><span class="pre">perform_azimuthal_integration()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-xrdanalysis.data_processing.containers">Containers</a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLBlindContainer"><code class="docutils literal notranslate"><span class="pre">MLBlindContainer</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster"><code class="docutils literal notranslate"><span class="pre">MLCluster</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.calc_accuracy"><code class="docutils literal notranslate"><span class="pre">MLCluster.calc_accuracy()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.calc_roc_auc"><code class="docutils literal notranslate"><span class="pre">MLCluster.calc_roc_auc()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.model_train"><code class="docutils literal notranslate"><span class="pre">MLCluster.model_train()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.predict"><code class="docutils literal notranslate"><span class="pre">MLCluster.predict()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.predict_proba"><code class="docutils literal notranslate"><span class="pre">MLCluster.predict_proba()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.q_max_min"><code class="docutils literal notranslate"><span class="pre">MLCluster.q_max_min</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.q_min_max"><code class="docutils literal notranslate"><span class="pre">MLCluster.q_min_max</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.set_df"><code class="docutils literal notranslate"><span class="pre">MLCluster.set_df()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterBlind"><code class="docutils literal notranslate"><span class="pre">MLClusterBlind</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterContainer"><code class="docutils literal notranslate"><span class="pre">MLClusterContainer</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-xrdanalysis.data_processing.download">DB Download</a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.download.RequestDB"><code class="docutils literal notranslate"><span class="pre">RequestDB</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.download.download_data"><code class="docutils literal notranslate"><span class="pre">download_data()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.download.form_df"><code class="docutils literal notranslate"><span class="pre">form_df()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.download.get_df"><code class="docutils literal notranslate"><span class="pre">get_df()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.download.monitor_elapsed_time"><code class="docutils literal notranslate"><span class="pre">monitor_elapsed_time()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.download.save_df"><code class="docutils literal notranslate"><span class="pre">save_df()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.download.unzip_data"><code class="docutils literal notranslate"><span class="pre">unzip_data()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-xrdanalysis.data_processing.transformers">Transformers</a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration"><code class="docutils literal notranslate"><span class="pre">AzimuthalIntegration</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration.fit"><code class="docutils literal notranslate"><span class="pre">AzimuthalIntegration.fit()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration.transform"><code class="docutils literal notranslate"><span class="pre">AzimuthalIntegration.transform()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.Clusterization"><code class="docutils literal notranslate"><span class="pre">Clusterization</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.Clusterization.fit"><code class="docutils literal notranslate"><span class="pre">Clusterization.fit()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.Clusterization.transform"><code class="docutils literal notranslate"><span class="pre">Clusterization.transform()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.DataPreparation"><code class="docutils literal notranslate"><span class="pre">DataPreparation</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.DataPreparation.fit"><code class="docutils literal notranslate"><span class="pre">DataPreparation.fit()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.DataPreparation.transform"><code class="docutils literal notranslate"><span class="pre">DataPreparation.transform()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.InterpolatorClusters"><code class="docutils literal notranslate"><span class="pre">InterpolatorClusters</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.InterpolatorClusters.fit"><code class="docutils literal notranslate"><span class="pre">InterpolatorClusters.fit()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.InterpolatorClusters.transform"><code class="docutils literal notranslate"><span class="pre">InterpolatorClusters.transform()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScalerClusters"><code class="docutils literal notranslate"><span class="pre">NormScalerClusters</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScalerClusters.fit"><code class="docutils literal notranslate"><span class="pre">NormScalerClusters.fit()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScalerClusters.transform"><code class="docutils literal notranslate"><span class="pre">NormScalerClusters.transform()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-xrdanalysis.data_processing.utility_functions">Utilities</a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.create_mask"><code class="docutils literal notranslate"><span class="pre">create_mask()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.generate_poni"><code class="docutils literal notranslate"><span class="pre">generate_poni()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.get_center"><code class="docutils literal notranslate"><span class="pre">get_center()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.interpolate_cluster"><code class="docutils literal notranslate"><span class="pre">interpolate_cluster()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.is_all_none"><code class="docutils literal notranslate"><span class="pre">is_all_none()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.is_nan_pair"><code class="docutils literal notranslate"><span class="pre">is_nan_pair()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.normalize_scale_cluster"><code class="docutils literal notranslate"><span class="pre">normalize_scale_cluster()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.remove_outliers_by_cluster"><code class="docutils literal notranslate"><span class="pre">remove_outliers_by_cluster()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="index.html"
+                          title="previous chapter">Welcome to MATUR’s documentation!</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/xrdanalysis.data_processing.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to MATUR’s documentation!"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">MATUR Docs</a></li>
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, MATUR.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    </div>
+  </body>
+</html>
