@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin
 from sklearn.cluster import KMeans
+from sklearn.preprocessing import Normalizer, StandardScaler
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     perform_azimuthal_integration,
@@ -223,6 +224,66 @@ class DataPreparation(TransformerMixin):
             limits_saxs = (self.limits.q_min_saxs, self.limits.q_max_saxs)
             dfc['interpolation_q_range'] = dfc['type_measurement'].apply(lambda x: limits_waxs if x == 'WAXS' else limits_saxs)
         return dfc[self.columns]
+
+
+class NormScaler(TransformerMixin):
+    """
+    Does normalization and scaling of the dataframe
+    """
+    def __init__(self, scalers: Dict[str, StandardScaler] = None):
+        if scalers:
+            self.scalers = scalers
+        else:
+            self.scalers = {}
+
+    def fit(self, df: pd.DataFrame, y=None):
+        dfc = df.copy()
+        norm = Normalizer('l1')
+        dfc["radial_profile_data_norm"] = dfc["radial_profile_data"].apply(
+            lambda x: norm.transform([x])[0])
+
+        df_saxs = dfc[dfc['type_measurement'] == 'SAXS'].copy()
+        df_waxs = dfc[dfc['type_measurement'] == 'WAXS'].copy()
+
+        if not df_saxs.empty:
+            scaler_saxs = StandardScaler()
+            matrix_2d_saxs = np.vstack(df_saxs["radial_profile_data_norm"].values)
+            scaler_saxs.fit(matrix_2d_saxs)
+            self.scalers['SAXS'] = scaler_saxs
+
+        # Apply the scaler for WAXS data
+        if not df_waxs.empty:
+            scaler_waxs = StandardScaler()
+            matrix_2d_waxs = np.vstack(df_waxs["radial_profile_data_norm"].values)
+            scaler_waxs.fit(matrix_2d_waxs)
+            self.scalers['WAXS'] = scaler_waxs
+
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        dfc = df.copy()
+        norm = Normalizer('l1')
+        dfc["radial_profile_data_norm"] = dfc["radial_profile_data"].apply(
+            lambda x: norm.transform([x])[0])
+
+        df_saxs = dfc[dfc['type_measurement'] == 'SAXS'].copy()
+        df_waxs = dfc[dfc['type_measurement'] == 'WAXS'].copy()
+
+        # Apply the scaler for SAXS data
+        if not df_saxs.empty:
+            matrix_2d_saxs = np.vstack(df_saxs["radial_profile_data_norm"].values)
+            scaled_data_saxs = self.scalers['SAXS'].transform(matrix_2d_saxs)
+            df_saxs["radial_profile_data_norm_scaled"] = [arr for arr in scaled_data_saxs]
+
+        # Apply the scaler for WAXS data
+        if not df_waxs.empty:
+            matrix_2d_waxs = np.vstack(df_waxs["radial_profile_data_norm"].values)
+            scaled_data_waxs = self.scalers['WAXS'].transform(matrix_2d_waxs)
+            df_waxs["radial_profile_data_norm_scaled"] = [arr for arr in scaled_data_waxs]
+
+        # Combine the processed DataFrames back into one
+        dfc_processed = pd.concat([df_saxs, df_waxs], ignore_index=True)
+        return dfc_processed
 
 
 class Clusterization(TransformerMixin):
