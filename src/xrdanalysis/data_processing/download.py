@@ -47,7 +47,7 @@ class RequestDB:
     file_name: str
     url: str
     unzip_path: Union[str, Path]
-    dataset_name: str = "data.json"
+    dataset_name: str = "data"
 
     def __post_init__(self):
         print("Converting unzip_path, file_name to Path()")
