@@ -144,3 +144,5 @@ cython_debug/
 bblinchevsky-ec2.pem
 eosdxanalysis/
 .egg-info
+
+src/xrdanalysis/model_runner/pipeline.pkl
