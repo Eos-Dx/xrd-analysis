@@ -15,7 +15,7 @@ from sklearn.preprocessing import Normalizer, StandardScaler
 from xrdanalysis.data_processing.azimuthal_integration import (
     perform_azimuthal_integration,
 )
-from xrdanalysis.data_processing.containers import MLClusterContainer, ModelScale, Limits
+from xrdanalysis.data_processing.containers import MLClusterContainer, ModelScale, Limits, Rule
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
     generate_poni,
@@ -167,9 +167,11 @@ class DataPreparation(TransformerMixin):
     """
 
     def __init__(self, columns=COLUMNS_DEF,
-                 limits: Limits = None):
+                 limits: Limits = None,
+                 cleaning_rules: List[Rule] = None):
         self.columns = columns
         self.limits = limits
+        self.cleaning_rules = cleaning_rules
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -219,11 +221,40 @@ class DataPreparation(TransformerMixin):
                 lambda x: np.nan_to_num(x)
             )
 
+        if 'calculated_distance' in dfc.columns:
+            dfc['type_measurement'] = dfc['calculated_distance'].apply(lambda d: 'WAXS' if d < 0.05 else 'SAXS')
+
         if self.limits:
             limits_waxs = (self.limits.q_min_waxs, self.limits.q_max_waxs)
             limits_saxs = (self.limits.q_min_saxs, self.limits.q_max_saxs)
-            dfc['interpolation_q_range'] = dfc['type_measurement'].apply(lambda x: limits_waxs if x == 'WAXS' else limits_saxs)
+            dfc['interpolation_q_range'] = dfc['type_measurement'].apply(lambda x:
+                                                                         limits_waxs if x == 'WAXS' else limits_saxs)
+        if self.cleaning_rules:
+            dfc = self._clean(dfc)
         return dfc[self.columns]
+
+    def _clean(self, df: pd.DataFrame):
+        def clean(row, cleaning_rules: List[Rule]):
+            res = []
+            for r in cleaning_rules:
+                r: Rule = r
+                ret = False
+                idx = np.argmin(np.abs(row['q_range'] - r.q_value))
+                intensity = row['radial_profile_data'][idx]
+                if r.lower is not None and r.upper is not None:
+                    ret = (intensity > r.lower) and (intensity < r.upper)
+                elif r.lower is not None:
+                    ret = intensity > r.lower
+                elif r.upper is not None:
+                    ret = intensity < r.upper
+                res.append(ret)
+            return all(res)
+
+        if self.cleaning_rules:
+            return df[df.apply(clean, axis=1, cleaning_rules=self.cleaning_rules)].copy()
+        else:
+            print('No cleaning was done, thera are no cleaning_rules')
+            return df
 
 
 class NormScaler(TransformerMixin):
@@ -261,6 +292,8 @@ class NormScaler(TransformerMixin):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        if not self.scalers:
+            self.fit(df)
         dfc = df.copy()
         norm = Normalizer('l1')
         dfc["radial_profile_data_norm"] = dfc["radial_profile_data"].apply(
@@ -282,7 +315,7 @@ class NormScaler(TransformerMixin):
             df_waxs["radial_profile_data_norm_scaled"] = [arr for arr in scaled_data_waxs]
 
         # Combine the processed DataFrames back into one
-        dfc_processed = pd.concat([df_saxs, df_waxs], ignore_index=True)
+        dfc_processed = pd.concat([df_saxs, df_waxs])
         return dfc_processed
 
 
