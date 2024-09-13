@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>MATUR Docs &#8212; MATUR  documentation</title>
+    <title>API &#8212; MATUR  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=649a27d8" />
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=658d757c" />
     <link rel="stylesheet" type="text/css" href="_static/custom.css?v=02e5e13e" />
@@ -17,7 +17,7 @@
     <script src="_static/bizstyle.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Welcome to MATUR’s documentation!" href="index.html" />
+    <link rel="prev" title="HDF5 File Structure" href="hdf5.html" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <!--[if lt IE 9]>
     <script src="_static/css3-mediaqueries.js"></script>
@@ -33,10 +33,10 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to MATUR’s documentation!"
+          <a href="hdf5.html" title="HDF5 File Structure"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">MATUR Docs</a></li>
+        <li class="nav-item nav-item-this"><a href="">API</a></li>
       </ul>
     </div>
 
@@ -45,10 +45,21 @@
         <div class="bodywrapper">
           <div class="body" role="main">
 
-  <section id="matur-docs">
-<h1>MATUR Docs<a class="headerlink" href="#matur-docs" title="Link to this heading">¶</a></h1>
+  <section id="api">
+<h1>API<a class="headerlink" href="#api" title="Link to this heading">¶</a></h1>
+<p>This page is an overview of the API used for data analytics by Matur team.</p>
+<nav class="contents local" id="links">
+<p class="topic-title">Links</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#module-xrdanalysis.data_processing.azimuthal_integration" id="id1">Azimuthal Integration</a></p></li>
+<li><p><a class="reference internal" href="#module-xrdanalysis.data_processing.containers" id="id2">Containers</a></p></li>
+<li><p><a class="reference internal" href="#module-xrdanalysis.data_processing.download" id="id3">DB Download</a></p></li>
+<li><p><a class="reference internal" href="#module-xrdanalysis.data_processing.transformers" id="id4">Transformers</a></p></li>
+<li><p><a class="reference internal" href="#module-xrdanalysis.data_processing.utility_functions" id="id5">Utilities</a></p></li>
+</ul>
+</nav>
 <section id="module-xrdanalysis.data_processing.azimuthal_integration">
-<span id="azimuthal-integration"></span><h2>Azimuthal Integration<a class="headerlink" href="#module-xrdanalysis.data_processing.azimuthal_integration" title="Link to this heading">¶</a></h2>
+<span id="azimuthal-integration"></span><h2><a class="toc-backref" href="#id1" role="doc-backlink">Azimuthal Integration</a><a class="headerlink" href="#module-xrdanalysis.data_processing.azimuthal_integration" title="Link to this heading">¶</a></h2>
 <p>This file includes functions and classes essential for azimuthal integration</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_df">
@@ -136,7 +147,7 @@
 
 </section>
 <section id="module-xrdanalysis.data_processing.containers">
-<span id="containers"></span><h2>Containers<a class="headerlink" href="#module-xrdanalysis.data_processing.containers" title="Link to this heading">¶</a></h2>
+<span id="containers"></span><h2><a class="toc-backref" href="#id2" role="doc-backlink">Containers</a><a class="headerlink" href="#module-xrdanalysis.data_processing.containers" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLBlindContainer">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MLBlindContainer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faulty_pixel_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_score_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterBlind" title="xrdanalysis.data_processing.containers.MLClusterBlind"><span class="pre">MLClusterBlind</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLBlindContainer" title="Link to this definition">¶</a></dt>
@@ -318,12 +329,12 @@
 
 </section>
 <section id="module-xrdanalysis.data_processing.download">
-<span id="db-download"></span><h2>DB Download<a class="headerlink" href="#module-xrdanalysis.data_processing.download" title="Link to this heading">¶</a></h2>
+<span id="db-download"></span><h2><a class="toc-backref" href="#id3" role="doc-backlink">DB Download</a><a class="headerlink" href="#module-xrdanalysis.data_processing.download" title="Link to this heading">¶</a></h2>
 <p>This file includes functions and classes essential for dealing
 with EosDX DB for data extraction</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.download.RequestDB">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">RequestDB</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">form</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unzip_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'data.json'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.download.RequestDB" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">RequestDB</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">form</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unzip_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'data'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.download.RequestDB" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A dataclass to store essential information for requests to the server.</p>
 <dl class="field-list simple">
@@ -462,7 +473,7 @@ Defaults to UNZIP_PATH if not provided.</p>
 
 </section>
 <section id="module-xrdanalysis.data_processing.transformers">
-<span id="transformers"></span><h2>Transformers<a class="headerlink" href="#module-xrdanalysis.data_processing.transformers" title="Link to this heading">¶</a></h2>
+<span id="transformers"></span><h2><a class="toc-backref" href="#id4" role="doc-backlink">Transformers</a><a class="headerlink" href="#module-xrdanalysis.data_processing.transformers" title="Link to this heading">¶</a></h2>
 <p>The transformer classes are stored here</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.AzimuthalIntegration">
@@ -735,7 +746,7 @@ from the data, the fit method does not perform any operations.</p>
 
 </section>
 <section id="module-xrdanalysis.data_processing.utility_functions">
-<span id="utilities"></span><h2>Utilities<a class="headerlink" href="#module-xrdanalysis.data_processing.utility_functions" title="Link to this heading">¶</a></h2>
+<span id="utilities"></span><h2><a class="toc-backref" href="#id5" role="doc-backlink">Utilities</a><a class="headerlink" href="#module-xrdanalysis.data_processing.utility_functions" title="Link to this heading">¶</a></h2>
 <p>Various utility functions used in different parts of codebase</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.create_mask">
@@ -906,7 +917,7 @@ If None, a new instance will be created. Defaults to None.</p></li>
   <div>
     <h3><a href="index.html">Table of Contents</a></h3>
     <ul>
-<li><a class="reference internal" href="#">MATUR Docs</a><ul>
+<li><a class="reference internal" href="#">API</a><ul>
 <li><a class="reference internal" href="#module-xrdanalysis.data_processing.azimuthal_integration">Azimuthal Integration</a><ul>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_df"><code class="docutils literal notranslate"><span class="pre">initialize_azimuthal_integrator_df()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_poni"><code class="docutils literal notranslate"><span class="pre">initialize_azimuthal_integrator_poni()</span></code></a></li>
@@ -986,8 +997,8 @@ If None, a new instance will be created. Defaults to None.</p></li>
   </div>
   <div>
     <h4>Previous topic</h4>
-    <p class="topless"><a href="index.html"
-                          title="previous chapter">Welcome to MATUR’s documentation!</a></p>
+    <p class="topless"><a href="hdf5.html"
+                          title="previous chapter">HDF5 File Structure</a></p>
   </div>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -1020,10 +1031,10 @@ If None, a new instance will be created. Defaults to None.</p></li>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to MATUR’s documentation!"
+          <a href="hdf5.html" title="HDF5 File Structure"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">MATUR Docs</a></li>
+        <li class="nav-item nav-item-this"><a href="">API</a></li>
       </ul>
     </div>
     <div class="footer" role="contentinfo">

@@ -7,9 +7,10 @@ Welcome to MATUR's documentation!
 ==============================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
+   sop
    xrdanalysis.data_processing
 
 Indices and tables
