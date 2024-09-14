@@ -13,6 +13,7 @@ This SOP outlines the standard procedures for handling and processing data withi
    :caption: SOP Contents:
 
    hdf5
+   validation
 
 HDF5 File Structure
 --------------------

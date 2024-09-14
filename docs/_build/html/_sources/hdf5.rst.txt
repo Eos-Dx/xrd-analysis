@@ -141,7 +141,7 @@ Here is a non exhaustive list of attributes:
    * Grade (For Keele Breast Samples)
 
 Container Example
-*******
+******************
 
 Here you can see example of a container with **Groups** and **Datasets** visible on the left and **Attributes** for the file visible on the left. In the images **Standards** are called calibrations due to a typo in container formation.
 
