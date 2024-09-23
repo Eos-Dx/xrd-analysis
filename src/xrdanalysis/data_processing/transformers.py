@@ -230,6 +230,8 @@ class DataPreparation(TransformerMixin):
         if self.limits:
             limits_waxs = (self.limits.q_min_waxs, self.limits.q_max_waxs)
             limits_saxs = (self.limits.q_min_saxs, self.limits.q_max_saxs)
+            if 'type_measurement' not in dfc.columns:
+                dfc['type_measurement'] = dfc['calibration_manual_distance'].apply(lambda d: 'WAXS' if d < 50 else 'SAXS')
             dfc['interpolation_q_range'] = dfc['type_measurement'].apply(lambda x:
                                                                          limits_waxs if x == 'WAXS' else limits_saxs)
         if self.cleaning_rules:
