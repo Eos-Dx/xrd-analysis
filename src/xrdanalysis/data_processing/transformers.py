@@ -216,6 +216,9 @@ class DataPreparation(TransformerMixin):
             if "calculated_distance" in dfc.columns:
                 dfc = dfc[~dfc["calculated_distance"].isna()]
 
+        if 'age' in dfc.columns:
+            dfc['age'] = df['age'].fillna(-1)
+
         if "measurement_data" in dfc.columns:
             dfc["measurement_data"] = dfc["measurement_data"].apply(
                 lambda x: np.nan_to_num(x)
@@ -261,13 +264,15 @@ class NormScaler(TransformerMixin):
     """
     Does normalization and scaling of the dataframe
     """
-    def __init__(self, scalers: Dict[str, StandardScaler] = None):
+    def __init__(self, scalers: Dict[str, StandardScaler] = None, name='Scaler'):
+        self._name = name
         if scalers:
             self.scalers = scalers
         else:
             self.scalers = {}
 
     def fit(self, df: pd.DataFrame, y=None):
+        print(f'NormScaler {self._name}: is doing fit.')
         dfc = df.copy()
         norm = Normalizer('l1')
         dfc["radial_profile_data_norm"] = dfc["radial_profile_data"].apply(
@@ -292,9 +297,11 @@ class NormScaler(TransformerMixin):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        print(f'NormScaler {self._name}: is doing transform.')
         if not self.scalers:
             self.fit(df)
         dfc = df.copy()
+        raw_index = dfc.index
         norm = Normalizer('l1')
         dfc["radial_profile_data_norm"] = dfc["radial_profile_data"].apply(
             lambda x: norm.transform([x])[0])
@@ -316,7 +323,7 @@ class NormScaler(TransformerMixin):
 
         # Combine the processed DataFrames back into one
         dfc_processed = pd.concat([df_saxs, df_waxs])
-        return dfc_processed
+        return dfc_processed.loc[raw_index]
 
 
 class Clusterization(TransformerMixin):

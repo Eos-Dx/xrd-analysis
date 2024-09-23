@@ -45,7 +45,7 @@ class MLBlindContainer:
 class MLCluster:
     df: pd.DataFrame
     q_range: np.ndarray
-    q_cluster: int
+    q_cluster: int = None
     normalizer: Normalizer = None
     std: StandardScaler = None
     model: Union[XGBClassifier, RandomForestClassifier] = None

@@ -114,7 +114,7 @@ class MLCluster:
     important_features: np.array = None
     model_reduced: Union[XGBClassifier, RandomForestClassifier] = None
 
-    def predict_proba(self, reduced=False):
+    def _predict_proba(self, reduced=False):
         """
         Predict the probability of the positive class for each sample.
 
@@ -131,7 +131,7 @@ class MLCluster:
         res = model.predict_proba(transformed_data)[:, 1]
         self.df["prediction_proba"] = res
 
-    def predict(self, reduced=False):
+    def _predict(self, reduced=False):
         """
         Predict the class for each sample.
 
@@ -148,7 +148,7 @@ class MLCluster:
         res = model.predict(transformed_data)
         self.df["prediction"] = res
 
-    def calc_accuracy(self, reduced=False):
+    def _calc_accuracy(self, reduced=False):
         """
         Calculate the accuracy of the model.
 
@@ -163,7 +163,7 @@ class MLCluster:
         )
         self.accuracy = round(accuracy, 3)
 
-    def calc_roc_auc(self, reduced=False):
+    def _calc_roc_auc(self, reduced=False):
         """
         Calculate the ROC AUC score of the model.
 
