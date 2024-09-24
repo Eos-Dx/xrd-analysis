@@ -132,7 +132,10 @@ class AzimuthalIntegration(TransformerMixin):
             )
 
         if self.transformation_mode == "pipeline":
-            x_copy = np.asarray(x_copy["radial_profile_data"].values.tolist())
+            x_copy = pd.DataFrame(
+                np.asarray(x_copy["radial_profile_data"].values.tolist()),
+                index=x_copy.index,
+            )
 
         return x_copy
 
