@@ -118,6 +118,6 @@ def test_get_df(
     )
     mock_form_df.assert_called_once_with(Path("unzipped_path"))
     mock_save_df.assert_called_once_with(
-        mock_df, Path("unzipped_path"), "data.json"
+        mock_df, Path("unzipped_path"), "data"
     )
     assert result_df.equals(mock_df)

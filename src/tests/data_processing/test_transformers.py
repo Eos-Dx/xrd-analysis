@@ -214,7 +214,7 @@ def test_azimuthal_integration_pipeline_mode(
     )
     transformed_data = transformer.transform(sample_dataframe)
 
-    assert isinstance(transformed_data, np.ndarray)
+    assert isinstance(transformed_data, pd.DataFrame)
     assert (
         transformed_data.shape[1] == 3
     )  # Assuming radial_profile_data contains 3 points as per the side_effect
