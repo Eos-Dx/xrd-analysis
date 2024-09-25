@@ -38,6 +38,8 @@ These checks apply to all types of XRD measurements (calibration, tissue, etc.):
 * **Center position check:** Confirms that the beam center is correctly aligned. Misalignment leads to distorted diffraction data and could invalidate measurements.
 * **Beam peak position:** Diffraction patterns should exhibit decaying intensity with the highest value near zero. Deviations from this expected behavior can indicate instrument or calibration issues.
 * **Overall intensity check:** Ensures that the diffraction pattern intensity remains stable across repeated measurements. Variations may indicate sample preparation errors, beam inconsistencies, or detector sensitivity problems.
+* **Broken pixel check:** Identifies broken or dead pixels in the detector, which appear as consistently under or overexposed spots in the diffraction pattern. Persistent anomalies in specific pixel positions across multiple measurements suggest detector defects that need to be corrected or masked.
+* **Cosmic ray artifact check:** Detects sudden, sharp intensity spikes in the diffraction pattern caused by cosmic rays. These artifacts typically appear as single-pixel or short streak anomalies.
 
 Calibration Validation Checks
 *****************************
