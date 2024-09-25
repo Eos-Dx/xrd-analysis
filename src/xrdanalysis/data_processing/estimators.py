@@ -138,7 +138,7 @@ class PredictorRFPatients(BaseEstimator, ClassifierMixin):
         self.split = split
         self.show_result = show_result
 
-    def prep_data(self, df: pd.DataFrame, fit=True):
+    def prep_data(self, df: pd.DataFrame, fit=True, patients_id=False):
         cl_saxs, cl_waxs = self.cl_saxs, self.cl_waxs
 
         def flatten(mixed_list):
@@ -162,9 +162,11 @@ class PredictorRFPatients(BaseEstimator, ClassifierMixin):
             return m
 
         patients_x = []
+        patients_id_a = []
         patients_y = []
 
         for pat_id in df['patient_id'].unique():
+            patients_id_a.append(pat_id)
             if fit:
                 value = int(df[df['patient_id'] == pat_id]['cancer_diagnosis'].iloc[0])
                 patients_y.append(value)
@@ -211,7 +213,11 @@ class PredictorRFPatients(BaseEstimator, ClassifierMixin):
         if fit:
             return np.array(patients_x), np.array(patients_y)
         else:
-            return np.array(patients_x)
+            if patients_id:
+                res = (np.array(patients_x), patients_id_a)
+            else:
+                res = np.array(patients_x)
+            return res
 
     def _first_layer(self, df):
         # Get unique patients and their corresponding diagnosis
@@ -295,14 +301,31 @@ class PredictorRFPatients(BaseEstimator, ClassifierMixin):
 
         return self
 
-    def predict(self, df):
+    def predict(self, df, by_measurements=False):
         dfc = df.copy()
-        x = self.prep_data(dfc, fit=False)
-        y_pred = self.cl_decider.predict(x)
-        return y_pred
+        if by_measurements:
+            x, patients_id = self.prep_data(dfc, fit=False, patients_id=True)
+            y = self.cl_decider.predict(x)
+            dfc['cancer_diagnosis'] = None
 
-    def predict_proba(self, df):
+            for patient_id, diagnosis in zip(patients_id, y):
+                index = dfc['patient_id'] == patient_id
+                dfc.loc[index, 'cancer_diagnosis'] = int(diagnosis)
+            return np.array([[value] for value in dfc['cancer_diagnosis'].to_list()])
+
+        else:
+            return self.cl_decider.predict(self.prep_data(dfc, fit=False))
+
+    def predict_proba(self, df, by_measurements=False):
         dfc = df.copy()
-        x = self.prep_data(dfc, fit=False)
-        y_pred_proba = self.cl_decider.predict_proba(x)
-        return y_pred_proba
+        if by_measurements:
+            x, patients_id = self.prep_data(dfc, fit=False, patients_id=True)
+            y = self.cl_decider.predict_proba(x)
+            dfc['cancer_diagnosis'] = None
+
+            for patient_id, diagnosis in zip(patients_id, y):
+                index = dfc['patient_id'] == patient_id
+                dfc.loc[index, 'cancer_diagnosis'] = diagnosis[0]
+            return np.array([[value] for value in dfc['cancer_diagnosis'].to_list()])
+        else:
+            return self.cl_decider.predict_proba(self.prep_data(dfc, fit=False))
