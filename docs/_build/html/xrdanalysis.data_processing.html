@@ -17,7 +17,7 @@
     <script src="_static/bizstyle.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Data Validation" href="validation.html" />
+    <link rel="prev" title="MLPipeline: Philosophy and Structure" href="pipeline.html" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <!--[if lt IE 9]>
     <script src="_static/css3-mediaqueries.js"></script>
@@ -33,7 +33,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="validation.html" title="Data Validation"
+          <a href="pipeline.html" title="MLPipeline: Philosophy and Structure"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">API</a></li>
@@ -149,6 +149,12 @@
 <section id="module-xrdanalysis.data_processing.containers">
 <span id="containers"></span><h2><a class="toc-backref" href="#id2" role="doc-backlink">Containers</a><a class="headerlink" href="#module-xrdanalysis.data_processing.containers" title="Link to this heading">¶</a></h2>
 <dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.Limits">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Limits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q_min_saxs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_max_saxs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_min_waxs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_max_waxs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.Limits" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLBlindContainer">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MLBlindContainer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faulty_pixel_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_score_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterBlind" title="xrdanalysis.data_processing.containers.MLClusterBlind"><span class="pre">MLClusterBlind</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLBlindContainer" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
@@ -173,7 +179,7 @@
 
 <dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MLCluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_cluster</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Normalizer</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">StandardScaler</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">XGBClassifier</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">RandomForestClassifier</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accuracy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roc_auc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">important_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_reduced</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">XGBClassifier</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">RandomForestClassifier</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MLCluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_cluster</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Normalizer</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">StandardScaler</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">XGBClassifier</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">RandomForestClassifier</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accuracy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roc_auc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">important_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">array</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_reduced</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">XGBClassifier</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">RandomForestClassifier</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Stores information about a machine learning cluster.</p>
 <dl class="field-list simple">
@@ -196,56 +202,12 @@
 </dd>
 </dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.calc_accuracy">
-<span class="sig-name descname"><span class="pre">calc_accuracy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reduced</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.calc_accuracy" title="Link to this definition">¶</a></dt>
-<dd><p>Calculates the accuracy of the model.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>reduced</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to use the reduced model, defaults to False.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.calc_roc_auc">
-<span class="sig-name descname"><span class="pre">calc_roc_auc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reduced</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.calc_roc_auc" title="Link to this definition">¶</a></dt>
-<dd><p>Calculates the ROC AUC score of the model.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>reduced</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to use the reduced model, defaults to False.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.model_train">
 <span class="sig-name descname"><span class="pre">model_train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.model_train" title="Link to this definition">¶</a></dt>
 <dd><p>Trains the model using the provided training function.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>**kwargs</strong> – Additional arguments for the training function.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.predict">
-<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reduced</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.predict" title="Link to this definition">¶</a></dt>
-<dd><p>Predicts the class for each sample.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>reduced</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to use the reduced model, defaults to False.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.MLCluster.predict_proba">
-<span class="sig-name descname"><span class="pre">predict_proba</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reduced</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.MLCluster.predict_proba" title="Link to this definition">¶</a></dt>
-<dd><p>Predicts the probability of the positive class for each sample.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>reduced</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to use the reduced model, defaults to False.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -325,6 +287,18 @@
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.ModelScale">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ModelScale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'l1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.ModelScale" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.containers.Rule">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Rule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lower</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">upper</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancer_diagnosis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.containers.Rule" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 </dd></dl>
 
 </section>
@@ -590,8 +564,121 @@ from the data, the fit method does not perform any operations.</p>
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.ColumnExtractor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ColumnExtractor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.ColumnExtractor" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
+<p>Transformer class for flattening arrays and appending values from
+specified columns in a DataFrame to be used in an sklearn pipeline.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>columns</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of column names to flatten and combine.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.ColumnExtractor.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.ColumnExtractor.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Fit method is not required for ColumnFlattener, but it is
+provided for compatibility with sklearn pipelines.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>X</strong> (<em>pd.DataFrame</em>) – Input DataFrame.</p></li>
+<li><p><strong>y</strong> (<em>None</em>) – Ignored, exists for compatibility with sklearn pipeline.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The fitted transformer.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ColumnFlattener</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.ColumnExtractor.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.ColumnExtractor.transform" title="Link to this definition">¶</a></dt>
+<dd><p>Transforms the specified columns by flattening any arrays and
+appending the values from each column into a single list for
+each row.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>X</strong> (<em>pd.DataFrame</em>) – Input DataFrame with columns to flatten.</p></li>
+<li><p><strong>y</strong> (<em>None</em>) – Ignored, exists for compatibility with sklearn pipeline.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame where each row is a flattened list of values from         the specified columns.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.ColumnNormalizer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ColumnNormalizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'l1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.ColumnNormalizer" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
+<p>Transformer class for normalizing arrays in a specific column of a
+DataFrame to be used in an sklearn pipeline.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>column</strong> (<em>str</em>) – The name of the column containing arrays to be normalized.</p></li>
+<li><p><strong>norm</strong> (<em>str</em>) – The type of norm to use for normalization     (‘l1’, ‘l2’, or ‘max’). Defaults to ‘l1’.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.ColumnNormalizer.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.ColumnNormalizer.fit" title="Link to this definition">¶</a></dt>
+<dd><p>No fitting required for the Normalizer (stateless), but this method
+is required for compatibility with sklearn pipelines.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>X</strong> (<em>pd.DataFrame</em>) – Input DataFrame.</p></li>
+<li><p><strong>y</strong> (<em>None</em>) – Ignored, exists for compatibility with sklearn pipeline.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The fitted transformer.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#xrdanalysis.data_processing.transformers.ColumnNormalizer" title="xrdanalysis.data_processing.transformers.ColumnNormalizer">ColumnNormalizer</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.ColumnNormalizer.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.ColumnNormalizer.transform" title="Link to this definition">¶</a></dt>
+<dd><p>Transforms the specified column by normalizing the arrays in each row.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>X</strong> (<em>pd.DataFrame</em>) – Input DataFrame with a column containing arrays to normalize.</p></li>
+<li><p><strong>y</strong> (<em>None</em>) – Ignored, exists for compatibility with sklearn pipeline.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with the specified column normalized.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.DataPreparation">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DataPreparation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['calibration_measurement_id',</span> <span class="pre">'study_name',</span> <span class="pre">'study_id',</span> <span class="pre">'cancer_tissue',</span> <span class="pre">'cancer_diagnosis',</span> <span class="pre">'patient_id',</span> <span class="pre">'wavelength',</span> <span class="pre">'pixel_size',</span> <span class="pre">'calibration_manual_distance',</span> <span class="pre">'calculated_distance',</span> <span class="pre">'measurement_data',</span> <span class="pre">'center',</span> <span class="pre">'ponifile']</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.DataPreparation" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DataPreparation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['calibration_measurement_id',</span> <span class="pre">'study_name',</span> <span class="pre">'study_id',</span> <span class="pre">'cancer_tissue',</span> <span class="pre">'cancer_diagnosis',</span> <span class="pre">'patient_id',</span> <span class="pre">'wavelength',</span> <span class="pre">'pixel_size',</span> <span class="pre">'calibration_manual_distance',</span> <span class="pre">'calculated_distance',</span> <span class="pre">'measurement_data',</span> <span class="pre">'center',</span> <span class="pre">'ponifile']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.containers.Limits" title="xrdanalysis.data_processing.containers.Limits"><span class="pre">Limits</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cleaning_rules</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#xrdanalysis.data_processing.containers.Rule" title="xrdanalysis.data_processing.containers.Rule"><span class="pre">Rule</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.DataPreparation" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
 <p>Transformer class to prepare a raw DataFrame according to the standard.</p>
 <dl class="py method">
@@ -691,15 +778,22 @@ from the data, the fit method does not perform any operations.</p>
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.NormScaler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">NormScaler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scalers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">StandardScaler</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Scaler'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.NormScaler" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
+<p>Does normalization and scaling of the dataframe</p>
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.NormScalerClusters">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">NormScalerClusters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_fit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.NormScalerClusters" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">NormScalerClusters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">modelscales</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#xrdanalysis.data_processing.containers.ModelScale" title="xrdanalysis.data_processing.containers.ModelScale"><span class="pre">ModelScale</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_fit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.NormScalerClusters" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
 <p>Transformer class for normalizing and scaling clusters of azimuthal
 integration data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>model_names</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – Names of the models.</p></li>
+<li><p><strong>modelscales</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – Names of the models.</p></li>
 <li><p><strong>do_fit</strong> (<em>bool</em>) – Whether to fit the scaler. Defaults to True.</p></li>
 </ul>
 </dd>
@@ -866,7 +960,7 @@ If no center is found, returns (np.NaN, np.NaN).</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.normalize_scale_cluster">
-<span class="sig-name descname"><span class="pre">normalize_scale_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cluster</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster" title="xrdanalysis.data_processing.containers.MLCluster"><span class="pre">MLCluster</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_fit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.normalize_scale_cluster" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">normalize_scale_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cluster</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster" title="xrdanalysis.data_processing.containers.MLCluster"><span class="pre">MLCluster</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">normt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'l1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_fit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.normalize_scale_cluster" title="Link to this definition">¶</a></dt>
 <dd><p>Normalizes and scales a cluster of azimuthal integration data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -880,6 +974,19 @@ If None, a new instance will be created. Defaults to None.</p></li>
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.prep">
+<span class="sig-name descname"><span class="pre">prep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.prep" title="Link to this definition">¶</a></dt>
+<dd><p>Prepare dataframe to RF learning or other models.
+It uses SCALED_DATA and age of the patient’s measurement.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.random_forest_model_train">
+<span class="sig-name descname"><span class="pre">random_forest_model_train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster" title="xrdanalysis.data_processing.containers.MLCluster"><span class="pre">MLCluster</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_estimators</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.random_forest_model_train" title="Link to this definition">¶</a></dt>
+<dd><p>RF training function, intially developped for Keele Dataset</p>
 </dd></dl>
 
 <dl class="py function">
@@ -925,13 +1032,10 @@ If None, a new instance will be created. Defaults to None.</p></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-xrdanalysis.data_processing.containers">Containers</a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.Limits"><code class="docutils literal notranslate"><span class="pre">Limits</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLBlindContainer"><code class="docutils literal notranslate"><span class="pre">MLBlindContainer</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster"><code class="docutils literal notranslate"><span class="pre">MLCluster</span></code></a><ul>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.calc_accuracy"><code class="docutils literal notranslate"><span class="pre">MLCluster.calc_accuracy()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.calc_roc_auc"><code class="docutils literal notranslate"><span class="pre">MLCluster.calc_roc_auc()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.model_train"><code class="docutils literal notranslate"><span class="pre">MLCluster.model_train()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.predict"><code class="docutils literal notranslate"><span class="pre">MLCluster.predict()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.predict_proba"><code class="docutils literal notranslate"><span class="pre">MLCluster.predict_proba()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.q_max_min"><code class="docutils literal notranslate"><span class="pre">MLCluster.q_max_min</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.q_min_max"><code class="docutils literal notranslate"><span class="pre">MLCluster.q_min_max</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLCluster.set_df"><code class="docutils literal notranslate"><span class="pre">MLCluster.set_df()</span></code></a></li>
@@ -939,6 +1043,8 @@ If None, a new instance will be created. Defaults to None.</p></li>
 </li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterBlind"><code class="docutils literal notranslate"><span class="pre">MLClusterBlind</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.containers.MLClusterContainer"><code class="docutils literal notranslate"><span class="pre">MLClusterContainer</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.ModelScale"><code class="docutils literal notranslate"><span class="pre">ModelScale</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.containers.Rule"><code class="docutils literal notranslate"><span class="pre">Rule</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-xrdanalysis.data_processing.download">DB Download</a><ul>
@@ -962,6 +1068,16 @@ If None, a new instance will be created. Defaults to None.</p></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.Clusterization.transform"><code class="docutils literal notranslate"><span class="pre">Clusterization.transform()</span></code></a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.ColumnExtractor"><code class="docutils literal notranslate"><span class="pre">ColumnExtractor</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.ColumnExtractor.fit"><code class="docutils literal notranslate"><span class="pre">ColumnExtractor.fit()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.ColumnExtractor.transform"><code class="docutils literal notranslate"><span class="pre">ColumnExtractor.transform()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.ColumnNormalizer"><code class="docutils literal notranslate"><span class="pre">ColumnNormalizer</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.ColumnNormalizer.fit"><code class="docutils literal notranslate"><span class="pre">ColumnNormalizer.fit()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.ColumnNormalizer.transform"><code class="docutils literal notranslate"><span class="pre">ColumnNormalizer.transform()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.DataPreparation"><code class="docutils literal notranslate"><span class="pre">DataPreparation</span></code></a><ul>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.DataPreparation.fit"><code class="docutils literal notranslate"><span class="pre">DataPreparation.fit()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.DataPreparation.transform"><code class="docutils literal notranslate"><span class="pre">DataPreparation.transform()</span></code></a></li>
@@ -972,6 +1088,7 @@ If None, a new instance will be created. Defaults to None.</p></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.InterpolatorClusters.transform"><code class="docutils literal notranslate"><span class="pre">InterpolatorClusters.transform()</span></code></a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScaler"><code class="docutils literal notranslate"><span class="pre">NormScaler</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScalerClusters"><code class="docutils literal notranslate"><span class="pre">NormScalerClusters</span></code></a><ul>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScalerClusters.fit"><code class="docutils literal notranslate"><span class="pre">NormScalerClusters.fit()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScalerClusters.transform"><code class="docutils literal notranslate"><span class="pre">NormScalerClusters.transform()</span></code></a></li>
@@ -987,6 +1104,8 @@ If None, a new instance will be created. Defaults to None.</p></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.is_all_none"><code class="docutils literal notranslate"><span class="pre">is_all_none()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.is_nan_pair"><code class="docutils literal notranslate"><span class="pre">is_nan_pair()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.normalize_scale_cluster"><code class="docutils literal notranslate"><span class="pre">normalize_scale_cluster()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.prep"><code class="docutils literal notranslate"><span class="pre">prep()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.random_forest_model_train"><code class="docutils literal notranslate"><span class="pre">random_forest_model_train()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.remove_outliers_by_cluster"><code class="docutils literal notranslate"><span class="pre">remove_outliers_by_cluster()</span></code></a></li>
 </ul>
 </li>
@@ -997,8 +1116,8 @@ If None, a new instance will be created. Defaults to None.</p></li>
   </div>
   <div>
     <h4>Previous topic</h4>
-    <p class="topless"><a href="validation.html"
-                          title="previous chapter">Data Validation</a></p>
+    <p class="topless"><a href="pipeline.html"
+                          title="previous chapter">MLPipeline: Philosophy and Structure</a></p>
   </div>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -1031,7 +1150,7 @@ If None, a new instance will be created. Defaults to None.</p></li>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="validation.html" title="Data Validation"
+          <a href="pipeline.html" title="MLPipeline: Philosophy and Structure"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">API</a></li>
