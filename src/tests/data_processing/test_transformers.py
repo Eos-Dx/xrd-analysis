@@ -7,7 +7,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from xrdanalysis.data_processing.containers import MLClusterContainer
+from xrdanalysis.data_processing.containers import (
+    MLClusterContainer,
+    ModelScale,
+)
 from xrdanalysis.data_processing.transformers import (
     AzimuthalIntegration,
     Clusterization,
@@ -358,10 +361,10 @@ class TestNormScalerClusters(unittest.TestCase):
 
     def setUp(self):
         """Test class setup"""
-        self.model_names = ["model1", "model2"]
+        self.models = {"model1": ModelScale(), "model2": ModelScale()}
         self.do_fit = True
         self.scaler = NormScalerClusters(
-            model_names=self.model_names, do_fit=self.do_fit
+            modelscales=self.models, do_fit=self.do_fit
         )
         self.containers = {
             "model1": MagicMock(spec=MLClusterContainer),
@@ -378,7 +381,7 @@ class TestNormScalerClusters(unittest.TestCase):
 
     def test_initialization(self):
         """Initialization test"""
-        self.assertEqual(self.scaler.model_names, self.model_names)
+        self.assertEqual(self.scaler.modelscales, self.models)
         self.assertEqual(self.scaler.do_fit, self.do_fit)
 
     @patch("xrdanalysis.data_processing.transformers.normalize_scale_cluster")
@@ -388,14 +391,26 @@ class TestNormScalerClusters(unittest.TestCase):
         self.assertEqual(result, self.containers)
         self.assertEqual(mock_normalize_scale_cluster.call_count, 4)
         mock_normalize_scale_cluster.assert_any_call(
-            "mock_cluster1", do_fit=self.do_fit
+            "mock_cluster1",
+            normt=self.scaler.modelscales["model1"].normt,
+            norm=self.scaler.modelscales["model1"].norm,
+            do_fit=self.do_fit,
         )
         mock_normalize_scale_cluster.assert_any_call(
-            "mock_cluster2", do_fit=self.do_fit
+            "mock_cluster2",
+            normt=self.scaler.modelscales["model1"].normt,
+            norm=self.scaler.modelscales["model1"].norm,
+            do_fit=self.do_fit,
         )
         mock_normalize_scale_cluster.assert_any_call(
-            "mock_cluster3", do_fit=self.do_fit
+            "mock_cluster3",
+            normt=self.scaler.modelscales["model2"].normt,
+            norm=self.scaler.modelscales["model2"].norm,
+            do_fit=self.do_fit,
         )
         mock_normalize_scale_cluster.assert_any_call(
-            "mock_cluster4", do_fit=self.do_fit
+            "mock_cluster4",
+            normt=self.scaler.modelscales["model2"].normt,
+            norm=self.scaler.modelscales["model2"].norm,
+            do_fit=self.do_fit,
         )
