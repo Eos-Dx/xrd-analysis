@@ -118,7 +118,7 @@ class MLCluster:
 
     df: pd.DataFrame
     q_range: np.ndarray
-    q_cluster: int
+    q_cluster: int = None
     normalizer: Normalizer = None
     std: StandardScaler = None
     model: Union[XGBClassifier, RandomForestClassifier] = None
@@ -130,7 +130,7 @@ class MLCluster:
     important_features: np.array = None
     model_reduced: Union[XGBClassifier, RandomForestClassifier] = None
 
-    def predict_proba(self, reduced=False):
+    def _predict_proba(self, reduced=False):
         """
         Predicts the probability of the positive class for each sample.
 
@@ -146,7 +146,7 @@ class MLCluster:
         res = model.predict_proba(transformed_data)[:, 1]
         self.df["prediction_proba"] = res
 
-    def predict(self, reduced=False):
+    def _predict(self, reduced=False):
         """
         Predicts the class for each sample.
 
@@ -162,7 +162,7 @@ class MLCluster:
         res = model.predict(transformed_data)
         self.df["prediction"] = res
 
-    def calc_accuracy(self, reduced=False):
+    def _calc_accuracy(self, reduced=False):
         """
         Calculates the accuracy of the model.
 
@@ -176,7 +176,7 @@ class MLCluster:
         )
         self.accuracy = round(accuracy, 3)
 
-    def calc_roc_auc(self, reduced=False):
+    def _calc_roc_auc(self, reduced=False):
         """
         Calculates the ROC AUC score of the model.
 
@@ -241,3 +241,25 @@ class MLClusterContainer:
 
     model_name: str
     clusters: Dict[int, MLCluster]
+
+
+@dataclass
+class ModelScale:
+    norm: bool = True
+    normt: str = "l1"
+
+
+@dataclass
+class Limits:
+    q_min_saxs: float
+    q_max_saxs: float
+    q_min_waxs: float
+    q_max_waxs: float
+
+
+@dataclass
+class Rule:
+    q_value: float
+    lower: float = None
+    upper: float = None
+    cancer_diagnosis: bool = None
