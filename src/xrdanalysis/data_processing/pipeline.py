@@ -30,7 +30,8 @@ class MLPipeline:
             preprocessing_steps if preprocessing_steps is not None else []
         )
         self.estimator = [estimator]
-        self.trained_pipeline = None
+        self.trained_preprocessing = None
+        self.trained_estimator = None
 
     def add_data_wrangling_step(self, name, transformer, position=None):
         if position is not None:
@@ -68,28 +69,43 @@ class MLPipeline:
             y_column
         ]  # Return the entire series if no filtering is needed
 
-    def fit(self, X, y):
+    def train_preprocessor(self, data):
+        """Train preprocessor."""
+        data_preprocessing_pipeline = Pipeline(self.preprocessing_steps)
+
+        # Apply wrangling pipeline to the full dataset
+        data_preprocessing_pipeline.fit(data)
+
+        self.trained_preprocessing = data_preprocessing_pipeline
+
+        return self.trained_preprocessing
+
+    def train_estimator(self, X, y):
         """Initialize and fit the preprocessing and estimator pipeline."""
         # Initialize the pipeline of preprocessing steps and estimator
-        pipeline = Pipeline(self.preprocessing_steps + self.estimator)
+        estimator_pipeline = Pipeline(self.estimator)
 
         # Fit the pipeline
-        pipeline.fit(X, y)
+        estimator_pipeline.fit(X, y)
 
         # Store the fitted pipeline
-        self.trained_pipeline = pipeline
+        self.trained_estimator = estimator_pipeline
 
-        return pipeline
+        return self.trained_estimator
 
-    def predict(self, X, wrangle=False):
+    def predict(self, X, wrangle=False, preprocess=True):
         """Predict using the trained pipeline."""
-        if not self.trained_pipeline:
-            raise RuntimeError("Pipeline has not been fitted yet.")
-
+        if not self.trained_estimator:
+            raise RuntimeError("Estimator has not been fitted yet.")
+        X = X.copy()
         if wrangle:
-            self.wrangle(X)
+            X = self.wrangle(X)
+        if preprocess:
+            if not self.trained_preprocessing:
+                raise RuntimeError("Preprocessing has not been fitted yet.")
+            X = self.preprocess(X)
         # Use the trained pipeline for prediction (preprocessing + estimator)
-        return self.trained_pipeline.predict(X)
+        return self.trained_estimator.predict(X)
 
     def validate(
         self, y_true, y_pred, y_score, metrics=["accuracy", "roc_auc"]
@@ -108,30 +124,46 @@ class MLPipeline:
         if "precision" in metrics:
             results["precision"] = precision_score(y_true, y_pred)
 
-    def train(self, X, y_column, y_value=None, split=True, **split_args):
+    def train(
+        self,
+        X,
+        y_column,
+        y_value=None,
+        wrangle=True,
+        split=True,
+        preprocess=True,
+        **split_args
+    ):
         """Run the full pipeline: wrangle, split, fit, predict
         and validate on test data."""
+        X = X.copy()
         # Wrangle the data
-        X_wrangled = self.wrangle(X)
+        if wrangle:
+            X = self.wrangle(X)
 
-        y = self.infer_y(X_wrangled, y_column, y_value)
+        y = self.infer_y(X, y_column, y_value)
 
         if split:
             # Split the data (with optional arguments for custom splits)
             X_train, X_test, y_train, y_test = self.splitter(
-                X_wrangled, y, **split_args
+                X, y, **split_args
             )
         else:
-            X_train = X_wrangled
+            X_train = X
             y_train = y
-            X_test = X_wrangled
+            X_test = X
             y_test = y
 
         # Fit the pipeline on training data
-        self.fit(X_train, y_train)
+        if preprocess:
+            self.train_preprocessor(X_train)
+            X_train = self.trained_preprocessing.transform(X_train)
+            X_test = self.trained_preprocessing.transform(X_test)
 
-        y_pred = self.trained_pipeline.predict(X_test)
-        y_score = self.trained_pipeline.predict_proba(X_test)[:, 1]
+        estimator = self.train_estimator(X_train, y_train)
+
+        y_pred = estimator.predict(X_test)
+        y_score = estimator.predict_proba(X_test)[:, 1]
 
         # Validate the training results
         self.validate(y_test, y_pred, y_score)
@@ -139,20 +171,35 @@ class MLPipeline:
             y_test, y_score
         )
 
-    def export_pipeline(self, wrangle=False, save_path=None):
+    def export_pipeline(self, wrangle=False, preprocess=True, save_path=None):
         "Export the pipeline"
-        if not self.trained_pipeline:
-            raise RuntimeError("Pipeline has not been fitted yet.")
+        if not self.trained_estimator:
+            raise RuntimeError("Estimator has not been fitted yet.")
 
-        if wrangle:
+        if wrangle and preprocess:
             full_pipeline = Pipeline(
                 steps=[
                     *self.data_wrangling_steps,
-                    *self.trained_pipeline.steps,
+                    *self.trained_preprocessing.steps,
+                    *self.trained_estimator.steps,
+                ]
+            )
+        elif wrangle:
+            full_pipeline = Pipeline(
+                steps=[
+                    *self.data_wrangling_steps,
+                    *self.trained_estimator.steps,
+                ]
+            )
+        elif preprocess:
+            full_pipeline = Pipeline(
+                steps=[
+                    *self.trained_preprocessing.steps,
+                    *self.trained_estimator.steps,
                 ]
             )
         else:
-            full_pipeline = self.trained_pipeline
+            full_pipeline = self.trained_estimator
 
         full_pipeline.optimal_threshold = self.optimal_threshold
 
@@ -161,11 +208,13 @@ class MLPipeline:
 
         return full_pipeline
 
-    def export_predictions(self, data, save_path, wrangle=True):
-        if not self.trained_pipeline:
-            raise RuntimeError("Pipeline has not been fitted yet.")
+    def export_predictions(
+        self, data, save_path, wrangle=False, preprocess=True
+    ):
+        if not self.trained_estimator:
+            raise RuntimeError("Estimator has not been fitted yet.")
 
-        model = self.export_pipeline(wrangle)
+        model = self.export_pipeline(wrangle, preprocess)
 
         y_score = model.predict_proba(data)[:, 1]
         y_pred = y_score > model.optimal_threshold
