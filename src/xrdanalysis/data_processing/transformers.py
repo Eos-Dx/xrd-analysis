@@ -2,14 +2,12 @@
 The transformer classes are stored here
 """
 
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin
-from sklearn.cluster import KMeans
 from sklearn.preprocessing import Normalizer, StandardScaler
 
 from xrdanalysis.data_processing.azimuthal_integration import (
@@ -17,7 +15,7 @@ from xrdanalysis.data_processing.azimuthal_integration import (
 )
 from xrdanalysis.data_processing.containers import (
     Limits,
-    Rule,
+    RuleQ, Rule
 )
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
@@ -295,6 +293,46 @@ class ColumnExtractor(TransformerMixin):
                 # Append single values
                 flattened_list.append(value)
         return flattened_list
+
+
+class ColumnCleaner(TransformerMixin):
+    """
+    Transformer class for cleaning specific columns according to Rules
+    """
+
+    def __init__(self, rules: List[Rule]):
+        """
+        Initializes the ColumnFlattener with the specified columns.
+
+        """
+        self.rules = rules
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        X_copy = X.copy()
+
+        def clean_q(row, rule: RuleQ):
+            r: RuleQ = rule
+            res = False
+            idx = np.argmin(np.abs(row[r.q_column_name] - r.q_value))
+            intensity = row[r.column_name][idx]
+            if r.lower is not None and r.upper is not None:
+                res = (intensity > r.lower) and (intensity < r.upper)
+            elif r.lower is not None:
+                res = intensity > r.lower
+            elif r.upper is not None:
+                res = intensity < r.upper
+            return res
+
+        for rule in self.rules:
+            if isinstance(rule, RuleQ):
+                X_copy = X_copy[X_copy.apply(lambda row: clean_q(row, rule), axis=1)]
+            else:
+                raise Exception(f'I do not know how to treat {type(rule)}.')
+
+        return X_copy
 
 
 class DataPreparation(TransformerMixin):
