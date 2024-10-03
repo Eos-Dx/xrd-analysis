@@ -59,6 +59,15 @@ class MLPipeline:
 
         return data_wrangled
 
+    def wrangle_transform(self, data):
+        """Apply the wrangling steps to the entire dataset."""
+        data_wrangling_pipeline = Pipeline(self.data_wrangling_steps + self.preprocessing_steps)
+
+        # Apply wrangling pipeline to the full dataset
+        data_wrangled = data_wrangling_pipeline.fit_transform(data)
+
+        return data_wrangled
+
     def infer_y(self, X, y_column, y_value=None):
         """Infer the y values from the wrangled dataset."""
         if y_value is not None:
@@ -140,7 +149,7 @@ class MLPipeline:
         )
 
     def export_pipeline(self, wrangle=False, save_path=None):
-        "Export the pipeline"
+        """Export the pipeline"""
         if not self.trained_pipeline:
             raise RuntimeError("Pipeline has not been fitted yet.")
 
