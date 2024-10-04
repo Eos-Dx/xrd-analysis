@@ -2,31 +2,24 @@
 The transformer classes are stored here
 """
 
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin
-from sklearn.cluster import KMeans
 from sklearn.preprocessing import Normalizer, StandardScaler
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     perform_azimuthal_integration,
 )
 from xrdanalysis.data_processing.containers import (
-    MLClusterContainer,
-    ModelScale,
     Limits,
-    Rule,
+    RuleQ, Rule
 )
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
-    generate_poni,
-    interpolate_cluster,
-    normalize_scale_cluster,
-    remove_outliers_by_cluster,
+    generate_poni
 )
 
 
@@ -302,6 +295,46 @@ class ColumnExtractor(TransformerMixin):
         return flattened_list
 
 
+class ColumnCleaner(TransformerMixin):
+    """
+    Transformer class for cleaning specific columns according to Rules
+    """
+
+    def __init__(self, rules: List[Rule]):
+        """
+        Initializes the ColumnFlattener with the specified columns.
+
+        """
+        self.rules = rules
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        X_copy = X.copy()
+
+        def clean_q(row, rule: RuleQ):
+            r: RuleQ = rule
+            res = False
+            idx = np.argmin(np.abs(row[r.q_column_name] - r.q_value))
+            intensity = row[r.column_name][idx]
+            if r.lower is not None and r.upper is not None:
+                res = (intensity > r.lower) and (intensity < r.upper)
+            elif r.lower is not None:
+                res = intensity > r.lower
+            elif r.upper is not None:
+                res = intensity < r.upper
+            return res
+
+        for rule in self.rules:
+            if isinstance(rule, RuleQ):
+                X_copy = X_copy[X_copy.apply(lambda row: clean_q(row, rule), axis=1)]
+            else:
+                raise Exception(f'I do not know how to treat {type(rule)}.')
+
+        return X_copy
+
+
 class DataPreparation(TransformerMixin):
     """
     Transformer class to prepare a raw DataFrame according to the standard.
@@ -492,218 +525,3 @@ class NormScaler(TransformerMixin):
         # Combine the processed DataFrames back into one
         dfc_processed = pd.concat([df_saxs, df_waxs])
         return dfc_processed.loc[raw_index]
-
-
-class Clusterization(TransformerMixin):
-    """
-    Transformer class to perform clusterization and remove outliers
-    from the DataFrame.
-
-    :param n_clusters: The number of clusters to use in K-Means clustering.
-    :type n_clusters: int
-    :param z_score_threshold: The threshold for Z-score based outlier removal.
-    :type z_score_threshold: float
-    :param direction: The direction of outlier removal, either "both",\
-        "positive", or "negative".
-    :type direction: str
-    """
-
-    def __init__(self, n_clusters, z_score_threshold, direction):
-        """
-        Initialize the Clusterization transformer with parameters.
-
-        :param n_clusters: The number of clusters to use in K-Means clustering.
-        :type n_clusters: int
-        :param z_score_threshold: The threshold for Z-score based outlier\
-            removal.
-        :type z_score_threshold: float
-        :param direction: The direction of outlier removal, either "both",\
-            "positive", or "negative".
-        :type direction: str
-        """
-        self.n_clusters = n_clusters
-        self.z_score_threshold = z_score_threshold
-        self.direction = direction
-
-    def fit(self, x: pd.DataFrame, y=None):
-        """
-        Fit method for the transformer. Since this transformer does not learn
-        from the data, the fit method does not perform any operations.
-
-        :param x: The data to fit.
-        :type x: pandas.DataFrame
-        :param y: Ignored. Not used, present here for API consistency by\
-            convention.
-        :return: Returns the instance itself.
-        :rtype: object
-        """
-        _ = x
-        _ = y
-
-        return self
-
-    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Transforms the input DataFrame by performing clusterization\
-        and outlier removal.
-
-        :param df: The input DataFrame.
-        :type df: pandas.DataFrame
-        :return: The transformed DataFrame with outliers removed.
-        :rtype: pandas.DataFrame
-        """
-
-        dfc = df.copy()
-
-        dfc["q_range_min"] = dfc["q_range"].apply(lambda x: np.min(x))
-        dfc["q_range_max"] = dfc["q_range"].apply(lambda x: np.max(x))
-
-        num_clusters = self.n_clusters
-        column_names = ["q_range_min", "q_range_max"]
-        # Extract the q_range_min and q_range_max columns
-        q_range_data = dfc[column_names].values
-        # Perform K-Means clustering with the optimal number of clusters
-        kmeans = KMeans(
-            n_clusters=num_clusters,
-            random_state=42,
-            algorithm="elkan",
-            n_init="auto",
-        )
-        cluster_labels = kmeans.fit_predict(q_range_data)
-        # Add the cluster labels to your DataFrame
-        dfc["q_cluster_label"] = cluster_labels
-
-        return remove_outliers_by_cluster(
-            dfc,
-            z_score_threshold=self.z_score_threshold,
-            direction=self.direction,
-            num_clusters=self.n_clusters,
-        )
-
-
-class InterpolatorClusters(TransformerMixin):
-    """
-    Transformer class for interpolating clusters of azimuthal integration data.
-
-    :param perc_min: The minimum percentage of the maximum q-range for\
-        interpolation.
-    :type perc_min: float
-    :param perc_max: The maximum percentage of the maximum q-range for\
-        interpolation.
-    :type perc_max: float
-    :param resolution: The resolution for interpolation.
-    :type resolution: int
-    :param faulty_pixel_array: A list of faulty pixel coordinates.
-    :type faulty_pixel_array: List
-    :param model_names: Names of the models.
-    :type model_names: str
-    """
-
-    def __init__(
-        self,
-        perc_min: float,
-        perc_max: float,
-        resolution: int,
-        faulty_pixel_array: List,
-        model_names: str,
-    ):
-        self.perc_min = perc_min
-        self.perc_max = perc_max
-        self.q_resolution = resolution
-        self.model_names = model_names
-        self.faulty_pixel_array = faulty_pixel_array
-
-    def fit(self, x: pd.DataFrame):
-        """
-        Fit method for the transformer. Since this transformer does not learn
-        from the data, the fit method does not perform any operations.
-
-        :param x: The data to fit.
-        :type x: pandas.DataFrame
-        :param y: Ignored. Not used, present here for API consistency by\
-            convention.
-        :return: Returns the instance itself.
-        :rtype: object
-        """
-        self.x = x
-        return self
-
-    def transform(self, df) -> Dict[str, MLClusterContainer]:
-        """
-        Perform interpolation on the input data.
-
-        :param df: Input DataFrame containing data to be interpolated.
-        :type df: pandas.DataFrame
-        :return: Dictionary containing interpolated clusters.
-        :rtype: dict
-        """
-        dfc = df.copy()
-        clusters_global = {}
-        clusters = {}
-        for cluster_label in dfc["q_cluster_label"].unique():
-            azimuth = AzimuthalIntegration(
-                faulty_pixels=self.faulty_pixel_array,
-                npt=self.q_resolution,
-                calibration_mode="poni",
-            )
-            clusters[cluster_label] = interpolate_cluster(
-                dfc, cluster_label, self.perc_min, self.perc_max, azimuth
-            )
-
-        for model_name in self.model_names:
-            clusters_global[model_name] = MLClusterContainer(
-                model_name, deepcopy(clusters)
-            )
-        return clusters_global
-
-
-class NormScalerClusters(TransformerMixin):
-    """
-    Transformer class for normalizing and scaling clusters of azimuthal
-    integration data.
-
-    :param modelscales: Names of the models.
-    :type modelscales: List[str]
-    :param do_fit: Whether to fit the scaler. Defaults to True.
-    :type do_fit: bool
-    """
-
-    def __init__(self, modelscales: Dict[str, ModelScale], do_fit=True):
-        self.modelscales = modelscales
-        self.do_fit = do_fit
-
-    def fit(self, x):
-        """
-        Fit method for the transformer. Since this transformer does not learn
-        from the data, the fit method does not perform any operations.
-
-        :param x: The data to fit.
-        :type x: pandas.DataFrame
-        :param y: Ignored. Not used, present here for API consistency by\
-            convention.
-        :return: Returns the instance itself.
-        :rtype: object
-        """
-        self.x = x
-        return self
-
-    def transform(
-        self, containers: Dict[str, MLClusterContainer]
-    ) -> Dict[str, MLClusterContainer]:
-        """
-        Perform normalization and scaling on the input data.
-
-        :param containers: Dictionary containing MLClusterContainers.
-        :type containers: dict
-        :return: Dictionary containing normalized and scaled clusters.
-        :rtype: dict
-        """
-        for name, container in containers.items():
-            for cluster in container.clusters.values():
-                normalize_scale_cluster(
-                    cluster,
-                    normt=self.modelscales[name].normt,
-                    norm=self.modelscales[name].norm,
-                    do_fit=self.do_fit,
-                )
-        return containers

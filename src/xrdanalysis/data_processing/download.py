@@ -182,7 +182,7 @@ def form_df(unzip_path=UNZIP_PATH_DATA) -> pd.DataFrame:
     :returns: A pandas DataFrame containing the data.
     :rtype: pd.DataFrame
     """
-    print("Forming data frame...")
+    print("Forming dataframe...")
     df = pd.read_csv(unzip_path / Path("description.csv"))
     # MANDATORY!!!
     df["measurement_data"] = np.nan
