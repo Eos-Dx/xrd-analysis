@@ -10,7 +10,6 @@ from sklearn.metrics import accuracy_score, roc_curve, roc_auc_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from scipy.spatial import distance_matrix
-from xrdanalysis.data_processing.utility_functions import prep
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 

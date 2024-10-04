@@ -32,11 +32,12 @@ class RuleV:
 @dataclass
 class RuleQ(Rule):
     """
-    Defines a rule that removes entries if value at certain q is lower or higher or both
+    Defines a rule that removes entries if value at certain q is lower or
+    higher or both
     """
+
     q_column_name: str
     q_value: float
     lower: float = None
     upper: float = None
     cancer_diagnosis: bool = None
-
