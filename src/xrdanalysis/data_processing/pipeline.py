@@ -30,7 +30,7 @@ class MLPipeline:
             preprocessing_steps if preprocessing_steps is not None else []
         )
         self.estimator = [estimator]
-        self.trained_preprocessing = None
+        self.trained_preprocessor = None
         self.trained_estimator = None
 
     def add_data_wrangling_step(self, name, transformer, position=None):
@@ -76,9 +76,9 @@ class MLPipeline:
         # Apply wrangling pipeline to the full dataset
         data_preprocessing_pipeline.fit(data)
 
-        self.trained_preprocessing = data_preprocessing_pipeline
+        self.trained_preprocessor = data_preprocessing_pipeline
 
-        return self.trained_preprocessing
+        return self.trained_preprocessor
 
     def train_estimator(self, X, y):
         """Initialize and fit the preprocessing and estimator pipeline."""
@@ -101,9 +101,9 @@ class MLPipeline:
         if wrangle:
             X = self.wrangle(X)
         if preprocess:
-            if not self.trained_preprocessing:
+            if not self.trained_preprocessor:
                 raise RuntimeError("Preprocessing has not been fitted yet.")
-            X = self.preprocess(X)
+            X = self.trained_preprocessor.transform(X)
         # Use the trained pipeline for prediction (preprocessing + estimator)
         return self.trained_estimator.predict(X)
 
@@ -157,8 +157,8 @@ class MLPipeline:
         # Fit the pipeline on training data
         if preprocess:
             self.train_preprocessor(X_train)
-            X_train = self.trained_preprocessing.transform(X_train)
-            X_test = self.trained_preprocessing.transform(X_test)
+            X_train = self.trained_preprocessor.transform(X_train)
+            X_test = self.trained_preprocessor.transform(X_test)
 
         estimator = self.train_estimator(X_train, y_train)
 
@@ -180,7 +180,7 @@ class MLPipeline:
             full_pipeline = Pipeline(
                 steps=[
                     *self.data_wrangling_steps,
-                    *self.trained_preprocessing.steps,
+                    *self.trained_preprocessor.steps,
                     *self.trained_estimator.steps,
                 ]
             )
@@ -194,7 +194,7 @@ class MLPipeline:
         elif preprocess:
             full_pipeline = Pipeline(
                 steps=[
-                    *self.trained_preprocessing.steps,
+                    *self.trained_preprocessor.steps,
                     *self.trained_estimator.steps,
                 ]
             )
