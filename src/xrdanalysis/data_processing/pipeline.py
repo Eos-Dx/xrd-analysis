@@ -1,4 +1,4 @@
-from pickle import dump
+from joblib import dump
 
 import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, roc_auc_score
@@ -60,14 +60,17 @@ class MLPipeline:
 
         return data_wrangled
 
+    def preprocess(self, data):
+        """Apply the prossecing steps to the entire dataset."""
+        return self.trained_preprocessing.transform(data)
+
     def wrangle_transform(self, data):
         """Apply the wrangling steps to the entire dataset."""
-        data_wrangling_pipeline = Pipeline(self.data_wrangling_steps + self.preprocessing_steps)
+        data_all = Pipeline(self.data_wrangling_steps + self.preprocessing_steps)
 
-        # Apply wrangling pipeline to the full dataset
-        data_wrangled = data_wrangling_pipeline.fit_transform(data)
+        self.train_preprocessor(self.wrangle(data))
 
-        return data_wrangled
+        return data_all.transform(data)
 
     def infer_y(self, X, y_column, y_value=None):
         """Infer the y values from the wrangled dataset."""
@@ -116,9 +119,23 @@ class MLPipeline:
         # Use the trained pipeline for prediction (preprocessing + estimator)
         return self.trained_estimator.predict(X)
 
-    def validate(
-        self, y_true, y_pred, y_score, metrics=["accuracy", "roc_auc"]
-    ):
+    def predict_proba(self, X, wrangle=False, preprocess=True):
+        """Predict using the trained pipeline."""
+        if not self.trained_estimator:
+            raise RuntimeError("Estimator has not been fitted yet.")
+        X = X.copy()
+        if wrangle:
+            X = self.wrangle(X)
+        if preprocess:
+            if not self.trained_preprocessing:
+                raise RuntimeError("Preprocessing has not been fitted yet.")
+            X = self.preprocess(X)
+        # Use the trained pipeline for prediction (preprocessing + estimator)
+        return self.trained_estimator.predict_proba(X)
+
+    def validate(self, y_true, y_pred, y_score, metrics=["accuracy", "roc_auc"],
+                 show_flag=False, print_flag=False
+                 ):
         """Validate the trained estimator on test data using
         specified metrics."""
         # Calculate and return the desired metrics
@@ -127,21 +144,27 @@ class MLPipeline:
             results["accuracy"] = accuracy_score(y_true, y_pred)
 
         if "roc_auc" in metrics:
-            generate_roc_curve(y_true, y_score)
+            if show_flag:
+                generate_roc_curve(y_true, y_score)
             results["roc_auc"] = roc_auc_score(y_true, y_score)
 
         if "precision" in metrics:
             results["precision"] = precision_score(y_true, y_pred)
+        if print_flag:
+            print(results)
 
-    def train(
-        self,
+    def train(self,
         X,
         y_column,
         y_value=None,
+        y_data=None,
         wrangle=True,
         split=True,
         preprocess=True,
+        print_flag=True,
+        show_flag=False,
         **split_args
+
     ):
         """Run the full pipeline: wrangle, split, fit, predict
         and validate on test data."""
@@ -150,7 +173,10 @@ class MLPipeline:
         if wrangle:
             X = self.wrangle(X)
 
-        y = self.infer_y(X, y_column, y_value)
+        if y_data is None:
+            y = self.infer_y(X, y_column, y_value)
+        else:
+            y = y_data
 
         if split:
             # Split the data (with optional arguments for custom splits)
@@ -175,7 +201,8 @@ class MLPipeline:
         y_score = estimator.predict_proba(X_test)[:, 1]
 
         # Validate the training results
-        self.validate(y_test, y_pred, y_score)
+        self.validate(y_test, y_pred, y_score,
+                      print_flag=print_flag, show_flag=show_flag)
         _, _, _, self.optimal_threshold = calculate_optimal_threshold(
             y_test, y_score
         )
@@ -213,7 +240,7 @@ class MLPipeline:
         full_pipeline.optimal_threshold = self.optimal_threshold
 
         if save_path:
-            dump(full_pipeline, open(save_path, "wb"))
+            dump(full_pipeline, save_path)
 
         return full_pipeline
 

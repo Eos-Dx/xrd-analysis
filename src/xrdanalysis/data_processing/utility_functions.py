@@ -3,6 +3,7 @@
 import os
 from typing import Tuple
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 
 import numpy as np
 import pandas as pd
@@ -174,6 +175,68 @@ def prep(df):
         dfc["age"] = [-1] * len(dfc)
     age = dfc["age"].values.reshape(-1, 1)
     return np.concatenate((transformed_data, entry, age), axis=1)
+
+
+def show_data(df: pd.DataFrame):
+    # Initialize an empty DataFrame to append to
+    dfki = df.copy()
+
+    # Group the DataFrame by 'q_cluster_label' and 'cancer_tissue'
+    grouped = dfki.groupby(['type_measurement', 'cancer_diagnosis'])
+
+    # Create a grid of subplots, where the number of rows is determined by the number of clusters
+    num_clusters = len(dfki['cancer_diagnosis'].unique())
+    fig, axes = plt.subplots(nrows=num_clusters, ncols=2, figsize=(5.5, 2.5 * num_clusters))
+
+    # Flatten the axes for easy indexing
+    axes = axes.flatten()
+
+    # Define colors for cancer and non-cancer tissues
+    colors = {'cancer': 'red', 'non-cancer': 'blue'}
+
+    # Iterate over clusters and cancer/non-cancer tissues
+    for i, ((cluster, diagnosis), group) in enumerate(grouped):
+        ax = axes[i]
+
+        # Plot individual entries
+        for _, entry in group.iterrows():
+            ax.plot(entry['q_range'],
+                    entry['radial_profile_data'])
+
+        # Compute average radial profile data for the current cluster and diagnosis
+        average_radial_profile = group['radial_profile_data'].mean()
+        ax.plot(group.iloc[0]['q_range'],
+                average_radial_profile,
+                color='black', linestyle='--', linewidth=2)
+
+        # Add labels and a legend for the current cluster
+        ax.set_xlabel('X-axis')
+        ax.set_ylabel('Y-axis')
+        if diagnosis:
+            diag = 'Cancer'
+        else:
+            diag = 'Non-cancer'
+
+        ax.set_title(f'{cluster} - {diag}')
+        ax.set_yscale('log')
+        ax.set_xlabel('q, nm$^{-1}$')
+        ax.set_ylabel('Intensity')
+        ax.grid(True)
+        m = np.max(group.iloc[0]['q_range'])
+        ax.set_ylim(.5, 1000)
+        # ax.savefig(f'{dis}_{diag}.png', dpi=400)
+        if m < 5:
+            ax.set_xticks(np.arange(0, m + .1, 1))
+            ax.xaxis.set_minor_locator(MultipleLocator(0.2))
+        else:
+            ax.set_xticks(np.arange(0, m + .1, 5))
+            ax.xaxis.set_minor_locator(MultipleLocator(1))
+
+    # Adjust layout to prevent clipping of labels
+    plt.tight_layout()
+    plt.savefig('plot.png', dpi=400)
+    # Show the plots
+    plt.show()
 
 
 def custom_splitter_balanced(df, split):
@@ -444,7 +507,7 @@ def generate_roc_curve(y_true, y_score):
     RocCurveDisplay.from_predictions(y_true, y_score)
     fig = plt.gcf()
     plt.title("ROC Keele SAXS")
-    fig.set_size_inches(8, 6)
+    fig.set_size_inches(4, 4)
     fig.set_dpi(150)
     fig.set_facecolor("white")
     # plt.savefig(f"analysis/fitting_classification/roc/keele_SAXS_ROC.png")
