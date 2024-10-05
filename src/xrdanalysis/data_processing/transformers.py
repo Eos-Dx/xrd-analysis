@@ -13,7 +13,7 @@ from sklearn.preprocessing import Normalizer, StandardScaler
 from xrdanalysis.data_processing.azimuthal_integration import (
     perform_azimuthal_integration,
 )
-from xrdanalysis.data_processing.containers import Limits, RuleQ, Rule
+from xrdanalysis.data_processing.containers import Limits, Rule, RuleQ
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
     generate_poni,
@@ -299,15 +299,39 @@ class ColumnCleaner(TransformerMixin):
 
     def __init__(self, rules: List[Rule]):
         """
-        Initializes the ColumnFlattener with the specified columns.
+        Initializes the ColumnCleaner with the specified rules for \
+        cleaning columns.
 
+        :param rules: A list of rules used to clean specific columns.
+        :type rules: List[Rule]
         """
         self.rules = rules
 
     def fit(self, X, y=None):
+        """
+        Fit method for the transformer. No action is taken during fitting.
+
+        :param X: The input DataFrame.
+        :type X: pandas.DataFrame
+        :param y: Target values (optional, not used in this transformer).
+        :type y: array-like, optional
+        :return: The fitted transformer (self).
+        :rtype: ColumnCleaner
+        """
+
         return self
 
     def transform(self, X, y=None):
+        """
+        Transform method for cleaning columns based on the provided rules.
+
+        :param X: The input DataFrame to clean.
+        :type X: pandas.DataFrame
+        :param y: Target values (optional, not used in this transformer).
+        :type y: array-like, optional
+        :return: The cleaned DataFrame.
+        :rtype: pandas.DataFrame
+        """
         X_copy = X.copy()
 
         def clean_q(row, rule: RuleQ):
