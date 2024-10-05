@@ -1,6 +1,7 @@
 """Various utility functions used in different parts of codebase"""
 
 import os
+import pandas as pd
 from typing import Tuple
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator

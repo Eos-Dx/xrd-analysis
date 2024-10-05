@@ -62,7 +62,7 @@ class MLPipeline:
 
     def preprocess(self, data):
         """Apply the prossecing steps to the entire dataset."""
-        return self.trained_preprocessing.transform(data)
+        return self.trained_preprocessor.transform(data)
 
     def wrangle_transform(self, data):
         """Apply the wrangling steps to the entire dataset."""
@@ -140,7 +140,7 @@ class MLPipeline:
         if wrangle:
             X = self.wrangle(X)
         if preprocess:
-            if not self.trained_preprocessing:
+            if not self.trained_preprocessor:
                 raise RuntimeError("Preprocessing has not been fitted yet.")
             X = self.preprocess(X)
         # Use the trained pipeline for prediction (preprocessing + estimator)
