@@ -13,13 +13,10 @@ from sklearn.preprocessing import Normalizer, StandardScaler
 from xrdanalysis.data_processing.azimuthal_integration import (
     perform_azimuthal_integration,
 )
-from xrdanalysis.data_processing.containers import (
-    Limits,
-    RuleQ, Rule
-)
+from xrdanalysis.data_processing.containers import Limits, RuleQ, Rule
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
-    generate_poni
+    generate_poni,
 )
 
 
@@ -328,9 +325,11 @@ class ColumnCleaner(TransformerMixin):
 
         for rule in self.rules:
             if isinstance(rule, RuleQ):
-                X_copy = X_copy[X_copy.apply(lambda row: clean_q(row, rule), axis=1)]
+                X_copy = X_copy[
+                    X_copy.apply(lambda row: clean_q(row, rule), axis=1)
+                ]
             else:
-                raise Exception(f'I do not know how to treat {type(rule)}.')
+                raise Exception(f"I do not know how to treat {type(rule)}.")
 
         return X_copy
 
