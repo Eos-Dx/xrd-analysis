@@ -78,7 +78,7 @@
 <li><p><a class="reference internal" href="#working-with-mlpipeline" id="id7">Working with MLPipeline</a></p>
 <ul>
 <li><p><a class="reference internal" href="#train" id="id8">Train</a></p></li>
-<li><p><a class="reference internal" href="#predict" id="id9">Predict</a></p></li>
+<li><p><a class="reference internal" href="#predictions" id="id9">Predictions</a></p></li>
 </ul>
 </li>
 <li><p><a class="reference internal" href="#validation" id="id10">Validation</a></p></li>
@@ -105,7 +105,14 @@
 </ul>
 <p>Wrangling transformations should not depend on the global data distribution, making it safe to apply them before splitting the data into training and test sets.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">wrangle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply the wrangling steps to the entire dataset.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Applies data wrangling steps to the entire dataset.</span>
+
+<span class="sd">    :param data: The dataset to apply the wrangling steps to.</span>
+<span class="sd">    :type data: DataFrame</span>
+<span class="sd">    :return: The wrangled dataset.</span>
+<span class="sd">    :rtype: DataFrame</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">data_wrangling_pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_wrangling_steps</span><span class="p">)</span>
 
     <span class="c1"># Apply wrangling pipeline to the full dataset</span>
@@ -120,29 +127,42 @@
 <p><strong>Splitting</strong> is performed after the data wrangling phase. The reason for this sequencing is that any data wrangling transformations operate independently on each observation. After wrangling, the dataset can be split into training and test sets, as subsequent data processing steps might depend on global features of the training data.</p>
 <p>The <cite>MLPipeline</cite> supports both default splitting methods (such as <cite>train_test_split</cite>) and custom splitting functions for more complex scenarios (e.g., stratified splitting or time series splitting).</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">set_splitter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">splitter</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sets the dataset splitter for the pipeline.</span>
+
+<span class="sd">    :param splitter: The method to use for splitting the dataset.</span>
+<span class="sd">    :type splitter: callable</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">splitter</span> <span class="o">=</span> <span class="n">splitter</span>
 
-<span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y_column</span><span class="p">,</span> <span class="n">y_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">split_args</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the full pipeline: wrangle, split, fit, predict</span>
-<span class="sd">    and validate on test data.&quot;&quot;&quot;</span>
-    <span class="c1"># Wrangle the data</span>
-    <span class="n">X_wrangled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wrangle</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">train</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">X</span><span class="p">,</span>
+    <span class="n">y_column</span><span class="p">,</span>
+    <span class="n">y_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">y_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">wrangle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">split</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">preprocess</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">print_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">show_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">split_args</span>
+<span class="p">):</span>
 
-    <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">infer_y</span><span class="p">(</span><span class="n">X_wrangled</span><span class="p">,</span> <span class="n">y_column</span><span class="p">,</span> <span class="n">y_value</span><span class="p">)</span>
+<span class="o">...</span>
 
-    <span class="k">if</span> <span class="n">split</span><span class="p">:</span>
+<span class="k">if</span> <span class="n">split</span><span class="p">:</span>
         <span class="c1"># Split the data (with optional arguments for custom splits)</span>
         <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitter</span><span class="p">(</span>
-            <span class="n">X_wrangled</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">split_args</span>
+            <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">split_args</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">X_train</span> <span class="o">=</span> <span class="n">X_wrangled</span>
+        <span class="n">X_train</span> <span class="o">=</span> <span class="n">X</span>
         <span class="n">y_train</span> <span class="o">=</span> <span class="n">y</span>
-        <span class="n">X_test</span> <span class="o">=</span> <span class="n">X_wrangled</span>
+        <span class="n">X_test</span> <span class="o">=</span> <span class="n">X</span>
         <span class="n">y_test</span> <span class="o">=</span> <span class="n">y</span>
 
-    <span class="c1"># Fit the pipeline on training data</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="o">...</span>
 </pre></div>
 </div>
 </section>
@@ -159,18 +179,23 @@
 <li><p>Principal Component Analysis (PCA)</p></li>
 <li><p>Feature selection techniques</p></li>
 </ul>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize and fit the preprocessing and estimator pipeline.&quot;&quot;&quot;</span>
-    <span class="c1"># Initialize the pipeline of preprocessing steps and estimator</span>
-    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preprocessing_steps</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">train_preprocessor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Trains the preprocessing pipeline on the dataset.</span>
 
-    <span class="c1"># Fit the pipeline</span>
-    <span class="n">pipeline</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="sd">    :param data: The dataset to train the preprocessor on.</span>
+<span class="sd">    :type data: DataFrame</span>
+<span class="sd">    :return: The trained preprocessor pipeline.</span>
+<span class="sd">    :rtype: Pipeline</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_preprocessing_pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preprocessing_steps</span><span class="p">)</span>
 
-    <span class="c1"># Store the fitted pipeline</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">trained_pipeline</span> <span class="o">=</span> <span class="n">pipeline</span>
+    <span class="c1"># Apply wrangling pipeline to the full dataset</span>
+    <span class="n">data_preprocessing_pipeline</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">pipeline</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">trained_preprocessor</span> <span class="o">=</span> <span class="n">data_preprocessing_pipeline</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_preprocessor</span>
 </pre></div>
 </div>
 </section>
@@ -178,18 +203,27 @@
 <h4><a class="toc-backref" href="#id6" role="doc-backlink">Estimator</a><a class="headerlink" href="#estimator" title="Link to this heading">¶</a></h4>
 <p>The <strong>estimator</strong> is the machine learning model that is trained on the preprocessed data. This step follows preprocessing and forms the final stage of the pipeline. The estimator can be any model from <cite>scikit-learn</cite>, such as logistic regression, decision trees, or ensemble methods.</p>
 <p>After the preprocessing steps are applied to the training data, the estimator is fitted to the processed data.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize and fit the preprocessing and estimator pipeline.&quot;&quot;&quot;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">train_estimator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Trains the estimator using the provided features and target variable.</span>
+
+<span class="sd">    :param X: The feature matrix.</span>
+<span class="sd">    :type X: DataFrame</span>
+<span class="sd">    :param y: The target variable.</span>
+<span class="sd">    :type y: Series</span>
+<span class="sd">    :return: The trained estimator pipeline.</span>
+<span class="sd">    :rtype: Pipeline</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Initialize the pipeline of preprocessing steps and estimator</span>
-    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preprocessing_steps</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="p">)</span>
+    <span class="n">estimator_pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="p">)</span>
 
     <span class="c1"># Fit the pipeline</span>
-    <span class="n">pipeline</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">estimator_pipeline</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
 
     <span class="c1"># Store the fitted pipeline</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">trained_pipeline</span> <span class="o">=</span> <span class="n">pipeline</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span> <span class="o">=</span> <span class="n">estimator_pipeline</span>
 
-    <span class="k">return</span> <span class="n">pipeline</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span>
 </pre></div>
 </div>
 </section>
@@ -213,57 +247,146 @@
 <li><p><strong>Fit</strong> the pipeline (preprocessing and estimator) on the training data.</p></li>
 <li><p><strong>Validate</strong> the model performance on the test data.</p></li>
 </ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y_column</span><span class="p">,</span> <span class="n">y_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">split_args</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the full pipeline: wrangle, split, fit, predict</span>
-<span class="sd">    and validate on test data.&quot;&quot;&quot;</span>
-    <span class="c1"># Wrangle the data</span>
-    <span class="n">X_wrangled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wrangle</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">train</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">X</span><span class="p">,</span>
+    <span class="n">y_column</span><span class="p">,</span>
+    <span class="n">y_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">y_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">wrangle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">split</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">preprocess</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">print_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">show_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">split_args</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Runs the full pipeline: wrangles, splits, fits, predicts, and validates</span>
+<span class="sd">    on test data.</span>
 
-    <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">infer_y</span><span class="p">(</span><span class="n">X_wrangled</span><span class="p">,</span> <span class="n">y_column</span><span class="p">,</span> <span class="n">y_value</span><span class="p">)</span>
+<span class="sd">    :param X: The dataset to train on.</span>
+<span class="sd">    :type X: DataFrame</span>
+<span class="sd">    :param y_column: The column containing the target variable.</span>
+<span class="sd">    :type y_column: str</span>
+<span class="sd">    :param y_value: The value of the target variable to filter by. \</span>
+<span class="sd">    Defaults to None.</span>
+<span class="sd">    :type y_value: object, optional</span>
+<span class="sd">    :param y_data: Predefined y values for the dataset. Defaults to None.</span>
+<span class="sd">    :type y_data: Series, optional</span>
+<span class="sd">    :param wrangle: Whether to apply wrangling steps to the data.</span>
+<span class="sd">    :type wrangle: bool</span>
+<span class="sd">    :param split: Whether to split the dataset into training and test sets.</span>
+<span class="sd">    :type split: bool</span>
+<span class="sd">    :param preprocess: Whether to apply preprocessing steps.</span>
+<span class="sd">    :type preprocess: bool</span>
+<span class="sd">    :param print_flag: Whether to print validation results. \</span>
+<span class="sd">    Defaults to True.</span>
+<span class="sd">    :type print_flag: bool</span>
+<span class="sd">    :param show_flag: Whether to display the ROC curve. Defaults to False.</span>
+<span class="sd">    :type show_flag: bool</span>
+<span class="sd">    :param split_args: Additional arguments for the splitter function.</span>
+<span class="sd">    :type split_args: dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="c1"># Wrangle the data</span>
+    <span class="k">if</span> <span class="n">wrangle</span><span class="p">:</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wrangle</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">y_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">infer_y</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y_column</span><span class="p">,</span> <span class="n">y_value</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">y_data</span>
 
     <span class="k">if</span> <span class="n">split</span><span class="p">:</span>
         <span class="c1"># Split the data (with optional arguments for custom splits)</span>
         <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitter</span><span class="p">(</span>
-            <span class="n">X_wrangled</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">split_args</span>
+            <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">split_args</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">X_train</span> <span class="o">=</span> <span class="n">X_wrangled</span>
+        <span class="n">X_train</span> <span class="o">=</span> <span class="n">X</span>
         <span class="n">y_train</span> <span class="o">=</span> <span class="n">y</span>
-        <span class="n">X_test</span> <span class="o">=</span> <span class="n">X_wrangled</span>
+        <span class="n">X_test</span> <span class="o">=</span> <span class="n">X</span>
         <span class="n">y_test</span> <span class="o">=</span> <span class="n">y</span>
 
     <span class="c1"># Fit the pipeline on training data</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">preprocess</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_preprocessor</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+        <span class="n">X_train</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+        <span class="n">X_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
 
-    <span class="n">y_pred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_pipeline</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
-    <span class="n">y_score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_pipeline</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">estimator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_estimator</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+    <span class="n">y_score</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
 
     <span class="c1"># Validate the training results</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">y_score</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span>
+        <span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">y_score</span><span class="p">,</span> <span class="n">print_flag</span><span class="o">=</span><span class="n">print_flag</span><span class="p">,</span> <span class="n">show_flag</span><span class="o">=</span><span class="n">show_flag</span>
+    <span class="p">)</span>
     <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimal_threshold</span> <span class="o">=</span> <span class="n">calculate_optimal_threshold</span><span class="p">(</span>
         <span class="n">y_test</span><span class="p">,</span> <span class="n">y_score</span>
     <span class="p">)</span>
 </pre></div>
 </div>
 </section>
-<section id="predict">
-<h3><a class="toc-backref" href="#id9" role="doc-backlink">Predict</a><a class="headerlink" href="#predict" title="Link to this heading">¶</a></h3>
-<p>The <cite>predict</cite> function utilizes the trained pipeline to make predictions on new or test data. If specified, the function can also wrangle the input data before making predictions.</p>
+<section id="predictions">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">Predictions</a><a class="headerlink" href="#predictions" title="Link to this heading">¶</a></h3>
+<p>The <cite>predict</cite> and <cite>predict_proba</cite> functions utilize the trained pipeline to make predictions on new or test data. If specified, the function can also wrangle the input data before making predictions.</p>
 <p>Steps include:</p>
 <ol class="arabic simple">
 <li><p>Ensures the pipeline has been fitted before prediction.</p></li>
 <li><p>Optionally <strong>wrangles</strong> the input data if <cite>wrangle=True</cite>.</p></li>
 <li><p>Uses the trained pipeline to <strong>predict</strong> the target values.</p></li>
 </ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">wrangle</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Predict using the trained pipeline.&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_pipeline</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Pipeline has not been fitted yet.&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">wrangle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">preprocess</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Predicts outcomes using the trained estimator.</span>
 
+<span class="sd">    :param X: The dataset to predict on.</span>
+<span class="sd">    :type X: DataFrame</span>
+<span class="sd">    :param wrangle: Whether to apply wrangling steps to the data.</span>
+<span class="sd">    :type wrangle: bool</span>
+<span class="sd">    :param preprocess: Whether to apply preprocessing steps to the data.</span>
+<span class="sd">    :type preprocess: bool</span>
+<span class="sd">    :return: The predicted values.</span>
+<span class="sd">    :rtype: Series</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Estimator has not been fitted yet.&quot;</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">wrangle</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">wrangle</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wrangle</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">preprocess</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_preprocessor</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Preprocessing has not been fitted yet.&quot;</span><span class="p">)</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
     <span class="c1"># Use the trained pipeline for prediction (preprocessing + estimator)</span>
-    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_pipeline</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">predict_proba</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">wrangle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">preprocess</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Predicts class probabilities using the trained estimator.</span>
+
+<span class="sd">    :param X: The dataset to predict on.</span>
+<span class="sd">    :type X: DataFrame</span>
+<span class="sd">    :param wrangle: Whether to apply wrangling steps to the data.</span>
+<span class="sd">    :type wrangle: bool</span>
+<span class="sd">    :param preprocess: Whether to apply preprocessing steps to the data.</span>
+<span class="sd">    :type preprocess: bool</span>
+<span class="sd">    :return: The predicted probabilities.</span>
+<span class="sd">    :rtype: ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Estimator has not been fitted yet.&quot;</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">wrangle</span><span class="p">:</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wrangle</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">preprocess</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_preprocessor</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Preprocessing has not been fitted yet.&quot;</span><span class="p">)</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="c1"># Use the trained pipeline for prediction (preprocessing + estimator)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -277,20 +400,48 @@
 <li><p><strong>Calculating precision</strong>: If the <cite>“precision”</cite> metric is chosen, the precision score is computed using <cite>precision_score</cite>.</p></li>
 </ol>
 <p>The results for the chosen metrics are returned in a dictionary.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">y_score</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;accuracy&quot;</span><span class="p">,</span> <span class="s2">&quot;roc_auc&quot;</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate the trained estimator on test data using</span>
-<span class="sd">    specified metrics.&quot;&quot;&quot;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">validate</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">y_true</span><span class="p">,</span>
+    <span class="n">y_pred</span><span class="p">,</span>
+    <span class="n">y_score</span><span class="p">,</span>
+    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;accuracy&quot;</span><span class="p">,</span> <span class="s2">&quot;roc_auc&quot;</span><span class="p">],</span>
+    <span class="n">show_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">print_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validates the trained estimator on test data using specified metrics.</span>
+
+<span class="sd">    :param y_true: The true target values.</span>
+<span class="sd">    :type y_true: Series</span>
+<span class="sd">    :param y_pred: The predicted target values.</span>
+<span class="sd">    :type y_pred: Series</span>
+<span class="sd">    :param y_score: The predicted probabilities for the positive class.</span>
+<span class="sd">    :type y_score: ndarray</span>
+<span class="sd">    :param metrics: The metrics to compute. \</span>
+<span class="sd">    Defaults to [&quot;accuracy&quot;, &quot;roc_auc&quot;].</span>
+<span class="sd">    :type metrics: list</span>
+<span class="sd">    :param show_flag: Whether to display the ROC curve. Defaults to False.</span>
+<span class="sd">    :type show_flag: bool</span>
+<span class="sd">    :param print_flag: Whether to print the validation results. \</span>
+<span class="sd">    Defaults to False.</span>
+<span class="sd">    :type print_flag: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Calculate and return the desired metrics</span>
     <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">if</span> <span class="s2">&quot;accuracy&quot;</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
         <span class="n">results</span><span class="p">[</span><span class="s2">&quot;accuracy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">accuracy_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="s2">&quot;roc_auc&quot;</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
-        <span class="n">generate_roc_curve</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_score</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">show_flag</span><span class="p">:</span>
+            <span class="n">generate_roc_curve</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_score</span><span class="p">)</span>
         <span class="n">results</span><span class="p">[</span><span class="s2">&quot;roc_auc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roc_auc_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_score</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="s2">&quot;precision&quot;</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
         <span class="n">results</span><span class="p">[</span><span class="s2">&quot;precision&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">precision_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">print_flag</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -305,25 +456,55 @@
 <li><p>Wrangling the input data if needed.</p></li>
 <li><p>Serializing the full pipeline (or parts of it) using Python’s <cite>pickle</cite> module.</p></li>
 </ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">export_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wrangle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="s2">&quot;Export the pipeline&quot;</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_pipeline</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Pipeline has not been fitted yet.&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">export_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wrangle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">preprocess</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exports the full pipeline including wrangling, preprocessing, and</span>
+<span class="sd">    estimator steps.</span>
 
-    <span class="k">if</span> <span class="n">wrangle</span><span class="p">:</span>
+<span class="sd">    :param wrangle: Whether to include wrangling steps in the \</span>
+<span class="sd">    exported pipeline.</span>
+<span class="sd">    :type wrangle: bool</span>
+<span class="sd">    :param preprocess: Whether to include preprocessing steps in the \</span>
+<span class="sd">    exported pipeline.</span>
+<span class="sd">    :type preprocess: bool</span>
+<span class="sd">    :param save_path: The file path to save the exported pipeline. \</span>
+<span class="sd">    Defaults to None.</span>
+<span class="sd">    :type save_path: str, optional</span>
+<span class="sd">    :return: The full pipeline.</span>
+<span class="sd">    :rtype: Pipeline</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Estimator has not been fitted yet.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">wrangle</span> <span class="ow">and</span> <span class="n">preprocess</span><span class="p">:</span>
         <span class="n">full_pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span>
             <span class="n">steps</span><span class="o">=</span><span class="p">[</span>
                 <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">data_wrangling_steps</span><span class="p">,</span>
-                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">trained_pipeline</span><span class="o">.</span><span class="n">steps</span><span class="p">,</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">trained_preprocessor</span><span class="o">.</span><span class="n">steps</span><span class="p">,</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span><span class="o">.</span><span class="n">steps</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">wrangle</span><span class="p">:</span>
+        <span class="n">full_pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span>
+            <span class="n">steps</span><span class="o">=</span><span class="p">[</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">data_wrangling_steps</span><span class="p">,</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span><span class="o">.</span><span class="n">steps</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">preprocess</span><span class="p">:</span>
+        <span class="n">full_pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span>
+            <span class="n">steps</span><span class="o">=</span><span class="p">[</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">trained_preprocessor</span><span class="o">.</span><span class="n">steps</span><span class="p">,</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span><span class="o">.</span><span class="n">steps</span><span class="p">,</span>
             <span class="p">]</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">full_pipeline</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_pipeline</span>
+        <span class="n">full_pipeline</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span>
 
     <span class="n">full_pipeline</span><span class="o">.</span><span class="n">optimal_threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimal_threshold</span>
 
     <span class="k">if</span> <span class="n">save_path</span><span class="p">:</span>
-        <span class="n">dump</span><span class="p">(</span><span class="n">full_pipeline</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">))</span>
+        <span class="n">dump</span><span class="p">(</span><span class="n">full_pipeline</span><span class="p">,</span> <span class="n">save_path</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">full_pipeline</span>
 </pre></div>
@@ -338,11 +519,25 @@
 <li><p><strong>Generating predictions</strong>: The function computes the probability scores for the input data using the pipeline’s <cite>predict_proba</cite> method, then applies a threshold to convert these scores into binary predictions (e.g., <cite>cancer_diagnosis</cite>).</p></li>
 <li><p><strong>Exporting to CSV</strong>: The predictions are saved as a CSV file at the specified <cite>save_path</cite>.</p></li>
 </ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">export_predictions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">save_path</span><span class="p">,</span> <span class="n">wrangle</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_pipeline</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Pipeline has not been fitted yet.&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">export_predictions</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">save_path</span><span class="p">,</span> <span class="n">wrangle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">preprocess</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exports predictions for the given dataset to a CSV file.</span>
 
-    <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">export_pipeline</span><span class="p">(</span><span class="n">wrangle</span><span class="p">)</span>
+<span class="sd">    :param data: The dataset to predict on.</span>
+<span class="sd">    :type data: DataFrame</span>
+<span class="sd">    :param save_path: The file path to save the predictions.</span>
+<span class="sd">    :type save_path: str</span>
+<span class="sd">    :param wrangle: Whether to apply wrangling steps to the data.</span>
+<span class="sd">    :type wrangle: bool</span>
+<span class="sd">    :param preprocess: Whether to apply preprocessing steps to the data.</span>
+<span class="sd">    :type preprocess: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_estimator</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Estimator has not been fitted yet.&quot;</span><span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">export_pipeline</span><span class="p">(</span><span class="n">wrangle</span><span class="p">,</span> <span class="n">preprocess</span><span class="p">)</span>
 
     <span class="n">y_score</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">data</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
     <span class="n">y_pred</span> <span class="o">=</span> <span class="n">y_score</span> <span class="o">&gt;</span> <span class="n">model</span><span class="o">.</span><span class="n">optimal_threshold</span>
@@ -380,7 +575,7 @@
 </li>
 <li><a class="reference internal" href="#working-with-mlpipeline">Working with MLPipeline</a><ul>
 <li><a class="reference internal" href="#train">Train</a></li>
-<li><a class="reference internal" href="#predict">Predict</a></li>
+<li><a class="reference internal" href="#predictions">Predictions</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#validation">Validation</a></li>

@@ -7,6 +7,13 @@ This page is an overview of the API used for data analytics by Matur team.
    :local:
    :depth: 2
 
+Pipeline
+------------------------------------------------------
+
+.. automodule:: xrdanalysis.data_processing.pipeline
+   :members:
+   :show-inheritance:
+
 Azimuthal Integration
 ----------------------------------------------------------
 
