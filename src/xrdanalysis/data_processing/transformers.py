@@ -14,6 +14,12 @@ from xrdanalysis.data_processing.azimuthal_integration import (
     perform_azimuthal_integration,
 )
 from xrdanalysis.data_processing.containers import Limits, Rule, RuleQ
+from xrdanalysis.data_processing.fourier import (
+    fourier_custom,
+    fourier_fft,
+    slope_removal,
+    slope_removal_custom,
+)
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
     generate_poni,
@@ -360,6 +366,175 @@ class ColumnCleaner(TransformerMixin):
         return X_copy
 
 
+class QRangeSetter(TransformerMixin):
+    """
+    Transformer class to set a Q-range for azimuthal integration.
+    """
+
+    def __init__(self, limits: Limits = None):
+        self.limits = limits
+
+    def fit(self, x: pd.DataFrame, y=None):
+        """
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
+
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
+        """
+        _ = x
+        _ = y
+
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Transforms the input DataFrame to set interpolation Q-range.
+
+        :param df: The raw DataFrame to be transformed.
+        :type df: pandas.DataFrame
+        :return: The transformed DataFrame with selected columns.
+        :rtype: pandas.DataFrame
+        """
+
+        dfc = df.copy()
+
+        if self.limits:
+            limits_waxs = (self.limits.q_min_waxs, self.limits.q_max_waxs)
+            limits_saxs = (self.limits.q_min_saxs, self.limits.q_max_saxs)
+            if "type_measurement" not in dfc.columns:
+                dfc["type_measurement"] = dfc[
+                    "calibration_manual_distance"
+                ].apply(lambda d: "WAXS" if d < 50 else "SAXS")
+            dfc["interpolation_q_range"] = dfc["type_measurement"].apply(
+                lambda x: limits_waxs if x == "WAXS" else limits_saxs
+            )
+
+        return dfc
+
+
+class SlopeRemoval(TransformerMixin):
+    """
+    Transformer class to remove slope from a curve
+    """
+
+    def __init__(self, column="radial_profile_data", mode=""):
+        self.column = column
+        self.mode = mode
+
+    def fit(self, x: pd.DataFrame, y=None):
+        """
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
+
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by \
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
+        """
+        _ = x
+        _ = y
+
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Remove slope from a given column
+
+        :param df: The raw DataFrame to be transformed.
+        :type df: pandas.DataFrame
+        :return: The transformed DataFrame with selected columns.
+        :rtype: pandas.DataFrame
+        """
+        X = df.copy()
+
+        if self.mode == "custom":
+            X[self.column] = X[self.column].apply(
+                lambda x: slope_removal_custom(x)[0]
+            )
+
+        else:
+            X[self.column] = X[self.column].apply(lambda x: slope_removal(x))
+
+        return X
+
+
+class FourierTransform(TransformerMixin):
+    """
+    Transformer class to apply Fourier transformation on a specific column of \
+    a DataFrame.
+
+    This class allows for the application of either a custom Fourier \
+    transform or an FFT (Fast Fourier Transform) on a specified column of the \
+    input data. The Fourier coefficients are extracted up to the specified \
+    order.
+    """
+
+    def __init__(
+        self, fourier_mode="", order=15, column="radial_profile_data"
+    ):
+        """
+        Initializes the FourierTransform class with the given parameters.
+
+        :param fourier_mode: The type of Fourier transformation \
+        ('custom' or 'fft').
+        :type fourier_mode: str
+        :param order: The number of Fourier terms (harmonics) to consider.
+        :type order: int
+        :param column: The name of the column in the DataFrame to apply the \
+        Fourier transform.
+        :type column: str
+        """
+        self.fourier_mode = fourier_mode
+        self.order = order
+        self.column = column
+
+    def fit(self, x: pd.DataFrame, y=None):
+        """
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
+
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
+        """
+        _ = x
+        _ = y
+
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Applies Fourier transform to a given column
+
+        :param df: The raw DataFrame to be transformed.
+        :type df: pandas.DataFrame
+        :return: The transformed DataFrame with selected columns.
+        :rtype: pandas.DataFrame
+        """
+        X = df.copy()
+
+        if self.fourier_mode == "custom":
+            fourier_func = fourier_custom
+        else:
+            fourier_func = fourier_fft
+
+        X["fourier_coefficients"] = X[self.column].apply(
+            lambda x: fourier_func(x, self.order)
+        )
+
+        return X
+
+
 class DataPreparation(TransformerMixin):
     """
     Transformer class to prepare a raw DataFrame according to the standard.
@@ -368,12 +543,8 @@ class DataPreparation(TransformerMixin):
     def __init__(
         self,
         columns=COLUMNS_DEF,
-        limits: Limits = None,
-        cleaning_rules: List[Rule] = None,
     ):
         self.columns = columns
-        self.limits = limits
-        self.cleaning_rules = cleaning_rules
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -428,45 +599,7 @@ class DataPreparation(TransformerMixin):
                 lambda d: "WAXS" if d < 0.05 else "SAXS"
             )
 
-        if self.limits:
-            limits_waxs = (self.limits.q_min_waxs, self.limits.q_max_waxs)
-            limits_saxs = (self.limits.q_min_saxs, self.limits.q_max_saxs)
-            if "type_measurement" not in dfc.columns:
-                dfc["type_measurement"] = dfc[
-                    "calibration_manual_distance"
-                ].apply(lambda d: "WAXS" if d < 50 else "SAXS")
-            dfc["interpolation_q_range"] = dfc["type_measurement"].apply(
-                lambda x: limits_waxs if x == "WAXS" else limits_saxs
-            )
-
-        if self.cleaning_rules:
-            dfc = self._clean(dfc)
         return dfc[self.columns]
-
-    def _clean(self, df: pd.DataFrame):
-        def clean(row, cleaning_rules: List[Rule]):
-            res = []
-            for r in cleaning_rules:
-                r: Rule = r
-                ret = False
-                idx = np.argmin(np.abs(row["q_range"] - r.q_value))
-                intensity = row["radial_profile_data"][idx]
-                if r.lower is not None and r.upper is not None:
-                    ret = (intensity > r.lower) and (intensity < r.upper)
-                elif r.lower is not None:
-                    ret = intensity > r.lower
-                elif r.upper is not None:
-                    ret = intensity < r.upper
-                res.append(ret)
-            return all(res)
-
-        if self.cleaning_rules:
-            return df[
-                df.apply(clean, axis=1, cleaning_rules=self.cleaning_rules)
-            ].copy()
-        else:
-            print("No cleaning was done, thera are no cleaning_rules")
-            return df
 
 
 class NormScaler(TransformerMixin):
