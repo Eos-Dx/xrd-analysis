@@ -405,6 +405,8 @@ class ColumnCleaner(TransformerMixin):
         def clean_q(row, rule: RuleQ):
             r: RuleQ = rule
             res = False
+            if row[r.q_column_name][-1] < r.q_value:
+                return True
             idx = np.argmin(np.abs(row[r.q_column_name] - r.q_value))
             intensity = row[r.column_name][idx]
             if r.lower is not None and r.upper is not None:
