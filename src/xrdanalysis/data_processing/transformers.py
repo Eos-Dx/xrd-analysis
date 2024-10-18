@@ -159,6 +159,68 @@ COLUMNS_DEF = [
 ]
 
 
+class ColumnStandardizer(TransformerMixin):
+    """
+    Transformer class for standardizing a specific column of a DataFrame
+    to be used in an sklearn pipeline.
+
+    :param column: The name of the column containing arrays to be standardized.
+    :type column: str
+    """
+
+    def __init__(self, column):
+        """
+        Initializes the ColumnStandardizer with the specified column name.
+
+        :param column: The name of the column containing arrays to standardize.
+        :type column: str
+        """
+        self.column = column
+        self.scaler = StandardScaler()
+
+    def fit(self, X, y=None):
+        """
+        Fits the StandardScaler on the specified column.
+
+        :param X: Input DataFrame.
+        :type X: pd.DataFrame
+        :param y: Ignored, exists for compatibility with sklearn pipeline.
+        :type y: None
+        :return: The fitted transformer.
+        :rtype: ColumnStandardizer
+        """
+        # Extract the column as a DataFrame and fit the scaler
+        column_data = pd.DataFrame(X[self.column].tolist())
+        self.scaler.fit(column_data)
+        return self
+
+    def transform(self, X, y=None):
+        """
+        Transforms the specified column by standardizing the arrays in each \
+        row.
+
+        :param X: Input DataFrame with a column containing arrays to \
+        standardize.
+        :type X: pd.DataFrame
+        :param y: Ignored, exists for compatibility with sklearn pipeline.
+        :type y: None
+        :return: DataFrame with the specified column standardized.
+        :rtype: pd.DataFrame
+        """
+        X_copy = X.copy()
+
+        # Extract the column as a DataFrame for transformation
+        column_data = pd.DataFrame(X_copy[self.column].tolist())
+
+        # Transform the extracted column
+        transformed_data = self.scaler.transform(column_data)
+
+        # Put the transformed data back into the original column
+        X_copy[self.column] = list(transformed_data)
+
+        return X_copy
+
+
 class ColumnNormalizer(TransformerMixin):
     """
     Transformer class for normalizing arrays in a specific column of a

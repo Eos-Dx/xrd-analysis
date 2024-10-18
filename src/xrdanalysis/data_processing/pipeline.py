@@ -117,7 +117,7 @@ class MLPipeline:
         return data_wrangled
 
     def preprocess(self, data):
-        """Apply the prossecing steps to the entire dataset.
+        """Apply the processing steps to the entire dataset.
 
         :param data: The dataset to preprocess.
         :type data: DataFrame
@@ -125,6 +125,22 @@ class MLPipeline:
         :rtype: DataFrame
         """
         return self.trained_preprocessor.transform(data)
+
+    def train_preprocess(self, data):
+        """Train preprocessor and apply the processing steps to the entire \
+        dataset.
+
+        :param data: The dataset to preprocess.
+        :type data: DataFrame
+        :return: The preprocessed dataset.
+        :rtype: DataFrame
+        """
+
+        self.train_preprocessor(data)
+
+        preprocessed_data = self.preprocess(data)
+
+        return preprocessed_data
 
     def wrangle_preprocess_transform(self, data, train=True):
         """
