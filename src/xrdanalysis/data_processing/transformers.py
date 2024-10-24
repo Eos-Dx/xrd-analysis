@@ -2,25 +2,27 @@
 The transformer classes are stored here
 """
 
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin
-from sklearn.cluster import KMeans
+from sklearn.preprocessing import Normalizer, StandardScaler
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     perform_azimuthal_integration,
 )
-from xrdanalysis.data_processing.containers import MLClusterContainer
+from xrdanalysis.data_processing.containers import Limits, Rule, RuleQ
+from xrdanalysis.data_processing.fourier import (
+    fourier_custom,
+    fourier_fft,
+    slope_removal,
+    slope_removal_custom,
+)
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
     generate_poni,
-    interpolate_cluster,
-    normalize_scale_cluster,
-    remove_outliers_by_cluster,
 )
 
 
@@ -157,12 +159,453 @@ COLUMNS_DEF = [
 ]
 
 
+class ColumnStandardizer(TransformerMixin):
+    """
+    Transformer class for standardizing a specific column of a DataFrame
+    to be used in an sklearn pipeline.
+
+    :param column: The name of the column containing arrays to be standardized.
+    :type column: str
+    """
+
+    def __init__(self, column):
+        """
+        Initializes the ColumnStandardizer with the specified column name.
+
+        :param column: The name of the column containing arrays to standardize.
+        :type column: str
+        """
+        self.column = column
+        self.scaler = StandardScaler()
+
+    def fit(self, X, y=None):
+        """
+        Fits the StandardScaler on the specified column.
+
+        :param X: Input DataFrame.
+        :type X: pd.DataFrame
+        :param y: Ignored, exists for compatibility with sklearn pipeline.
+        :type y: None
+        :return: The fitted transformer.
+        :rtype: ColumnStandardizer
+        """
+        # Extract the column as a DataFrame and fit the scaler
+        column_data = pd.DataFrame(X[self.column].tolist())
+        self.scaler.fit(column_data)
+        return self
+
+    def transform(self, X, y=None):
+        """
+        Transforms the specified column by standardizing the arrays in each \
+        row.
+
+        :param X: Input DataFrame with a column containing arrays to \
+        standardize.
+        :type X: pd.DataFrame
+        :param y: Ignored, exists for compatibility with sklearn pipeline.
+        :type y: None
+        :return: DataFrame with the specified column standardized.
+        :rtype: pd.DataFrame
+        """
+        X_copy = X.copy()
+
+        # Extract the column as a DataFrame for transformation
+        column_data = pd.DataFrame(X_copy[self.column].tolist())
+
+        # Transform the extracted column
+        transformed_data = self.scaler.transform(column_data)
+
+        # Put the transformed data back into the original column
+        X_copy[self.column] = list(transformed_data)
+
+        return X_copy
+
+
+class ColumnNormalizer(TransformerMixin):
+    """
+    Transformer class for normalizing arrays in a specific column of a
+    DataFrame to be used in an sklearn pipeline.
+
+    :param column: The name of the column containing arrays to be normalized.
+    :type column: str
+    :param norm: The type of norm to use for normalization \
+    ('l1', 'l2', or 'max'). Defaults to 'l1'.
+    :type norm: str
+    """
+
+    def __init__(self, column, norm="l1"):
+        """
+        Initializes the ColumnNormalizer with the specified column name and
+        normalization method.
+
+        :param column: The name of the column containing arrays to normalize.
+        :type column: str
+        :param norm: The type of norm to use for normalization. Can be 'l1', \
+        'l2', or 'max'. Defaults to 'l2'.
+        :type norm: str
+        """
+        self.column = column
+        self.normalizer = Normalizer(norm=norm)
+
+    def fit(self, X, y=None):
+        """
+        No fitting required for the Normalizer (stateless), but this method
+        is required for compatibility with sklearn pipelines.
+
+        :param X: Input DataFrame.
+        :type X: pd.DataFrame
+        :param y: Ignored, exists for compatibility with sklearn pipeline.
+        :type y: None
+        :return: The fitted transformer.
+        :rtype: ColumnNormalizer
+        """
+        return self
+
+    def transform(self, X, y=None):
+        """
+        Transforms the specified column by normalizing the arrays in each row.
+
+        :param X: Input DataFrame with a column containing arrays to normalize.
+        :type X: pd.DataFrame
+        :param y: Ignored, exists for compatibility with sklearn pipeline.
+        :type y: None
+        :return: DataFrame with the specified column normalized.
+        :rtype: pd.DataFrame
+        """
+        X_copy = X.copy()
+        X_copy[self.column] = X_copy[self.column].apply(
+            lambda arr: self.normalizer.transform([arr])[0]
+        )
+        return X_copy
+
+
+class ColumnExtractor(TransformerMixin):
+    """
+    Transformer class for flattening arrays and appending values from
+    specified columns in a DataFrame to be used in an sklearn pipeline.
+
+    :param columns: List of column names to flatten and combine.
+    :type columns: List[str]
+    """
+
+    def __init__(self, columns):
+        """
+        Initializes the ColumnFlattener with the specified columns.
+
+        :param columns: List of column names to flatten and combine.
+        :type columns: List[str]
+        """
+        self.columns = columns
+
+    def fit(self, X, y=None):
+        """
+        Fit method is not required for ColumnFlattener, but it is
+        provided for compatibility with sklearn pipelines.
+
+        :param X: Input DataFrame.
+        :type X: pd.DataFrame
+        :param y: Ignored, exists for compatibility with sklearn pipeline.
+        :type y: None
+        :return: The fitted transformer.
+        :rtype: ColumnFlattener
+        """
+        return self
+
+    def transform(self, X, y=None):
+        """
+        Transforms the specified columns by flattening any arrays and
+        appending the values from each column into a single list for
+        each row.
+
+        :param X: Input DataFrame with columns to flatten.
+        :type X: pd.DataFrame
+        :param y: Ignored, exists for compatibility with sklearn pipeline.
+        :type y: None
+        :return: DataFrame where each row is a flattened list of values from \
+        the specified columns.
+        :rtype: pd.DataFrame
+        """
+        X_copy = X.copy()
+
+        # Apply flattening logic to each row
+        flattened_data = X_copy.apply(
+            lambda row: self._flatten_row(row), axis=1
+        )
+
+        # Return the DataFrame with flattened rows
+        return pd.DataFrame(
+            np.asarray(flattened_data.values.tolist()),
+            index=flattened_data.index,
+        )
+
+    def _flatten_row(self, row):
+        """
+        Helper function that flattens the values of the specified columns
+        in a row.
+
+        :param row: A single row of the DataFrame.
+        :type row: pd.Series
+        :return: A flattened list of values from the specified columns.
+        :rtype: List
+        """
+        flattened_list = []
+        for col in self.columns:
+            value = row[col]
+            if isinstance(value, (list, np.ndarray)):
+                # Flatten arrays or lists
+                flattened_list.extend(value)
+            else:
+                # Append single values
+                flattened_list.append(value)
+        return flattened_list
+
+
+class ColumnCleaner(TransformerMixin):
+    """
+    Transformer class for cleaning specific columns according to Rules
+    """
+
+    def __init__(self, rules: List[Rule]):
+        """
+        Initializes the ColumnCleaner with the specified rules for \
+        cleaning columns.
+
+        :param rules: A list of rules used to clean specific columns.
+        :type rules: List[Rule]
+        """
+        self.rules = rules
+
+    def fit(self, X, y=None):
+        """
+        Fit method for the transformer. No action is taken during fitting.
+
+        :param X: The input DataFrame.
+        :type X: pandas.DataFrame
+        :param y: Target values (optional, not used in this transformer).
+        :type y: array-like, optional
+        :return: The fitted transformer (self).
+        :rtype: ColumnCleaner
+        """
+
+        return self
+
+    def transform(self, X, y=None):
+        """
+        Transform method for cleaning columns based on the provided rules.
+
+        :param X: The input DataFrame to clean.
+        :type X: pandas.DataFrame
+        :param y: Target values (optional, not used in this transformer).
+        :type y: array-like, optional
+        :return: The cleaned DataFrame.
+        :rtype: pandas.DataFrame
+        """
+        X_copy = X.copy()
+
+        def clean_q(row, rule: RuleQ):
+            r: RuleQ = rule
+            res = False
+            if row[r.q_column_name][-1] < r.q_value:
+                return True
+            idx = np.argmin(np.abs(row[r.q_column_name] - r.q_value))
+            intensity = row[r.column_name][idx]
+            if r.lower is not None and r.upper is not None:
+                res = (intensity > r.lower) and (intensity < r.upper)
+            elif r.lower is not None:
+                res = intensity > r.lower
+            elif r.upper is not None:
+                res = intensity < r.upper
+            return res
+
+        for rule in self.rules:
+            if isinstance(rule, RuleQ):
+                X_copy = X_copy[
+                    X_copy.apply(lambda row: clean_q(row, rule), axis=1)
+                ]
+            else:
+                raise Exception(f"I do not know how to treat {type(rule)}.")
+
+        return X_copy
+
+
+class QRangeSetter(TransformerMixin):
+    """
+    Transformer class to set a Q-range for azimuthal integration.
+    """
+
+    def __init__(self, limits: Limits = None):
+        self.limits = limits
+
+    def fit(self, x: pd.DataFrame, y=None):
+        """
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
+
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
+        """
+        _ = x
+        _ = y
+
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Transforms the input DataFrame to set interpolation Q-range.
+
+        :param df: The raw DataFrame to be transformed.
+        :type df: pandas.DataFrame
+        :return: The transformed DataFrame with selected columns.
+        :rtype: pandas.DataFrame
+        """
+
+        dfc = df.copy()
+
+        if self.limits:
+            limits_waxs = (self.limits.q_min_waxs, self.limits.q_max_waxs)
+            limits_saxs = (self.limits.q_min_saxs, self.limits.q_max_saxs)
+            if "type_measurement" not in dfc.columns:
+                dfc["type_measurement"] = dfc[
+                    "calibration_manual_distance"
+                ].apply(lambda d: "WAXS" if d < 50 else "SAXS")
+            dfc["interpolation_q_range"] = dfc["type_measurement"].apply(
+                lambda x: limits_waxs if x == "WAXS" else limits_saxs
+            )
+
+        return dfc
+
+
+class SlopeRemoval(TransformerMixin):
+    """
+    Transformer class to remove slope from a curve
+    """
+
+    def __init__(self, column="radial_profile_data", mode=""):
+        self.column = column
+        self.mode = mode
+
+    def fit(self, x: pd.DataFrame, y=None):
+        """
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
+
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by \
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
+        """
+        _ = x
+        _ = y
+
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Remove slope from a given column
+
+        :param df: The raw DataFrame to be transformed.
+        :type df: pandas.DataFrame
+        :return: The transformed DataFrame with selected columns.
+        :rtype: pandas.DataFrame
+        """
+        X = df.copy()
+
+        if self.mode == "custom":
+            X[self.column] = X[self.column].apply(
+                lambda x: slope_removal_custom(x)[0]
+            )
+
+        else:
+            X[self.column] = X[self.column].apply(lambda x: slope_removal(x))
+
+        return X
+
+
+class FourierTransform(TransformerMixin):
+    """
+    Transformer class to apply Fourier transformation on a specific column of \
+    a DataFrame.
+
+    This class allows for the application of either a custom Fourier \
+    transform or an FFT (Fast Fourier Transform) on a specified column of the \
+    input data. The Fourier coefficients are extracted up to the specified \
+    order.
+    """
+
+    def __init__(
+        self, fourier_mode="", order=15, column="radial_profile_data"
+    ):
+        """
+        Initializes the FourierTransform class with the given parameters.
+
+        :param fourier_mode: The type of Fourier transformation \
+        ('custom' or 'fft').
+        :type fourier_mode: str
+        :param order: The number of Fourier terms (harmonics) to consider.
+        :type order: int
+        :param column: The name of the column in the DataFrame to apply the \
+        Fourier transform.
+        :type column: str
+        """
+        self.fourier_mode = fourier_mode
+        self.order = order
+        self.column = column
+
+    def fit(self, x: pd.DataFrame, y=None):
+        """
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
+
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
+        """
+        _ = x
+        _ = y
+
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Applies Fourier transform to a given column
+
+        :param df: The raw DataFrame to be transformed.
+        :type df: pandas.DataFrame
+        :return: The transformed DataFrame with selected columns.
+        :rtype: pandas.DataFrame
+        """
+        X = df.copy()
+
+        if self.fourier_mode == "custom":
+            fourier_func = fourier_custom
+        else:
+            fourier_func = fourier_fft
+
+        X["fourier_coefficients"] = X[self.column].apply(
+            lambda x: fourier_func(x, self.order)
+        )
+
+        return X
+
+
 class DataPreparation(TransformerMixin):
     """
     Transformer class to prepare a raw DataFrame according to the standard.
     """
 
-    def __init__(self, columns=COLUMNS_DEF):
+    def __init__(
+        self,
+        columns=COLUMNS_DEF,
+    ):
         self.columns = columns
 
     def fit(self, x: pd.DataFrame, y=None):
@@ -205,216 +648,100 @@ class DataPreparation(TransformerMixin):
             if "calculated_distance" in dfc.columns:
                 dfc = dfc[~dfc["calculated_distance"].isna()]
 
-        dfc["measurement_data"] = dfc["measurement_data"].apply(
-            lambda x: np.nan_to_num(x)
-        )
+        if "age" in dfc.columns:
+            dfc["age"] = df["age"].fillna(-1)
+
+        if "measurement_data" in dfc.columns:
+            dfc["measurement_data"] = dfc["measurement_data"].apply(
+                lambda x: np.nan_to_num(x)
+            )
+
+        if "calculated_distance" in dfc.columns:
+            dfc["type_measurement"] = dfc["calculated_distance"].apply(
+                lambda d: "WAXS" if d < 0.05 else "SAXS"
+            )
 
         return dfc[self.columns]
 
 
-class Clusterization(TransformerMixin):
+class NormScaler(TransformerMixin):
     """
-    Transformer class to perform clusterization and remove outliers
-    from the DataFrame.
-
-    :param n_clusters: The number of clusters to use in K-Means clustering.
-    :type n_clusters: int
-    :param z_score_threshold: The threshold for Z-score based outlier removal.
-    :type z_score_threshold: float
-    :param direction: The direction of outlier removal, either "both",\
-        "positive", or "negative".
-    :type direction: str
+    Does normalization and scaling of the dataframe
     """
 
-    def __init__(self, n_clusters, z_score_threshold, direction):
-        """
-        Initialize the Clusterization transformer with parameters.
+    def __init__(
+        self, scalers: Dict[str, StandardScaler] = None, name="Scaler"
+    ):
+        self._name = name
+        if scalers:
+            self.scalers = scalers
+        else:
+            self.scalers = {}
 
-        :param n_clusters: The number of clusters to use in K-Means clustering.
-        :type n_clusters: int
-        :param z_score_threshold: The threshold for Z-score based outlier\
-            removal.
-        :type z_score_threshold: float
-        :param direction: The direction of outlier removal, either "both",\
-            "positive", or "negative".
-        :type direction: str
-        """
-        self.n_clusters = n_clusters
-        self.z_score_threshold = z_score_threshold
-        self.direction = direction
+    def fit(self, df: pd.DataFrame, y=None):
+        print(f"NormScaler {self._name}: is doing fit.")
+        dfc = df.copy()
+        norm = Normalizer("l1")
+        dfc["radial_profile_data_norm"] = dfc["radial_profile_data"].apply(
+            lambda x: norm.transform([x])[0]
+        )
 
-    def fit(self, x: pd.DataFrame, y=None):
-        """
-        Fit method for the transformer. Since this transformer does not learn
-        from the data, the fit method does not perform any operations.
+        df_saxs = dfc[dfc["type_measurement"] == "SAXS"].copy()
+        df_waxs = dfc[dfc["type_measurement"] == "WAXS"].copy()
 
-        :param x: The data to fit.
-        :type x: pandas.DataFrame
-        :param y: Ignored. Not used, present here for API consistency by\
-            convention.
-        :return: Returns the instance itself.
-        :rtype: object
-        """
-        _ = x
-        _ = y
+        if not df_saxs.empty:
+            scaler_saxs = StandardScaler()
+            matrix_2d_saxs = np.vstack(
+                df_saxs["radial_profile_data_norm"].values
+            )
+            scaler_saxs.fit(matrix_2d_saxs)
+            self.scalers["SAXS"] = scaler_saxs
+
+        # Apply the scaler for WAXS data
+        if not df_waxs.empty:
+            scaler_waxs = StandardScaler()
+            matrix_2d_waxs = np.vstack(
+                df_waxs["radial_profile_data_norm"].values
+            )
+            scaler_waxs.fit(matrix_2d_waxs)
+            self.scalers["WAXS"] = scaler_waxs
 
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Transforms the input DataFrame by performing clusterization\
-        and outlier removal.
-
-        :param df: The input DataFrame.
-        :type df: pandas.DataFrame
-        :return: The transformed DataFrame with outliers removed.
-        :rtype: pandas.DataFrame
-        """
-
+        print(f"NormScaler {self._name}: is doing transform.")
+        if not self.scalers:
+            self.fit(df)
         dfc = df.copy()
-
-        dfc["q_range_min"] = dfc["q_range"].apply(lambda x: np.min(x))
-        dfc["q_range_max"] = dfc["q_range"].apply(lambda x: np.max(x))
-
-        num_clusters = self.n_clusters
-        column_names = ["q_range_min", "q_range_max"]
-        # Extract the q_range_min and q_range_max columns
-        q_range_data = dfc[column_names].values
-        # Perform K-Means clustering with the optimal number of clusters
-        kmeans = KMeans(
-            n_clusters=num_clusters,
-            random_state=42,
-            algorithm="elkan",
-            n_init="auto",
-        )
-        cluster_labels = kmeans.fit_predict(q_range_data)
-        # Add the cluster labels to your DataFrame
-        dfc["q_cluster_label"] = cluster_labels
-
-        return remove_outliers_by_cluster(
-            dfc,
-            z_score_threshold=self.z_score_threshold,
-            direction=self.direction,
-            num_clusters=self.n_clusters,
+        raw_index = dfc.index
+        norm = Normalizer("l1")
+        dfc["radial_profile_data_norm"] = dfc["radial_profile_data"].apply(
+            lambda x: norm.transform([x])[0]
         )
 
+        df_saxs = dfc[dfc["type_measurement"] == "SAXS"].copy()
+        df_waxs = dfc[dfc["type_measurement"] == "WAXS"].copy()
 
-class InterpolatorClusters(TransformerMixin):
-    """
-    Transformer class for interpolating clusters of azimuthal integration data.
-
-    :param perc_min: The minimum percentage of the maximum q-range for\
-        interpolation.
-    :type perc_min: float
-    :param perc_max: The maximum percentage of the maximum q-range for\
-        interpolation.
-    :type perc_max: float
-    :param resolution: The resolution for interpolation.
-    :type resolution: int
-    :param faulty_pixel_array: A list of faulty pixel coordinates.
-    :type faulty_pixel_array: List
-    :param model_names: Names of the models.
-    :type model_names: str
-    """
-
-    def __init__(
-        self,
-        perc_min: float,
-        perc_max: float,
-        resolution: int,
-        faulty_pixel_array: List,
-        model_names: str,
-    ):
-        self.perc_min = perc_min
-        self.perc_max = perc_max
-        self.q_resolution = resolution
-        self.model_names = model_names
-        self.faulty_pixel_array = faulty_pixel_array
-
-    def fit(self, x: pd.DataFrame):
-        """
-        Fit method for the transformer. Since this transformer does not learn
-        from the data, the fit method does not perform any operations.
-
-        :param x: The data to fit.
-        :type x: pandas.DataFrame
-        :param y: Ignored. Not used, present here for API consistency by\
-            convention.
-        :return: Returns the instance itself.
-        :rtype: object
-        """
-        self.x = x
-        return self
-
-    def transform(self, df) -> Dict[str, MLClusterContainer]:
-        """
-        Perform interpolation on the input data.
-
-        :param df: Input DataFrame containing data to be interpolated.
-        :type df: pandas.DataFrame
-        :return: Dictionary containing interpolated clusters.
-        :rtype: dict
-        """
-        dfc = df.copy()
-        clusters_global = {}
-        clusters = {}
-        for cluster_label in dfc["q_cluster_label"].unique():
-            azimuth = AzimuthalIntegration(
-                faulty_pixels=self.faulty_pixel_array, npt=self.q_resolution
+        # Apply the scaler for SAXS data
+        if not df_saxs.empty:
+            matrix_2d_saxs = np.vstack(
+                df_saxs["radial_profile_data_norm"].values
             )
-            clusters[cluster_label] = interpolate_cluster(
-                dfc, cluster_label, self.perc_min, self.perc_max, azimuth
+            scaled_data_saxs = self.scalers["SAXS"].transform(matrix_2d_saxs)
+            df_saxs["radial_profile_data_norm_scaled"] = [
+                arr for arr in scaled_data_saxs
+            ]
+
+        # Apply the scaler for WAXS data
+        if not df_waxs.empty:
+            matrix_2d_waxs = np.vstack(
+                df_waxs["radial_profile_data_norm"].values
             )
+            scaled_data_waxs = self.scalers["WAXS"].transform(matrix_2d_waxs)
+            df_waxs["radial_profile_data_norm_scaled"] = [
+                arr for arr in scaled_data_waxs
+            ]
 
-        for model_name in self.model_names:
-            clusters_global[model_name] = MLClusterContainer(
-                model_name, deepcopy(clusters)
-            )
-        return clusters_global
-
-
-class NormScalerClusters(TransformerMixin):
-    """
-    Transformer class for normalizing and scaling clusters of azimuthal
-    integration data.
-
-    :param model_names: Names of the models.
-    :type model_names: List[str]
-    :param do_fit: Whether to fit the scaler. Defaults to True.
-    :type do_fit: bool
-    """
-
-    def __init__(self, model_names: List[str], do_fit=True):
-        self.model_names = model_names
-        self.do_fit = do_fit
-
-    def fit(self, x):
-        """
-        Fit method for the transformer. Since this transformer does not learn
-        from the data, the fit method does not perform any operations.
-
-        :param x: The data to fit.
-        :type x: pandas.DataFrame
-        :param y: Ignored. Not used, present here for API consistency by\
-            convention.
-        :return: Returns the instance itself.
-        :rtype: object
-        """
-        self.x = x
-        return self
-
-    def transform(
-        self, containers: Dict[str, MLClusterContainer]
-    ) -> Dict[str, MLClusterContainer]:
-        """
-        Perform normalization and scaling on the input data.
-
-        :param containers: Dictionary containing MLClusterContainers.
-        :type containers: dict
-        :return: Dictionary containing normalized and scaled clusters.
-        :rtype: dict
-        """
-        for container in containers.values():
-            for cluster in container.clusters.values():
-                normalize_scale_cluster(cluster, do_fit=self.do_fit)
-        return containers
+        # Combine the processed DataFrames back into one
+        dfc_processed = pd.concat([df_saxs, df_waxs])
+        return dfc_processed.loc[raw_index]

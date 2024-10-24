@@ -14,6 +14,7 @@ This SOP outlines the standard procedures for handling and processing data withi
 
    hdf5
    validation
+   pipeline
 
 HDF5 File Structure
 --------------------
