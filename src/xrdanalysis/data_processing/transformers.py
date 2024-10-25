@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import curve_fit
 from sklearn.base import TransformerMixin
 from sklearn.preprocessing import Normalizer, StandardScaler
 
@@ -745,3 +746,124 @@ class NormScaler(TransformerMixin):
         # Combine the processed DataFrames back into one
         dfc_processed = pd.concat([df_saxs, df_waxs])
         return dfc_processed.loc[raw_index]
+
+
+class CurveFittingTransformer(TransformerMixin):
+    """
+    Transformer class for fitting a provided function to specified x and y
+    columns of a DataFrame.
+
+    :param x_column: The name of the column containing the x-values \
+    (independent variable).
+    :type x_column: str
+    :param y_column: The name of the column containing the y-values \
+    (dependent variable).
+    :type y_column: str
+    :param func: The function to fit. Should take x as the first argument, \
+    followed by parameters to fit.
+    :type func: callable
+    :param p0: Initial guess for the parameters.
+    :type p0: list or array-like
+    :param bounds: Bounds for the fit parameters. Defaults to no bounds.
+    :type bounds: tuple, optional
+    """
+
+    def __init__(
+        self,
+        x_column,
+        y_column,
+        func,
+        p0,
+        bounds=(-np.inf, np.inf),
+        param_indices=None,
+    ):
+        """
+        Initializes the CurveFittingTransformer with specified x and y columns,
+        the function to fit, initial guess for the parameters, and optional \
+        bounds.
+
+        :param x_column: Column name for x-values.
+        :type x_column: str
+        :param y_column: Column name for y-values.
+        :type y_column: str
+        :param func: Function to fit.
+        :type func: callable
+        :param p0: Initial guess for the parameters.
+        :type p0: list
+        :param bounds: Bounds for the parameters. Defaults to no bounds.
+        :type bounds: tuple, optional
+        """
+        self.x_column = x_column
+        self.y_column = y_column
+        self.func = func
+        self.p0 = p0
+        self.bounds = bounds
+        self.param_indices = param_indices
+
+    def fit(self, X, y=None):
+        """
+        No fitting required, but this method is required for compatibility
+        with sklearn pipelines.
+
+        :param X: Input DataFrame.
+        :type X: pd.DataFrame
+        :param y: Ignored.
+        :type y: None
+        :return: Self.
+        :rtype: CurveFittingTransformer
+        """
+        return self
+
+    def transform(self, X, y=None):
+        """
+        Applies the curve fitting function to the x and y columns of the \
+        DataFrame.
+        Stores the fitting results (parameters) and optionally the fitted curve
+        in separate columns.
+
+        :param X: Input DataFrame.
+        :type X: pd.DataFrame
+        :param y: Ignored.
+        :type y: None
+        :return: DataFrame with fitting results.
+        :rtype: pd.DataFrame
+        """
+        X_copy = X.copy()
+        # Create DF columns to store data
+        X_copy["fit_params"] = None
+        X_copy["fitted_curve"] = None
+        # Make columns store objects
+        X_copy["fit_params"].astype(object)
+        X_copy["fitted_curve"].astype(object)
+
+        # Apply curve fitting for each row
+        for index, row in X_copy.iterrows():
+            x_values = np.array(row[self.x_column])
+            y_values = np.array(row[self.y_column])
+
+            try:
+                # Perform curve fitting
+                popt, _ = curve_fit(
+                    self.func,
+                    x_values,
+                    y_values,
+                    p0=self.p0,
+                    bounds=self.bounds,
+                )
+
+                selected_params = (
+                    popt
+                    if self.param_indices is None
+                    else popt[np.array(self.param_indices)]
+                )
+
+                # Store fit results in new columns
+                X_copy.at[index, "fit_params"] = selected_params
+                X_copy.at[index, "fitted_curve"] = self.func(x_values, *popt)
+
+            except RuntimeError as e:
+                print(f"Fit failed for index {index}: {e}")
+                X_copy.at[index, "fit_params"] = None
+                X_copy.at[index, "fitted_curve"] = None
+
+        return X_copy
