@@ -42,6 +42,20 @@ Transformers
    :members:
    :show-inheritance:
 
+Fourier
+----------------------------------------------------------
+
+.. automodule:: xrdanalysis.data_processing.fourier
+   :members:
+   :show-inheritance:
+
+Fitting Functions
+----------------------------------------------------------
+
+.. automodule:: xrdanalysis.data_processing.fitting_functions
+   :members:
+   :show-inheritance:
+
 Utilities
 ------------------------------------------------------
 
