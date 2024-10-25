@@ -67,6 +67,7 @@ def fourier_custom(curve, order):
     """
     L = len(curve)
     x = np.arange(0, L)
+    a0 = 2.0 / L * simps(curve, x)
     an_list = np.zeros(order)
     bn_list = np.zeros(order)
 
@@ -77,7 +78,15 @@ def fourier_custom(curve, order):
         an_list[n - 1] = 2.0 / L * simps(curve * cos_term, x)
         bn_list[n - 1] = 2.0 / L * simps(curve * sin_term, x)
 
-    return np.concatenate([an_list, bn_list])
+    inverse = a0 / 2.0 + sum(
+        [
+            an_list[k - 1] * np.cos(2.0 * np.pi * k * x / L)
+            + bn_list[k - 1] * np.sin(2.0 * np.pi * k * x / L)
+            for k in range(1, order + 1)
+        ]
+    )
+
+    return np.concatenate([an_list, bn_list]), inverse
 
 
 def fourier_fft(curve, order):
@@ -95,5 +104,12 @@ def fourier_fft(curve, order):
     :rtype: numpy.ndarray
     """
     # 0 order is ignored
-    coeff = fft.fft(curve)[1 : order + 1]  # noqa: E203
-    return np.concatenate([coeff.real, coeff.imag])
+    fourier = fft.fft(curve)
+
+    coeff = fourier[1 : order + 1]  # noqa: E203
+
+    filtered_fourier = np.array(fourier.copy())
+    filtered_fourier[order + 1 : -order] = 0  # noqa: E203
+
+    inverse = fft.ifft(filtered_fourier)
+    return np.concatenate([coeff.real, coeff.imag]), inverse

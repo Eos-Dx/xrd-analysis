@@ -591,8 +591,8 @@ class FourierTransform(TransformerMixin):
         else:
             fourier_func = fourier_fft
 
-        X["fourier_coefficients"] = X[self.column].apply(
-            lambda x: fourier_func(x, self.order)
+        X[["fourier_coefficients", "fourier_inverse"]] = X[self.column].apply(
+            lambda x: pd.Series(fourier_func(x, self.order))
         )
 
         return X
