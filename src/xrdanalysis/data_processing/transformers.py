@@ -122,9 +122,14 @@ class AzimuthalIntegration(TransformerMixin):
         if self.integration_mode in ["1D", "sigma_clip"]:
             # Extract q_range and profile arrays from the integration_results
             x_copy[
-                ["q_range", "radial_profile_data", "calculated_distance"]
+                [
+                    "q_range",
+                    "radial_profile_data",
+                    "radial_sigma",
+                    "calculated_distance",
+                ]
             ] = integration_results.apply(
-                lambda x: pd.Series([x[0], x[1], x[2]])
+                lambda x: pd.Series([x[0], x[1], x[2], x[3]])
             )
         elif self.integration_mode == "2D":
             x_copy[
