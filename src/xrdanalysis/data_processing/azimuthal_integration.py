@@ -64,6 +64,8 @@ def perform_azimuthal_integration(
     mask=None,
     mode="1D",
     calibration_mode="dataframe",
+    thres=3,
+    max_iter=5,
     poni_dir=None,
 ):
     """
@@ -152,14 +154,15 @@ def perform_azimuthal_integration(
         )
 
     if mode == "1D":
-        radial, intensity = ai_cached.integrate1d(
+        radial, intensity, sigma = ai_cached.integrate1d(
             data,
             npt,
             radial_range=interpolation_q_range,
             azimuth_range=azimuthal_range,
+            error_model="azimuthal",
             mask=mask,
         )
-        return radial, intensity, ai_cached.dist
+        return radial, intensity, sigma, ai_cached.dist
     elif mode == "2D":
         intensity, radial, azimuthal = ai_cached.integrate2d(
             data,
@@ -169,3 +172,15 @@ def perform_azimuthal_integration(
             mask=mask,
         )
         return radial, intensity, azimuthal, ai_cached.dist
+    elif mode == "sigma_clip":
+        radial, intensity, sigma = ai_cached.sigma_clip_ng(
+            data,
+            npt,
+            thres=thres,
+            max_iter=max_iter,
+            error_model="azimuthal",
+            radial_range=interpolation_q_range,
+            azimuth_range=azimuthal_range,
+            mask=mask,
+        )
+        return radial, intensity, sigma, ai_cached.dist

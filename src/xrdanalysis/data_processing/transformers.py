@@ -54,6 +54,8 @@ class AzimuthalIntegration(TransformerMixin):
     :type poni_dir_path: str
     """
 
+    max_iter: int = 5
+    thres: int = 3
     faulty_pixels: Tuple[int] = None
     npt: int = 256
     integration_mode: str = "1D"
@@ -110,17 +112,24 @@ class AzimuthalIntegration(TransformerMixin):
                 mask,
                 self.integration_mode,
                 self.calibration_mode,
+                thres=self.thres,
+                max_iter=self.max_iter,
                 poni_dir=directory_path,
             ),
             axis=1,
         )
 
-        if self.integration_mode == "1D":
+        if self.integration_mode in ["1D", "sigma_clip"]:
             # Extract q_range and profile arrays from the integration_results
             x_copy[
-                ["q_range", "radial_profile_data", "calculated_distance"]
+                [
+                    "q_range",
+                    "radial_profile_data",
+                    "radial_sigma",
+                    "calculated_distance",
+                ]
             ] = integration_results.apply(
-                lambda x: pd.Series([x[0], x[1], x[2]])
+                lambda x: pd.Series([x[0], x[1], x[2], x[3]])
             )
         elif self.integration_mode == "2D":
             x_copy[
