@@ -5,10 +5,12 @@ This file includes functions and classes essential for azimuthal integration
 import os
 from functools import cache
 
+import numpy as np
 import pandas as pd
 import pyFAI
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
+from scipy.stats import mstats
 
 
 @cache
@@ -67,6 +69,7 @@ def perform_azimuthal_integration(
     thres=3,
     max_iter=5,
     poni_dir=None,
+    calc_cake_stats=False,
 ):
     """
     Perform azimuthal integration on a single row of a DataFrame.
@@ -154,7 +157,7 @@ def perform_azimuthal_integration(
         )
 
     if mode == "1D":
-        radial, intensity, sigma = ai_cached.integrate1d(
+        result = ai_cached.integrate1d(
             data,
             npt,
             radial_range=interpolation_q_range,
@@ -162,18 +165,55 @@ def perform_azimuthal_integration(
             error_model="azimuthal",
             mask=mask,
         )
-        return radial, intensity, sigma, ai_cached.dist
+        return (
+            result.radial,
+            result.intensity,
+            result.sigma,
+            result.std,
+            ai_cached.dist,
+        )
     elif mode == "2D":
-        intensity, radial, azimuthal = ai_cached.integrate2d(
+        result = ai_cached.integrate2d(
             data,
             npt,
             radial_range=interpolation_q_range,
             azimuth_range=azimuthal_range,
             mask=mask,
         )
-        return radial, intensity, azimuthal, ai_cached.dist
+
+        mean_col = variance_col = std_col = skewness_col = kurtosis_col = None
+
+        if calc_cake_stats:
+            masked_array = np.ma.masked_equal(result.intensity, 0)
+
+            # Mean along columns, ignoring masked values
+            mean_col = masked_array.mean(axis=0)
+
+            # Variance along columns, ignoring masked values
+            variance_col = masked_array.var(axis=0)
+
+            # SRD along columns, ignoring masked values
+            std_col = masked_array.std(axis=0)
+
+            # Skewness along columns, ignoring masked values
+            skewness_col = mstats.skew(masked_array, axis=0)
+
+            # Kurtosis along columns, ignoring masked values
+            kurtosis_col = mstats.kurtosis(masked_array, axis=0)
+
+        return (
+            result.radial,
+            result.intensity,
+            result.azimuthal,
+            ai_cached.dist,
+            mean_col,
+            variance_col,
+            std_col,
+            skewness_col,
+            kurtosis_col,
+        )
     elif mode == "sigma_clip":
-        radial, intensity, sigma = ai_cached.sigma_clip_ng(
+        result = ai_cached.sigma_clip_ng(
             data,
             npt,
             thres=thres,
@@ -183,4 +223,10 @@ def perform_azimuthal_integration(
             azimuth_range=azimuthal_range,
             mask=mask,
         )
-        return radial, intensity, sigma, ai_cached.dist
+        return (
+            result.radial,
+            result.intensity,
+            result.sigma,
+            result.std,
+            ai_cached.dist,
+        )

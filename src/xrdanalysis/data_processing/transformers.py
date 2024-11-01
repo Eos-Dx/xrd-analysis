@@ -62,6 +62,7 @@ class AzimuthalIntegration(TransformerMixin):
     transformation_mode: str = "dataframe"
     calibration_mode: str = "dataframe"
     poni_dir_path: str = "data/poni"
+    calc_cake_stats: bool = False
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -115,6 +116,7 @@ class AzimuthalIntegration(TransformerMixin):
                 thres=self.thres,
                 max_iter=self.max_iter,
                 poni_dir=directory_path,
+                calc_cake_stats=self.calc_cake_stats,
             ),
             axis=1,
         )
@@ -125,11 +127,12 @@ class AzimuthalIntegration(TransformerMixin):
                 [
                     "q_range",
                     "radial_profile_data",
-                    "radial_sigma",
+                    "radial_sem",
+                    "radial_std",
                     "calculated_distance",
                 ]
             ] = integration_results.apply(
-                lambda x: pd.Series([x[0], x[1], x[2], x[3]])
+                lambda x: pd.Series([x[0], x[1], x[2], x[3], x[4]])
             )
         elif self.integration_mode == "2D":
             x_copy[
@@ -138,9 +141,16 @@ class AzimuthalIntegration(TransformerMixin):
                     "radial_profile_data",
                     "azimuthal_positions",
                     "calculated_distance",
+                    "cake_col_mean",
+                    "cake_col_variance",
+                    "cake_col_std",
+                    "cake_col_skew",
+                    "cake_col_kurtosis",
                 ]
             ] = integration_results.apply(
-                lambda x: pd.Series([x[0], x[1], x[2], x[3]])
+                lambda x: pd.Series(
+                    [x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8]]
+                )
             )
 
         if self.transformation_mode == "pipeline":
