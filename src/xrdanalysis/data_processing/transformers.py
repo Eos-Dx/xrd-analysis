@@ -20,6 +20,7 @@ from xrdanalysis.data_processing.containers import Limits, Rule, RuleQ
 from xrdanalysis.data_processing.fourier import (
     fourier_custom,
     fourier_fft,
+    fourier_fft2,
     slope_removal,
     slope_removal_custom,
 )
@@ -673,7 +674,13 @@ class FourierTransform(TransformerMixin):
     """
 
     def __init__(
-        self, fourier_mode="", order=15, column="radial_profile_data"
+        self,
+        fourier_mode="",
+        order=15,
+        column="radial_profile_data",
+        remove_beam=False,
+        thresh=1000,
+        padding=0,
     ):
         """
         Initializes the FourierTransform class with the given parameters.
@@ -690,6 +697,9 @@ class FourierTransform(TransformerMixin):
         self.fourier_mode = fourier_mode
         self.order = order
         self.column = column
+        self.remove_beam = remove_beam
+        self.thresh = thresh
+        self.padding = padding
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -718,15 +728,33 @@ class FourierTransform(TransformerMixin):
         :rtype: pandas.DataFrame
         """
         X = df.copy()
+        if self.fourier_mode != "2D":
+            if self.fourier_mode == "custom":
+                fourier_func = fourier_custom
+            else:
+                fourier_func = fourier_fft
 
-        if self.fourier_mode == "custom":
-            fourier_func = fourier_custom
+            X[["fourier_coefficients", "fourier_inverse"]] = X[
+                self.column
+            ].apply(lambda x: pd.Series(fourier_func(x, self.order)))
         else:
-            fourier_func = fourier_fft
-
-        X[["fourier_coefficients", "fourier_inverse"]] = X[self.column].apply(
-            lambda x: pd.Series(fourier_func(x, self.order))
-        )
+            X[
+                [
+                    "fft2_norm_magnitude",
+                    "fft2_phase",
+                    "fft2_reconstructed",
+                    "fft2_vertical_profile",
+                    "fft2_horizontal_profile",
+                    "fft2_freq_horizontal",
+                    "fft2_freq_vertical",
+                ]
+            ] = X[self.column].apply(
+                lambda x: pd.Series(
+                    fourier_fft2(
+                        x, self.remove_beam, self.thresh, self.padding
+                    )
+                )
+            )
 
         return X
 
