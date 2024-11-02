@@ -13,6 +13,8 @@ from sklearn.preprocessing import Normalizer, StandardScaler
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     perform_azimuthal_integration,
+    calculate_deviation,
+    calculate_deviation_cake,
 )
 from xrdanalysis.data_processing.containers import Limits, Rule, RuleQ
 from xrdanalysis.data_processing.fourier import (
@@ -24,6 +26,7 @@ from xrdanalysis.data_processing.fourier import (
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
     generate_poni,
+    unpack_results,
 )
 
 
@@ -158,6 +161,117 @@ class AzimuthalIntegration(TransformerMixin):
                 np.asarray(x_copy["radial_profile_data"].values.tolist()),
                 index=x_copy.index,
             )
+
+        return x_copy
+
+
+class DeviationTransformer(TransformerMixin):
+    """
+    Transformer class for azimuthal integration to be used in
+    an sklearn pipeline.
+
+    :param faulty_pixels: A tuple containing the coordinates of faulty pixels.
+    :type faulty_pixels: Tuple[int]
+    :param npt: The number of points for azimuthal integration. Defaults to\
+        256.
+    :type npt: int
+    :param poni_dir_path: Directory path where .poni files for the rows will\
+        be saved.
+    :type poni_dir_path: str
+    """
+
+    def __init__(
+        self,
+        faulty_pixels: Tuple[int] = None,
+        npt=256,
+        poni_dir_path: str = "data/poni",
+        above_limits=[1.2],
+        below_limits=[0.8],
+        mode="cake",
+    ):
+        """
+        Initializes the ColumnStandardizer with the specified column name.
+
+        :param column: The name of the column containing arrays to standardize.
+        :type column: str
+        """
+        self.faulty_pixels = faulty_pixels
+        self.npt = npt
+        self.poni_dir_path = poni_dir_path
+        self.above_limits = above_limits
+        self.below_limits = below_limits
+        self.mode = mode
+
+    def fit(self, x: pd.DataFrame, y=None):
+        """
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
+
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
+        """
+        _ = x
+        _ = y
+
+        return self
+
+    def transform(self, x: pd.DataFrame) -> pd.DataFrame:
+        """
+        Applies azimuthal integration to each row of the DataFrame and adds
+        the result as a new column.
+
+        :param X: The data to transform. Must contain 'measurement_data' and\
+            'center' columns.
+        :type X: pandas.DataFrame
+        :return: A copy of the input DataFrame with an additional\
+            'radial_profile_data' column containing the results of the\
+            azimuthal integration, and optionally 'q_range' and\
+            'azimuthal_positions' columns for 2D integration.
+        :rtype: pandas.DataFrame
+        """
+
+        x_copy = x.copy()
+
+        # Mark the faulty pixels in the mask
+        mask = create_mask(self.faulty_pixels)
+
+        directory_path = generate_poni(x_copy, self.poni_dir_path)
+        x_copy.dropna(subset="ponifile", inplace=True)
+
+        calc_func = (
+            calculate_deviation_cake
+            if self.mode == "cake"
+            else calculate_deviation
+        )
+
+        integration_results = x_copy.apply(
+            lambda row: calc_func(
+                row,
+                self.above_limits,
+                self.below_limits,
+                self.npt,
+                mask,
+                poni_dir=directory_path,
+            ),
+            axis=1,
+        )
+
+        # Expand each row's results into new columns
+        expanded_results = integration_results.apply(unpack_results)
+        expanded_df = pd.DataFrame(list(expanded_results))
+
+        # Concatenate the original DataFrame with the new columns
+        x_copy = pd.concat(
+            [
+                x_copy.reset_index(drop=True),
+                expanded_df.reset_index(drop=True),
+            ],
+            axis=1,
+        )
 
         return x_copy
 

@@ -6,7 +6,6 @@ from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from matplotlib.ticker import MultipleLocator
 from skimage.measure import label, regionprops
 from sklearn.metrics import (
@@ -16,6 +15,33 @@ from sklearn.metrics import (
     precision_score,
     roc_curve,
 )
+
+
+def unpack_results(result):
+    (
+        above_limits,
+        images_above,
+        averages_higher,
+        below_limits,
+        images_below,
+        averages_lower,
+    ) = result
+
+    # Initialize dictionaries to store the columns
+    above_columns = {}
+    below_columns = {}
+
+    # Loop through above limits with enumerate for indexing
+    for index, limit in enumerate(above_limits):
+        above_columns[f"image_above_{limit}"] = images_above[index]
+        above_columns[f"deviation_above_{limit}"] = averages_higher[index]
+
+    # Loop through below limits with enumerate for indexing
+    for index, limit in enumerate(below_limits):
+        below_columns[f"image_below_{limit}"] = images_below[index]
+        below_columns[f"deviation_below_{limit}"] = averages_lower[index]
+    # Merge above and below columns
+    return {**above_columns, **below_columns}
 
 
 def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
