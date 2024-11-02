@@ -1,11 +1,11 @@
 """Various utility functions used in different parts of codebase"""
 
 import os
-import pandas as pd
 from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from matplotlib.ticker import MultipleLocator
 from skimage.measure import label, regionprops
 from sklearn.metrics import (

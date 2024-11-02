@@ -12,9 +12,9 @@ from sklearn.base import TransformerMixin
 from sklearn.preprocessing import Normalizer, StandardScaler
 
 from xrdanalysis.data_processing.azimuthal_integration import (
-    perform_azimuthal_integration,
     calculate_deviation,
     calculate_deviation_cake,
+    perform_azimuthal_integration,
 )
 from xrdanalysis.data_processing.containers import Limits, Rule, RuleQ
 from xrdanalysis.data_processing.fourier import (
