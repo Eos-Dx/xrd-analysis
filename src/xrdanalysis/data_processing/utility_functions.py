@@ -1,7 +1,6 @@
 """Various utility functions used in different parts of codebase"""
 
 import os
-import pandas as pd
 from typing import Tuple
 
 import matplotlib.pyplot as plt
@@ -16,6 +15,33 @@ from sklearn.metrics import (
     precision_score,
     roc_curve,
 )
+
+
+def unpack_results(result):
+    (
+        above_limits,
+        images_above,
+        averages_higher,
+        below_limits,
+        images_below,
+        averages_lower,
+    ) = result
+
+    # Initialize dictionaries to store the columns
+    above_columns = {}
+    below_columns = {}
+
+    # Loop through above limits with enumerate for indexing
+    for index, limit in enumerate(above_limits):
+        above_columns[f"image_above_{limit}"] = images_above[index]
+        above_columns[f"deviation_above_{limit}"] = averages_higher[index]
+
+    # Loop through below limits with enumerate for indexing
+    for index, limit in enumerate(below_limits):
+        below_columns[f"image_below_{limit}"] = images_below[index]
+        below_columns[f"deviation_below_{limit}"] = averages_lower[index]
+    # Merge above and below columns
+    return {**above_columns, **below_columns}
 
 
 def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
@@ -61,6 +87,51 @@ def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
         center = (np.NaN, np.NaN)
 
     return center
+
+
+def mask_beam_center(image: np.ndarray, thresh: float, padding: int = 0):
+    """
+    Isolates and removes a central beam from an image based on a threshold \
+    value.
+
+    :param image: Input image to process for beam removal.
+    :type image: np.ndarray
+    :param thresh: Threshold value to identify the beam region. Pixels above \
+    this value are considered part of the beam.
+    :type thresh: float
+    :param padding: Additional padding around the detected beam region in \
+    pixels. Defaults to 0.
+    :type padding: int, optional
+    :param return_coords: If True, returns the beam coordinates along with the\
+        isolated beam image. Defaults to False.
+    :type return_coords: bool, optional
+    :returns: If return_coords is False, returns only the isolated beam image.\
+        If return_coords is True, returns a tuple containing the isolated beam\
+        image and a dictionary of beam coordinates and measurements.
+    :rtype: Union[np.ndarray, Tuple[np.ndarray, dict]]
+    """
+    # Create beam mask and find coordinates
+    primary_beam_mask = image > thresh
+
+    # Find beam boundaries
+    true_indices = np.argwhere(primary_beam_mask)
+    min_row = max(0, true_indices[:, 0].min() - padding)
+    max_row = min(image.shape[0] - 1, true_indices[:, 0].max() + padding)
+    min_col = max(0, true_indices[:, 1].min() - padding)
+    max_col = min(image.shape[1] - 1, true_indices[:, 1].max() + padding)
+
+    # Create output array
+    beam = np.zeros_like(image)
+
+    # Extract beam region
+    beam_region = image[
+        min_row : max_row + 1, min_col : max_col + 1  # noqa: E203
+    ]
+    beam[min_row : max_row + 1, min_col : max_col + 1] = (  # noqa: E203
+        beam_region
+    )
+
+    return beam
 
 
 def generate_poni(df, path):

@@ -2,6 +2,8 @@ import numpy as np
 from scipy import fft
 from scipy.integrate import simpson as simps
 
+from .utility_functions import mask_beam_center
+
 
 def slope_removal_custom(curve):
     """
@@ -113,3 +115,68 @@ def fourier_fft(curve, order):
 
     inverse = fft.ifft(filtered_fourier)
     return np.concatenate([coeff.real, coeff.imag]), inverse
+
+
+def fourier_fft2(
+    data: np.ndarray,
+    remove_beam: bool = False,
+    thresh: float = 1000,
+    padding: int = 0,
+) -> dict:
+    """
+    Performs 2D Fourier analysis with optional beam removal.
+
+    :param data: Input 2D data array.
+    :type data: np.ndarray
+    :param remove_beam: Whether to remove central beam.
+    :type remove_beam: bool, optional
+    :param thresh: Threshold for beam removal.
+    :type thresh: float, optional
+    :param padding: Padding around beam for removal.
+    :type padding: int, optional
+    :returns: Dictionary containing Fourier analysis results.
+    :rtype: dict
+    """
+    # Compute initial FFT
+    fft2 = fft.fft2(data)
+    fft2_shifted = fft.fftshift(fft2)
+
+    if remove_beam:
+        # Remove beam in real space
+        beam = mask_beam_center(data, thresh, padding)
+        beam_fft = fft.fft2(beam)
+        beam_fft_shifted = fft.fftshift(beam_fft)
+
+        # Subtract beam in Fourier space
+        fft2_shifted = fft2_shifted - beam_fft_shifted
+
+    # Calculate magnitude and phase
+    magnitude = np.abs(fft2_shifted)
+    magnitude_norm = np.divide(magnitude, np.abs(fft2[0, 0]))
+    phase = np.angle(fft2_shifted)
+
+    # Compute frequency axes
+    freq_x = fft.fftshift(fft.fftfreq(data.shape[1]))
+    freq_y = fft.fftshift(fft.fftfreq(data.shape[0]))
+
+    # Get frequency profiles
+    vertical_profile = magnitude_norm[:, magnitude_norm.shape[1] // 2]
+    horizontal_profile = magnitude_norm[magnitude_norm.shape[0] // 2, :]
+
+    # Compute inverse transform
+    if remove_beam:
+        # Shift back before inverse transform
+        fft2_unshifted = fft.ifftshift(fft2_shifted)
+        reconstructed = np.real(fft.ifft2(fft2_unshifted))
+    else:
+        reconstructed = np.real(fft.ifft2(fft2))
+
+    return {
+        "fft2_norm_magnitude": magnitude_norm.ravel(),
+        "fft2_phase": phase,
+        "fft2_reconstructed": reconstructed,
+        "fft2_vertical_profile": vertical_profile,
+        "fft2_horizontal_profile": horizontal_profile,
+        "fft2_freq_horizontal": freq_x,
+        "fft2_freq_vertical": freq_y,
+    }

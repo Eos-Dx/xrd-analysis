@@ -12,18 +12,22 @@ from sklearn.base import TransformerMixin
 from sklearn.preprocessing import Normalizer, StandardScaler
 
 from xrdanalysis.data_processing.azimuthal_integration import (
+    calculate_deviation,
+    calculate_deviation_cake,
     perform_azimuthal_integration,
 )
 from xrdanalysis.data_processing.containers import Limits, Rule, RuleQ
 from xrdanalysis.data_processing.fourier import (
     fourier_custom,
     fourier_fft,
+    fourier_fft2,
     slope_removal,
     slope_removal_custom,
 )
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
     generate_poni,
+    unpack_results,
 )
 
 
@@ -62,6 +66,7 @@ class AzimuthalIntegration(TransformerMixin):
     transformation_mode: str = "dataframe"
     calibration_mode: str = "dataframe"
     poni_dir_path: str = "data/poni"
+    calc_cake_stats: bool = False
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -115,6 +120,7 @@ class AzimuthalIntegration(TransformerMixin):
                 thres=self.thres,
                 max_iter=self.max_iter,
                 poni_dir=directory_path,
+                calc_cake_stats=self.calc_cake_stats,
             ),
             axis=1,
         )
@@ -125,11 +131,12 @@ class AzimuthalIntegration(TransformerMixin):
                 [
                     "q_range",
                     "radial_profile_data",
-                    "radial_sigma",
+                    "radial_sem",
+                    "radial_std",
                     "calculated_distance",
                 ]
             ] = integration_results.apply(
-                lambda x: pd.Series([x[0], x[1], x[2], x[3]])
+                lambda x: pd.Series([x[0], x[1], x[2], x[3], x[4]])
             )
         elif self.integration_mode == "2D":
             x_copy[
@@ -138,9 +145,16 @@ class AzimuthalIntegration(TransformerMixin):
                     "radial_profile_data",
                     "azimuthal_positions",
                     "calculated_distance",
+                    "cake_col_mean",
+                    "cake_col_variance",
+                    "cake_col_std",
+                    "cake_col_skew",
+                    "cake_col_kurtosis",
                 ]
             ] = integration_results.apply(
-                lambda x: pd.Series([x[0], x[1], x[2], x[3]])
+                lambda x: pd.Series(
+                    [x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8]]
+                )
             )
 
         if self.transformation_mode == "pipeline":
@@ -148,6 +162,117 @@ class AzimuthalIntegration(TransformerMixin):
                 np.asarray(x_copy["radial_profile_data"].values.tolist()),
                 index=x_copy.index,
             )
+
+        return x_copy
+
+
+class DeviationTransformer(TransformerMixin):
+    """
+    Transformer class for azimuthal integration to be used in
+    an sklearn pipeline.
+
+    :param faulty_pixels: A tuple containing the coordinates of faulty pixels.
+    :type faulty_pixels: Tuple[int]
+    :param npt: The number of points for azimuthal integration. Defaults to\
+        256.
+    :type npt: int
+    :param poni_dir_path: Directory path where .poni files for the rows will\
+        be saved.
+    :type poni_dir_path: str
+    """
+
+    def __init__(
+        self,
+        faulty_pixels: Tuple[int] = None,
+        npt=256,
+        poni_dir_path: str = "data/poni",
+        above_limits=[1.2],
+        below_limits=[0.8],
+        mode="cake",
+    ):
+        """
+        Initializes the ColumnStandardizer with the specified column name.
+
+        :param column: The name of the column containing arrays to standardize.
+        :type column: str
+        """
+        self.faulty_pixels = faulty_pixels
+        self.npt = npt
+        self.poni_dir_path = poni_dir_path
+        self.above_limits = above_limits
+        self.below_limits = below_limits
+        self.mode = mode
+
+    def fit(self, x: pd.DataFrame, y=None):
+        """
+        Fit method for the transformer. Since this transformer does not learn
+        from the data, the fit method does not perform any operations.
+
+        :param x: The data to fit.
+        :type x: pandas.DataFrame
+        :param y: Ignored. Not used, present here for API consistency by\
+            convention.
+        :return: Returns the instance itself.
+        :rtype: object
+        """
+        _ = x
+        _ = y
+
+        return self
+
+    def transform(self, x: pd.DataFrame) -> pd.DataFrame:
+        """
+        Applies azimuthal integration to each row of the DataFrame and adds
+        the result as a new column.
+
+        :param X: The data to transform. Must contain 'measurement_data' and\
+            'center' columns.
+        :type X: pandas.DataFrame
+        :return: A copy of the input DataFrame with an additional\
+            'radial_profile_data' column containing the results of the\
+            azimuthal integration, and optionally 'q_range' and\
+            'azimuthal_positions' columns for 2D integration.
+        :rtype: pandas.DataFrame
+        """
+
+        x_copy = x.copy()
+
+        # Mark the faulty pixels in the mask
+        mask = create_mask(self.faulty_pixels)
+
+        directory_path = generate_poni(x_copy, self.poni_dir_path)
+        x_copy.dropna(subset="ponifile", inplace=True)
+
+        calc_func = (
+            calculate_deviation_cake
+            if self.mode == "cake"
+            else calculate_deviation
+        )
+
+        integration_results = x_copy.apply(
+            lambda row: calc_func(
+                row,
+                self.above_limits,
+                self.below_limits,
+                self.npt,
+                mask,
+                poni_dir=directory_path,
+            ),
+            axis=1,
+        )
+
+        # Expand each row's results into new columns
+        expanded_results = integration_results.apply(unpack_results)
+        expanded_df = pd.DataFrame(list(expanded_results))
+
+        # Concatenate the original DataFrame with the new columns
+        x_copy = pd.concat(
+            [
+                x_copy.reset_index(drop=True),
+                expanded_df.reset_index(drop=True),
+            ],
+            axis=1,
+        )
 
         return x_copy
 
@@ -549,7 +674,13 @@ class FourierTransform(TransformerMixin):
     """
 
     def __init__(
-        self, fourier_mode="", order=15, column="radial_profile_data"
+        self,
+        fourier_mode="",
+        order=15,
+        column="radial_profile_data",
+        remove_beam=False,
+        thresh=1000,
+        padding=0,
     ):
         """
         Initializes the FourierTransform class with the given parameters.
@@ -566,6 +697,9 @@ class FourierTransform(TransformerMixin):
         self.fourier_mode = fourier_mode
         self.order = order
         self.column = column
+        self.remove_beam = remove_beam
+        self.thresh = thresh
+        self.padding = padding
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -594,15 +728,33 @@ class FourierTransform(TransformerMixin):
         :rtype: pandas.DataFrame
         """
         X = df.copy()
+        if self.fourier_mode != "2D":
+            if self.fourier_mode == "custom":
+                fourier_func = fourier_custom
+            else:
+                fourier_func = fourier_fft
 
-        if self.fourier_mode == "custom":
-            fourier_func = fourier_custom
+            X[["fourier_coefficients", "fourier_inverse"]] = X[
+                self.column
+            ].apply(lambda x: pd.Series(fourier_func(x, self.order)))
         else:
-            fourier_func = fourier_fft
-
-        X[["fourier_coefficients", "fourier_inverse"]] = X[self.column].apply(
-            lambda x: pd.Series(fourier_func(x, self.order))
-        )
+            X[
+                [
+                    "fft2_norm_magnitude",
+                    "fft2_phase",
+                    "fft2_reconstructed",
+                    "fft2_vertical_profile",
+                    "fft2_horizontal_profile",
+                    "fft2_freq_horizontal",
+                    "fft2_freq_vertical",
+                ]
+            ] = X[self.column].apply(
+                lambda x: pd.Series(
+                    fourier_fft2(
+                        x, self.remove_beam, self.thresh, self.padding
+                    )
+                )
+            )
 
         return X
 

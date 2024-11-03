@@ -5,10 +5,12 @@ This file includes functions and classes essential for azimuthal integration
 import os
 from functools import cache
 
+import numpy as np
 import pandas as pd
 import pyFAI
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
+from scipy.stats import mstats
 
 
 @cache
@@ -67,6 +69,7 @@ def perform_azimuthal_integration(
     thres=3,
     max_iter=5,
     poni_dir=None,
+    calc_cake_stats=False,
 ):
     """
     Perform azimuthal integration on a single row of a DataFrame.
@@ -154,7 +157,7 @@ def perform_azimuthal_integration(
         )
 
     if mode == "1D":
-        radial, intensity, sigma = ai_cached.integrate1d(
+        result = ai_cached.integrate1d(
             data,
             npt,
             radial_range=interpolation_q_range,
@@ -162,18 +165,55 @@ def perform_azimuthal_integration(
             error_model="azimuthal",
             mask=mask,
         )
-        return radial, intensity, sigma, ai_cached.dist
+        return (
+            result.radial,
+            result.intensity,
+            result.sigma,
+            result.std,
+            ai_cached.dist,
+        )
     elif mode == "2D":
-        intensity, radial, azimuthal = ai_cached.integrate2d(
+        result = ai_cached.integrate2d(
             data,
             npt,
             radial_range=interpolation_q_range,
             azimuth_range=azimuthal_range,
             mask=mask,
         )
-        return radial, intensity, azimuthal, ai_cached.dist
+
+        mean_col = variance_col = std_col = skewness_col = kurtosis_col = None
+
+        if calc_cake_stats:
+            masked_array = np.ma.masked_equal(result.intensity, 0)
+
+            # Mean along columns, ignoring masked values
+            mean_col = masked_array.mean(axis=0)
+
+            # Variance along columns, ignoring masked values
+            variance_col = masked_array.var(axis=0)
+
+            # SRD along columns, ignoring masked values
+            std_col = masked_array.std(axis=0)
+
+            # Skewness along columns, ignoring masked values
+            skewness_col = mstats.skew(masked_array, axis=0)
+
+            # Kurtosis along columns, ignoring masked values
+            kurtosis_col = mstats.kurtosis(masked_array, axis=0)
+
+        return (
+            result.radial,
+            result.intensity,
+            result.azimuthal,
+            ai_cached.dist,
+            mean_col,
+            variance_col,
+            std_col,
+            skewness_col,
+            kurtosis_col,
+        )
     elif mode == "sigma_clip":
-        radial, intensity, sigma = ai_cached.sigma_clip_ng(
+        result = ai_cached.sigma_clip_ng(
             data,
             npt,
             thres=thres,
@@ -183,4 +223,214 @@ def perform_azimuthal_integration(
             azimuth_range=azimuthal_range,
             mask=mask,
         )
-        return radial, intensity, sigma, ai_cached.dist
+        return (
+            result.radial,
+            result.intensity,
+            result.sigma,
+            result.std,
+            ai_cached.dist,
+        )
+
+
+def calculate_deviation(
+    row: pd.Series,
+    above_limits=[1.2],
+    below_limits=[0.8],
+    npt=256,
+    mask=None,
+    poni_dir=None,
+):
+    interpolation_q_range = row.get("interpolation_q_range")
+    data = row["measurement_data"]
+    azimuthal_range = row.get("azimuthal_range")
+
+    calibration_measurement_id = row["calibration_measurement_id"]
+    ai_cached = initialize_azimuthal_integrator_poni(
+        os.path.join(poni_dir, f"{calibration_measurement_id}.poni")
+    )
+
+    bins, _ = ai_cached.integrate1d(
+        data,
+        npt,
+        radial_range=interpolation_q_range,
+        azimuth_range=azimuthal_range,
+        mask=mask,
+    )
+
+    # Calculate radial array and digitize bin indices
+    radial = ai_cached.array_from_unit(
+        data.shape, "center", "q_nm^-1", scale=True
+    )
+    bin_indices = np.digitize(radial, bins)
+
+    # Calculate the average intensity in each bin (distance) using vectorized
+    # operations
+    unique_distances = np.unique(bin_indices)
+    image_with_averages = np.zeros_like(data, dtype=float)
+
+    # Fill in the averages for each unique distance value
+    for dist in unique_distances:
+        mask = bin_indices == dist
+        image_with_averages[mask] = np.mean(data[mask])
+
+    # Prepare arrays to store images and distance averages for each threshold
+    images_above = []
+    images_below = []
+    all_distance_averages_higher = []
+    all_distance_averages_lower = []
+
+    # Calculate images and averages for each above limit
+    for above_limit in above_limits:
+        higher_than_average = data > image_with_averages * above_limit
+        image_above = np.where(higher_than_average, data, 0)
+        images_above.append(image_above)
+
+        # Calculate the average for values above the threshold in each distance
+        averages_higher = [
+            (
+                np.mean(data[(bin_indices == dist) & higher_than_average])
+                if np.any((bin_indices == dist) & higher_than_average)
+                else np.nan
+            )
+            for dist in unique_distances
+        ]
+        all_distance_averages_higher.append(np.array(averages_higher))
+
+    # Calculate images and averages for each below limit
+    for below_limit in below_limits:
+        lower_than_average = (data < image_with_averages * below_limit) & (
+            data != 0
+        )
+        image_below = np.where(lower_than_average, data, 0)
+        images_below.append(image_below)
+
+        # Calculate the average for values below the threshold in each distance
+        averages_lower = [
+            (
+                np.mean(data[(bin_indices == dist) & lower_than_average])
+                if np.any((bin_indices == dist) & lower_than_average)
+                else np.nan
+            )
+            for dist in unique_distances
+        ]
+        all_distance_averages_lower.append(np.array(averages_lower))
+
+    return (
+        above_limits,
+        images_above,
+        all_distance_averages_higher,
+        below_limits,
+        images_below,
+        all_distance_averages_lower,
+    )
+
+
+def calculate_deviation_cake(
+    row: pd.Series,
+    above_limits=[1.2],
+    below_limits=[0.8],
+    npt=256,
+    mask=None,
+    poni_dir=None,
+):
+    azimuthal_range = row.get("azimuthal_range")
+    interpolation_q_range = row.get("interpolation_q_range")
+    calibration_measurement_id = row["calibration_measurement_id"]
+    data = row["measurement_data"]
+
+    # Initialize the cached azimuthal integrator using the PONI file
+    ai_cached = initialize_azimuthal_integrator_poni(
+        os.path.join(poni_dir, f"{calibration_measurement_id}.poni")
+    )
+
+    # Extract necessary values
+    result = ai_cached.integrate2d(
+        data,
+        npt,
+        mask=mask,
+        azimuth_range=azimuthal_range,
+        radial_range=interpolation_q_range,
+    )
+
+    cake_image = result.intensity
+
+    # Mask the cake image to handle zeros
+    masked_array = np.ma.masked_equal(cake_image, 0)
+    column_means = np.ma.mean(masked_array, axis=0)
+
+    # Elongate column_means to match the shape of cake_image
+    column_means_elongated = np.tile(column_means, (cake_image.shape[0], 1))
+
+    # Prepare result holders for images and means for each above and below
+    # limit
+    images_above = []
+    means_above = []
+    images_below = []
+    means_below = []
+
+    # Iterate over each limit in above_limits
+    for limit in above_limits:
+        # Calculate the mask for values greater than the limit times the
+        # corresponding column means
+        mask_above = cake_image > (column_means_elongated * limit)
+
+        # Create a masked array for values above the limit
+        intensity_above = np.ma.masked_array(
+            cake_image, mask=~mask_above
+        )  # Mask all values not above
+
+        # Create the image for values that are above the limit
+        img_above = ai_cached.calcfrom2d(
+            np.where(mask_above, cake_image, 0),
+            result.radial,
+            result.azimuthal,
+            shape=data.shape,
+            mask=mask,
+            dim1_unit="q_nm^-1",
+        )
+
+        # Calculate the mean for the pixels above the limit, ensuring to take
+        # the mean across columns
+        means_above.append(
+            np.mean(intensity_above, axis=0)
+        )  # Column-wise mean (masked)
+
+        images_above.append(img_above)
+
+    # Iterate over each limit in below_limits
+    for limit in below_limits:
+        # Calculate the mask for values less than the limit times the
+        # corresponding column means
+        mask_below = cake_image < (column_means_elongated * limit)
+
+        # Create a masked array for values below the limit
+        intensity_below = np.ma.masked_array(
+            cake_image, mask=~mask_below
+        )  # Mask all values not below
+
+        # Create the image for values that are below the limit
+        img_below = ai_cached.calcfrom2d(
+            np.where(mask_below, cake_image, 0),
+            result.radial,
+            result.azimuthal,
+            shape=data.shape,
+            mask=mask,
+            dim1_unit="q_nm^-1",
+        )
+
+        # Calculate the mean for the pixels below the limit, ensuring to
+        # take the mean across columns
+        means_below.append(
+            np.mean(intensity_below, axis=0)
+        )  # Column-wise mean (masked)
+
+        images_below.append(img_below)
+
+    return (
+        above_limits,
+        images_above,
+        means_above,
+        below_limits,
+        images_below,
+        means_below,
+    )
