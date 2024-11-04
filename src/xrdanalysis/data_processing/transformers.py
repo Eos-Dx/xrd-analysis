@@ -28,6 +28,7 @@ from xrdanalysis.data_processing.utility_functions import (
     create_mask,
     generate_poni,
     unpack_results,
+    unpack_results_cake,
 )
 
 
@@ -262,7 +263,10 @@ class DeviationTransformer(TransformerMixin):
         )
 
         # Expand each row's results into new columns
-        expanded_results = integration_results.apply(unpack_results)
+        if self.mode == "cake":
+            expanded_results = integration_results.apply(unpack_results_cake)
+        else:
+            expanded_results = integration_results.apply(unpack_results)
         expanded_df = pd.DataFrame(list(expanded_results))
 
         # Concatenate the original DataFrame with the new columns

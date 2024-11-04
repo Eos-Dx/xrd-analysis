@@ -364,8 +364,10 @@ def calculate_deviation_cake(
     # Prepare result holders for images and means for each above and below
     # limit
     images_above = []
+    cakes_above = []
     means_above = []
     images_below = []
+    cakes_below = []
     means_below = []
 
     # Iterate over each limit in above_limits
@@ -379,9 +381,11 @@ def calculate_deviation_cake(
             cake_image, mask=~mask_above
         )  # Mask all values not above
 
+        cake_above = np.where(mask_above, cake_image, 0)
+
         # Create the image for values that are above the limit
         img_above = ai_cached.calcfrom2d(
-            np.where(mask_above, cake_image, 0),
+            cake_above,
             result.radial,
             result.azimuthal,
             shape=data.shape,
@@ -394,7 +398,7 @@ def calculate_deviation_cake(
         means_above.append(
             np.mean(intensity_above, axis=0)
         )  # Column-wise mean (masked)
-
+        cakes_above.append(cake_above)
         images_above.append(img_above)
 
     # Iterate over each limit in below_limits
@@ -408,9 +412,11 @@ def calculate_deviation_cake(
             cake_image, mask=~mask_below
         )  # Mask all values not below
 
+        cake_below = np.where(mask_below, cake_image, 0)
+
         # Create the image for values that are below the limit
         img_below = ai_cached.calcfrom2d(
-            np.where(mask_below, cake_image, 0),
+            cake_below,
             result.radial,
             result.azimuthal,
             shape=data.shape,
@@ -423,14 +429,16 @@ def calculate_deviation_cake(
         means_below.append(
             np.mean(intensity_below, axis=0)
         )  # Column-wise mean (masked)
-
+        cakes_below.append(cake_below)
         images_below.append(img_below)
 
     return (
         above_limits,
+        cakes_above,
         images_above,
         means_above,
         below_limits,
+        cakes_below,
         images_below,
         means_below,
     )
