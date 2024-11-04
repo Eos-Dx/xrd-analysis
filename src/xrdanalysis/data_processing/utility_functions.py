@@ -44,6 +44,37 @@ def unpack_results(result):
     return {**above_columns, **below_columns}
 
 
+def unpack_results_cake(result):
+    (
+        above_limits,
+        cakes_above,
+        images_above,
+        averages_higher,
+        below_limits,
+        cakes_below,
+        images_below,
+        averages_lower,
+    ) = result
+
+    # Initialize dictionaries to store the columns
+    above_columns = {}
+    below_columns = {}
+
+    # Loop through above limits with enumerate for indexing
+    for index, limit in enumerate(above_limits):
+        above_columns[f"image_above_{limit}"] = images_above[index]
+        above_columns[f"cake_above_{limit}"] = cakes_above[index]
+        above_columns[f"deviation_above_{limit}"] = averages_higher[index]
+
+    # Loop through below limits with enumerate for indexing
+    for index, limit in enumerate(below_limits):
+        below_columns[f"image_below_{limit}"] = images_below[index]
+        above_columns[f"cake_below_{limit}"] = cakes_below[index]
+        below_columns[f"deviation_below_{limit}"] = averages_lower[index]
+    # Merge above and below columns
+    return {**above_columns, **below_columns}
+
+
 def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
     """
     Determines the center of the beam in SAXS data.
