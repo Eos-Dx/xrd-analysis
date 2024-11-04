@@ -69,7 +69,7 @@ def unpack_results_cake(result):
     # Loop through below limits with enumerate for indexing
     for index, limit in enumerate(below_limits):
         below_columns[f"image_below_{limit}"] = images_below[index]
-        above_columns[f"cake_below_{limit}"] = cakes_below[index]
+        below_columns[f"cake_below_{limit}"] = cakes_below[index]
         below_columns[f"deviation_below_{limit}"] = averages_lower[index]
     # Merge above and below columns
     return {**above_columns, **below_columns}
