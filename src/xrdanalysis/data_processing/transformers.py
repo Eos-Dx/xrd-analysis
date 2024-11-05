@@ -480,7 +480,7 @@ class ColumnExtractor(TransformerMixin):
     def _flatten_row(self, row):
         """
         Helper function that flattens the values of the specified columns
-        in a row.
+        in a row, including 2D NumPy arrays.
 
         :param row: A single row of the DataFrame.
         :type row: pd.Series
@@ -492,7 +492,11 @@ class ColumnExtractor(TransformerMixin):
             value = row[col]
             if isinstance(value, (list, np.ndarray)):
                 # Flatten arrays or lists
-                flattened_list.extend(value)
+                if isinstance(value, np.ndarray) and value.ndim == 2:
+                    # Flatten 2D NumPy arrays
+                    flattened_list.extend(value.ravel())
+                else:
+                    flattened_list.extend(value)
             else:
                 # Append single values
                 flattened_list.append(value)

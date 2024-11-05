@@ -172,7 +172,8 @@ def fourier_fft2(
         reconstructed = np.real(fft.ifft2(fft2))
 
     return {
-        "fft2_norm_magnitude": magnitude_norm.ravel(),
+        "fft2_shifted": fft2_shifted,
+        "fft2_norm_magnitude": magnitude_norm,
         "fft2_phase": phase,
         "fft2_reconstructed": reconstructed,
         "fft2_vertical_profile": vertical_profile,
