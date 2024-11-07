@@ -372,7 +372,7 @@ class ColumnNormalizer(TransformerMixin):
     :type norm: str
     """
 
-    def __init__(self, column, norm="l1"):
+    def __init__(self, column, norm="l1", mode="1D"):
         """
         Initializes the ColumnNormalizer with the specified column name and
         normalization method.
@@ -385,6 +385,7 @@ class ColumnNormalizer(TransformerMixin):
         """
         self.column = column
         self.normalizer = Normalizer(norm=norm)
+        self.mode = mode
 
     def fit(self, X, y=None):
         """
@@ -412,9 +413,24 @@ class ColumnNormalizer(TransformerMixin):
         :rtype: pd.DataFrame
         """
         X_copy = X.copy()
-        X_copy[self.column] = X_copy[self.column].apply(
-            lambda arr: self.normalizer.transform([arr])[0]
-        )
+        if self.mode == "1D":
+            X_copy[self.column] = X_copy[self.column].apply(
+                lambda arr: self.normalizer.transform([arr])[0]
+            )
+        elif self.mode == "2D":
+
+            def normalize_image(img):
+                img = np.array(img)
+                # Store original shape
+                original_shape = img.shape
+                # Flatten to 1D array and reshape to 2D array with one sample
+                img_flat = img.ravel()[np.newaxis, :]
+                # Normalize
+                img_normalized = self.normalizer.transform(img_flat)
+                # Reshape back to original 2D shape
+                return img_normalized.reshape(original_shape)
+
+            X_copy[self.column] = X_copy[self.column].apply(normalize_image)
         return X_copy
 
 
