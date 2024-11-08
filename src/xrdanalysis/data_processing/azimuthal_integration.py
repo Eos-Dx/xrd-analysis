@@ -62,6 +62,7 @@ def initialize_azimuthal_integrator_poni(file):
 
 def perform_azimuthal_integration(
     row: pd.Series,
+    column: str,
     npt=256,
     mask=None,
     mode="1D",
@@ -134,7 +135,7 @@ def perform_azimuthal_integration(
 
     interpolation_q_range = row.get("interpolation_q_range")
     azimuthal_range = row.get("azimuthal_range")
-    data = row["measurement_data"]
+    data = row[column]
 
     if calibration_mode == "dataframe":
         pixel_size = row["pixel_size"] * (10**-6)

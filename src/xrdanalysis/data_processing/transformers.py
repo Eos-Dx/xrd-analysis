@@ -62,6 +62,7 @@ class AzimuthalIntegration(TransformerMixin):
 
     max_iter: int = 5
     thres: int = 3
+    column: str = "measurement_data"
     faulty_pixels: Tuple[int] = None
     npt: int = 256
     integration_mode: str = "1D"
@@ -115,6 +116,7 @@ class AzimuthalIntegration(TransformerMixin):
         integration_results = x_copy.apply(
             lambda row: perform_azimuthal_integration(
                 row,
+                self.column,
                 self.npt,
                 mask,
                 self.integration_mode,
