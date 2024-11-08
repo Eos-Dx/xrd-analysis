@@ -30,6 +30,7 @@ from xrdanalysis.data_processing.utility_functions import (
     generate_poni,
     unpack_results,
     unpack_results_cake,
+    unpack_rotating_angles_results,
 )
 
 
@@ -66,10 +67,10 @@ class AzimuthalIntegration(TransformerMixin):
     faulty_pixels: Tuple[int] = None
     npt: int = 256
     integration_mode: str = "1D"
-    transformation_mode: str = "dataframe"
     calibration_mode: str = "dataframe"
     poni_dir_path: str = "data/poni"
     calc_cake_stats: bool = False
+    angles: List[Tuple[int]] = None
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -125,6 +126,7 @@ class AzimuthalIntegration(TransformerMixin):
                 max_iter=self.max_iter,
                 poni_dir=directory_path,
                 calc_cake_stats=self.calc_cake_stats,
+                angles=self.angles,
             ),
             axis=1,
         )
@@ -142,6 +144,21 @@ class AzimuthalIntegration(TransformerMixin):
             ] = integration_results.apply(
                 lambda x: pd.Series([x[0], x[1], x[2], x[3], x[4]])
             )
+        elif self.integration_mode == "rotating_angles":
+            expanded_results = integration_results.apply(
+                unpack_rotating_angles_results
+            )
+            expanded_df = pd.DataFrame(list(expanded_results))
+
+            # Concatenate the original DataFrame with the new columns
+            x_copy = pd.concat(
+                [
+                    x_copy.reset_index(drop=True),
+                    expanded_df.reset_index(drop=True),
+                ],
+                axis=1,
+            )
+
         elif self.integration_mode == "2D":
             x_copy[
                 [
@@ -159,12 +176,6 @@ class AzimuthalIntegration(TransformerMixin):
                 lambda x: pd.Series(
                     [x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8]]
                 )
-            )
-
-        if self.transformation_mode == "pipeline":
-            x_copy = pd.DataFrame(
-                np.asarray(x_copy["radial_profile_data"].values.tolist()),
-                index=x_copy.index,
             )
 
         return x_copy
@@ -700,7 +711,7 @@ class FourierTransform(TransformerMixin):
         self,
         fourier_mode="",
         order=15,
-        column="radial_profile_data",
+        columns=["radial_profile_data"],
         remove_beam=False,
         thresh=1000,
         padding=0,
@@ -721,7 +732,7 @@ class FourierTransform(TransformerMixin):
         """
         self.fourier_mode = fourier_mode
         self.order = order
-        self.column = column
+        self.columns = columns
         self.remove_beam = remove_beam
         self.thresh = thresh
         self.padding = padding
@@ -742,7 +753,7 @@ class FourierTransform(TransformerMixin):
             # Collect all normalized magnitudes with beam removal if specified
             all_magnitudes = []
 
-            for data in x[self.column]:
+            for data in x[self.columns[0]]:
                 magnitude_norm, _, _ = compute_fft2_magnitude(
                     data, self.remove_beam, self.thresh, self.padding
                 )
@@ -774,10 +785,15 @@ class FourierTransform(TransformerMixin):
                 fourier_func = fourier_custom
             else:
                 fourier_func = fourier_fft
-
-            X[["fourier_coefficients", "fourier_inverse"]] = X[
-                self.column
-            ].apply(lambda x: pd.Series(fourier_func(x, self.order)))
+            for column in self.columns:
+                X[
+                    [
+                        f"fourier_coefficients_{column}",
+                        f"fourier_inverse_{column}",
+                    ]
+                ] = X[column].apply(
+                    lambda x: pd.Series(fourier_func(x, self.order))
+                )
         else:
             if self.batch_normalize and (
                 self.batch_mean is None or self.batch_std is None
@@ -798,7 +814,7 @@ class FourierTransform(TransformerMixin):
                     "fft2_freq_horizontal",
                     "fft2_freq_vertical",
                 ]
-            ] = X[self.column].apply(
+            ] = X[self.columns[0]].apply(
                 lambda x: pd.Series(
                     fourier_fft2(
                         x,
