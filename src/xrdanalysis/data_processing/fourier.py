@@ -173,6 +173,9 @@ def fourier_fft2(
         data, remove_beam, thresh, padding
     )
 
+    fft2_real = np.real(fft2_shifted)
+    fft2_imag = np.imag(fft2_shifted)
+
     # Apply batch normalization if enabled
     if batch_normalize:
         magnitude_norm = (magnitude_norm - batch_mean) / batch_std
@@ -197,6 +200,8 @@ def fourier_fft2(
 
     return {
         "fft2_shifted": fft2_shifted,
+        "fft2_real": fft2_real,
+        "fft2_imag": fft2_imag,
         "fft2_norm_magnitude": magnitude_norm,
         "fft2_phase": phase,
         "fft2_reconstructed": reconstructed,

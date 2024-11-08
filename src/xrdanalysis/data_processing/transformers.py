@@ -786,6 +786,8 @@ class FourierTransform(TransformerMixin):
             X[
                 [
                     "fft2_shifted",
+                    "fft2_real",
+                    "fft2_imag",
                     "fft2_norm_magnitude",
                     "fft2_phase",
                     "fft2_reconstructed",
