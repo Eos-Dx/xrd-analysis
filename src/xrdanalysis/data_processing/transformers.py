@@ -18,6 +18,7 @@ from xrdanalysis.data_processing.azimuthal_integration import (
 )
 from xrdanalysis.data_processing.containers import Limits, Rule, RuleQ
 from xrdanalysis.data_processing.fourier import (
+    compute_fft2_magnitude,
     fourier_custom,
     fourier_fft,
     fourier_fft2,
@@ -690,11 +691,7 @@ class FourierTransform(TransformerMixin):
     """
     Transformer class to apply Fourier transformation on a specific column of \
     a DataFrame.
-
-    This class allows for the application of either a custom Fourier \
-    transform or an FFT (Fast Fourier Transform) on a specified column of the \
-    input data. The Fourier coefficients are extracted up to the specified \
-    order.
+    Includes batch normalization for 2D Fourier transforms.
     """
 
     def __init__(
@@ -705,18 +702,20 @@ class FourierTransform(TransformerMixin):
         remove_beam=False,
         thresh=1000,
         padding=0,
+        batch_normalize=False,
     ):
         """
         Initializes the FourierTransform class with the given parameters.
 
-        :param fourier_mode: The type of Fourier transformation \
-        ('custom' or 'fft').
-        :type fourier_mode: str
-        :param order: The number of Fourier terms (harmonics) to consider.
-        :type order: int
+        :param fourier_mode: The type of Fourier transformation ('custom', \
+        'fft', or '2D')
+        :param order: The number of Fourier terms (harmonics) to consider
         :param column: The name of the column in the DataFrame to apply the \
-        Fourier transform.
-        :type column: str
+        Fourier transform
+        :param remove_beam: Whether to remove central beam in 2D mode
+        :param thresh: Threshold for beam removal in 2D mode
+        :param padding: Padding around beam for removal in 2D mode
+        :param batch_normalize: Whether to apply batch normalization in 2D mode
         """
         self.fourier_mode = fourier_mode
         self.order = order
@@ -724,21 +723,37 @@ class FourierTransform(TransformerMixin):
         self.remove_beam = remove_beam
         self.thresh = thresh
         self.padding = padding
+        self.batch_normalize = batch_normalize
+        self.batch_mean = None
+        self.batch_std = None
 
     def fit(self, x: pd.DataFrame, y=None):
         """
-        Fit method for the transformer. Since this transformer does not learn
-        from the data, the fit method does not perform any operations.
+        Fit method for the transformer. For 2D mode with batch normalization,
+        calculates batch statistics from the normalized magnitudes.
 
-        :param x: The data to fit.
-        :type x: pandas.DataFrame
-        :param y: Ignored. Not used, present here for API consistency by\
-            convention.
-        :return: Returns the instance itself.
-        :rtype: object
+        :param x: The data to fit
+        :param y: Ignored. Present for API consistency
+        :return: Returns the instance itself
         """
-        _ = x
-        _ = y
+        if self.fourier_mode == "2D" and self.batch_normalize:
+            # Collect all normalized magnitudes with beam removal if specified
+            all_magnitudes = []
+
+            for data in x[self.column]:
+                magnitude_norm, _, _ = compute_fft2_magnitude(
+                    data, self.remove_beam, self.thresh, self.padding
+                )
+                all_magnitudes.append(magnitude_norm)
+
+            # Stack all magnitudes and compute statistics
+            stacked_magnitudes = np.concatenate(
+                [m.flatten() for m in all_magnitudes]
+            )
+            self.batch_mean = np.mean(stacked_magnitudes)
+            self.batch_std = np.std(stacked_magnitudes)
+            # Avoid division by zero
+            self.batch_std = max(self.batch_std, 1e-8)
 
         return self
 
@@ -762,6 +777,12 @@ class FourierTransform(TransformerMixin):
                 self.column
             ].apply(lambda x: pd.Series(fourier_func(x, self.order)))
         else:
+            if self.batch_normalize and (
+                self.batch_mean is None or self.batch_std is None
+            ):
+                raise ValueError(
+                    "Batch normalization requires fitting the transformer"
+                )
             X[
                 [
                     "fft2_shifted",
@@ -776,7 +797,13 @@ class FourierTransform(TransformerMixin):
             ] = X[self.column].apply(
                 lambda x: pd.Series(
                     fourier_fft2(
-                        x, self.remove_beam, self.thresh, self.padding
+                        x,
+                        self.remove_beam,
+                        self.thresh,
+                        self.padding,
+                        self.batch_normalize,
+                        self.batch_mean,
+                        self.batch_std,
                     )
                 )
             )

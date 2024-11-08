@@ -117,11 +117,42 @@ def fourier_fft(curve, order):
     return np.concatenate([coeff.real, coeff.imag]), inverse
 
 
+def compute_fft2_magnitude(
+    data: np.ndarray, remove_beam=False, thresh=700, padding=0
+) -> np.ndarray:
+    """
+    Compute FFT2 magnitude with optional beam removal.
+
+    :param data: Input 2D array
+    :return: Normalized magnitude of FFT2
+    """
+    # Compute initial FFT
+    fft2 = fft.fft2(data)
+    fft2_shifted = fft.fftshift(fft2)
+
+    if remove_beam:
+        # Remove beam in real space
+        beam = mask_beam_center(data, thresh, padding)
+        beam_fft = fft.fft2(beam)
+        beam_fft_shifted = fft.fftshift(beam_fft)
+        # Subtract beam in Fourier space
+        fft2_shifted = fft2_shifted - beam_fft_shifted
+
+    # Calculate and normalize magnitude
+    magnitude = np.abs(fft2_shifted)
+    magnitude_norm = np.divide(magnitude, np.abs(fft2[0, 0]))
+
+    return magnitude_norm, fft2, fft2_shifted
+
+
 def fourier_fft2(
     data: np.ndarray,
     remove_beam: bool = False,
     thresh: float = 1000,
     padding: int = 0,
+    batch_normalize: bool = False,
+    batch_mean: float = None,
+    batch_std: float = None,
 ) -> dict:
     """
     Performs 2D Fourier analysis with optional beam removal.
@@ -138,21 +169,14 @@ def fourier_fft2(
     :rtype: dict
     """
     # Compute initial FFT
-    fft2 = fft.fft2(data)
-    fft2_shifted = fft.fftshift(fft2)
+    magnitude_norm, fft2, fft2_shifted = compute_fft2_magnitude(
+        data, remove_beam, thresh, padding
+    )
 
-    if remove_beam:
-        # Remove beam in real space
-        beam = mask_beam_center(data, thresh, padding)
-        beam_fft = fft.fft2(beam)
-        beam_fft_shifted = fft.fftshift(beam_fft)
+    # Apply batch normalization if enabled
+    if batch_normalize:
+        magnitude_norm = (magnitude_norm - batch_mean) / batch_std
 
-        # Subtract beam in Fourier space
-        fft2_shifted = fft2_shifted - beam_fft_shifted
-
-    # Calculate magnitude and phase
-    magnitude = np.abs(fft2_shifted)
-    magnitude_norm = np.divide(magnitude, np.abs(fft2[0, 0]))
     phase = np.angle(fft2_shifted)
 
     # Compute frequency axes
