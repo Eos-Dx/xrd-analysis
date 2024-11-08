@@ -75,6 +75,178 @@ def unpack_results_cake(result):
     return {**above_columns, **below_columns}
 
 
+def process_angular_ranges(angles):
+    """
+    Process angular ranges to handle the -180/180 boundary crossing.
+    Returns both the original and split ranges where necessary.
+
+    Args:
+        angles: List of tuples containing (start_angle, end_angle)
+
+    Returns:
+        List of processed angle ranges
+    """
+    processed_ranges = []
+
+    for start_angle, end_angle in angles:
+        # Normalize angles to [-180, 180] range
+        start = ((start_angle + 180) % 360) - 180
+        end = ((end_angle + 180) % 360) - 180
+
+        if start >= end:  # Crossing the boundary
+            # Split into two ranges
+            processed_ranges.append((-180, end))
+            processed_ranges.append((start, 180))
+        else:
+            processed_ranges.append((start, end))
+
+    return processed_ranges
+
+
+def get_angle_span(start, end):
+    """
+    Calculate the angular span between two angles, handling wraparound.
+    """
+    if end >= start:
+        return end - start
+    else:
+        return (end - (-180)) + (180 - start)
+
+
+def prepare_angular_ranges(start_angle, end_angle):
+    """
+    Prepare angular ranges for integration by validating and processing the \
+    angles.
+
+    Args:
+        start_angle: Starting angle in degrees
+        end_angle: Ending angle in degrees
+
+    Returns:
+        dict containing:
+            - processed_ranges: List of (start, end) tuples for integration
+            - weights: List of weights corresponding to each range
+            - original_span: The total angular span of the original range
+            - is_split: Boolean indicating if the range was split
+    """
+    # Validate angle range
+    if start_angle < -180 or end_angle > 180:
+        raise ValueError(
+            "The angles must be within -180 and 180 degrees range."
+        )
+
+    # Calculate the original span
+    original_span = get_angle_span(start_angle, end_angle)
+
+    # Process the ranges
+    processed_ranges = process_angular_ranges([(start_angle, end_angle)])
+
+    # Calculate weights for each range
+    weights = [
+        get_angle_span(range_start, range_end) / original_span
+        for range_start, range_end in processed_ranges
+    ]
+
+    return {
+        "processed_ranges": processed_ranges,
+        "weights": weights,
+        "original_span": original_span,
+        "is_split": len(processed_ranges) > 1,
+    }
+
+
+def perform_weighted_integration(
+    data, ai_cached, range_info, npt, interpolation_q_range, mask=None
+):
+    """
+    Perform integration for all ranges and combine results with proper \
+    weighting.
+
+    Args:
+        data: Input data for integration
+        ai_cached: AzimuthalIntegrator instance
+        range_info: Dictionary containing processed ranges and weights
+        npt: Number of points
+        interpolation_q_range: Q range for interpolation
+        mask: Optional mask array
+
+    Returns:
+        tuple: (radial, intensity, sigma, std)
+    """
+    normalized_results = []
+    for angle_range, weight in zip(
+        range_info["processed_ranges"], range_info["weights"]
+    ):
+        result = ai_cached.integrate1d(
+            data,
+            npt,
+            radial_range=interpolation_q_range,
+            azimuth_range=angle_range,
+            error_model="azimuthal",
+            mask=mask,
+        )
+
+        # Normalize this result by its weight
+        normalized_results.append(
+            {
+                "intensity": result.intensity * weight,
+                "sigma": result.sigma * weight,
+                "std": result.std * weight,
+                "radial": result.radial,
+            }
+        )
+
+    # If we had to split the range, combine the normalized results
+    if range_info["is_split"]:
+        combined_intensity = sum(r["intensity"] for r in normalized_results)
+        combined_sigma = np.sqrt(
+            sum(r["sigma"] ** 2 for r in normalized_results)
+        )
+        combined_std = np.sqrt(sum(r["std"] ** 2 for r in normalized_results))
+
+        return (
+            normalized_results[0]["radial"],
+            combined_intensity,
+            combined_sigma,
+            combined_std,
+        )
+    else:
+        # Single range case
+        result = normalized_results[0]
+        return (
+            result["radial"],
+            result["intensity"],
+            result["sigma"],
+            result["std"],
+        )
+
+
+def unpack_rotating_angles_results(results):
+    """
+    Unpack the results from the rotating_angles_analysis function.
+
+    Parameters:
+    results (tuple): A tuple containing a list of tuples, where each tuple \
+    contains the radial, intensity, sigma, and std results for each angle, \
+    and the cached ai_cached.dist value.
+
+    Returns:
+    pd.DataFrame: A DataFrame containing the unpacked results, with one row \
+    per angle.
+    """
+    result_list, dist = results
+
+    col_dict = {}
+    for angle, radial, intensity, sigma, std in result_list:
+        col_dict[f"q_range_{angle[0]}_{angle[1]}"] = radial
+        col_dict[f"radial_profile_data_{angle[0]}_{angle[1]}"] = intensity
+        col_dict[f"sigma_{angle[0]}_{angle[1]}"] = sigma
+        col_dict[f"std_{angle[0]}_{angle[1]}"] = std
+
+    col_dict["dist"] = dist
+    return col_dict
+
+
 def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
     """
     Determines the center of the beam in SAXS data.
@@ -290,10 +462,6 @@ def show_data(df: pd.DataFrame):
 
     # Flatten the axes for easy indexing
     axes = axes.flatten()
-
-    # Define colors for cancer and non-cancer tissues
-    colors = {"cancer": "red", "non-cancer": "blue"}
-
     # Iterate over clusters and cancer/non-cancer tissues
     for i, ((cluster, diagnosis), group) in enumerate(grouped):
         ax = axes[i]

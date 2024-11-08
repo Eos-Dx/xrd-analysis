@@ -12,6 +12,11 @@ from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
 from scipy.stats import mstats
 
+from xrdanalysis.data_processing.utility_functions import (
+    perform_weighted_integration,
+    prepare_angular_ranges,
+)
+
 
 @cache
 def initialize_azimuthal_integrator_df(
@@ -71,6 +76,7 @@ def perform_azimuthal_integration(
     max_iter=5,
     poni_dir=None,
     calc_cake_stats=False,
+    angles=None,
 ):
     """
     Perform azimuthal integration on a single row of a DataFrame.
@@ -231,6 +237,29 @@ def perform_azimuthal_integration(
             result.std,
             ai_cached.dist,
         )
+    elif mode == "rotating_angles":
+        results = []
+        for start_angle, end_angle in angles:
+            # Get processed ranges and their properties
+            range_info = prepare_angular_ranges(start_angle, end_angle)
+
+            # Perform integration and get combined results
+            radial, intensity, sigma, std = perform_weighted_integration(
+                data, ai_cached, range_info, npt, interpolation_q_range, mask
+            )
+
+            # Append the final result
+            results.append(
+                (
+                    (start_angle, end_angle),
+                    radial,
+                    intensity,
+                    sigma,
+                    std,
+                )
+            )
+
+        return results, ai_cached.dist
 
 
 def calculate_deviation(
