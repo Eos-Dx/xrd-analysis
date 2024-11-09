@@ -468,10 +468,45 @@ class MLPipeline:
 
         model = self.export_pipeline(wrangle, preprocess)
 
-        y_score = model.predict_proba(data)[:, 1]
+        y_score = self.predict_proba(data, wrangle, preprocess)[:, 1]
         y_pred = y_score > model.optimal_threshold
         df_saxs_pred = pd.DataFrame(
             data=y_pred, index=data.index, columns=["cancer_diagnosis"]
         )
 
         df_saxs_pred.to_csv(save_path)
+
+    def validate_dataset(
+        self,
+        data,
+        y_column,
+        y_value=None,
+        wrangle=False,
+        preprocess=False,
+        metrics=["accuracy", "roc_auc"],
+        show_flag=False,
+        print_flag=False,
+    ):
+        """
+        Validates the trained estimator on test data using specified metrics.
+
+        :param y_true: The true target values.
+        :type y_true: Series
+        :param y_pred: The predicted target values.
+        :type y_pred: Series
+        :param y_score: The predicted probabilities for the positive class.
+        :type y_score: ndarray
+        :param metrics: The metrics to compute. \
+        Defaults to ["accuracy", "roc_auc"].
+        :type metrics: list
+        :param show_flag: Whether to display the ROC curve. Defaults to False.
+        :type show_flag: bool
+        :param print_flag: Whether to print the validation results. \
+        Defaults to False.
+        :type print_flag: bool
+        """
+        # Calculate and return the desired metrics
+        y_true = self.infer_y(data, y_column, y_value)
+        y_score = self.predict_proba(data, wrangle, preprocess)[:, 1]
+        y_pred = y_score > self.optimal_threshold
+        self.validate(y_true, y_pred, y_score, metrics, show_flag, print_flag)
