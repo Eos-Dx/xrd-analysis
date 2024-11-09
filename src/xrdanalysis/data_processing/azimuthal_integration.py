@@ -11,10 +11,6 @@ import pyFAI
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
 from scipy.stats import mstats
-from xrdanalysis.data_processing.utility_functions import (
-    prepare_angular_ranges,
-    perform_weighted_integration,
-)
 
 from xrdanalysis.data_processing.utility_functions import (
     perform_weighted_integration,
