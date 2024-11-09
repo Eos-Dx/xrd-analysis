@@ -1099,4 +1099,5 @@ class CurveFittingTransformer(TransformerMixin):
                 X_copy.at[index, "fit_params"] = None
                 X_copy.at[index, "fitted_curve"] = None
 
+        X_copy = X_copy.dropna(subset=["fit_params"])
         return X_copy
