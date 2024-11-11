@@ -276,7 +276,6 @@ class MLPipeline:
     def validate(
         self,
         y_true,
-        y_pred,
         y_score,
         metrics=["accuracy", "roc_auc"],
         show_flag=False,
@@ -302,6 +301,10 @@ class MLPipeline:
         """
         # Calculate and return the desired metrics
         results = {}
+        _, _, _, self.optimal_threshold = calculate_optimal_threshold(
+            y_true, y_score
+        )
+        y_pred = y_score > self.optimal_threshold
         if "accuracy" in metrics:
             results["accuracy"] = accuracy_score(y_true, y_pred)
 
@@ -385,12 +388,11 @@ class MLPipeline:
 
         estimator = self.train_estimator(X_train, y_train)
 
-        y_pred = estimator.predict(X_test)
         y_score = estimator.predict_proba(X_test)[:, 1]
 
         # Validate the training results
         self.validate(
-            y_test, y_pred, y_score, print_flag=print_flag, show_flag=show_flag
+            y_test, y_score, print_flag=print_flag, show_flag=show_flag
         )
         _, _, _, self.optimal_threshold = calculate_optimal_threshold(
             y_test, y_score
@@ -508,5 +510,4 @@ class MLPipeline:
         # Calculate and return the desired metrics
         y_true = self.infer_y(data, y_column, y_value)
         y_score = self.predict_proba(data, wrangle, preprocess)[:, 1]
-        y_pred = y_score > self.optimal_threshold
-        self.validate(y_true, y_pred, y_score, metrics, show_flag, print_flag)
+        self.validate(y_true, y_score, metrics, show_flag, print_flag)
