@@ -657,8 +657,8 @@ class SlopeRemoval(TransformerMixin):
     Transformer class to remove slope from a curve
     """
 
-    def __init__(self, column="radial_profile_data", mode=""):
-        self.column = column
+    def __init__(self, columns=["radial_profile_data"], mode=""):
+        self.columns = columns
         self.mode = mode
 
     def fit(self, x: pd.DataFrame, y=None):
@@ -689,13 +689,13 @@ class SlopeRemoval(TransformerMixin):
         """
         X = df.copy()
 
-        if self.mode == "custom":
-            X[self.column] = X[self.column].apply(
-                lambda x: slope_removal_custom(x)[0]
-            )
-
-        else:
-            X[self.column] = X[self.column].apply(lambda x: slope_removal(x))
+        for column in self.columns:
+            if self.mode == "custom":
+                X[column] = X[column].apply(
+                    lambda x: slope_removal_custom(x)[0]
+                )
+            else:
+                X[column] = X[column].apply(lambda x: slope_removal(x))
 
         return X
 
@@ -716,6 +716,7 @@ class FourierTransform(TransformerMixin):
         thresh=1000,
         padding=0,
         batch_normalize=False,
+        filter_radius=None,
     ):
         """
         Initializes the FourierTransform class with the given parameters.
@@ -739,6 +740,7 @@ class FourierTransform(TransformerMixin):
         self.batch_normalize = batch_normalize
         self.batch_mean = None
         self.batch_std = None
+        self.filter_radius = filter_radius
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -824,6 +826,7 @@ class FourierTransform(TransformerMixin):
                         self.batch_normalize,
                         self.batch_mean,
                         self.batch_std,
+                        self.filter_radius,
                     )
                 )
             )
