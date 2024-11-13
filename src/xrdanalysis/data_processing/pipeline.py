@@ -1,6 +1,6 @@
 import pandas as pd
 from joblib import dump
-from sklearn.metrics import accuracy_score, precision_score, roc_auc_score
+from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
@@ -302,22 +302,25 @@ class MLPipeline:
         # Calculate and return the desired metrics
         results = {}
         _, _, _, self.optimal_threshold = calculate_optimal_threshold(
-            y_true, y_score
+            y_true, y_score, print_flag=print_flag
         )
         y_pred = y_score > self.optimal_threshold
         if "accuracy" in metrics:
             results["accuracy"] = accuracy_score(y_true, y_pred)
 
         if "roc_auc" in metrics:
-            if show_flag:
-                generate_roc_curve(y_true, y_score)
+            sensitivity, specificity, precision = generate_roc_curve(
+                y_true, y_score, show_flag
+            )
             results["roc_auc"] = roc_auc_score(y_true, y_score)
-
-        if "precision" in metrics:
-            results["precision"] = precision_score(y_true, y_pred)
+            results["sensitivity"] = sensitivity
+            results["specificity"] = specificity
+            results["precision"] = precision
 
         if print_flag:
             print(results)
+
+        return results
 
     def train(
         self,
@@ -393,9 +396,6 @@ class MLPipeline:
         # Validate the training results
         self.validate(
             y_test, y_score, print_flag=print_flag, show_flag=show_flag
-        )
-        _, _, _, self.optimal_threshold = calculate_optimal_threshold(
-            y_test, y_score
         )
 
     def export_pipeline(self, wrangle=False, preprocess=True, save_path=None):
@@ -481,8 +481,9 @@ class MLPipeline:
     def validate_dataset(
         self,
         data,
-        y_column,
+        y_column=None,
         y_value=None,
+        y_data=None,
         wrangle=False,
         preprocess=False,
         metrics=["accuracy", "roc_auc"],
@@ -508,6 +509,9 @@ class MLPipeline:
         :type print_flag: bool
         """
         # Calculate and return the desired metrics
-        y_true = self.infer_y(data, y_column, y_value)
+        if y_data is None:
+            y_true = self.infer_y(data, y_column, y_value)
+        else:
+            y_true = y_data
         y_score = self.predict_proba(data, wrangle, preprocess)[:, 1]
-        self.validate(y_true, y_score, metrics, show_flag, print_flag)
+        return self.validate(y_true, y_score, metrics, show_flag, print_flag)

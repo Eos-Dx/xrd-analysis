@@ -775,19 +775,20 @@ def viz_roc_balanced(fig, axes, model_name, estimators):
     plt.show()
 
 
-def generate_roc_curve(y_true, y_score):
-    RocCurveDisplay.from_predictions(y_true, y_score)
-    fig = plt.gcf()
-    plt.title("ROC Keele SAXS")
-    fig.set_size_inches(4, 4)
-    fig.set_dpi(150)
-    fig.set_facecolor("white")
-    # plt.savefig(f"analysis/fitting_classification/roc/keele_SAXS_ROC.png")
-    plt.show()
+def generate_roc_curve(y_true, y_score, show_flag=True):
+    if show_flag:
+        RocCurveDisplay.from_predictions(y_true, y_score)
+        fig = plt.gcf()
+        plt.title("ROC Keele SAXS")
+        fig.set_size_inches(4, 4)
+        fig.set_dpi(150)
+        fig.set_facecolor("white")
+        # plt.savefig(f"analysis/fitting_classification/roc/keele_SAXS_ROC.png")
+        plt.show()
 
     # Optimal threshold closest to perfect classifier
     tpr, fpr, optimal_idx, optimal_threshold = calculate_optimal_threshold(
-        y_true, y_score
+        y_true, y_score, print_flag=False
     )
 
     # Compute optimal sensitivity, specificity, and precision
@@ -796,16 +797,20 @@ def generate_roc_curve(y_true, y_score):
     y_pred = y_score > optimal_threshold
     optimal_precision = round(precision_score(y_true, y_pred) * 100, 1)
 
-    # Round to 1 decimal place
-    print("Best performance closest to ideal classifier:")
-    print(f"Sensitivity: {optimal_sensitivity}%")
-    print(f"Specificity: {optimal_specificity}%")
-    print(f"PPV: {optimal_precision}%")
+    if show_flag:
+        # Round to 1 decimal place
+        print("Best performance closest to ideal classifier:")
+        print(f"Sensitivity: {optimal_sensitivity}%")
+        print(f"Specificity: {optimal_specificity}%")
+        print(f"PPV: {optimal_precision}%")
+
+    return optimal_sensitivity, optimal_specificity, optimal_precision
 
 
-def calculate_optimal_threshold(y_true, y_score):
+def calculate_optimal_threshold(y_true, y_score, print_flag=False):
     fpr, tpr, thresholds = roc_curve(y_true, y_score)
     optimal_idx = np.argmax(tpr - fpr)
     optimal_threshold = thresholds[optimal_idx]
-    print(f"Optimal threshold: {optimal_threshold}")
+    if print_flag:
+        print(f"Optimal threshold: {optimal_threshold}")
     return tpr, fpr, optimal_idx, optimal_threshold
