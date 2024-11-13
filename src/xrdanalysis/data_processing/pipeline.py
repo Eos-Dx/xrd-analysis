@@ -6,7 +6,7 @@ from sklearn.pipeline import Pipeline
 
 from xrdanalysis.data_processing.utility_functions import (
     calculate_optimal_threshold,
-    generate_roc_curve,
+    generate_roc_based_metrics,
 )
 
 
@@ -280,6 +280,8 @@ class MLPipeline:
         metrics=["accuracy", "roc_auc"],
         show_flag=False,
         print_flag=False,
+        min_sensitivity=None,
+        min_specificity=None,
     ):
         """
         Validates the trained estimator on test data using specified metrics.
@@ -309,13 +311,23 @@ class MLPipeline:
             results["accuracy"] = accuracy_score(y_true, y_pred)
 
         if "roc_auc" in metrics:
-            sensitivity, specificity, precision = generate_roc_curve(
-                y_true, y_score, show_flag
+            (
+                sensitivity,
+                specificity,
+                precision,
+                ba_accuracy,
+            ) = generate_roc_based_metrics(
+                y_true,
+                y_score,
+                show_flag,
+                min_sensitivity=min_sensitivity,
+                min_specificity=min_specificity,
             )
-            results["roc_auc"] = roc_auc_score(y_true, y_score)
+            results["roc_auc"] = round(roc_auc_score(y_true, y_score) * 100, 1)
             results["sensitivity"] = sensitivity
             results["specificity"] = specificity
             results["precision"] = precision
+            results["ba_accuracy"] = ba_accuracy
 
         if print_flag:
             print(results)
@@ -333,6 +345,8 @@ class MLPipeline:
         preprocess=True,
         print_flag=True,
         show_flag=False,
+        min_sensitivity=None,
+        min_specificity=None,
         **split_args
     ):
         """
@@ -395,7 +409,12 @@ class MLPipeline:
 
         # Validate the training results
         self.validate(
-            y_test, y_score, print_flag=print_flag, show_flag=show_flag
+            y_test,
+            y_score,
+            print_flag=print_flag,
+            show_flag=show_flag,
+            min_sensitivity=min_sensitivity,
+            min_specificity=min_specificity,
         )
 
     def export_pipeline(self, wrangle=False, preprocess=True, save_path=None):
@@ -489,6 +508,8 @@ class MLPipeline:
         metrics=["accuracy", "roc_auc"],
         show_flag=False,
         print_flag=False,
+        min_sensitivity=None,
+        min_specificity=None,
     ):
         """
         Validates the trained estimator on test data using specified metrics.
@@ -514,4 +535,12 @@ class MLPipeline:
         else:
             y_true = y_data
         y_score = self.predict_proba(data, wrangle, preprocess)[:, 1]
-        return self.validate(y_true, y_score, metrics, show_flag, print_flag)
+        return self.validate(
+            y_true,
+            y_score,
+            metrics,
+            show_flag,
+            print_flag,
+            min_sensitivity=min_sensitivity,
+            min_specificity=min_specificity,
+        )

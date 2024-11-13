@@ -775,7 +775,9 @@ def viz_roc_balanced(fig, axes, model_name, estimators):
     plt.show()
 
 
-def generate_roc_curve(y_true, y_score, show_flag=True):
+def generate_roc_based_metrics(
+    y_true, y_score, show_flag=True, min_sensitivity=None, min_specificity=None
+):
     if show_flag:
         RocCurveDisplay.from_predictions(y_true, y_score)
         fig = plt.gcf()
@@ -788,7 +790,11 @@ def generate_roc_curve(y_true, y_score, show_flag=True):
 
     # Optimal threshold closest to perfect classifier
     tpr, fpr, optimal_idx, optimal_threshold = calculate_optimal_threshold(
-        y_true, y_score, print_flag=False
+        y_true,
+        y_score,
+        print_flag=False,
+        min_sensitivity=min_sensitivity,
+        min_specificity=min_specificity,
     )
 
     # Compute optimal sensitivity, specificity, and precision
@@ -797,20 +803,57 @@ def generate_roc_curve(y_true, y_score, show_flag=True):
     y_pred = y_score > optimal_threshold
     optimal_precision = round(precision_score(y_true, y_pred) * 100, 1)
 
+    # Calculate balanced accuracy
+    balanced_accuracy = (tpr[optimal_idx] + 1 - fpr[optimal_idx]) / 2
+    balanced_accuracy = round(balanced_accuracy * 100, 1)
+
     if show_flag:
         # Round to 1 decimal place
         print("Best performance closest to ideal classifier:")
         print(f"Sensitivity: {optimal_sensitivity}%")
         print(f"Specificity: {optimal_specificity}%")
         print(f"PPV: {optimal_precision}%")
+        print("Max balanced accuracy:")
+        print(f"BA: {balanced_accuracy}%")
 
-    return optimal_sensitivity, optimal_specificity, optimal_precision
+    return (
+        optimal_sensitivity,
+        optimal_specificity,
+        optimal_precision,
+        balanced_accuracy,
+    )
 
 
-def calculate_optimal_threshold(y_true, y_score, print_flag=False):
+def calculate_optimal_threshold(
+    y_true,
+    y_score,
+    min_sensitivity=None,
+    min_specificity=None,
+    print_flag=False,
+):
     fpr, tpr, thresholds = roc_curve(y_true, y_score)
+
+    # Filter the thresholds based on minimum sensitivity or specificity
+    if min_sensitivity is not None:
+        tpr_threshold_mask = tpr >= min_sensitivity
+        fpr, tpr, thresholds = (
+            fpr[tpr_threshold_mask],
+            tpr[tpr_threshold_mask],
+            thresholds[tpr_threshold_mask],
+        )
+    elif min_specificity is not None:
+        tnr_threshold_mask = (1 - fpr) >= min_specificity
+        fpr, tpr, thresholds = (
+            fpr[tnr_threshold_mask],
+            tpr[tnr_threshold_mask],
+            thresholds[tnr_threshold_mask],
+        )
+
+    # Find the optimal index and threshold
     optimal_idx = np.argmax(tpr - fpr)
     optimal_threshold = thresholds[optimal_idx]
+
     if print_flag:
         print(f"Optimal threshold: {optimal_threshold}")
+
     return tpr, fpr, optimal_idx, optimal_threshold
