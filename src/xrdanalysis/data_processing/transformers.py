@@ -18,7 +18,6 @@ from xrdanalysis.data_processing.azimuthal_integration import (
 )
 from xrdanalysis.data_processing.containers import Limits, Rule, RuleQ
 from xrdanalysis.data_processing.fourier import (
-    compute_fft2_magnitude,
     fourier_custom,
     fourier_fft,
     fourier_fft2,
@@ -715,7 +714,6 @@ class FourierTransform(TransformerMixin):
         remove_beam=False,
         thresh=1000,
         padding=0,
-        batch_normalize=False,
         filter_radius=None,
     ):
         """
@@ -737,9 +735,6 @@ class FourierTransform(TransformerMixin):
         self.remove_beam = remove_beam
         self.thresh = thresh
         self.padding = padding
-        self.batch_normalize = batch_normalize
-        self.batch_mean = None
-        self.batch_std = None
         self.filter_radius = filter_radius
 
     def fit(self, x: pd.DataFrame, y=None):
@@ -751,24 +746,8 @@ class FourierTransform(TransformerMixin):
         :param y: Ignored. Present for API consistency
         :return: Returns the instance itself
         """
-        if self.fourier_mode == "2D" and self.batch_normalize:
-            # Collect all normalized magnitudes with beam removal if specified
-            all_magnitudes = []
-
-            for data in x[self.columns[0]]:
-                magnitude_norm, _, _ = compute_fft2_magnitude(
-                    data, self.remove_beam, self.thresh, self.padding
-                )
-                all_magnitudes.append(magnitude_norm)
-
-            # Stack all magnitudes and compute statistics
-            stacked_magnitudes = np.concatenate(
-                [m.flatten() for m in all_magnitudes]
-            )
-            self.batch_mean = np.mean(stacked_magnitudes)
-            self.batch_std = np.std(stacked_magnitudes)
-            # Avoid division by zero
-            self.batch_std = max(self.batch_std, 1e-8)
+        _ = x
+        _ = y
 
         return self
 
@@ -797,12 +776,6 @@ class FourierTransform(TransformerMixin):
                     lambda x: pd.Series(fourier_func(x, self.order))
                 )
         else:
-            if self.batch_normalize and (
-                self.batch_mean is None or self.batch_std is None
-            ):
-                raise ValueError(
-                    "Batch normalization requires fitting the transformer"
-                )
             X[
                 [
                     "fft2_shifted",
@@ -823,9 +796,6 @@ class FourierTransform(TransformerMixin):
                         self.remove_beam,
                         self.thresh,
                         self.padding,
-                        self.batch_normalize,
-                        self.batch_mean,
-                        self.batch_std,
                         self.filter_radius,
                     )
                 )

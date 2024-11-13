@@ -205,19 +205,12 @@ def apply_fft2(
     remove_beam=False,
     thresh=700,
     padding=0,
-    batch_normalize: bool = False,
-    batch_mean: float = None,
-    batch_std: float = None,
 ):
     magnitude_norm, fft2, fft2_shifted = compute_fft2_magnitude(
         data, remove_beam, thresh, padding
     )
     fft2_real = np.real(fft2_shifted)
     fft2_imag = np.imag(fft2_shifted)
-
-    # Apply batch normalization if enabled
-    if batch_normalize:
-        magnitude_norm = (magnitude_norm - batch_mean) / batch_std
 
     phase = np.angle(fft2_shifted)
 
@@ -256,9 +249,6 @@ def fourier_fft2(
     remove_beam: bool = False,
     thresh: float = 1000,
     padding: int = 0,
-    batch_normalize: bool = False,
-    batch_mean: float = None,
-    batch_std: float = None,
     filter_radius: int = None,
 ) -> dict:
     """
@@ -276,7 +266,7 @@ def fourier_fft2(
     :rtype: dict
     """
 
-    if filter_radius and not batch_normalize:
+    if filter_radius:
         (
             fft2_shifted,
             fft2_real,
@@ -309,9 +299,6 @@ def fourier_fft2(
             remove_beam,
             thresh,
             padding,
-            batch_normalize,
-            batch_mean,
-            batch_std,
         )
 
     return {
