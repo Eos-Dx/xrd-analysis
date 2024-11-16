@@ -425,9 +425,10 @@ def calculate_deviation_cake(
 
         # Calculate the mean for the pixels above the limit, ensuring to take
         # the mean across columns
-        means_above.append(
-            np.mean(intensity_above, axis=0)
-        )  # Column-wise mean (masked)
+        mean_values = np.mean(intensity_above, axis=0)
+        mean_values[mean_values == 0] = np.nan
+        means_above.append(mean_values)
+
         cakes_above.append(cake_above)
         images_above.append(img_above)
 
@@ -456,9 +457,10 @@ def calculate_deviation_cake(
 
         # Calculate the mean for the pixels below the limit, ensuring to
         # take the mean across columns
-        means_below.append(
-            np.mean(intensity_below, axis=0)
-        )  # Column-wise mean (masked)
+        mean_values = np.mean(intensity_below, axis=0)
+        mean_values[mean_values == 0] = np.nan
+        means_below.append(mean_values)
+
         cakes_below.append(cake_below)
         images_below.append(img_below)
 
