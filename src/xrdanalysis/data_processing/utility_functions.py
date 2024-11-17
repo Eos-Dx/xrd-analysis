@@ -807,15 +807,6 @@ def generate_roc_based_metrics(
     balanced_accuracy = (tpr[optimal_idx] + 1 - fpr[optimal_idx]) / 2
     balanced_accuracy = round(balanced_accuracy * 100, 1)
 
-    if show_flag:
-        # Round to 1 decimal place
-        print("Best performance closest to ideal classifier:")
-        print(f"Sensitivity: {optimal_sensitivity}%")
-        print(f"Specificity: {optimal_specificity}%")
-        print(f"PPV: {optimal_precision}%")
-        print("Max balanced accuracy:")
-        print(f"BA: {balanced_accuracy}%")
-
     return (
         optimal_sensitivity,
         optimal_specificity,
