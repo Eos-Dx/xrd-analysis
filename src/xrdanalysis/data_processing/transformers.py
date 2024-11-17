@@ -985,6 +985,7 @@ class CurveFittingTransformer(TransformerMixin):
         p0,
         bounds=(-np.inf, np.inf),
         param_indices=None,
+        cutoff_ranges=None,
     ):
         """
         Initializes the CurveFittingTransformer with specified x and y columns,
@@ -1008,6 +1009,7 @@ class CurveFittingTransformer(TransformerMixin):
         self.p0 = p0
         self.bounds = bounds
         self.param_indices = param_indices
+        self.cutoff_ranges = cutoff_ranges
 
     def fit(self, X, y=None):
         """
@@ -1045,6 +1047,13 @@ class CurveFittingTransformer(TransformerMixin):
         X_copy["fit_params"].astype(object)
         X_copy["fitted_curve"].astype(object)
 
+        x_value = X_copy.iloc[0][self.x_column]
+
+        sigma = np.ones_like(x_value)
+        for start, end in self.cutoff_ranges:
+            mask = (x_value > start) & (x_value < end)
+            sigma[mask] = 1e6  # Assign large sigma to ignore these points
+
         # Apply curve fitting for each row
         for index, row in X_copy.iterrows():
             x_values = np.array(row[self.x_column])
@@ -1058,6 +1067,7 @@ class CurveFittingTransformer(TransformerMixin):
                     y_values,
                     p0=self.p0,
                     bounds=self.bounds,
+                    sigma=sigma,
                 )
 
                 selected_params = (
