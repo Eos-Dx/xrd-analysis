@@ -781,7 +781,7 @@ def generate_roc_based_metrics(
     if show_flag:
         RocCurveDisplay.from_predictions(y_true, y_score)
         fig = plt.gcf()
-        plt.title("ROC Keele SAXS")
+        plt.title("ROC Curve")
         fig.set_size_inches(4, 4)
         fig.set_dpi(150)
         fig.set_facecolor("white")
