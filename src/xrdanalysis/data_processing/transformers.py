@@ -1049,10 +1049,13 @@ class CurveFittingTransformer(TransformerMixin):
 
         x_value = X_copy.iloc[0][self.x_column]
 
-        sigma = np.ones_like(x_value)
-        for start, end in self.cutoff_ranges:
-            mask = (x_value > start) & (x_value < end)
-            sigma[mask] = 1e6  # Assign large sigma to ignore these points
+        if self.cutoff_ranges:
+            sigma = np.ones_like(x_value)
+            for start, end in self.cutoff_ranges:
+                mask = (x_value > start) & (x_value < end)
+                sigma[mask] = 1e6  # Assign large sigma to ignore these points
+        else:
+            sigma = None
 
         # Apply curve fitting for each row
         for index, row in X_copy.iterrows():
