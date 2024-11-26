@@ -143,7 +143,7 @@ class AzimuthalIntegration(TransformerMixin):
                     "center_y",
                 ]
             ] = integration_results.apply(
-                lambda x: pd.Series([x[0], x[1], x[2], x[3], x[4]])
+                lambda x: pd.Series([x[0], x[1], x[2], x[3], x[4], x[5], x[6]])
             )
         elif self.integration_mode == "rotating_angles":
             expanded_results = integration_results.apply(
@@ -177,7 +177,19 @@ class AzimuthalIntegration(TransformerMixin):
                 ]
             ] = integration_results.apply(
                 lambda x: pd.Series(
-                    [x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8]]
+                    [
+                        x[0],
+                        x[1],
+                        x[2],
+                        x[3],
+                        x[4],
+                        x[5],
+                        x[6],
+                        x[7],
+                        x[8],
+                        x[9],
+                        x[10],
+                    ]
                 )
             )
 
