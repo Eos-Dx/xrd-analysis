@@ -139,6 +139,8 @@ class AzimuthalIntegration(TransformerMixin):
                     "radial_sem",
                     "radial_std",
                     "calculated_distance",
+                    "center_x",
+                    "center_y",
                 ]
             ] = integration_results.apply(
                 lambda x: pd.Series([x[0], x[1], x[2], x[3], x[4]])
@@ -165,6 +167,8 @@ class AzimuthalIntegration(TransformerMixin):
                     "radial_profile_data",
                     "azimuthal_positions",
                     "calculated_distance",
+                    "center_x",
+                    "center_y",
                     "cake_col_mean",
                     "cake_col_variance",
                     "cake_col_std",

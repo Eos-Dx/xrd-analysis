@@ -162,6 +162,8 @@ def perform_azimuthal_integration(
         ai_cached = initialize_azimuthal_integrator_poni(
             os.path.join(poni_dir, f"{calibration_measurement_id}.poni")
         )
+        center_x = round(ai_cached.poni1 / ai_cached.detector.pixel1)
+        center_y = round(ai_cached.poni2 / ai_cached.detector.pixel2)
 
     if mode == "1D":
         result = ai_cached.integrate1d(
@@ -178,6 +180,8 @@ def perform_azimuthal_integration(
             result.sigma,
             result.std,
             ai_cached.dist,
+            center_x,
+            center_y,
         )
     elif mode == "2D":
         result = ai_cached.integrate2d(
@@ -213,6 +217,8 @@ def perform_azimuthal_integration(
             result.intensity,
             result.azimuthal,
             ai_cached.dist,
+            center_x,
+            center_y,
             mean_col,
             variance_col,
             std_col,
@@ -236,6 +242,8 @@ def perform_azimuthal_integration(
             result.sigma,
             result.std,
             ai_cached.dist,
+            center_x,
+            center_y,
         )
     elif mode == "rotating_angles":
         results = []
@@ -259,7 +267,7 @@ def perform_azimuthal_integration(
                 )
             )
 
-        return results, ai_cached.dist
+        return results, ai_cached.dist, center_x, center_y
 
 
 def calculate_deviation(

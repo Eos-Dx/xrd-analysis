@@ -234,7 +234,7 @@ def unpack_rotating_angles_results(results):
     pd.DataFrame: A DataFrame containing the unpacked results, with one row \
     per angle.
     """
-    result_list, dist = results
+    result_list, dist, center_x, center_y = results
 
     col_dict = {}
     for angle, radial, intensity, sigma, std in result_list:
@@ -243,7 +243,9 @@ def unpack_rotating_angles_results(results):
         col_dict[f"sigma_{angle[0]}_{angle[1]}"] = sigma
         col_dict[f"std_{angle[0]}_{angle[1]}"] = std
 
-    col_dict["dist"] = dist
+    col_dict["calculated_distance"] = dist
+    col_dict["center_x"] = center_x
+    col_dict["center_y"] = center_y
     return col_dict
 
 
