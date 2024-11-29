@@ -67,7 +67,7 @@ def fourier_custom(curve, order):
     :return: Concatenated list of 'an' (cosine) and 'bn' (sine) coefficients.
     :rtype: numpy.ndarray
     """
-    L = len(curve)
+    L = len(curve) - 1
     x = np.arange(0, L)
     a0 = 2.0 / L * simps(curve, x)
     an_list = np.zeros(order)
