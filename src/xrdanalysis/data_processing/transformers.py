@@ -3,7 +3,7 @@ The transformer classes are stored here
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -722,6 +722,7 @@ class FourierTransform(TransformerMixin):
         thresh=1000,
         padding=0,
         filter_radius=None,
+        features: Optional[Union[List[str], str]] = None,
     ):
         """
         Initializes the FourierTransform class with the given parameters.
@@ -731,10 +732,22 @@ class FourierTransform(TransformerMixin):
         :param order: The number of Fourier terms (harmonics) to consider
         :param column: The name of the column in the DataFrame to apply the \
         Fourier transform
-        :param remove_beam: Whether to remove central beam in 2D mode
+        :param remove_beam: Whether to remove central beam in 2D mode, 'real' \
+        for real, 'fourier' for fourier and 'false' to not remove
         :param thresh: Threshold for beam removal in 2D mode
         :param padding: Padding around beam for removal in 2D mode
-        :param batch_normalize: Whether to apply batch normalization in 2D mode
+        :param features: Specific features to extract. Options include:
+        - 'fft2_shifted': Shifted FFT
+        - 'fft2_real': Real component
+        - 'fft2_imag': Imaginary component
+        - 'fft2_norm_magnitude': Normalized magnitude
+        - 'fft2_phase': Phase
+        - 'fft2_reconstructed': Reconstructed image
+        - 'fft2_vertical_profile': Vertical frequency profile
+        - 'fft2_horizontal_profile': Horizontal frequency profile
+        - 'fft2_freq_horizontal': Frequency x-axis
+        - 'fft2_freq_vertical': Frequency y-axis
+        - 'all': Return all features (default)
         """
         self.fourier_mode = fourier_mode
         self.order = order
@@ -743,6 +756,7 @@ class FourierTransform(TransformerMixin):
         self.thresh = thresh
         self.padding = padding
         self.filter_radius = filter_radius
+        self.features = features
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -783,20 +797,7 @@ class FourierTransform(TransformerMixin):
                     lambda x: pd.Series(fourier_func(x, self.order))
                 )
         else:
-            X[
-                [
-                    "fft2_shifted",
-                    "fft2_real",
-                    "fft2_imag",
-                    "fft2_norm_magnitude",
-                    "fft2_phase",
-                    "fft2_reconstructed",
-                    "fft2_vertical_profile",
-                    "fft2_horizontal_profile",
-                    "fft2_freq_horizontal",
-                    "fft2_freq_vertical",
-                ]
-            ] = X[self.columns[0]].apply(
+            X[self._get_feature_columns()] = X[self.columns[0]].apply(
                 lambda x: pd.Series(
                     fourier_fft2(
                         x,
@@ -804,11 +805,35 @@ class FourierTransform(TransformerMixin):
                         self.thresh,
                         self.padding,
                         self.filter_radius,
+                        self.features,
                     )
                 )
             )
 
         return X
+
+    def _get_feature_columns(self):
+        # If no specific features are set, return all default features
+        if self.features is None or self.features == "all":
+            return [
+                "fft2_shifted",
+                "fft2_real",
+                "fft2_imag",
+                "fft2_norm_magnitude",
+                "fft2_phase",
+                "fft2_reconstructed",
+                "fft2_vertical_profile",
+                "fft2_horizontal_profile",
+                "fft2_freq_horizontal",
+                "fft2_freq_vertical",
+            ]
+
+        # If a single feature or list of features is provided
+        return (
+            [self.features]
+            if isinstance(self.features, str)
+            else self.features
+        )
 
 
 class DataPreparation(TransformerMixin):

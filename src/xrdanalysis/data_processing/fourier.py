@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import fft
 from scipy.integrate import simpson as simps
+from typing import Union, List, Dict, Optional
 
 from .utility_functions import mask_beam_center
 
@@ -122,21 +123,50 @@ def fourier_fft2(
     remove_beam: str = "false",
     thresh: float = 700,
     padding: int = 0,
-    filter_radius: float = None,
-) -> tuple:
+    filter_radius: Optional[float] = None,
+    features: Optional[Union[List[str], str]] = None,
+) -> Dict[str, np.ndarray]:
     """
-    Perform comprehensive FFT2 processing with optional beam removal and \
-    filtering.
+    Perform FFT2 processing with selective feature extraction.
 
     :param data: Input 2D data array
     :param remove_beam: Beam removal method ('false', 'real', 'fourier')
     :param thresh: Threshold for beam removal
     :param padding: Padding around beam for removal
     :param filter_radius: Optional radius for frequency domain filtering
-    :return: Tuple containing various FFT-related components
+    :param features: Specific features to extract. Options include:
+        - 'fft2_shifted': Shifted FFT
+        - 'fft2_real': Real component
+        - 'fft2_imag': Imaginary component
+        - 'fft2_norm_magnitude': Normalized magnitude
+        - 'fft2_phase': Phase
+        - 'fft2_reconstructed': Reconstructed image
+        - 'fft2_vertical_profile': Vertical frequency profile
+        - 'fft2_horizontal_profile': Horizontal frequency profile
+        - 'fft2_freq_horizontal': Frequency x-axis
+        - 'fft2_freq_vertical': Frequency y-axis
+        - 'all': Return all features (default)
+    :return: Dictionary of selected FFT features
     """
     # Normalize input to lowercase
     remove_beam = remove_beam.lower()
+
+    # Default to all features if not specified
+    if features is None or features == "all":
+        features = [
+            "fft2_shifted",
+            "fft2_real",
+            "fft2_imag",
+            "fft2_norm_magnitude",
+            "fft2_phase",
+            "fft2_reconstructed",
+            "fft2_vertical_profile",
+            "fft2_horizontal_profile",
+            "fft2_freq_horizontal",
+            "fft2_freq_vertical",
+        ]
+    elif isinstance(features, str):
+        features = [features]
 
     # Beam removal in real space if specified
     if remove_beam == "real":
@@ -162,34 +192,29 @@ def fourier_fft2(
         mask = (X - ccol) ** 2 + (Y - crow) ** 2 <= filter_radius**2
         fft2_shifted *= mask
 
-    # Extract components
-    fft2_real = np.real(fft2_shifted)
-    fft2_imag = np.imag(fft2_shifted)
-    magnitude = np.abs(fft2_shifted)
-    magnitude_norm = np.divide(magnitude, np.abs(fft2[0, 0]))
-    phase = np.angle(fft2_shifted)
-
-    # Compute frequency axes
-    freq_x = fft.fftshift(fft.fftfreq(data.shape[1]))
-    freq_y = fft.fftshift(fft.fftfreq(data.shape[0]))
-
-    # Get frequency profiles
-    vertical_profile = magnitude_norm[:, magnitude_norm.shape[1] // 2]
-    horizontal_profile = magnitude_norm[magnitude_norm.shape[0] // 2, :]
-
-    # Compute inverse transform
-    fft2_unshifted = fft.ifftshift(fft2_shifted)
-    reconstructed = np.real(fft.ifft2(fft2_unshifted))
-
-    return {
+    # Prepare all possible features
+    all_features = {
         "fft2_shifted": fft2_shifted,
-        "fft2_real": fft2_real,
-        "fft2_imag": fft2_imag,
-        "fft2_norm_magnitude": magnitude_norm,
-        "fft2_phase": phase,
-        "fft2_reconstructed": reconstructed,
-        "fft2_vertical_profile": vertical_profile,
-        "fft2_horizontal_profile": horizontal_profile,
-        "fft2_freq_horizontal": freq_x,
-        "fft2_freq_vertical": freq_y,
+        "fft2_real": np.real(fft2_shifted),
+        "fft2_imag": np.imag(fft2_shifted),
+        "fft2_norm_magnitude": np.divide(
+            np.abs(fft2_shifted), np.abs(fft2[0, 0])
+        ),
+        "fft2_phase": np.angle(fft2_shifted),
+        "fft2_reconstructed": np.real(fft.ifft2(fft.ifftshift(fft2_shifted))),
+        "fft2_vertical_profile": np.divide(
+            np.abs(fft2_shifted), np.abs(fft2[0, 0])
+        )[:, fft2_shifted.shape[1] // 2],
+        "fft2_horizontal_profile": np.divide(
+            np.abs(fft2_shifted), np.abs(fft2[0, 0])
+        )[fft2_shifted.shape[0] // 2, :],
+        "fft2_freq_horizontal": fft.fftshift(fft.fftfreq(data.shape[1])),
+        "fft2_freq_vertical": fft.fftshift(fft.fftfreq(data.shape[0])),
+    }
+
+    # Return only requested features
+    return {
+        feature: all_features[feature]
+        for feature in features
+        if feature in all_features
     }
