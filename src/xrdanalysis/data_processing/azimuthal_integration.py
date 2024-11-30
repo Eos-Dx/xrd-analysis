@@ -82,7 +82,6 @@ def perform_azimuthal_integration(
     calibration_mode="dataframe",
     thres=3,
     max_iter=5,
-    poni_dir=None,
     calc_cake_stats=False,
     angles=None,
 ):

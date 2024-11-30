@@ -117,120 +117,56 @@ def fourier_fft(curve, order):
     return np.concatenate([coeff.real, coeff.imag]), inverse
 
 
-def compute_fft2_magnitude(
+def fourier_fft2(
     data: np.ndarray,
-    remove_beam_fourier=False,
-    remove_beam_real=False,
-    thresh=700,
-    padding=0,
-) -> np.ndarray:
+    remove_beam: str = "false",
+    thresh: float = 700,
+    padding: int = 0,
+    filter_radius: float = None,
+) -> tuple:
     """
-    Compute FFT2 magnitude with optional beam removal.
+    Perform comprehensive FFT2 processing with optional beam removal and \
+    filtering.
 
-    :param data: Input 2D array
-    :return: Normalized magnitude of FFT2
+    :param data: Input 2D data array
+    :param remove_beam: Beam removal method ('false', 'real', 'fourier')
+    :param thresh: Threshold for beam removal
+    :param padding: Padding around beam for removal
+    :param filter_radius: Optional radius for frequency domain filtering
+    :return: Tuple containing various FFT-related components
     """
-    if remove_beam_real:
-        beam = mask_beam_center(data, thresh, padding)
-        data = data - beam
-    # Compute initial FFT
-    fft2 = fft.fft2(data)
-    fft2_shifted = fft.fftshift(fft2)
+    # Normalize input to lowercase
+    remove_beam = remove_beam.lower()
 
-    if remove_beam_fourier and not remove_beam_real:
-        # Remove beam in real space
-        beam = mask_beam_center(data, thresh, padding)
-        beam_fft = fft.fft2(beam)
-        beam_fft_shifted = fft.fftshift(beam_fft)
-        # Subtract beam in Fourier space
-        fft2_shifted = fft2_shifted - beam_fft_shifted
-
-    # Calculate and normalize magnitude
-    magnitude = np.abs(fft2_shifted)
-    magnitude_norm = np.divide(magnitude, np.abs(fft2[0, 0]))
-
-    return magnitude_norm, fft2, fft2_shifted
-
-
-def apply_fft2_filter(
-    data,
-    radius,
-    remove_beam_fourier=False,
-    remove_beam_real=False,
-    thresh=700,
-    padding=0,
-):
-    if remove_beam_real:
+    # Beam removal in real space if specified
+    if remove_beam == "real":
         beam = mask_beam_center(data, thresh, padding)
         data = data - beam
 
-    # Step 1: Perform FFT and shift the zero-frequency component to the center
+    # Compute FFT and shift
     fft2 = fft.fft2(data)
     fft2_shifted = fft.fftshift(fft2)
 
-    if remove_beam_fourier and not remove_beam_real:
-        # Remove beam in real space
+    # Beam removal in Fourier space if specified
+    if remove_beam == "fourier":
         beam = mask_beam_center(data, thresh, padding)
-        beam_fft = fft.fft2(beam)
-        beam_fft_shifted = fft.fftshift(beam_fft)
-        # Subtract beam in Fourier space
-        fft2_shifted = fft2_shifted - beam_fft_shifted
+        beam_fft = fft.fftshift(fft.fft2(beam))
+        fft2_shifted = fft2_shifted - beam_fft
 
-    # Step 2: Create a circular mask with the given radius
-    rows, cols = data.shape
-    crow, ccol = rows // 2, cols // 2  # center of the image
-    Y, X = np.ogrid[:rows, :cols]
-    mask = (X - ccol) ** 2 + (Y - crow) ** 2 <= radius**2
+    # Apply frequency filtering if radius is specified
+    if filter_radius is not None:
+        # Create circular mask
+        rows, cols = data.shape
+        crow, ccol = rows // 2, cols // 2
+        Y, X = np.ogrid[:rows, :cols]
+        mask = (X - ccol) ** 2 + (Y - crow) ** 2 <= filter_radius**2
+        fft2_shifted *= mask
 
-    # Step 3: Apply the mask to the shifted FFT image
-    filtered_fft = fft2_shifted * mask
-
-    # Step 4: Extract real, imaginary, magnitude, and phase components
-    real_component = np.real(filtered_fft)
-    imaginary_component = np.imag(filtered_fft)
-    magnitude_component = np.abs(filtered_fft)
-    magnitude_norm = np.divide(magnitude_component, np.abs(fft2[0, 0]))
-    phase_component = np.angle(filtered_fft)
-
-    # Compute frequency axes
-    freq_x = fft.fftshift(fft.fftfreq(data.shape[1]))
-    freq_y = fft.fftshift(fft.fftfreq(data.shape[0]))
-
-    # Get frequency profiles
-    vertical_profile = magnitude_norm[:, magnitude_norm.shape[1] // 2]
-    horizontal_profile = magnitude_norm[magnitude_norm.shape[0] // 2, :]
-
-    # Shift back before inverse transform
-    fft2_unshifted = fft.ifftshift(filtered_fft)
-    reconstructed = np.real(fft.ifft2(fft2_unshifted))
-
-    return (
-        fft2_shifted,
-        real_component,
-        imaginary_component,
-        magnitude_norm,
-        phase_component,
-        reconstructed,
-        vertical_profile,
-        horizontal_profile,
-        freq_x,
-        freq_y,
-    )
-
-
-def apply_fft2(
-    data,
-    remove_beam_fourier=False,
-    remove_beam_real=False,
-    thresh=700,
-    padding=0,
-):
-    magnitude_norm, fft2, fft2_shifted = compute_fft2_magnitude(
-        data, remove_beam_fourier, remove_beam_real, thresh, padding
-    )
+    # Extract components
     fft2_real = np.real(fft2_shifted)
     fft2_imag = np.imag(fft2_shifted)
-
+    magnitude = np.abs(fft2_shifted)
+    magnitude_norm = np.divide(magnitude, np.abs(fft2[0, 0]))
     phase = np.angle(fft2_shifted)
 
     # Compute frequency axes
@@ -242,90 +178,8 @@ def apply_fft2(
     horizontal_profile = magnitude_norm[magnitude_norm.shape[0] // 2, :]
 
     # Compute inverse transform
-    if remove_beam_fourier:
-        # Shift back before inverse transform
-        fft2_unshifted = fft.ifftshift(fft2_shifted)
-        reconstructed = np.real(fft.ifft2(fft2_unshifted))
-    else:
-        reconstructed = np.real(fft.ifft2(fft2))
-
-    return (
-        fft2_shifted,
-        fft2_real,
-        fft2_imag,
-        magnitude_norm,
-        phase,
-        reconstructed,
-        vertical_profile,
-        horizontal_profile,
-        freq_x,
-        freq_y,
-    )
-
-
-def fourier_fft2(
-    data: np.ndarray,
-    remove_beam_fourier: bool = False,
-    remove_beam_real: bool = False,
-    thresh: float = 1000,
-    padding: int = 0,
-    filter_radius: int = None,
-) -> dict:
-    """
-    Performs 2D Fourier analysis with optional beam removal.
-
-    :param data: Input 2D data array.
-    :type data: np.ndarray
-    :param remove_beam: Whether to remove central beam.
-    :type remove_beam: bool, optional
-    :param thresh: Threshold for beam removal.
-    :type thresh: float, optional
-    :param padding: Padding around beam for removal.
-    :type padding: int, optional
-    :returns: Dictionary containing Fourier analysis results.
-    :rtype: dict
-    """
-
-    if filter_radius:
-        (
-            fft2_shifted,
-            fft2_real,
-            fft2_imag,
-            magnitude_norm,
-            phase,
-            reconstructed,
-            vertical_profile,
-            horizontal_profile,
-            freq_x,
-            freq_y,
-        ) = apply_fft2_filter(
-            data,
-            filter_radius,
-            remove_beam_fourier,
-            remove_beam_real,
-            thresh,
-            padding,
-        )
-
-    else:
-        (
-            fft2_shifted,
-            fft2_real,
-            fft2_imag,
-            magnitude_norm,
-            phase,
-            reconstructed,
-            vertical_profile,
-            horizontal_profile,
-            freq_x,
-            freq_y,
-        ) = apply_fft2(
-            data,
-            remove_beam_fourier,
-            remove_beam_real,
-            thresh,
-            padding,
-        )
+    fft2_unshifted = fft.ifftshift(fft2_shifted)
+    reconstructed = np.real(fft.ifft2(fft2_unshifted))
 
     return {
         "fft2_shifted": fft2_shifted,

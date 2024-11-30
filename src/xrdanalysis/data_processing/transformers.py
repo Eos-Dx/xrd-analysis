@@ -66,7 +66,6 @@ class AzimuthalIntegration(TransformerMixin):
     npt: int = 256
     integration_mode: str = "1D"
     calibration_mode: str = "dataframe"
-    poni_dir_path: str = "data/poni"
     calc_cake_stats: bool = False
     angles: List[Tuple[int]] = None
 
@@ -719,8 +718,7 @@ class FourierTransform(TransformerMixin):
         fourier_mode="",
         order=15,
         columns=["radial_profile_data"],
-        remove_beam_fourier=False,
-        remove_beam_real=False,
+        remove_beam="false",
         thresh=1000,
         padding=0,
         filter_radius=None,
@@ -741,8 +739,7 @@ class FourierTransform(TransformerMixin):
         self.fourier_mode = fourier_mode
         self.order = order
         self.columns = columns
-        self.remove_beam_fourier = remove_beam_fourier
-        self.remove_beam_real = remove_beam_real
+        self.remove_beam = remove_beam.lower()
         self.thresh = thresh
         self.padding = padding
         self.filter_radius = filter_radius
@@ -803,8 +800,7 @@ class FourierTransform(TransformerMixin):
                 lambda x: pd.Series(
                     fourier_fft2(
                         x,
-                        self.remove_beam_fourier,
-                        self.remove_beam_real,
+                        self.remove_beam,
                         self.thresh,
                         self.padding,
                         self.filter_radius,
