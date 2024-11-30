@@ -1,6 +1,6 @@
 """Various utility functions used in different parts of codebase"""
 
-import os
+import tempfile
 from typing import Tuple
 
 import matplotlib.pyplot as plt
@@ -339,46 +339,23 @@ def mask_beam_center(image: np.ndarray, thresh: float, padding: int = 0):
     return beam
 
 
-def generate_poni(df, path):
+def generate_poni_from_text(ponifile_text):
     """
-    Generates .poni files from the provided DataFrame and saves them to the\
-    specified directory.
+    Generates a temporary .poni file from the provided ponifile text.
 
-    :param df: Input DataFrame containing calibration measurement IDs and\
-        corresponding .poni file content.
-    :type df: pd.DataFrame
-    :param path: Path to the directory where .poni files will be saved.
-    :type path: str
-    :returns: Path to the directory where .poni files are saved.
+    :param ponifile_text: Text content of the .poni file
+    :type ponifile_text: str
+    :returns: Path to the temporary .poni file
     :rtype: str
     """
+    # Create a temporary file with .poni extension
+    with tempfile.NamedTemporaryFile(
+        mode="w", delete=False, suffix=".poni"
+    ) as temp_file:
+        temp_file.write(ponifile_text)
+        temp_file_path = temp_file.name
 
-    directory_path = os.path.join(os.getcwd(), path)
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
-
-    if "calibration_measurement_id" not in df.columns:
-        df["calibration_measurement_id"] = [
-            f"{i + 1}_fake" for i in range(len(df))
-        ]
-
-    df_cut = df[["calibration_measurement_id", "ponifile"]]
-
-    df_unique = df_cut.drop_duplicates(subset="calibration_measurement_id")
-
-    df_ponis = df_unique.dropna(subset="ponifile")
-
-    for _, row in df_ponis.iterrows():
-        filename = str(row["calibration_measurement_id"]) + ".poni"
-        text_content = row["ponifile"]
-        if text_content:
-            # Write the text content to the file
-            with open(
-                os.path.join(directory_path, filename),
-                "w",
-            ) as file:
-                file.write(text_content)
-    return directory_path
+    return temp_file_path
 
 
 def create_mask(faulty_pixels):

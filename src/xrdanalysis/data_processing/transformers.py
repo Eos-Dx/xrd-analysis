@@ -26,7 +26,6 @@ from xrdanalysis.data_processing.fourier import (
 )
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
-    generate_poni,
     unpack_results,
     unpack_results_cake,
     unpack_rotating_angles_results,
@@ -110,7 +109,6 @@ class AzimuthalIntegration(TransformerMixin):
 
         directory_path = None
         if self.calibration_mode == "poni":
-            directory_path = generate_poni(x_copy, self.poni_dir_path)
             x_copy.dropna(subset="ponifile", inplace=True)
 
         integration_results = x_copy.apply(
@@ -270,7 +268,6 @@ class DeviationTransformer(TransformerMixin):
         # Mark the faulty pixels in the mask
         mask = create_mask(self.faulty_pixels)
 
-        directory_path = generate_poni(x_copy, self.poni_dir_path)
         x_copy.dropna(subset="ponifile", inplace=True)
 
         calc_func = (
@@ -281,12 +278,7 @@ class DeviationTransformer(TransformerMixin):
 
         integration_results = x_copy.apply(
             lambda row: calc_func(
-                row,
-                self.above_limits,
-                self.below_limits,
-                self.npt,
-                mask,
-                poni_dir=directory_path,
+                row, self.above_limits, self.below_limits, self.npt, mask
             ),
             axis=1,
         )
