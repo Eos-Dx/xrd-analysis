@@ -63,6 +63,7 @@ class AzimuthalIntegration(TransformerMixin):
     thres: int = 3
     column: str = "measurement_data"
     faulty_pixels: Tuple[int] = None
+    mask = None
     npt: int = 256
     integration_mode: str = "1D"
     calibration_mode: str = "dataframe"
@@ -104,9 +105,11 @@ class AzimuthalIntegration(TransformerMixin):
         x_copy = x.copy()
 
         # Mark the faulty pixels in the mask
-        mask = create_mask(self.faulty_pixels)
+        if self.mask:
+            mask = self.mask
+        else:
+            mask = create_mask(self.faulty_pixels)
 
-        directory_path = None
         if self.calibration_mode == "poni":
             x_copy.dropna(subset="ponifile", inplace=True)
 
@@ -120,7 +123,6 @@ class AzimuthalIntegration(TransformerMixin):
                 self.calibration_mode,
                 thres=self.thres,
                 max_iter=self.max_iter,
-                poni_dir=directory_path,
                 calc_cake_stats=self.calc_cake_stats,
                 angles=self.angles,
             ),
