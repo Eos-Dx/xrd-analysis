@@ -69,7 +69,7 @@ def fourier_custom(curve, order):
     :rtype: numpy.ndarray
     """
     L = len(curve) - 1
-    x = np.arange(0, L)
+    x = np.arange(0, L + 1)
     a0 = 2.0 / L * simps(curve, x)
     an_list = np.zeros(order)
     bn_list = np.zeros(order)
