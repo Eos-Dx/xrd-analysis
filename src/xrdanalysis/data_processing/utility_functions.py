@@ -3,6 +3,7 @@
 import tempfile
 from typing import Tuple
 
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -15,6 +16,124 @@ from sklearn.metrics import (
     precision_score,
     roc_curve,
 )
+
+
+def h5_to_df(file_path):
+    """
+    Processes HDF5 files to extract calibration and measurement data into \
+    DataFrames.
+
+    Parameters:
+        file_paths (list of str): List of paths to HDF5 files.
+
+    Returns:
+        pd.DataFrame: DataFrame containing calibration data.
+        pd.DataFrame: DataFrame containing measurement data.
+    """
+    calibration_data = []
+    measurement_data = []
+
+    with h5py.File(file_path, "r") as hdf:
+        # Handle simpler structure
+        if "calibrations" in hdf and "measurements" in hdf:
+            calibration_group = hdf["calibrations"]
+            measurements_group = hdf["measurements"]
+
+            cal_metadata = {
+                f"calib_{key}": calibration_group.attrs[key]
+                for key in calibration_group.attrs
+            }
+
+            meas_metadata = {
+                f"{key}": measurements_group.attrs[key]
+                for key in measurements_group.attrs
+            }
+
+            # Process calibrations
+            for ds_name in calibration_group:
+                dataset = calibration_group[ds_name]
+                cal_data = {
+                    f"calib_{key}": dataset.attrs[key] for key in dataset.attrs
+                }
+                cal_data["measurement_data"] = dataset[...]
+                cal_data["cal_name"] = ds_name
+                cal_data["id"] = (
+                    "root"  # Indicating root level for simple structure
+                )
+                cal_data = {**cal_data, **cal_metadata}
+                calibration_data.append(cal_data)
+
+            # Process measurements
+            for ds_name in measurements_group:
+                dataset = measurements_group[ds_name]
+                meas_data = {
+                    f"{key}": dataset.attrs[key] for key in dataset.attrs
+                }
+                meas_data["measurement_data"] = dataset[...]
+                meas_data["meas_name"] = ds_name
+                meas_data["id"] = "root"  # Indicating root level
+                meas_data = {**meas_data, **meas_metadata, **cal_metadata}
+                measurement_data.append(meas_data)
+
+        # Handle complex structure
+        else:
+            for group_name in hdf:
+                group = hdf[group_name]
+                if "calibrations" in group and any(
+                    key.startswith("measurements_") for key in group
+                ):
+                    calibration_group = group["calibrations"]
+
+                    cal_metadata = {
+                        f"calib_{key}": calibration_group.attrs[key]
+                        for key in calibration_group.attrs
+                    }
+
+                    # Process calibrations
+                    for ds_name in calibration_group:
+                        dataset = calibration_group[ds_name]
+                        cal_data = {
+                            f"calib_{key}": dataset.attrs[key]
+                            for key in dataset.attrs
+                        }
+                        cal_data["measurement_data"] = dataset[...]
+                        cal_data["cal_name"] = ds_name
+                        cal_data["id"] = group_name  # Use group name as ID
+                        cal_data = {**cal_data, **cal_metadata}
+                        calibration_data.append(cal_data)
+
+                    # Process measurements
+                    for key in group:
+                        if key.startswith("measurements_"):
+                            measurements_group = group[key]
+                            meas_metadata = {
+                                f"{key}": measurements_group.attrs[key]
+                                for key in measurements_group.attrs
+                            }
+
+                            for ds_name in measurements_group:
+                                dataset = measurements_group[ds_name]
+                                meas_data = {
+                                    f"{key}": dataset.attrs[key]
+                                    for key in dataset.attrs
+                                }
+                                meas_data["measurement_data"] = dataset[...]
+                                meas_data["meas_name"] = ds_name
+                                meas_data["id"] = (
+                                    group_name  # Indicating root level
+                                )
+                                meas_data = {
+                                    **meas_data,
+                                    **meas_metadata,
+                                    **cal_metadata,
+                                }
+                                measurement_data.append(meas_data)
+
+    # Convert to DataFrames
+    calibration_df = pd.DataFrame(calibration_data)
+    measurement_df = pd.DataFrame(measurement_data)
+
+    return calibration_df, measurement_df
 
 
 def unpack_results(result):
