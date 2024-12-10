@@ -136,6 +136,108 @@ def h5_to_df(file_path):
     return calibration_df, measurement_df
 
 
+def compute_group_statistics(df, label_column, array_column):
+    """
+    Computes the mean and standard deviation for groups of arrays in a \
+    DataFrame.
+
+    Parameters:
+    - df: pd.DataFrame, the input DataFrame.
+    - label_column: str, the column name containing the group labels.
+    - array_column: str, the column name containing 1D arrays.
+
+    Returns:
+    - pd.DataFrame: A DataFrame with group labels, means, and standard \
+    deviations as columns.
+    """
+    # Group by the label column
+    grouped = df.groupby(label_column)[array_column]
+
+    # Calculate mean and std for each group
+    result = grouped.apply(
+        lambda arrays: (
+            np.mean(np.stack(arrays), axis=0),
+            np.std(np.stack(arrays), axis=0),
+        )
+    )
+
+    # Convert result to a DataFrame with separate mean and std columns
+    result_df = result.reset_index(name="stats")
+    result_df["mean"] = result_df["stats"].map(lambda x: x[0])
+    result_df["std"] = result_df["stats"].map(lambda x: x[1])
+    result_df = result_df.drop(columns=["stats"])  # Drop intermediate column
+
+    return result_df
+
+
+def plot_group_statistics(
+    df, label_column, array_column, selected_labels=None
+):
+    """
+    Computes the mean and standard deviation for groups of arrays in a \
+    DataFrame
+    and plots the raw data, group-wise mean, and standard deviation.
+
+    Parameters:
+    - df: pd.DataFrame, the input DataFrame containing the raw arrays.
+    - label_column: str, the column name containing the group labels.
+    - array_column: str, the column name containing 1D arrays.
+    - selected_labels: list or None, the labels of the groups to plot. \
+    If None, all groups are plotted.
+    """
+    # Compute statistics
+    stats_df = compute_group_statistics(df, label_column, array_column)
+
+    # Determine labels to plot
+    if selected_labels is None:
+        selected_labels = stats_df[label_column].unique()
+    else:
+        # Filter only the provided labels
+        selected_labels = [
+            label
+            for label in selected_labels
+            if label in stats_df[label_column].values
+        ]
+
+    # Plot each group separately
+    for lb in selected_labels:
+        # Filter raw data and statistics for the current group
+        group_data = df[df[label_column] == lb][array_column]
+        group_stats = stats_df[stats_df[label_column] == lb]
+        mean = group_stats["mean"].values[0]
+        std = group_stats["std"].values[0]
+
+        # Create the plot
+        plt.figure(figsize=(8, 5))
+
+        # Plot raw data
+        for array in group_data:
+            plt.plot(
+                array, color="royalblue", alpha=0.7, label="_nolegend_"
+            )  # Raw arrays
+
+        # Plot mean and standard deviation
+        plt.plot(mean, label=f"{lb} Mean", color="blue", linewidth=2)
+        plt.fill_between(
+            range(len(mean)),
+            mean - std,
+            mean + std,
+            color="blue",
+            alpha=0.3,
+            label=f"{lb} Std Dev",
+        )
+
+        # Customize plot
+        plt.title(f"{lb} Group")
+        plt.xlabel("q range (nm^-1)")
+        plt.ylabel("Intensity (a.u.)")
+        plt.legend(loc="upper right")
+        plt.tight_layout()
+
+        # Show the plot for the current group
+        plt.show()
+
+
 def unpack_results(result):
     (
         above_limits,
