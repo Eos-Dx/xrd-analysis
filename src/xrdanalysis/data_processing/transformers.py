@@ -63,7 +63,7 @@ class AzimuthalIntegration(TransformerMixin):
     thres: int = 3
     column: str = "measurement_data"
     faulty_pixels: Tuple[int] = None
-    mask = None
+    mask: List[List[int]] = None
     npt: int = 256
     integration_mode: str = "1D"
     calibration_mode: str = "dataframe"
@@ -105,7 +105,7 @@ class AzimuthalIntegration(TransformerMixin):
         x_copy = x.copy()
 
         # Mark the faulty pixels in the mask
-        if self.mask:
+        if self.mask is not None:
             mask = self.mask
         else:
             mask = create_mask(self.faulty_pixels)
