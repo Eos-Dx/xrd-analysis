@@ -10,7 +10,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=649a27d8" />
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=658d757c" />
     <link rel="stylesheet" type="text/css" href="_static/custom.css?v=02e5e13e" />
-
+    
     <script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
@@ -36,15 +36,15 @@
           <a href="pipeline.html" title="MLPipeline: Philosophy and Structure"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">API</a></li>
+        <li class="nav-item nav-item-this"><a href="">API</a></li> 
       </ul>
-    </div>
+    </div>  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
           <div class="body" role="main">
-
+            
   <section id="api">
 <h1>API<a class="headerlink" href="#api" title="Link to this heading">¶</a></h1>
 <p>This page is an overview of the API used for data analytics by Matur team.</p>
@@ -242,22 +242,23 @@ filter value.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.pipeline.MLPipeline.train">
-<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrangle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preprocess</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">split_args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.pipeline.MLPipeline.train" title="Link to this definition">¶</a></dt>
-<dd><p>Runs the full pipeline: wrangles, splits, fits, predicts, and validates
-on test data.</p>
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrangle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preprocess</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_sensitivity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_specificity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">split_args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.pipeline.MLPipeline.train" title="Link to this definition">¶</a></dt>
+<dd><p>Execute the full training pipeline, including data wrangling,         splitting, preprocessing, fitting, and validation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>X</strong> (<em>DataFrame</em>) – The dataset to train on.</p></li>
-<li><p><strong>y_column</strong> (<em>str</em>) – The column containing the target variable.</p></li>
-<li><p><strong>y_value</strong> (<em>object</em><em>, </em><em>optional</em>) – The value of the target variable to filter by.         Defaults to None.</p></li>
-<li><p><strong>y_data</strong> (<em>Series</em><em>, </em><em>optional</em>) – Predefined y values for the dataset. Defaults to None.</p></li>
-<li><p><strong>wrangle</strong> (<em>bool</em>) – Whether to apply wrangling steps to the data.</p></li>
-<li><p><strong>split</strong> (<em>bool</em>) – Whether to split the dataset into training and test sets.</p></li>
-<li><p><strong>preprocess</strong> (<em>bool</em>) – Whether to apply preprocessing steps.</p></li>
-<li><p><strong>print_flag</strong> (<em>bool</em>) – Whether to print validation results.         Defaults to True.</p></li>
-<li><p><strong>show_flag</strong> (<em>bool</em>) – Whether to display the ROC curve. Defaults to False.</p></li>
-<li><p><strong>split_args</strong> (<em>dict</em>) – Additional arguments for the splitter function.</p></li>
+<li><p><strong>X</strong> (<em>pandas.DataFrame</em>) – The input dataset.</p></li>
+<li><p><strong>y_column</strong> (<em>str</em>) – Name of the target variable column.</p></li>
+<li><p><strong>y_value</strong> (<em>object</em><em>, </em><em>optional</em>) – Target variable value to filter on. Defaults to None.</p></li>
+<li><p><strong>y_data</strong> (<em>pandas.Series</em><em>, </em><em>optional</em>) – Predefined target values. Defaults to None.</p></li>
+<li><p><strong>wrangle</strong> (<em>bool</em>) – If True, apply data wrangling steps. Defaults to True.</p></li>
+<li><p><strong>split</strong> (<em>bool</em>) – If True, split the dataset into training and test sets.         Defaults to True.</p></li>
+<li><p><strong>preprocess</strong> (<em>bool</em>) – If True, apply preprocessing steps.         Defaults to True.</p></li>
+<li><p><strong>print_flag</strong> (<em>bool</em>) – If True, print validation results. Defaults to True.</p></li>
+<li><p><strong>show_flag</strong> (<em>bool</em>) – If True, display the ROC curve. Defaults to False.</p></li>
+<li><p><strong>min_sensitivity</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum sensitivity threshold.         Defaults to None.</p></li>
+<li><p><strong>min_specificity</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum specificity threshold.         Defaults to None.</p></li>
+<li><p><strong>split_args</strong> (<em>dict</em>) – Additional arguments for the dataset        splitter function.</p></li>
 </ul>
 </dd>
 </dl>
@@ -319,18 +320,54 @@ on test data.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.pipeline.MLPipeline.validate">
-<span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_score</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['accuracy',</span> <span class="pre">'roc_auc']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.pipeline.MLPipeline.validate" title="Link to this definition">¶</a></dt>
-<dd><p>Validates the trained estimator on test data using specified metrics.</p>
+<span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_score</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['accuracy',</span> <span class="pre">'roc_auc']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_sensitivity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_specificity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.pipeline.MLPipeline.validate" title="Link to this definition">¶</a></dt>
+<dd><p>Validate the performance of the trained estimator on test data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>y_true</strong> (<em>Series</em>) – The true target values.</p></li>
-<li><p><strong>y_pred</strong> (<em>Series</em>) – The predicted target values.</p></li>
-<li><p><strong>y_score</strong> (<em>ndarray</em>) – The predicted probabilities for the positive class.</p></li>
-<li><p><strong>metrics</strong> (<em>list</em>) – The metrics to compute.         Defaults to [“accuracy”, “roc_auc”].</p></li>
-<li><p><strong>show_flag</strong> (<em>bool</em>) – Whether to display the ROC curve. Defaults to False.</p></li>
-<li><p><strong>print_flag</strong> (<em>bool</em>) – Whether to print the validation results.         Defaults to False.</p></li>
+<li><p><strong>y_true</strong> (<em>pandas.Series</em>) – The true target values.</p></li>
+<li><p><strong>y_score</strong> (<em>numpy.ndarray</em>) – Predicted probabilities for the positive class.</p></li>
+<li><p><strong>metrics</strong> (<em>list</em>) – Metrics to compute, e.g., [“accuracy”, “roc_auc”].</p></li>
+<li><p><strong>show_flag</strong> (<em>bool</em>) – If True, displays the ROC curve. Defaults to False.</p></li>
+<li><p><strong>print_flag</strong> (<em>bool</em>) – If True, prints the validation results.         Defaults to False.</p></li>
+<li><p><strong>min_sensitivity</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum sensitivity threshold.         Defaults to None.</p></li>
+<li><p><strong>min_specificity</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum specificity threshold.         Defaults to None.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary containing the computed metric results.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.pipeline.MLPipeline.validate_dataset">
+<span class="sig-name descname"><span class="pre">validate_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrangle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preprocess</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['accuracy',</span> <span class="pre">'roc_auc']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_sensitivity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_specificity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.pipeline.MLPipeline.validate_dataset" title="Link to this definition">¶</a></dt>
+<dd><p>Validate the trained estimator on a dataset using specified metrics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>pandas.DataFrame</em>) – The dataset for validation.</p></li>
+<li><p><strong>y_column</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the target variable column. Defaults to None.</p></li>
+<li><p><strong>y_value</strong> (<em>object</em><em>, </em><em>optional</em>) – Target variable value to filter on. Defaults to None.</p></li>
+<li><p><strong>y_data</strong> (<em>pandas.Series</em><em>, </em><em>optional</em>) – Predefined target values. Defaults to None.</p></li>
+<li><p><strong>wrangle</strong> (<em>bool</em>) – If True, apply data wrangling steps. Defaults to False.</p></li>
+<li><p><strong>preprocess</strong> (<em>bool</em>) – If True, apply preprocessing steps.         Defaults to False.</p></li>
+<li><p><strong>metrics</strong> (<em>list</em>) – Metrics to compute, e.g., [“accuracy”, “roc_auc”].</p></li>
+<li><p><strong>show_flag</strong> (<em>bool</em>) – If True, displays the ROC curve. Defaults to False.</p></li>
+<li><p><strong>print_flag</strong> (<em>bool</em>) – If True, prints the validation results.         Defaults to False.</p></li>
+<li><p><strong>min_sensitivity</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum sensitivity threshold.         Defaults to None.</p></li>
+<li><p><strong>min_specificity</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum specificity threshold.         Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary containing the computed metric results.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
 </dd>
 </dl>
 </dd></dl>
@@ -379,6 +416,52 @@ on test data.</p>
 <span id="azimuthal-integration"></span><h2><a class="toc-backref" href="#id2" role="doc-backlink">Azimuthal Integration</a><a class="headerlink" href="#module-xrdanalysis.data_processing.azimuthal_integration" title="Link to this heading">¶</a></h2>
 <p>This file includes functions and classes essential for azimuthal integration</p>
 <dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.calculate_deviation">
+<span class="sig-name descname"><span class="pre">calculate_deviation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">above_limits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1.2]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">below_limits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[0.8]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.calculate_deviation" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate deviation of measurements against predefined limits.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>row</strong> (<em>pd.Series</em>) – A pandas Series containing data and configuration for     deviation calculation.</p></li>
+<li><p><strong>above_limits</strong> (<em>list</em><em>[</em><em>float</em><em>]</em>) – A list of upper threshold multipliers for deviation     calculation. Defaults to [1.2].</p></li>
+<li><p><strong>below_limits</strong> (<em>list</em><em>[</em><em>float</em><em>]</em>) – A list of lower threshold multipliers for deviation     calculation. Defaults to [0.8].</p></li>
+<li><p><strong>npt</strong> (<em>int</em>) – Number of points for azimuthal integration. Defaults to 256.</p></li>
+<li><p><strong>mask</strong> (<em>np.ndarray</em><em> or </em><em>None</em>) – An optional mask to exclude specific data points.     Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Results containing above and below deviation images, and their     respective averages.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.calculate_deviation_cake">
+<span class="sig-name descname"><span class="pre">calculate_deviation_cake</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">above_limits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1.2]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">below_limits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[0.8]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.calculate_deviation_cake" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate deviation in the “cake” representation of azimuthal data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>row</strong> (<em>pd.Series</em>) – A pandas Series containing data and configuration for     deviation calculation.</p></li>
+<li><p><strong>above_limits</strong> (<em>list</em><em>[</em><em>float</em><em>]</em>) – A list of upper threshold multipliers for deviation     calculation. Defaults to [1.2].</p></li>
+<li><p><strong>below_limits</strong> (<em>list</em><em>[</em><em>float</em><em>]</em>) – A list of lower threshold multipliers for deviation     calculation. Defaults to [0.8].</p></li>
+<li><p><strong>npt</strong> (<em>int</em>) – Number of points for azimuthal integration. Defaults to 256.</p></li>
+<li><p><strong>mask</strong> (<em>np.ndarray</em><em> or </em><em>None</em>) – An optional mask to exclude specific data points.     Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Results containing above and below deviation “cake” images,     reverse transformations and their respective averages.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_df">
 <span class="sig-name descname"><span class="pre">initialize_azimuthal_integrator_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pixel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_row</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_distance_mm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_df" title="Link to this definition">¶</a></dt>
 <dd><p>Initializes or gets a cached azimuthal integrator with the    given parameters.</p>
@@ -402,25 +485,25 @@ on test data.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_poni">
-<span class="sig-name descname"><span class="pre">initialize_azimuthal_integrator_poni</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_poni" title="Link to this definition">¶</a></dt>
-<dd><p>Initializes or gets a cached azimuthal integrator with the given    parameters.</p>
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_poni_text">
+<span class="sig-name descname"><span class="pre">initialize_azimuthal_integrator_poni_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ponifile_text</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_poni_text" title="Link to this definition">¶</a></dt>
+<dd><p>Initializes or gets a cached azimuthal integrator based on ponifile text.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>file</strong> (<em>str</em>) – Path to the poni file.</p>
+<dd class="field-odd"><p><strong>ponifile_text</strong> (<em>str</em>) – Text content of the .poni file</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p><strong>pyFAI.azimuthalIntegrator.AzimuthalIntegrator</strong>: An instance of            the PyFAI AzimuthalIntegrator.</p></li>
-</ul>
-</p>
+<dd class="field-even"><p>PyFAI AzimuthalIntegrator instance</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pyFAI.azimuthalIntegrator.AzimuthalIntegrator</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.perform_azimuthal_integration">
-<span class="sig-name descname"><span class="pre">perform_azimuthal_integration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1D'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calibration_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">poni_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.perform_azimuthal_integration" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">perform_azimuthal_integration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1D'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calibration_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thres</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calc_cake_stats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.perform_azimuthal_integration" title="Link to this definition">¶</a></dt>
 <dd><p>Perform azimuthal integration on a single row of a DataFrame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -448,7 +531,10 @@ on test data.</p>
 <li><p><strong>mask</strong> (<em>array_like</em>) – Mask array to be applied during integration.        1s are for pixels to be masked, 0s for pixels to be integrated.        Defaults to None.</p></li>
 <li><p><strong>mode</strong> (<em>str</em>) – Mode of integration. ‘1D’ for 1-dimensional integration        and ‘2D’ for 2-dimensional integration. Defaults to ‘1D’.</p></li>
 <li><p><strong>calibration_mode</strong> (<em>str</em>) – Mode of calibration. ‘dataframe’ is used when        calibration values are columns in the dataframe, ‘poni’ is used when        calibration is in a poni file. Defaults to ‘dataframe’.</p></li>
-<li><p><strong>poni_dir</strong> (<em>str</em><em> or </em><em>None</em>) – Directory path containing .poni files for        calibration. Only applicable when calibration_mode is set to ‘poni’.        Defaults to None.</p></li>
+<li><p><strong>thres</strong> (<em>int</em>) – Threshold for sigma clipping. Used only in “sigma_clip”     mode. Defaults to 3.</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em>) – Maximum number of iterations for sigma clipping.     Used only in “sigma_clip” mode. Defaults to 5.</p></li>
+<li><p><strong>calc_cake_stats</strong> (<em>bool</em>) – Whether to calculate cake statistics in “2D” mode.    Defaults to False.</p></li>
+<li><p><strong>angles</strong> (<em>list</em><em> of </em><em>tuples</em><em> or </em><em>None</em>) – List of angle ranges for integration in “rotating_angles”     mode. Defaults to None.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -684,19 +770,22 @@ Defaults to UNZIP_PATH if not provided.</p>
 <p>The transformer classes are stored here</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.AzimuthalIntegration">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AzimuthalIntegration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">faulty_pixels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integration_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1D'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transformation_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calibration_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">poni_dir_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'data/poni'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AzimuthalIntegration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thres</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'measurement_data'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faulty_pixels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integration_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1D'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calibration_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calc_cake_stats</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
-<p>Transformer class for azimuthal integration to be used in
-an sklearn pipeline.</p>
+<p>Transformer class for azimuthal integration to be used in an sklearn     pipeline.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>faulty_pixels</strong> (<em>Tuple</em><em>[</em><em>int</em><em>]</em>) – A tuple containing the coordinates of faulty pixels.</p></li>
-<li><p><strong>npt</strong> (<em>int</em>) – The number of points for azimuthal integration. Defaults to        256.</p></li>
-<li><p><strong>integration_mode</strong> (<em>str</em>) – The integration mode, either “1D” or “2D”.        Defaults to “1D”.</p></li>
-<li><p><strong>transformation_mode</strong> (<em>str</em>) – The transformation mode, either ‘dataframe’        (returns a DataFrame for further analysis) or ‘pipeline’        (to use in an sklearn pipeline). Defaults to ‘dataframe’.</p></li>
-<li><p><strong>calibration_mode</strong> (<em>str</em>) – Mode of calibration. ‘dataframe’ is used when        calibration values are columns in the DataFrame, ‘poni’ is        used when calibration is in a poni file.</p></li>
-<li><p><strong>poni_dir_path</strong> (<em>str</em>) – Directory path where .poni files for the rows will        be saved.</p></li>
+<li><p><strong>faulty_pixels</strong> (<em>Tuple</em><em>[</em><em>int</em><em>]</em><em>, </em><em>optional</em>) – A tuple containing the coordinates of faulty pixels.    Defaults to None.</p></li>
+<li><p><strong>mask</strong> (<em>List</em><em>[</em><em>List</em><em>[</em><em>int</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – A list of lists containing pixel mask coordinates.     Defaults to None.</p></li>
+<li><p><strong>npt</strong> (<em>int</em>) – The number of points for azimuthal integration.     Defaults to 256.</p></li>
+<li><p><strong>integration_mode</strong> (<em>str</em>) – The integration mode, either “1D”, “2D”,     or “rotating_angles”. Defaults to “1D”.</p></li>
+<li><p><strong>calibration_mode</strong> (<em>str</em>) – Mode of calibration. ‘dataframe’ is used when     calibration values are columns in the DataFrame, ‘poni’ is used when     calibration is in a poni file. Defaults to ‘dataframe’.</p></li>
+<li><p><strong>calc_cake_stats</strong> (<em>bool</em>) – Flag to calculate cake statistics.     Defaults to False.</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em>) – Maximum number of iterations for processing.     Defaults to 5.</p></li>
+<li><p><strong>thres</strong> (<em>int</em>) – Threshold value for processing. Defaults to 3.</p></li>
+<li><p><strong>column</strong> (<em>str</em>) – Column name containing measurement data.     Defaults to ‘measurement_data’.</p></li>
+<li><p><strong>angles</strong> (<em>List</em><em>[</em><em>Tuple</em><em>[</em><em>int</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – List of angle ranges for integration. Defaults to None.</p></li>
 </ul>
 </dd>
 </dl>
@@ -724,17 +813,19 @@ from the data, the fit method does not perform any operations.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.AzimuthalIntegration.transform">
 <span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration.transform" title="Link to this definition">¶</a></dt>
-<dd><p>Applies azimuthal integration to each row of the DataFrame and adds
-the result as a new column.</p>
+<dd><p>Applies azimuthal integration to each row of the input DataFrame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>X</strong> (<em>pandas.DataFrame</em>) – The data to transform. Must contain ‘measurement_data’ and            ‘center’ columns.</p>
+<dd class="field-odd"><p><strong>x</strong> (<em>pandas.DataFrame</em>) – Input DataFrame containing measurement data.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A copy of the input DataFrame with an additional            ‘radial_profile_data’ column containing the results of the            azimuthal integration, and optionally ‘q_range’ and            ‘azimuthal_positions’ columns for 2D integration.</p>
+<dd class="field-even"><p>DataFrame with additional columns from azimuthal         integration results, including ‘q_range’, ‘radial_profile_data’,         and other mode-specific columns.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p>Drops rows with missing calibration data if calibration_mode         is ‘poni’.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -745,7 +836,12 @@ the result as a new column.</p>
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.ColumnCleaner">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ColumnCleaner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rules</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#xrdanalysis.data_processing.containers.Rule" title="xrdanalysis.data_processing.containers.Rule"><span class="pre">Rule</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.ColumnCleaner" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
-<p>Transformer class for cleaning specific columns according to Rules</p>
+<p>Transformer class for cleaning specific columns according to Rules.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>rules</strong> (<em>List</em><em>[</em><a class="reference internal" href="#xrdanalysis.data_processing.containers.Rule" title="xrdanalysis.data_processing.containers.Rule"><em>Rule</em></a><em>]</em>) – A list of rules used to clean specific columns.</p>
+</dd>
+</dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.ColumnCleaner.fit">
 <span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.ColumnCleaner.fit" title="Link to this definition">¶</a></dt>
@@ -846,7 +942,7 @@ each row.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.ColumnNormalizer">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ColumnNormalizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'l1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.ColumnNormalizer" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ColumnNormalizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'l1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1D'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.ColumnNormalizer" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
 <p>Transformer class for normalizing arrays in a specific column of a
 DataFrame to be used in an sklearn pipeline.</p>
@@ -956,35 +1052,41 @@ to be used in an sklearn pipeline.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.CurveFittingTransformer">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CurveFittingTransformer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(-inf,</span> <span class="pre">inf)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.CurveFittingTransformer" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CurveFittingTransformer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(-inf,</span> <span class="pre">inf)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff_ranges</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.CurveFittingTransformer" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
-<p>Transformer class for fitting a provided function to specified x and y
-columns of a DataFrame.</p>
+<p>A scikit-learn compatible transformer for performing curve fitting on
+DataFrame columns using a specified function.</p>
+<p>This transformer allows for flexible curve fitting across multiple rows
+of a DataFrame, with customizable function, parameters, and fitting
+constraints.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x_column</strong> (<em>str</em>) – The name of the column containing the x-values     (independent variable).</p></li>
-<li><p><strong>y_column</strong> (<em>str</em>) – The name of the column containing the y-values     (dependent variable).</p></li>
-<li><p><strong>func</strong> (<em>callable</em>) – The function to fit. Should take x as the first argument,     followed by parameters to fit.</p></li>
-<li><p><strong>p0</strong> (<em>list</em><em> or </em><em>array-like</em>) – Initial guess for the parameters.</p></li>
-<li><p><strong>bounds</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Bounds for the fit parameters. Defaults to no bounds.</p></li>
+<li><p><strong>x_column</strong> (<em>str</em>) – Name of the column containing x-values     (independent variable) to be used in curve fitting.</p></li>
+<li><p><strong>y_column</strong> (<em>str</em>) – Name of the column containing y-values     (dependent variable) to be used in curve fitting.</p></li>
+<li><p><strong>func</strong> (<em>callable</em>) – The mathematical function to fit. Must accept x as the first     argument, followed by parameters to be estimated.</p></li>
+<li><p><strong>p0</strong> (<em>list</em><em> or </em><em>array-like</em>) – Initial parameter guesses for the curve fitting algorithm.</p></li>
+<li><p><strong>bounds</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Parameter boundaries for constrained optimization. Defaults    to unconstrained (-∞, +∞) bounds.</p></li>
+<li><p><strong>param_indices</strong> (<em>list</em><em>, </em><em>optional</em>) – Optional indices to select specific fitted     parameters.</p></li>
+<li><p><strong>cutoff_ranges</strong> (<em>list</em><em> of </em><em>tuples</em><em>, </em><em>optional</em>) – Optional ranges to assign high uncertainty     to specific data segments during fitting.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.CurveFittingTransformer.fit">
 <span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.CurveFittingTransformer.fit" title="Link to this definition">¶</a></dt>
-<dd><p>No fitting required, but this method is required for compatibility
-with sklearn pipelines.</p>
+<dd><p>Placeholder method for scikit-learn transformer compatibility.</p>
+<p>This method does not perform actual fitting but is required for
+pipeline integration.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>X</strong> (<em>pd.DataFrame</em>) – Input DataFrame.</p></li>
-<li><p><strong>y</strong> (<em>None</em>) – Ignored.</p></li>
+<li><p><strong>X</strong> (<em>pd.DataFrame</em>) – Input DataFrame containing data to be transformed.</p></li>
+<li><p><strong>y</strong> (<em>None</em><em>, </em><em>optional</em>) – Target values (ignored).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Self.</p>
+<dd class="field-even"><p>Configured transformer instance.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#xrdanalysis.data_processing.transformers.CurveFittingTransformer" title="xrdanalysis.data_processing.transformers.CurveFittingTransformer">CurveFittingTransformer</a></p>
@@ -995,21 +1097,24 @@ with sklearn pipelines.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.CurveFittingTransformer.transform">
 <span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.CurveFittingTransformer.transform" title="Link to this definition">¶</a></dt>
-<dd><p>Applies the curve fitting function to the x and y columns of the         DataFrame.
-Stores the fitting results (parameters) and optionally the fitted curve
-in separate columns.</p>
+<dd><p>Apply curve fitting to each row of the input DataFrame.</p>
+<p>Performs curve fitting using the specified function on x and y columns.
+Adds new columns ‘fit_params’ and ‘fitted_curve’ with fitting results.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>X</strong> (<em>pd.DataFrame</em>) – Input DataFrame.</p></li>
-<li><p><strong>y</strong> (<em>None</em>) – Ignored.</p></li>
+<li><p><strong>X</strong> (<em>pd.DataFrame</em>) – Input DataFrame containing data for curve fitting.</p></li>
+<li><p><strong>y</strong> (<em>None</em><em>, </em><em>optional</em>) – Target values (ignored).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>DataFrame with fitting results.</p>
+<dd class="field-even"><p>DataFrame with added fitting results columns.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>RuntimeError</strong> – If curve fitting fails for any row.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1020,7 +1125,12 @@ in separate columns.</p>
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.DataPreparation">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DataPreparation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['calibration_measurement_id',</span> <span class="pre">'study_name',</span> <span class="pre">'study_id',</span> <span class="pre">'cancer_tissue',</span> <span class="pre">'cancer_diagnosis',</span> <span class="pre">'patient_id',</span> <span class="pre">'wavelength',</span> <span class="pre">'pixel_size',</span> <span class="pre">'calibration_manual_distance',</span> <span class="pre">'calculated_distance',</span> <span class="pre">'measurement_data',</span> <span class="pre">'center',</span> <span class="pre">'ponifile']</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.DataPreparation" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
-<p>Transformer class to prepare a raw DataFrame according to the standard.</p>
+<p>Transformer class to prepare a raw DataFrame according to     a standard configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>columns</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – Columns definition for DataFrame preparation.     Defaults to COLUMNS_DEF.</p>
+</dd>
+</dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.DataPreparation.fit">
 <span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.DataPreparation.fit" title="Link to this definition">¶</a></dt>
@@ -1062,14 +1172,24 @@ from the data, the fit method does not perform any operations.</p>
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.FourierTransform">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FourierTransform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fourier_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'radial_profile_data'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.FourierTransform" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.DeviationTransformer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DeviationTransformer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">faulty_pixels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">above_limits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1.2]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">below_limits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[0.8]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cake'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.DeviationTransformer" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
-<p>Transformer class to apply Fourier transformation on a specific column of     a DataFrame.</p>
-<p>This class allows for the application of either a custom Fourier     transform or an FFT (Fast Fourier Transform) on a specified column of the     input data. The Fourier coefficients are extracted up to the specified     order.</p>
+<p>Transformer class for calculating deviations in an sklearn pipeline.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>faulty_pixels</strong> (<em>Tuple</em><em>[</em><em>int</em><em>]</em><em>, </em><em>optional</em>) – A tuple containing the coordinates of faulty pixels.    Defaults to None.</p></li>
+<li><p><strong>npt</strong> (<em>int</em>) – The number of points for integration. Defaults to 256.</p></li>
+<li><p><strong>above_limits</strong> (<em>List</em><em>[</em><em>float</em><em>]</em>) – Limits for calculating deviations above a threshold.    Defaults to [1.2].</p></li>
+<li><p><strong>below_limits</strong> (<em>List</em><em>[</em><em>float</em><em>]</em>) – Limits for calculating deviations below a threshold.    Defaults to [0.8].</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – Integration mode, either ‘cake’ or default.    Defaults to ‘cake’.</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.FourierTransform.fit">
-<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.FourierTransform.fit" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.DeviationTransformer.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.DeviationTransformer.fit" title="Link to this definition">¶</a></dt>
 <dd><p>Fit method for the transformer. Since this transformer does not learn
 from the data, the fit method does not perform any operations.</p>
 <dl class="field-list simple">
@@ -1084,6 +1204,52 @@ from the data, the fit method does not perform any operations.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.DeviationTransformer.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.DeviationTransformer.transform" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate deviations for each row of the input DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>pandas.DataFrame</em>) – Input DataFrame containing measurement data.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with additional columns containing deviation         results, with different columns based on the selected mode         (‘cake’ or default).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p>Drops rows with missing calibration data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.FourierTransform">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FourierTransform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fourier_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['radial_profile_data']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_beam</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'false'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.FourierTransform" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
+<p>Transformer class to apply Fourier transformation on a specific column of     a DataFrame.
+Includes batch normalization for 2D Fourier transforms.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.FourierTransform.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.FourierTransform.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Fit method for the transformer. For 2D mode with batch normalization,
+calculates batch statistics from the normalized magnitudes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – The data to fit</p></li>
+<li><p><strong>y</strong> – Ignored. Present for API consistency</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the instance itself</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1111,7 +1277,61 @@ from the data, the fit method does not perform any operations.</p>
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.NormScaler">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">NormScaler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scalers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">StandardScaler</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Scaler'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.NormScaler" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
-<p>Does normalization and scaling of the dataframe</p>
+<p>Transformer for normalization and scaling of a DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scalers</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>StandardScaler</em><em>]</em><em>, </em><em>optional</em>) – Dictionary of StandardScaler instances for different     measurement types. Defaults to None.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name of the scaler instance. Defaults to ‘Scaler’.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.NormScaler.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.NormScaler.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Fit the scaler to the input DataFrame by computing scaling parameters         for SAXS and WAXS measurements.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pandas.DataFrame</em>) – Input DataFrame containing measurement data.</p></li>
+<li><p><strong>y</strong> (<em>None</em><em>, </em><em>optional</em>) – Target values. Ignored in this transformer.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The fitted transformer instance.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScaler" title="xrdanalysis.data_processing.transformers.NormScaler">NormScaler</a></p>
+</dd>
+<dt class="field-even">Note<span class="colon">:</span></dt>
+<dd class="field-even"><p>Computes and stores separate scalers for SAXS and WAXS         measurement types.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.NormScaler.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.NormScaler.transform" title="Link to this definition">¶</a></dt>
+<dd><p>Transform the input DataFrame by applying L1 normalization and scaling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>df</strong> (<em>pandas.DataFrame</em>) – Input DataFrame to be transformed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Transformed DataFrame with normalized and scaled radial         profile data.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+<dt class="field-even">Note<span class="colon">:</span></dt>
+<dd class="field-even"><p>Applies separate scaling for SAXS and WAXS measurement types.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Fits the scaler if no scalers are present.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -1119,6 +1339,11 @@ from the data, the fit method does not perform any operations.</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">QRangeSetter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.containers.Limits" title="xrdanalysis.data_processing.containers.Limits"><span class="pre">Limits</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.QRangeSetter" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
 <p>Transformer class to set a Q-range for azimuthal integration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>limits</strong> (<a class="reference internal" href="#xrdanalysis.data_processing.containers.Limits" title="xrdanalysis.data_processing.containers.Limits"><em>Limits</em></a><em>, </em><em>optional</em>) – Limits for Q-range setting. Defaults to None.</p>
+</dd>
+</dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.QRangeSetter.fit">
 <span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.QRangeSetter.fit" title="Link to this definition">¶</a></dt>
@@ -1143,16 +1368,19 @@ from the data, the fit method does not perform any operations.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.QRangeSetter.transform">
 <span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.QRangeSetter.transform" title="Link to this definition">¶</a></dt>
-<dd><p>Transforms the input DataFrame to set interpolation Q-range.</p>
+<dd><p>Set interpolation Q-range for the input DataFrame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>df</strong> (<em>pandas.DataFrame</em>) – The raw DataFrame to be transformed.</p>
+<dd class="field-odd"><p><strong>df</strong> (<em>pandas.DataFrame</em>) – The input DataFrame to transform.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The transformed DataFrame with selected columns.</p>
+<dd class="field-even"><p>DataFrame with added ‘type_measurement’ and         ‘interpolation_q_range’ columns.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+<dt class="field-even">Note<span class="colon">:</span></dt>
+<dd class="field-even"><p>Adds ‘type_measurement’ column if not present, based         on calibration distance.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1161,9 +1389,17 @@ from the data, the fit method does not perform any operations.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.SlopeRemoval">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SlopeRemoval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'radial_profile_data'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.SlopeRemoval" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SlopeRemoval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['radial_profile_data']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.SlopeRemoval" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
-<p>Transformer class to remove slope from a curve</p>
+<p>Transformer class to remove slope from a curve.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>columns</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of column names to apply slope removal.     Defaults to [‘radial_profile_data’].</p></li>
+<li><p><strong>mode</strong> (<em>str</em><em>, </em><em>optional</em>) – Optional mode for slope removal. Defaults to an empty string.</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.SlopeRemoval.fit">
 <span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.SlopeRemoval.fit" title="Link to this definition">¶</a></dt>
@@ -1194,7 +1430,7 @@ from the data, the fit method does not perform any operations.</p>
 <dd class="field-odd"><p><strong>df</strong> (<em>pandas.DataFrame</em>) – The raw DataFrame to be transformed.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The transformed DataFrame with selected columns.</p>
+<dd class="field-even"><p>The transformed DataFrame with slope removed         from the specified column.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>pandas.DataFrame</p>
@@ -1248,6 +1484,38 @@ from the data, the fit method does not perform any operations.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fourier.fourier_fft2">
+<span class="sig-name descname"><span class="pre">fourier_fft2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_beam</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'false'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">700</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.fourier.fourier_fft2" title="Link to this definition">¶</a></dt>
+<dd><p>Perform FFT2 processing with selective feature extraction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Input 2D data array</p></li>
+<li><p><strong>remove_beam</strong> – Beam removal method (‘false’, ‘real’, ‘fourier’)</p></li>
+<li><p><strong>thresh</strong> – Threshold for beam removal</p></li>
+<li><p><strong>padding</strong> – Padding around beam for removal</p></li>
+<li><p><strong>filter_radius</strong> – Optional radius for frequency domain filtering</p></li>
+<li><p><strong>features</strong> – Specific features to extract. Options include:
+- ‘fft2_shifted’: Shifted FFT
+- ‘fft2_real’: Real component
+- ‘fft2_imag’: Imaginary component
+- ‘fft2_norm_magnitude’: Normalized magnitude
+- ‘fft2_phase’: Phase
+- ‘fft2_reconstructed’: Reconstructed image
+- ‘fft2_vertical_profile’: Vertical frequency profile
+- ‘fft2_horizontal_profile’: Horizontal frequency profile
+- ‘fft2_freq_horizontal’: Frequency x-axis
+- ‘fft2_freq_vertical’: Frequency y-axis
+- ‘all’: Return all features (default)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary of selected FFT features</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.fourier.slope_removal">
 <span class="sig-name descname"><span class="pre">slope_removal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fourier.slope_removal" title="Link to this definition">¶</a></dt>
 <dd><p>Removes the slope of a curve by subtracting a linear function that     connects the first and last values.</p>
@@ -1285,20 +1553,52 @@ from the data, the fit method does not perform any operations.</p>
 <section id="module-xrdanalysis.data_processing.fitting_functions">
 <span id="fitting-functions"></span><h2><a class="toc-backref" href="#id7" role="doc-backlink">Fitting Functions</a><a class="headerlink" href="#module-xrdanalysis.data_processing.fitting_functions" title="Link to this heading">¶</a></h2>
 <dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.Gauss">
-<span class="sig-name descname"><span class="pre">Gauss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wid</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.Gauss" title="Link to this definition">¶</a></dt>
-<dd><p>Gaussian function to model a peak.</p>
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.create_poly_peak_fn">
+<span class="sig-name descname"><span class="pre">create_poly_peak_fn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">background_power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peak_types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.create_poly_peak_fn" title="Link to this definition">¶</a></dt>
+<dd><p>Factory function for poly peak fitting function</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.gamma_distribution">
+<span class="sig-name descname"><span class="pre">gamma_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">position</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.gamma_distribution" title="Link to this definition">¶</a></dt>
+<dd><p>Compute the Gamma distribution with amplitude and position parameters.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – The independent variable (e.g., position or time).</p></li>
-<li><p><strong>amp</strong> (<em>float</em>) – The amplitude of the Gaussian peak.</p></li>
-<li><p><strong>cen</strong> (<em>float</em>) – The center of the Gaussian peak.</p></li>
-<li><p><strong>wid</strong> (<em>float</em>) – The width (standard deviation) of the Gaussian peak.</p></li>
+<li><p><strong>x</strong> (<em>array-like</em>) – Input values (x &gt; position).</p></li>
+<li><p><strong>amp</strong> (<em>float</em>) – Amplitude of the distribution.</p></li>
+<li><p><strong>position</strong> (<em>float</em>) – Shift (location) parameter.</p></li>
+<li><p><strong>k</strong> (<em>float</em>) – Shape parameter (must be positive).</p></li>
+<li><p><strong>theta</strong> (<em>float</em>) – Scale parameter (must be positive).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The value of the Gaussian function at the given x.</p>
+<dd class="field-even"><p>Gamma distribution PDF values.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array-like</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <cite>k</cite> or <cite>theta</cite> is not positive.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.gaussian_peak">
+<span class="sig-name descname"><span class="pre">gaussian_peak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.gaussian_peak" title="Link to this definition">¶</a></dt>
+<dd><p>Generate Gaussian peak function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable</p></li>
+<li><p><strong>amp</strong> (<em>float</em>) – Peak amplitude</p></li>
+<li><p><strong>cen</strong> (<em>float</em>) – Peak center</p></li>
+<li><p><strong>sigma</strong> (<em>float</em>) – Peak width (standard deviation)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Gaussian peak values</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>numpy.ndarray or float</p>
@@ -1307,19 +1607,20 @@ from the data, the fit method does not perform any operations.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.bg_decay_fn">
-<span class="sig-name descname"><span class="pre">bg_decay_fn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fourth_degree_coef</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constant</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.bg_decay_fn" title="Link to this definition">¶</a></dt>
-<dd><p>Background decay function with a fourth-degree term and a constant.</p>
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.inverse_power_background">
+<span class="sig-name descname"><span class="pre">inverse_power_background</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coef</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constant</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.inverse_power_background" title="Link to this definition">¶</a></dt>
+<dd><p>Generate background using inverse power law with constant offset.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – The independent variable.</p></li>
-<li><p><strong>fourth_degree_coef</strong> (<em>float</em>) – Coefficient for the fourth-degree decay term.</p></li>
-<li><p><strong>constant</strong> (<em>float</em>) – Constant term for the background.</p></li>
+<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable</p></li>
+<li><p><strong>coef</strong> (<em>float</em>) – Coefficient of inverse power term</p></li>
+<li><p><strong>power</strong> (<em>float</em>) – Power of inverse function</p></li>
+<li><p><strong>constant</strong> (<em>float</em>) – Constant offset</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The value of the background decay function at the given x.</p>
+<dd class="field-even"><p>Background function values</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>numpy.ndarray or float</p>
@@ -1328,21 +1629,70 @@ from the data, the fit method does not perform any operations.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.poly_gauss">
-<span class="sig-name descname"><span class="pre">poly_gauss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.poly_gauss" title="Link to this definition">¶</a></dt>
-<dd><p>Composite function that sums Gaussian functions with a polynomial     background.</p>
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.lorentzian_peak">
+<span class="sig-name descname"><span class="pre">lorentzian_peak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.lorentzian_peak" title="Link to this definition">¶</a></dt>
+<dd><p>Generate Lorentzian peak function.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – The independent variable.</p></li>
-<li><p><strong>params</strong> (<em>list</em><em> or </em><em>numpy.ndarray</em>) – Parameters for multiple Gaussian functions and the     background. The first part of params consists of 3 parameters per     Gaussian (amplitude, center, width), followed by 2 parameters for     the background (fourth-degree coefficient, constant).</p></li>
+<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable</p></li>
+<li><p><strong>amp</strong> (<em>float</em>) – Peak amplitude</p></li>
+<li><p><strong>cen</strong> (<em>float</em>) – Peak center</p></li>
+<li><p><strong>gamma</strong> (<em>float</em>) – Peak half-width at half-maximum</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The value of the composite function at the given x.</p>
+<dd class="field-even"><p>Lorentzian peak values</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>numpy.ndarray</p>
+<dd class="field-odd"><p>numpy.ndarray or float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.skewed_voigt">
+<span class="sig-name descname"><span class="pre">skewed_voigt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.skewed_voigt" title="Link to this definition">¶</a></dt>
+<dd><p>Compute the skewed Voigt profile.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>array-like</em>) – Input values.</p></li>
+<li><p><strong>amp</strong> (<em>float</em>) – Amplitude of the profile.</p></li>
+<li><p><strong>mu</strong> (<em>float</em>) – Center of the profile.</p></li>
+<li><p><strong>sigma</strong> (<em>float</em>) – Gaussian standard deviation.</p></li>
+<li><p><strong>gamma</strong> (<em>float</em>) – Lorentzian half-width at half-maximum.</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – Skewness parameter (positive for right skew,     negative for left skew).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Skewed Voigt profile values.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array-like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.voigt_peak">
+<span class="sig-name descname"><span class="pre">voigt_peak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.voigt_peak" title="Link to this definition">¶</a></dt>
+<dd><p>Generate Voigt peak function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable</p></li>
+<li><p><strong>amp</strong> (<em>float</em>) – Peak amplitude</p></li>
+<li><p><strong>cen</strong> (<em>float</em>) – Peak center</p></li>
+<li><p><strong>sigma</strong> (<em>float</em>) – Gaussian width</p></li>
+<li><p><strong>gamma</strong> (<em>float</em>) – Lorentzian half-width</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Voigt peak values</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray or float</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1352,15 +1702,59 @@ from the data, the fit method does not perform any operations.</p>
 <span id="utilities"></span><h2><a class="toc-backref" href="#id8" role="doc-backlink">Utilities</a><a class="headerlink" href="#module-xrdanalysis.data_processing.utility_functions" title="Link to this heading">¶</a></h2>
 <p>Various utility functions used in different parts of codebase</p>
 <dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.calculate_optimal_threshold">
+<span class="sig-name descname"><span class="pre">calculate_optimal_threshold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_score</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_sensitivity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_specificity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.calculate_optimal_threshold" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the optimal threshold for a binary classifier based on the     ROC curve, optionally filtering by minimum sensitivity or specificity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>y_true</strong> (<em>array-like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>,</em><em>)</em>) – True binary labels.</p></li>
+<li><p><strong>y_score</strong> (<em>array-like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>,</em><em>)</em>) – Target scores, probability estimates of the positive class.</p></li>
+<li><p><strong>min_sensitivity</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum required sensitivity for     filtering thresholds. Defaults to None.</p></li>
+<li><p><strong>min_specificity</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum required specificity for     filtering thresholds. Defaults to None.</p></li>
+<li><p><strong>print_flag</strong> (<em>bool</em>) – Whether to print the optimal threshold.     Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing true positive rates, false positive rates,    the index of the optimal threshold, and the optimal threshold value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[np.ndarray, np.ndarray, int, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.compute_group_statistics">
+<span class="sig-name descname"><span class="pre">compute_group_statistics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">array_column</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.compute_group_statistics" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the mean and standard deviation for groups of arrays in     a DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – The input DataFrame containing data for grouping.</p></li>
+<li><p><strong>label_column</strong> (<em>str</em>) – The column name containing group labels.</p></li>
+<li><p><strong>array_column</strong> (<em>str</em>) – The column name containing 1D arrays.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A DataFrame with group labels, means, and standard deviations.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.create_mask">
 <span class="sig-name descname"><span class="pre">create_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">faulty_pixels</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.create_mask" title="Link to this definition">¶</a></dt>
 <dd><p>Creates a mask array to identify faulty pixels.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>faulty_pixels</strong> (<em>list</em><em> of </em><em>tuples</em><em> or </em><em>None</em>) – List of (y, x) coordinates representing faulty        pixels, or None.</p>
+<dd class="field-odd"><p><strong>faulty_pixels</strong> (<em>list</em><em> of </em><em>tuples</em><em> or </em><em>None</em>) – List of (y, x) coordinates representing faulty    pixels, or None.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Mask array where 1 indicates a faulty pixel and 0 indicates a        good pixel, or None.</p>
+<dd class="field-even"><p>Mask array where 1 indicates a faulty pixel and 0 indicates a    good pixel, or None.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>numpy.ndarray or None</p>
@@ -1369,21 +1763,62 @@ from the data, the fit method does not perform any operations.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.generate_poni">
-<span class="sig-name descname"><span class="pre">generate_poni</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.generate_poni" title="Link to this definition">¶</a></dt>
-<dd><p>Generates .poni files from the provided DataFrame and saves them to the    specified directory.</p>
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.generate_poni_from_text">
+<span class="sig-name descname"><span class="pre">generate_poni_from_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ponifile_text</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.generate_poni_from_text" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a temporary .poni file from the provided ponifile text.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – Input DataFrame containing calibration measurement IDs and        corresponding .poni file content.</p></li>
-<li><p><strong>path</strong> (<em>str</em>) – Path to the directory where .poni files will be saved.</p></li>
-</ul>
+<dd class="field-odd"><p><strong>ponifile_text</strong> (<em>str</em>) – Text content of the .poni file</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Path to the directory where .poni files are saved.</p>
+<dd class="field-even"><p>Path to the temporary .poni file</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.generate_roc_based_metrics">
+<span class="sig-name descname"><span class="pre">generate_roc_based_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_score</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_sensitivity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_specificity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.generate_roc_based_metrics" title="Link to this definition">¶</a></dt>
+<dd><p>Generate ROC-based metrics including sensitivity, specificity, precision,
+and balanced accuracy, and optionally display the ROC curve.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>y_true</strong> (<em>array-like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>,</em><em>)</em>) – True binary labels.</p></li>
+<li><p><strong>y_score</strong> (<em>array-like</em><em> of </em><em>shape</em><em> (</em><em>n_samples</em><em>,</em><em>)</em>) – Target scores, probability estimates of the positive class.</p></li>
+<li><p><strong>show_flag</strong> (<em>bool</em>) – Whether to display the ROC curve. Defaults to True.</p></li>
+<li><p><strong>min_sensitivity</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum required sensitivity for     filtering thresholds. Defaults to None.</p></li>
+<li><p><strong>min_specificity</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum required specificity for     filtering thresholds. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing optimal sensitivity, optimal specificity,     optimal precision, and balanced accuracy (all in percentages).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[float, float, float, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.get_angle_span">
+<span class="sig-name descname"><span class="pre">get_angle_span</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.get_angle_span" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the angular span between two angles, handling wraparound     across the -180/180 degree boundary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>float</em>) – Starting angle in degrees.</p></li>
+<li><p><strong>end</strong> (<em>float</em>) – Ending angle in degrees.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The total angular span between the two angles.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1396,16 +1831,32 @@ from the data, the fit method does not perform any operations.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> (<em>np.ndarray</em>) – The input SAXS data.</p></li>
-<li><p><strong>threshold</strong> (<em>float</em><em>, </em><em>optional</em>) – The threshold factor for identifying the center of the        beam.
-Defaults to 3.0 times the average value of the input data.</p></li>
+<li><p><strong>threshold</strong> (<em>float</em><em>, </em><em>optional</em>) – The threshold factor for identifying the center of the    beam. Defaults to 3.0 times the average value of the input data.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The coordinates of the center of the beam in the input data.
-If no center is found, returns (np.NaN, np.NaN).</p>
+<dd class="field-even"><p>The coordinates of the center of the beam in the input data.     If no center is found, returns (np.NaN, np.NaN).</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.h5_to_df">
+<span class="sig-name descname"><span class="pre">h5_to_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.h5_to_df" title="Link to this definition">¶</a></dt>
+<dd><p>Converts an HDF5 file into two pandas DataFrames containing calibration
+and measurement data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file_path</strong> (<em>str</em>) – Path to the HDF5 file to process.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing two DataFrames: one with calibration data and     one with measurement data.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[pd.DataFrame, pd.DataFrame]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1445,10 +1896,130 @@ If no center is found, returns (np.NaN, np.NaN).</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.mask_beam_center">
+<span class="sig-name descname"><span class="pre">mask_beam_center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.mask_beam_center" title="Link to this definition">¶</a></dt>
+<dd><p>Isolates and removes a central beam from an image based on a threshold     value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>np.ndarray</em>) – Input image to process for beam removal.</p></li>
+<li><p><strong>thresh</strong> (<em>float</em>) – Threshold value to identify the beam region. Pixels above     this value are considered part of the beam.</p></li>
+<li><p><strong>padding</strong> (<em>int</em><em>, </em><em>optional</em>) – Additional padding around the detected beam region in     pixels. Defaults to 0.</p></li>
+<li><p><strong>return_coords</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, returns the beam coordinates along with the        isolated beam image. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>If return_coords is False, returns only the isolated beam image.        If return_coords is True, returns a tuple containing the isolated beam        image and a dictionary of beam coordinates and measurements.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Union[np.ndarray, Tuple[np.ndarray, dict]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.perform_weighted_integration">
+<span class="sig-name descname"><span class="pre">perform_weighted_integration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ai_cached</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">range_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_q_range</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.perform_weighted_integration" title="Link to this definition">¶</a></dt>
+<dd><p>Perform integration for angular ranges with proper weighting, handling     potential range splits.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>numpy.ndarray</em>) – Input data for integration.</p></li>
+<li><p><strong>ai_cached</strong> (<em>pyFAI.AzimuthalIntegrator</em>) – Azimuthal integrator instance.</p></li>
+<li><p><strong>range_info</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Union</em><em>[</em><em>List</em><em>[</em><em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em><em>,     </em><em>List</em><em>[</em><em>float</em><em>]</em><em>, </em><em>float</em><em>, </em><em>bool</em><em>]</em><em>]</em>) – Dictionary containing processed ranges and weights.</p></li>
+<li><p><strong>npt</strong> (<em>int</em>) – Number of points for integration.</p></li>
+<li><p><strong>interpolation_q_range</strong> (<em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – Q range for interpolation.</p></li>
+<li><p><strong>mask</strong> (<em>numpy.ndarray</em><em>, </em><em>optional</em>) – Optional mask array for integration.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing (radial, intensity, sigma, std) for     the integrated range.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.plot_group_statistics">
+<span class="sig-name descname"><span class="pre">plot_group_statistics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">array_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.plot_group_statistics" title="Link to this definition">¶</a></dt>
+<dd><p>Computes and visualizes group statistics (mean and standard deviation)
+for arrays within a DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – The input DataFrame containing the raw data.</p></li>
+<li><p><strong>label_column</strong> (<em>str</em>) – The column name containing group labels.</p></li>
+<li><p><strong>array_column</strong> (<em>str</em>) – The column name containing 1D arrays.</p></li>
+<li><p><strong>selected_labels</strong> (<em>list</em><em> or </em><em>None</em>) – Labels of the groups to plot. If None, all     groups are plotted.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.prep">
 <span class="sig-name descname"><span class="pre">prep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.prep" title="Link to this definition">¶</a></dt>
 <dd><p>Prepare dataframe to RF learning or other models.
 It uses SCALED_DATA and age of the patient’s measurement.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.prepare_angular_ranges">
+<span class="sig-name descname"><span class="pre">prepare_angular_ranges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_angle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.prepare_angular_ranges" title="Link to this definition">¶</a></dt>
+<dd><p>Prepare angular ranges for integration by validating and processing     the angles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start_angle</strong> (<em>float</em>) – Starting angle in degrees.</p></li>
+<li><p><strong>end_angle</strong> (<em>float</em>) – Ending angle in degrees.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary containing processed integration range information.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Union[List[Tuple[float, float]],     List[float], float, bool]]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If input angles are outside the valid -180 to 180     degrees range.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.process_angular_ranges">
+<span class="sig-name descname"><span class="pre">process_angular_ranges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angles</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.process_angular_ranges" title="Link to this definition">¶</a></dt>
+<dd><p>Process angular ranges to handle the -180/180 boundary crossing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>angles</strong> (<em>List</em><em>[</em><em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em>) – A list of tuples containing start and end angles for     angular ranges.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of processed angle ranges accounting for boundary     crossings.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Tuple[float, float]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.unpack_rotating_angles_results">
+<span class="sig-name descname"><span class="pre">unpack_rotating_angles_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.unpack_rotating_angles_results" title="Link to this definition">¶</a></dt>
+<dd><p>Unpack the results from the rotating_angles_analysis function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>results</strong> (<em>Tuple</em><em>[</em><em>List</em><em>[</em><em>Tuple</em><em>[</em><em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>, </em><em>numpy.ndarray</em><em>,     </em><em>numpy.ndarray</em><em>, </em><em>numpy.ndarray</em><em>, </em><em>numpy.ndarray</em><em>]</em><em>]</em><em>, </em><em>float</em><em>, </em><em>float</em><em>, </em><em>float</em><em>]</em>) – A tuple containing results from angular analysis.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary with integration results for various angle ranges     and calculated parameters.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Union[numpy.ndarray, float]]</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -1482,6 +2053,7 @@ It uses SCALED_DATA and age of the patient’s measurement.</p>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.pipeline.MLPipeline.train_preprocess"><code class="docutils literal notranslate"><span class="pre">MLPipeline.train_preprocess()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.pipeline.MLPipeline.train_preprocessor"><code class="docutils literal notranslate"><span class="pre">MLPipeline.train_preprocessor()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.pipeline.MLPipeline.validate"><code class="docutils literal notranslate"><span class="pre">MLPipeline.validate()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.pipeline.MLPipeline.validate_dataset"><code class="docutils literal notranslate"><span class="pre">MLPipeline.validate_dataset()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.pipeline.MLPipeline.wrangle"><code class="docutils literal notranslate"><span class="pre">MLPipeline.wrangle()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.pipeline.MLPipeline.wrangle_preprocess_transform"><code class="docutils literal notranslate"><span class="pre">MLPipeline.wrangle_preprocess_transform()</span></code></a></li>
 </ul>
@@ -1489,8 +2061,10 @@ It uses SCALED_DATA and age of the patient’s measurement.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-xrdanalysis.data_processing.azimuthal_integration">Azimuthal Integration</a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.calculate_deviation"><code class="docutils literal notranslate"><span class="pre">calculate_deviation()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.calculate_deviation_cake"><code class="docutils literal notranslate"><span class="pre">calculate_deviation_cake()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_df"><code class="docutils literal notranslate"><span class="pre">initialize_azimuthal_integrator_df()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_poni"><code class="docutils literal notranslate"><span class="pre">initialize_azimuthal_integrator_poni()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.initialize_azimuthal_integrator_poni_text"><code class="docutils literal notranslate"><span class="pre">initialize_azimuthal_integrator_poni_text()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.azimuthal_integration.perform_azimuthal_integration"><code class="docutils literal notranslate"><span class="pre">perform_azimuthal_integration()</span></code></a></li>
 </ul>
 </li>
@@ -1548,12 +2122,21 @@ It uses SCALED_DATA and age of the patient’s measurement.</p>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.DataPreparation.transform"><code class="docutils literal notranslate"><span class="pre">DataPreparation.transform()</span></code></a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.DeviationTransformer"><code class="docutils literal notranslate"><span class="pre">DeviationTransformer</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.DeviationTransformer.fit"><code class="docutils literal notranslate"><span class="pre">DeviationTransformer.fit()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.DeviationTransformer.transform"><code class="docutils literal notranslate"><span class="pre">DeviationTransformer.transform()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.FourierTransform"><code class="docutils literal notranslate"><span class="pre">FourierTransform</span></code></a><ul>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.FourierTransform.fit"><code class="docutils literal notranslate"><span class="pre">FourierTransform.fit()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.FourierTransform.transform"><code class="docutils literal notranslate"><span class="pre">FourierTransform.transform()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScaler"><code class="docutils literal notranslate"><span class="pre">NormScaler</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScaler"><code class="docutils literal notranslate"><span class="pre">NormScaler</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScaler.fit"><code class="docutils literal notranslate"><span class="pre">NormScaler.fit()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.NormScaler.transform"><code class="docutils literal notranslate"><span class="pre">NormScaler.transform()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.QRangeSetter"><code class="docutils literal notranslate"><span class="pre">QRangeSetter</span></code></a><ul>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.QRangeSetter.fit"><code class="docutils literal notranslate"><span class="pre">QRangeSetter.fit()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.transformers.QRangeSetter.transform"><code class="docutils literal notranslate"><span class="pre">QRangeSetter.transform()</span></code></a></li>
@@ -1569,23 +2152,39 @@ It uses SCALED_DATA and age of the patient’s measurement.</p>
 <li><a class="reference internal" href="#module-xrdanalysis.data_processing.fourier">Fourier</a><ul>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.fourier.fourier_custom"><code class="docutils literal notranslate"><span class="pre">fourier_custom()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.fourier.fourier_fft"><code class="docutils literal notranslate"><span class="pre">fourier_fft()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fourier.fourier_fft2"><code class="docutils literal notranslate"><span class="pre">fourier_fft2()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.fourier.slope_removal"><code class="docutils literal notranslate"><span class="pre">slope_removal()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.fourier.slope_removal_custom"><code class="docutils literal notranslate"><span class="pre">slope_removal_custom()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-xrdanalysis.data_processing.fitting_functions">Fitting Functions</a><ul>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.Gauss"><code class="docutils literal notranslate"><span class="pre">Gauss()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.bg_decay_fn"><code class="docutils literal notranslate"><span class="pre">bg_decay_fn()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.poly_gauss"><code class="docutils literal notranslate"><span class="pre">poly_gauss()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.create_poly_peak_fn"><code class="docutils literal notranslate"><span class="pre">create_poly_peak_fn()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.gamma_distribution"><code class="docutils literal notranslate"><span class="pre">gamma_distribution()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.gaussian_peak"><code class="docutils literal notranslate"><span class="pre">gaussian_peak()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.inverse_power_background"><code class="docutils literal notranslate"><span class="pre">inverse_power_background()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.lorentzian_peak"><code class="docutils literal notranslate"><span class="pre">lorentzian_peak()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.skewed_voigt"><code class="docutils literal notranslate"><span class="pre">skewed_voigt()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.voigt_peak"><code class="docutils literal notranslate"><span class="pre">voigt_peak()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-xrdanalysis.data_processing.utility_functions">Utilities</a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.calculate_optimal_threshold"><code class="docutils literal notranslate"><span class="pre">calculate_optimal_threshold()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.compute_group_statistics"><code class="docutils literal notranslate"><span class="pre">compute_group_statistics()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.create_mask"><code class="docutils literal notranslate"><span class="pre">create_mask()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.generate_poni"><code class="docutils literal notranslate"><span class="pre">generate_poni()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.generate_poni_from_text"><code class="docutils literal notranslate"><span class="pre">generate_poni_from_text()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.generate_roc_based_metrics"><code class="docutils literal notranslate"><span class="pre">generate_roc_based_metrics()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.get_angle_span"><code class="docutils literal notranslate"><span class="pre">get_angle_span()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.get_center"><code class="docutils literal notranslate"><span class="pre">get_center()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.h5_to_df"><code class="docutils literal notranslate"><span class="pre">h5_to_df()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.is_all_none"><code class="docutils literal notranslate"><span class="pre">is_all_none()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.is_nan_pair"><code class="docutils literal notranslate"><span class="pre">is_nan_pair()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.mask_beam_center"><code class="docutils literal notranslate"><span class="pre">mask_beam_center()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.perform_weighted_integration"><code class="docutils literal notranslate"><span class="pre">perform_weighted_integration()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.plot_group_statistics"><code class="docutils literal notranslate"><span class="pre">plot_group_statistics()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.prep"><code class="docutils literal notranslate"><span class="pre">prep()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.prepare_angular_ranges"><code class="docutils literal notranslate"><span class="pre">prepare_angular_ranges()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.process_angular_ranges"><code class="docutils literal notranslate"><span class="pre">process_angular_ranges()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.unpack_rotating_angles_results"><code class="docutils literal notranslate"><span class="pre">unpack_rotating_angles_results()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -1632,7 +2231,7 @@ It uses SCALED_DATA and age of the patient’s measurement.</p>
           <a href="pipeline.html" title="MLPipeline: Philosophy and Structure"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">API</a></li>
+        <li class="nav-item nav-item-this"><a href="">API</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
