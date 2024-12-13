@@ -133,9 +133,18 @@ def perform_azimuthal_integration(
     :param str calibration_mode: Mode of calibration. 'dataframe' is used when\
         calibration values are columns in the dataframe, 'poni' is used when\
         calibration is in a poni file. Defaults to 'dataframe'.
-    :param str or None poni_dir: Directory path containing .poni files for\
-        calibration. Only applicable when calibration_mode is set to 'poni'.\
-        Defaults to None.
+    :param thres: Threshold for sigma clipping. Used only in "sigma_clip" \
+    mode. Defaults to 3.
+    :type thres: int
+    :param max_iter: Maximum number of iterations for sigma clipping. \
+    Used only in "sigma_clip" mode. Defaults to 5.
+    :type max_iter: int
+    :param calc_cake_stats: Whether to calculate cake statistics in "2D" mode.\
+    Defaults to False.
+    :type calc_cake_stats: bool
+    :param angles: List of angle ranges for integration in "rotating_angles" \
+    mode. Defaults to None.
+    :type angles: list of tuples or None
 
     :returns:
         - **numpy.ndarray**: The array of radial q values (momentum transfer)\
@@ -281,6 +290,28 @@ def calculate_deviation(
     npt=256,
     mask=None,
 ):
+    """
+    Calculate deviation of measurements against predefined limits.
+
+    :param row: A pandas Series containing data and configuration for \
+    deviation calculation.
+    :type row: pd.Series
+    :param above_limits: A list of upper threshold multipliers for deviation \
+    calculation. Defaults to [1.2].
+    :type above_limits: list[float]
+    :param below_limits: A list of lower threshold multipliers for deviation \
+    calculation. Defaults to [0.8].
+    :type below_limits: list[float]
+    :param npt: Number of points for azimuthal integration. Defaults to 256.
+    :type npt: int
+    :param mask: An optional mask to exclude specific data points. \
+    Defaults to None.
+    :type mask: np.ndarray or None
+    :return: Results containing above and below deviation images, and their \
+    respective averages.
+    :rtype: tuple
+    """
+
     interpolation_q_range = row.get("interpolation_q_range")
     data = row["measurement_data"]
     azimuthal_range = row.get("azimuthal_range")
@@ -370,6 +401,28 @@ def calculate_deviation_cake(
     npt=256,
     mask=None,
 ):
+    """
+    Calculate deviation in the "cake" representation of azimuthal data.
+
+    :param row: A pandas Series containing data and configuration for \
+    deviation calculation.
+    :type row: pd.Series
+    :param above_limits: A list of upper threshold multipliers for deviation \
+    calculation. Defaults to [1.2].
+    :type above_limits: list[float]
+    :param below_limits: A list of lower threshold multipliers for deviation \
+    calculation. Defaults to [0.8].
+    :type below_limits: list[float]
+    :param npt: Number of points for azimuthal integration. Defaults to 256.
+    :type npt: int
+    :param mask: An optional mask to exclude specific data points. \
+    Defaults to None.
+    :type mask: np.ndarray or None
+    :return: Results containing above and below deviation "cake" images, \
+    reverse transformations and their respective averages.
+    :rtype: tuple
+    """
+
     azimuthal_range = row.get("azimuthal_range")
     interpolation_q_range = row.get("interpolation_q_range")
     data = row["measurement_data"]

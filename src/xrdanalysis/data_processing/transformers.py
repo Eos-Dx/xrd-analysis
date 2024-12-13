@@ -35,28 +35,38 @@ from xrdanalysis.data_processing.utility_functions import (
 @dataclass
 class AzimuthalIntegration(TransformerMixin):
     """
-    Transformer class for azimuthal integration to be used in
-    an sklearn pipeline.
+    Transformer class for azimuthal integration to be used in an sklearn \
+    pipeline.
 
-    :param faulty_pixels: A tuple containing the coordinates of faulty pixels.
-    :type faulty_pixels: Tuple[int]
-    :param npt: The number of points for azimuthal integration. Defaults to\
-        256.
+    :param faulty_pixels: A tuple containing the coordinates of faulty pixels.\
+    Defaults to None.
+    :type faulty_pixels: Tuple[int], optional
+    :param mask: A list of lists containing pixel mask coordinates. \
+    Defaults to None.
+    :type mask: List[List[int]], optional
+    :param npt: The number of points for azimuthal integration. \
+    Defaults to 256.
     :type npt: int
-    :param integration_mode: The integration mode, either "1D" or "2D".\
-        Defaults to "1D".
+    :param integration_mode: The integration mode, either "1D", "2D", \
+    or "rotating_angles". Defaults to "1D".
     :type integration_mode: str
-    :param transformation_mode: The transformation mode, either 'dataframe'\
-        (returns a DataFrame for further analysis) or 'pipeline'\
-        (to use in an sklearn pipeline). Defaults to 'dataframe'.
-    :type transformation_mode: str
-    :param calibration_mode: Mode of calibration. 'dataframe' is used when\
-        calibration values are columns in the DataFrame, 'poni' is\
-        used when calibration is in a poni file.
+    :param calibration_mode: Mode of calibration. 'dataframe' is used when \
+    calibration values are columns in the DataFrame, 'poni' is used when \
+    calibration is in a poni file. Defaults to 'dataframe'.
     :type calibration_mode: str
-    :param poni_dir_path: Directory path where .poni files for the rows will\
-        be saved.
-    :type poni_dir_path: str
+    :param calc_cake_stats: Flag to calculate cake statistics. \
+    Defaults to False.
+    :type calc_cake_stats: bool
+    :param max_iter: Maximum number of iterations for processing. \
+    Defaults to 5.
+    :type max_iter: int
+    :param thres: Threshold value for processing. Defaults to 3.
+    :type thres: int
+    :param column: Column name containing measurement data. \
+    Defaults to 'measurement_data'.
+    :type column: str
+    :param angles: List of angle ranges for integration. Defaults to None.
+    :type angles: List[Tuple[int]], optional
     """
 
     max_iter: int = 5
@@ -89,17 +99,16 @@ class AzimuthalIntegration(TransformerMixin):
 
     def transform(self, x: pd.DataFrame) -> pd.DataFrame:
         """
-        Applies azimuthal integration to each row of the DataFrame and adds
-        the result as a new column.
+        Applies azimuthal integration to each row of the input DataFrame.
 
-        :param X: The data to transform. Must contain 'measurement_data' and\
-            'center' columns.
-        :type X: pandas.DataFrame
-        :return: A copy of the input DataFrame with an additional\
-            'radial_profile_data' column containing the results of the\
-            azimuthal integration, and optionally 'q_range' and\
-            'azimuthal_positions' columns for 2D integration.
+        :param x: Input DataFrame containing measurement data.
+        :type x: pandas.DataFrame
+        :returns: DataFrame with additional columns from azimuthal \
+        integration results, including 'q_range', 'radial_profile_data', \
+        and other mode-specific columns.
         :rtype: pandas.DataFrame
+        :raises: Drops rows with missing calibration data if calibration_mode \
+        is 'poni'.
         """
 
         x_copy = x.copy()
@@ -197,37 +206,55 @@ class AzimuthalIntegration(TransformerMixin):
 
 class DeviationTransformer(TransformerMixin):
     """
-    Transformer class for azimuthal integration to be used in
-    an sklearn pipeline.
+    Transformer class for calculating deviations in an sklearn pipeline.
 
-    :param faulty_pixels: A tuple containing the coordinates of faulty pixels.
-    :type faulty_pixels: Tuple[int]
-    :param npt: The number of points for azimuthal integration. Defaults to\
-        256.
+    :param faulty_pixels: A tuple containing the coordinates of faulty pixels.\
+    Defaults to None.
+    :type faulty_pixels: Tuple[int], optional
+    :param npt: The number of points for integration. Defaults to 256.
     :type npt: int
-    :param poni_dir_path: Directory path where .poni files for the rows will\
-        be saved.
-    :type poni_dir_path: str
+    :param above_limits: Limits for calculating deviations above a threshold.\
+    Defaults to [1.2].
+    :type above_limits: List[float]
+    :param below_limits: Limits for calculating deviations below a threshold.\
+    Defaults to [0.8].
+    :type below_limits: List[float]
+    :param mode: Integration mode, either 'cake' or default.\
+    Defaults to 'cake'.
+    :type mode: str
     """
 
     def __init__(
         self,
         faulty_pixels: Tuple[int] = None,
         npt=256,
-        poni_dir_path: str = "data/poni",
         above_limits=[1.2],
         below_limits=[0.8],
         mode="cake",
     ):
         """
-        Initializes the ColumnStandardizer with the specified column name.
+        Initialize the DeviationTransformer with specified parameters.
 
-        :param column: The name of the column containing arrays to standardize.
-        :type column: str
+        :param faulty_pixels: Coordinates of faulty pixels to be masked. \
+        Defaults to None.
+        :type faulty_pixels: Tuple[int], optional
+        :param npt: Number of points for integration. Defaults to 256.
+        :type npt: int
+        :param poni_dir_path: Directory path for .poni calibration files. \
+        Defaults to 'data/poni'.
+        :type poni_dir_path: str
+        :param above_limits: Thresholds for calculating deviations above \
+        normal. Defaults to [1.2].
+        :type above_limits: List[float]
+        :param below_limits: Thresholds for calculating deviations below \
+        normal. Defaults to [0.8].
+        :type below_limits: List[float]
+        :param mode: Integration mode for deviation calculation. \
+        Defaults to 'cake'.
+        :type mode: str
         """
         self.faulty_pixels = faulty_pixels
         self.npt = npt
-        self.poni_dir_path = poni_dir_path
         self.above_limits = above_limits
         self.below_limits = below_limits
         self.mode = mode
@@ -251,17 +278,15 @@ class DeviationTransformer(TransformerMixin):
 
     def transform(self, x: pd.DataFrame) -> pd.DataFrame:
         """
-        Applies azimuthal integration to each row of the DataFrame and adds
-        the result as a new column.
+        Calculate deviations for each row of the input DataFrame.
 
-        :param X: The data to transform. Must contain 'measurement_data' and\
-            'center' columns.
-        :type X: pandas.DataFrame
-        :return: A copy of the input DataFrame with an additional\
-            'radial_profile_data' column containing the results of the\
-            azimuthal integration, and optionally 'q_range' and\
-            'azimuthal_positions' columns for 2D integration.
+        :param x: Input DataFrame containing measurement data.
+        :type x: pandas.DataFrame
+        :returns: DataFrame with additional columns containing deviation \
+        results, with different columns based on the selected mode \
+        ('cake' or default).
         :rtype: pandas.DataFrame
+        :raises: Drops rows with missing calibration data.
         """
 
         x_copy = x.copy()
@@ -543,7 +568,10 @@ class ColumnExtractor(TransformerMixin):
 
 class ColumnCleaner(TransformerMixin):
     """
-    Transformer class for cleaning specific columns according to Rules
+    Transformer class for cleaning specific columns according to Rules.
+
+    :param rules: A list of rules used to clean specific columns.
+    :type rules: List[Rule]
     """
 
     def __init__(self, rules: List[Rule]):
@@ -612,9 +640,18 @@ class ColumnCleaner(TransformerMixin):
 class QRangeSetter(TransformerMixin):
     """
     Transformer class to set a Q-range for azimuthal integration.
+
+    :param limits: Limits for Q-range setting. Defaults to None.
+    :type limits: Limits, optional
     """
 
     def __init__(self, limits: Limits = None):
+        """
+        Initialize the QRangeSetter with optional Q-range limits.
+
+        :param limits: Limits for Q-range setting. Defaults to None.
+        :type limits: Limits, optional
+        """
         self.limits = limits
 
     def fit(self, x: pd.DataFrame, y=None):
@@ -636,12 +673,15 @@ class QRangeSetter(TransformerMixin):
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Transforms the input DataFrame to set interpolation Q-range.
+        Set interpolation Q-range for the input DataFrame.
 
-        :param df: The raw DataFrame to be transformed.
+        :param df: The input DataFrame to transform.
         :type df: pandas.DataFrame
-        :return: The transformed DataFrame with selected columns.
+        :returns: DataFrame with added 'type_measurement' and \
+        'interpolation_q_range' columns.
         :rtype: pandas.DataFrame
+        :note: Adds 'type_measurement' column if not present, based \
+        on calibration distance.
         """
 
         dfc = df.copy()
@@ -662,10 +702,26 @@ class QRangeSetter(TransformerMixin):
 
 class SlopeRemoval(TransformerMixin):
     """
-    Transformer class to remove slope from a curve
+    Transformer class to remove slope from a curve.
+
+    :param columns: List of column names to apply slope removal. \
+    Defaults to ['radial_profile_data'].
+    :type columns: List[str]
+    :param mode: Optional mode for slope removal. Defaults to an empty string.
+    :type mode: str, optional
     """
 
     def __init__(self, columns=["radial_profile_data"], mode=""):
+        """
+        Initialize the SlopeRemoval transformer.
+
+        :param columns: List of column names to apply slope removal. \
+        Defaults to ['radial_profile_data'].
+        :type columns: List[str]
+        :param mode: Optional mode for slope removal. \
+        Defaults to an empty string.
+        :type mode: str, optional
+        """
         self.columns = columns
         self.mode = mode
 
@@ -692,7 +748,8 @@ class SlopeRemoval(TransformerMixin):
 
         :param df: The raw DataFrame to be transformed.
         :type df: pandas.DataFrame
-        :return: The transformed DataFrame with selected columns.
+        :return: The transformed DataFrame with slope removed \
+        from the specified column.
         :rtype: pandas.DataFrame
         """
         X = df.copy()
@@ -738,6 +795,7 @@ class FourierTransform(TransformerMixin):
         for real, 'fourier' for fourier and 'false' to not remove
         :param thresh: Threshold for beam removal in 2D mode
         :param padding: Padding around beam for removal in 2D mode
+        :param filter_radius: Optional radius for frequency domain filtering
         :param features: Specific features to extract. Options include:
         - 'fft2_shifted': Shifted FFT
         - 'fft2_real': Real component
@@ -840,13 +898,25 @@ class FourierTransform(TransformerMixin):
 
 class DataPreparation(TransformerMixin):
     """
-    Transformer class to prepare a raw DataFrame according to the standard.
+    Transformer class to prepare a raw DataFrame according to \
+    a standard configuration.
+
+    :param columns: Columns definition for DataFrame preparation. \
+    Defaults to COLUMNS_DEF.
+    :type columns: List[str]
     """
 
     def __init__(
         self,
         columns=COLUMNS_DEF,
     ):
+        """
+        Initialize the DataPreparation transformer.
+
+        :param columns: Columns definition for DataFrame preparation. \
+        Defaults to COLUMNS_DEF.
+        :type columns: List[str]
+        """
         self.columns = columns
 
     def fit(self, x: pd.DataFrame, y=None):
@@ -907,12 +977,27 @@ class DataPreparation(TransformerMixin):
 
 class NormScaler(TransformerMixin):
     """
-    Does normalization and scaling of the dataframe
+    Transformer for normalization and scaling of a DataFrame.
+
+    :param scalers: Dictionary of StandardScaler instances for different \
+    measurement types. Defaults to None.
+    :type scalers: Dict[str, StandardScaler], optional
+    :param name: Name of the scaler instance. Defaults to 'Scaler'.
+    :type name: str
     """
 
     def __init__(
         self, scalers: Dict[str, StandardScaler] = None, name="Scaler"
     ):
+        """
+        Initialize the NormScaler transformer.
+
+        :param scalers: Dictionary of StandardScaler instances for \
+        different measurement types. Defaults to None.
+        :type scalers: Dict[str, StandardScaler], optional
+        :param name: Name of the scaler instance. Defaults to 'Scaler'.
+        :type name: str
+        """
         self._name = name
         if scalers:
             self.scalers = scalers
@@ -920,7 +1005,20 @@ class NormScaler(TransformerMixin):
             self.scalers = {}
 
     def fit(self, df: pd.DataFrame, y=None):
-        print(f"NormScaler {self._name}: is doing fit.")
+        """
+        Fit the scaler to the input DataFrame by computing scaling parameters \
+        for SAXS and WAXS measurements.
+
+        :param df: Input DataFrame containing measurement data.
+        :type df: pandas.DataFrame
+        :param y: Target values. Ignored in this transformer.
+        :type y: None, optional
+        :returns: The fitted transformer instance.
+        :rtype: NormScaler
+        :note: Computes and stores separate scalers for SAXS and WAXS \
+        measurement types.
+        """
+        print(f"NormScaler {self._name}: is fitting.")
         dfc = df.copy()
         norm = Normalizer("l1")
         dfc["radial_profile_data_norm"] = dfc["radial_profile_data"].apply(
@@ -950,7 +1048,18 @@ class NormScaler(TransformerMixin):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        print(f"NormScaler {self._name}: is doing transform.")
+        """
+        Transform the input DataFrame by applying L1 normalization and scaling.
+
+        :param df: Input DataFrame to be transformed.
+        :type df: pandas.DataFrame
+        :returns: Transformed DataFrame with normalized and scaled radial \
+        profile data.
+        :rtype: pandas.DataFrame
+        :note: Applies separate scaling for SAXS and WAXS measurement types.
+        :raises: Fits the scaler if no scalers are present.
+        """
+        print(f"NormScaler {self._name}: is transforming.")
         if not self.scalers:
             self.fit(df)
         dfc = df.copy()
@@ -990,22 +1099,33 @@ class NormScaler(TransformerMixin):
 
 class CurveFittingTransformer(TransformerMixin):
     """
-    Transformer class for fitting a provided function to specified x and y
-    columns of a DataFrame.
+    A scikit-learn compatible transformer for performing curve fitting on
+    DataFrame columns using a specified function.
 
-    :param x_column: The name of the column containing the x-values \
-    (independent variable).
+    This transformer allows for flexible curve fitting across multiple rows
+    of a DataFrame, with customizable function, parameters, and fitting
+    constraints.
+
+    :param x_column: Name of the column containing x-values \
+    (independent variable) to be used in curve fitting.
     :type x_column: str
-    :param y_column: The name of the column containing the y-values \
-    (dependent variable).
+    :param y_column: Name of the column containing y-values \
+    (dependent variable) to be used in curve fitting.
     :type y_column: str
-    :param func: The function to fit. Should take x as the first argument, \
-    followed by parameters to fit.
+    :param func: The mathematical function to fit. Must accept x as the first \
+    argument, followed by parameters to be estimated.
     :type func: callable
-    :param p0: Initial guess for the parameters.
+    :param p0: Initial parameter guesses for the curve fitting algorithm.
     :type p0: list or array-like
-    :param bounds: Bounds for the fit parameters. Defaults to no bounds.
+    :param bounds: Parameter boundaries for constrained optimization. Defaults\
+    to unconstrained (-∞, +∞) bounds.
     :type bounds: tuple, optional
+    :param param_indices: Optional indices to select specific fitted \
+    parameters.
+    :type param_indices: list, optional
+    :param cutoff_ranges: Optional ranges to assign high uncertainty \
+    to specific data segments during fitting.
+    :type cutoff_ranges: list of tuples, optional
     """
 
     def __init__(
@@ -1019,20 +1139,27 @@ class CurveFittingTransformer(TransformerMixin):
         cutoff_ranges=None,
     ):
         """
-        Initializes the CurveFittingTransformer with specified x and y columns,
-        the function to fit, initial guess for the parameters, and optional \
-        bounds.
+        Initialize the CurveFittingTransformer with specified fitting \
+        parameters.
 
-        :param x_column: Column name for x-values.
+        Configures the transformer with column names, fitting function, initial
+        parameter estimates, and optional constraints for curve fitting.
+
+        :param x_column: Column name for x-values in input DataFrame.
         :type x_column: str
-        :param y_column: Column name for y-values.
+        :param y_column: Column name for y-values in input DataFrame.
         :type y_column: str
-        :param func: Function to fit.
+        :param func: Callable function to be used for curve fitting.
         :type func: callable
-        :param p0: Initial guess for the parameters.
+        :param p0: Initial parameter guesses for curve fitting.
         :type p0: list
-        :param bounds: Bounds for the parameters. Defaults to no bounds.
+        :param bounds: Parameter boundaries for curve fitting. Defaults to \
+        unconstrained bounds.
         :type bounds: tuple, optional
+        :param param_indices: Indices of parameters to retain after fitting.
+        :type param_indices: list, optional
+        :param cutoff_ranges: Data segments to assign high uncertainty.
+        :type cutoff_ranges: list of tuples, optional
         """
         self.x_column = x_column
         self.y_column = y_column
@@ -1044,31 +1171,34 @@ class CurveFittingTransformer(TransformerMixin):
 
     def fit(self, X, y=None):
         """
-        No fitting required, but this method is required for compatibility
-        with sklearn pipelines.
+        Placeholder method for scikit-learn transformer compatibility.
 
-        :param X: Input DataFrame.
+        This method does not perform actual fitting but is required for
+        pipeline integration.
+
+        :param X: Input DataFrame containing data to be transformed.
         :type X: pd.DataFrame
-        :param y: Ignored.
-        :type y: None
-        :return: Self.
+        :param y: Target values (ignored).
+        :type y: None, optional
+        :return: Configured transformer instance.
         :rtype: CurveFittingTransformer
         """
         return self
 
     def transform(self, X, y=None):
         """
-        Applies the curve fitting function to the x and y columns of the \
-        DataFrame.
-        Stores the fitting results (parameters) and optionally the fitted curve
-        in separate columns.
+        Apply curve fitting to each row of the input DataFrame.
 
-        :param X: Input DataFrame.
+        Performs curve fitting using the specified function on x and y columns.
+        Adds new columns 'fit_params' and 'fitted_curve' with fitting results.
+
+        :param X: Input DataFrame containing data for curve fitting.
         :type X: pd.DataFrame
-        :param y: Ignored.
-        :type y: None
-        :return: DataFrame with fitting results.
+        :param y: Target values (ignored).
+        :type y: None, optional
+        :return: DataFrame with added fitting results columns.
         :rtype: pd.DataFrame
+        :raises RuntimeError: If curve fitting fails for any row.
         """
         X_copy = X.copy()
         # Create DF columns to store data

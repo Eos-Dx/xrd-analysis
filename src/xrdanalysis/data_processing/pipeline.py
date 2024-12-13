@@ -284,22 +284,27 @@ class MLPipeline:
         min_specificity=None,
     ):
         """
-        Validates the trained estimator on test data using specified metrics.
+        Validate the performance of the trained estimator on test data.
 
         :param y_true: The true target values.
-        :type y_true: Series
-        :param y_pred: The predicted target values.
-        :type y_pred: Series
-        :param y_score: The predicted probabilities for the positive class.
-        :type y_score: ndarray
-        :param metrics: The metrics to compute. \
-        Defaults to ["accuracy", "roc_auc"].
+        :type y_true: pandas.Series
+        :param y_score: Predicted probabilities for the positive class.
+        :type y_score: numpy.ndarray
+        :param metrics: Metrics to compute, e.g., ["accuracy", "roc_auc"].
         :type metrics: list
-        :param show_flag: Whether to display the ROC curve. Defaults to False.
+        :param show_flag: If True, displays the ROC curve. Defaults to False.
         :type show_flag: bool
-        :param print_flag: Whether to print the validation results. \
+        :param print_flag: If True, prints the validation results. \
         Defaults to False.
         :type print_flag: bool
+        :param min_sensitivity: Minimum sensitivity threshold. \
+        Defaults to None.
+        :type min_sensitivity: float, optional
+        :param min_specificity: Minimum specificity threshold. \
+        Defaults to None.
+        :type min_specificity: float, optional
+        :return: A dictionary containing the computed metric results.
+        :rtype: dict
         """
         # Calculate and return the desired metrics
         results = {}
@@ -350,30 +355,37 @@ class MLPipeline:
         **split_args
     ):
         """
-        Runs the full pipeline: wrangles, splits, fits, predicts, and validates
-        on test data.
+        Execute the full training pipeline, including data wrangling, \
+        splitting, preprocessing, fitting, and validation.
 
-        :param X: The dataset to train on.
-        :type X: DataFrame
-        :param y_column: The column containing the target variable.
+        :param X: The input dataset.
+        :type X: pandas.DataFrame
+        :param y_column: Name of the target variable column.
         :type y_column: str
-        :param y_value: The value of the target variable to filter by. \
-        Defaults to None.
+        :param y_value: Target variable value to filter on. Defaults to None.
         :type y_value: object, optional
-        :param y_data: Predefined y values for the dataset. Defaults to None.
-        :type y_data: Series, optional
-        :param wrangle: Whether to apply wrangling steps to the data.
+        :param y_data: Predefined target values. Defaults to None.
+        :type y_data: pandas.Series, optional
+        :param wrangle: If True, apply data wrangling steps. Defaults to True.
         :type wrangle: bool
-        :param split: Whether to split the dataset into training and test sets.
-        :type split: bool
-        :param preprocess: Whether to apply preprocessing steps.
-        :type preprocess: bool
-        :param print_flag: Whether to print validation results. \
+        :param split: If True, split the dataset into training and test sets. \
         Defaults to True.
+        :type split: bool
+        :param preprocess: If True, apply preprocessing steps. \
+        Defaults to True.
+        :type preprocess: bool
+        :param print_flag: If True, print validation results. Defaults to True.
         :type print_flag: bool
-        :param show_flag: Whether to display the ROC curve. Defaults to False.
+        :param show_flag: If True, display the ROC curve. Defaults to False.
         :type show_flag: bool
-        :param split_args: Additional arguments for the splitter function.
+        :param min_sensitivity: Minimum sensitivity threshold. \
+        Defaults to None.
+        :type min_sensitivity: float, optional
+        :param min_specificity: Minimum specificity threshold. \
+        Defaults to None.
+        :type min_specificity: float, optional
+        :param split_args: Additional arguments for the dataset\
+        splitter function.
         :type split_args: dict
         """
         X = X.copy()
@@ -512,22 +524,36 @@ class MLPipeline:
         min_specificity=None,
     ):
         """
-        Validates the trained estimator on test data using specified metrics.
+        Validate the trained estimator on a dataset using specified metrics.
 
-        :param y_true: The true target values.
-        :type y_true: Series
-        :param y_pred: The predicted target values.
-        :type y_pred: Series
-        :param y_score: The predicted probabilities for the positive class.
-        :type y_score: ndarray
-        :param metrics: The metrics to compute. \
-        Defaults to ["accuracy", "roc_auc"].
+        :param data: The dataset for validation.
+        :type data: pandas.DataFrame
+        :param y_column: Name of the target variable column. Defaults to None.
+        :type y_column: str, optional
+        :param y_value: Target variable value to filter on. Defaults to None.
+        :type y_value: object, optional
+        :param y_data: Predefined target values. Defaults to None.
+        :type y_data: pandas.Series, optional
+        :param wrangle: If True, apply data wrangling steps. Defaults to False.
+        :type wrangle: bool
+        :param preprocess: If True, apply preprocessing steps. \
+        Defaults to False.
+        :type preprocess: bool
+        :param metrics: Metrics to compute, e.g., ["accuracy", "roc_auc"].
         :type metrics: list
-        :param show_flag: Whether to display the ROC curve. Defaults to False.
+        :param show_flag: If True, displays the ROC curve. Defaults to False.
         :type show_flag: bool
-        :param print_flag: Whether to print the validation results. \
+        :param print_flag: If True, prints the validation results. \
         Defaults to False.
         :type print_flag: bool
+        :param min_sensitivity: Minimum sensitivity threshold. \
+        Defaults to None.
+        :type min_sensitivity: float, optional
+        :param min_specificity: Minimum specificity threshold. \
+        Defaults to None.
+        :type min_specificity: float, optional
+        :return: A dictionary containing the computed metric results.
+        :rtype: dict
         """
         # Calculate and return the desired metrics
         if y_data is None:

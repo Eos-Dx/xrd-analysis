@@ -20,15 +20,14 @@ from sklearn.metrics import (
 
 def h5_to_df(file_path):
     """
-    Processes HDF5 files to extract calibration and measurement data into \
-    DataFrames.
+    Converts an HDF5 file into two pandas DataFrames containing calibration
+    and measurement data.
 
-    Parameters:
-        file_paths (list of str): List of paths to HDF5 files.
-
-    Returns:
-        pd.DataFrame: DataFrame containing calibration data.
-        pd.DataFrame: DataFrame containing measurement data.
+    :param file_path: Path to the HDF5 file to process.
+    :type file_path: str
+    :return: A tuple containing two DataFrames: one with calibration data and \
+    one with measurement data.
+    :rtype: Tuple[pd.DataFrame, pd.DataFrame]
     """
     calibration_data = []
     measurement_data = []
@@ -138,18 +137,19 @@ def h5_to_df(file_path):
 
 def compute_group_statistics(df, label_column, array_column):
     """
-    Computes the mean and standard deviation for groups of arrays in a \
-    DataFrame.
+    Computes the mean and standard deviation for groups of arrays in \
+    a DataFrame.
 
-    Parameters:
-    - df: pd.DataFrame, the input DataFrame.
-    - label_column: str, the column name containing the group labels.
-    - array_column: str, the column name containing 1D arrays.
-
-    Returns:
-    - pd.DataFrame: A DataFrame with group labels, means, and standard \
-    deviations as columns.
+    :param df: The input DataFrame containing data for grouping.
+    :type df: pd.DataFrame
+    :param label_column: The column name containing group labels.
+    :type label_column: str
+    :param array_column: The column name containing 1D arrays.
+    :type array_column: str
+    :return: A DataFrame with group labels, means, and standard deviations.
+    :rtype: pd.DataFrame
     """
+
     # Group by the label column
     grouped = df.groupby(label_column)[array_column]
 
@@ -174,17 +174,20 @@ def plot_group_statistics(
     df, label_column, array_column, selected_labels=None
 ):
     """
-    Computes the mean and standard deviation for groups of arrays in a \
-    DataFrame
-    and plots the raw data, group-wise mean, and standard deviation.
+    Computes and visualizes group statistics (mean and standard deviation)
+    for arrays within a DataFrame.
 
-    Parameters:
-    - df: pd.DataFrame, the input DataFrame containing the raw arrays.
-    - label_column: str, the column name containing the group labels.
-    - array_column: str, the column name containing 1D arrays.
-    - selected_labels: list or None, the labels of the groups to plot. \
-    If None, all groups are plotted.
+    :param df: The input DataFrame containing the raw data.
+    :type df: pd.DataFrame
+    :param label_column: The column name containing group labels.
+    :type label_column: str
+    :param array_column: The column name containing 1D arrays.
+    :type array_column: str
+    :param selected_labels: Labels of the groups to plot. If None, all \
+    groups are plotted.
+    :type selected_labels: list or None
     """
+
     # Compute statistics
     stats_df = compute_group_statistics(df, label_column, array_column)
 
@@ -247,7 +250,18 @@ def unpack_results(result):
         images_below,
         averages_lower,
     ) = result
+    """
+    Unpack and reorganize result data into a single dictionary with \
+    dynamically named columns.
 
+    :param result: A tuple containing lists of above and below limit \
+    values, including images and averages.
+    :type result: Tuple[List[float], List[Any], List[float], \
+    List[float], List[Any], List[float]]
+    :returns: A dictionary with dynamically named columns for images \
+    and deviations above and below specified limits.
+    :rtype: Dict[str, Any]
+    """
     # Initialize dictionaries to store the columns
     above_columns = {}
     below_columns = {}
@@ -276,7 +290,18 @@ def unpack_results_cake(result):
         images_below,
         averages_lower,
     ) = result
+    """
+    Unpack and reorganize result data into a single dictionary \
+    with dynamically named columns, including cake-specific information.
 
+    :param result: A tuple containing lists of above and below limit values, \
+    including cake identifiers, images, and averages.
+    :type result: Tuple[List[float], List[Any], List[Any], List[float], \
+    List[float], List[Any], List[Any], List[float]]
+    :returns: A dictionary with dynamically named columns for cakes, \
+    images, and deviations above and below specified limits.
+    :rtype: Dict[str, Any]
+    """
     # Initialize dictionaries to store the columns
     above_columns = {}
     below_columns = {}
@@ -299,13 +324,13 @@ def unpack_results_cake(result):
 def process_angular_ranges(angles):
     """
     Process angular ranges to handle the -180/180 boundary crossing.
-    Returns both the original and split ranges where necessary.
 
-    Args:
-        angles: List of tuples containing (start_angle, end_angle)
-
-    Returns:
-        List of processed angle ranges
+    :param angles: A list of tuples containing start and end angles for \
+    angular ranges.
+    :type angles: List[Tuple[float, float]]
+    :returns: A list of processed angle ranges accounting for boundary \
+    crossings.
+    :rtype: List[Tuple[float, float]]
     """
     processed_ranges = []
 
@@ -326,7 +351,15 @@ def process_angular_ranges(angles):
 
 def get_angle_span(start, end):
     """
-    Calculate the angular span between two angles, handling wraparound.
+    Calculate the angular span between two angles, handling wraparound \
+    across the -180/180 degree boundary.
+
+    :param start: Starting angle in degrees.
+    :type start: float
+    :param end: Ending angle in degrees.
+    :type end: float
+    :returns: The total angular span between the two angles.
+    :rtype: float
     """
     if end >= start:
         return end - start
@@ -336,19 +369,18 @@ def get_angle_span(start, end):
 
 def prepare_angular_ranges(start_angle, end_angle):
     """
-    Prepare angular ranges for integration by validating and processing the \
-    angles.
+    Prepare angular ranges for integration by validating and processing \
+    the angles.
 
-    Args:
-        start_angle: Starting angle in degrees
-        end_angle: Ending angle in degrees
-
-    Returns:
-        dict containing:
-            - processed_ranges: List of (start, end) tuples for integration
-            - weights: List of weights corresponding to each range
-            - original_span: The total angular span of the original range
-            - is_split: Boolean indicating if the range was split
+    :param start_angle: Starting angle in degrees.
+    :type start_angle: float
+    :param end_angle: Ending angle in degrees.
+    :type end_angle: float
+    :returns: A dictionary containing processed integration range information.
+    :rtype: Dict[str, Union[List[Tuple[float, float]], \
+    List[float], float, bool]]
+    :raises ValueError: If input angles are outside the valid -180 to 180 \
+    degrees range.
     """
     # Validate angle range
     if start_angle < -180 or end_angle > 180:
@@ -380,19 +412,25 @@ def perform_weighted_integration(
     data, ai_cached, range_info, npt, interpolation_q_range, mask=None
 ):
     """
-    Perform integration for all ranges and combine results with proper \
-    weighting.
+    Perform integration for angular ranges with proper weighting, handling \
+    potential range splits.
 
-    Args:
-        data: Input data for integration
-        ai_cached: AzimuthalIntegrator instance
-        range_info: Dictionary containing processed ranges and weights
-        npt: Number of points
-        interpolation_q_range: Q range for interpolation
-        mask: Optional mask array
-
-    Returns:
-        tuple: (radial, intensity, sigma, std)
+    :param data: Input data for integration.
+    :type data: numpy.ndarray
+    :param ai_cached: Azimuthal integrator instance.
+    :type ai_cached: pyFAI.AzimuthalIntegrator
+    :param range_info: Dictionary containing processed ranges and weights.
+    :type range_info: Dict[str, Union[List[Tuple[float, float]], \
+    List[float], float, bool]]
+    :param npt: Number of points for integration.
+    :type npt: int
+    :param interpolation_q_range: Q range for interpolation.
+    :type interpolation_q_range: Tuple[float, float]
+    :param mask: Optional mask array for integration.
+    :type mask: numpy.ndarray, optional
+    :returns: A tuple containing (radial, intensity, sigma, std) for \
+    the integrated range.
+    :rtype: Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]
     """
     normalized_results = []
     for angle_range, weight in zip(
@@ -446,14 +484,12 @@ def unpack_rotating_angles_results(results):
     """
     Unpack the results from the rotating_angles_analysis function.
 
-    Parameters:
-    results (tuple): A tuple containing a list of tuples, where each tuple \
-    contains the radial, intensity, sigma, and std results for each angle, \
-    and the cached ai_cached.dist value.
-
-    Returns:
-    pd.DataFrame: A DataFrame containing the unpacked results, with one row \
-    per angle.
+    :param results: A tuple containing results from angular analysis.
+    :type results: Tuple[List[Tuple[Tuple[float, float], numpy.ndarray, \
+    numpy.ndarray, numpy.ndarray, numpy.ndarray]], float, float, float]
+    :returns: A dictionary with integration results for various angle ranges \
+    and calculated parameters.
+    :rtype: Dict[str, Union[numpy.ndarray, float]]
     """
     result_list, dist, center_x, center_y = results
 
@@ -477,11 +513,10 @@ def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
     :param data: The input SAXS data.
     :type data: np.ndarray
     :param threshold: The threshold factor for identifying the center of the\
-        beam.
-        Defaults to 3.0 times the average value of the input data.
+    beam. Defaults to 3.0 times the average value of the input data.
     :type threshold: float, optional
-    :returns: The coordinates of the center of the beam in the input data.
-        If no center is found, returns (np.NaN, np.NaN).
+    :returns: The coordinates of the center of the beam in the input data. \
+    If no center is found, returns (np.NaN, np.NaN).
     :rtype: tuple
     """
     average_value = np.nanmean(data)
@@ -584,10 +619,10 @@ def create_mask(faulty_pixels):
     Creates a mask array to identify faulty pixels.
 
     :param faulty_pixels: List of (y, x) coordinates representing faulty\
-        pixels, or None.
+    pixels, or None.
     :type faulty_pixels: list of tuples or None
     :returns: Mask array where 1 indicates a faulty pixel and 0 indicates a\
-        good pixel, or None.
+    good pixel, or None.
     :rtype: numpy.ndarray or None
     """
     if faulty_pixels is not None:
@@ -978,6 +1013,27 @@ def viz_roc_balanced(fig, axes, model_name, estimators):
 def generate_roc_based_metrics(
     y_true, y_score, show_flag=True, min_sensitivity=None, min_specificity=None
 ):
+    """
+    Generate ROC-based metrics including sensitivity, specificity, precision,
+    and balanced accuracy, and optionally display the ROC curve.
+
+    :param y_true: True binary labels.
+    :type y_true: array-like of shape (n_samples,)
+    :param y_score: Target scores, probability estimates of the positive class.
+    :type y_score: array-like of shape (n_samples,)
+    :param show_flag: Whether to display the ROC curve. Defaults to True.
+    :type show_flag: bool
+    :param min_sensitivity: Minimum required sensitivity for \
+    filtering thresholds. Defaults to None.
+    :type min_sensitivity: float, optional
+    :param min_specificity: Minimum required specificity for \
+    filtering thresholds. Defaults to None.
+    :type min_specificity: float, optional
+    :return: A tuple containing optimal sensitivity, optimal specificity, \
+    optimal precision, and balanced accuracy (all in percentages).
+    :rtype: Tuple[float, float, float, float]
+    """
+
     if show_flag:
         RocCurveDisplay.from_predictions(y_true, y_score)
         fig = plt.gcf()
@@ -1022,6 +1078,28 @@ def calculate_optimal_threshold(
     min_specificity=None,
     print_flag=False,
 ):
+    """
+    Calculate the optimal threshold for a binary classifier based on the \
+    ROC curve, optionally filtering by minimum sensitivity or specificity.
+
+    :param y_true: True binary labels.
+    :type y_true: array-like of shape (n_samples,)
+    :param y_score: Target scores, probability estimates of the positive class.
+    :type y_score: array-like of shape (n_samples,)
+    :param min_sensitivity: Minimum required sensitivity for \
+    filtering thresholds. Defaults to None.
+    :type min_sensitivity: float, optional
+    :param min_specificity: Minimum required specificity for \
+    filtering thresholds. Defaults to None.
+    :type min_specificity: float, optional
+    :param print_flag: Whether to print the optimal threshold. \
+    Defaults to False.
+    :type print_flag: bool
+    :return: A tuple containing true positive rates, false positive rates,\
+    the index of the optimal threshold, and the optimal threshold value.
+    :rtype: Tuple[np.ndarray, np.ndarray, int, float]
+    """
+
     fpr, tpr, thresholds = roc_curve(y_true, y_score)
 
     # Filter the thresholds based on minimum sensitivity or specificity

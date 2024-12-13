@@ -82,16 +82,24 @@ def voigt_peak(x, amp, cen, sigma, gamma):
 def skewed_voigt(x, amp, mu, sigma, gamma, alpha):
     """
     Compute the skewed Voigt profile.
-    Parameters:
-        x (array-like): Input values.
-        mu (float): Center of the profile.
-        sigma (float): Gaussian standard deviation.
-        gamma (float): Lorentzian half-width at half-maximum.
-        alpha (float): Skewness parameter (positive for right skew, negative \
-        for left skew).
-    Returns:
-        array-like: Skewed Voigt profile values.
+
+    :param x: Input values.
+    :type x: array-like
+    :param amp: Amplitude of the profile.
+    :type amp: float
+    :param mu: Center of the profile.
+    :type mu: float
+    :param sigma: Gaussian standard deviation.
+    :type sigma: float
+    :param gamma: Lorentzian half-width at half-maximum.
+    :type gamma: float
+    :param alpha: Skewness parameter (positive for right skew, \
+    negative for left skew).
+    :type alpha: float
+    :return: Skewed Voigt profile values.
+    :rtype: array-like
     """
+
     voigt = voigt_peak(x, amp, mu, sigma, gamma)
     skew_factor = norm.cdf(alpha * (x - mu) / sigma)
     return amp * 2 * voigt * skew_factor
@@ -100,14 +108,20 @@ def skewed_voigt(x, amp, mu, sigma, gamma, alpha):
 def gamma_distribution(x, amp, position, k, theta):
     """
     Compute the Gamma distribution with amplitude and position parameters.
-    Parameters:
-        x (array-like): Input values (x > position).
-        k (float): Shape parameter.
-        theta (float): Scale parameter.
-        amplitude (float): Amplitude of the distribution.
-        position (float): Shift (location) parameter.
-    Returns:
-        array-like: Gamma distribution PDF values.
+
+    :param x: Input values (x > position).
+    :type x: array-like
+    :param amp: Amplitude of the distribution.
+    :type amp: float
+    :param position: Shift (location) parameter.
+    :type position: float
+    :param k: Shape parameter (must be positive).
+    :type k: float
+    :param theta: Scale parameter (must be positive).
+    :type theta: float
+    :return: Gamma distribution PDF values.
+    :rtype: array-like
+    :raises ValueError: If `k` or `theta` is not positive.
     """
     if k <= 0 or theta <= 0:
         raise ValueError(
@@ -126,6 +140,8 @@ def gamma_distribution(x, amp, position, k, theta):
 
 
 def create_poly_peak_fn(background_power=4, peak_types=None):
+    """Factory function for poly peak fitting function"""
+
     def poly_peak_fn(x, *params):
         """
         Composite function supporting multiple peaks and flexible background.
