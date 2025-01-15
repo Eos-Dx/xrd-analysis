@@ -175,8 +175,9 @@ def perform_azimuthal_integration(
         )
     elif calibration_mode == "poni":
         ai_cached = initialize_azimuthal_integrator_poni_text(row["ponifile"])
-        center_x = ai_cached.poni2 / ai_cached.detector.pixel2
-        center_y = ai_cached.poni1 / ai_cached.detector.pixel1
+
+    center_x = ai_cached.poni2 / ai_cached.detector.pixel2
+    center_y = ai_cached.poni1 / ai_cached.detector.pixel1
 
     if mode == "1D":
         result = ai_cached.integrate1d(
