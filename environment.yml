@@ -19,8 +19,10 @@ dependencies:
   - isort=5.13.2
   - matplotlib=3.8.4
   - mlflow=2.13.0
+  - lightgbm
   - numpy=1.26.4
   - numpydoc=1.7.0
+  - optuna
   - pandas=2.2.2
   - pre-commit=3.7.1
   - pyFAI=2024.5.0
