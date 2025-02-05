@@ -11,9 +11,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt  # Add this if you have a requirements.txt
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-activate-base: false
+          activate-environment: eosdx
+          environment-file: environment.yml
+          python-version: "3.11.7"  # specify your Python version
 
       - name: Install local package
         shell: bash -l {0}
