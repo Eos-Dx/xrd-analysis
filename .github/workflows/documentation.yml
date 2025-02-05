@@ -14,7 +14,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install sphinx sphinx_rtd_theme myst_parser
+      - name: Install local project
+        run: |
           pip install -e .
+      - name: Log installed packages
+        run: pip list
       - name: Sphinx build
         run: |
           sphinx-build docs _build
