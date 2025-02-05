@@ -131,6 +131,7 @@ def h5_to_df(file_path):
     # Convert to DataFrames
     calibration_df = pd.DataFrame(calibration_data)
     measurement_df = pd.DataFrame(measurement_data)
+    measurement_df.rename(columns={"calib_ponifile": "ponifile"}, inplace=True)
 
     return calibration_df, measurement_df
 
