@@ -596,6 +596,47 @@ def mask_beam_center(image: np.ndarray, thresh: float, padding: int = 0):
     return beam
 
 
+def format_poni_string(input_str):
+    # Check if string already contains newlines
+    if "\n" in input_str:
+        return input_str
+
+    # Keywords that should trigger a new line
+    keywords = [
+        "# Nota:",
+        "# Calibration",
+        "poni_version:",
+        "Detector:",
+        "Detector_config:",
+        "Distance:",
+        "Poni1:",
+        "Poni2:",
+        "Rot1:",
+        "Rot2:",
+        "Rot3:",
+        "Wavelength:",
+    ]
+
+    # Split the string into parts based on the keywords
+    formatted_parts = []
+    current_pos = 0
+
+    for keyword in keywords:
+        pos = input_str.find(keyword, current_pos)
+        if pos != -1:
+            # If not at the start, add the previous part
+            if pos > current_pos:
+                formatted_parts.append(input_str[current_pos:pos].strip())
+            current_pos = pos
+
+    # Add the last part
+    if current_pos < len(input_str):
+        formatted_parts.append(input_str[current_pos:].strip())
+
+    # Join the parts with newlines
+    return "\n".join(formatted_parts)
+
+
 def generate_poni_from_text(ponifile_text):
     """
     Generates a temporary .poni file from the provided ponifile text.
@@ -605,6 +646,7 @@ def generate_poni_from_text(ponifile_text):
     :returns: Path to the temporary .poni file
     :rtype: str
     """
+    ponifile_text = format_poni_string(ponifile_text)
     # Create a temporary file with .poni extension
     with tempfile.NamedTemporaryFile(
         mode="w", delete=False, suffix=".poni"
