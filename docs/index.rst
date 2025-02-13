@@ -1,17 +1,20 @@
-.. MATUR_xrd_analysis documentation master file, created by
-   sphinx-quickstart on Tue Aug 27 15:11:07 2024.
+.. xrd-analysis documentation master file, created by
+   sphinx-quickstart.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to MATUR's documentation!
+xrd-analysis documentation!
 ==============================================
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Contents:
+Contents:
 
-   sop
-   xrdanalysis.data_processing
+.. toctree::
+   :maxdepth: 2
+
+   getting-started
+   commands
+
+
 
 Indices and tables
 ==================
