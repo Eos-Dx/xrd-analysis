@@ -174,7 +174,20 @@ def perform_azimuthal_integration(
             sample_distance_mm,
         )
     elif calibration_mode == "poni":
-        ai_cached = initialize_azimuthal_integrator_poni_text(row["ponifile"])
+        poni_text = row["ponifile"]
+        # Adjust poni file thickness. Adjusted distance = restored_thickness - t/2
+        if row['thickness'] is not None and row['thickness'] > 10:
+            adjusted_thickness = 700 - (row['thickness'] / 2) # hard coded for in-vivo machine
+            distance_index = poni_text.find("Distance") + 9
+            end_of_line_index = poni_text.find("\n", distance_index)
+            new_ponifile_text = (
+                poni_text[:distance_index]
+                + f"{adjusted_thickness:.6f}"
+                + poni_text[end_of_line_index:]
+            )
+            poni_text = new_ponifile_text
+            print(f"{poni_text=}")
+        ai_cached = initialize_azimuthal_integrator_poni_text(poni_text)
 
     center_x = ai_cached.poni2 / ai_cached.detector.pixel2
     center_y = ai_cached.poni1 / ai_cached.detector.pixel1
