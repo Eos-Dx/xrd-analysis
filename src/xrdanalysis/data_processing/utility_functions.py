@@ -18,6 +18,29 @@ from sklearn.metrics import (
 )
 
 
+def combine_h5_to_df(file_paths):
+    """
+    Combines multiple HDF5 files into pandas DataFrames for calibration and measurement data.
+
+    :param file_paths: List of paths to the HDF5 files to process.
+    :type file_paths: List[str]
+    :return: A tuple containing two DataFrames: one with calibration data and one with measurement data.
+    :rtype: Tuple[pd.DataFrame, pd.DataFrame]
+    """
+    calibration_df = None
+    measurement_df = None
+
+    for file in file_paths:
+        cal, meas = h5_to_df(file)
+        if calibration_df is not None:
+            calibration_df = pd.concat([calibration_df, cal])
+            measurement_df = pd.concat([measurement_df, meas])
+        else:
+            calibration_df = cal
+            measurement_df = meas
+    return calibration_df, measurement_df
+
+
 def h5_to_df(file_path):
     """
     Converts an HDF5 file into two pandas DataFrames containing calibration
