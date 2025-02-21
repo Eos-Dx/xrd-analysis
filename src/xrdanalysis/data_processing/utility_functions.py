@@ -1192,3 +1192,51 @@ def calculate_optimal_threshold(
         print(f"Optimal threshold: {optimal_threshold}")
 
     return tpr, fpr, optimal_idx, optimal_threshold
+
+
+def find_common_square_and_nullify(images, x_centers, y_centers):
+    """
+    Find the squared common part of multiple 256x256 images based on their centers of symmetry.
+    Nullify the intensity of pixels outside the common square.
+
+    Parameters:
+        images (list of np.ndarray): List of input images (each of shape 256x256).
+        centers (list of tuple): List of (center_y, center_x) coordinates for each image.
+
+    Returns:
+        list of np.ndarray: Images with nullified intensities outside the common square.
+        tuple: Coordinates of the top-left corner of the common square (y_min, x_min).
+        int: Side length of the common square.
+    """
+    images = images.apply(np.array)
+    # Find the maximum and minimum values for the centers
+    x_min = min(x for x in x_centers)
+    x_max = max(x for x in x_centers)
+    y_min = min(y for x in y_centers)
+    y_max = max(y for y in y_centers)
+
+    print(x_min, x_max)
+    print(y_min, y_max)
+    # Calculate the side length of the common square
+    #side_length = min(x_max_common - x_min_common, y_max_common - y_min_common)
+
+    # Adjust the square to ensure it is perfectly squared
+    #y_max_common = y_min_common + side_length
+    #x_max_common = x_min_common + side_length
+
+    # Step 2: Nullify pixels outside the common square for each image
+    processed_images = []
+    for img, center in images, centers:
+        xi = center[0]
+        yi = center[1]
+        # Create a copy of the image to avoid modifying the original
+        processed_img = np.zeros_like(img)
+        xs = 
+        # Copy only the common square region
+        processed_img[y_min_common:y_max_common, x_min_common:x_max_common] = \
+            img[y_min_common:y_max_common, x_min_common:x_max_common]
+
+        processed_images.append(processed_img)
+
+    # Return the processed images, top-left corner, and side length of the common square
+    return processed_images
