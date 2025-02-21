@@ -1,0 +1,39 @@
+name: documentation
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-activate-base: false
+          activate-environment: eosdx
+          environment-file: environment.yml
+          python-version: "3.11.7"  # specify your Python version
+
+      - name: Install local package
+        shell: bash -l {0}
+        run: |
+          pip install -e .
+
+      - name: Sphinx build
+        shell: bash -l {0}
+        run: |
+          sphinx-build docs _build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        with:
+          publish_branch: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _build/
+          force_orphan: true

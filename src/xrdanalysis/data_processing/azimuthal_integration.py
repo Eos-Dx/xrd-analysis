@@ -12,6 +12,12 @@ from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
 from scipy.stats import mstats
 
+from xrdanalysis.data_processing.utility_functions import (
+    generate_poni_from_text,
+    perform_weighted_integration,
+    prepare_angular_ranges,
+)
+
 
 @cache
 def initialize_azimuthal_integrator_df(
@@ -44,32 +50,40 @@ def initialize_azimuthal_integrator_df(
 
 
 @cache
-def initialize_azimuthal_integrator_poni(file):
+def initialize_azimuthal_integrator_poni_text(ponifile_text):
     """
-    Initializes or gets a cached azimuthal integrator with the given\
-    parameters.
+    Initializes or gets a cached azimuthal integrator based on ponifile text.
 
-    :param str file: Path to the poni file.
-
-    :returns:
-        - **pyFAI.azimuthalIntegrator.AzimuthalIntegrator**: An instance of\
-            the PyFAI AzimuthalIntegrator.
+    :param str ponifile_text: Text content of the .poni file
+    :returns: PyFAI AzimuthalIntegrator instance
+    :rtype: pyFAI.azimuthalIntegrator.AzimuthalIntegrator
     """
+    # Generate a temporary .poni file
+    temp_poni_path = generate_poni_from_text(ponifile_text)
 
-    ai = pyFAI.load(file)
-    return ai
+    try:
+        # Load the integrator
+        ai = pyFAI.load(temp_poni_path)
+        return ai
+    finally:
+        # Always attempt to remove the temporary file
+        try:
+            os.unlink(temp_poni_path)
+        except Exception:
+            pass  # Ignore any errors in file deletion
 
 
 def perform_azimuthal_integration(
     row: pd.Series,
+    column: str,
     npt=256,
     mask=None,
     mode="1D",
     calibration_mode="dataframe",
     thres=3,
     max_iter=5,
-    poni_dir=None,
     calc_cake_stats=False,
+    angles=None,
 ):
     """
     Perform azimuthal integration on a single row of a DataFrame.
@@ -119,9 +133,18 @@ def perform_azimuthal_integration(
     :param str calibration_mode: Mode of calibration. 'dataframe' is used when\
         calibration values are columns in the dataframe, 'poni' is used when\
         calibration is in a poni file. Defaults to 'dataframe'.
-    :param str or None poni_dir: Directory path containing .poni files for\
-        calibration. Only applicable when calibration_mode is set to 'poni'.\
-        Defaults to None.
+    :param thres: Threshold for sigma clipping. Used only in "sigma_clip" \
+    mode. Defaults to 3.
+    :type thres: int
+    :param max_iter: Maximum number of iterations for sigma clipping. \
+    Used only in "sigma_clip" mode. Defaults to 5.
+    :type max_iter: int
+    :param calc_cake_stats: Whether to calculate cake statistics in "2D" mode.\
+    Defaults to False.
+    :type calc_cake_stats: bool
+    :param angles: List of angle ranges for integration in "rotating_angles" \
+    mode. Defaults to None.
+    :type angles: list of tuples or None
 
     :returns:
         - **numpy.ndarray**: The array of radial q values (momentum transfer)\
@@ -134,7 +157,7 @@ def perform_azimuthal_integration(
 
     interpolation_q_range = row.get("interpolation_q_range")
     azimuthal_range = row.get("azimuthal_range")
-    data = row["measurement_data"]
+    data = row[column]
 
     if calibration_mode == "dataframe":
         pixel_size = row["pixel_size"] * (10**-6)
@@ -151,10 +174,10 @@ def perform_azimuthal_integration(
             sample_distance_mm,
         )
     elif calibration_mode == "poni":
-        calibration_measurement_id = row["calibration_measurement_id"]
-        ai_cached = initialize_azimuthal_integrator_poni(
-            os.path.join(poni_dir, f"{calibration_measurement_id}.poni")
-        )
+        ai_cached = initialize_azimuthal_integrator_poni_text(row["ponifile"])
+
+    center_x = ai_cached.poni2 / ai_cached.detector.pixel2
+    center_y = ai_cached.poni1 / ai_cached.detector.pixel1
 
     if mode == "1D":
         result = ai_cached.integrate1d(
@@ -171,6 +194,8 @@ def perform_azimuthal_integration(
             result.sigma,
             result.std,
             ai_cached.dist,
+            center_x,
+            center_y,
         )
     elif mode == "2D":
         result = ai_cached.integrate2d(
@@ -206,6 +231,8 @@ def perform_azimuthal_integration(
             result.intensity,
             result.azimuthal,
             ai_cached.dist,
+            center_x,
+            center_y,
             mean_col,
             variance_col,
             std_col,
@@ -229,7 +256,32 @@ def perform_azimuthal_integration(
             result.sigma,
             result.std,
             ai_cached.dist,
+            center_x,
+            center_y,
         )
+    elif mode == "rotating_angles":
+        results = []
+        for start_angle, end_angle in angles:
+            # Get processed ranges and their properties
+            range_info = prepare_angular_ranges(start_angle, end_angle)
+
+            # Perform integration and get combined results
+            radial, intensity, sigma, std = perform_weighted_integration(
+                data, ai_cached, range_info, npt, interpolation_q_range, mask
+            )
+
+            # Append the final result
+            results.append(
+                (
+                    (start_angle, end_angle),
+                    radial,
+                    intensity,
+                    sigma,
+                    std,
+                )
+            )
+
+        return results, ai_cached.dist, center_x, center_y
 
 
 def calculate_deviation(
@@ -238,16 +290,34 @@ def calculate_deviation(
     below_limits=[0.8],
     npt=256,
     mask=None,
-    poni_dir=None,
 ):
+    """
+    Calculate deviation of measurements against predefined limits.
+
+    :param row: A pandas Series containing data and configuration for \
+    deviation calculation.
+    :type row: pd.Series
+    :param above_limits: A list of upper threshold multipliers for deviation \
+    calculation. Defaults to [1.2].
+    :type above_limits: list[float]
+    :param below_limits: A list of lower threshold multipliers for deviation \
+    calculation. Defaults to [0.8].
+    :type below_limits: list[float]
+    :param npt: Number of points for azimuthal integration. Defaults to 256.
+    :type npt: int
+    :param mask: An optional mask to exclude specific data points. \
+    Defaults to None.
+    :type mask: np.ndarray or None
+    :return: Results containing above and below deviation images, and their \
+    respective averages.
+    :rtype: tuple
+    """
+
     interpolation_q_range = row.get("interpolation_q_range")
     data = row["measurement_data"]
     azimuthal_range = row.get("azimuthal_range")
 
-    calibration_measurement_id = row["calibration_measurement_id"]
-    ai_cached = initialize_azimuthal_integrator_poni(
-        os.path.join(poni_dir, f"{calibration_measurement_id}.poni")
-    )
+    ai_cached = initialize_azimuthal_integrator_poni_text(row["ponifile"])
 
     bins, _ = ai_cached.integrate1d(
         data,
@@ -331,17 +401,34 @@ def calculate_deviation_cake(
     below_limits=[0.8],
     npt=256,
     mask=None,
-    poni_dir=None,
 ):
+    """
+    Calculate deviation in the "cake" representation of azimuthal data.
+
+    :param row: A pandas Series containing data and configuration for \
+    deviation calculation.
+    :type row: pd.Series
+    :param above_limits: A list of upper threshold multipliers for deviation \
+    calculation. Defaults to [1.2].
+    :type above_limits: list[float]
+    :param below_limits: A list of lower threshold multipliers for deviation \
+    calculation. Defaults to [0.8].
+    :type below_limits: list[float]
+    :param npt: Number of points for azimuthal integration. Defaults to 256.
+    :type npt: int
+    :param mask: An optional mask to exclude specific data points. \
+    Defaults to None.
+    :type mask: np.ndarray or None
+    :return: Results containing above and below deviation "cake" images, \
+    reverse transformations and their respective averages.
+    :rtype: tuple
+    """
+
     azimuthal_range = row.get("azimuthal_range")
     interpolation_q_range = row.get("interpolation_q_range")
-    calibration_measurement_id = row["calibration_measurement_id"]
     data = row["measurement_data"]
 
-    # Initialize the cached azimuthal integrator using the PONI file
-    ai_cached = initialize_azimuthal_integrator_poni(
-        os.path.join(poni_dir, f"{calibration_measurement_id}.poni")
-    )
+    ai_cached = initialize_azimuthal_integrator_poni_text(row["ponifile"])
 
     # Extract necessary values
     result = ai_cached.integrate2d(
@@ -395,9 +482,10 @@ def calculate_deviation_cake(
 
         # Calculate the mean for the pixels above the limit, ensuring to take
         # the mean across columns
-        means_above.append(
-            np.mean(intensity_above, axis=0)
-        )  # Column-wise mean (masked)
+        mean_values = np.mean(intensity_above, axis=0)
+        mean_values[mean_values == 0] = np.nan
+        means_above.append(mean_values)
+
         cakes_above.append(cake_above)
         images_above.append(img_above)
 
@@ -426,9 +514,10 @@ def calculate_deviation_cake(
 
         # Calculate the mean for the pixels below the limit, ensuring to
         # take the mean across columns
-        means_below.append(
-            np.mean(intensity_below, axis=0)
-        )  # Column-wise mean (masked)
+        mean_values = np.mean(intensity_below, axis=0)
+        mean_values[mean_values == 0] = np.nan
+        means_below.append(mean_values)
+
         cakes_below.append(cake_below)
         images_below.append(img_below)
 

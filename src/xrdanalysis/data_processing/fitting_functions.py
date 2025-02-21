@@ -1,76 +1,212 @@
 import numpy as np
+from scipy.special import wofz  # For Voigt function
+from scipy.special import gamma
+from scipy.stats import norm
 
 
-# Define the Gaussian function
-def Gauss(x, amp, cen, wid):
+def inverse_power_background(x, power, coef, constant):
     """
-    Gaussian function to model a peak.
+    Generate background using inverse power law with constant offset.
 
-    :param x: The independent variable (e.g., position or time).
+    :param x: Independent variable
     :type x: numpy.ndarray or float
-    :param amp: The amplitude of the Gaussian peak.
-    :type amp: float
-    :param cen: The center of the Gaussian peak.
-    :type cen: float
-    :param wid: The width (standard deviation) of the Gaussian peak.
-    :type wid: float
-    :return: The value of the Gaussian function at the given x.
-    :rtype: numpy.ndarray or float
-    """
-    return amp * np.exp(-((x - cen) ** 2) / (2 * wid**2))
-
-
-def bg_decay_fn(x, fourth_degree_coef, constant):
-    """
-    Background decay function with a fourth-degree term and a constant.
-
-    :param x: The independent variable.
-    :type x: numpy.ndarray or float
-    :param fourth_degree_coef: Coefficient for the fourth-degree decay term.
-    :type fourth_degree_coef: float
-    :param constant: Constant term for the background.
+    :param coef: Coefficient of inverse power term
+    :type coef: float
+    :param power: Power of inverse function
+    :type power: float
+    :param constant: Constant offset
     :type constant: float
-    :return: The value of the background decay function at the given x.
+    :return: Background function values
     :rtype: numpy.ndarray or float
     """
-    return fourth_degree_coef / x**4 + constant
+    return coef / (x**power) + constant
 
 
-def poly_gauss(x, *params):
+def gaussian_peak(x, amp, cen, sigma):
     """
-    Composite function that sums Gaussian functions with a polynomial \
-    background.
+    Generate Gaussian peak function.
 
-    :param x: The independent variable.
+    :param x: Independent variable
     :type x: numpy.ndarray or float
-    :param params: Parameters for multiple Gaussian functions and the \
-    background. The first part of params consists of 3 parameters per \
-    Gaussian (amplitude, center, width), followed by 2 parameters for \
-    the background (fourth-degree coefficient, constant).
-    :type params: list or numpy.ndarray
-    :return: The value of the composite function at the given x.
-    :rtype: numpy.ndarray
+    :param amp: Peak amplitude
+    :type amp: float
+    :param cen: Peak center
+    :type cen: float
+    :param sigma: Peak width (standard deviation)
+    :type sigma: float
+    :return: Gaussian peak values
+    :rtype: numpy.ndarray or float
     """
-    x = np.array(x)
+    return amp * np.exp(-((x - cen) ** 2) / (2 * sigma**2))
 
-    # Last two parameters are for the polynomial background
-    poly = params[-2:]
-    gaussians = params[:-2]
 
-    fourth_degree_coef = poly[0]
-    constant = poly[1]
+def lorentzian_peak(x, amp, cen, gamma):
+    """
+    Generate Lorentzian peak function.
 
-    # Compute the background decay
-    y = bg_decay_fn(x, fourth_degree_coef, constant)
+    :param x: Independent variable
+    :type x: numpy.ndarray or float
+    :param amp: Peak amplitude
+    :type amp: float
+    :param cen: Peak center
+    :type cen: float
+    :param gamma: Peak half-width at half-maximum
+    :type gamma: float
+    :return: Lorentzian peak values
+    :rtype: numpy.ndarray or float
+    """
+    return amp * (gamma**2 / ((x - cen) ** 2 + gamma**2))
 
-    # Split the rest of the parameters into sets of 3 (amp, cen, wid) for
-    # Gaussians
-    num_gaussians = (len(gaussians)) // 3
-    gaussians = [
-        params[i : i + 3] for i in range(0, num_gaussians * 3, 3)  # noqa: E203
-    ]
 
-    # Sum up all Gaussian contributions
-    y += sum([Gauss(x, *params) for params in gaussians])
+def voigt_peak(x, amp, cen, sigma, gamma):
+    """
+    Generate Voigt peak function.
 
-    return y
+    :param x: Independent variable
+    :type x: numpy.ndarray or float
+    :param amp: Peak amplitude
+    :type amp: float
+    :param cen: Peak center
+    :type cen: float
+    :param sigma: Gaussian width
+    :type sigma: float
+    :param gamma: Lorentzian half-width
+    :type gamma: float
+    :return: Voigt peak values
+    :rtype: numpy.ndarray or float
+    """
+    z = ((x - cen) + 1j * gamma) / (sigma * np.sqrt(2))
+    return amp * wofz(z).real / (sigma * np.sqrt(2 * np.pi))
+
+
+def skewed_voigt(x, amp, mu, sigma, gamma, alpha):
+    """
+    Compute the skewed Voigt profile.
+
+    :param x: Input values.
+    :type x: array-like
+    :param amp: Amplitude of the profile.
+    :type amp: float
+    :param mu: Center of the profile.
+    :type mu: float
+    :param sigma: Gaussian standard deviation.
+    :type sigma: float
+    :param gamma: Lorentzian half-width at half-maximum.
+    :type gamma: float
+    :param alpha: Skewness parameter (positive for right skew, \
+    negative for left skew).
+    :type alpha: float
+    :return: Skewed Voigt profile values.
+    :rtype: array-like
+    """
+
+    voigt = voigt_peak(x, amp, mu, sigma, gamma)
+    skew_factor = norm.cdf(alpha * (x - mu) / sigma)
+    return amp * 2 * voigt * skew_factor
+
+
+def gamma_distribution(x, amp, position, k, theta):
+    """
+    Compute the Gamma distribution with amplitude and position parameters.
+
+    :param x: Input values (x > position).
+    :type x: array-like
+    :param amp: Amplitude of the distribution.
+    :type amp: float
+    :param position: Shift (location) parameter.
+    :type position: float
+    :param k: Shape parameter (must be positive).
+    :type k: float
+    :param theta: Scale parameter (must be positive).
+    :type theta: float
+    :return: Gamma distribution PDF values.
+    :rtype: array-like
+    :raises ValueError: If `k` or `theta` is not positive.
+    """
+    if k <= 0 or theta <= 0:
+        raise ValueError(
+            "Shape (k) and scale (theta) parameters must be positive."
+        )
+
+    adjusted_x = x - position
+    print(adjusted_x)
+    # Ensure valid range for the adjusted x
+    adjusted_x[adjusted_x < 0] = 0
+    return (
+        amp
+        * (adjusted_x ** (k - 1) * np.exp(-adjusted_x / theta))
+        / (gamma(k) * theta**k)
+    )
+
+
+def create_poly_peak_fn(background_power=4, peak_types=None):
+    """Factory function for poly peak fitting function"""
+
+    def poly_peak_fn(x, *params):
+        """
+        Composite function supporting multiple peaks and flexible background.
+
+        :param x: Independent variable
+        :type x: numpy.ndarray or float
+        :param params: Parameters for multiple peaks and background
+        :type params: list or numpy.ndarray
+        :param peak_types: List of peak types ('gauss', 'lorentz', 'voigt')
+        :type peak_types: list, optional
+        :param background_type: Type of background function
+        :type background_type: str, optional
+        :return: Composite peak function with background
+        :rtype: numpy.ndarray or float
+        """
+        x = np.array(x)
+
+        # Last parameters are for background
+        # coef, constant
+        background = inverse_power_background(
+            x, background_power, params[-2], params[-1]
+        )
+        peak_params = params[:-2]
+
+        # Track parameter index
+        param_idx = 0
+
+        # Add peaks based on specified types
+        if peak_types is None:
+            local_peak_types = ["voigt"] * (len(peak_params) // 4)
+        else:
+            local_peak_types = peak_types
+
+        y = background
+        for peak_type in local_peak_types:
+            if peak_type == "gauss":
+                y += gaussian_peak(
+                    x, *peak_params[param_idx : param_idx + 3]  # noqa: E203
+                )
+                param_idx += 3
+
+            elif peak_type == "lorentz":
+                y += lorentzian_peak(
+                    x, *peak_params[param_idx : param_idx + 3]  # noqa: E203
+                )
+                param_idx += 3
+
+            elif peak_type == "gamma":
+                y += gamma_distribution(
+                    x, *peak_params[param_idx : param_idx + 4]  # noqa: E203
+                )
+                param_idx += 4
+
+            elif peak_type == "voigt":
+                y += voigt_peak(
+                    x, *peak_params[param_idx : param_idx + 4]  # noqa: E203
+                )
+                param_idx += 4
+
+            elif peak_type == "skewed_voigt":
+                y += skewed_voigt(
+                    x, *peak_params[param_idx : param_idx + 5]  # noqa: E203
+                )
+                param_idx += 5
+
+        return y
+
+    return poly_peak_fn

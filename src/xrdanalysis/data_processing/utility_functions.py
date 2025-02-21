@@ -1,8 +1,9 @@
 """Various utility functions used in different parts of codebase"""
 
-import os
+import tempfile
 from typing import Tuple
 
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -17,6 +18,230 @@ from sklearn.metrics import (
 )
 
 
+def h5_to_df(file_path):
+    """
+    Converts an HDF5 file into two pandas DataFrames containing calibration
+    and measurement data.
+
+    :param file_path: Path to the HDF5 file to process.
+    :type file_path: str
+    :return: A tuple containing two DataFrames: one with calibration data and \
+    one with measurement data.
+    :rtype: Tuple[pd.DataFrame, pd.DataFrame]
+    """
+    calibration_data = []
+    measurement_data = []
+
+    with h5py.File(file_path, "r") as hdf:
+        # Handle simpler structure
+        if "calibrations" in hdf and "measurements" in hdf:
+            calibration_group = hdf["calibrations"]
+            measurements_group = hdf["measurements"]
+
+            cal_metadata = {
+                f"calib_{key}": calibration_group.attrs[key]
+                for key in calibration_group.attrs
+            }
+
+            meas_metadata = {
+                f"{key}": measurements_group.attrs[key]
+                for key in measurements_group.attrs
+            }
+
+            # Process calibrations
+            for ds_name in calibration_group:
+                dataset = calibration_group[ds_name]
+                cal_data = {
+                    f"calib_{key}": dataset.attrs[key] for key in dataset.attrs
+                }
+                cal_data["measurement_data"] = dataset[...]
+                cal_data["cal_name"] = ds_name
+                cal_data["id"] = (
+                    "root"  # Indicating root level for simple structure
+                )
+                cal_data = {**cal_data, **cal_metadata}
+                calibration_data.append(cal_data)
+
+            # Process measurements
+            for ds_name in measurements_group:
+                dataset = measurements_group[ds_name]
+                meas_data = {
+                    f"{key}": dataset.attrs[key] for key in dataset.attrs
+                }
+                meas_data["measurement_data"] = dataset[...]
+                meas_data["meas_name"] = ds_name
+                meas_data["id"] = "root"  # Indicating root level
+                meas_data = {**meas_data, **meas_metadata, **cal_metadata}
+                measurement_data.append(meas_data)
+
+        # Handle complex structure
+        else:
+            for group_name in hdf:
+                group = hdf[group_name]
+                if "calibrations" in group and any(
+                    key.startswith("measurements_") for key in group
+                ):
+                    calibration_group = group["calibrations"]
+
+                    cal_metadata = {
+                        f"calib_{key}": calibration_group.attrs[key]
+                        for key in calibration_group.attrs
+                    }
+
+                    # Process calibrations
+                    for ds_name in calibration_group:
+                        dataset = calibration_group[ds_name]
+                        cal_data = {
+                            f"calib_{key}": dataset.attrs[key]
+                            for key in dataset.attrs
+                        }
+                        cal_data["measurement_data"] = dataset[...]
+                        cal_data["cal_name"] = ds_name
+                        cal_data["id"] = group_name  # Use group name as ID
+                        cal_data = {**cal_data, **cal_metadata}
+                        calibration_data.append(cal_data)
+
+                    # Process measurements
+                    for key in group:
+                        if key.startswith("measurements_"):
+                            measurements_group = group[key]
+                            meas_metadata = {
+                                f"{key}": measurements_group.attrs[key]
+                                for key in measurements_group.attrs
+                            }
+
+                            for ds_name in measurements_group:
+                                dataset = measurements_group[ds_name]
+                                meas_data = {
+                                    f"{key}": dataset.attrs[key]
+                                    for key in dataset.attrs
+                                }
+                                meas_data["measurement_data"] = dataset[...]
+                                meas_data["meas_name"] = ds_name
+                                meas_data["id"] = (
+                                    group_name  # Indicating root level
+                                )
+                                meas_data = {
+                                    **meas_data,
+                                    **meas_metadata,
+                                    **cal_metadata,
+                                }
+                                measurement_data.append(meas_data)
+
+    # Convert to DataFrames
+    calibration_df = pd.DataFrame(calibration_data)
+    measurement_df = pd.DataFrame(measurement_data)
+    measurement_df.rename(columns={"calib_ponifile": "ponifile"}, inplace=True)
+
+    return calibration_df, measurement_df
+
+
+def compute_group_statistics(df, label_column, array_column):
+    """
+    Computes the mean and standard deviation for groups of arrays in \
+    a DataFrame.
+
+    :param df: The input DataFrame containing data for grouping.
+    :type df: pd.DataFrame
+    :param label_column: The column name containing group labels.
+    :type label_column: str
+    :param array_column: The column name containing 1D arrays.
+    :type array_column: str
+    :return: A DataFrame with group labels, means, and standard deviations.
+    :rtype: pd.DataFrame
+    """
+
+    # Group by the label column
+    grouped = df.groupby(label_column)[array_column]
+
+    # Calculate mean and std for each group
+    result = grouped.apply(
+        lambda arrays: (
+            np.mean(np.stack(arrays), axis=0),
+            np.std(np.stack(arrays), axis=0),
+        )
+    )
+
+    # Convert result to a DataFrame with separate mean and std columns
+    result_df = result.reset_index(name="stats")
+    result_df["mean"] = result_df["stats"].map(lambda x: x[0])
+    result_df["std"] = result_df["stats"].map(lambda x: x[1])
+    result_df = result_df.drop(columns=["stats"])  # Drop intermediate column
+
+    return result_df
+
+
+def plot_group_statistics(
+    df, label_column, array_column, selected_labels=None
+):
+    """
+    Computes and visualizes group statistics (mean and standard deviation)
+    for arrays within a DataFrame.
+
+    :param df: The input DataFrame containing the raw data.
+    :type df: pd.DataFrame
+    :param label_column: The column name containing group labels.
+    :type label_column: str
+    :param array_column: The column name containing 1D arrays.
+    :type array_column: str
+    :param selected_labels: Labels of the groups to plot. If None, all \
+    groups are plotted.
+    :type selected_labels: list or None
+    """
+
+    # Compute statistics
+    stats_df = compute_group_statistics(df, label_column, array_column)
+
+    # Determine labels to plot
+    if selected_labels is None:
+        selected_labels = stats_df[label_column].unique()
+    else:
+        # Filter only the provided labels
+        selected_labels = [
+            label
+            for label in selected_labels
+            if label in stats_df[label_column].values
+        ]
+
+    # Plot each group separately
+    for lb in selected_labels:
+        # Filter raw data and statistics for the current group
+        group_data = df[df[label_column] == lb][array_column]
+        group_stats = stats_df[stats_df[label_column] == lb]
+        mean = group_stats["mean"].values[0]
+        std = group_stats["std"].values[0]
+
+        # Create the plot
+        plt.figure(figsize=(8, 5))
+
+        # Plot raw data
+        for array in group_data:
+            plt.plot(
+                array, color="royalblue", alpha=0.7, label="_nolegend_"
+            )  # Raw arrays
+
+        # Plot mean and standard deviation
+        plt.plot(mean, label=f"{lb} Mean", color="blue", linewidth=2)
+        plt.fill_between(
+            range(len(mean)),
+            mean - std,
+            mean + std,
+            color="blue",
+            alpha=0.3,
+            label=f"{lb} Std Dev",
+        )
+
+        # Customize plot
+        plt.title(f"{lb} Group")
+        plt.xlabel("q range (nm^-1)")
+        plt.ylabel("Intensity (a.u.)")
+        plt.legend(loc="upper right")
+        plt.tight_layout()
+
+        # Show the plot for the current group
+        plt.show()
+
+
 def unpack_results(result):
     (
         above_limits,
@@ -26,7 +251,18 @@ def unpack_results(result):
         images_below,
         averages_lower,
     ) = result
+    """
+    Unpack and reorganize result data into a single dictionary with \
+    dynamically named columns.
 
+    :param result: A tuple containing lists of above and below limit \
+    values, including images and averages.
+    :type result: Tuple[List[float], List[Any], List[float], \
+    List[float], List[Any], List[float]]
+    :returns: A dictionary with dynamically named columns for images \
+    and deviations above and below specified limits.
+    :rtype: Dict[str, Any]
+    """
     # Initialize dictionaries to store the columns
     above_columns = {}
     below_columns = {}
@@ -55,7 +291,18 @@ def unpack_results_cake(result):
         images_below,
         averages_lower,
     ) = result
+    """
+    Unpack and reorganize result data into a single dictionary \
+    with dynamically named columns, including cake-specific information.
 
+    :param result: A tuple containing lists of above and below limit values, \
+    including cake identifiers, images, and averages.
+    :type result: Tuple[List[float], List[Any], List[Any], List[float], \
+    List[float], List[Any], List[Any], List[float]]
+    :returns: A dictionary with dynamically named columns for cakes, \
+    images, and deviations above and below specified limits.
+    :rtype: Dict[str, Any]
+    """
     # Initialize dictionaries to store the columns
     above_columns = {}
     below_columns = {}
@@ -69,10 +316,195 @@ def unpack_results_cake(result):
     # Loop through below limits with enumerate for indexing
     for index, limit in enumerate(below_limits):
         below_columns[f"image_below_{limit}"] = images_below[index]
-        above_columns[f"cake_below_{limit}"] = cakes_below[index]
+        below_columns[f"cake_below_{limit}"] = cakes_below[index]
         below_columns[f"deviation_below_{limit}"] = averages_lower[index]
     # Merge above and below columns
     return {**above_columns, **below_columns}
+
+
+def process_angular_ranges(angles):
+    """
+    Process angular ranges to handle the -180/180 boundary crossing.
+
+    :param angles: A list of tuples containing start and end angles for \
+    angular ranges.
+    :type angles: List[Tuple[float, float]]
+    :returns: A list of processed angle ranges accounting for boundary \
+    crossings.
+    :rtype: List[Tuple[float, float]]
+    """
+    processed_ranges = []
+
+    for start_angle, end_angle in angles:
+        # Normalize angles to [-180, 180] range
+        start = ((start_angle + 180) % 360) - 180
+        end = ((end_angle + 180) % 360) - 180
+
+        if start >= end:  # Crossing the boundary
+            # Split into two ranges
+            processed_ranges.append((-180, end))
+            processed_ranges.append((start, 180))
+        else:
+            processed_ranges.append((start, end))
+
+    return processed_ranges
+
+
+def get_angle_span(start, end):
+    """
+    Calculate the angular span between two angles, handling wraparound \
+    across the -180/180 degree boundary.
+
+    :param start: Starting angle in degrees.
+    :type start: float
+    :param end: Ending angle in degrees.
+    :type end: float
+    :returns: The total angular span between the two angles.
+    :rtype: float
+    """
+    if end >= start:
+        return end - start
+    else:
+        return (end - (-180)) + (180 - start)
+
+
+def prepare_angular_ranges(start_angle, end_angle):
+    """
+    Prepare angular ranges for integration by validating and processing \
+    the angles.
+
+    :param start_angle: Starting angle in degrees.
+    :type start_angle: float
+    :param end_angle: Ending angle in degrees.
+    :type end_angle: float
+    :returns: A dictionary containing processed integration range information.
+    :rtype: Dict[str, Union[List[Tuple[float, float]], \
+    List[float], float, bool]]
+    :raises ValueError: If input angles are outside the valid -180 to 180 \
+    degrees range.
+    """
+    # Validate angle range
+    if start_angle < -180 or end_angle > 180:
+        raise ValueError(
+            "The angles must be within -180 and 180 degrees range."
+        )
+
+    # Calculate the original span
+    original_span = get_angle_span(start_angle, end_angle)
+
+    # Process the ranges
+    processed_ranges = process_angular_ranges([(start_angle, end_angle)])
+
+    # Calculate weights for each range
+    weights = [
+        get_angle_span(range_start, range_end) / original_span
+        for range_start, range_end in processed_ranges
+    ]
+
+    return {
+        "processed_ranges": processed_ranges,
+        "weights": weights,
+        "original_span": original_span,
+        "is_split": len(processed_ranges) > 1,
+    }
+
+
+def perform_weighted_integration(
+    data, ai_cached, range_info, npt, interpolation_q_range, mask=None
+):
+    """
+    Perform integration for angular ranges with proper weighting, handling \
+    potential range splits.
+
+    :param data: Input data for integration.
+    :type data: numpy.ndarray
+    :param ai_cached: Azimuthal integrator instance.
+    :type ai_cached: pyFAI.AzimuthalIntegrator
+    :param range_info: Dictionary containing processed ranges and weights.
+    :type range_info: Dict[str, Union[List[Tuple[float, float]], \
+    List[float], float, bool]]
+    :param npt: Number of points for integration.
+    :type npt: int
+    :param interpolation_q_range: Q range for interpolation.
+    :type interpolation_q_range: Tuple[float, float]
+    :param mask: Optional mask array for integration.
+    :type mask: numpy.ndarray, optional
+    :returns: A tuple containing (radial, intensity, sigma, std) for \
+    the integrated range.
+    :rtype: Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]
+    """
+    normalized_results = []
+    for angle_range, weight in zip(
+        range_info["processed_ranges"], range_info["weights"]
+    ):
+        result = ai_cached.integrate1d(
+            data,
+            npt,
+            radial_range=interpolation_q_range,
+            azimuth_range=angle_range,
+            error_model="azimuthal",
+            mask=mask,
+        )
+
+        # Normalize this result by its weight
+        normalized_results.append(
+            {
+                "intensity": result.intensity * weight,
+                "sigma": result.sigma * weight,
+                "std": result.std * weight,
+                "radial": result.radial,
+            }
+        )
+
+    # If we had to split the range, combine the normalized results
+    if range_info["is_split"]:
+        combined_intensity = sum(r["intensity"] for r in normalized_results)
+        combined_sigma = np.sqrt(
+            sum(r["sigma"] ** 2 for r in normalized_results)
+        )
+        combined_std = np.sqrt(sum(r["std"] ** 2 for r in normalized_results))
+
+        return (
+            normalized_results[0]["radial"],
+            combined_intensity,
+            combined_sigma,
+            combined_std,
+        )
+    else:
+        # Single range case
+        result = normalized_results[0]
+        return (
+            result["radial"],
+            result["intensity"],
+            result["sigma"],
+            result["std"],
+        )
+
+
+def unpack_rotating_angles_results(results):
+    """
+    Unpack the results from the rotating_angles_analysis function.
+
+    :param results: A tuple containing results from angular analysis.
+    :type results: Tuple[List[Tuple[Tuple[float, float], numpy.ndarray, \
+    numpy.ndarray, numpy.ndarray, numpy.ndarray]], float, float, float]
+    :returns: A dictionary with integration results for various angle ranges \
+    and calculated parameters.
+    :rtype: Dict[str, Union[numpy.ndarray, float]]
+    """
+    result_list, dist, center_x, center_y = results
+
+    col_dict = {}
+    for angle, radial, intensity, sigma, std in result_list:
+        col_dict[f"q_range_{angle[0]}_{angle[1]}"] = radial
+        col_dict[f"radial_profile_data_{angle[0]}_{angle[1]}"] = intensity
+        col_dict[f"sigma_{angle[0]}_{angle[1]}"] = sigma
+        col_dict[f"std_{angle[0]}_{angle[1]}"] = std
+
+    col_dict["calculated_distance"] = dist
+    col_dict["center_x"] = center_x
+    col_dict["center_y"] = center_y
+    return col_dict
 
 
 def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
@@ -82,11 +514,10 @@ def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
     :param data: The input SAXS data.
     :type data: np.ndarray
     :param threshold: The threshold factor for identifying the center of the\
-        beam.
-        Defaults to 3.0 times the average value of the input data.
+    beam. Defaults to 3.0 times the average value of the input data.
     :type threshold: float, optional
-    :returns: The coordinates of the center of the beam in the input data.
-        If no center is found, returns (np.NaN, np.NaN).
+    :returns: The coordinates of the center of the beam in the input data. \
+    If no center is found, returns (np.NaN, np.NaN).
     :rtype: tuple
     """
     average_value = np.nanmean(data)
@@ -165,46 +596,65 @@ def mask_beam_center(image: np.ndarray, thresh: float, padding: int = 0):
     return beam
 
 
-def generate_poni(df, path):
-    """
-    Generates .poni files from the provided DataFrame and saves them to the\
-    specified directory.
+def format_poni_string(input_str):
+    # Check if string already contains newlines
+    if "\n" in input_str:
+        return input_str
 
-    :param df: Input DataFrame containing calibration measurement IDs and\
-        corresponding .poni file content.
-    :type df: pd.DataFrame
-    :param path: Path to the directory where .poni files will be saved.
-    :type path: str
-    :returns: Path to the directory where .poni files are saved.
+    # Keywords that should trigger a new line
+    keywords = [
+        "# Nota:",
+        "# Calibration",
+        "poni_version:",
+        "Detector:",
+        "Detector_config:",
+        "Distance:",
+        "Poni1:",
+        "Poni2:",
+        "Rot1:",
+        "Rot2:",
+        "Rot3:",
+        "Wavelength:",
+    ]
+
+    # Split the string into parts based on the keywords
+    formatted_parts = []
+    current_pos = 0
+
+    for keyword in keywords:
+        pos = input_str.find(keyword, current_pos)
+        if pos != -1:
+            # If not at the start, add the previous part
+            if pos > current_pos:
+                formatted_parts.append(input_str[current_pos:pos].strip())
+            current_pos = pos
+
+    # Add the last part
+    if current_pos < len(input_str):
+        formatted_parts.append(input_str[current_pos:].strip())
+
+    # Join the parts with newlines
+    return "\n".join(formatted_parts)
+
+
+def generate_poni_from_text(ponifile_text):
+    """
+    Generates a temporary .poni file from the provided ponifile text.
+
+    :param ponifile_text: Text content of the .poni file
+    :type ponifile_text: str
+    :returns: Path to the temporary .poni file
     :rtype: str
     """
+    ponifile_text = format_poni_string(ponifile_text)
+    # Create a temporary file with .poni extension
+    with tempfile.NamedTemporaryFile(
+        mode="w", delete=False, suffix=".poni"
+    ) as temp_file:
+        temp_file.write(ponifile_text)
+        temp_file_path = temp_file.name
 
-    directory_path = os.path.join(os.getcwd(), path)
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
-
-    if "calibration_measurement_id" not in df.columns:
-        df["calibration_measurement_id"] = [
-            f"{i + 1}_fake" for i in range(len(df))
-        ]
-
-    df_cut = df[["calibration_measurement_id", "ponifile"]]
-
-    df_unique = df_cut.drop_duplicates(subset="calibration_measurement_id")
-
-    df_ponis = df_unique.dropna(subset="ponifile")
-
-    for _, row in df_ponis.iterrows():
-        filename = str(row["calibration_measurement_id"]) + ".poni"
-        text_content = row["ponifile"]
-        if text_content:
-            # Write the text content to the file
-            with open(
-                os.path.join(directory_path, filename),
-                "w",
-            ) as file:
-                file.write(text_content)
-    return directory_path
+    return temp_file_path
 
 
 def create_mask(faulty_pixels):
@@ -212,10 +662,10 @@ def create_mask(faulty_pixels):
     Creates a mask array to identify faulty pixels.
 
     :param faulty_pixels: List of (y, x) coordinates representing faulty\
-        pixels, or None.
+    pixels, or None.
     :type faulty_pixels: list of tuples or None
     :returns: Mask array where 1 indicates a faulty pixel and 0 indicates a\
-        good pixel, or None.
+    good pixel, or None.
     :rtype: numpy.ndarray or None
     """
     if faulty_pixels is not None:
@@ -290,10 +740,6 @@ def show_data(df: pd.DataFrame):
 
     # Flatten the axes for easy indexing
     axes = axes.flatten()
-
-    # Define colors for cancer and non-cancer tissues
-    colors = {"cancer": "red", "non-cancer": "blue"}
-
     # Iterate over clusters and cancer/non-cancer tissues
     for i, ((cluster, diagnosis), group) in enumerate(grouped):
         ax = axes[i]
@@ -607,19 +1053,47 @@ def viz_roc_balanced(fig, axes, model_name, estimators):
     plt.show()
 
 
-def generate_roc_curve(y_true, y_score):
-    RocCurveDisplay.from_predictions(y_true, y_score)
-    fig = plt.gcf()
-    plt.title("ROC Keele SAXS")
-    fig.set_size_inches(4, 4)
-    fig.set_dpi(150)
-    fig.set_facecolor("white")
-    # plt.savefig(f"analysis/fitting_classification/roc/keele_SAXS_ROC.png")
-    plt.show()
+def generate_roc_based_metrics(
+    y_true, y_score, show_flag=True, min_sensitivity=None, min_specificity=None
+):
+    """
+    Generate ROC-based metrics including sensitivity, specificity, precision,
+    and balanced accuracy, and optionally display the ROC curve.
+
+    :param y_true: True binary labels.
+    :type y_true: array-like of shape (n_samples,)
+    :param y_score: Target scores, probability estimates of the positive class.
+    :type y_score: array-like of shape (n_samples,)
+    :param show_flag: Whether to display the ROC curve. Defaults to True.
+    :type show_flag: bool
+    :param min_sensitivity: Minimum required sensitivity for \
+    filtering thresholds. Defaults to None.
+    :type min_sensitivity: float, optional
+    :param min_specificity: Minimum required specificity for \
+    filtering thresholds. Defaults to None.
+    :type min_specificity: float, optional
+    :return: A tuple containing optimal sensitivity, optimal specificity, \
+    optimal precision, and balanced accuracy (all in percentages).
+    :rtype: Tuple[float, float, float, float]
+    """
+
+    if show_flag:
+        RocCurveDisplay.from_predictions(y_true, y_score)
+        fig = plt.gcf()
+        plt.title("ROC Curve")
+        fig.set_size_inches(4, 4)
+        fig.set_dpi(150)
+        fig.set_facecolor("white")
+        # plt.savefig(f"analysis/fitting_classification/roc/keele_SAXS_ROC.png")
+        plt.show()
 
     # Optimal threshold closest to perfect classifier
     tpr, fpr, optimal_idx, optimal_threshold = calculate_optimal_threshold(
-        y_true, y_score
+        y_true,
+        y_score,
+        print_flag=False,
+        min_sensitivity=min_sensitivity,
+        min_specificity=min_specificity,
     )
 
     # Compute optimal sensitivity, specificity, and precision
@@ -628,16 +1102,70 @@ def generate_roc_curve(y_true, y_score):
     y_pred = y_score > optimal_threshold
     optimal_precision = round(precision_score(y_true, y_pred) * 100, 1)
 
-    # Round to 1 decimal place
-    print("Best performance closest to ideal classifier:")
-    print(f"Sensitivity: {optimal_sensitivity}%")
-    print(f"Specificity: {optimal_specificity}%")
-    print(f"PPV: {optimal_precision}%")
+    # Calculate balanced accuracy
+    balanced_accuracy = (tpr[optimal_idx] + 1 - fpr[optimal_idx]) / 2
+    balanced_accuracy = round(balanced_accuracy * 100, 1)
+
+    return (
+        optimal_sensitivity,
+        optimal_specificity,
+        optimal_precision,
+        balanced_accuracy,
+    )
 
 
-def calculate_optimal_threshold(y_true, y_score):
+def calculate_optimal_threshold(
+    y_true,
+    y_score,
+    min_sensitivity=None,
+    min_specificity=None,
+    print_flag=False,
+):
+    """
+    Calculate the optimal threshold for a binary classifier based on the \
+    ROC curve, optionally filtering by minimum sensitivity or specificity.
+
+    :param y_true: True binary labels.
+    :type y_true: array-like of shape (n_samples,)
+    :param y_score: Target scores, probability estimates of the positive class.
+    :type y_score: array-like of shape (n_samples,)
+    :param min_sensitivity: Minimum required sensitivity for \
+    filtering thresholds. Defaults to None.
+    :type min_sensitivity: float, optional
+    :param min_specificity: Minimum required specificity for \
+    filtering thresholds. Defaults to None.
+    :type min_specificity: float, optional
+    :param print_flag: Whether to print the optimal threshold. \
+    Defaults to False.
+    :type print_flag: bool
+    :return: A tuple containing true positive rates, false positive rates,\
+    the index of the optimal threshold, and the optimal threshold value.
+    :rtype: Tuple[np.ndarray, np.ndarray, int, float]
+    """
+
     fpr, tpr, thresholds = roc_curve(y_true, y_score)
+
+    # Filter the thresholds based on minimum sensitivity or specificity
+    if min_sensitivity is not None:
+        tpr_threshold_mask = tpr >= min_sensitivity
+        fpr, tpr, thresholds = (
+            fpr[tpr_threshold_mask],
+            tpr[tpr_threshold_mask],
+            thresholds[tpr_threshold_mask],
+        )
+    elif min_specificity is not None:
+        tnr_threshold_mask = (1 - fpr) >= min_specificity
+        fpr, tpr, thresholds = (
+            fpr[tnr_threshold_mask],
+            tpr[tnr_threshold_mask],
+            thresholds[tnr_threshold_mask],
+        )
+
+    # Find the optimal index and threshold
     optimal_idx = np.argmax(tpr - fpr)
     optimal_threshold = thresholds[optimal_idx]
-    print(f"Optimal threshold: {optimal_threshold}")
+
+    if print_flag:
+        print(f"Optimal threshold: {optimal_threshold}")
+
     return tpr, fpr, optimal_idx, optimal_threshold
