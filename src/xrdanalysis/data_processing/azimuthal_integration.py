@@ -176,7 +176,8 @@ def perform_azimuthal_integration(
     elif calibration_mode == "poni":
         poni_text = row["ponifile"]
         # Adjust poni file thickness. Adjusted distance = restored_thickness - t/2
-        if row["thickness"] is not None and row["thickness"] > 10:
+
+        if "thickness" in row and row["thickness"] > 10:
             adjusted_thickness = (
                 700 - (row["thickness"] / 2)
             ) * 10**-3  # hard coded for in-vivo machine
