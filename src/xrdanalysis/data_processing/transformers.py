@@ -77,6 +77,8 @@ class AzimuthalIntegration(TransformerMixin):
     npt: int = 256
     integration_mode: str = "1D"
     calibration_mode: str = "dataframe"
+    thickness_adjustment: bool = False
+    thickness_adjustment_distance: float = 700
     calc_cake_stats: bool = False
     angles: List[Tuple[int]] = None
 
@@ -130,6 +132,8 @@ class AzimuthalIntegration(TransformerMixin):
                 mask,
                 self.integration_mode,
                 self.calibration_mode,
+                thickness_adjustment=self.thickness_adjustment,
+                thickness_adjustment_distance=self.thickness_adjustment_distance,
                 thres=self.thres,
                 max_iter=self.max_iter,
                 calc_cake_stats=self.calc_cake_stats,

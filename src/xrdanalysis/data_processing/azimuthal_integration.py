@@ -82,6 +82,8 @@ def perform_azimuthal_integration(
     calibration_mode="dataframe",
     thres=3,
     max_iter=5,
+    thickness_adjustment=False,
+    thickness_adjustment_distance=700,
     calc_cake_stats=False,
     angles=None,
 ):
@@ -177,9 +179,9 @@ def perform_azimuthal_integration(
         poni_text = row["ponifile"]
         # Adjust poni file thickness. Adjusted distance = restored_thickness - t/2
 
-        if "thickness" in row and row["thickness"] > 10:
+        if thickness_adjustment:
             adjusted_thickness = (
-                700 - (row["thickness"] / 2)
+                thickness_adjustment_distance - (row["thickness"] / 2)
             ) * 10**-3  # hard coded for in-vivo machine
             distance_index = poni_text.find("Distance") + 9
             end_of_line_index = poni_text.find("\n", distance_index)
