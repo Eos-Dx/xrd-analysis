@@ -1,9 +1,10 @@
+from typing import Dict, List, Optional, Union
+
 import numpy as np
 from scipy import fft
 from scipy.integrate import simpson as simps
-from typing import Union, List, Dict, Optional
 
-from .utility_functions import mask_beam_center
+from .utility_functions import extract_image_data_values, mask_beam_center
 
 
 def slope_removal_custom(curve):
@@ -123,6 +124,7 @@ def fourier_fft2(
     remove_beam: str = "false",
     thresh: float = 700,
     padding: int = 0,
+    mask: Optional[np.ndarray] = None,
     filter_radius: Optional[float] = None,
     features: Optional[Union[List[str], str]] = None,
 ) -> Dict[str, np.ndarray]:
@@ -170,8 +172,12 @@ def fourier_fft2(
 
     # Beam removal in real space if specified
     if remove_beam == "real":
-        beam = mask_beam_center(data, thresh, padding)
-        data = data - beam
+        if mask is not None:
+            mask = extract_image_data_values(data, mask)
+            data = data - mask
+        else:
+            beam = mask_beam_center(data, thresh, padding)
+            data = data - beam
 
     # Compute FFT and shift
     fft2 = fft.fft2(data)
@@ -179,9 +185,14 @@ def fourier_fft2(
 
     # Beam removal in Fourier space if specified
     if remove_beam == "fourier":
-        beam = mask_beam_center(data, thresh, padding)
-        beam_fft = fft.fftshift(fft.fft2(beam))
-        fft2_shifted = fft2_shifted - beam_fft
+        if mask is not None:
+            mask = extract_image_data_values(data, mask)
+            mask_fft = fft.fftshift(fft.fft2(mask))
+            fft2_shifted = fft2_shifted - mask_fft
+        else:
+            beam = mask_beam_center(data, thresh, padding)
+            beam_fft = fft.fftshift(fft.fft2(beam))
+            fft2_shifted = fft2_shifted - beam_fft
 
     # Apply frequency filtering if radius is specified
     if filter_radius is not None:
@@ -189,8 +200,8 @@ def fourier_fft2(
         rows, cols = data.shape
         crow, ccol = rows // 2, cols // 2
         Y, X = np.ogrid[:rows, :cols]
-        mask = (X - ccol) ** 2 + (Y - crow) ** 2 <= filter_radius**2
-        fft2_shifted *= mask
+        mask_radius = (X - ccol) ** 2 + (Y - crow) ** 2 <= filter_radius**2
+        fft2_shifted *= mask_radius
 
     # Prepare all possible features
     all_features = {

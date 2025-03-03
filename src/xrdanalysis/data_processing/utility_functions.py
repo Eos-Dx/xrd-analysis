@@ -1192,3 +1192,20 @@ def calculate_optimal_threshold(
         print(f"Optimal threshold: {optimal_threshold}")
 
     return tpr, fpr, optimal_idx, optimal_threshold
+
+
+def extract_image_data_values(
+    data: np.ndarray, mask: np.ndarray
+) -> np.ndarray:
+    """
+    Extract image data values using a binary mask where 1 indicates pixels to remove.
+
+    :param data: Input image data array
+    :type data: numpy.ndarray
+    :param mask: Binary mask array where 1 indicates pixels to remove
+    :type mask: numpy.ndarray
+    :returns: Filtered image data with masked values removed
+    :rtype: numpy.ndarray
+    :raises ValueError: If data and mask shapes do not match
+    """
+    return data * mask

@@ -3,7 +3,7 @@ The transformer classes are stored here
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -784,6 +784,7 @@ class FourierTransform(TransformerMixin):
         remove_beam="false",
         thresh=1000,
         padding=0,
+        mask=None,
         filter_radius=None,
         features: Optional[Union[List[str], str]] = None,
     ):
@@ -821,6 +822,7 @@ class FourierTransform(TransformerMixin):
         self.padding = padding
         self.filter_radius = filter_radius
         self.features = features
+        self.mask = mask
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -868,6 +870,7 @@ class FourierTransform(TransformerMixin):
                         self.remove_beam,
                         self.thresh,
                         self.padding,
+                        self.mask,
                         self.filter_radius,
                         self.features,
                     )
