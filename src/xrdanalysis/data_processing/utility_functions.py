@@ -638,6 +638,8 @@ def format_poni_string(input_str):
         "Rot2:",
         "Rot3:",
         "Wavelength:",
+        "# Calibrant:",
+        "# Image:",
     ]
 
     # Split the string into parts based on the keywords
