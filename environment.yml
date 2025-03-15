@@ -33,4 +33,5 @@ dependencies:
   - seaborn=0.13.2
   - shap=0.45.1
   - sphinx=7.3.7
+  - umap-learn=0.5.7
   - xgboost=2.0.3
