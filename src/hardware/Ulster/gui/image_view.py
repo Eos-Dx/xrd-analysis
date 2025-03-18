@@ -1,13 +1,15 @@
 from hardware.Ulster.gui.image_view_basic import ImageViewBasic
 from hardware.Ulster.gui.image_view_ext.zoom_extension import ZoomMixin
 from hardware.Ulster.gui.image_view_ext.drawing_extension import DrawingMixin
+from hardware.Ulster.gui.image_view_ext.point_editing_extension import PointEditingMixin
 
-
-class ImageView(ZoomMixin, DrawingMixin, ImageViewBasic):
+class ImageView(ZoomMixin, DrawingMixin, PointEditingMixin, ImageViewBasic):
     def __init__(self, parent=None):
         super().__init__(parent)
         # Initialize drawing functionality.
         self.initDrawing()
+        # Initialize point editing functionality.
+        self.initPointEditing()
 
     def rotateImage(self, angle):
         if self.image_item:
@@ -23,3 +25,4 @@ class ImageView(ZoomMixin, DrawingMixin, ImageViewBasic):
                 self.shapes = [s for s in self.shapes if s["item"] != item]
         if self.shapeUpdatedCallback:
             self.shapeUpdatedCallback()
+
