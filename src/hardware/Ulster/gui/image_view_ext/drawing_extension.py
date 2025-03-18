@@ -86,6 +86,7 @@ class DrawingMixin:
                     self.shape_counter += 1
                     if self.shapeUpdatedCallback:
                         self.shapeUpdatedCallback()
+
             self.start_point = None
             self.current_shape = None
         else:
