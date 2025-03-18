@@ -4,11 +4,11 @@ from PyQt5.QtWidgets import QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsIt
 class DrawingMixin:
     def initDrawing(self):
         # Initialize drawing properties.
-        self.drawing_mode = None  # "rect", "ellipse", "crop", or None for select mode.
+        self.drawing_mode = None  # "rect", "ellipse", "crop", or None (select mode)
         self.pen = self._createPen()
         self.start_point = None
         self.current_shape = None
-        self.shapes = []         # List to hold drawn shapes (each is a dict: {"id", "type", "item"})
+        self.shapes = []         # List to hold drawn shapes (each: {"id", "type", "item"})
         self.shape_counter = 1
         self.shapeUpdatedCallback = None
 
@@ -58,9 +58,10 @@ class DrawingMixin:
             if self.drawing_mode == "crop":
                 if self.current_shape and self.current_pixmap:
                     rect = self.current_shape.rect().normalized()
+                    from PyQt5.QtCore import QRectF
                     image_rect = QRectF(self.current_pixmap.rect())
                     crop_rect = rect.intersected(image_rect)
-                    # Remove the crop rectangle from the scene BEFORE applying the crop.
+                    # Remove the crop rectangle BEFORE applying the crop.
                     self.scene.removeItem(self.current_shape)
                     self.current_shape = None
                     if crop_rect.width() > 0 and crop_rect.height() > 0:
@@ -78,7 +79,8 @@ class DrawingMixin:
                     shape_info = {
                         "id": self.shape_counter,
                         "type": "Rectangle" if self.drawing_mode == "rect" else "Circle",
-                        "item": self.current_shape
+                        "item": self.current_shape,
+                        "role": "include"  # Default role is include.
                     }
                     self.shapes.append(shape_info)
                     self.shape_counter += 1

@@ -1,4 +1,3 @@
-# hardware/Ulster/gui/main_window_basic.py
 import os
 import json
 from pathlib import Path
@@ -20,7 +19,7 @@ class MainWindowBasic(QMainWindow):
         self.checkDevMode()
 
     def load_config(self):
-        # Update the config path as needed.
+        # Adjust the path as needed.
         config_path = Path('C:/dev/xrd-analysis/src/hardware/Ulster/resources/config/main.json')
         try:
             with open(config_path, 'r') as f:
@@ -37,7 +36,7 @@ class MainWindowBasic(QMainWindow):
         fileMenu.addAction(self.openAct)
 
     def createToolBar(self):
-        # Store the toolbar in an instance variable for extension use.
+        # Store the toolbar so extensions can add actions.
         self.toolBar = QToolBar("Tools", self)
         self.addToolBar(self.toolBar)
         self.toolBar.addAction(self.openAct)
