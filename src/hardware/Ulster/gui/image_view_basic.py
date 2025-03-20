@@ -1,4 +1,3 @@
-# hardware/Ulster/gui/image_view_basic.py
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene
 from PyQt5.QtCore import QRectF
 from PyQt5.QtGui import QPixmap
@@ -15,4 +14,10 @@ class ImageViewBasic(QGraphicsView):
         self.current_pixmap = pixmap
         self.scene.clear()
         self.image_item = self.scene.addPixmap(pixmap)
-        self.setSceneRect(QRectF(pixmap.rect()))
+        # Compute the image rectangle
+        imageRect = QRectF(pixmap.rect())
+        # Map the current viewport rectangle to scene coordinates.
+        viewRect = self.mapToScene(self.viewport().rect()).boundingRect()
+        # Expand the scene rect to be the union of the image and the view.
+        combinedRect = imageRect.united(viewRect)
+        self.setSceneRect(combinedRect)
