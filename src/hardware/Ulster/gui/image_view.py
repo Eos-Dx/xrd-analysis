@@ -10,10 +10,15 @@ class ImageView(ZoomMixin, DrawingMixin, PointEditingMixin, ImageViewBasic):
         self.initDrawing()
         # Initialize point editing functionality.
         self.initPointEditing()
+        # rotation_angle is already set in ImageViewBasic's __init__
 
     def rotateImage(self, angle):
         if self.image_item:
-            self.image_item.setRotation(self.image_item.rotation() + angle)
+            # Update the rotation of the image_item.
+            new_angle = self.image_item.rotation() + angle
+            self.image_item.setRotation(new_angle)
+            # Keep track of the cumulative rotation.
+            self.rotation_angle += angle
         else:
             print("No image to rotate.")
 
@@ -25,4 +30,3 @@ class ImageView(ZoomMixin, DrawingMixin, PointEditingMixin, ImageViewBasic):
                 self.shapes = [s for s in self.shapes if s["item"] != item]
         if self.shapeUpdatedCallback:
             self.shapeUpdatedCallback()
-
