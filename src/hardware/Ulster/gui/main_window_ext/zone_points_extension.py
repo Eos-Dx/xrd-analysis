@@ -2,7 +2,8 @@ import random
 import math
 from PyQt5.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
-    QSpinBox, QPushButton, QTableWidget, QTableWidgetItem, QGraphicsEllipseItem
+    QSpinBox, QPushButton, QTableWidget, QTableWidgetItem,
+    QGraphicsEllipseItem, QLabel, QComboBox
 )
 from PyQt5.QtCore import Qt, QEvent, QPointF, QRectF
 from PyQt5.QtGui import QColor, QPen, QTransform
@@ -22,20 +23,32 @@ class ZonePointsMixin:
         container = QWidget()
         layout = QVBoxLayout(container)
 
-        # Input controls: number of points and shrink percentage.
+        # Input controls: number of points, percentage offset, and mm option control.
         inputLayout = QHBoxLayout()
+
+        # Label and spin box for number of points.
+        inputLayout.addWidget(QLabel("N points"))
         self.pointCountSpinBox = QSpinBox()
         self.pointCountSpinBox.setMinimum(2)
         self.pointCountSpinBox.setMaximum(1000)
         self.pointCountSpinBox.setValue(10)  # Default: 10 generated points.
         inputLayout.addWidget(self.pointCountSpinBox)
 
+        # Label and spin box for percentage offset.
+        inputLayout.addWidget(QLabel("% offset"))
         self.shrinkSpinBox = QSpinBox()
         self.shrinkSpinBox.setMinimum(0)
         self.shrinkSpinBox.setMaximum(100)
         self.shrinkSpinBox.setValue(5)  # Default: 5%
         inputLayout.addWidget(self.shrinkSpinBox)
 
+        # Combo box for mm options.
+        self.mmComboBox = QComboBox()
+        for option in ["16mm", "14mm", "12mm", "10mm", "5mm", "4mm", "3mm", "2mm"]:
+            self.mmComboBox.addItem(option)
+        inputLayout.addWidget(self.mmComboBox)
+
+        # Generate Points button.
         self.generatePointsBtn = QPushButton("Generate Points")
         inputLayout.addWidget(self.generatePointsBtn)
         layout.addLayout(inputLayout)
