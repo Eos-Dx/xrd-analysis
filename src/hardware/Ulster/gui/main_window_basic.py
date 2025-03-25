@@ -2,13 +2,19 @@ import os
 import json
 from pathlib import Path
 from PyQt5.QtWidgets import QMainWindow, QAction, QFileDialog, QToolBar
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QIcon
 from hardware.Ulster.gui.image_view import ImageView
 
 class MainWindowBasic(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Scan Area Selector")
+        # Set the window icon using the logo image.
+        logo_path = Path('C:/dev/xrd-analysis/src/hardware/Ulster/resources/images/rick_final.png')  # Adjust the path.
+        if logo_path.exists():
+            self.setWindowIcon(QIcon(str(logo_path)))
+        else:
+            print("Logo file not found:", logo_path)
         self.resize(800, 600)
         self.config = self.load_config()
         self.image_view = ImageView(self)
@@ -20,7 +26,7 @@ class MainWindowBasic(QMainWindow):
 
     def load_config(self):
         # Adjust the path as needed.
-        config_path = Path('C:/dev/xrd-analysis/src/hardware/Ulster/resources/config/main.json')
+        config_path = Path('C:/dev/xrd-analysis/src/hardware/Ulster/resources/config/main.json')  # Adjust the path.
         try:
             with open(config_path, 'r') as f:
                 return json.load(f)
