@@ -27,95 +27,73 @@ class HoverableEllipseItem(QGraphicsEllipseItem):
 
 class ZonePointsMixin:
     def createZonePointsWidget(self):
-        """Creates a dock widget that generates evenly distributed points in the allowed region.
-        The allowed region is defined as the 'include' zone shrunk by a user-defined percentage
-        (default 5%) without changing its center, minus any 'exclude' zones.
-        Generated points are drawn as a red circle (diameter 8) with a transparent cyan circle (20% opacity)
-        underneath. User-defined points (added by double left-click) appear as larger blue circles.
-        The table lists all points – first the generated ones, then the user-defined ones.
-        Deletion via the table or by double right-click on a point removes it (for generated points, both the red
-        item and its corresponding cyan circle are removed)."""
+        """
+        Creates a dock widget that generates and displays zone points.
+        Generated points appear as a red circle with an underlying transparent cyan circle.
+        User-defined points (added via double left-click) appear as larger blue circles.
+        The table lists all points.
+        """
         self.zonePointsDock = QDockWidget("Zone Points", self)
         container = QWidget()
         layout = QVBoxLayout(container)
 
-        # Input controls: number of points, percentage offset, mm option, and conversion label.
+        # Input controls.
         inputLayout = QHBoxLayout()
-
-        # Label and spin box for number of points.
         inputLayout.addWidget(QLabel("N points"))
         self.pointCountSpinBox = QSpinBox()
         self.pointCountSpinBox.setMinimum(2)
         self.pointCountSpinBox.setMaximum(1000)
-        self.pointCountSpinBox.setValue(10)  # Default: 10 generated points.
+        self.pointCountSpinBox.setValue(10)
         inputLayout.addWidget(self.pointCountSpinBox)
 
-        # Label and spin box for percentage offset.
         inputLayout.addWidget(QLabel("% offset"))
         self.shrinkSpinBox = QSpinBox()
         self.shrinkSpinBox.setMinimum(0)
         self.shrinkSpinBox.setMaximum(100)
-        self.shrinkSpinBox.setValue(5)  # Default: 5%
+        self.shrinkSpinBox.setValue(5)
         inputLayout.addWidget(self.shrinkSpinBox)
 
-        # Combo box for mm options.
         self.mmComboBox = QComboBox()
         for option in ["16mm", "14mm", "12mm", "10mm", "5mm", "4mm", "3mm", "2mm"]:
             self.mmComboBox.addItem(option)
         inputLayout.addWidget(self.mmComboBox)
 
-        # Conversion label.
         self.conversionLabel = QLabel("Conversion: 1.00 px/mm")
         inputLayout.addWidget(self.conversionLabel)
 
-        # Generate Points button.
         self.generatePointsBtn = QPushButton("Generate Points")
         inputLayout.addWidget(self.generatePointsBtn)
         layout.addLayout(inputLayout)
 
-        # Table to display points: 6 columns.
+        # Table to display points.
         self.pointsTable = QTableWidget(0, 6)
         self.pointsTable.setHorizontalHeaderLabels([
             "ID", "X (px)", "Y (px)", "X (mm)", "Y (mm)", "Measurement"
         ])
         layout.addWidget(self.pointsTable)
 
-        # Install event filters.
-        self.pointsTable.installEventFilter(self)
-        self.image_view.viewport().installEventFilter(self)
-
         container.setLayout(layout)
         self.zonePointsDock.setWidget(container)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.zonePointsDock)
+
         self.generatePointsBtn.clicked.connect(self.generateZonePoints)
 
-        # Initialize lists.
+        # Initialize lists for scene items.
         self.image_view.generated_points = []
         self.image_view.generated_cyan = []
         self.user_defined_points = []
-        # Default conversion ratio and include center.
         self.pixel_to_mm_ratio = 1.0
         self.include_center = None
 
     def updateConversionLabel(self):
         self.conversionLabel.setText(f"Conversion: {self.pixel_to_mm_ratio:.2f} px/mm")
 
-    def eventFilter(self, source, event):
-        if source == self.pointsTable and event.type() == QEvent.KeyPress:
-            if event.key() == Qt.Key_Delete:
-                self.deleteSelectedPoints()
-                return True
-        if source == self.image_view.viewport() and event.type() == QEvent.MouseButtonDblClick:
-            self.mouseDoubleClickEvent(event)
-            return True
-        return super().eventFilter(source, event)
-
     def generateZonePoints(self):
         N = self.pointCountSpinBox.value()
         shrink_percent = self.shrinkSpinBox.value()
         shrink_factor = (100 - shrink_percent) / 100.0
 
-        # Retrieve include and exclude shapes.
+        # For simplicity, assume one include shape is available.
         include_shape = None
         exclude_shapes = []
         for shape in self.image_view.shapes:
@@ -183,25 +161,25 @@ class ZonePointsMixin:
                 attempts += 1
                 x = random.uniform(x_min, x_max)
                 y = random.uniform(y_min, y_max)
-                if not shrunk_path.contains(QPointF(x,y)):
+                if not shrunk_path.contains(QPointF(x, y)):
                     continue
-                if any(ex.contains(ex.mapFromScene(x,y)) for ex in exclude_shapes):
+                if any(ex.contains(ex.mapFromScene(x, y)) for ex in exclude_shapes):
                     continue
-                candidates.append((x,y))
+                candidates.append((x, y))
         if not candidates:
             print("No candidate points found in the shrunk allowed region.")
             return
 
-        bbox_area = (x_max-x_min)*(y_max-y_min)
-        allowed_area = bbox_area*(len(candidates)/float(attempts))
+        bbox_area = (x_max - x_min) * (y_max - y_min)
+        allowed_area = bbox_area * (len(candidates) / float(attempts))
         circle_area = allowed_area / N
-        ideal_radius = math.sqrt(circle_area/math.pi)
+        ideal_radius = math.sqrt(circle_area / math.pi)
         print(f"Allowed area: {allowed_area:.2f}, ideal radius: {ideal_radius:.2f}")
 
         # Farthest-point sampling.
         sum_x = sum(pt[0] for pt in candidates)
         sum_y = sum(pt[1] for pt in candidates)
-        centroid = (sum_x/len(candidates), sum_y/len(candidates))
+        centroid = (sum_x / len(candidates), sum_y / len(candidates))
         initial = min(candidates, key=lambda pt: distance(pt, centroid))
         chosen = [initial]
         candidates.remove(initial)
@@ -219,18 +197,18 @@ class ZonePointsMixin:
             candidates.remove(best_candidate)
         final_points = chosen[:N]
 
-        # Draw each generated point.
-        for (x,y) in final_points:
-            # Draw the cyan zone (underlay).
+        # Draw generated points.
+        for (x, y) in final_points:
+            # Draw the cyan zone.
             cyan_item = QGraphicsEllipseItem(x - ideal_radius, y - ideal_radius,
-                                             2*ideal_radius, 2*ideal_radius)
+                                             2 * ideal_radius, 2 * ideal_radius)
             cyan_color = QColor("cyan")
             cyan_color.setAlphaF(0.2)
             cyan_item.setBrush(cyan_color)
             cyan_item.setPen(QPen(Qt.NoPen))
             self.image_view.scene.addItem(cyan_item)
             self.image_view.generated_cyan.append(cyan_item)
-            # Draw the red point as a hoverable item.
+            # Draw the red point.
             red_item = HoverableEllipseItem(x - 4, y - 4, 8, 8)
             red_item.setBrush(QColor("red"))
             red_item.setPen(QPen(Qt.NoPen))
@@ -243,8 +221,7 @@ class ZonePointsMixin:
         self.updatePointsTable()
 
     def updatePointsTable(self):
-        """Updates the table with columns:
-           ID, X (px), Y (px), X (mm), Y (mm), Measurement (empty)."""
+        """Updates the table with the list of points."""
         points = []
         if hasattr(self.image_view, 'generated_points'):
             for item in self.image_view.generated_points:
@@ -255,8 +232,8 @@ class ZonePointsMixin:
                 center = item.sceneBoundingRect().center()
                 points.append((center.x(), center.y(), "user"))
         self.pointsTable.setRowCount(len(points))
-        for idx, (x,y,ptype) in enumerate(points):
-            self.pointsTable.setItem(idx, 0, QTableWidgetItem(str(idx+1)))
+        for idx, (x, y, ptype) in enumerate(points):
+            self.pointsTable.setItem(idx, 0, QTableWidgetItem(str(idx + 1)))
             self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
             self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
             if self.pixel_to_mm_ratio:
@@ -269,45 +246,23 @@ class ZonePointsMixin:
                 self.pointsTable.setItem(idx, 4, QTableWidgetItem("N/A"))
             self.pointsTable.setItem(idx, 5, QTableWidgetItem(""))
 
-    def deleteSelectedPoints(self):
-        selected_indexes = self.pointsTable.selectionModel().selectedRows()
-        generated_count = len(self.image_view.generated_points) if hasattr(self.image_view, 'generated_points') else 0
-        rows = sorted([index.row() for index in selected_indexes], reverse=True)
-        for row in rows:
-            if row < generated_count:
-                red_item = self.image_view.generated_points.pop(row)
-                self.image_view.scene.removeItem(red_item)
-                if hasattr(self.image_view, 'generated_cyan') and row < len(self.image_view.generated_cyan):
-                    cyan_item = self.image_view.generated_cyan.pop(row)
-                    self.image_view.scene.removeItem(cyan_item)
-            else:
-                user_index = row - generated_count
-                if hasattr(self, "user_defined_points") and user_index < len(self.user_defined_points):
-                    blue_item = self.user_defined_points.pop(user_index)
-                    self.image_view.scene.removeItem(blue_item)
-        self.updatePointsTable()
-
     def pointHoverChanged(self, item, hovered):
         """
-        When a red point is hovered, update its corresponding cyan zone to highlight it.
-        Also, highlight the corresponding table row.
+        When a generated point is hovered, update its corresponding cyan zone
+        and highlight the table row.
         """
         table = self.pointsTable
         row = None
-        # Determine the index and highlight table row.
         if item.data(0) == "generated":
             try:
                 idx = self.image_view.generated_points.index(item)
                 row = idx
-                # Get corresponding cyan zone.
                 if idx < len(self.image_view.generated_cyan):
                     cyan_item = self.image_view.generated_cyan[idx]
                     if hovered:
-                        # Change cyan zone to red with 20% opacity.
                         highlight = QColor(255, 0, 0, 51)
                         cyan_item.setBrush(highlight)
                     else:
-                        # Revert to original cyan (20% opacity).
                         orig = QColor("cyan")
                         orig.setAlphaF(0.2)
                         cyan_item.setBrush(orig)
@@ -320,56 +275,8 @@ class ZonePointsMixin:
             except ValueError:
                 pass
         if row is not None and table.rowCount() > row:
-            # Highlight table row: red with 20% opacity.
             highlight = QColor(255, 0, 0, 51)
             normal = QColor("white")
             for col in range(table.columnCount()):
                 if table.item(row, col):
                     table.item(row, col).setBackground(highlight if hovered else normal)
-
-    def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            pos = self.image_view.mapToScene(event.pos())
-            blue_radius = 10
-            blue_item = HoverableEllipseItem(-blue_radius, -blue_radius, 2*blue_radius, 2*blue_radius)
-            blue_item.setBrush(QColor("blue"))
-            blue_item.setPen(QPen(Qt.NoPen))
-            blue_item.setFlags(QGraphicsEllipseItem.ItemIsSelectable | QGraphicsEllipseItem.ItemIsMovable)
-            blue_item.setData(0, "user")
-            blue_item.setPos(pos)
-            blue_item.hoverCallback = self.pointHoverChanged
-            self.image_view.scene.addItem(blue_item)
-            if not hasattr(self, "user_defined_points"):
-                self.user_defined_points = []
-            self.user_defined_points.append(blue_item)
-            self.updatePointsTable()
-            event.accept()
-        elif event.button() == Qt.RightButton:
-            pos = self.image_view.mapToScene(event.pos())
-            tolerance = 5
-            rect = QRectF(pos.x()-tolerance, pos.y()-tolerance, 2*tolerance, 2*tolerance)
-            items = self.image_view.scene.items(rect)
-            indices_to_delete = set()
-            for item in items:
-                if item.data(0) in ["generated", "generated_cyan"]:
-                    if hasattr(self.image_view, "generated_points") and item in self.image_view.generated_points:
-                        idx = self.image_view.generated_points.index(item)
-                        indices_to_delete.add(idx)
-                    elif hasattr(self.image_view, "generated_cyan") and item in self.image_view.generated_cyan:
-                        idx = self.image_view.generated_cyan.index(item)
-                        indices_to_delete.add(idx)
-                elif item.data(0) == "user":
-                    if hasattr(self, "user_defined_points") and item in self.user_defined_points:
-                        self.user_defined_points.remove(item)
-                        self.image_view.scene.removeItem(item)
-            if indices_to_delete:
-                for idx in sorted(indices_to_delete, reverse=True):
-                    red_item = self.image_view.generated_points.pop(idx)
-                    self.image_view.scene.removeItem(red_item)
-                    if hasattr(self.image_view, "generated_cyan") and idx < len(self.image_view.generated_cyan):
-                        cyan_item = self.image_view.generated_cyan.pop(idx)
-                        self.image_view.scene.removeItem(cyan_item)
-            self.updatePointsTable()
-            event.accept()
-        else:
-            super().mouseDoubleClickEvent(event)

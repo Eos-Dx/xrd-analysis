@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-import pypixet
+
 
 from ctypes import cdll, c_int, c_short, c_char_p
 # Set DEV mode: True will use dummy functions for testing, False will use the real implementations.
