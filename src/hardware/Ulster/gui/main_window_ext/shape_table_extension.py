@@ -51,17 +51,72 @@ class ShapeTableMixin:
                     # Remove "isNew" flag now that a role was explicitly set.
                     if "isNew" in shape_info:
                         shape_info.pop("isNew")
-                    # Update the pen color based on role.
+                    # Remove any previous extra items (diagonals or center marker) if present.
+                    if "diagonals" in shape_info:
+                        for item in shape_info["diagonals"]:
+                            self.image_view.scene.removeItem(item)
+                        shape_info.pop("diagonals")
+                    if "center_marker" in shape_info:
+                        self.image_view.scene.removeItem(shape_info["center_marker"])
+                        shape_info.pop("center_marker")
+
                     if role == "include":
                         pen = QPen(QColor("green"), 2)
+                        shape_info["item"].setPen(pen)
                     elif role == "exclude":
                         pen = QPen(QColor("red"), 2)
+                        shape_info["item"].setPen(pen)
                     elif role == "sample holder":
+                        # Convert the shape to a square and draw diagonals and center marker.
+                        item = shape_info["item"]
+                        # Get current rectangle.
+                        rect = item.rect() if hasattr(item, 'rect') else item.boundingRect()
+                        # Compute center of the shape.
+                        cx = rect.x() + rect.width() / 2
+                        cy = rect.y() + rect.height() / 2
+                        # Use the smaller dimension to force a square.
+                        side = min(rect.width(), rect.height())
+                        new_side = side
+                        new_x = cx - new_side / 2
+                        new_y = cy - new_side / 2
+                        # Update shape to square.
+                        item.setRect(new_x, new_y, new_side, new_side)
                         pen = QPen(QColor("purple"), 2)
+                        item.setPen(pen)
+
+                        # Draw diagonal lines.
+                        from PyQt5.QtWidgets import QGraphicsLineItem, QGraphicsEllipseItem
+                        diag1 = QGraphicsLineItem(new_x, new_y, new_x + new_side, new_y + new_side)
+                        diag2 = QGraphicsLineItem(new_x + new_side, new_y, new_x, new_y + new_side)
+                        diag_pen = QPen(QColor("purple"), 1)
+                        diag1.setPen(diag_pen)
+                        diag2.setPen(diag_pen)
+                        self.image_view.scene.addItem(diag1)
+                        self.image_view.scene.addItem(diag2)
+
+                        # Draw center marker.
+                        center_radius = 3
+                        center_point = QGraphicsEllipseItem(cx - center_radius, cy - center_radius,
+                                                            2 * center_radius, 2 * center_radius)
+                        center_point.setBrush(QColor("purple"))
+                        center_point.setPen(QPen(Qt.NoPen))
+                        self.image_view.scene.addItem(center_point)
+
+                        # Store extra items so they can be removed later.
+                        shape_info["diagonals"] = [diag1, diag2]
+                        shape_info["center_marker"] = center_point
+
+                        # Calculate conversion factor: the real square is 19mm per side.
+                        pixels_per_mm = new_side / 19.0
+                        shape_info["pixels_per_mm"] = pixels_per_mm
+                        # Also update the Zone Points mixin attributes.
+                        self.pixel_to_mm_ratio = pixels_per_mm
+                        self.include_center = (cx, cy)
+                        # Now update the conversion label.
+                        self.updateConversionLabel()
                     else:
                         pen = QPen(QColor("black"), 2)
-                    shape_info["item"].setPen(pen)
-                    # Force the scene to update so the change is visible.
+                        shape_info["item"].setPen(pen)
                     self.image_view.scene.update()
                     break
             self.updateShapeTable()
@@ -148,6 +203,12 @@ class ShapeTableMixin:
             for shape_info in self.image_view.shapes:
                 if shape_info["id"] == shape_id:
                     self.image_view.scene.removeItem(shape_info["item"])
+                    # Also remove any extra items (diagonals, center marker) if present.
+                    if "diagonals" in shape_info:
+                        for extra_item in shape_info["diagonals"]:
+                            self.image_view.scene.removeItem(extra_item)
+                    if "center_marker" in shape_info:
+                        self.image_view.scene.removeItem(shape_info["center_marker"])
                     self.image_view.shapes.remove(shape_info)
                     break
         self.updateShapeTable()
