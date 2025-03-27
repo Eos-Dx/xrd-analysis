@@ -41,8 +41,6 @@ class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
         # Add "Save State" button to the toolbar.
         self.addSaveStateAction()
 
-        # Set up automatic periodic auto-saving (every 60 seconds by default).
-        self.setupAutoSave()
 
     def addRestoreStateAction(self):
         restoreStateAct = QAction("Restore State", self, triggered=self.restoreState)

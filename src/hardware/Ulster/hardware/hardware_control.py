@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-
+import numpy as np
 
 from ctypes import cdll, c_int, c_short, c_char_p
 # Set DEV mode: True will use dummy functions for testing, False will use the real implementations.
@@ -14,7 +14,7 @@ if DEV:
     def init_detector(capture_enabled):
         """Dummy detector initialization."""
         print("DEV mode: Dummy init_detector called.")
-        return None, None
+        return True, True
 
     def init_stage(sim_en, serial_num, x_chan, y_chan):
         """Dummy stage initialization."""
@@ -32,17 +32,56 @@ if DEV:
 
     def home_stage(lib, serial_num, x_chan, y_chan, home_timeout):
         """Dummy homing routine."""
+        time.sleep(home_timeout)
         print("DEV mode: Dummy home_stage called.")
         return 0, 0
 
-    def move_stage(lib, serial_num, x_chan, y_chan, x_new, y_new, move_timeout):
+    def move_stage(lib, serial_num, x_chan, y_chan, x_new, y_new, move_timeout=1):
         """Dummy stage move."""
+        time.sleep(move_timeout)
         print(f"DEV mode: Dummy move_stage called. Pretending to move to ({x_new}, {y_new}).")
         return x_new, y_new
 
     def capture_point(dev, pixet, Nframes, Nseconds, filename):
-        """Dummy capture routine."""
-        print(f"DEV mode: Dummy capture_point called. Pretending to capture at {filename}.")
+        """
+        Dummy capture routine that generates two 2D Gaussian distributions on a 100x100 grid.
+
+        One Gaussian will have a peak intensity greater than 1e6 and the other will have a peak
+        intensity less than 1e6. Both Gaussians are generated with random centers and spreads,
+        then combined into one matrix which is saved to a text file.
+        """
+        # Create a 100x100 grid
+        x = np.arange(100)
+        y = np.arange(100)
+        X, Y = np.meshgrid(x, y)
+
+        # Generate first Gaussian with intensity > 1e6
+        x0_1 = np.random.uniform(0, 100)
+        y0_1 = np.random.uniform(0, 100)
+        sigma_x1 = np.random.uniform(5, 15)
+        sigma_y1 = np.random.uniform(5, 15)
+        amplitude1 = np.random.uniform(1e6 + 1, 2e6)  # Ensuring peak > 1e6
+        gaussian1 = amplitude1 * np.exp(-(((X - x0_1) ** 2) / (2 * sigma_x1 ** 2) +
+                                          ((Y - y0_1) ** 2) / (2 * sigma_y1 ** 2)))
+
+        # Generate second Gaussian with intensity < 1e6
+        x0_2 = np.random.uniform(0, 100)
+        y0_2 = np.random.uniform(0, 100)
+        sigma_x2 = np.random.uniform(5, 15)
+        sigma_y2 = np.random.uniform(5, 15)
+        amplitude2 = np.random.uniform(1e5, 1e6 - 1)  # Ensuring peak < 1e6
+        gaussian2 = amplitude2 * np.exp(-(((X - x0_2) ** 2) / (2 * sigma_x2 ** 2) +
+                                          ((Y - y0_2) ** 2) / (2 * sigma_y2 ** 2)))
+
+        # Combine the two Gaussians
+        combined_matrix = gaussian1 + gaussian2
+
+        # Save the combined matrix to a text file with formatted output
+        np.savetxt(filename, combined_matrix, fmt='%.6f')
+
+        print(f"DEV mode: Dummy capture_point called. Saved a 100x100 combined Gaussian matrix to {filename}.")
+
+
 
 # ------------------------------
 # Real Functions for Device Operation
