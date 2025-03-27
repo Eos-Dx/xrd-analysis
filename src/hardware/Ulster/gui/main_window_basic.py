@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QMainWindow, QAction, QFileDialog, QToolBar
 from PyQt5.QtGui import QPixmap, QIcon
 from hardware.Ulster.gui.image_view import ImageView
 
+
 class MainWindowBasic(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)

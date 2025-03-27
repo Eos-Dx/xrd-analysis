@@ -61,6 +61,7 @@ class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
         # Add the "Save State" action to the main toolbar (navigator bar)
         self.toolBar.addAction(saveStateAct)
 
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     win = MainWindow()

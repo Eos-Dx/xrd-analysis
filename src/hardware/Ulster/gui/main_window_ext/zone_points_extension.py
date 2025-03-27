@@ -8,22 +8,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QEvent, QPointF, QRectF
 from PyQt5.QtGui import QColor, QPen, QTransform
 
-# Custom QGraphicsEllipseItem subclass that simply calls the hover callback.
-class HoverableEllipseItem(QGraphicsEllipseItem):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setAcceptHoverEvents(True)
-        self.hoverCallback = None
+from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
 
-    def hoverEnterEvent(self, event):
-        if self.hoverCallback:
-            self.hoverCallback(self, True)
-        super().hoverEnterEvent(event)
-
-    def hoverLeaveEvent(self, event):
-        if self.hoverCallback:
-            self.hoverCallback(self, False)
-        super().hoverLeaveEvent(event)
 
 class ZonePointsMixin:
     def createZonePointsWidget(self):
@@ -248,17 +234,17 @@ class ZonePointsMixin:
 
     def pointHoverChanged(self, item, hovered):
         """
-        When a generated point is hovered, update its corresponding cyan zone
-        and highlight the table row.
+        When a point is hovered, update its corresponding zone and highlight the table row.
+        Handles both generated and user-defined points.
         """
         table = self.pointsTable
         row = None
         if item.data(0) == "generated":
             try:
-                idx = self.image_view.generated_points.index(item)
+                idx = self.generated_points.index(item)
                 row = idx
-                if idx < len(self.image_view.generated_cyan):
-                    cyan_item = self.image_view.generated_cyan[idx]
+                if idx < len(self.generated_cyan):
+                    cyan_item = self.generated_cyan[idx]
                     if hovered:
                         highlight = QColor(255, 0, 0, 51)
                         cyan_item.setBrush(highlight)
@@ -270,13 +256,26 @@ class ZonePointsMixin:
                 pass
         elif item.data(0) == "user":
             try:
-                idx = self.user_defined_points.index(item)
+                # Reference the user points stored in the image view.
+                idx = self.image_view.user_points.index(item)
                 row = len(self.image_view.generated_points) + idx
+                # Highlight the associated user-defined zone.
+                if hasattr(self.image_view, "user_defined_zones") and idx < len(self.image_view.user_defined_zones):
+                    zone_item = self.image_view.user_defined_zones[idx]
+                    if hovered:
+                        highlight = QColor(255, 0, 0, 51)
+                        zone_item.setBrush(highlight)
+                    else:
+                        default_zone = QColor("blue")
+                        default_zone.setAlphaF(0.2)
+                        zone_item.setBrush(default_zone)
             except ValueError:
                 pass
+
         if row is not None and table.rowCount() > row:
             highlight = QColor(255, 0, 0, 51)
             normal = QColor("white")
             for col in range(table.columnCount()):
                 if table.item(row, col):
                     table.item(row, col).setBackground(highlight if hovered else normal)
+
