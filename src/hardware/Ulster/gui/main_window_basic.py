@@ -9,7 +9,7 @@ from hardware.Ulster.gui.image_view import ImageView
 class MainWindowBasic(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Scan Area Selector")
+        self.setWindowTitle("EosDX Scanning Software")
         # Set the window icon using the logo image.
         logo_path = Path('C:/dev/xrd-analysis/src/hardware/Ulster/resources/images/rick_final.png')  # Adjust the path.
         if logo_path.exists():
