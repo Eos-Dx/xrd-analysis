@@ -3,19 +3,17 @@ import math
 from PyQt5.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QSpinBox, QPushButton, QTableWidget, QTableWidgetItem,
-    QGraphicsEllipseItem, QLabel, QComboBox
+    QGraphicsEllipseItem, QLabel, QComboBox, QSpacerItem, QSizePolicy, QProgressBar, QFileDialog
 )
-from PyQt5.QtCore import Qt, QEvent, QPointF, QRectF
+from PyQt5.QtCore import Qt, QEvent, QPointF, QRectF, QTimer
 from PyQt5.QtGui import QColor, QPen, QTransform
-
 from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
-
 
 class ZonePointsMixin:
     def createZonePointsWidget(self):
         """
         Creates a dock widget that generates and displays zone points.
-        Generated points appear as a red circle with an underlying transparent cyan circle.
+        Auto-generated points appear as a red circle with an underlying transparent cyan circle.
         User-defined points (added via double left-click) appear as larger blue circles.
         The table lists all points.
         """
@@ -64,10 +62,12 @@ class ZonePointsMixin:
 
         self.generatePointsBtn.clicked.connect(self.generateZonePoints)
 
-        # Initialize lists for scene items.
-        self.image_view.generated_points = []
-        self.image_view.generated_cyan = []
-        self.user_defined_points = []
+        # Initialize the unified points dictionary.
+        # We assume that self.image_view is your graphics view.
+        self.image_view.points_dict = {
+            "generated": {"points": [], "zones": []},
+            "user": {"points": [], "zones": []}
+        }
         self.pixel_to_mm_ratio = 1.0
         self.include_center = None
 
@@ -100,12 +100,12 @@ class ZonePointsMixin:
         self.updateConversionLabel()
 
         # Remove previously drawn generated items.
-        for item in self.image_view.generated_points:
+        for item in self.image_view.points_dict["generated"]["points"]:
             self.image_view.scene.removeItem(item)
-        self.image_view.generated_points = []
-        for item in self.image_view.generated_cyan:
+        self.image_view.points_dict["generated"]["points"] = []
+        for item in self.image_view.points_dict["generated"]["zones"]:
             self.image_view.scene.removeItem(item)
-        self.image_view.generated_cyan = []
+        self.image_view.points_dict["generated"]["zones"] = []
 
         # Candidate sampling area.
         inc_rect = include_shape.rect() if hasattr(include_shape, 'rect') else include_shape.boundingRect()
@@ -193,7 +193,7 @@ class ZonePointsMixin:
             cyan_item.setBrush(cyan_color)
             cyan_item.setPen(QPen(Qt.NoPen))
             self.image_view.scene.addItem(cyan_item)
-            self.image_view.generated_cyan.append(cyan_item)
+            self.image_view.points_dict["generated"]["zones"].append(cyan_item)
             # Draw the red point.
             red_item = HoverableEllipseItem(x - 4, y - 4, 8, 8)
             red_item.setBrush(QColor("red"))
@@ -202,21 +202,21 @@ class ZonePointsMixin:
             red_item.setData(0, "generated")
             red_item.hoverCallback = self.pointHoverChanged
             self.image_view.scene.addItem(red_item)
-            self.image_view.generated_points.append(red_item)
+            self.image_view.points_dict["generated"]["points"].append(red_item)
 
         self.updatePointsTable()
 
     def updatePointsTable(self):
         """Updates the table with the list of points."""
         points = []
-        if hasattr(self.image_view, 'generated_points'):
-            for item in self.image_view.generated_points:
-                center = item.sceneBoundingRect().center()
-                points.append((center.x(), center.y(), "generated"))
-        if hasattr(self, "user_defined_points"):
-            for item in self.user_defined_points:
-                center = item.sceneBoundingRect().center()
-                points.append((center.x(), center.y(), "user"))
+        # Process auto-generated points.
+        for item in self.image_view.points_dict["generated"]["points"]:
+            center = item.sceneBoundingRect().center()
+            points.append((center.x(), center.y(), "generated"))
+        # Process user-defined points.
+        for item in self.image_view.points_dict["user"]["points"]:
+            center = item.sceneBoundingRect().center()
+            points.append((center.x(), center.y(), "user"))
         self.pointsTable.setRowCount(len(points))
         for idx, (x, y, ptype) in enumerate(points):
             self.pointsTable.setItem(idx, 0, QTableWidgetItem(str(idx + 1)))
@@ -241,27 +241,25 @@ class ZonePointsMixin:
         row = None
         if item.data(0) == "generated":
             try:
-                idx = self.generated_points.index(item)
+                idx = self.image_view.points_dict["generated"]["points"].index(item)
                 row = idx
-                if idx < len(self.generated_cyan):
-                    cyan_item = self.generated_cyan[idx]
+                if idx < len(self.image_view.points_dict["generated"]["zones"]):
+                    zone_item = self.image_view.points_dict["generated"]["zones"][idx]
                     if hovered:
                         highlight = QColor(255, 0, 0, 51)
-                        cyan_item.setBrush(highlight)
+                        zone_item.setBrush(highlight)
                     else:
                         orig = QColor("cyan")
                         orig.setAlphaF(0.2)
-                        cyan_item.setBrush(orig)
+                        zone_item.setBrush(orig)
             except ValueError:
                 pass
         elif item.data(0) == "user":
             try:
-                # Reference the user points stored in the image view.
-                idx = self.image_view.user_points.index(item)
-                row = len(self.image_view.generated_points) + idx
-                # Highlight the associated user-defined zone.
-                if hasattr(self.image_view, "user_defined_zones") and idx < len(self.image_view.user_defined_zones):
-                    zone_item = self.image_view.user_defined_zones[idx]
+                idx = self.image_view.points_dict["user"]["points"].index(item)
+                row = len(self.image_view.points_dict["generated"]["points"]) + idx
+                if idx < len(self.image_view.points_dict["user"]["zones"]):
+                    zone_item = self.image_view.points_dict["user"]["zones"][idx]
                     if hovered:
                         highlight = QColor(255, 0, 0, 51)
                         zone_item.setBrush(highlight)
@@ -278,4 +276,3 @@ class ZonePointsMixin:
             for col in range(table.columnCount()):
                 if table.item(row, col):
                     table.item(row, col).setBackground(highlight if hovered else normal)
-

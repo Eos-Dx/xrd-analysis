@@ -223,6 +223,55 @@ class ZoneMeasurementsMixin:
         print("Starting measurements in sorted order...")
         self.measureNextPoint()
 
+    def measureNextPoint(self):
+        """
+        Proceeds to measure the next point unless the process is paused or stopped.
+        For each point, changes its color to green to indicate measurement in progress,
+        then simulates a measurement delay.
+        """
+        if self.stopped:
+            print("Measurement stopped.")
+            return
+        if self.paused:
+            print("Measurement is paused. Waiting for resume.")
+            return
+
+        if self.current_measurement_sorted_index >= self.total_points:
+            print("All points measured.")
+            self.startBtn.setEnabled(True)
+            self.pauseBtn.setEnabled(False)
+            self.stopBtn.setEnabled(False)
+            return
+
+        # Get the next measurement index from the sorted order.
+        index = self.sorted_indices[self.current_measurement_sorted_index]
+        generated_count = len(self.image_view.generated_points) if hasattr(self.image_view, 'generated_points') else 0
+        if index < generated_count:
+            point_item = self.image_view.generated_points[index]
+            zone_item = self.image_view.generated_cyan[index] if index < len(self.image_view.generated_cyan) else None
+        else:
+            user_index = index - generated_count
+            point_item = self.user_defined_points[user_index] if hasattr(self,
+                                                                         "user_defined_points") and user_index < len(
+                self.user_defined_points) else None
+            # NEW: For user-defined points, attempt to get the associated zone (if it exists).
+            if hasattr(self, "user_defined_zones") and user_index < len(self.user_defined_zones):
+                zone_item = self.user_defined_zones[user_index]
+            else:
+                zone_item = None
+
+        # Change the marker color to green to indicate measurement in progress.
+        green_brush = QColor(0, 255, 0)
+        if point_item:
+            point_item.setBrush(green_brush)
+        if zone_item:
+            green_zone = QColor(0, 255, 0)
+            green_zone.setAlphaF(0.2)
+            zone_item.setBrush(green_zone)
+
+        # Simulate the measurement process with a delay of 1 second.
+        QTimer.singleShot(1000, self.measurementFinished)
+
     def pauseMeasurements(self):
         """
         Toggles the pause/resume state.

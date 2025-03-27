@@ -90,22 +90,22 @@ class StateSaverMixin:
                     "item": item
                 })
 
-        # --- Restore zone points ---
+        # --- Restore zone points using the unified dictionary ---
         zone_points = state.get("zone_points", [])
-        if hasattr(self.image_view, "generated_points"):
-            for pt in self.image_view.generated_points:
-                self.image_view.scene.removeItem(pt)
-            self.image_view.generated_points = []
-        if hasattr(self.image_view, "generated_cyan"):
-            for pt in self.image_view.generated_cyan:
-                self.image_view.scene.removeItem(pt)
-            self.image_view.generated_cyan = []
-        if hasattr(self, "user_defined_points"):
-            for pt in self.user_defined_points:
-                self.image_view.scene.removeItem(pt)
-            self.user_defined_points = []
+        # Clear any existing points in the unified dictionary.
+        if hasattr(self.image_view, "points_dict"):
+            for key in ["generated", "user"]:
+                for pt in self.image_view.points_dict[key]["points"]:
+                    self.image_view.scene.removeItem(pt)
+                for zone in self.image_view.points_dict[key]["zones"]:
+                    self.image_view.scene.removeItem(zone)
+                self.image_view.points_dict[key]["points"] = []
+                self.image_view.points_dict[key]["zones"] = []
         else:
-            self.user_defined_points = []
+            self.image_view.points_dict = {
+                "generated": {"points": [], "zones": []},
+                "user": {"points": [], "zones": []}
+            }
 
         for pt in zone_points:
             x = pt.get("x")
@@ -114,30 +114,41 @@ class StateSaverMixin:
             if pt_type == "user":
                 from PyQt5.QtWidgets import QGraphicsEllipseItem
                 blue_radius = 10
-                item = QGraphicsEllipseItem(-blue_radius, -blue_radius, 2 * blue_radius, 2 * blue_radius)
-                item.setBrush(QColor("blue"))
-                item.setPen(QPen())
-                item.setFlags(QGraphicsEllipseItem.ItemIsSelectable | QGraphicsEllipseItem.ItemIsMovable)
-                item.setData(0, "user")
-                item.setPos(x, y)
-                self.image_view.scene.addItem(item)
-                self.user_defined_points.append(item)
+                # Create the blue marker.
+                user_marker = QGraphicsEllipseItem(-blue_radius, -blue_radius, 2 * blue_radius, 2 * blue_radius)
+                user_marker.setBrush(QColor("blue"))
+                user_marker.setPen(QPen())
+                user_marker.setFlags(QGraphicsEllipseItem.ItemIsSelectable | QGraphicsEllipseItem.ItemIsMovable)
+                user_marker.setData(0, "user")
+                user_marker.setPos(x, y)
+                self.image_view.scene.addItem(user_marker)
+                self.image_view.points_dict["user"]["points"].append(user_marker)
+                # Create the associated zone.
+                zone_item = QGraphicsEllipseItem(x - blue_radius, y - blue_radius, 2 * blue_radius, 2 * blue_radius)
+                zone_color = QColor("blue")
+                zone_color.setAlphaF(0.2)
+                zone_item.setBrush(zone_color)
+                zone_item.setPen(QPen())
+                self.image_view.scene.addItem(zone_item)
+                self.image_view.points_dict["user"]["zones"].append(zone_item)
             elif pt_type == "generated":
                 from PyQt5.QtWidgets import QGraphicsEllipseItem
-                red_item = QGraphicsEllipseItem(x - 4, y - 4, 8, 8)
-                red_item.setBrush(QColor("red"))
-                red_item.setPen(QPen())
-                red_item.setFlags(QGraphicsEllipseItem.ItemIsSelectable | QGraphicsEllipseItem.ItemIsMovable)
-                red_item.setData(0, "generated")
-                self.image_view.scene.addItem(red_item)
-                self.image_view.generated_points.append(red_item)
-                cyan_item = QGraphicsEllipseItem(x - 5, y - 5, 10, 10)
+                # Create the red marker.
+                red_marker = QGraphicsEllipseItem(x - 4, y - 4, 8, 8)
+                red_marker.setBrush(QColor("red"))
+                red_marker.setPen(QPen())
+                red_marker.setFlags(QGraphicsEllipseItem.ItemIsSelectable | QGraphicsEllipseItem.ItemIsMovable)
+                red_marker.setData(0, "generated")
+                self.image_view.scene.addItem(red_marker)
+                self.image_view.points_dict["generated"]["points"].append(red_marker)
+                # Create the cyan zone.
+                cyan_zone = QGraphicsEllipseItem(x - 5, y - 5, 10, 10)
                 cyan_color = QColor("cyan")
                 cyan_color.setAlphaF(0.2)
-                cyan_item.setBrush(cyan_color)
-                cyan_item.setPen(QPen())
-                self.image_view.scene.addItem(cyan_item)
-                self.image_view.generated_cyan.append(cyan_item)
+                cyan_zone.setBrush(cyan_color)
+                cyan_zone.setPen(QPen())
+                self.image_view.scene.addItem(cyan_zone)
+                self.image_view.points_dict["generated"]["zones"].append(cyan_zone)
 
         if hasattr(self, "updateShapeTable"):
             self.updateShapeTable()
@@ -183,12 +194,13 @@ class StateSaverMixin:
         state["shapes"] = shapes
 
         zone_points = []
-        if hasattr(self.image_view, "generated_points"):
-            for pt in self.image_view.generated_points:
+        if hasattr(self.image_view, "points_dict"):
+            # Save generated points.
+            for pt in self.image_view.points_dict["generated"]["points"]:
                 center = pt.sceneBoundingRect().center()
                 zone_points.append({"x": center.x(), "y": center.y(), "type": "generated"})
-        if hasattr(self, "user_defined_points"):
-            for pt in self.user_defined_points:
+            # Save user-defined points.
+            for pt in self.image_view.points_dict["user"]["points"]:
                 center = pt.sceneBoundingRect().center()
                 zone_points.append({"x": center.x(), "y": center.y(), "type": "user"})
         state["zone_points"] = zone_points
@@ -245,12 +257,11 @@ class StateSaverMixin:
         state["shapes"] = shapes
 
         zone_points = []
-        if hasattr(self.image_view, "generated_points"):
-            for pt in self.image_view.generated_points:
+        if hasattr(self.image_view, "points_dict"):
+            for pt in self.image_view.points_dict["generated"]["points"]:
                 center = pt.sceneBoundingRect().center()
                 zone_points.append({"x": center.x(), "y": center.y(), "type": "generated"})
-        if hasattr(self, "user_defined_points"):
-            for pt in self.user_defined_points:
+            for pt in self.image_view.points_dict["user"]["points"]:
                 center = pt.sceneBoundingRect().center()
                 zone_points.append({"x": center.x(), "y": center.y(), "type": "user"})
         state["zone_points"] = zone_points
@@ -262,7 +273,7 @@ class StateSaverMixin:
         except Exception as e:
             print("Error manually saving state:", e)
 
-    def setupAutoSave(self, interval=60000):
+    def setupAutoSave(self, interval=2000):
         """
         Sets up a QTimer to automatically save the state every 'interval' milliseconds.
         """
