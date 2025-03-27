@@ -1,4 +1,4 @@
 # Configuration for the EosDX Quality Tool
 
 DEV = True
-DEFAULT_JOBLIB = r"E:\Keele_2025_mini.joblib"
+DEFAULT_H5 = r"E:\keele_quality.h5"
