@@ -12,6 +12,8 @@ class StateSaverMixin:
         """
         Restores the state from the previous state file (PREV_STATE_FILE).
         If that file is not available, it tries to load the current autosave file.
+        Additionally, after drawing the items on the scene, the internal variables
+        are updated manually so that the app knows these shapes and points exist.
         """
         state_file = None
         if os.path.exists(self.PREV_STATE_FILE):
@@ -53,46 +55,61 @@ class StateSaverMixin:
         else:
             self.image_view.crop_rect = None
 
-        # --- Restore shapes ---
+        # --- Restore shapes (zones) ---
         shapes = state.get("shapes", [])
-        if shapes:
-            if hasattr(self.image_view, "shapes"):
-                for shape_info in self.image_view.shapes:
-                    item = shape_info.get("item")
-                    if item:
-                        self.image_view.scene.removeItem(item)
-                self.image_view.shapes = []
+        # Clear existing shapes.
+        if hasattr(self.image_view, "shapes"):
+            for shape_info in self.image_view.shapes:
+                item = shape_info.get("item")
+                if item:
+                    self.image_view.scene.removeItem(item)
+            self.image_view.shapes = []
+        else:
+            self.image_view.shapes = []
+        for shape in shapes:
+            shape_id = shape.get("id")
+            shape_type = shape.get("type")
+            role = shape.get("role", "include")
+            geometry = shape.get("geometry")
+            x, y = geometry.get("x"), geometry.get("y")
+            w, h = geometry.get("width"), geometry.get("height")
+            if shape_type.lower() in ["rect", "rectangle"]:
+                from PyQt5.QtWidgets import QGraphicsRectItem
+                item = QGraphicsRectItem(x, y, w, h)
+            elif shape_type.lower() in ["ellipse", "circle"]:
+                from PyQt5.QtWidgets import QGraphicsEllipseItem
+                item = QGraphicsEllipseItem(x, y, w, h)
             else:
-                self.image_view.shapes = []
-            for shape in shapes:
-                shape_id = shape.get("id")
-                shape_type = shape.get("type")
-                role = shape.get("role", "include")
-                geometry = shape.get("geometry")
-                x, y = geometry.get("x"), geometry.get("y")
-                w, h = geometry.get("width"), geometry.get("height")
-                if shape_type.lower() in ["rect", "rectangle"]:
-                    from PyQt5.QtWidgets import QGraphicsRectItem
-                    item = QGraphicsRectItem(x, y, w, h)
-                elif shape_type.lower() in ["ellipse", "circle"]:
-                    from PyQt5.QtWidgets import QGraphicsEllipseItem
-                    item = QGraphicsEllipseItem(x, y, w, h)
-                else:
-                    from PyQt5.QtWidgets import QGraphicsRectItem
-                    item = QGraphicsRectItem(x, y, w, h)
-                pen = QPen(QColor("green") if role == "include" else QColor("red"), 2)
-                item.setPen(pen)
-                self.image_view.scene.addItem(item)
-                self.image_view.shapes.append({
-                    "id": shape_id,
-                    "type": shape_type,
-                    "role": role,
-                    "item": item
-                })
+                from PyQt5.QtWidgets import QGraphicsRectItem
+                item = QGraphicsRectItem(x, y, w, h)
+            # Mark active zones (include, exclude, sample holder) visually.
+            if role.lower() in ["include", "exclude", "sample holder"]:
+                if role.lower() == "include":
+                    pen_color = QColor("green")
+                elif role.lower() == "exclude":
+                    pen_color = QColor("red")
+                else:  # sample holder
+                    pen_color = QColor("blue")
+                pen = QPen(pen_color, 3)
+                # Optionally store an "active" flag on the item.
+                item.active_zone = True
+                active_flag = True
+            else:
+                pen = QPen(QColor("black"), 1)
+                active_flag = False
+            item.setPen(pen)
+            self.image_view.scene.addItem(item)
+            self.image_view.shapes.append({
+                "id": shape_id,
+                "type": shape_type,
+                "role": role,
+                "item": item,
+                "active": active_flag
+            })
 
         # --- Restore zone points using the unified dictionary ---
         zone_points = state.get("zone_points", [])
-        # Clear any existing points in the unified dictionary.
+        # Clear any existing points.
         if hasattr(self.image_view, "points_dict"):
             for key in ["generated", "user"]:
                 for pt in self.image_view.points_dict[key]["points"]:
@@ -150,6 +167,17 @@ class StateSaverMixin:
                 self.image_view.scene.addItem(cyan_zone)
                 self.image_view.points_dict["generated"]["zones"].append(cyan_zone)
 
+        # --- Manually update internal state variables so the app "knows" the restored items exist ---
+        # For example, if your application expects these properties:
+        self.shapes = self.image_view.shapes
+        if hasattr(self.image_view, "points_dict"):
+            self.generated_points = self.image_view.points_dict["generated"]["points"]
+            self.user_defined_points = self.image_view.points_dict["user"]["points"]
+        else:
+            self.generated_points = []
+            self.user_defined_points = []
+
+        # Update the tables (if methods exist).
         if hasattr(self, "updateShapeTable"):
             self.updateShapeTable()
         if hasattr(self, "updatePointsTable"):
