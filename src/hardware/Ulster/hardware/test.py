@@ -218,22 +218,49 @@ def main():
             os.add_dll_directory(r'C:\Program Files\Thorlabs\Kinesis')
 
         lib: CDLL = cdll.LoadLibrary('Thorlabs.MotionControl.Benchtop.DCServo.dll')
-    except Exception as e:
-        print(f'Error: {e}')
+    else:
+
 
     # For simulations
     if sim_en == 1:
         lib.TLI_InitializeSimulations()
 
     # Open XY stage device
-    if True:
+    if lib.TLI_BuildDeviceList() != 0:
+        print('XY STAGE INIT. ERROR')
+    else:
+        ret = lib.BDC_Open(serial_num)
+        # Start polling at a 250ms interval
+        lib.BDC_StartPolling(serial_num, x_chan, c_int(250))
+        lib.BDC_StartPolling(serial_num, y_chan, c_int(250))
 
+        # Enable Channels
+        lib.BDC_EnableChannel(serial_num, x_chan)
+        lib.BDC_EnableChannel(serial_num, y_chan)
+        time.sleep(0.5)
+
+        # print(f'Ready to home')
+        # input('Press Enter to continue...')
         print()
         print(f'Homing...')
 
+        # Home the device on channels 1 and 2
+        lib.BDC_Home(serial_num, x_chan)
+        lib.BDC_Home(serial_num, y_chan)
+        time.sleep(20)  # Adjust this value as necessary, but the homing movement can take a while
+
         for i in range(0, home_timeout, 1):  # check and wait further for move if nesc
-            x_pos_dev = 0
-            y_pos_dev = 0
+
+            # Check the New Positions:
+            lib.BDC_RequestPosition(serial_num, x_chan)
+            lib.BDC_RequestPosition(serial_num, y_chan)
+            time.sleep(0.5)
+
+            x_pos_dev = lib.BDC_GetPosition(serial_num, x_chan)
+            y_pos_dev = lib.BDC_GetPosition(serial_num, y_chan)
+
+            # print(f'x_pos_dev = {x_pos_dev}')
+            # print(f'y_pos_dev = {y_pos_dev}')
 
             # Check that position is within tolerance of 0,0 (if so, exit loop)
             if (abs(0 - x_pos_dev) + abs(0 - y_pos_dev)) <= 3:
@@ -246,8 +273,13 @@ def main():
 
         time.sleep(0.5)  # Wait for stage to settle before confirming final home position
 
-        x_pos_dev = 0
-        y_pos_dev = 0
+        # Check the Home Positions:
+        lib.BDC_RequestPosition(serial_num, x_chan)
+        lib.BDC_RequestPosition(serial_num, y_chan)
+        time.sleep(0.25)
+
+        x_pos_dev = lib.BDC_GetPosition(serial_num, x_chan)
+        y_pos_dev = lib.BDC_GetPosition(serial_num, y_chan)
 
         # Display home positions and wait to continue
         print(f'X position: {x_pos_dev} device units')
@@ -262,6 +294,13 @@ def main():
         x_pos_new = c_int(-100000)  # 100000 device units = 10.0mm of movement
         y_pos_new = c_int(y_limit_neg)  # 100000 device units = 10.0mm of movement
 
+        # BDC_MoveToPosition(serial_number, channel, position)
+        lib.BDC_SetMoveAbsolutePosition(serial_num, x_chan, x_pos_new)
+        lib.BDC_SetMoveAbsolutePosition(serial_num, y_chan, y_pos_new)
+        time.sleep(0.25)  # 250ms wait time to ensure values are sent to device
+
+        lib.BDC_MoveAbsolute(serial_num, x_chan)
+        lib.BDC_MoveAbsolute(serial_num, y_chan)
 
         for r in range(0, Nrepeat, 1):
 
@@ -317,13 +356,32 @@ def main():
                         x_pos_new = c_int(x_abs)  # 100000 device units = 10.0mm of movement
                         y_pos_new = c_int(y_abs)  # 100000 device units = 10.0mm of movement
 
+                        # BDC_MoveToPosition(serial_number, channel, position)
+                        lib.BDC_SetMoveAbsolutePosition(serial_num, x_chan, x_pos_new)
+                        lib.BDC_SetMoveAbsolutePosition(serial_num, y_chan, y_pos_new)
+                        time.sleep(0.25)  # 250ms wait time to ensure values are sent to device
+
+                        lib.BDC_MoveAbsolute(serial_num, x_chan)
+                        lib.BDC_MoveAbsolute(serial_num, y_chan)
 
                         time.sleep(0.5)  # wait for move
 
+                        # print(f'x_abs = {x_abs}')
+                        # print(f'y_abs = {y_abs}')
 
                         # Loop to check position and wait longer for move if necessary
                         for i in range(0, move_timeout, 1):
 
+                            # Check the New Positions:
+                            lib.BDC_RequestPosition(serial_num, x_chan)
+                            lib.BDC_RequestPosition(serial_num, y_chan)
+                            time.sleep(0.5)
+
+                            x_pos_dev = lib.BDC_GetPosition(serial_num, x_chan)
+                            y_pos_dev = lib.BDC_GetPosition(serial_num, y_chan)
+
+                            # print(f'x_pos_dev = {x_pos_dev}')
+                            # print(f'y_pos_dev = {y_pos_dev}')
 
                             # Check if position is within tolerance of desired position
                             if (abs(x_abs - x_pos_dev) + abs(y_abs - y_pos_dev)) <= 4:
@@ -377,12 +435,27 @@ def main():
             x_pos_new = c_int(-100000)  # 100000 device units = 10.0mm of movement
             y_pos_new = c_int(y_limit_neg)  # 100000 device units = 10.0mm of movement
 
+            # BDC_MoveToPosition(serial_number, channel, position)
+            lib.BDC_SetMoveAbsolutePosition(serial_num, x_chan, x_pos_new)
+            lib.BDC_SetMoveAbsolutePosition(serial_num, y_chan, y_pos_new)
+            time.sleep(0.25)  # 250ms wait time to ensure values are sent to device
+
+            lib.BDC_MoveAbsolute(serial_num, x_chan)
+            lib.BDC_MoveAbsolute(serial_num, y_chan)
 
             if r >= Nrepeat - 1:
                 print('Exiting...')
 
+        lib.BDC_Close(serial_num)  # Close XY stage
 
+    # For simulations
+    if sim_en == 1:
+        lib.TLI_UninitializeSimulations()
 
+    # Detector de-init
+    if capture_en == 1:
+        pixet.exitPixet()  # Save settings, correct stop devices and core exit
+        pypixet.exit()  # Both lines important if a third-party debug environment used
 
 
 if __name__ == '__main__':
