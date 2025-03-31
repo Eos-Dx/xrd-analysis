@@ -93,11 +93,14 @@ class ExcludeMixin:
         if self.transformed_df is None:
             return
         row = self.transformed_df.iloc[self.current_index]
-        measurement_id = row.get('id', 'N/A')
+        measurement_group_id = row.get('measurementsGroupId', 'N/A')
+        patient_db_id = row.get('patientDBId', 'N/A')
+        meas_name = row.get('meas_name', 'N/A')
+        specimen_db_id = row.get('specimenDBId', 'N/A')
         reason = self.reason_textedit.toPlainText().strip()
         if reason:
             self.excluded_filename = self.file_path.parent / f"{self.file_path.stem}_exclusion.txt"
-            line = f"{measurement_id}: {reason}\n"
+            line = f"{meas_name}: {measurement_group_id} : {patient_db_id} : {specimen_db_id} : {reason}\n"
             with open(self.excluded_filename, "a") as f:
                 f.write(line)
             self.load_excluded_file()

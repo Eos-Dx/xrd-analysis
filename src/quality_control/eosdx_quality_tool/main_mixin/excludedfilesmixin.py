@@ -100,9 +100,9 @@ class ExcludedFilesMixin:
         """
         text = item.text()
         if ':' in text:
-            measurement_id = text.split(":", 1)[0].strip()
+            meas_name = text.split(":", 1)[0].strip()
             if self.transformed_df is not None:
                 # Look for a row with a matching 'id' value.
-                indices = self.transformed_df.index[self.transformed_df['id'] == measurement_id].tolist()
+                indices = self.transformed_df.index[self.transformed_df['meas_name'] == meas_name].tolist()
                 if indices:
                     self.display_measurement(indices[0])
