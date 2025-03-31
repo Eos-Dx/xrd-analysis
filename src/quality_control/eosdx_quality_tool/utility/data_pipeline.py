@@ -14,3 +14,15 @@ def process_dataframe(df):
     pipeline = MLPipeline(data_wrangling_steps=wrangling)
     dfm = pipeline.wrangle(df)
     return dfm
+
+
+def process_dataframe_2D(df):
+    """
+    Process the input DataFrame using the azimuthal integration pipeline.
+    """
+    faulty_pixel_array = np.array([[146, 170]])
+    azimuth = AzimuthalIntegration(faulty_pixels=faulty_pixel_array, calibration_mode='poni', integration_mode='2D')
+    wrangling = [('azimuthal_integration', azimuth)]
+    pipeline = MLPipeline(data_wrangling_steps=wrangling)
+    dfm = pipeline.wrangle(df)
+    return dfm

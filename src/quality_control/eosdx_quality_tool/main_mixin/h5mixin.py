@@ -1,6 +1,6 @@
 from xrdanalysis.data_processing.utility_functions import h5_to_df
 from quality_control.eosdx_quality_tool.utility.joblib_handler import compute_statistics
-from quality_control.eosdx_quality_tool.utility.data_pipeline import process_dataframe
+from quality_control.eosdx_quality_tool.utility.data_pipeline import process_dataframe, process_dataframe_2D
 
 
 class H5HandlerMixin:
@@ -27,5 +27,6 @@ class H5HandlerMixin:
 
         # Process the measurement DataFrame using the XRD pipeline
         transformed_df = process_dataframe(measurement_df)
+        #calibration_df = process_dataframe_2D(calibration_df)
 
         return calibration_df, measurement_df, measurement_stats, transformed_df
