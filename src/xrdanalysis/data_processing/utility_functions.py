@@ -155,6 +155,11 @@ def h5_to_df(file_path):
     calibration_df = pd.DataFrame(calibration_data)
     measurement_df = pd.DataFrame(measurement_data)
     measurement_df.rename(columns={"calib_ponifile": "ponifile"}, inplace=True)
+    # Merge calibration_df with unique ponifile values from measurement_df
+    unique_ponifiles = measurement_df[["ponifile", "id"]].drop_duplicates()
+    calibration_df = calibration_df.merge(
+        unique_ponifiles, on="id", how="left"
+    )
 
     return calibration_df, measurement_df
 
