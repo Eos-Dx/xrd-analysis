@@ -1,15 +1,13 @@
 from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLabel, QListWidget
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QBrush, QColor
 from quality_control.eosdx_quality_tool.config import REASON
-
-from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton, QTextEdit, QListWidget
-from PyQt5.QtCore import Qt
 
 class ExcludeMixin:
     def init_exclude_zone(self):
         """
         Initializes the Exclude Zone as a dockable widget which includes:
-          - Navigation buttons (Previous, Next, Exclude_measurement).
+          - Navigation buttons (Previous, Next, Exclude_measurement, Include_measurement).
           - A text edit for entering exclusion reasons.
           - A button to add a new reason to the table.
           - A table (list widget) showing saved reasons.
@@ -28,9 +26,11 @@ class ExcludeMixin:
         self.prev_button = QPushButton("Previous")
         self.next_button = QPushButton("Next")
         self.exclude_button = QPushButton("Exclude_measurement")
+        self.include_button = QPushButton("Include_measurement")  # New include button
         nav_layout.addWidget(self.prev_button)
         nav_layout.addWidget(self.next_button)
         nav_layout.addWidget(self.exclude_button)
+        nav_layout.addWidget(self.include_button)
         exclude_layout.addLayout(nav_layout)
 
         # Reason entry.
@@ -53,7 +53,6 @@ class ExcludeMixin:
         self.reason_list_widget.itemClicked.connect(self.populate_reason_textedit)
 
         # Load existing reasons from file defined in REASON.
-        from quality_control.eosdx_quality_tool.config import REASON
         try:
             with open(REASON, "r") as f:
                 file_reasons = [line.strip() for line in f if line.strip()]
@@ -66,10 +65,11 @@ class ExcludeMixin:
         # Add the dock widget to the main window.
         self.addDockWidget(Qt.RightDockWidgetArea, self.exclude_dock)
 
-        # Connect navigation and exclude buttons.
+        # Connect navigation and exclude/include buttons.
         self.prev_button.clicked.connect(self.show_previous_measurement)
         self.next_button.clicked.connect(self.show_next_measurement)
         self.exclude_button.clicked.connect(self.exclude_current_measurement)
+        self.include_button.clicked.connect(self.include_current_measurement)
 
     def add_reason_to_list(self):
         """
@@ -80,21 +80,16 @@ class ExcludeMixin:
         """
         reason = self.reason_textedit.toPlainText().strip()
         if reason:
-            from quality_control.eosdx_quality_tool.config import REASON
-
-            # Read existing reasons from the file (if it exists)
+            # Read existing reasons from the file.
             try:
                 with open(REASON, "r") as f:
                     file_reasons = [line.strip() for line in f if line.strip()]
             except FileNotFoundError:
                 file_reasons = []
-
             # Get reasons currently in the list widget.
             widget_reasons = [self.reason_list_widget.item(i).text() for i in range(self.reason_list_widget.count())]
-
-            # Combine both lists and convert to a set to remove duplicates.
+            # Combine both lists into a set to remove duplicates.
             existing_reasons = set(file_reasons + widget_reasons)
-
             if reason not in existing_reasons:
                 self.reason_list_widget.addItem(reason)
                 with open(REASON, "a") as f:
@@ -118,8 +113,9 @@ class ExcludeMixin:
 
     def exclude_current_measurement(self):
         """
-        Writes the pair of patient_id and reason to a txt file.
-        The file name is derived from the loaded h5 file (self.h5_filename) with the suffix '_exclusion.txt'.
+        Writes the pair of measurement info and reason to an exclusion file.
+        The file name is derived from the loaded h5 file (self.file_path) with the suffix '_exclusion.txt'.
+        Also, marks the measurement in the measurements list as excluded (red background).
         """
         self.add_reason_to_list()
         if self.transformed_df is None:
@@ -136,3 +132,51 @@ class ExcludeMixin:
             with open(self.excluded_filename, "a") as f:
                 f.write(line)
             self.load_excluded_file()
+            # Mark the measurement in the measurements list as excluded (red background).
+            self.mark_measurement_in_list(meas_name, "red")
+
+    def include_current_measurement(self):
+        """
+        Marks the current measurement as included by setting its background to green in the measurements list.
+        """
+        if self.transformed_df is None:
+            return
+        row = self.transformed_df.iloc[self.current_index]
+        meas_name = row.get('meas_name', 'N/A')
+        self.mark_measurement_in_list(meas_name, "green")
+
+    def mark_measurement_in_list(self, meas_name, color):
+        """
+        Iterates over the measurements list widget items and sets the background color
+        for the item that matches meas_name.
+        """
+        for i in range(self.measurements_list_widget.count()):
+            item = self.measurements_list_widget.item(i)
+            if item.text() == meas_name:
+                item.setBackground(QBrush(QColor(color)))
+                break
+
+    def load_excluded_file(self):
+        """
+        Loads the excluded measurements from the exclusion file and updates the corresponding list widget.
+        """
+        from pathlib import Path
+        try:
+            self.excluded_filename = self.file_path.parent / f"{self.file_path.stem}_exclusion.txt"
+        except Exception:
+            return
+
+        # Create or clear an excluded measurements list widget, for example:
+        if not hasattr(self, 'excluded_list_widget'):
+            # You may want to create this widget during init
+            self.excluded_list_widget = QListWidget()
+            # Add it to a layout/dock as desired
+        else:
+            self.excluded_list_widget.clear()
+
+        if self.excluded_filename.exists():
+            with open(self.excluded_filename, "r") as f:
+                lines = [line.strip() for line in f if line.strip()]
+            for line in lines:
+                self.excluded_list_widget.addItem(line)
+        print("Excluded file updated.")

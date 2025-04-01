@@ -60,6 +60,7 @@ class MainWindow(QMainWindow, FileDialogMixin, H5HandlerMixin, DataFrameStatsMix
                 self.transformed_df = transformed_df
                 self.update_df_stats(f"Measurement DataFrame Statistics:\n{measurement_stats}")
                 self.display_measurement(0)
+                self.update_measurements_list()
             except Exception as e:
                 self.update_df_stats(str(e))
 
