@@ -1,6 +1,9 @@
 from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLabel, QListWidget
 from PyQt5.QtCore import Qt
+from quality_control.eosdx_quality_tool.config import REASON
 
+from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton, QTextEdit, QListWidget
+from PyQt5.QtCore import Qt
 
 class ExcludeMixin:
     def init_exclude_zone(self):
@@ -10,6 +13,7 @@ class ExcludeMixin:
           - A text edit for entering exclusion reasons.
           - A button to add a new reason to the table.
           - A table (list widget) showing saved reasons.
+          Existing reasons from the file defined in REASON are loaded into the list widget.
         """
         # Create a dock widget for the exclude controls.
         self.exclude_dock = QDockWidget("Exclude Zone", self)
@@ -48,6 +52,16 @@ class ExcludeMixin:
         exclude_layout.addWidget(self.reason_list_widget)
         self.reason_list_widget.itemClicked.connect(self.populate_reason_textedit)
 
+        # Load existing reasons from file defined in REASON.
+        from quality_control.eosdx_quality_tool.config import REASON
+        try:
+            with open(REASON, "r") as f:
+                file_reasons = [line.strip() for line in f if line.strip()]
+        except FileNotFoundError:
+            file_reasons = []
+        for r in file_reasons:
+            self.reason_list_widget.addItem(r)
+
         self.exclude_dock.setWidget(self.exclude_widget)
         # Add the dock widget to the main window.
         self.addDockWidget(Qt.RightDockWidgetArea, self.exclude_dock)
@@ -60,13 +74,31 @@ class ExcludeMixin:
     def add_reason_to_list(self):
         """
         Adds the text from the reason_textedit to the list widget if not empty.
+        First, it reads the REASON file to determine existing reasons. If the new reason
+        is not already present in either the file or the list widget, it is added and
+        appended to the file.
         """
         reason = self.reason_textedit.toPlainText().strip()
         if reason:
-            # Optionally check for duplicates.
-            existing_items = [self.reason_list_widget.item(i).text() for i in range(self.reason_list_widget.count())]
-            if reason not in existing_items:
+            from quality_control.eosdx_quality_tool.config import REASON
+
+            # Read existing reasons from the file (if it exists)
+            try:
+                with open(REASON, "r") as f:
+                    file_reasons = [line.strip() for line in f if line.strip()]
+            except FileNotFoundError:
+                file_reasons = []
+
+            # Get reasons currently in the list widget.
+            widget_reasons = [self.reason_list_widget.item(i).text() for i in range(self.reason_list_widget.count())]
+
+            # Combine both lists and convert to a set to remove duplicates.
+            existing_reasons = set(file_reasons + widget_reasons)
+
+            if reason not in existing_reasons:
                 self.reason_list_widget.addItem(reason)
+                with open(REASON, "a") as f:
+                    f.write(reason + "\n")
 
     def populate_reason_textedit(self, item):
         """

@@ -118,13 +118,13 @@ class VisualizationMixin:
         # Plot Panel 4: Cake Representation Placeholder (right column)
         self.plot4_widget = QWidget()
         plot4_layout = QVBoxLayout(self.plot4_widget)
-        placeholder_label = QLabel("Cake Representation (to be implemented)")
-        placeholder_label.setAlignment(Qt.AlignCenter)
-        plot4_layout.addWidget(placeholder_label)
+
         self.fig_cake = Figure(figsize=(4, 4))
         self.canvas_cake = FigureCanvas(self.fig_cake)
         plot4_layout.addWidget(self.canvas_cake)
         second_row_layout.addWidget(self.plot4_widget)
+        self.toolbar_cake = NavigationToolbar2QT(self.canvas_cake, self)
+        plot4_layout.addWidget(self.toolbar_cake)
 
         plots_main_layout.addLayout(second_row_layout)
         self.visualization_layout.addLayout(plots_main_layout)
@@ -150,7 +150,6 @@ class VisualizationMixin:
             fig.clf()
         if self.transformed_df is None or index < 0 or index >= len(self.transformed_df):
             return
-
         self.current_index = index
         row = self.transformed_df.iloc[index]
 
@@ -231,7 +230,6 @@ class VisualizationMixin:
         self.canvas_agbh.setMinimumSize(200, 200)
         self.canvas_agbh.draw_idle()
 
-        # --- Plot 4: Cake Representation (Placeholder) ---
         # --- Plot 4: Cake Representation ---
         self.fig_cake.clf()
         ax_cake = self.fig_cake.add_subplot(111)
@@ -248,6 +246,7 @@ class VisualizationMixin:
         else:
             ax_cake.text(0.5, 0.5, "Cake Representation data not available",
                          ha="center", va="center", transform=ax_cake.transAxes)
+
         self.canvas_cake.setMinimumSize(200, 200)
         self.canvas_cake.draw_idle()
 

@@ -2,3 +2,4 @@
 
 DEV = True
 DEFAULT_H5 = r"E:\keele_quality.h5"
+REASON = r"reasons.txt"
