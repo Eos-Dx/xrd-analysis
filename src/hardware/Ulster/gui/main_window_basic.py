@@ -11,7 +11,7 @@ class MainWindowBasic(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("EosDX Scanning Software")
         # Set the window icon using the logo image.
-        logo_path = Path('C:/dev/xrd-analysis/src/hardware/Ulster/resources/images/rick_final.png')  # Adjust the path.
+        logo_path = Path('..har /Ulster/resources/images/rick_final.png')  # Adjust the path.
         if logo_path.exists():
             self.setWindowIcon(QIcon(str(logo_path)))
         else:

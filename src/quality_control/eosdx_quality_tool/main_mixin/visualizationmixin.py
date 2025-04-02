@@ -17,6 +17,7 @@ class VisualizationMixin:
               * Second row:
                   - Left: Plot 3 (AgBH imshow)
                   - Right: Plot 4 (Cake Representation placeholder)
+        The dock and its components are configured so that the minimum configuration fits in 600 (width) x 400 (height) pixels.
         """
         # Create a dock widget for measurements.
         self.visualization_dock = QDockWidget("Measurements Zone", self)
@@ -50,6 +51,8 @@ class VisualizationMixin:
         plot1_layout.addLayout(controls1_layout)
         self.fig_raw = Figure(figsize=(4, 4))
         self.canvas_raw = FigureCanvas(self.fig_raw)
+        # Adjust minimum size for the canvas.
+        self.canvas_raw.setMinimumSize(300, 300)
         plot1_layout.addWidget(self.canvas_raw)
         self.toolbar_raw = NavigationToolbar2QT(self.canvas_raw, self)
         plot1_layout.addWidget(self.toolbar_raw)
@@ -87,6 +90,7 @@ class VisualizationMixin:
         plot2_layout.addLayout(controls2_layout)
         self.fig_xy = Figure(figsize=(4, 4))
         self.canvas_xy = FigureCanvas(self.fig_xy)
+        self.canvas_xy.setMinimumSize(300, 250)
         plot2_layout.addWidget(self.canvas_xy)
         self.toolbar_xy = NavigationToolbar2QT(self.canvas_xy, self)
         plot2_layout.addWidget(self.toolbar_xy)
@@ -110,6 +114,7 @@ class VisualizationMixin:
         plot3_layout.addLayout(controls3_layout)
         self.fig_agbh = Figure(figsize=(4, 4))
         self.canvas_agbh = FigureCanvas(self.fig_agbh)
+        self.canvas_agbh.setMinimumSize(300, 300)
         plot3_layout.addWidget(self.canvas_agbh)
         self.toolbar_agbh = NavigationToolbar2QT(self.canvas_agbh, self)
         plot3_layout.addWidget(self.toolbar_agbh)
@@ -118,9 +123,9 @@ class VisualizationMixin:
         # Plot Panel 4: Cake Representation Placeholder (right column)
         self.plot4_widget = QWidget()
         plot4_layout = QVBoxLayout(self.plot4_widget)
-
         self.fig_cake = Figure(figsize=(4, 4))
         self.canvas_cake = FigureCanvas(self.fig_cake)
+        self.canvas_cake.setMinimumSize(300, 300)
         plot4_layout.addWidget(self.canvas_cake)
         second_row_layout.addWidget(self.plot4_widget)
         self.toolbar_cake = NavigationToolbar2QT(self.canvas_cake, self)
@@ -132,6 +137,9 @@ class VisualizationMixin:
         # Set the dock widget's main widget and add it to the main window.
         self.visualization_dock.setWidget(self.visualization_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.visualization_dock)
+
+        # Set the overall minimum size of the visualization zone to 600x400 pixels.
+        self.visualization_dock.setMinimumSize(600, 400)
 
         # Initialize the current measurement index and container for vertical lines.
         self.current_index = 0
@@ -164,7 +172,7 @@ class VisualizationMixin:
                      f"Patient DB ID: {patient_db_id} | "
                      f"Patient ID: {patient_id} | " 
                      f"Specimen DB ID: {specimen_db_id} | "
-                     f"Cancer diagnosed: {cancer_diagnosis} |"
+                     f"Cancer diagnosed: {cancer_diagnosis} | "
                      f"Measurement name: {meas_name}")
         self.info_label.setText(info_text)
 
@@ -177,7 +185,6 @@ class VisualizationMixin:
             ax_raw.imshow(measurement_data, aspect='equal', norm=norm)
             ax_raw.set_title("Raw 2D data")
             ax_raw.set_aspect('equal')
-        self.canvas_raw.setMinimumSize(200, 200)
         self.canvas_raw.draw_idle()
 
         # --- Plot 2: XY Plot (Azimuthal Integration) ---
@@ -200,7 +207,6 @@ class VisualizationMixin:
                 pass
             for v in self.vertical_lines_values:
                 ax_xy.axvline(x=v, color='blue', linestyle='--')
-        self.canvas_xy.setMinimumSize(200, 150)
         self.canvas_xy.draw_idle()
 
         # --- Plot 3: AgBH Plot ---
@@ -227,15 +233,18 @@ class VisualizationMixin:
         else:
             ax_agbh.text(0.5, 0.5, "No AgBH data available",
                          ha="center", va="center", transform=ax_agbh.transAxes)
-        self.canvas_agbh.setMinimumSize(200, 200)
         self.canvas_agbh.draw_idle()
 
         # --- Plot 4: Cake Representation ---
         self.fig_cake.clf()
         ax_cake = self.fig_cake.add_subplot(111)
-        cake_data = calib_row.get('radial_profile_data')
-        azimuthal_positions = calib_row.get('azimuthal_positions')
-        q_range = calib_row.get('q_range')
+        # Assuming calib_row is defined from Plot 3.
+        try:
+            cake_data = calib_row.get('radial_profile_data')
+            azimuthal_positions = calib_row.get('azimuthal_positions')
+            q_range = calib_row.get('q_range')
+        except Exception:
+            cake_data = None
         if cake_data is not None and azimuthal_positions is not None and q_range is not None:
             extent = [min(q_range), max(q_range), min(azimuthal_positions), max(azimuthal_positions)]
             im = ax_cake.imshow(cake_data, extent=extent, aspect='auto', origin='lower',
@@ -246,8 +255,6 @@ class VisualizationMixin:
         else:
             ax_cake.text(0.5, 0.5, "Cake Representation data not available",
                          ha="center", va="center", transform=ax_cake.transAxes)
-
-        self.canvas_cake.setMinimumSize(200, 200)
         self.canvas_cake.draw_idle()
 
     def update_horizontal_line(self):

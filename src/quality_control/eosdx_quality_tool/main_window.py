@@ -1,21 +1,26 @@
 import quality_control.eosdx_quality_tool.config as config
 from pathlib import Path
 from PyQt5.QtWidgets import QMainWindow, QAction
+from PyQt5.QtGui import QIcon
 from quality_control.eosdx_quality_tool.main_mixin.filemixin import FileDialogMixin
 from quality_control.eosdx_quality_tool.main_mixin.h5mixin import H5HandlerMixin
 from quality_control.eosdx_quality_tool.main_mixin.dataframestatsmixin import DataFrameStatsMixin
 from quality_control.eosdx_quality_tool.main_mixin.visualizationmixin import VisualizationMixin
-from quality_control.eosdx_quality_tool.main_mixin.excludemixin import ExcludeMixin
-from quality_control.eosdx_quality_tool.main_mixin.excludedfilesmixin import ExcludedFilesMixin
+from quality_control.eosdx_quality_tool.main_mixin.exclude_include_mixin import ExcludeIncludeMixin
+from quality_control.eosdx_quality_tool.main_mixin.excluded_included_filesmixin import ExcludedIncludedFilesMixin
 
 
 class MainWindow(QMainWindow, FileDialogMixin, H5HandlerMixin, DataFrameStatsMixin, VisualizationMixin,
-                 ExcludeMixin, ExcludedFilesMixin):
+                 ExcludeIncludeMixin, ExcludedIncludedFilesMixin):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("EosDX Quality Tool")
-        self.resize(1200, 800)
-
+        self.resize(700, 500)
+        logo_path = Path('logo_quality.png')  # Adjust the path.
+        if logo_path.exists():
+            self.setWindowIcon(QIcon(str(logo_path)))
+        else:
+            print("Logo file not found:", logo_path)
         # Initialize the DataFrame statistics zone (dock widget)
         self.init_df_stats_zone()
         # Initialize the visualization zone (central widget)
@@ -36,7 +41,7 @@ class MainWindow(QMainWindow, FileDialogMixin, H5HandlerMixin, DataFrameStatsMix
             self.load_default_h5()
 
         # Initialize the excluded files zone (dock widget)
-        self.init_excluded_files_zone()
+        self.init_excluded_included_files_zone()
 
     def initMenu(self):
         menubar = self.menuBar()
