@@ -6,6 +6,7 @@ from matplotlib.colors import LogNorm
 
 
 class VisualizationMixin:
+
     def init_visualization_zone(self):
         """
         Initializes the Measurements Zone as a dockable widget which includes:
