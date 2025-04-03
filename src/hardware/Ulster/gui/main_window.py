@@ -61,6 +61,9 @@ class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
 
 
 if __name__ == '__main__':
+    import os
+
+    print("Current working directory:", os.getcwd())
     app = QApplication(sys.argv)
     win = MainWindow()
     win.show()

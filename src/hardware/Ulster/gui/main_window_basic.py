@@ -11,7 +11,7 @@ class MainWindowBasic(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("EosDX Scanning Software")
         # Set the window icon using the logo image.
-        logo_path = Path('..har /Ulster/resources/images/rick_final.png')  # Adjust the path.
+        logo_path = Path('../resources/images/rick_final.png')  # Adjust the path.
         if logo_path.exists():
             self.setWindowIcon(QIcon(str(logo_path)))
         else:
@@ -27,7 +27,7 @@ class MainWindowBasic(QMainWindow):
 
     def load_config(self):
         # Adjust the path as needed.
-        config_path = Path('C:/dev/xrd-analysis/src/hardware/Ulster/resources/config/main.json')  # Adjust the path.
+        config_path = Path('../resources/config/main.json')  # Adjust the path.
         try:
             with open(config_path, 'r') as f:
                 return json.load(f)
