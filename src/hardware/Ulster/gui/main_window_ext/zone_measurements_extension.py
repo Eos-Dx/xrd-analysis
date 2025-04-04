@@ -350,28 +350,19 @@ class ZoneMeasurementsMixin:
         displays the 2D image (using imshow),
         and to its right shows the azimuthal integration using the real
         integration code from the azimuthal integration module.
+        The window is modeless (non-blocking) so the main application remains responsive.
         """
-
-
         # Load the measurement data.
         data = np.load(measurement_filename)
 
         # --- Calibration parameters ---
-        # These parameters should come from your configuration or measurement metadata.
-        # For example, if your detector has a pixel size of 55 micrometers:
         pixel_size = 55e-6  # in meters (55 µm)
-        # Beam center: indices on the detector (e.g., from a calibration)
-        # Determine the beam center as the pixel with the highest intensity.
         max_idx = np.unravel_index(np.argmax(data), data.shape)
         center_row, center_column = max_idx  # row corresponds to y, column to x
-        # X-ray wavelength in angstroms (e.g., for Cu Kα radiation, ~1.54 Å)
-        wavelength = 1.54
-        # Sample-to-detector distance in millimeters:
+        wavelength = 1.54  # in angstroms
         sample_distance_mm = 100.0
 
-        # --- Initialize the integrator using the provided function ---
-        # Make sure the module containing initialize_azimuthal_integrator_df is importable.
-        # For example, if it is in a module named 'azimuthal_integration':
+        # --- Initialize the integrator ---
         ai = initialize_azimuthal_integrator_df(
             pixel_size,
             center_column,
@@ -381,12 +372,9 @@ class ZoneMeasurementsMixin:
         )
 
         # --- Perform the integration ---
-        # Here, we choose to perform 1D integration with 200 points.
-        npt = 100
-        # Use a valid unit for integration; "q_nm^-1" is common for XRD data.
+        npt = 100  # Number of integration points
         try:
             result = ai.integrate1d(data, npt, unit="q_nm^-1", error_model="azimuthal")
-            # The result should have attributes like .radial and .intensity.
             radial = result.radial
             intensity = result.intensity
         except Exception as e:
@@ -419,7 +407,17 @@ class ZoneMeasurementsMixin:
         layout.addWidget(canvas2)
 
         dialog.resize(1000, 500)
-        dialog.exec_()
+
+        # Ensure dialogs remain in memory by storing them in a list attribute.
+        if not hasattr(self, "_open_measurement_windows"):
+            self._open_measurement_windows = []
+        self._open_measurement_windows.append(dialog)
+
+        # Remove the dialog from the list when it is closed.
+        dialog.finished.connect(lambda _: self._open_measurement_windows.remove(dialog))
+
+        # Show the dialog as a modeless window.
+        dialog.show()
 
     def pauseMeasurements(self):
         """
