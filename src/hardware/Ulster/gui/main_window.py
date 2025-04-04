@@ -1,5 +1,11 @@
 from pathlib import Path
 import sys
+
+# Set the project root.
+project_root = Path(__file__).resolve().parent.parent.parent.parent
+print(project_root)
+sys.path.insert(0, str(project_root))
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QAction
 from hardware.Ulster.gui.main_window_basic import MainWindowBasic
@@ -10,10 +16,7 @@ from hardware.Ulster.gui.main_window_ext.zone_points_extension import ZonePoints
 from hardware.Ulster.gui.main_window_ext.zone_measurements_extension import ZoneMeasurementsMixin
 from hardware.Ulster.gui.main_window_ext.state_saver_extension import StateSaverMixin
 
-# Set the project root.
-project_root = Path(__file__).resolve().parent.parent.parent.parent
-print(project_root)
-sys.path.insert(0, str(project_root))
+
 
 class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
                  ZonePointsMixin, ZoneMeasurementsMixin, StateSaverMixin,
@@ -62,8 +65,6 @@ class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
 
 if __name__ == '__main__':
     import os
-
-    print("Current working directory:", os.getcwd())
     app = QApplication(sys.argv)
     win = MainWindow()
     win.show()
