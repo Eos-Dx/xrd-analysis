@@ -50,15 +50,15 @@ class MainWindowBasic(QMainWindow):
 
     def openImage(self):
         default_folder = self.config.get("default_image_folder", "")
-        fileName, _ = QFileDialog.getOpenFileName(
+        self.image_path, _ = QFileDialog.getOpenFileName(
             self,
             "Open Image",
             default_folder,
             "Image Files (*.png *.jpg *.jpeg);;All Files (*)"
         )
-        if fileName:
-            pixmap = QPixmap(fileName)
-            self.image_view.setImage(pixmap)
+        if self.image_path:
+            pixmap = QPixmap(self.image_path)
+            self.image_view.setImage(pixmap, image_path=self.image_path)
 
     def checkDevMode(self):
         # If DEV mode is enabled, automatically load the default image.
@@ -66,6 +66,6 @@ class MainWindowBasic(QMainWindow):
             default_image = self.config.get("default_image", "")
             if default_image and os.path.exists(default_image):
                 pixmap = QPixmap(default_image)
-                self.image_view.setImage(pixmap)
+                self.image_view.setImage(pixmap, image_path=default_image)
             else:
                 print("Default image file not found:", default_image)
