@@ -57,15 +57,7 @@ class StateSaverMixin:
 
         # --- Restore shapes (zones) ---
         shapes = state.get("shapes", [])
-        # Clear existing shapes.
-        if hasattr(self.image_view, "shapes"):
-            for shape_info in self.image_view.shapes:
-                item = shape_info.get("item")
-                if item:
-                    self.image_view.scene.removeItem(item)
-            self.image_view.shapes = []
-        else:
-            self.image_view.shapes = []
+        self.image_view.shapes = []
         for shape in shapes:
             shape_id = shape.get("id")
             shape_type = shape.get("type")
@@ -109,17 +101,7 @@ class StateSaverMixin:
 
         # --- Restore zone points using the unified dictionary ---
         zone_points = state.get("zone_points", [])
-        # Clear any existing points.
-        if hasattr(self.image_view, "points_dict"):
-            for key in ["generated", "user"]:
-                for pt in self.image_view.points_dict[key]["points"]:
-                    self.image_view.scene.removeItem(pt)
-                for zone in self.image_view.points_dict[key]["zones"]:
-                    self.image_view.scene.removeItem(zone)
-                self.image_view.points_dict[key]["points"] = []
-                self.image_view.points_dict[key]["zones"] = []
-        else:
-            self.image_view.points_dict = {
+        self.image_view.points_dict = {
                 "generated": {"points": [], "zones": []},
                 "user": {"points": [], "zones": []}
             }
