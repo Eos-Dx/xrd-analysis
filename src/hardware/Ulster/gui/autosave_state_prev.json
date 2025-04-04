@@ -1,5 +1,5 @@
 {
-    "image": "C:/dev/eos_play/unzipped_data/Ulster/pancreas/sheep_pancreas/U2/Xena_Cu/20250226/P1a_T2_20250218.jpg",
+    "image": "C:\\dev\\eos_play\\unzipped_data\\Ulster\\pancreas\\sheep_pancreas\\U2\\Xena_Cu\\20250313\\P1a_L4_20250218.jpg",
     "rotation_angle": 0,
     "crop_rect": null,
     "shapes": [
@@ -8,29 +8,63 @@
             "type": "Circle",
             "role": "include",
             "geometry": {
-                "x": 482.39843749999983,
-                "y": 345.6796874999999,
-                "width": 321.82421874999983,
-                "height": 360.8867187499999
-            }
-        },
-        {
-            "id": 2,
-            "type": "Circle",
-            "role": "include",
-            "geometry": {
-                "x": 0.0,
-                "y": 0.0,
-                "width": 0.0,
-                "height": 0.0
+                "x": 177.5,
+                "y": 34.5,
+                "width": 158.0,
+                "height": 178.0
             }
         }
     ],
     "zone_points": [
         {
-            "x": 688.4765624999998,
-            "y": 495.60546874999983,
-            "type": "user"
+            "x": 256.6259293639037,
+            "y": 124.07924159725383,
+            "type": "generated"
+        },
+        {
+            "x": 260.5602184403407,
+            "y": 43.40684021471558,
+            "type": "generated"
+        },
+        {
+            "x": 252.36508361259575,
+            "y": 203.52909210190177,
+            "type": "generated"
+        },
+        {
+            "x": 196.18526705713876,
+            "y": 82.20774046716602,
+            "type": "generated"
+        },
+        {
+            "x": 317.0171499638607,
+            "y": 164.84785933408574,
+            "type": "generated"
+        },
+        {
+            "x": 321.62733392558266,
+            "y": 92.23507210946913,
+            "type": "generated"
+        },
+        {
+            "x": 192.28856208779786,
+            "y": 157.04656754860486,
+            "type": "generated"
+        },
+        {
+            "x": 277.6470485282427,
+            "y": 84.89136643579681,
+            "type": "generated"
+        },
+        {
+            "x": 235.4259519523694,
+            "y": 162.73880163650745,
+            "type": "generated"
+        },
+        {
+            "x": 214.5878246391511,
+            "y": 121.55645051738085,
+            "type": "generated"
         }
     ]
 }

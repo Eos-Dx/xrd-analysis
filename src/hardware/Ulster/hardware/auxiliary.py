@@ -1,11 +1,48 @@
-"""
-Geometry helper functions
-"""
-
 import math
-
-
 from ctypes import cdll, c_int, c_short, c_char_p
+import base64
+
+def encode_image_to_base64(image_path):
+    """
+    Reads an image file in binary mode and returns its Base64 encoded string.
+
+    Parameters:
+        image_path (str): The file path to the image.
+
+    Returns:
+        str: The Base64 encoded string of the image, or None if an error occurs.
+    """
+    try:
+        with open(image_path, "rb") as image_file:
+            image_data = image_file.read()
+        encoded_str = base64.b64encode(image_data).decode('utf-8')
+        return encoded_str
+    except Exception as e:
+        print(f"Error encoding image: {e}")
+        return None
+
+def decode_base64_to_image(encoded_str):
+    """
+    Decodes a Base64-encoded string and returns a PIL Image object.
+
+    Parameters:
+        encoded_str (str): The Base64-encoded image string.
+
+    Returns:
+        Image.Image: The decoded image as a PIL Image object, or None if decoding fails.
+    """
+    try:
+        # Decode the Base64 string into bytes
+        image_data = base64.b64decode(encoded_str)
+        # Use BytesIO to create a file-like object from the bytes
+        image_stream = BytesIO(image_data)
+        # Open the image using PIL
+        image = Image.open(image_stream)
+        return image
+    except Exception as e:
+        print("Error decoding image:", e)
+        return None
+
 
 def in_circle(x, y, cx, cy, radius):
     """Return True if (x, y) is within a circle centered at (cx, cy) with the given radius."""

@@ -1,33 +1,26 @@
-import random
-import math
-import time
 import os
-from ctypes import c_char_p
-
-import os
-import time
 import numpy as np
-import pyFAI
-
+import json
+from pathlib import Path
 from PyQt5.QtWidgets import (
-    QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QSpinBox, QLineEdit, QPushButton, QFileDialog, QTableWidget, QTableWidgetItem,
-    QGraphicsEllipseItem, QComboBox, QSpacerItem, QSizePolicy, QProgressBar
-)
-from PyQt5.QtCore import Qt, QEvent, QPointF, QRectF, QTimer
-from PyQt5.QtGui import QColor, QPen, QTransform
-
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
-    QDialog, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QTableWidgetItem
+    QDockWidget, QLabel,
+    QSpinBox, QLineEdit, QFileDialog,
+    QSpacerItem, QSizePolicy, QProgressBar,
+    QWidget, QHBoxLayout, QVBoxLayout, QPushButton
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from PyQt5.QtWidgets import QDialog, QHBoxLayout
+from PyQt5.QtCore import  QTimer
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt
 
+from xrdanalysis.data_processing.azimuthal_integration import initialize_azimuthal_integrator_df
 from hardware.Ulster.hardware.hardware_control import *
-
+from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
 
 class ZoneMeasurementsMixin:
+
     def createZoneMeasurementsWidget(self):
         """
         Creates a dock widget for zone measurements.
@@ -198,6 +191,13 @@ class ZoneMeasurementsMixin:
         Sorts all points (both generated and user-defined) by increasing X (mm) then Y (mm)
         and begins the measurement sequence. Progress is visualized.
         """
+        self.validate_folder()
+
+        self.manualSaveState()
+        with open(Path(self.measurement_folder) / f'state.json', "w") as f:
+            # Save the current state of the points_dict to a JSON file.
+            self.state['image_base64'] = encode_image_to_base64(self.image_view.current_image_path)
+            json.dump(self.state, f, indent=4)
         if self.pointsTable.rowCount() == 0:
             print("No points available for measurement.")
             return
@@ -207,7 +207,6 @@ class ZoneMeasurementsMixin:
         self.stopBtn.setEnabled(True)
         self.stopped = False
         self.paused = False
-        self.pauseBtn.setText("Pause")
 
         # Use the unified dictionary.
         generated_points = self.image_view.points_dict["generated"]["points"]
@@ -246,7 +245,7 @@ class ZoneMeasurementsMixin:
           - Capturing data (dummy capture writes a 10x10 random matrix as a txt file),
           - Converting the txt file to an npy file,
           - Adding a clickable measurement button to the table.
-        The filename is built as: folder + base_file_name + X_Y coordinates + timestamp.
+        The filename is built as: self.measurement_folder + base_file_name + X_Y coordinates + timestamp.
         """
         if self.stopped:
             print("Measurement stopped.")
@@ -285,24 +284,10 @@ class ZoneMeasurementsMixin:
             self.xystage_lib, self.serial_number, x_chan, y_chan, x_mm, y_mm, move_timeout=1
         )
 
-        # Validate the folder.
-        folder = self.folderLineEdit.text().strip()
-        if not folder:
-            folder = os.getcwd()
-        if not os.path.exists(folder):
-            try:
-                os.makedirs(folder, exist_ok=True)
-            except Exception as e:
-                print(f"Error creating folder {folder}: {e}. Using current directory.")
-                folder = os.getcwd()
-        if not os.access(folder, os.W_OK):
-            print(f"Folder {folder} is not writable. Using current directory.")
-            folder = os.getcwd()
-
-        # Build the filename using the folder, base file name, coordinates, and a timestamp.
+        # Build the filename using the self.measurement_folder, base file name, coordinates, and a timestamp.
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         base_name = self.fileNameLineEdit.text().strip()
-        txt_filename = os.path.join(folder, f"{base_name}_{x_mm:.2f}_{y_mm:.2f}_{timestamp}.txt")
+        txt_filename = os.path.join(self.measurement_folder, f"{base_name}_{x_mm:.2f}_{y_mm:.2f}_{timestamp}.txt")
 
         # Capture the measurement data (dummy capture writes a 10x10 matrix to txt).
         self.hc.capture_point(self.detector, self.pixet, 1, self.integration_time, txt_filename)
@@ -310,7 +295,7 @@ class ZoneMeasurementsMixin:
         # Convert the captured txt file into an npy file.
         try:
             data = np.loadtxt(txt_filename)
-            npy_filename = os.path.join(folder, f"{base_name}_{x_mm:.2f}_{y_mm:.2f}_{timestamp}.npy")
+            npy_filename = os.path.join(self.measurement_folder, f"{base_name}_{x_mm:.2f}_{y_mm:.2f}_{timestamp}.npy")
             np.save(npy_filename, data)
             print(f"Converted {txt_filename} to {npy_filename}")
         except Exception as e:
@@ -366,11 +351,7 @@ class ZoneMeasurementsMixin:
         and to its right shows the azimuthal integration using the real
         integration code from the azimuthal integration module.
         """
-        import os
-        import numpy as np
-        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-        from matplotlib.figure import Figure
-        from PyQt5.QtWidgets import QDialog, QHBoxLayout
+
 
         # Load the measurement data.
         data = np.load(measurement_filename)
@@ -391,7 +372,6 @@ class ZoneMeasurementsMixin:
         # --- Initialize the integrator using the provided function ---
         # Make sure the module containing initialize_azimuthal_integrator_df is importable.
         # For example, if it is in a module named 'azimuthal_integration':
-        from xrdanalysis.data_processing.azimuthal_integration import initialize_azimuthal_integrator_df
         ai = initialize_azimuthal_integrator_df(
             pixel_size,
             center_column,
@@ -497,6 +477,21 @@ class ZoneMeasurementsMixin:
         else:
             if self.current_measurement_sorted_index >= self.total_points:
                 print("All points measured.")
-            self.startBtn.setEnabled(True)
-            self.pauseBtn.setEnabled(False)
-            self.stopBtn.setEnabled(False)
+                self.pauseBtn.setEnabled(False)
+                self.stopBtn.setEnabled(False)
+                self.startBtn.setEnabled(True)
+
+    def validate_folder(self):
+        # Validate the self.measurement_folder.
+        self.measurement_folder = self.folderLineEdit.text().strip()
+        if not self.measurement_folder:
+            self.measurement_folder = os.getcwd()
+        if not os.path.exists(self.measurement_folder):
+            try:
+                os.makedirs(self.measurement_folder, exist_ok=True)
+            except Exception as e:
+                print(f"Error creating self.measurement_folder {self.measurement_folder}: {e}. Using current directory.")
+                self.measurement_folder = os.getcwd()
+        if not os.access(self.measurement_folder, os.W_OK):
+            print(f"Folder {self.measurement_folder} is not writable. Using current directory.")
+            self.measurement_folder = os.getcwd()
