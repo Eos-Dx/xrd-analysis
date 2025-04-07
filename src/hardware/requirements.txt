@@ -1,0 +1,7 @@
+PyQt5
+numpy
+pandas
+matplotlib
+pyfai
+scikit-image
+scikit-learn
