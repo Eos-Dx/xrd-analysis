@@ -9,6 +9,7 @@ from PyQt5.QtCore import Qt, QEvent, QPointF, QRectF, QTimer
 from PyQt5.QtGui import QColor, QPen, QTransform
 from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
 
+
 class ZonePointsMixin:
     def createZonePointsWidget(self):
         """
@@ -71,7 +72,9 @@ class ZonePointsMixin:
             "user": {"points": [], "zones": []}
         }
         self.pixel_to_mm_ratio = 1.0
-        self.include_center = None
+        # self.include_center is defined in another mixin as the pixel center of the sample holder.
+        # Here we assume it is already set to (cx, cy) such that the real center is (-5.0mm, -7.5mm)
+        self.include_center = (0, 0)  # default value, should be set by the other mixin
 
     def updateConversionLabel(self):
         self.conversionLabel.setText(f"Conversion: {self.pixel_to_mm_ratio:.2f} px/mm")
@@ -88,11 +91,12 @@ class ZonePointsMixin:
             role = shape.get("role", "include")
             if role == "include":
                 include_shape = shape["item"]
+                # Set self.include_center from the include shape.
                 if hasattr(include_shape, 'center'):
                     self.include_center = include_shape.center
                 else:
                     inc_rect = include_shape.rect() if hasattr(include_shape, 'rect') else include_shape.boundingRect()
-                    self.include_center = (inc_rect.x() + inc_rect.width()/2, inc_rect.y() + inc_rect.height()/2)
+                    self.include_center = (inc_rect.x() + inc_rect.width() / 2, inc_rect.y() + inc_rect.height() / 2)
             elif role == "exclude":
                 exclude_shapes.append(shape["item"])
         if include_shape is None:
@@ -119,16 +123,18 @@ class ZonePointsMixin:
         attempts = 0
 
         def distance(p, q):
-            return math.hypot(p[0]-q[0], p[1]-q[1])
+            return math.hypot(p[0] - q[0], p[1] - q[1])
 
         if hasattr(include_shape, 'center') and hasattr(include_shape, 'radius'):
             inc_center = include_shape.center
             reduced_radius = include_shape.radius * shrink_factor
+
             def sample_from_circle(center, radius):
-                angle = random.uniform(0, 2*math.pi)
+                angle = random.uniform(0, 2 * math.pi)
                 r = math.sqrt(random.random()) * radius
                 return (center[0] + r * math.cos(angle), center[1] + r * math.sin(angle))
-            while len(candidates) < num_candidates and attempts < num_candidates*10:
+
+            while len(candidates) < num_candidates and attempts < num_candidates * 10:
                 attempts += 1
                 pt = sample_from_circle(inc_center, reduced_radius)
                 if not include_shape.contains(include_shape.mapFromScene(pt[0], pt[1])):
@@ -145,7 +151,7 @@ class ZonePointsMixin:
             transform.scale(shrink_factor, shrink_factor)
             transform.translate(-center_point.x(), -center_point.y())
             shrunk_path = transform.map(path)
-            while len(candidates) < num_candidates and attempts < num_candidates*10:
+            while len(candidates) < num_candidates and attempts < num_candidates * 10:
                 attempts += 1
                 x = random.uniform(x_min, x_max)
                 y = random.uniform(y_min, y_max)
@@ -209,7 +215,12 @@ class ZonePointsMixin:
         self.updatePointsTable()
 
     def updatePointsTable(self):
-        """Updates the table with the list of points."""
+        """Updates the table with the list of points.
+
+        The mm coordinates are calculated by first computing the offset from the sample holder's
+        center (self.include_center) and then applying the pixel-to-mm conversion. Since the real
+        center is (-5.0mm, -7.5mm), these values are added as an offset.
+        """
         points = []
         # Process auto-generated points.
         for item in self.image_view.points_dict["generated"]["points"]:
@@ -225,8 +236,10 @@ class ZonePointsMixin:
             self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
             self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
             if self.pixel_to_mm_ratio:
-                x_mm = x / self.pixel_to_mm_ratio
-                y_mm = y / self.pixel_to_mm_ratio
+                # Convert the pixel coordinate to mm by subtracting the image center (which corresponds
+                # to the real center of the sample holder) and then applying the conversion and real offset.
+                x_mm = (x - self.include_center[0]) / self.pixel_to_mm_ratio - 5.0
+                y_mm = (y - self.include_center[1]) / self.pixel_to_mm_ratio - 7.5
                 self.pointsTable.setItem(idx, 3, QTableWidgetItem(f"{x_mm:.2f}"))
                 self.pointsTable.setItem(idx, 4, QTableWidgetItem(f"{y_mm:.2f}"))
             else:
