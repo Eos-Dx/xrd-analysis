@@ -5,7 +5,7 @@ import numpy as np
 
 from ctypes import cdll, c_int, c_short, c_char_p
 # Set DEV mode: True will use dummy functions for testing, False will use the real implementations.
-DEV = True
+DEV = False
 
 sys.path.insert(0, 'C:\\Program Files\\PIXet Pro')
 
@@ -83,8 +83,6 @@ if DEV:
 
         print(f"DEV mode: Dummy capture_point called. Saved a 100x100 combined Gaussian matrix to {filename}.")
 
-
-
 # ------------------------------
 # Real Functions for Device Operation
 # ------------------------------
@@ -101,11 +99,10 @@ else:
                 print('No devices connected')
                 pixet.exitPixet()
                 pypixet.exit()
-                sys.exit()
+                return None, None
             dev = devices[0]
             print('Detector initialized.')
             return pixet, dev
-        return None, None
 
     def init_stage(sim_en, serial_num, x_chan, y_chan):
         """Initialize the XY stage by loading the Thorlabs DLL and setting up the device."""
@@ -149,8 +146,8 @@ else:
 
     def move_stage(lib, serial_num, x_chan, y_chan, x_new, y_new, move_timeout):
         """Move the stage to the absolute position (x_new, y_new) and wait for the move to complete."""
-        x_pos_new = c_int(x_new)
-        y_pos_new = c_int(y_new)
+        x_pos_new = c_int(int(x_new*10000))
+        y_pos_new = c_int(int(y_new*10000))
         lib.BDC_SetMoveAbsolutePosition(serial_num, x_chan, x_pos_new)
         lib.BDC_SetMoveAbsolutePosition(serial_num, y_chan, y_pos_new)
         time.sleep(0.25)
@@ -176,6 +173,3 @@ else:
             print('Capture successful.')
         else:
             print('Capture error:', rc)
-
-
-init_detector(1)

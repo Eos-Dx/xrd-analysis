@@ -198,10 +198,13 @@ class ZoneMeasurementsMixin:
         self.validate_folder()
 
         self.manualSaveState()
-        with open(Path(self.measurement_folder) / f'state.json', "w") as f:
-            # Save the current state of the points_dict to a JSON file.
-            self.state['image_base64'] = encode_image_to_base64(self.image_view.current_image_path)
-            json.dump(self.state, f, indent=4)
+        try:
+            with open(Path(self.measurement_folder) / f'state.json', "w") as f:
+                # Save the current state of the points_dict to a JSON file.
+                self.state['image_base64'] = encode_image_to_base64(self.image_view.current_image_path)
+                json.dump(self.state, f, indent=4)
+        except Exception as e:
+            print(e)
         if self.pointsTable.rowCount() == 0:
             print("No points available for measurement.")
             return
@@ -283,7 +286,7 @@ class ZoneMeasurementsMixin:
 
         # Move the stage.
         new_x, new_y = self.hc.move_stage(
-            self.xystage_lib, self.serial_number, self.x_chan, self.y_chan, x_mm, y_mm, move_timeout=1
+            self.xystage_lib, self.serial_number, self.x_chan, self.y_chan, x_mm, y_mm, move_timeout=10
         )
 
         # Build the filename using the self.measurement_folder, base file name, coordinates, and a timestamp.
