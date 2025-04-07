@@ -1,5 +1,5 @@
 {
-    "image": "D:/OneDrive/OneDrive - Matur/General - Ulster/pancreas_OLD_DO_NOT_UPLOAD/sheep_pancreas/20250319/P1b_L3_20250218.jpg",
+    "image": "C:/dev/eos_play/unzipped_data/Ulster/pancreas/sheep_pancreas/U2/Xena_Cu/20250313/P1a_L4_20250218.jpg",
     "rotation_angle": 0,
     "crop_rect": null,
     "shapes": [
@@ -8,10 +8,10 @@
             "type": "Rectangle",
             "role": "sample holder",
             "geometry": {
-                "x": 99.13580322265625,
-                "y": 2674.05645751953,
-                "width": 1089.188720703124,
-                "height": 1089.188720703124
+                "x": 307.0,
+                "y": 70.0,
+                "width": 180.0,
+                "height": 180.0
             }
         },
         {
@@ -19,37 +19,22 @@
             "type": "Circle",
             "role": "include",
             "geometry": {
-                "x": 318.4808959960935,
-                "y": 2922.0117797851544,
-                "width": 712.4873657226558,
-                "height": 688.6455078125
+                "x": 367.0,
+                "y": 114.0,
+                "width": 70.0,
+                "height": 85.0
             }
         }
     ],
     "zone_points": [
         {
-            "x": 678.3821012046953,
-            "y": 3265.262520637658,
+            "x": 401.4011484222543,
+            "y": 156.76101622855236,
             "type": "generated"
         },
         {
-            "x": 373.8654479065246,
-            "y": 3298.209821987288,
-            "type": "generated"
-        },
-        {
-            "x": 976.7261444921647,
-            "y": 3284.886090402685,
-            "type": "generated"
-        },
-        {
-            "x": 555.8812483855627,
-            "y": 3535.34639336058,
-            "type": "generated"
-        },
-        {
-            "x": 501.13177643511403,
-            "y": 3028.2424610508106,
+            "x": 404.237541916855,
+            "y": 116.36948258792592,
             "type": "generated"
         }
     ]

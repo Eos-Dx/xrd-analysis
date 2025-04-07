@@ -161,8 +161,12 @@ class ZoneMeasurementsMixin:
             # Retrieve serial number from the configuration JSON and convert to byte string.
             serial_str = self.config.get("serial_number_XY", "default_serial")
             c_serial_number = c_char_p(serial_str.encode('utf-8'))
+            self.x_chan = c_short(2)  # Note X&Y channels swapped in current orientation
+            self.y_chan = c_short(1)
             self.serial_number = c_serial_number  # Save for later use.
-            self.xystage_lib = hc.init_stage(sim_en=True, serial_num=c_serial_number, x_chan=1, y_chan=2)
+            self.xystage_lib = hc.init_stage(sim_en=True, serial_num=c_serial_number,
+                                             x_chan=self.x_chan,
+                                             y_chan=self.y_chan)
             print("XY stage initialized.")
             self.xyStageIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
         except Exception as e:
@@ -278,10 +282,8 @@ class ZoneMeasurementsMixin:
         y_mm = center.y() / self.pixel_to_mm_ratio
 
         # Move the stage.
-        x_chan = 1
-        y_chan = 2
         new_x, new_y = self.hc.move_stage(
-            self.xystage_lib, self.serial_number, x_chan, y_chan, x_mm, y_mm, move_timeout=1
+            self.xystage_lib, self.serial_number, self.x_chan, self.y_chan, x_mm, y_mm, move_timeout=1
         )
 
         # Build the filename using the self.measurement_folder, base file name, coordinates, and a timestamp.
