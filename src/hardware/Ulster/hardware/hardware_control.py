@@ -5,7 +5,7 @@ import numpy as np
 
 from ctypes import cdll, c_int, c_short, c_char_p
 # Set DEV mode: True will use dummy functions for testing, False will use the real implementations.
-DEV = False
+DEV = True
 
 sys.path.insert(0, 'C:\\Program Files\\PIXet Pro')
 

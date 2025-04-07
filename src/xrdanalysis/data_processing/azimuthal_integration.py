@@ -3,7 +3,12 @@ This file includes functions and classes essential for azimuthal integration
 """
 
 import os
-from functools import cache
+try:
+    from functools import cache
+except ImportError:
+    from functools import lru_cache
+    cache = lru_cache(maxsize=None)
+
 
 import numpy as np
 import pandas as pd
