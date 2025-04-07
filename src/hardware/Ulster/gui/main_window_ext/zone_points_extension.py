@@ -55,6 +55,8 @@ class ZonePointsMixin:
             "ID", "X (px)", "Y (px)", "X (mm)", "Y (mm)", "Measurement"
         ])
         layout.addWidget(self.pointsTable)
+        # Install an event filter on the table to capture key presses (for Delete key)
+        self.pointsTable.installEventFilter(self)
 
         container.setLayout(layout)
         self.zonePointsDock.setWidget(container)
@@ -276,3 +278,47 @@ class ZonePointsMixin:
             for col in range(table.columnCount()):
                 if table.item(row, col):
                     table.item(row, col).setBackground(highlight if hovered else normal)
+
+    def deleteSelectedPoints(self):
+        """
+        Deletes the points corresponding to the selected rows in the table from both the scene and the points dictionary.
+        """
+        # Get unique selected row indices.
+        selected_rows = sorted({index.row() for index in self.pointsTable.selectedIndexes()}, reverse=True)
+        if not selected_rows:
+            return
+
+        n_generated = len(self.image_view.points_dict["generated"]["points"])
+        # Separate indices for generated and user points.
+        gen_rows = [r for r in selected_rows if r < n_generated]
+        user_rows = [r - n_generated for r in selected_rows if r >= n_generated]
+
+        # Remove generated points in descending order.
+        for r in sorted(gen_rows, reverse=True):
+            point_item = self.image_view.points_dict["generated"]["points"].pop(r)
+            zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
+            self.image_view.scene.removeItem(point_item)
+            self.image_view.scene.removeItem(zone_item)
+
+        # Remove user-defined points in descending order.
+        for r in sorted(user_rows, reverse=True):
+            if r < len(self.image_view.points_dict["user"]["points"]):
+                point_item = self.image_view.points_dict["user"]["points"].pop(r)
+                if r < len(self.image_view.points_dict["user"]["zones"]):
+                    zone_item = self.image_view.points_dict["user"]["zones"].pop(r)
+                    self.image_view.scene.removeItem(zone_item)
+                self.image_view.scene.removeItem(point_item)
+
+        self.updatePointsTable()
+
+    def eventFilter(self, source, event):
+        """
+        Captures key press events on the points table. If the Delete key is pressed,
+        the corresponding points are removed.
+        """
+        if source == self.pointsTable and event.type() == QEvent.KeyPress:
+            if event.key() == Qt.Key_Delete:
+                self.deleteSelectedPoints()
+                return True
+        # Pass other events to the parent class.
+        return super().eventFilter(source, event)
