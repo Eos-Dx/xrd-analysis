@@ -5,7 +5,7 @@ import numpy as np
 
 from ctypes import cdll, c_int, c_short, c_char_p
 # Set DEV mode: True will use dummy functions for testing, False will use the real implementations.
-DEV = False
+DEV = True # Set to False for actual device operation
 
 sys.path.insert(0, 'C:\\Program Files\\PIXet Pro')
 
@@ -83,6 +83,11 @@ if DEV:
 
         print(f"DEV mode: Dummy capture_point called. Saved a 100x100 combined Gaussian matrix to {filename}.")
 
+    def get_xy_position(stage):
+        if stage:
+            return -1, -1
+        else:
+            return None, None
 # ------------------------------
 # Real Functions for Device Operation
 # ------------------------------
@@ -163,8 +168,8 @@ else:
         stage.wait_for_home(channel=2, timeout=home_timeout)
 
         # Return the homed positions
-        x_final = stage.get_position(channel=1, scale=True)
-        y_final = stage.get_position(channel=2, scale=True)
+        x_final = stage.get_position(channel=1, scale=True) / 10000
+        y_final = stage.get_position(channel=2, scale=True) / 10000
         print(f"Final homed positions: X = {x_final} mm, Y = {y_final} mm")
         return x_final, y_final
 
@@ -194,3 +199,12 @@ else:
         y_final = stage.get_position(channel=1, scale=True)
         print(f"Final positions: X = {x_final} mm, Y = {y_final} mm")
         return x_final, y_final
+
+
+    def get_xy_position(stage):
+        if stage:
+            x_final = stage.get_position(channel=1, scale=True) / 10000
+            y_final = stage.get_position(channel=2, scale=True) / 10000
+            return x_final, y_final
+        else:
+            return None, None

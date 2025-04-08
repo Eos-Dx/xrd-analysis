@@ -59,6 +59,7 @@ class ZoneMeasurementsMixin:
         layout.addLayout(buttonLayout)
 
         # Hardware status indicators and control buttons.
+        # Hardware status indicators and control buttons.
         statusLayout = QHBoxLayout()
         xyLabel = QLabel("XY Stage:")
         self.xyStageIndicator = QLabel()
@@ -66,16 +67,17 @@ class ZoneMeasurementsMixin:
         self.xyStageIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
         statusLayout.addWidget(xyLabel)
         statusLayout.addWidget(self.xyStageIndicator)
+
+        # New widget to visualize XY stage position.
+        self.xyPosLabel = QLabel("Pos: N/A")
+        statusLayout.addWidget(self.xyPosLabel)
+
         cameraLabel = QLabel("Camera:")
         self.cameraIndicator = QLabel()
         self.cameraIndicator.setFixedSize(20, 20)
         self.cameraIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
         statusLayout.addWidget(cameraLabel)
         statusLayout.addWidget(self.cameraIndicator)
-
-        # Add a spacer to push the new buttons to the right.
-        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
-        statusLayout.addItem(spacer)
 
         # New Home and Load Position buttons.
         self.homeBtn = QPushButton("Home")
@@ -150,6 +152,12 @@ class ZoneMeasurementsMixin:
             "generated": {"points": [], "zones": []},
             "user": {"points": [], "zones": []}
         }
+
+        # Create a timer to update the XY stage position every 1 second.
+        self.xyTimer = QTimer(self)
+        self.xyTimer.timeout.connect(self.updateXYPos)
+        self.xyTimer.start(1000)
+
 
     def browseFolder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
@@ -233,7 +241,7 @@ class ZoneMeasurementsMixin:
 
         self.manualSaveState()
         try:
-            with open(Path(self.measurement_folder) / f'state.json', "w") as f:
+            with open(Path(self.measurement_folder) / f'{self.fileNameLineEdit.text()}_state.json', "w") as f:
                 # Save the current state of the points_dict to a JSON file.
                 self.state['image_base64'] = encode_image_to_base64(self.image_view.current_image_path)
                 json.dump(self.state, f, indent=4)
@@ -533,3 +541,17 @@ class ZoneMeasurementsMixin:
         if not os.access(self.measurement_folder, os.W_OK):
             print(f"Folder {self.measurement_folder} is not writable. Using current directory.")
             self.measurement_folder = os.getcwd()
+
+    def updateXYPos(self):
+        """
+        Updates the XY stage position visualization every 1 second by calling
+        the get_xy_position function from the hardware control module.
+        """
+        if hasattr(self, 'xystage_lib') and self.xystage_lib is not None:
+            try:
+                pos = self.hc.get_xy_position(self.xystage_lib)
+                self.xyPosLabel.setText(f"Pos: ({pos[0]:.2f}, {pos[1]:.2f})")
+            except Exception as e:
+                self.xyPosLabel.setText("Pos: Error")
+        else:
+            self.xyPosLabel.setText("Pos: N/A")
