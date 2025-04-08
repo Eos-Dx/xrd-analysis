@@ -231,10 +231,10 @@ class ZonePointsMixin:
     def updatePointsTable(self):
         """Updates the table with the list of points.
 
-        The mm coordinates are calculated by first computing the offset from the sample holder's
-        center (self.include_center) determined from the graphic item. This pixel coordinate is mapped
-        to real-world coordinates by converting to mm via self.pixel_to_mm_ratio and then adding the offset
-        specified by the user (self.real_x_pos_mm and self.real_y_pos_mm).
+        The mm coordinates are calculated by mapping the pixel coordinates (with (0,0)
+        in the top left) using self.pixel_to_mm_ratio and then correcting with an offset.
+        The offset is determined so that the sample holder center (self.include_center) in pixels
+        maps to the real coordinates given by self.real_x_pos_mm and self.real_y_pos_mm.
         """
         points = []
         # Process auto-generated points.
@@ -246,15 +246,16 @@ class ZonePointsMixin:
             center = item.sceneBoundingRect().center()
             points.append((center.x(), center.y(), "user"))
         self.pointsTable.setRowCount(len(points))
+
+
+
         for idx, (x, y, ptype) in enumerate(points):
             self.pointsTable.setItem(idx, 0, QTableWidgetItem(str(idx + 1)))
             self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
             self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
             if self.pixel_to_mm_ratio:
-                # Convert the pixel coordinate to mm by subtracting the pixel center (self.include_center),
-                # dividing by pixel_to_mm_ratio and then adding the user-specified real center offset.
-                x_mm = (x - self.include_center[0]) / self.pixel_to_mm_ratio + self.real_x_pos_mm.value()
-                y_mm = (y - self.include_center[1]) / self.pixel_to_mm_ratio + self.real_y_pos_mm.value()
+                x_mm = self.real_x_pos_mm.value() - (x - self.include_center[0]) / self.pixel_to_mm_ratio
+                y_mm = self.real_y_pos_mm.value() - (y - self.include_center[1]) / self.pixel_to_mm_ratio
                 self.pointsTable.setItem(idx, 3, QTableWidgetItem(f"{x_mm:.2f}"))
                 self.pointsTable.setItem(idx, 4, QTableWidgetItem(f"{y_mm:.2f}"))
             else:
