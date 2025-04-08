@@ -1,46 +1,19 @@
 {
-    "image": "C:/dev/eos_play/unzipped_data/Ulster/pancreas/sheep_pancreas/U2/Xena_Cu/20250313/P1a_L4_20250218.jpg",
-    "rotation_angle": 4,
+    "image": "D:/OneDrive/OneDrive - Matur/General - Ulster/pancreas_OLD_DO_NOT_UPLOAD/sheep_pancreas/20250319/P1b_L3_20250218.jpg",
+    "rotation_angle": 3,
     "crop_rect": null,
     "shapes": [
         {
             "id": 1,
-            "type": "Rectangle",
-            "role": "sample holder",
-            "geometry": {
-                "x": 67.78051567077637,
-                "y": 2798.4183044433576,
-                "width": 1145.9388313293448,
-                "height": 1145.9388313293448
-            }
-        },
-        {
-            "id": 2,
             "type": "Circle",
             "role": "include",
             "geometry": {
-                "x": 138.56103134155262,
-                "y": 2902.7264328002907,
-                "width": 937.322574615478,
-                "height": 982.026058197021
+                "x": 191.0,
+                "y": 89.0,
+                "width": 134.0,
+                "height": 120.0
             }
         }
     ],
-    "zone_points": [
-        {
-            "x": 359.0,
-            "y": 3089.0,
-            "type": "user"
-        },
-        {
-            "x": 639.0,
-            "y": 3369.0,
-            "type": "user"
-        },
-        {
-            "x": 884.3749999999999,
-            "y": 3614.0624999999995,
-            "type": "user"
-        }
-    ]
+    "zone_points": []
 }
