@@ -284,7 +284,7 @@ class StateSaverMixin:
             state["pixel_to_mm_ratio"] = self.pixel_to_mm_ratio
         except Exception:
             state["pixel_to_mm_ratio"] = 1
-            
+
         try:
             with open(self.PREV_STATE_FILE, "w") as f:
                 json.dump(state, f, indent=4)
@@ -300,3 +300,6 @@ class StateSaverMixin:
         self.autoSaveTimer = QTimer(self)
         self.autoSaveTimer.timeout.connect(self.autoSaveState)
         self.autoSaveTimer.start(interval)
+
+    def dummy_function(self):
+        pass
