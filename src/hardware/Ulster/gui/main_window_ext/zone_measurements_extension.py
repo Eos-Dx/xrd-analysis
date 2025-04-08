@@ -172,11 +172,10 @@ class ZoneMeasurementsMixin:
         try:
             # Retrieve serial number from the configuration JSON and convert to byte string.
             serial_str = self.config.get("serial_number_XY", "default_serial")
-            c_serial_number = c_char_p(serial_str.encode('utf-8'))
             self.x_chan = c_short(2)  # Note X&Y channels swapped in current orientation
             self.y_chan = c_short(1)
-            self.serial_number = c_serial_number  # Save for later use.
-            self.xystage_lib = hc.init_stage(sim_en=True, serial_num=c_serial_number,
+            self.serial_number = serial_str # Save for later use.
+            self.xystage_lib = hc.init_stage(sim_en=True, serial_num=serial_str,
                                              x_chan=self.x_chan,
                                              y_chan=self.y_chan)
             print("XY stage initialized.")
@@ -316,8 +315,8 @@ class ZoneMeasurementsMixin:
 
         # Get point coordinates in mm.
         center = point_item.sceneBoundingRect().center()
-        x_mm = center.x() / self.pixel_to_mm_ratio
-        y_mm = center.y() / self.pixel_to_mm_ratio
+        x_mm = self.real_x_pos_mm.value() - (center.x()- self.include_center[0]) / self.pixel_to_mm_ratio
+        y_mm = self.real_y_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
 
         # Move the stage.
         new_x, new_y = self.hc.move_stage(

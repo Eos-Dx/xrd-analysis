@@ -116,7 +116,7 @@ else:
         else:
             print('Capture error:', rc)
 
-    def init_stage(simulation_enabled, serial_num):
+    def init_stage(sim_en, serial_num, x_chan, y_chan):
         """
         Initialize the XY stage using pylablib.
 
@@ -139,12 +139,12 @@ else:
                 print(dev)
 
         # Create the stage object (using the provided serial number)
-        stage = Thorlabs.KinesisMotor(serial_num)
+        stage = Thorlabs.KinesisMotor(str(serial_num))
         stage.open()  # Open the device connection
-        time.sleep(2)  # Allow time for initialization
+        time.sleep(1)  # Allow time for initialization
         return stage
 
-    def home_stage(stage, home_timeout=60):
+    def home_stage(stage, serial_num, x_chan, y_chan, home_timeout=60):
         """
         Home the XY stage on both axes and return the final positions.
 
@@ -168,7 +168,7 @@ else:
         print(f"Final homed positions: X = {x_final} mm, Y = {y_final} mm")
         return x_final, y_final
 
-    def move_stage(stage, x_new, y_new, move_timeout=60):
+    def move_stage(stage, serial_num, x_chan, y_chan,  x_new, y_new, move_timeout=60):
         """
         Move the stage to an absolute position (x_new, y_new) in mm.
 
