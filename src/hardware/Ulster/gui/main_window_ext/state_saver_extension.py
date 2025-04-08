@@ -8,29 +8,39 @@ class StateSaverMixin:
     AUTO_STATE_FILE = "autosave_state.json"
     PREV_STATE_FILE = "autosave_state_prev.json"
 
-    def restoreState(self):
+    def restoreState(self, file_path=None):
         """
-        Restores the state from the previous state file (PREV_STATE_FILE).
-        If that file is not available, it tries to load the current autosave file.
-        Additionally, after drawing the items on the scene, the internal variables
-        are updated manually so that the app knows these shapes and points exist.
+        Restores the state from a JSON file.
+
+        If file_path is provided, it will attempt to restore from that file.
+        Otherwise, it will restore from the previous state file (PREV_STATE_FILE)
+        or, if not available, from the current autosave file (AUTO_STATE_FILE).
+
+        If the JSON file is not valid, returns None.
         """
         state_file = None
-        if os.path.exists(self.PREV_STATE_FILE):
-            state_file = self.PREV_STATE_FILE
-        elif os.path.exists(self.AUTO_STATE_FILE):
-            state_file = self.AUTO_STATE_FILE
+        if file_path is not None:
+            if os.path.exists(file_path):
+                state_file = file_path
+            else:
+                print("Specified state file does not exist:", file_path)
+                return None
+        else:
+            if os.path.exists(self.PREV_STATE_FILE):
+                state_file = self.PREV_STATE_FILE
+            elif os.path.exists(self.AUTO_STATE_FILE):
+                state_file = self.AUTO_STATE_FILE
 
         if not state_file:
             print("No saved state file found. Nothing to restore.")
-            return
+            return None
 
         try:
             with open(state_file, "r") as f:
                 state = json.load(f)
         except Exception as e:
             print("Error loading saved state from", state_file, ":", e)
-            return
+            return None
 
         # --- Restore image ---
         image_path = state.get("image")
@@ -102,9 +112,9 @@ class StateSaverMixin:
         # --- Restore zone points using the unified dictionary ---
         zone_points = state.get("zone_points", [])
         self.image_view.points_dict = {
-                "generated": {"points": [], "zones": []},
-                "user": {"points": [], "zones": []}
-            }
+            "generated": {"points": [], "zones": []},
+            "user": {"points": [], "zones": []}
+        }
 
         for pt in zone_points:
             x = pt.get("x")
@@ -301,5 +311,3 @@ class StateSaverMixin:
         self.autoSaveTimer.timeout.connect(self.autoSaveState)
         self.autoSaveTimer.start(interval)
 
-    def dummy_function(self):
-        pass

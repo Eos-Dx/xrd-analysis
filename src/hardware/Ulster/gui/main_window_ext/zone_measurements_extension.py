@@ -95,7 +95,7 @@ class ZoneMeasurementsMixin:
         integrationLabel = QLabel("Integration Time (sec):")
         self.integrationSpinBox = QSpinBox()
         self.integrationSpinBox.setMinimum(1)
-        self.integrationSpinBox.setMaximum(60)
+        self.integrationSpinBox.setMaximum(600)
         self.integrationSpinBox.setValue(1)
         integrationLayout.addWidget(integrationLabel)
         integrationLayout.addWidget(self.integrationSpinBox)
