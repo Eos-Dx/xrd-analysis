@@ -277,6 +277,15 @@ class StateSaverMixin:
         state["zone_points"] = zone_points
 
         try:
+            state["real_center"] = (self.real_x_pos_mm.value(), self.real_y_pos_mm.value())
+        except Exception:
+            state["real_center"] = (None, None)
+        try:
+            state["pixel_to_mm_ratio"] = self.pixel_to_mm_ratio
+        except Exception:
+            state["pixel_to_mm_ratio"] = 1
+            
+        try:
             with open(self.PREV_STATE_FILE, "w") as f:
                 json.dump(state, f, indent=4)
             print("State manually saved to", self.PREV_STATE_FILE)
