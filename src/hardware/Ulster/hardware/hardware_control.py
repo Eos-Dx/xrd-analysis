@@ -5,7 +5,7 @@ import numpy as np
 
 from ctypes import cdll, c_int, c_short, c_char_p
 # Set DEV mode: True will use dummy functions for testing, False will use the real implementations.
-DEV = True
+DEV = False
 
 sys.path.insert(0, 'C:\\Program Files\\PIXet Pro')
 
@@ -87,17 +87,34 @@ if DEV:
 # Real Functions for Device Operation
 # ------------------------------
 else:
-    # !/usr/bin/env python
-    """
-    Example module to control an XY Thorlabs stage using pylablib.
-    This code assumes the stage is accessible via the KinesisMotor class,
-    with channel 1 representing the X axis and channel 2 the Y axis.
-    All moves and positions are given in millimeters.
-    """
-
+    import pypixet
     import time
     from pylablib.devices import Thorlabs
 
+    def init_detector(capture_enabled):
+        """Initialize the detector using the Pixet API if capture is enabled."""
+        if capture_enabled:
+            print('Initializing detector...')
+            pypixet.start()
+            pixet = pypixet.pixet
+            devices = pixet.devices()
+            if devices[0].fullName() == 'FileDevice 0':
+                print('No devices connected')
+                pixet.exitPixet()
+                pypixet.exit()
+                return None, None
+            dev = devices[0]
+            print('Detector initialized.')
+            return pixet, dev
+
+    def capture_point(dev, pixet, Nframes, Nseconds, filename):
+        """Capture data at the current point using the detector."""
+        print(f'Capturing at {filename} ...')
+        rc = dev.doSimpleIntegralAcquisition(Nframes, Nseconds, pixet.PX_FTYPE_AUTODETECT, filename)
+        if rc == 0:
+            print('Capture successful.')
+        else:
+            print('Capture error:', rc)
 
     def init_stage(simulation_enabled, serial_num):
         """
@@ -127,7 +144,6 @@ else:
         time.sleep(2)  # Allow time for initialization
         return stage
 
-
     def home_stage(stage, home_timeout=60):
         """
         Home the XY stage on both axes and return the final positions.
@@ -151,7 +167,6 @@ else:
         y_final = stage.get_position(channel=2, scale=True)
         print(f"Final homed positions: X = {x_final} mm, Y = {y_final} mm")
         return x_final, y_final
-
 
     def move_stage(stage, x_new, y_new, move_timeout=60):
         """
