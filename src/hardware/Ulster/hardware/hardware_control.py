@@ -87,89 +87,95 @@ if DEV:
 # Real Functions for Device Operation
 # ------------------------------
 else:
-    import pypixet
-    def init_detector(capture_enabled):
-        """Initialize the detector using the Pixet API if capture is enabled."""
-        if capture_enabled:
-            print('Initializing detector...')
-            pypixet.start()
-            pixet = pypixet.pixet
-            devices = pixet.devices()
-            if devices[0].fullName() == 'FileDevice 0':
-                print('No devices connected')
-                pixet.exitPixet()
-                pypixet.exit()
-                return None, None
-            dev = devices[0]
-            print('Detector initialized.')
-            return pixet, dev
+    # !/usr/bin/env python
+    """
+    Example module to control an XY Thorlabs stage using pylablib.
+    This code assumes the stage is accessible via the KinesisMotor class,
+    with channel 1 representing the X axis and channel 2 the Y axis.
+    All moves and positions are given in millimeters.
+    """
 
-    def init_stage(sim_en, serial_num, x_chan, y_chan):
-        """Initialize the XY stage by loading the Thorlabs DLL and setting up the device."""
-        if sys.version_info < (3, 8):
-            os.chdir(r'C:\Program Files\Thorlabs\Kinesis')
+    import time
+    from pylablib.devices import Thorlabs
+
+
+    def init_stage(simulation_enabled, serial_num):
+        """
+        Initialize the XY stage using pylablib.
+
+        Parameters:
+          simulation_enabled (bool): If True, enable simulation.
+          serial_num (str): Serial number of the stage.
+
+        Returns:
+          stage: An instance of Thorlabs.KinesisMotor with an open connection.
+        """
+
+        # Optionally, list devices and check if your device is connected:
+        devices = Thorlabs.list_kinesis_devices()
+        if not devices:
+            print("No Thorlabs devices found!")
+            return None
         else:
-            os.add_dll_directory(r'C:\Program Files\Thorlabs\Kinesis')
-        lib = cdll.LoadLibrary('Thorlabs.MotionControl.Benchtop.DCServo.dll')
-        if sim_en:
-            lib.TLI_InitializeSimulations()
-        if lib.TLI_BuildDeviceList() != 0:
-            print('Error building device list.')
-        else:
-            lib.BDC_Open(serial_num)
-            lib.BDC_StartPolling(serial_num, x_chan, c_int(250))
-            lib.BDC_StartPolling(serial_num, y_chan, c_int(250))
-            lib.BDC_EnableChannel(serial_num, x_chan)
-            lib.BDC_EnableChannel(serial_num, y_chan)
-            time.sleep(0.5)
-        return lib
+            print("Detected devices:")
+            for dev in devices:
+                print(dev)
 
-    def home_stage(lib, serial_num, x_chan, y_chan, home_timeout):
-        """Home the XY stage and wait until the stage is at (0,0) within tolerance."""
-        print('Homing stage...')
-        lib.BDC_Home(serial_num, x_chan)
-        lib.BDC_Home(serial_num, y_chan)
-        time.sleep(20)  # Initial wait for homing to start
-        for i in range(home_timeout):
-            lib.BDC_RequestPosition(serial_num, x_chan)
-            lib.BDC_RequestPosition(serial_num, y_chan)
-            time.sleep(0.5)
-            x_pos = lib.BDC_GetPosition(serial_num, x_chan)
-            y_pos = lib.BDC_GetPosition(serial_num, y_chan)
-            if abs(x_pos) + abs(y_pos) <= 3:
-                print('Homed successfully.')
-                break
-            if i == home_timeout - 1:
-                print('Home timed out.')
-        time.sleep(0.5)
-        return lib.BDC_GetPosition(serial_num, x_chan), lib.BDC_GetPosition(serial_num, y_chan)
+        # Create the stage object (using the provided serial number)
+        stage = Thorlabs.KinesisMotor(serial_num)
+        stage.open()  # Open the device connection
+        time.sleep(2)  # Allow time for initialization
+        return stage
 
-    def move_stage(lib, serial_num, x_chan, y_chan, x_new, y_new, move_timeout):
-        """Move the stage to the absolute position (x_new, y_new) and wait for the move to complete."""
-        x_pos_new = c_int(int(x_new*10000))
-        y_pos_new = c_int(int(y_new*10000))
-        lib.BDC_SetMoveAbsolutePosition(serial_num, x_chan, x_pos_new)
-        lib.BDC_SetMoveAbsolutePosition(serial_num, y_chan, y_pos_new)
-        time.sleep(0.25)
-        lib.BDC_MoveAbsolute(serial_num, x_chan)
-        lib.BDC_MoveAbsolute(serial_num, y_chan)
-        for i in range(move_timeout):
-            lib.BDC_RequestPosition(serial_num, x_chan)
-            lib.BDC_RequestPosition(serial_num, y_chan)
-            time.sleep(0.5)
-            x_pos = lib.BDC_GetPosition(serial_num, x_chan)
-            y_pos = lib.BDC_GetPosition(serial_num, y_chan)
-            if abs(x_new - x_pos) + abs(y_new - y_pos) <= 4:
-                break
-            if i == move_timeout - 1:
-                print('Move timed out.')
-        return lib.BDC_GetPosition(serial_num, x_chan), lib.BDC_GetPosition(serial_num, y_chan)
 
-    def capture_point(dev, pixet, Nframes, Nseconds, filename):
-        """Capture data at the current point using the detector."""
-        print(f'Capturing at {filename} ...')
-        rc = dev.doSimpleIntegralAcquisition(Nframes, Nseconds, pixet.PX_FTYPE_AUTODETECT, filename)
-        if rc == 0:
-            print('Capture successful.')
-        else:
-            print('Capture error:', rc)
+    def home_stage(stage, home_timeout=60):
+        """
+        Home the XY stage on both axes and return the final positions.
+
+        Parameters:
+          stage: The stage object returned from init_stage.
+          home_timeout (int): Maximum wait time in seconds for homing.
+
+        Returns:
+          (x_pos, y_pos): Tuple of the homed positions in mm.
+        """
+        print("Homing stage on X and Y axes...")
+        # Home channel 1 (X axis) and channel 2 (Y axis)
+        stage.home(channel=1)
+        stage.home(channel=2)
+        stage.wait_for_home(channel=1, timeout=home_timeout)
+        stage.wait_for_home(channel=2, timeout=home_timeout)
+
+        # Return the homed positions
+        x_final = stage.get_position(channel=1, scale=True)
+        y_final = stage.get_position(channel=2, scale=True)
+        print(f"Final homed positions: X = {x_final} mm, Y = {y_final} mm")
+        return x_final, y_final
+
+
+    def move_stage(stage, x_new, y_new, move_timeout=60):
+        """
+        Move the stage to an absolute position (x_new, y_new) in mm.
+
+        Parameters:
+          stage: The stage object.
+          x_new (float): Desired X position in mm.
+          y_new (float): Desired Y position in mm.
+          move_timeout (int): Maximum wait time in seconds for the move to complete.
+
+        Returns:
+          (x_pos, y_pos): Tuple with the final positions in mm.
+        """
+        print(f"Moving stage: Target X = {x_new} mm, Target Y = {y_new} mm")
+        # Command the stage to move; the API automatically converts from mm to internal units
+        stage.move_to(x_new * 10000, channel=2, scale=True)
+        stage.move_to(y_new * 10000, channel=1, scale=True)
+
+        stage.wait_move(channel=2, timeout=move_timeout)
+        stage.wait_move(channel=1, timeout=move_timeout)
+
+        # Read and return the final positions
+        x_final = stage.get_position(channel=2, scale=True)
+        y_final = stage.get_position(channel=1, scale=True)
+        print(f"Final positions: X = {x_final} mm, Y = {y_final} mm")
+        return x_final, y_final
