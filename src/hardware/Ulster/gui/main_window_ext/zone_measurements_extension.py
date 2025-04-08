@@ -263,14 +263,14 @@ class ZoneMeasurementsMixin:
         all_points = []
         for i, item in enumerate(generated_points):
             center = item.sceneBoundingRect().center()
-            x_mm = center.x() / self.pixel_to_mm_ratio
-            y_mm = center.y() / self.pixel_to_mm_ratio
+            x_mm = self.real_x_pos_mm.value() - (x - self.include_center[0]) / self.pixel_to_mm_ratio
+            y_mm = self.real_y_pos_mm.value() - (y - self.include_center[1]) / self.pixel_to_mm_ratio
             all_points.append((i, x_mm, y_mm))
         offset = len(generated_points)
         for j, item in enumerate(user_points):
             center = item.sceneBoundingRect().center()
-            x_mm = center.x() / self.pixel_to_mm_ratio
-            y_mm = center.y() / self.pixel_to_mm_ratio
+            x_mm = self.real_x_pos_mm.value() - (x - self.include_center[0]) / self.pixel_to_mm_ratio
+            y_mm = self.real_y_pos_mm.value() - (y - self.include_center[1]) / self.pixel_to_mm_ratio
             all_points.append((offset + j, x_mm, y_mm))
         # Sort by increasing X then Y.
         all_points_sorted = sorted(all_points, key=lambda tup: (tup[1], tup[2]))
