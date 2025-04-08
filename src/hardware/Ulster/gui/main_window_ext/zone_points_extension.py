@@ -3,7 +3,7 @@ import math
 from PyQt5.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QSpinBox, QPushButton, QTableWidget, QTableWidgetItem,
-    QGraphicsEllipseItem, QLabel, QComboBox, QSpacerItem, QSizePolicy, QProgressBar, QFileDialog
+    QGraphicsEllipseItem, QLabel, QSpacerItem, QSizePolicy, QProgressBar, QFileDialog, QDoubleSpinBox
 )
 from PyQt5.QtCore import Qt, QEvent, QPointF, QRectF, QTimer
 from PyQt5.QtGui import QColor, QPen, QTransform
@@ -38,11 +38,24 @@ class ZonePointsMixin:
         self.shrinkSpinBox.setValue(5)
         inputLayout.addWidget(self.shrinkSpinBox)
 
-        self.mmComboBox = QComboBox()
-        for option in ["16mm", "14mm", "12mm", "10mm", "5mm", "4mm", "3mm", "2mm"]:
-            self.mmComboBox.addItem(option)
-        inputLayout.addWidget(self.mmComboBox)
+        # Instead of a mmComboBox, add user-defined real center position controls.
+        self.realXLabel = QLabel("X_pos, mm")
+        inputLayout.addWidget(self.realXLabel)
+        self.real_x_pos_mm = QDoubleSpinBox()
+        self.real_x_pos_mm.setDecimals(2)
+        self.real_x_pos_mm.setRange(-1000.0, 1000.0)
+        self.real_x_pos_mm.setValue(-5.15)  # default value; can be adjusted
+        inputLayout.addWidget(self.real_x_pos_mm)
 
+        self.realYLabel = QLabel("Y_pos, mm")
+        inputLayout.addWidget(self.realYLabel)
+        self.real_y_pos_mm = QDoubleSpinBox()
+        self.real_y_pos_mm.setDecimals(2)
+        self.real_y_pos_mm.setRange(-1000.0, 1000.0)
+        self.real_y_pos_mm.setValue(-4.35)  # default value; can be adjusted
+        inputLayout.addWidget(self.real_y_pos_mm)
+
+        # Conversion label remains to show the pixel-to-mm conversion factor.
         self.conversionLabel = QLabel("Conversion: 1.00 px/mm")
         inputLayout.addWidget(self.conversionLabel)
 
@@ -72,8 +85,8 @@ class ZonePointsMixin:
             "user": {"points": [], "zones": []}
         }
         self.pixel_to_mm_ratio = 1.0
-        # self.include_center is defined in another mixin as the pixel center of the sample holder.
-        # Here we assume it is already set to (cx, cy) such that the real center is (-5.0mm, -7.5mm)
+        # self.include_center is determined from the center of the include shape.
+        # That pixel coordinate corresponds to (self.real_x_pos_mm, self.real_y_pos_mm) in real mm.
         self.include_center = (0, 0)  # default value, should be set by the other mixin
 
     def updateConversionLabel(self):
@@ -96,7 +109,8 @@ class ZonePointsMixin:
                     self.include_center = include_shape.center
                 else:
                     inc_rect = include_shape.rect() if hasattr(include_shape, 'rect') else include_shape.boundingRect()
-                    self.include_center = (inc_rect.x() + inc_rect.width() / 2, inc_rect.y() + inc_rect.height() / 2)
+                    self.include_center = (inc_rect.x() + inc_rect.width() / 2,
+                                           inc_rect.y() + inc_rect.height() / 2)
             elif role == "exclude":
                 exclude_shapes.append(shape["item"])
         if include_shape is None:
@@ -218,8 +232,9 @@ class ZonePointsMixin:
         """Updates the table with the list of points.
 
         The mm coordinates are calculated by first computing the offset from the sample holder's
-        center (self.include_center) and then applying the pixel-to-mm conversion. Since the real
-        center is (-5.0mm, -7.5mm), these values are added as an offset.
+        center (self.include_center) determined from the graphic item. This pixel coordinate is mapped
+        to real-world coordinates by converting to mm via self.pixel_to_mm_ratio and then adding the offset
+        specified by the user (self.real_x_pos_mm and self.real_y_pos_mm).
         """
         points = []
         # Process auto-generated points.
@@ -236,10 +251,10 @@ class ZonePointsMixin:
             self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
             self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
             if self.pixel_to_mm_ratio:
-                # Convert the pixel coordinate to mm by subtracting the image center (which corresponds
-                # to the real center of the sample holder) and then applying the conversion and real offset.
-                x_mm = (x - self.include_center[0]) / self.pixel_to_mm_ratio - 5.0
-                y_mm = (y - self.include_center[1]) / self.pixel_to_mm_ratio - 7.5
+                # Convert the pixel coordinate to mm by subtracting the pixel center (self.include_center),
+                # dividing by pixel_to_mm_ratio and then adding the user-specified real center offset.
+                x_mm = (x - self.include_center[0]) / self.pixel_to_mm_ratio + self.real_x_pos_mm.value()
+                y_mm = (y - self.include_center[1]) / self.pixel_to_mm_ratio + self.real_y_pos_mm.value()
                 self.pointsTable.setItem(idx, 3, QTableWidgetItem(f"{x_mm:.2f}"))
                 self.pointsTable.setItem(idx, 4, QTableWidgetItem(f"{y_mm:.2f}"))
             else:

@@ -1,23 +1,23 @@
 import os
 import numpy as np
 import json
+import time
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QDockWidget, QLabel,
     QSpinBox, QLineEdit, QFileDialog,
     QSpacerItem, QSizePolicy, QProgressBar,
-    QWidget, QHBoxLayout, QVBoxLayout, QPushButton
+    QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QDialog
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt5.QtWidgets import QDialog, QHBoxLayout
-from PyQt5.QtCore import  QTimer
+from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
 
 from xrdanalysis.data_processing.azimuthal_integration import initialize_azimuthal_integrator_df
 from hardware.Ulster.hardware.hardware_control import *
 from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
+
 
 class ZoneMeasurementsMixin:
 
@@ -31,7 +31,8 @@ class ZoneMeasurementsMixin:
           - A Repeat control,
           - Folder and File Name controls,
           - LED indicators for the XY stage and Camera,
-          - A progress indicator showing percentage complete and estimated time remaining.
+          - A progress indicator showing percentage complete and estimated time remaining,
+          - Home and Load Position buttons in the status area.
         """
         self.zoneMeasurementsDock = QDockWidget("Zone Measurements", self)
         container = QWidget()
@@ -57,7 +58,7 @@ class ZoneMeasurementsMixin:
         buttonLayout.addWidget(self.stopBtn)
         layout.addLayout(buttonLayout)
 
-        # Hardware status indicators.
+        # Hardware status indicators and control buttons.
         statusLayout = QHBoxLayout()
         xyLabel = QLabel("XY Stage:")
         self.xyStageIndicator = QLabel()
@@ -71,9 +72,20 @@ class ZoneMeasurementsMixin:
         self.cameraIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
         statusLayout.addWidget(cameraLabel)
         statusLayout.addWidget(self.cameraIndicator)
-        # Spacer to push items left.
+
+        # Add a spacer to push the new buttons to the right.
         spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
         statusLayout.addItem(spacer)
+
+        # New Home and Load Position buttons.
+        self.homeBtn = QPushButton("Home")
+        self.homeBtn.clicked.connect(self.homeStageButtonClicked)
+        statusLayout.addWidget(self.homeBtn)
+
+        self.loadPosBtn = QPushButton("Load Position")
+        self.loadPosBtn.clicked.connect(self.loadPositionButtonClicked)
+        statusLayout.addWidget(self.loadPosBtn)
+
         layout.addLayout(statusLayout)
 
         # Integration time control.
@@ -189,6 +201,29 @@ class ZoneMeasurementsMixin:
 
         # Store the hardware control module reference for later use.
         self.hc = hc
+
+    def homeStageButtonClicked(self):
+        """
+        Homes the translation stage using the external home_stage function.
+        """
+        if hasattr(self, 'xystage_lib'):
+            # Call the home_stage function with a timeout of 10 seconds.
+            x, y = home_stage(self.xystage_lib, self.serial_number, self.x_chan, self.y_chan, home_timeout=10)
+            print(f"Home position reached: ({x}, {y})")
+            self.xyStageIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
+        else:
+            print("Stage not initialized.")
+
+    def loadPositionButtonClicked(self):
+        """
+        Moves the stage to a fixed position (x = -15mm, y = -10mm) when the Load Position button is clicked.
+        """
+        if hasattr(self, 'xystage_lib'):
+            new_x, new_y = self.hc.move_stage(self.xystage_lib, self.serial_number, self.x_chan, self.y_chan,
+                                              -10, -15, move_timeout=10)
+            print(f"Loaded position: ({new_x}, {new_y})")
+        else:
+            print("Stage not initialized.")
 
     def startMeasurements(self):
         """
@@ -493,7 +528,8 @@ class ZoneMeasurementsMixin:
             try:
                 os.makedirs(self.measurement_folder, exist_ok=True)
             except Exception as e:
-                print(f"Error creating self.measurement_folder {self.measurement_folder}: {e}. Using current directory.")
+                print(
+                    f"Error creating self.measurement_folder {self.measurement_folder}: {e}. Using current directory.")
                 self.measurement_folder = os.getcwd()
         if not os.access(self.measurement_folder, os.W_OK):
             print(f"Folder {self.measurement_folder} is not writable. Using current directory.")
