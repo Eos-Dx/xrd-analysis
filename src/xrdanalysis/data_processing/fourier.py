@@ -160,6 +160,7 @@ def fourier_fft2(
             "fft2_real",
             "fft2_imag",
             "fft2_norm_magnitude",
+            "fft2_magnitude",
             "fft2_phase",
             "fft2_reconstructed",
             "fft2_vertical_profile",
@@ -211,6 +212,7 @@ def fourier_fft2(
         "fft2_norm_magnitude": np.divide(
             np.abs(fft2_shifted), np.abs(fft2[0, 0])
         ),
+        "fft2_magnitude": np.abs(fft2_shifted),
         "fft2_phase": np.angle(fft2_shifted),
         "fft2_reconstructed": np.real(fft.ifft2(fft.ifftshift(fft2_shifted))),
         "fft2_vertical_profile": np.divide(
