@@ -1,196 +1,165 @@
-import os
-import sys
 import time
+import sys
 import numpy as np
 
-from ctypes import cdll, c_int, c_short, c_char_p
-# Set DEV mode: True will use dummy functions for testing, False will use the real implementations.
-DEV = False
-
-sys.path.insert(0, 'C:\\Program Files\\PIXet Pro')
-
-# ------------------------------
-# Dummy Functions for DEV mode
-# ------------------------------
-if DEV:
-    def init_detector(capture_enabled):
-        """Dummy detector initialization."""
-        print("DEV mode: Dummy init_detector called.")
-        return True, True
-
-    def init_stage(sim_en, serial_num, x_chan, y_chan):
-        """Dummy stage initialization."""
-        print("DEV mode: Dummy init_stage called.")
-
-        class DummyLib:
-            def __getattr__(self, name):
-                # Any method called on this dummy lib will simply print its call details.
-                return lambda *args, **kwargs: print(f"DEV mode: Called {name} with args {args} and kwargs {kwargs}")
-
-            def BDC_Close(self, serial_num):
-                print("DEV mode: Dummy BDC_Close called.")
-
-        return DummyLib()
-
-    def home_stage(lib, serial_num, x_chan, y_chan, home_timeout):
-        """Dummy homing routine."""
-        time.sleep(home_timeout)
-        print("DEV mode: Dummy home_stage called.")
-        return 0, 0
-
-    def move_stage(lib, serial_num, x_chan, y_chan, x_new, y_new, move_timeout=1):
-        """Dummy stage move."""
-        time.sleep(move_timeout)
-        print(f"DEV mode: Dummy move_stage called. Pretending to move to ({x_new}, {y_new}).")
-        return x_new, y_new
-
-    def capture_point(dev, pixet, Nframes, Nseconds, filename):
+class DetectorController:
+    def __init__(self, capture_enabled=True, dev=True):
         """
-        Dummy capture routine that generates two 2D Gaussian distributions on a 100x100 grid.
-
-        One Gaussian will have a peak intensity greater than 1e6 and the other will have a peak
-        intensity less than 1e6. Both Gaussians are generated with random centers and spreads,
-        then combined into one matrix which is saved to a text file.
+        Initializes the detector controller.
+        Parameters:
+          capture_enabled (bool): Whether to enable capture.
+          dev (bool): If True, uses dummy functions.
         """
-        # Create a 100x100 grid
-        x = np.arange(100)
-        y = np.arange(100)
-        X, Y = np.meshgrid(x, y)
+        self.capture_enabled = capture_enabled
+        self.dev = dev
+        self.pixet = None
+        self.detector = None
 
-        # Generate first Gaussian with intensity > 1e6
-        x0_1 = np.random.uniform(0, 100)
-        y0_1 = np.random.uniform(0, 100)
-        sigma_x1 = np.random.uniform(5, 15)
-        sigma_y1 = np.random.uniform(5, 15)
-        amplitude1 = np.random.uniform(1e6 + 1, 2e6)  # Ensuring peak > 1e6
-        gaussian1 = amplitude1 * np.exp(-(((X - x0_1) ** 2) / (2 * sigma_x1 ** 2) +
-                                          ((Y - y0_1) ** 2) / (2 * sigma_y1 ** 2)))
-
-        # Generate second Gaussian with intensity < 1e6
-        x0_2 = np.random.uniform(0, 100)
-        y0_2 = np.random.uniform(0, 100)
-        sigma_x2 = np.random.uniform(5, 15)
-        sigma_y2 = np.random.uniform(5, 15)
-        amplitude2 = np.random.uniform(1e5, 1e6 - 1)  # Ensuring peak < 1e6
-        gaussian2 = amplitude2 * np.exp(-(((X - x0_2) ** 2) / (2 * sigma_x2 ** 2) +
-                                          ((Y - y0_2) ** 2) / (2 * sigma_y2 ** 2)))
-
-        # Combine the two Gaussians
-        combined_matrix = gaussian1 + gaussian2
-
-        # Save the combined matrix to a text file with formatted output
-        np.savetxt(filename, combined_matrix, fmt='%.6f')
-
-        print(f"DEV mode: Dummy capture_point called. Saved a 100x100 combined Gaussian matrix to {filename}.")
-
-# ------------------------------
-# Real Functions for Device Operation
-# ------------------------------
-else:
-    import pypixet
-    import time
-    from pylablib.devices import Thorlabs
-
-    def init_detector(capture_enabled):
-        """Initialize the detector using the Pixet API if capture is enabled."""
-        if capture_enabled:
-            print('Initializing detector...')
+    def init_detector(self):
+        if self.dev:
+            print("DEV mode: Dummy init_detector called.")
+            # In DEV mode, we simply set dummy (non-None) values.
+            self.pixet = True
+            self.detector = True
+        else:
+            # Real detector initialization.
+            sys.path.insert(0, 'C:\\Program Files\\PIXet Pro')
+            import pypixet
+            print("Initializing detector...")
             pypixet.start()
             pixet = pypixet.pixet
             devices = pixet.devices()
             if devices[0].fullName() == 'FileDevice 0':
-                print('No devices connected')
+                print("No devices connected")
                 pixet.exitPixet()
                 pypixet.exit()
-                return None, None
-            dev = devices[0]
-            print('Detector initialized.')
-            return pixet, dev
+                self.pixet, self.detector = None, None
+            else:
+                self.pixet = pixet
+                self.detector = devices[0]
+                print("Detector initialized.")
 
-    def capture_point(dev, pixet, Nframes, Nseconds, filename):
-        """Capture data at the current point using the detector."""
-        print(f'Capturing at {filename} ...')
-        rc = dev.doSimpleIntegralAcquisition(Nframes, Nseconds, pixet.PX_FTYPE_AUTODETECT, filename)
-        if rc == 0:
-            print('Capture successful.')
+    def capture_point(self, Nframes, Nseconds, filename):
+        if self.dev:
+            # --- Dummy capture (DEV mode): Create two Gaussians and combine them. ---
+            print(f"DEV mode: Dummy capture_point called. Saving to {filename}")
+            # Create a 100x100 grid.
+            x = np.arange(100)
+            y = np.arange(100)
+            X, Y = np.meshgrid(x, y)
+            # First Gaussian: peak > 1e6.
+            x0_1 = np.random.uniform(0, 100)
+            y0_1 = np.random.uniform(0, 100)
+            sigma_x1 = np.random.uniform(5, 15)
+            sigma_y1 = np.random.uniform(5, 15)
+            amplitude1 = np.random.uniform(1e6 + 1, 2e6)
+            gaussian1 = amplitude1 * np.exp(-(((X - x0_1) ** 2) / (2 * sigma_x1 ** 2) +
+                                              ((Y - y0_1) ** 2) / (2 * sigma_y1 ** 2)))
+            # Second Gaussian: peak < 1e6.
+            x0_2 = np.random.uniform(0, 100)
+            y0_2 = np.random.uniform(0, 100)
+            sigma_x2 = np.random.uniform(5, 15)
+            sigma_y2 = np.random.uniform(5, 15)
+            amplitude2 = np.random.uniform(1e5, 1e6 - 1)
+            gaussian2 = amplitude2 * np.exp(-(((X - x0_2) ** 2) / (2 * sigma_x2 ** 2) +
+                                              ((Y - y0_2) ** 2) / (2 * sigma_y2 ** 2)))
+            combined = gaussian1 + gaussian2
+            np.savetxt(filename, combined, fmt='%.6f')
         else:
-            print('Capture error:', rc)
+            print(f"Capturing at {filename} ...")
+            rc = self.detector.doSimpleIntegralAcquisition(Nframes, Nseconds, self.pixet.PX_FTYPE_AUTODETECT, filename)
+            if rc == 0:
+                print("Capture successful.")
+            else:
+                print("Capture error:", rc)
 
-    def init_stage(sim_en, serial_num, x_chan, y_chan):
+
+class XYStageController:
+    def __init__(self, serial_num="default_serial", x_chan=2, y_chan=1, dev=True, scaling_factor=10000):
         """
-        Initialize the XY stage using pylablib.
-
+        Initializes the XY stage controller.
         Parameters:
-          simulation_enabled (bool): If True, enable simulation.
           serial_num (str): Serial number of the stage.
-
-        Returns:
-          stage: An instance of Thorlabs.KinesisMotor with an open connection.
+          x_chan (int): X channel number.
+          y_chan (int): Y channel number.
+          dev (bool): If True, uses dummy functions.
         """
+        self.serial_num = serial_num
+        self.x_chan = x_chan
+        self.y_chan = y_chan
+        self.dev = dev
+        self.stage = None  # In DEV mode, we use a dummy stage object.
+        self.scaling_factor = scaling_factor
 
-        # Optionally, list devices and check if your device is connected:
-        devices = Thorlabs.list_kinesis_devices()
-        if not devices:
-            print("No Thorlabs devices found!")
-            return None
+    def init_stage(self):
+        if self.dev:
+            print("DEV mode: Dummy init_stage called.")
+            # Create a dummy stage with dummy function calls.
+            class DummyStage:
+                def __getattr__(self, name):
+                    return lambda *args, **kwargs: print(f"DEV mode: Called {name} with args {args} and kwargs {kwargs}")
+            self.stage = DummyStage()
+            return self.stage
         else:
-            print("Detected devices:")
-            for dev in devices:
-                print(dev)
+            from pylablib.devices import Thorlabs
+            devices = Thorlabs.list_kinesis_devices()
+            if not devices:
+                print("No Thorlabs devices found!")
+                self.stage = None
+                return None
+            else:
+                print("Detected Thorlabs devices:")
+                for dev in devices:
+                    print(dev)
+            self.stage = Thorlabs.KinesisMotor(str(self.serial_num))
+            self.stage.open()  # Open the device connection.
+            time.sleep(1)  # Allow time for initialization.
+            return self.stage
 
-        # Create the stage object (using the provided serial number)
-        stage = Thorlabs.KinesisMotor(str(serial_num))
-        stage.open()  # Open the device connection
-        time.sleep(1)  # Allow time for initialization
-        return stage
+    def home_stage(self, home_timeout=10):
+        if self.stage is None:
+            print("Stage not initialized.")
+            return None, None
+        if self.dev:
+            time.sleep(2)
+            print("DEV mode: Dummy home_stage called.")
+            return 0, 0
+        else:
+            print("Homing stage on X and Y axes...")
+            self.stage.home(channel=1)
+            self.stage.home(channel=2)
+            self.stage.wait_for_home(channel=1, timeout=home_timeout)
+            self.stage.wait_for_home(channel=2, timeout=home_timeout)
+            x_final = self.stage.get_position(channel=self.x_chan, scale=True) / self.scaling_factor
+            y_final = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
+            print(f"Final homed positions: X = {x_final} mm, Y = {y_final} mm")
+            return x_final, y_final
 
-    def home_stage(stage, serial_num, x_chan, y_chan, home_timeout=60):
-        """
-        Home the XY stage on both axes and return the final positions.
+    def move_stage(self, x_new, y_new, move_timeout=10):
+        if self.stage is None:
+            print("Stage not initialized.")
+            return None, None
+        if self.dev:
+            time.sleep(1)
+            print(f"DEV mode: Dummy move_stage called. Pretending to move to ({x_new}, {y_new}).")
+            return x_new, y_new
+        else:
+            print(f"Moving stage: Target X = {x_new} mm, Target Y = {y_new} mm")
+            self.stage.move_to(y_new * self.scaling_factor, channel=self.y_chan, scale=True)
+            self.stage.move_to(x_new * self.scaling_factor, channel=self.x_chan, scale=True)
+            self.stage.wait_move(channel=self.x_chan, timeout=move_timeout)
+            self.stage.wait_move(channel=self.y_chan, timeout=move_timeout)
+            x_final = self.stage.get_position(channel=self.x_chan, scale=True)
+            y_final = self.stage.get_position(channel=self.y_chan, scale=True)
+            print(f"Final positions: X = {x_final} mm, Y = {y_final} mm")
+            return x_final, y_final
 
-        Parameters:
-          stage: The stage object returned from init_stage.
-          home_timeout (int): Maximum wait time in seconds for homing.
-
-        Returns:
-          (x_pos, y_pos): Tuple of the homed positions in mm.
-        """
-        print("Homing stage on X and Y axes...")
-        # Home channel 1 (X axis) and channel 2 (Y axis)
-        stage.home(channel=1)
-        stage.home(channel=2)
-        stage.wait_for_home(channel=1, timeout=home_timeout)
-        stage.wait_for_home(channel=2, timeout=home_timeout)
-
-        # Return the homed positions
-        x_final = stage.get_position(channel=1, scale=True)
-        y_final = stage.get_position(channel=2, scale=True)
-        print(f"Final homed positions: X = {x_final} mm, Y = {y_final} mm")
-        return x_final, y_final
-
-    def move_stage(stage, serial_num, x_chan, y_chan,  x_new, y_new, move_timeout=60):
-        """
-        Move the stage to an absolute position (x_new, y_new) in mm.
-
-        Parameters:
-          stage: The stage object.
-          x_new (float): Desired X position in mm.
-          y_new (float): Desired Y position in mm.
-          move_timeout (int): Maximum wait time in seconds for the move to complete.
-
-        Returns:
-          (x_pos, y_pos): Tuple with the final positions in mm.
-        """
-        print(f"Moving stage: Target X = {x_new} mm, Target Y = {y_new} mm")
-        # Command the stage to move; the API automatically converts from mm to internal units
-        stage.move_to(x_new * 10000, channel=2, scale=True)
-        stage.move_to(y_new * 10000, channel=1, scale=True)
-
-        stage.wait_move(channel=2, timeout=move_timeout)
-        stage.wait_move(channel=1, timeout=move_timeout)
-
-        # Read and return the final positions
-        x_final = stage.get_position(channel=2, scale=True)
-        y_final = stage.get_position(channel=1, scale=True)
-        print(f"Final positions: X = {x_final} mm, Y = {y_final} mm")
-        return x_final, y_final
+    def get_xy_position(self):
+        if self.stage is None:
+            return None, None
+        if self.dev:
+            return -1, -1
+        else:
+            x_final = self.stage.get_position(channel=self.x_chan, scale=True) / self.scaling_factor
+            y_final = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
+            return x_final, y_final

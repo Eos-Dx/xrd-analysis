@@ -61,6 +61,10 @@ class ZonePointsMixin:
 
         self.generatePointsBtn = QPushButton("Generate Points")
         inputLayout.addWidget(self.generatePointsBtn)
+        self.updateCoordinatesBtn = QPushButton("Update Coordinates")
+        inputLayout.addWidget(self.updateCoordinatesBtn)
+        self.updateCoordinatesBtn.clicked.connect(self.updateCoordinates)
+
         layout.addLayout(inputLayout)
 
         # Table to display points.
@@ -88,6 +92,10 @@ class ZonePointsMixin:
         # self.include_center is determined from the center of the include shape.
         # That pixel coordinate corresponds to (self.real_x_pos_mm, self.real_y_pos_mm) in real mm.
         self.include_center = (0, 0)  # default value, should be set by the other mixin
+
+    def updateCoordinates(self):
+        """Recalculates the coordinates in the table using the updated spin box values."""
+        self.updatePointsTable()
 
     def updateConversionLabel(self):
         self.conversionLabel.setText(f"Conversion: {self.pixel_to_mm_ratio:.2f} px/mm")
