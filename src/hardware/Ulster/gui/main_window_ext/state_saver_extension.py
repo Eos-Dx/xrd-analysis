@@ -170,8 +170,6 @@ class StateSaverMixin:
             self.user_defined_points = []
 
         # Update the tables (if methods exist).
-        if hasattr(self, "updateShapeTable"):
-            self.updateShapeTable()
         if hasattr(self, "updatePointsTable"):
             self.updatePointsTable()
 

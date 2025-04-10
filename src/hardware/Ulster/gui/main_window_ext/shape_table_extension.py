@@ -212,3 +212,34 @@ class ShapeTableMixin:
                     self.image_view.shapes.remove(shape_info)
                     break
         self.updateShapeTable()
+
+    def deleteAllShapesFromTable(self):
+        # Delete all rows from the table and remove all corresponding shapes from the image view.
+        shapes_to_delete = list(self.image_view.shapes)  # Make a copy to avoid modifying while iterating
+
+        for shape_info in shapes_to_delete:
+            item = shape_info.get("item")
+            if item is not None:
+                try:
+                    self.image_view.scene.removeItem(item)
+                except RuntimeError:
+                    pass  # Item may already be deleted
+            # Remove any extra items if they exist
+            for extra_key in ["diagonals", "center_marker"]:
+                extra_items = shape_info.get(extra_key)
+                if isinstance(extra_items, list):
+                    for extra_item in extra_items:
+                        try:
+                            self.image_view.scene.removeItem(extra_item)
+                        except RuntimeError:
+                            pass
+                elif extra_items is not None:
+                    try:
+                        self.image_view.scene.removeItem(extra_items)
+                    except RuntimeError:
+                        pass
+
+        # Clear the list of shapes
+        self.image_view.shapes.clear()
+        # Update the shape table
+        self.updateShapeTable()

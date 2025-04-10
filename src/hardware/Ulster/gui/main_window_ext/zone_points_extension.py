@@ -348,6 +348,38 @@ class ZonePointsMixin:
 
         self.updatePointsTable()
 
+    def deleteAllPoints(self):
+        """
+        Deletes all points (both generated and user-defined) from the scene
+        and clears the corresponding entries in the points dictionary.
+        """
+        # Delete all generated points.
+        generated_points = self.image_view.points_dict["generated"]["points"]
+        generated_zones = self.image_view.points_dict["generated"]["zones"]
+        # Iterate in reverse order (good practice when removing items from a list)
+        try:
+            for point_item, zone_item in zip(reversed(generated_points), reversed(generated_zones)):
+                self.image_view.scene.removeItem(point_item)
+                self.image_view.scene.removeItem(zone_item)
+        except Exception as e:
+            print(e)
+        # Clear the generated lists.
+        self.image_view.points_dict["generated"]["points"].clear()
+        self.image_view.points_dict["generated"]["zones"].clear()
+
+        # Delete all user-defined points.
+        user_points = self.image_view.points_dict["user"]["points"]
+        user_zones = self.image_view.points_dict["user"]["zones"]
+        for point_item, zone_item in zip(reversed(user_points), reversed(user_zones)):
+            self.image_view.scene.removeItem(point_item)
+            self.image_view.scene.removeItem(zone_item)
+        # Clear the user-defined lists.
+        self.image_view.points_dict["user"]["points"].clear()
+        self.image_view.points_dict["user"]["zones"].clear()
+
+        # Update the points table UI.
+        self.updatePointsTable()
+
     def eventFilter(self, source, event):
         """
         Captures key press events on the points table. If the Delete key is pressed,
