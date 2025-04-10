@@ -106,8 +106,8 @@ class ShapeTableMixin:
                         shape_info["diagonals"] = [diag1, diag2]
                         shape_info["center_marker"] = center_point
 
-                        # Calculate conversion factor: the real square is 19mm per side.
-                        pixels_per_mm = new_side / 19.0
+                        # Calculate conversion factor: the real square is 18mm per side.
+                        pixels_per_mm = new_side / 18.0
                         shape_info["pixels_per_mm"] = pixels_per_mm
                         # Also update the Zone Points mixin attributes.
                         self.pixel_to_mm_ratio = pixels_per_mm
