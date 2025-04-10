@@ -145,3 +145,4 @@ eosdxanalysis/
 # MacOS
 .DS_Store
 src/hardware/Ulster/gui/autosave_state_prev.json
+src/hardware/Ulster/gui/autosave_state_prev.json
