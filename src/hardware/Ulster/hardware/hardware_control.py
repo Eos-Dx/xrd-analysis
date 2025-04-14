@@ -67,11 +67,14 @@ class DetectorController:
             np.savetxt(filename, combined, fmt='%.6f')
         else:
             print(f"Capturing at {filename} ...")
-            rc = self.detector.doSimpleIntegralAcquisition(Nframes, Nseconds, self.pixet.PX_FTYPE_AUTODETECT, filename)
-            if rc == 0:
-                print("Capture successful.")
-            else:
-                print("Capture error:", rc)
+            try:
+                rc = self.detector.doSimpleIntegralAcquisition(Nframes, Nseconds, self.pixet.PX_FTYPE_AUTODETECT, filename)
+                if rc == 0:
+                    print("Capture successful.")
+                else:
+                    print("Capture error:", rc)
+            except Exception as e:
+                print(f'During capture: {e}')
 
 
 class XYStageController:
@@ -149,8 +152,8 @@ class XYStageController:
             self.stage.move_to(x_new * self.scaling_factor, channel=self.x_chan, scale=True)
             self.stage.wait_move(channel=self.x_chan, timeout=move_timeout)
             self.stage.wait_move(channel=self.y_chan, timeout=move_timeout)
-            x_final = self.stage.get_position(channel=self.x_chan, scale=True)
-            y_final = self.stage.get_position(channel=self.y_chan, scale=True)
+            x_final = self.stage.get_position(channel=self.x_chan, scale=True) / self.scaling_factor
+            y_final = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
             print(f"Final positions: X = {x_final} mm, Y = {y_final} mm")
             return x_final, y_final
 

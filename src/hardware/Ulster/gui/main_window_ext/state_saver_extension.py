@@ -2,13 +2,14 @@ import os
 import json
 import shutil
 from PyQt5.QtCore import QTimer, QRectF
-from PyQt5.QtGui import QPen, QColor
+from PyQt5.QtGui import QPen, QColor, QPixmap
+from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem
 
 class StateSaverMixin:
     AUTO_STATE_FILE = "autosave_state.json"
     PREV_STATE_FILE = "autosave_state_prev.json"
 
-    def restoreState(self, file_path=None):
+    def restore_state(self, file_path=None):
         """
         Restores the state from a JSON file.
 
@@ -45,9 +46,9 @@ class StateSaverMixin:
         # --- Restore image ---
         image_path = state.get("image")
         if image_path:
-            from PyQt5.QtGui import QPixmap
+
             pixmap = QPixmap(image_path)
-            self.image_view.setImage(pixmap, image_path=image_path)
+            self.image_view.set_image(pixmap, image_path=image_path)
         else:
             print("No image to restore.")
 
@@ -76,13 +77,11 @@ class StateSaverMixin:
             x, y = geometry.get("x"), geometry.get("y")
             w, h = geometry.get("width"), geometry.get("height")
             if shape_type.lower() in ["rect", "rectangle"]:
-                from PyQt5.QtWidgets import QGraphicsRectItem
                 item = QGraphicsRectItem(x, y, w, h)
             elif shape_type.lower() in ["ellipse", "circle"]:
                 from PyQt5.QtWidgets import QGraphicsEllipseItem
                 item = QGraphicsEllipseItem(x, y, w, h)
             else:
-                from PyQt5.QtWidgets import QGraphicsRectItem
                 item = QGraphicsRectItem(x, y, w, h)
             # Mark active zones (include, exclude, sample holder) visually.
             if role.lower() in ["include", "exclude", "sample holder"]:
@@ -121,7 +120,6 @@ class StateSaverMixin:
             y = pt.get("y")
             pt_type = pt.get("type")
             if pt_type == "user":
-                from PyQt5.QtWidgets import QGraphicsEllipseItem
                 blue_radius = 10
                 # Create the blue marker.
                 user_marker = QGraphicsEllipseItem(-blue_radius, -blue_radius, 2 * blue_radius, 2 * blue_radius)
@@ -141,7 +139,6 @@ class StateSaverMixin:
                 self.image_view.scene.addItem(zone_item)
                 self.image_view.points_dict["user"]["zones"].append(zone_item)
             elif pt_type == "generated":
-                from PyQt5.QtWidgets import QGraphicsEllipseItem
                 # Create the red marker.
                 red_marker = QGraphicsEllipseItem(x - 4, y - 4, 8, 8)
                 red_marker.setBrush(QColor("red"))
@@ -169,11 +166,10 @@ class StateSaverMixin:
             self.generated_points = []
             self.user_defined_points = []
 
-        # Update the tables (if methods exist).
-        if hasattr(self, "updatePointsTable"):
-            self.updatePointsTable()
+        self.update_points_table()
+        self.update_shape_table()
 
-    def autoSaveState(self):
+    def auto_save_state(self):
         """
         Collects the current state and saves it to AUTO_STATE_FILE.
         Before saving, copies the current autosave file to PREV_STATE_FILE (if it exists).
@@ -236,7 +232,7 @@ class StateSaverMixin:
         except Exception as e:
             print("Error saving state:", e)
 
-    def manualSaveState(self):
+    def manual_save_state(self):
         """
         Manually collects the current state and saves it directly to PREV_STATE_FILE.
         This method is intended to be triggered by a toolbar button.
@@ -301,11 +297,11 @@ class StateSaverMixin:
         except Exception as e:
             print("Error manually saving state:", e)
 
-    def setupAutoSave(self, interval=2000):
+    def setup_auto_save(self, interval=2000):
         """
         Sets up a QTimer to automatically save the state every 'interval' milliseconds.
         """
         self.autoSaveTimer = QTimer(self)
-        self.autoSaveTimer.timeout.connect(self.autoSaveState)
+        self.autoSaveTimer.timeout.connect(self.auto_save_state)
         self.autoSaveTimer.start(interval)
 

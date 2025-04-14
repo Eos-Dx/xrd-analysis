@@ -1,50 +1,45 @@
 {
-    "image": "D:/OneDrive/OneDrive - Matur/General - Ulster/Liver/mice_liver/U1/Xena_Cu/20250411/Calibrations_Background/AgBH_4mm_sample_holder_20250410_161014.jpg",
-    "rotation_angle": 0,
+    "image": "C:\\dev\\eos_play\\unzipped_data\\Ulster\\pancreas\\sheep_pancreas\\U2\\Xena_Cu\\20250313\\P1a_L4_20250218.jpg",
+    "rotation_angle": 3,
     "crop_rect": null,
     "shapes": [
         {
-            "id": 4,
+            "id": 1,
             "type": "Rectangle",
             "role": "sample holder",
             "geometry": {
-                "x": 13.30511474609375,
-                "y": 18.073486328125,
-                "width": 869.843627929687,
-                "height": 869.843627929687
+                "x": 116.255615234375,
+                "y": 2780.8216552734366,
+                "width": 1163.6679687499995,
+                "height": 1163.6679687499995
             }
         },
         {
-            "id": 5,
+            "id": 2,
             "type": "Circle",
             "role": "include",
             "geometry": {
-                "x": 350.56249999999983,
-                "y": 354.4687499999997,
-                "width": 181.6874999999999,
-                "height": 189.49999999999994
+                "x": 207.8083496093749,
+                "y": 2923.872802734374,
+                "width": 934.7861328124997,
+                "height": 915.7126464843745
             }
         }
     ],
     "zone_points": [
         {
-            "x": 394.5312499999997,
-            "y": 449.2187499999997,
-            "type": "user"
+            "x": 650.2533233880615,
+            "y": 3372.6275169268433,
+            "type": "generated"
         },
         {
-            "x": 451.1718749999997,
-            "y": 398.4374999999997,
-            "type": "user"
+            "x": 265.02630911256546,
+            "y": 3472.6757282177896,
+            "type": "generated"
         },
         {
-            "x": 484.37499999999966,
-            "y": 451.1718749999997,
-            "type": "user"
-        },
-        {
-            "x": 441.4062499999997,
-            "y": 498.04687499999966,
+            "x": 524.0,
+            "y": 151.0,
             "type": "user"
         }
     ],
@@ -52,5 +47,5 @@
         -5.15,
         -4.35
     ],
-    "pixel_to_mm_ratio": 48.213534884982614
+    "pixel_to_mm_ratio": 64.53710937499997
 }

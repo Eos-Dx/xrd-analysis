@@ -22,7 +22,7 @@ from hardware.Ulster.hardware.hardware_control import DetectorController, XYStag
 
 class ZoneMeasurementsMixin:
 
-    def createZoneMeasurementsWidget(self):
+    def create_zone_measurements_widget(self):
         """
         Creates a dock widget for zone measurements with controls and indicators.
         """
@@ -33,20 +33,20 @@ class ZoneMeasurementsMixin:
         # Hardware control buttons.
         buttonLayout = QHBoxLayout()
         self.initializeBtn = QPushButton("Initialize")
-        self.initializeBtn.clicked.connect(self.initializeHardware)
-        self.startBtn = QPushButton("Start measurement")
-        self.startBtn.clicked.connect(self.startMeasurements)
-        self.pauseBtn = QPushButton("Pause")
-        self.pauseBtn.clicked.connect(self.pauseMeasurements)
-        self.stopBtn = QPushButton("Stop")
-        self.stopBtn.clicked.connect(self.stopMeasurements)
-        self.startBtn.setEnabled(False)
-        self.pauseBtn.setEnabled(False)
-        self.stopBtn.setEnabled(False)
+        self.initializeBtn.clicked.connect(self.initialize_hardware)
+        self.start_btn = QPushButton("Start measurement")
+        self.start_btn.clicked.connect(self.start_measurements)
+        self.pause_btn = QPushButton("Pause")
+        self.pause_btn.clicked.connect(self.pause_measurements)
+        self.stop_btn = QPushButton("Stop")
+        self.stop_btn.clicked.connect(self.stop_measurements)
+        self.start_btn.setEnabled(False)
+        self.pause_btn.setEnabled(False)
+        self.stop_btn.setEnabled(False)
         buttonLayout.addWidget(self.initializeBtn)
-        buttonLayout.addWidget(self.startBtn)
-        buttonLayout.addWidget(self.pauseBtn)
-        buttonLayout.addWidget(self.stopBtn)
+        buttonLayout.addWidget(self.start_btn)
+        buttonLayout.addWidget(self.pause_btn)
+        buttonLayout.addWidget(self.stop_btn)
         layout.addLayout(buttonLayout)
 
         # Hardware status indicators and extra controls.
@@ -69,10 +69,10 @@ class ZoneMeasurementsMixin:
         statusLayout.addWidget(self.cameraIndicator)
 
         self.homeBtn = QPushButton("Home")
-        self.homeBtn.clicked.connect(self.homeStageButtonClicked)
+        self.homeBtn.clicked.connect(self.home_stage_button_clicked)
         statusLayout.addWidget(self.homeBtn)
         self.loadPosBtn = QPushButton("Load Position")
-        self.loadPosBtn.clicked.connect(self.loadPositionButtonClicked)
+        self.loadPosBtn.clicked.connect(self.load_position_button_clicked)
         statusLayout.addWidget(self.loadPosBtn)
 
         layout.addLayout(statusLayout)
@@ -106,7 +106,7 @@ class ZoneMeasurementsMixin:
         default_folder = self.config.get("default_folder", "") if hasattr(self, "config") else ""
         self.folderLineEdit.setText(default_folder)
         self.browseBtn = QPushButton("Browse...")
-        self.browseBtn.clicked.connect(self.browseFolder)
+        self.browseBtn.clicked.connect(self.browse_folder)
         folderLayout.addWidget(folderLabel)
         folderLayout.addWidget(self.folderLineEdit)
         folderLayout.addWidget(self.browseBtn)
@@ -119,6 +119,30 @@ class ZoneMeasurementsMixin:
         fileNameLayout.addWidget(fileNameLabel)
         fileNameLayout.addWidget(self.fileNameLineEdit)
         layout.addLayout(fileNameLayout)
+
+        # --- Additional controls for count and distance ---
+        additionalLayout = QHBoxLayout()
+        # Button and number editor for "Add count"
+        self.add_count_btn = QPushButton("Add count")
+        self.addCountSpinBox = QSpinBox()
+        self.addCountSpinBox.setMinimum(1)
+        self.addCountSpinBox.setMaximum(10000)
+        self.addCountSpinBox.setValue(60)  # default value 60
+        additionalLayout.addWidget(self.add_count_btn)
+        additionalLayout.addWidget(self.addCountSpinBox)
+        # Button and text editor for "Add distance"
+        self.add_distance_btn = QPushButton("Add distance")
+        self.add_distance_lineedit = QLineEdit("2cm")  # default value "2cm"
+        additionalLayout.addWidget(self.add_distance_btn)
+        additionalLayout.addWidget(self.add_distance_lineedit)
+        # Insert horizontal spacer.
+        additionalLayout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        layout.addLayout(additionalLayout)
+
+        # Connect the new controls.
+        self.add_distance_btn.clicked.connect(self.handle_add_distance)
+        self.add_count_btn.clicked.connect(self.handle_add_count)
+
 
         # Progress indicator.
         progressLayout = QHBoxLayout()
@@ -142,15 +166,28 @@ class ZoneMeasurementsMixin:
 
         # Timer to update the XY stage position.
         self.xyTimer = QTimer(self)
-        self.xyTimer.timeout.connect(self.updateXYPos)
+        self.xyTimer.timeout.connect(self.update_xy_pos)
         self.xyTimer.start(1000)
 
-    def browseFolder(self):
+    def handle_add_count(self):
+        # Append the value from addCountSpinBox to fileNameLineEdit.
+        current_filename = self.fileNameLineEdit.text()
+        appended_value = '_' + str(self.addCountSpinBox.value())
+        self.fileNameLineEdit.setText(current_filename + appended_value)
+
+    def handle_add_distance(self):
+        # Append the text from add_distance_lineedit to fileNameLineEdit.
+        current_filename = self.fileNameLineEdit.text()
+        appended_value = '_' + self.add_distance_lineedit.text()
+        self.fileNameLineEdit.setText(current_filename + appended_value)
+
+
+    def browse_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
         if folder:
             self.folderLineEdit.setText(folder)
 
-    def initializeHardware(self):
+    def initialize_hardware(self):
         """
         Initializes both the XY stage and detector.
         Depending on the self.config['DEV'] flag, this will initialize either dummy
@@ -185,11 +222,11 @@ class ZoneMeasurementsMixin:
             self.cameraIndicator.setStyleSheet("background-color: red; border-radius: 10px;")
 
         if ("green" in self.xyStageIndicator.styleSheet() and "green" in self.cameraIndicator.styleSheet()):
-            self.startBtn.setEnabled(True)
-            self.pauseBtn.setEnabled(False)
-            self.stopBtn.setEnabled(False)
+            self.start_btn.setEnabled(True)
+            self.pause_btn.setEnabled(False)
+            self.stop_btn.setEnabled(False)
 
-    def homeStageButtonClicked(self):
+    def home_stage_button_clicked(self):
         """
         Homes the XY stage using the controller.
         """
@@ -200,7 +237,7 @@ class ZoneMeasurementsMixin:
         else:
             print("Stage not initialized.")
 
-    def loadPositionButtonClicked(self):
+    def load_position_button_clicked(self):
         """
         Moves the XY stage to a fixed position when the Load Position button is clicked.
         """
@@ -210,13 +247,12 @@ class ZoneMeasurementsMixin:
         else:
             print("Stage not initialized.")
 
-    def startMeasurements(self):
+    def start_measurements(self):
         """
         Sorts points by coordinates and then begins the measurement sequence.
         """
         self.validate_folder()
-
-        self.manualSaveState()
+        self.manual_save_state()
         try:
             with open(Path(self.measurement_folder) / f'{self.fileNameLineEdit.text()}_state.json', "w") as f:
                 self.state['image_base64'] = encode_image_to_base64(self.image_view.current_image_path)
@@ -228,9 +264,9 @@ class ZoneMeasurementsMixin:
             print("No points available for measurement.")
             return
 
-        self.startBtn.setEnabled(False)
-        self.pauseBtn.setEnabled(True)
-        self.stopBtn.setEnabled(True)
+        self.start_btn.setEnabled(False)
+        self.pause_btn.setEnabled(True)
+        self.stop_btn.setEnabled(True)
         self.stopped = False
         self.paused = False
 
@@ -242,13 +278,13 @@ class ZoneMeasurementsMixin:
             center = item.sceneBoundingRect().center()
             # Calculate x_mm and y_mm as needed (adjusting for pixel scale etc.)
             x_mm = self.real_x_pos_mm.value() - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
-            y_mm = self.real_y_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
+            y_mm = self.real_x_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
             all_points.append((i, x_mm, y_mm))
         offset = len(generated_points)
         for j, item in enumerate(user_points):
             center = item.sceneBoundingRect().center()
             x_mm = self.real_x_pos_mm.value() - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
-            y_mm = self.real_y_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
+            y_mm = self.real_x_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
             all_points.append((offset + j, x_mm, y_mm))
         all_points_sorted = sorted(all_points, key=lambda tup: (tup[1], tup[2]))
         self.sorted_indices = [tup[0] for tup in all_points_sorted]
@@ -262,9 +298,9 @@ class ZoneMeasurementsMixin:
         self.measurementStartTime = time.time()
         self.timeRemainingLabel.setText(f"Estimated time: {self.initial_estimate:.0f} sec")
         print("Starting measurements in sorted order...")
-        self.measureNextPoint()
+        self.measure_next_point()
 
-    def measureNextPoint(self):
+    def measure_next_point(self):
         """
         Moves the stage to each point, performs a measurement,
         and converts the data.
@@ -277,9 +313,9 @@ class ZoneMeasurementsMixin:
             return
         if self.current_measurement_sorted_index >= self.total_points:
             print("All points measured.")
-            self.startBtn.setEnabled(True)
-            self.pauseBtn.setEnabled(False)
-            self.stopBtn.setEnabled(False)
+            self.start_btn.setEnabled(True)
+            self.pause_btn.setEnabled(False)
+            self.stop_btn.setEnabled(False)
             return
 
         index = self.sorted_indices[self.current_measurement_sorted_index]
@@ -318,7 +354,7 @@ class ZoneMeasurementsMixin:
             print(f"Error converting file: {e}")
             npy_filename = txt_filename  # Fallback
 
-        self.addMeasurementToTable(self.sorted_indices[self.current_measurement_sorted_index], npy_filename)
+        self.add_measurement_to_table(self.sorted_indices[self.current_measurement_sorted_index], npy_filename)
 
         # Visual feedback.
         green_brush = QColor(0, 255, 0)
@@ -328,9 +364,9 @@ class ZoneMeasurementsMixin:
             green_zone.setAlphaF(0.2)
             zone_item.setBrush(green_zone)
 
-        QTimer.singleShot(1000, self.measurementFinished)
+        QTimer.singleShot(1000, self.measurement_finished)
 
-    def addMeasurementToTable(self, row, measurement_filename):
+    def add_measurement_to_table(self, row, measurement_filename):
         """
         Adds a clickable button to the measurement cell.
         """
@@ -347,10 +383,10 @@ class ZoneMeasurementsMixin:
         btn = QPushButton(os.path.basename(measurement_filename))
         btn.setStyleSheet("Text-align:left; border: none; color: blue; text-decoration: underline;")
         btn.setCursor(Qt.PointingHandCursor)
-        btn.clicked.connect(lambda: self.showMeasurement(measurement_filename))
+        btn.clicked.connect(lambda: self.show_measurement(measurement_filename))
         layout.addWidget(btn)
 
-    def showMeasurement(self, measurement_filename):
+    def show_measurement(self, measurement_filename):
         """
         Opens a window that shows the raw 2D image and its azimuthal integration.
         Uses Seaborn to render the heatmap and lineplot.
@@ -392,7 +428,6 @@ class ZoneMeasurementsMixin:
         ax1 = fig1.add_subplot(111)
         sns.heatmap(data, robust=True, square=True, cmap="viridis", ax=ax1)
         ax1.set_title("2D Image")
-        # seaborn.heatmap by default displays a colorbar.
 
         # Right plot: integration result with y-axis on log scale using seaborn.
         fig2 = Figure(figsize=(5, 5))
@@ -402,7 +437,7 @@ class ZoneMeasurementsMixin:
         ax2.set_title("Azimuthal Integration")
         ax2.set_xlabel("q (nm^-1)")
         ax2.set_ylabel("Intensity")
-        ax2.set_yscale("log")  # Set y-axis to log scale
+        ax2.set_yscale("log")
 
         layout.addWidget(canvas1)
         layout.addWidget(canvas2)
@@ -414,7 +449,7 @@ class ZoneMeasurementsMixin:
         dialog.finished.connect(lambda _: self._open_measurement_windows.remove(dialog))
         dialog.show()
 
-    def pauseMeasurements(self):
+    def pause_measurements(self):
         """
         Toggles pause/resume state.
         """
@@ -422,15 +457,15 @@ class ZoneMeasurementsMixin:
             self.paused = False
         if not self.paused:
             self.paused = True
-            self.pauseBtn.setText("Resume")
+            self.pause_btn.setText("Resume")
             print("Measurements paused.")
         else:
             self.paused = False
-            self.pauseBtn.setText("Pause")
+            self.pause_btn.setText("Pause")
             print("Measurements resumed.")
-            self.measureNextPoint()
+            self.measure_next_point()
 
-    def stopMeasurements(self):
+    def stop_measurements(self):
         """
         Stops the measurement process and resets controls.
         """
@@ -439,13 +474,13 @@ class ZoneMeasurementsMixin:
         self.current_measurement_sorted_index = 0
         self.progressBar.setValue(0)
         self.timeRemainingLabel.setText("Measurement stopped.")
-        self.startBtn.setEnabled(True)
-        self.pauseBtn.setText("Pause")
-        self.pauseBtn.setEnabled(False)
-        self.stopBtn.setEnabled(False)
+        self.start_btn.setEnabled(True)
+        self.pause_btn.setText("Pause")
+        self.pause_btn.setEnabled(False)
+        self.stop_btn.setEnabled(False)
         print("Measurements stopped and reset.")
 
-    def measurementFinished(self):
+    def measurement_finished(self):
         """
         Called after one measurement completes; updates progress.
         """
@@ -463,13 +498,13 @@ class ZoneMeasurementsMixin:
             self.timeRemainingLabel.setText(f"{percent_complete:.0f}% done, {remaining:.0f} sec remaining")
 
         if self.current_measurement_sorted_index < self.total_points and not self.paused and not self.stopped:
-            self.measureNextPoint()
+            self.measure_next_point()
         else:
             if self.current_measurement_sorted_index >= self.total_points:
                 print("All points measured.")
-                self.pauseBtn.setEnabled(False)
-                self.stopBtn.setEnabled(False)
-                self.startBtn.setEnabled(True)
+                self.pause_btn.setEnabled(False)
+                self.stop_btn.setEnabled(False)
+                self.start_btn.setEnabled(True)
 
     def validate_folder(self):
         """
@@ -488,7 +523,7 @@ class ZoneMeasurementsMixin:
             print(f"Folder {self.measurement_folder} is not writable. Using current directory.")
             self.measurement_folder = os.getcwd()
 
-    def updateXYPos(self):
+    def update_xy_pos(self):
         """
         Updates the XY stage position.
         """

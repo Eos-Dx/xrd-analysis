@@ -1,7 +1,9 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QGraphicsView
 
+
 class ZoomMixin:
+
     def wheelEvent(self, event):
         zoomInFactor = 1.25
         zoomOutFactor = 1 / zoomInFactor
