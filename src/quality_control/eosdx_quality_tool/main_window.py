@@ -15,7 +15,7 @@ class MainWindow(QMainWindow, FileDialogMixin, H5HandlerMixin, DataFrameStatsMix
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("EosDX Quality Tool")
-        self.resize(700, 500)
+        self.resize(600, 400)
         logo_path = Path('logo_quality.png')  # Adjust the path.
         if logo_path.exists():
             self.setWindowIcon(QIcon(str(logo_path)))

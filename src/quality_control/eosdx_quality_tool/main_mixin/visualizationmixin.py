@@ -179,6 +179,7 @@ class VisualizationMixin:
 
         # --- Plot 1: Raw 2D Data ---
         self.fig_raw.clf()
+        self.fig_raw.set_size_inches(4 / 2.54, 3 / 2.54)  # 6cm x 4cm in inches
         ax_raw = self.fig_raw.add_subplot(111)
         measurement_data = row.get('measurement_data')
         if measurement_data is not None:
@@ -190,7 +191,7 @@ class VisualizationMixin:
 
         # --- Plot 2: XY Plot (Azimuthal Integration) ---
         self.fig_xy.clf()
-        self.fig_xy.set_size_inches(8 / 2.54, 6 / 2.54)  # 8cm x 6cm in inches
+        self.fig_xy.set_size_inches(4 / 2.54, 3 / 2.54)  # 6cm x 4cm in inches
         ax_xy = self.fig_xy.add_subplot(111)
         radial_profile_data = row.get('radial_profile_data')
         q_range = row.get('q_range')
@@ -212,6 +213,7 @@ class VisualizationMixin:
 
         # --- Plot 3: AgBH Plot ---
         self.fig_agbh.clf()
+        self.fig_agbh.set_size_inches(4 / 2.54, 3 / 2.54)  # 6cm x 4cm in inches
         ax_agbh = self.fig_agbh.add_subplot(111)
         calib_name = row.get('calib_name')
         if self.calibration_df is not None and calib_name is not None:
@@ -238,6 +240,7 @@ class VisualizationMixin:
 
         # --- Plot 4: Cake Representation ---
         self.fig_cake.clf()
+        self.fig_cake.set_size_inches(4/ 2.54, 3 / 2.54)  # 6cm x 4cm in inches
         ax_cake = self.fig_cake.add_subplot(111)
         # Assuming calib_row is defined from Plot 3.
         try:
