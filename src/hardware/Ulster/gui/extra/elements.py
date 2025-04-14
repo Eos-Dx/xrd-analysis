@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QGraphicsEllipseItem
 
 
 class HoverableEllipseItem(QGraphicsEllipseItem):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAcceptHoverEvents(True)

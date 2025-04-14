@@ -2,7 +2,9 @@ from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene
 from PyQt5.QtCore import QRectF
 from PyQt5.QtGui import QPixmap
 
+
 class ImageViewBasic(QGraphicsView):
+
     def __init__(self, parent=None):
         self.scene = QGraphicsScene()
         super().__init__(self.scene, parent)
@@ -12,7 +14,7 @@ class ImageViewBasic(QGraphicsView):
         self.current_image_path = None
         self.rotation_angle = 0
 
-    def setImage(self, pixmap: QPixmap, image_path=None):
+    def set_image(self, pixmap: QPixmap, image_path=None):
         self.current_pixmap = pixmap
         # Store the file path if provided.
         if image_path:

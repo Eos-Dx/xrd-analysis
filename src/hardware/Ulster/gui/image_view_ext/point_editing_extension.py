@@ -3,13 +3,13 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPen, QColor
 from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
 
+
 class PointEditingMixin:
-    def initPointEditing(self):
-        # Assume the unified dictionary is already created in ZonePointsMixin.
-        if not hasattr(self, 'points_dict'):
-            self.points_dict = {
-                "generated": {"points": [], "zones": []},
-                "user": {"points": [], "zones": []}
+
+    def init_point_editing(self):
+        self.points_dict = {
+            "generated": {"points": [], "zones": []},
+            "user": {"points": [], "zones": []}
             }
 
     def mouseDoubleClickEvent(self, event):
@@ -53,7 +53,7 @@ class PointEditingMixin:
             self.scene.addItem(pt_item)
             self.points_dict["user"]["points"].append(pt_item)
             self.scene.update()
-            self.window().updatePointsTable()
+            self.window().update_points_table()
         elif event.button() == Qt.RightButton:
             pos = self.mapToScene(event.pos())
             threshold = 5  # pixels
@@ -70,7 +70,7 @@ class PointEditingMixin:
                     self.scene.removeItem(pt)
                     self.points_dict["user"]["points"].remove(pt)
                     self.scene.update()
-                    self.window().updatePointsTable()
+                    self.window().update_points_table()
                     break
         else:
             super().mouseDoubleClickEvent(event)

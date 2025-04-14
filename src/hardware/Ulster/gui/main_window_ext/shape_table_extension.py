@@ -1,12 +1,14 @@
 from PyQt5.QtWidgets import (
-    QDockWidget, QTableWidget, QTableWidgetItem, QAbstractItemView,
-    QMenu
+    QDockWidget, QTableWidget, QTableWidgetItem, QAbstractItemView, QMenu,
+    QGraphicsLineItem, QGraphicsEllipseItem
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QBrush, QPen
 
+
 class ShapeTableMixin:
-    def createShapeTable(self):
+
+    def create_shape_table(self):
         self.shapeDock = QDockWidget("Shapes", self)
         # Increase the column count to include a "Role" column.
         self.shapeTable = QTableWidget(0, 7, self)
@@ -36,114 +38,124 @@ class ShapeTableMixin:
             sampleHolderAct = menu.addAction("Sample Holder")
             action = menu.exec_(self.shapeTable.viewport().mapToGlobal(pos))
             if action == includeAct:
-                self.updateShapeRole(row, "include")
+                self.update_shape_role(row, "include")
             elif action == excludeAct:
-                self.updateShapeRole(row, "exclude")
+                self.update_shape_role(row, "exclude")
             elif action == sampleHolderAct:
-                self.updateShapeRole(row, "sample holder")
+                self.update_shape_role(row, "sample holder")
 
-    def updateShapeRole(self, row, role):
+    def apply_shape_role(self, shape_info):
+        """Update the appearance of the shape based on its role."""
+        role = shape_info.get("role", "include")
+        item = shape_info["item"]
+
+        # Remove any previous extra items if present.
+        if "diagonals" in shape_info:
+            for line in shape_info["diagonals"]:
+                self.image_view.scene.removeItem(line)
+            shape_info.pop("diagonals")
+        if "center_marker" in shape_info:
+            self.image_view.scene.removeItem(shape_info["center_marker"])
+            shape_info.pop("center_marker")
+
+        if role == "include":
+            pen = QPen(QColor("green"), 2)
+            item.setPen(pen)
+        elif role == "exclude":
+            pen = QPen(QColor("red"), 2)
+            item.setPen(pen)
+        elif role == "sample holder":
+            # Convert the shape to a square and update its appearance.
+            rect = item.rect() if hasattr(item, 'rect') else item.boundingRect()
+            cx = rect.x() + rect.width() / 2
+            cy = rect.y() + rect.height() / 2
+            side = min(rect.width(), rect.height())
+            new_side = side
+            new_x = cx - new_side / 2
+            new_y = cy - new_side / 2
+
+            # Update shape to square.
+            item.setRect(new_x, new_y, new_side, new_side)
+            pen = QPen(QColor("purple"), 2)
+            item.setPen(pen)
+
+            # Draw diagonal lines.
+
+            diag1 = QGraphicsLineItem(new_x, new_y, new_x + new_side, new_y + new_side)
+            diag2 = QGraphicsLineItem(new_x + new_side, new_y, new_x, new_y + new_side)
+            diag_pen = QPen(QColor("purple"), 1)
+            diag1.setPen(diag_pen)
+            diag2.setPen(diag_pen)
+            self.image_view.scene.addItem(diag1)
+            self.image_view.scene.addItem(diag2)
+
+            # Draw center marker.
+            center_radius = 3
+            center_point = QGraphicsEllipseItem(cx - center_radius, cy - center_radius,
+                                                2 * center_radius, 2 * center_radius)
+            center_point.setBrush(QColor("purple"))
+            center_point.setPen(QPen(Qt.NoPen))
+            self.image_view.scene.addItem(center_point)
+
+            # Store the extra graphics items so they can be removed later.
+            shape_info["diagonals"] = [diag1, diag2]
+            shape_info["center_marker"] = center_point
+
+            # Conversion calculation.
+            pixels_per_mm = new_side / 18.0  # Assuming 18mm per side for a real square.
+            shape_info["pixels_per_mm"] = pixels_per_mm
+            self.pixel_to_mm_ratio = pixels_per_mm
+            self.include_center = (cx, cy)
+            self.update_conversion_label()
+        else:
+            pen = QPen(QColor("black"), 2)
+            item.setPen(pen)
+
+        # Always update the scene to reflect changes.
+        self.image_view.scene.update()
+
+    def update_shape_role(self, row, role):
         try:
             shape_id = int(self.shapeTable.item(row, 0).text())
+            # Update the role in shape_info and apply appearance changes.
             for shape_info in self.image_view.shapes:
                 if shape_info["id"] == shape_id:
                     shape_info["role"] = role
-                    # Remove "isNew" flag now that a role was explicitly set.
-                    if "isNew" in shape_info:
-                        shape_info.pop("isNew")
-                    # Remove any previous extra items (diagonals or center marker) if present.
-                    if "diagonals" in shape_info:
-                        for item in shape_info["diagonals"]:
-                            self.image_view.scene.removeItem(item)
-                        shape_info.pop("diagonals")
-                    if "center_marker" in shape_info:
-                        self.image_view.scene.removeItem(shape_info["center_marker"])
-                        shape_info.pop("center_marker")
-
-                    if role == "include":
-                        pen = QPen(QColor("green"), 2)
-                        shape_info["item"].setPen(pen)
-                    elif role == "exclude":
-                        pen = QPen(QColor("red"), 2)
-                        shape_info["item"].setPen(pen)
-                    elif role == "sample holder":
-                        # Convert the shape to a square and draw diagonals and center marker.
-                        item = shape_info["item"]
-                        # Get current rectangle.
-                        rect = item.rect() if hasattr(item, 'rect') else item.boundingRect()
-                        # Compute center of the shape.
-                        cx = rect.x() + rect.width() / 2
-                        cy = rect.y() + rect.height() / 2
-                        # Use the smaller dimension to force a square.
-                        side = min(rect.width(), rect.height())
-                        new_side = side
-                        new_x = cx - new_side / 2
-                        new_y = cy - new_side / 2
-                        # Update shape to square.
-                        item.setRect(new_x, new_y, new_side, new_side)
-                        pen = QPen(QColor("purple"), 2)
-                        item.setPen(pen)
-
-                        # Draw diagonal lines.
-                        from PyQt5.QtWidgets import QGraphicsLineItem, QGraphicsEllipseItem
-                        diag1 = QGraphicsLineItem(new_x, new_y, new_x + new_side, new_y + new_side)
-                        diag2 = QGraphicsLineItem(new_x + new_side, new_y, new_x, new_y + new_side)
-                        diag_pen = QPen(QColor("purple"), 1)
-                        diag1.setPen(diag_pen)
-                        diag2.setPen(diag_pen)
-                        self.image_view.scene.addItem(diag1)
-                        self.image_view.scene.addItem(diag2)
-
-                        # Draw center marker.
-                        center_radius = 3
-                        center_point = QGraphicsEllipseItem(cx - center_radius, cy - center_radius,
-                                                            2 * center_radius, 2 * center_radius)
-                        center_point.setBrush(QColor("purple"))
-                        center_point.setPen(QPen(Qt.NoPen))
-                        self.image_view.scene.addItem(center_point)
-
-                        # Store extra items so they can be removed later.
-                        shape_info["diagonals"] = [diag1, diag2]
-                        shape_info["center_marker"] = center_point
-
-                        # Calculate conversion factor: the real square is 18mm per side.
-                        pixels_per_mm = new_side / 18.0
-                        shape_info["pixels_per_mm"] = pixels_per_mm
-                        # Also update the Zone Points mixin attributes.
-                        self.pixel_to_mm_ratio = pixels_per_mm
-                        self.include_center = (cx, cy)
-                        # Now update the conversion label.
-                        self.updateConversionLabel()
-                    else:
-                        pen = QPen(QColor("black"), 2)
-                        shape_info["item"].setPen(pen)
-                    self.image_view.scene.update()
+                    # Remove "isNew" flag if present.
+                    shape_info.pop("isNew", None)
+                    # Update appearance using the new helper method.
+                    self.apply_shape_role(shape_info)
                     break
-            self.updateShapeTable()
+            self.update_shape_table()  # Refresh the table to display the updated role.
         except Exception as e:
             print("Error updating shape role:", e)
 
-    def updateShapeTable(self):
+    def update_shape_table(self):
         shapes = getattr(self.image_view, 'shapes', [])
         self.shapeTable.blockSignals(True)
         self.shapeTable.setRowCount(len(shapes))
         for row, shape_info in enumerate(shapes):
-            shape_id = shape_info.get("id", "")
-            shape_type = shape_info.get("type", "")
-            # Get the role; default to "include" if not present.
-            role = shape_info.get("role", "include")
+            # If a role has already been defined, enforce the appearance.
+            if "role" in shape_info:
+                self.apply_shape_role(shape_info)
+            else:
+                # Default role is "include" if none is set.
+                shape_info["role"] = "include"
+
+            role = shape_info["role"]
             item = shape_info.get("item")
             rect = item.rect() if hasattr(item, 'rect') else item.boundingRect()
-            self.shapeTable.setItem(row, 0, QTableWidgetItem(str(shape_id)))
-            self.shapeTable.setItem(row, 1, QTableWidgetItem(shape_type))
+
+            # Update table cells.
+            self.shapeTable.setItem(row, 0, QTableWidgetItem(str(shape_info.get("id", ""))))
+            self.shapeTable.setItem(row, 1, QTableWidgetItem(shape_info.get("type", "")))
             self.shapeTable.setItem(row, 2, QTableWidgetItem(f"{rect.x():.2f}"))
             self.shapeTable.setItem(row, 3, QTableWidgetItem(f"{rect.y():.2f}"))
             self.shapeTable.setItem(row, 4, QTableWidgetItem(f"{rect.width():.2f}"))
             self.shapeTable.setItem(row, 5, QTableWidgetItem(f"{rect.height():.2f}"))
             self.shapeTable.setItem(row, 6, QTableWidgetItem(role))
-            # Set the row background color:
-            # Gray for new elements; otherwise, light green for include,
-            # light coral for exclude, and purple for sample holder.
+
+            # Set the row background color based on the role:
             if shape_info.get("isNew", False):
                 color = QColor("gray")
             else:
@@ -183,12 +195,12 @@ class ShapeTableMixin:
 
     def shapeTableKeyPressEvent(self, event):
         if event.key() == Qt.Key_Delete:
-            self.deleteShapesFromTable()
+            self.delete_shapes_from_table()
         else:
             # Call the default handler.
             QTableWidget.keyPressEvent(self.shapeTable, event)
 
-    def deleteShapesFromTable(self):
+    def delete_shapes_from_table(self):
         # Delete selected rows from the table and remove corresponding shapes from the image view.
         selected_rows = sorted(
             {index.row() for index in self.shapeTable.selectedIndexes()},
@@ -197,34 +209,31 @@ class ShapeTableMixin:
         for row in selected_rows:
             try:
                 shape_id = int(self.shapeTable.item(row, 0).text())
-            except Exception as e:
+            except Exception:
                 continue
-            # Remove the shape from image_view.
             for shape_info in self.image_view.shapes:
                 if shape_info["id"] == shape_id:
                     self.image_view.scene.removeItem(shape_info["item"])
-                    # Also remove any extra items (diagonals, center marker) if present.
+                    # Also remove extra items if present.
                     if "diagonals" in shape_info:
-                        for extra_item in shape_info["diagonals"]:
-                            self.image_view.scene.removeItem(extra_item)
+                        for item in shape_info["diagonals"]:
+                            self.image_view.scene.removeItem(item)
                     if "center_marker" in shape_info:
                         self.image_view.scene.removeItem(shape_info["center_marker"])
                     self.image_view.shapes.remove(shape_info)
                     break
-        self.updateShapeTable()
+        self.update_shape_table()
 
-    def deleteAllShapesFromTable(self):
+    def delete_all_shapes_from_table(self):
         # Delete all rows from the table and remove all corresponding shapes from the image view.
-        shapes_to_delete = list(self.image_view.shapes)  # Make a copy to avoid modifying while iterating
-
+        shapes_to_delete = list(self.image_view.shapes)
         for shape_info in shapes_to_delete:
             item = shape_info.get("item")
             if item is not None:
                 try:
                     self.image_view.scene.removeItem(item)
                 except RuntimeError:
-                    pass  # Item may already be deleted
-            # Remove any extra items if they exist
+                    pass
             for extra_key in ["diagonals", "center_marker"]:
                 extra_items = shape_info.get(extra_key)
                 if isinstance(extra_items, list):
@@ -238,8 +247,5 @@ class ShapeTableMixin:
                         self.image_view.scene.removeItem(extra_items)
                     except RuntimeError:
                         pass
-
-        # Clear the list of shapes
         self.image_view.shapes.clear()
-        # Update the shape table
-        self.updateShapeTable()
+        self.update_shape_table()

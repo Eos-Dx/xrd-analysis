@@ -1,23 +1,24 @@
-from PyQt5.QtCore import QRectF
+from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtWidgets import QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsItem
+from PyQt5.QtGui import QPen
+
 
 class DrawingMixin:
-    def initDrawing(self):
+
+    def init_drawing(self):
         # Initialize drawing properties.
         self.drawing_mode = None  # "rect", "ellipse", "crop", or None (select mode)
-        self.pen = self._createPen()
+        self.pen = self._create_pen()
         self.start_point = None
         self.current_shape = None
         self.shapes = []         # List to hold drawn shapes (each: {"id", "type", "item"})
         self.shape_counter = 1
-        self.shapeUpdatedCallback = None
+        self.shape_updated_callback = None
 
-    def _createPen(self):
-        from PyQt5.QtGui import QPen
-        from PyQt5.QtCore import Qt
+    def _create_pen(self):
         return QPen(Qt.red, 2, Qt.DashLine)
 
-    def setDrawingMode(self, mode):
+    def set_drawing_mode(self, mode):
         self.drawing_mode = mode
 
     def mousePressEvent(self, event):
@@ -84,8 +85,8 @@ class DrawingMixin:
                     }
                     self.shapes.append(shape_info)
                     self.shape_counter += 1
-                    if self.shapeUpdatedCallback:
-                        self.shapeUpdatedCallback()
+                    if self.shape_updated_callback:
+                        self.shape_updated_callback()
 
             self.start_point = None
             self.current_shape = None

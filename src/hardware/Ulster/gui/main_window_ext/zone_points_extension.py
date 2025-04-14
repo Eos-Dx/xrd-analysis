@@ -11,7 +11,8 @@ from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
 
 
 class ZonePointsMixin:
-    def createZonePointsWidget(self):
+
+    def create_zone_points_widget(self):
         """
         Creates a dock widget that generates and displays zone points.
         Auto-generated points appear as a red circle with an underlying transparent cyan circle.
@@ -63,7 +64,7 @@ class ZonePointsMixin:
         inputLayout.addWidget(self.generatePointsBtn)
         self.updateCoordinatesBtn = QPushButton("Update Coordinates")
         inputLayout.addWidget(self.updateCoordinatesBtn)
-        self.updateCoordinatesBtn.clicked.connect(self.updateCoordinates)
+        self.updateCoordinatesBtn.clicked.connect(self.update_coordinates)
 
         layout.addLayout(inputLayout)
 
@@ -80,7 +81,7 @@ class ZonePointsMixin:
         self.zonePointsDock.setWidget(container)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.zonePointsDock)
 
-        self.generatePointsBtn.clicked.connect(self.generateZonePoints)
+        self.generatePointsBtn.clicked.connect(self.generate_zone_points)
 
         # Initialize the unified points dictionary.
         # We assume that self.image_view is your graphics view.
@@ -93,14 +94,14 @@ class ZonePointsMixin:
         # That pixel coordinate corresponds to (self.real_x_pos_mm, self.real_y_pos_mm) in real mm.
         self.include_center = (0, 0)  # default value, should be set by the other mixin
 
-    def updateCoordinates(self):
+    def update_coordinates(self):
         """Recalculates the coordinates in the table using the updated spin box values."""
-        self.updatePointsTable()
+        self.update_points_table()
 
-    def updateConversionLabel(self):
+    def update_conversion_label(self):
         self.conversionLabel.setText(f"Conversion: {self.pixel_to_mm_ratio:.2f} px/mm")
 
-    def generateZonePoints(self):
+    def generate_zone_points(self):
         N = self.pointCountSpinBox.value()
         shrink_percent = self.shrinkSpinBox.value()
         shrink_factor = (100 - shrink_percent) / 100.0
@@ -125,7 +126,7 @@ class ZonePointsMixin:
             print("No include shape defined. Cannot generate points.")
             return
 
-        self.updateConversionLabel()
+        self.update_conversion_label()
 
         # Remove previously drawn generated items.
         for item in self.image_view.points_dict["generated"]["points"]:
@@ -234,9 +235,9 @@ class ZonePointsMixin:
             self.image_view.scene.addItem(red_item)
             self.image_view.points_dict["generated"]["points"].append(red_item)
 
-        self.updatePointsTable()
+        self.update_points_table()
 
-    def updatePointsTable(self):
+    def update_points_table(self):
         """Updates the table with the list of points.
 
         The mm coordinates are calculated by mapping the pixel coordinates (with (0,0)
@@ -254,9 +255,7 @@ class ZonePointsMixin:
             center = item.sceneBoundingRect().center()
             points.append((center.x(), center.y(), "user"))
         self.pointsTable.setRowCount(len(points))
-
-
-
+        # Populate the table with point data.
         for idx, (x, y, ptype) in enumerate(points):
             self.pointsTable.setItem(idx, 0, QTableWidgetItem(str(idx + 1)))
             self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
@@ -316,7 +315,7 @@ class ZonePointsMixin:
                 if table.item(row, col):
                     table.item(row, col).setBackground(highlight if hovered else normal)
 
-    def deleteSelectedPoints(self):
+    def delete_selected_points(self):
         """
         Deletes the points corresponding to the selected rows in the table from both the scene and the points dictionary.
         """
@@ -346,9 +345,9 @@ class ZonePointsMixin:
                     self.image_view.scene.removeItem(zone_item)
                 self.image_view.scene.removeItem(point_item)
 
-        self.updatePointsTable()
+        self.update_points_table()
 
-    def deleteAllPoints(self):
+    def delete_all_points(self):
         """
         Deletes all points (both generated and user-defined) from the scene
         and clears the corresponding entries in the points dictionary.
@@ -378,7 +377,7 @@ class ZonePointsMixin:
         self.image_view.points_dict["user"]["zones"].clear()
 
         # Update the points table UI.
-        self.updatePointsTable()
+        self.update_points_table()
 
     def eventFilter(self, source, event):
         """
@@ -387,7 +386,7 @@ class ZonePointsMixin:
         """
         if source == self.pointsTable and event.type() == QEvent.KeyPress:
             if event.key() == Qt.Key_Delete:
-                self.deleteSelectedPoints()
+                self.delete_selected_points()
                 return True
         # Pass other events to the parent class.
         return super().eventFilter(source, event)
