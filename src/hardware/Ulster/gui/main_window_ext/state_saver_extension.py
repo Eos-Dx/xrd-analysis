@@ -20,7 +20,7 @@ class StateSaverMixin:
         If the JSON file is not valid, returns None.
         """
         state_file = None
-        if file_path is not None:
+        if file_path is not None and file_path != False:
             if os.path.exists(file_path):
                 state_file = file_path
             else:
