@@ -23,21 +23,24 @@ class DetectorController:
             self.detector = True
         else:
             # Real detector initialization.
-            sys.path.insert(0, 'C:\\Program Files\\PIXet Pro')
+            sys.path.insert(0, 'C:\\API_PIXet_Pro_1.8.3_Windows_x86_64')
             import pypixet
             print("Initializing detector...")
             pypixet.start()
             pixet = pypixet.pixet
             devices = pixet.devices()
+            a = devices[0].fullName()
             if devices[0].fullName() == 'FileDevice 0':
                 print("No devices connected")
                 pixet.exitPixet()
                 pypixet.exit()
                 self.pixet, self.detector = None, None
+                return False
             else:
                 self.pixet = pixet
                 self.detector = devices[0]
                 print("Detector initialized.")
+                return True
 
     def capture_point(self, Nframes, Nseconds, filename):
         if self.dev:
@@ -109,15 +112,15 @@ class XYStageController:
             if not devices:
                 print("No Thorlabs devices found!")
                 self.stage = None
-                return None
+                return False
             else:
                 print("Detected Thorlabs devices:")
                 for dev in devices:
                     print(dev)
-            self.stage = Thorlabs.KinesisMotor(str(self.serial_num))
-            self.stage.open()  # Open the device connection.
-            time.sleep(1)  # Allow time for initialization.
-            return self.stage
+                self.stage = Thorlabs.KinesisMotor(str(self.serial_num))
+                self.stage.open()  # Open the device connection.
+                time.sleep(1)  # Allow time for initialization.
+                return True
 
     def home_stage(self, home_timeout=10):
         if self.stage is None:
