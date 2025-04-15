@@ -209,7 +209,7 @@ class ZoneMeasurementsMixin:
             print("XY stage initialized.")
             self.xyStageIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
         else:
-            print("Error initializing XY stage:", e)
+            print("Error initializing XY stage:")
             self.xyStageIndicator.setStyleSheet("background-color: red; border-radius: 10px;")
 
         if res_det:
@@ -217,7 +217,7 @@ class ZoneMeasurementsMixin:
             print("Pixet camera initialized.")
             self.cameraIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
         else:
-            print("Error initializing Pixet camera:", e)
+            print("Error initializing Pixet camera:")
             self.cameraIndicator.setStyleSheet("background-color: red; border-radius: 10px;")
 
         if ("green" in self.xyStageIndicator.styleSheet() and "green" in self.cameraIndicator.styleSheet()):
