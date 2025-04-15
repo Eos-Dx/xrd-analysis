@@ -199,26 +199,25 @@ class ZoneMeasurementsMixin:
         # Note: For the stage, pass the serial number and channel settings as needed.
         serial_str = self.config.get("serial_number_XY", "default_serial")
         self.stage_controller = XYStageController(serial_num=serial_str, x_chan=2, y_chan=1, dev=dev_mode)
-        self.stage_controller.init_stage()
+        res_xystage = self.stage_controller.init_stage()
 
         self.detector_controller = DetectorController(capture_enabled=True, dev=dev_mode)
-        self.detector_controller.init_detector()
+        res_det = self.detector_controller.init_detector()
 
         # Update LED indicators based on initialization.
-        try:
-            # For the stage, if no error occurred, mark green.
+        if res_xystage:
             print("XY stage initialized.")
             self.xyStageIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
-        except Exception as e:
-            print("Error initializing XY stage:", e)
+        else:
+            print("Error initializing XY stage:")
             self.xyStageIndicator.setStyleSheet("background-color: red; border-radius: 10px;")
 
-        try:
+        if res_det:
             # For the detector.
             print("Pixet camera initialized.")
             self.cameraIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
-        except Exception as e:
-            print("Error initializing Pixet camera:", e)
+        else:
+            print("Error initializing Pixet camera:")
             self.cameraIndicator.setStyleSheet("background-color: red; border-radius: 10px;")
 
         if ("green" in self.xyStageIndicator.styleSheet() and "green" in self.cameraIndicator.styleSheet()):
