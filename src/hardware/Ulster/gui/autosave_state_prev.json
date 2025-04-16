@@ -1,6 +1,6 @@
 {
-    "image": "D:/OneDrive/OneDrive - Matur/General - Ulster/Liver/mice_liver/U1/Xena_Cu/20250414/mice_liver_U1_Xena_Cu_20250414_P2/P2_20250410_130233.jpg",
-    "rotation_angle": 0,
+    "image": "D:/OneDrive/OneDrive - Matur/General - Ulster/pancreas_OLD_DO_NOT_UPLOAD/sheep_pancreas/20250319/P1b_L3_20250218.jpg",
+    "rotation_angle": 3,
     "crop_rect": null,
     "shapes": [
         {
@@ -8,10 +8,10 @@
             "type": "Rectangle",
             "role": "sample holder",
             "geometry": {
-                "x": 18.53125,
-                "y": 13.6484375,
-                "width": 1027.3906249999995,
-                "height": 1027.3906249999995
+                "x": -6.882812499999886,
+                "y": 2759.718749999998,
+                "width": 1003.9999999999991,
+                "height": 1003.9999999999991
             }
         },
         {
@@ -19,27 +19,32 @@
             "type": "Circle",
             "role": "include",
             "geometry": {
-                "x": 233.3749999999999,
-                "y": 204.07812499999991,
-                "width": 583.0546874999998,
-                "height": 636.7656249999998
+                "x": 119.09374999999991,
+                "y": 2871.046874999998,
+                "width": 714.9374999999994,
+                "height": 757.9062499999995
             }
         }
     ],
     "zone_points": [
         {
-            "x": 524.3145154495253,
-            "y": 525.6599031800805,
+            "x": 477.74816717307294,
+            "y": 3248.2954963669217,
             "type": "generated"
         },
         {
-            "x": 555.1806310468793,
-            "y": 253.9335559474222,
+            "x": 483.117759600359,
+            "y": 3571.7983544263166,
             "type": "generated"
         },
         {
-            "x": 490.2371784213974,
-            "y": 790.2432967093915,
+            "x": 511.3002520867416,
+            "y": 2930.0853208807416,
+            "type": "generated"
+        },
+        {
+            "x": 210.7915880012289,
+            "y": 3404.310943666846,
             "type": "generated"
         }
     ],
@@ -47,5 +52,5 @@
         -5.15,
         -4.35
     ],
-    "pixel_to_mm_ratio": 56.96614583333331
+    "pixel_to_mm_ratio": 55.666666666666615
 }
