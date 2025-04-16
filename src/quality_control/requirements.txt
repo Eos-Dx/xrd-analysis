@@ -1,3 +1,6 @@
 PyQt5>=5.15.0
 joblib
 numpy
+seaborn
+pyfai
+pandas
