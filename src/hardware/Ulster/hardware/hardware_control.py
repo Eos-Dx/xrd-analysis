@@ -23,7 +23,8 @@ class DetectorController:
             self.detector = True
         else:
             # Real detector initialization.
-            sys.path.insert(0, 'C:\\API_PIXet_Pro_1.8.3_Windows_x86_64')
+            sys.path.insert(0, 'D:\\API_PIXet_Pro_1.8.3_Windows_x86_64')
+            #sys.path.insert(0, r'D:\OneDrive\OneDrive - Matur\General - Ulster\Equipment\Xena\M30XY Stage\Code\XYscan')
             import pypixet
             print("Initializing detector...")
             pypixet.start()
