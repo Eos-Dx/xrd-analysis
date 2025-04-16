@@ -1,9 +1,11 @@
-from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton
+from PyQt5.QtWidgets import (QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                             QComboBox, QLineEdit, QPushButton, QSpacerItem, QSizePolicy)
 from PyQt5.QtCore import Qt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT
 from matplotlib.colors import LogNorm
-
+import seaborn as sns  # Added import for seaborn
+import numpy as np
 
 class VisualizationMixin:
 
@@ -16,7 +18,7 @@ class VisualizationMixin:
                   - Left: Plot 1 (Raw 2D data)
                   - Right: Plot 2 (XY Plot: Azimuthal Integration with user-controlled lines)
               * Second row:
-                  - Left: Plot 3 (AgBH imshow)
+                  - Left: Plot 3 (AgBH heatmap)
                   - Right: Plot 4 (Cake Representation placeholder)
         The dock and its components are configured so that the minimum configuration fits in 600 (width) x 400 (height) pixels.
         """
@@ -50,10 +52,9 @@ class VisualizationMixin:
         controls1_layout.addWidget(label1)
         controls1_layout.addWidget(self.scale_combo_raw)
         plot1_layout.addLayout(controls1_layout)
-        self.fig_raw = Figure(figsize=(4, 4))
+        self.fig_raw = Figure(figsize=(2.5, 2.5))
         self.canvas_raw = FigureCanvas(self.fig_raw)
         # Adjust minimum size for the canvas.
-        self.canvas_raw.setMinimumSize(300, 300)
         plot1_layout.addWidget(self.canvas_raw)
         self.toolbar_raw = NavigationToolbar2QT(self.canvas_raw, self)
         plot1_layout.addWidget(self.toolbar_raw)
@@ -63,35 +64,37 @@ class VisualizationMixin:
         self.plot2_widget = QWidget()
         plot2_layout = QVBoxLayout(self.plot2_widget)
         controls2_layout = QHBoxLayout()
-        label2 = QLabel("Azimuthal Y-Scale:")
+        label2 = QLabel("Y-Scale:")
         self.scale_combo_xy = QComboBox()
         self.scale_combo_xy.addItems(["Log", "Linear"])
         self.scale_combo_xy.setCurrentIndex(0)
         controls2_layout.addWidget(label2)
         controls2_layout.addWidget(self.scale_combo_xy)
         # Horizontal line control.
-        hline_label = QLabel("HLine Value:")
+        hline_label = QLabel("HLine")
         self.hline_line_edit = QLineEdit()
-        self.hline_line_edit.setPlaceholderText("Enter horizontal line value")
+        self.hline_line_edit.setPlaceholderText("")
         controls2_layout.addWidget(hline_label)
         controls2_layout.addWidget(self.hline_line_edit)
+        spacer = QSpacerItem(10, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        controls2_layout.addItem(spacer)
         self.hline_line_edit.editingFinished.connect(self.update_horizontal_line)
+
         # Vertical line control.
-        vline_label = QLabel("Vertical Line Value:")
+        vline_label = QLabel("VLine")
         self.vertical_line_line_edit = QLineEdit()
-        self.vertical_line_line_edit.setPlaceholderText("Enter vertical line value")
+        self.vertical_line_line_edit.setPlaceholderText("")
         controls2_layout.addWidget(vline_label)
         controls2_layout.addWidget(self.vertical_line_line_edit)
-        self.add_vline_button = QPushButton("+Vertical")
-        self.remove_vline_button = QPushButton("-Vertical")
+        self.add_vline_button = QPushButton("+V")
+        self.remove_vline_button = QPushButton("-V")
         controls2_layout.addWidget(self.add_vline_button)
         controls2_layout.addWidget(self.remove_vline_button)
         self.add_vline_button.clicked.connect(self.add_vertical_line)
         self.remove_vline_button.clicked.connect(self.remove_vertical_line)
         plot2_layout.addLayout(controls2_layout)
-        self.fig_xy = Figure(figsize=(4, 4))
+        self.fig_xy = Figure(figsize=(2.5, 2.5))
         self.canvas_xy = FigureCanvas(self.fig_xy)
-        self.canvas_xy.setMinimumSize(300, 250)
         plot2_layout.addWidget(self.canvas_xy)
         self.toolbar_xy = NavigationToolbar2QT(self.canvas_xy, self)
         plot2_layout.addWidget(self.toolbar_xy)
@@ -102,7 +105,7 @@ class VisualizationMixin:
         # ----- Second Row -----
         second_row_layout = QHBoxLayout()
 
-        # Plot Panel 3: AgBH Plot (left column)
+        # Plot Panel 3: AgBH Plot (left column) - modified to use sns.heatmap
         self.plot3_widget = QWidget()
         plot3_layout = QVBoxLayout(self.plot3_widget)
         controls3_layout = QHBoxLayout()
@@ -113,9 +116,8 @@ class VisualizationMixin:
         controls3_layout.addWidget(label3)
         controls3_layout.addWidget(self.scale_combo_agbh)
         plot3_layout.addLayout(controls3_layout)
-        self.fig_agbh = Figure(figsize=(4, 4))
+        self.fig_agbh = Figure(figsize=(2.5, 2.5))
         self.canvas_agbh = FigureCanvas(self.fig_agbh)
-        self.canvas_agbh.setMinimumSize(300, 300)
         plot3_layout.addWidget(self.canvas_agbh)
         self.toolbar_agbh = NavigationToolbar2QT(self.canvas_agbh, self)
         plot3_layout.addWidget(self.toolbar_agbh)
@@ -124,9 +126,8 @@ class VisualizationMixin:
         # Plot Panel 4: Cake Representation Placeholder (right column)
         self.plot4_widget = QWidget()
         plot4_layout = QVBoxLayout(self.plot4_widget)
-        self.fig_cake = Figure(figsize=(4, 4))
+        self.fig_cake = Figure(figsize=(2.5, 2.5))
         self.canvas_cake = FigureCanvas(self.fig_cake)
-        self.canvas_cake.setMinimumSize(300, 300)
         plot4_layout.addWidget(self.canvas_cake)
         second_row_layout.addWidget(self.plot4_widget)
         self.toolbar_cake = NavigationToolbar2QT(self.canvas_cake, self)
@@ -138,9 +139,6 @@ class VisualizationMixin:
         # Set the dock widget's main widget and add it to the main window.
         self.visualization_dock.setWidget(self.visualization_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.visualization_dock)
-
-        # Set the overall minimum size of the visualization zone to 600x400 pixels.
-        self.visualization_dock.setMinimumSize(600, 400)
 
         # Initialize the current measurement index and container for vertical lines.
         self.current_index = 0
@@ -161,6 +159,7 @@ class VisualizationMixin:
             return
         self.current_index = index
         row = self.transformed_df.iloc[index]
+        row2D = self.transformed_df2D.iloc[index]
 
         # Update measurement information.
         measurement_group_id = row.get('measurementsGroupId', 'N/A')
@@ -183,23 +182,26 @@ class VisualizationMixin:
         measurement_data = row.get('measurement_data')
         if measurement_data is not None:
             norm = LogNorm() if self.scale_combo_raw.currentText() == "Log" else None
-            ax_raw.imshow(measurement_data, aspect='equal', norm=norm)
-            ax_raw.set_title("Raw 2D data")
+            #ax_raw.imshow(measurement_data, aspect='equal', norm=norm)
+            sns.heatmap(measurement_data, ax=ax_raw, robust=True, square=True, cbar=True)
             ax_raw.set_aspect('equal')
         self.canvas_raw.draw_idle()
 
         # --- Plot 2: XY Plot (Azimuthal Integration) ---
         self.fig_xy.clf()
-        self.fig_xy.set_size_inches(8 / 2.54, 6 / 2.54)  # 8cm x 6cm in inches
         ax_xy = self.fig_xy.add_subplot(111)
         radial_profile_data = row.get('radial_profile_data')
+        a = row2D.get('radial_profile_data')
+        radial_profile_data2D = np.sum(row2D.get('radial_profile_data'), axis=0)
+        q_range2D = row2D.get('q_range')
         q_range = row.get('q_range')
         if radial_profile_data is not None and q_range is not None:
-            ax_xy.plot(q_range, radial_profile_data)
-            ax_xy.set_title("Azimuthal integration")
+            ax_xy.plot(q_range, radial_profile_data, label='Azimuthal Integration')
+            ax_xy.plot(q_range2D, radial_profile_data2D, label='Cake sum')
             ax_xy.set_xlabel("q_range (nm-1)")
             ax_xy.set_ylabel("radial_profile_data")
             ax_xy.set_yscale("log" if self.scale_combo_xy.currentText() == "Log" else "linear")
+            ax_xy.legend()
             ax_xy.set_xlim(min(q_range), max(q_range))
             try:
                 h_value = float(self.hline_line_edit.text())
@@ -210,7 +212,7 @@ class VisualizationMixin:
                 ax_xy.axvline(x=v, color='blue', linestyle='--')
         self.canvas_xy.draw_idle()
 
-        # --- Plot 3: AgBH Plot ---
+        # --- Plot 3: AgBH Plot using sns.heatmap ---
         self.fig_agbh.clf()
         ax_agbh = self.fig_agbh.add_subplot(111)
         calib_name = row.get('calib_name')
@@ -221,10 +223,8 @@ class VisualizationMixin:
                 calib_row = calib_rows.iloc[0]
                 agbh_data = calib_row.get('measurement_data')
                 if agbh_data is not None:
-                    norm = LogNorm() if self.scale_combo_agbh.currentText() == "Log" else None
-                    ax_agbh.imshow(agbh_data, aspect='equal', norm=norm)
-                    ax_agbh.set_title("AgBH")
-                    ax_agbh.set_aspect('equal')
+                    # Use seaborn's heatmap with robust scaling and square cells.
+                    sns.heatmap(agbh_data, ax=ax_agbh, robust=True, square=True, cbar=True)
                 else:
                     ax_agbh.text(0.5, 0.5, "No AgBH data available",
                                  ha="center", va="center", transform=ax_agbh.transAxes)
@@ -239,7 +239,6 @@ class VisualizationMixin:
         # --- Plot 4: Cake Representation ---
         self.fig_cake.clf()
         ax_cake = self.fig_cake.add_subplot(111)
-        # Assuming calib_row is defined from Plot 3.
         try:
             cake_data = calib_row.get('radial_profile_data')
             azimuthal_positions = calib_row.get('azimuthal_positions')
@@ -252,7 +251,6 @@ class VisualizationMixin:
                                 interpolation='none', norm=LogNorm())
             ax_cake.set_xlabel("q_range (nm-1)")
             ax_cake.set_ylabel("Azimuthal Positions")
-            ax_cake.set_title("Cake Representation")
         else:
             ax_cake.text(0.5, 0.5, "Cake Representation data not available",
                          ha="center", va="center", transform=ax_cake.transAxes)

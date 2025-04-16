@@ -9,7 +9,7 @@ class ExcludeIncludeMixin:
     def init_exclude_zone(self):
         """
         Initializes the Exclude Zone as a dockable widget which includes:
-          - Navigation buttons (Previous, Suspicious, Exclude, Next, Include).
+          - Navigation buttons (Previous, Suspicious, Exclude, Next, Include, Ethalon).
           - A text edit for entering a reason.
           - Buttons to add or remove a reason.
           - A list widget showing saved reasons.
@@ -24,18 +24,20 @@ class ExcludeIncludeMixin:
         self.exclude_widget = QWidget()
         exclude_layout = QVBoxLayout(self.exclude_widget)
 
-        # Navigation buttons in order: Previous, Suspicious, Exclude, Next, Include.
+        # Navigation buttons: Previous, Suspicious, Exclude, Next, Include, Ethalon.
         nav_layout = QHBoxLayout()
         self.prev_button = QPushButton("Previous")
         self.suspicious_button = QPushButton("Suspicious")
         self.exclude_button = QPushButton("Exclude")
         self.next_button = QPushButton("Next")
         self.include_button = QPushButton("Include")
+        self.ethalon_button = QPushButton("Ethalon")
         nav_layout.addWidget(self.prev_button)
         nav_layout.addWidget(self.suspicious_button)
         nav_layout.addWidget(self.exclude_button)
         nav_layout.addWidget(self.next_button)
         nav_layout.addWidget(self.include_button)
+        nav_layout.addWidget(self.ethalon_button)
         exclude_layout.addLayout(nav_layout)
 
         # Status label to show current measurement status.
@@ -84,6 +86,7 @@ class ExcludeIncludeMixin:
         self.exclude_button.clicked.connect(self.exclude_current_measurement)
         self.next_button.clicked.connect(self.show_next_measurement)
         self.include_button.clicked.connect(self.include_current_measurement)
+        self.ethalon_button.clicked.connect(self.ethalon_current_measurement)
 
     def add_reason_to_list(self):
         """(Unchanged) Adds a reason to the list and file."""
@@ -175,7 +178,7 @@ class ExcludeIncludeMixin:
                         continue
                     parts = line.split(":")
                     if len(parts) >= 2:
-                        # parts[0] is the status ("Excluded", "Included", "Suspicious")
+                        # parts[0] is the status ("Excluded", "Included", "Suspicious", "Ethalon")
                         # parts[1] is the measurement name
                         if parts[1].strip() == self.transformed_df.iloc[self.current_index].get('meas_name', 'N/A'):
                             status = parts[0].strip()
@@ -258,6 +261,34 @@ class ExcludeIncludeMixin:
         self.mark_measurement_in_list(meas_name, "green")
         self.update_status_label()
 
+    def ethalon_current_measurement(self):
+        """
+        For an ethalon measurement, a non-empty reason is required.
+        Removes any existing label, then writes an ethalon record and colors the measurement deep gold.
+        The labels file is marked with 'Ethalon:'.
+        """
+        reason = self.reason_textedit.toPlainText().strip()
+        if not reason:
+            self.status_label.setText("Error: Reason required for ethalon measurement.")
+            return
+        if self.transformed_df is None:
+            return
+        row = self.transformed_df.iloc[self.current_index]
+        meas_name = row.get('meas_name', 'N/A')
+        self.remove_existing_label_for_measurement(meas_name)
+        measurement_group_id = row.get('measurementsGroupId', 'N/A')
+        patient_db_id = row.get('patientDBId', 'N/A')
+        specimen_db_id = row.get('specimenDBId', 'N/A')
+        self.labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        line = f"Ethalon: {meas_name}: {measurement_group_id} : {patient_db_id} : {specimen_db_id} : {reason}\n"
+        with open(self.labels_filename, "a") as f:
+            f.write(line)
+        if hasattr(self, 'load_excluded_included_files'):
+            self.load_excluded_included_files()
+        # Mark the measurement with a deep gold color.
+        self.mark_measurement_in_list(meas_name, "gold")
+        self.update_status_label()
+
     def mark_measurement_in_list(self, meas_name, color):
         """
         Iterates over the measurements list widget items and sets the background color
@@ -268,5 +299,3 @@ class ExcludeIncludeMixin:
             if item.text() == meas_name:
                 item.setBackground(QBrush(QColor(color)))
                 break
-
-
