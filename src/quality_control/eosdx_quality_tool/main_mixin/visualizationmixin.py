@@ -197,7 +197,7 @@ class VisualizationMixin:
         q_range = row.get('q_range')
         if radial_profile_data is not None and q_range is not None:
             ax_xy.plot(q_range, radial_profile_data, label='Azimuthal Integration')
-            ax_xy.plot(q_range2D, radial_profile_data2D / radial_profile_data2D[0] * radial_profile_data[0], label='Cake sum')
+            ax_xy.plot(q_range2D, radial_profile_data2D, label='Cake sum')
             ax_xy.set_xlabel("q_range (nm-1)")
             ax_xy.set_ylabel("radial_profile_data")
             ax_xy.set_yscale("log" if self.scale_combo_xy.currentText() == "Log" else "linear")
