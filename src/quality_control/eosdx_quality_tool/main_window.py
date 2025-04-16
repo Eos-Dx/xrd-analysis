@@ -57,12 +57,13 @@ class MainWindow(QMainWindow, FileDialogMixin, H5HandlerMixin, DataFrameStatsMix
             try:
                 # Convert the HDF5 file into calibration and measurement DataFrames,
                 # compute statistics on measurement_df, and process it through the pipeline.
-                calibration_df, measurement_df, measurement_stats, transformed_df = self.load_and_process_h5_file(
+                calibration_df, measurement_df, measurement_stats, transformed_df, transformed_df2D = self.load_and_process_h5_file(
                     file_path)
                 self.file_path = file_path
                 self.calibration_df = calibration_df
                 self.measurement_df = measurement_df
                 self.transformed_df = transformed_df
+                self.transformed_df2D = transformed_df2D
                 self.update_df_stats(f"Measurement DataFrame Statistics:\n{measurement_stats}")
                 self.display_measurement(0)
                 self.update_measurements_list()

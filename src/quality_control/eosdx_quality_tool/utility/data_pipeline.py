@@ -13,9 +13,10 @@ def process_dataframe(df):
     pipeline = MLPipeline(data_wrangling_steps=wrangling)
     try:
         dfm = pipeline.wrangle(df)
+        return dfm
     except Exception as e:
         print(e)
-    return dfm
+
 
 
 def process_dataframe_2D(df):

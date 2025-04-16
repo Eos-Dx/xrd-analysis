@@ -122,7 +122,8 @@ class AzimuthalIntegration(TransformerMixin):
             mask = create_mask(self.faulty_pixels)
 
         if self.calibration_mode == "poni":
-            x_copy.dropna(subset="ponifile", inplace=True)
+            x_copy.dropna(subset=["ponifile"], inplace=True)
+
 
         integration_results = x_copy.apply(
             lambda row: perform_azimuthal_integration(
