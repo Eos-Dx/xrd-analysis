@@ -70,6 +70,8 @@ class DetectorController:
             gaussian2 = amplitude2 * np.exp(-(((X - x0_2) ** 2) / (2 * sigma_x2 ** 2) +
                                               ((Y - y0_2) ** 2) / (2 * sigma_y2 ** 2)))
             combined = gaussian1 + gaussian2
+            import time
+            time.sleep(Nseconds)
             np.savetxt(filename, combined, fmt='%.6f')
             return True
         else:

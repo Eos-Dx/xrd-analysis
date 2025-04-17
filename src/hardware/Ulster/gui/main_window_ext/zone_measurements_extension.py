@@ -3,23 +3,43 @@ import json
 import time
 import numpy as np
 import seaborn as sns
+from copy import copy
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QDockWidget, QLabel, QSpinBox, QLineEdit, QFileDialog,
     QSpacerItem, QSizePolicy, QProgressBar, QWidget, QHBoxLayout,
     QVBoxLayout, QPushButton, QDialog
 )
-from copy import copy
+from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QColor
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtGui import QColor
 
 from xrdanalysis.data_processing.azimuthal_integration import initialize_azimuthal_integrator_df
 from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
-
-# Import the new hardware controllers.
 from hardware.Ulster.hardware.hardware_control import DetectorController, XYStageController
+
+
+class CaptureWorker(QThread):
+    # emit (success: bool, txt_filename: str)
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, detector_controller, integration_time, txt_filename, parent=None):
+        super().__init__(parent)
+        self.detector_controller = detector_controller
+        self.integration_time   = integration_time
+        self.txt_filename       = txt_filename
+
+    def run(self):
+        # this executes in the worker thread
+        success = self.detector_controller.capture_point(
+            1,
+            self.integration_time,
+            self.txt_filename
+        )
+        # emit back to the GUI thread
+        self.finished.emit(success, self.txt_filename)
+
 
 class ZoneMeasurementsMixin:
 
@@ -324,35 +344,43 @@ class ZoneMeasurementsMixin:
         gp = self.image_view.points_dict["generated"]["points"]
         up = self.image_view.points_dict["user"]["points"]
         if index < len(gp):
-            point_item = gp[index]
-            zone_item = self.image_view.points_dict["generated"]["zones"][index]
+            self._point_item = gp[index]
+            self._zone_item = self.image_view.points_dict["generated"]["zones"][index]
         else:
             user_index = index - len(gp)
-            point_item = up[user_index]
+            self._point_item = up[user_index]
             zone_item = self.image_view.points_dict["user"]["zones"][user_index]
 
-        center = point_item.sceneBoundingRect().center()
-        x_mm = self.real_x_pos_mm.value() - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
-        y_mm = self.real_x_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
+        center = self._point_item.sceneBoundingRect().center()
+        self._x_mm = self.real_x_pos_mm.value() - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
+        self._y_mm = self.real_x_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
 
         # Move the stage using the new controller.
-        new_x, new_y = self.stage_controller.move_stage(x_mm, y_mm, move_timeout=10)
+        new_x, new_y = self.stage_controller.move_stage(self._x_mm, self._y_mm, move_timeout=10)
 
         # Build filename.
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        base_name = self.fileNameLineEdit.text().strip()
-        txt_filename = os.path.join(self.measurement_folder, f"{base_name}_{x_mm:.2f}_{y_mm:.2f}_{timestamp}.txt")
+        self._timestamp = time.strftime("%Y%m%d_%H%M%S")
+        self._base_name = self.fileNameLineEdit.text().strip()
+        txt_filename = os.path.join(self.measurement_folder, f"{self._base_name}_{self._x_mm:.2f}_{self._y_mm:.2f}_{self._timestamp}.txt")
 
-        # Capture measurement using the detector controller.
-        res = self.detector_controller.capture_point(1, self.integration_time, txt_filename)
-        if res:
+        # launch the capture in its own thread:
+        self.capture_worker = CaptureWorker(
+            detector_controller=self.detector_controller,
+            integration_time=self.integration_time,
+            txt_filename=txt_filename
+        )
+        self.capture_worker.finished.connect(self.on_capture_finished)
+        self.capture_worker.start()
+
+    def on_capture_finished(self, success: bool, txt_filename: str):
+        if success:
             state_path = self.state_path_measurements
             # Build the new entry
             new_meta = {
                 Path(txt_filename).name: {
-                    'x': x_mm,
-                    'y': y_mm,
-                    'base_file': base_name,
+                    'x': self._x_mm,
+                    'y': self._y_mm,
+                    'base_file': self._base_name,
                     'integration_time': self.integration_time,
                     'distance': self.add_distance_lineedit.text()
                 }
@@ -369,7 +397,8 @@ class ZoneMeasurementsMixin:
             # Convert the captured data.
             try:
                 data = np.loadtxt(txt_filename)
-                npy_filename = os.path.join(self.measurement_folder, f"{base_name}_{x_mm:.2f}_{y_mm:.2f}_{timestamp}.npy")
+                npy_filename = os.path.join(self.measurement_folder,
+                                            f"{self._base_name}_{self._x_mm:.2f}_{self._y_mm:.2f}_{self._timestamp}.npy")
                 np.save(npy_filename, data)
                 print(f"Converted {txt_filename} to {npy_filename}")
             except Exception as e:
@@ -377,16 +406,15 @@ class ZoneMeasurementsMixin:
                 npy_filename = txt_filename  # Fallback
 
         self.add_measurement_to_table(self.sorted_indices[self.current_measurement_sorted_index], npy_filename)
-
         # Visual feedback.
         green_brush = QColor(0, 255, 0)
-        point_item.setBrush(green_brush)
-        if zone_item:
+        self._point_item.setBrush(green_brush)
+        if self._zone_item:
             green_zone = QColor(0, 255, 0)
             green_zone.setAlphaF(0.2)
-            zone_item.setBrush(green_zone)
-
+            self._zone_item.setBrush(green_zone)
         QTimer.singleShot(1000, self.measurement_finished)
+
 
     def add_measurement_to_table(self, row, measurement_filename):
         """
