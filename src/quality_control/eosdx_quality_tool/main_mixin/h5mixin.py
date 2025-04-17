@@ -27,7 +27,6 @@ class H5HandlerMixin:
 
         # Process the measurement DataFrame using the XRD pipeline
         transformed_df = process_dataframe(measurement_df)
-        transformed_df2D = process_dataframe_2D(measurement_df)
         calibration_df = process_dataframe_2D(calibration_df)
 
-        return calibration_df, measurement_df, measurement_stats, transformed_df, transformed_df2D
+        return calibration_df, measurement_df, measurement_stats, transformed_df

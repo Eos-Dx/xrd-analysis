@@ -2,6 +2,7 @@ import time
 import sys
 import numpy as np
 
+
 class DetectorController:
     def __init__(self, capture_enabled=True, dev=True):
         """

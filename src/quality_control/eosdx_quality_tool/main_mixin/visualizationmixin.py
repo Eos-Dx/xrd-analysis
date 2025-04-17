@@ -1,3 +1,7 @@
+"""
+This module contains the VisualizationMixin class, which is responsible for creating and managing
+"""
+
 from PyQt5.QtWidgets import (QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QComboBox, QLineEdit, QPushButton, QSpacerItem, QSizePolicy)
 from PyQt5.QtCore import Qt
@@ -6,6 +10,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.colors import LogNorm
 import seaborn as sns  # Added import for seaborn
 import numpy as np
+import re
+
 
 class VisualizationMixin:
 
@@ -35,6 +41,10 @@ class VisualizationMixin:
         self.info_label = QLabel("Measurement Info")
         self.visualization_layout.addWidget(self.info_label)
 
+        # New label for counts information (total vs masked).
+        self.counts_label = QLabel("")
+        self.visualization_layout.addWidget(self.counts_label)
+
         # --- Plots Area: Two Rows Layout ---
         plots_main_layout = QVBoxLayout()
 
@@ -44,6 +54,7 @@ class VisualizationMixin:
         # Plot Panel 1: Raw 2D Data (left column)
         self.plot1_widget = QWidget()
         plot1_layout = QVBoxLayout(self.plot1_widget)
+
         controls1_layout = QHBoxLayout()
         label1 = QLabel("Raw 2D Scale:")
         self.scale_combo_raw = QComboBox()
@@ -58,6 +69,8 @@ class VisualizationMixin:
         plot1_layout.addWidget(self.canvas_raw)
         self.toolbar_raw = NavigationToolbar2QT(self.canvas_raw, self)
         plot1_layout.addWidget(self.toolbar_raw)
+        self.canvas_raw.mpl_connect("motion_notify_event", self.on_raw_hover)
+
         first_row_layout.addWidget(self.plot1_widget)
 
         # Plot Panel 2: XY Plot (Azimuthal Integration) (right column)
@@ -121,6 +134,7 @@ class VisualizationMixin:
         plot3_layout.addWidget(self.canvas_agbh)
         self.toolbar_agbh = NavigationToolbar2QT(self.canvas_agbh, self)
         plot3_layout.addWidget(self.toolbar_agbh)
+        self.canvas_agbh.mpl_connect("motion_notify_event", self.on_agbh_hover)
         second_row_layout.addWidget(self.plot3_widget)
 
         # Plot Panel 4: Cake Representation Placeholder (right column)
@@ -159,9 +173,8 @@ class VisualizationMixin:
             return
         self.current_index = index
         row = self.transformed_df.iloc[index]
-        row2D = self.transformed_df2D.iloc[index]
 
-        # Update measurement information.
+        # --- Update measurement information ---
         measurement_group_id = row.get('measurementsGroupId', 'N/A')
         patient_db_id = row.get('patientDBId', 'N/A')
         patient_id = row.get('patientId', 'N/A')
@@ -176,28 +189,63 @@ class VisualizationMixin:
                      f"Measurement name: {meas_name}")
         self.info_label.setText(info_text)
 
+        # --- Compute total and masked counts for Raw (Plot1) and AgBH (Plot3) ---
+        measurement_data = row.get('measurement_data')
+        # right after loading measurement_data:
+        self.current_raw_data = measurement_data
+
+        poni_str = row.get('ponifile', '')
+        # Parse pixel sizes and poni coordinates from ponifile
+        pix1_match = re.search(r'"pixel1":\s*([\d\.eE+\-]+)', poni_str)
+        pix2_match = re.search(r'"pixel2":\s*([\d\.eE+\-]+)', poni_str)
+        poni1_match = re.search(r'Poni1:\s*([\d\.eE+\-]+)', poni_str)
+        poni2_match = re.search(r'Poni2:\s*([\d\.eE+\-]+)', poni_str)
+        pix1 = float(pix1_match.group(1)) if pix1_match else None
+        pix2 = float(pix2_match.group(1)) if pix2_match else None
+        poni1 = float(poni1_match.group(1)) if poni1_match else None
+        poni2 = float(poni2_match.group(1)) if poni2_match else None
+
+        raw_total_counts = raw_masked_counts = None
+        agbh_total_counts = agbh_masked_counts = None
+        # Raw data counts
+        if isinstance(measurement_data, np.ndarray):
+            raw_total_counts = np.sum(measurement_data)
+            if pix1 and pix2 and poni1 and poni2:
+                cy = poni1 / pix1
+                cx = poni2 / pix2
+                shape = measurement_data.shape
+                radius = 0.1 * shape[0]
+                yy, xx = np.ogrid[:shape[0], :shape[1]]
+                mask = (yy - cy) ** 2 + (xx - cx) ** 2 <= radius ** 2
+                # Sum counts outside the central masked region
+                raw_masked_counts = np.sum(measurement_data[~mask])
+
         # --- Plot 1: Raw 2D Data ---
         self.fig_raw.clf()
         ax_raw = self.fig_raw.add_subplot(111)
         measurement_data = row.get('measurement_data')
         if measurement_data is not None:
-            norm = LogNorm() if self.scale_combo_raw.currentText() == "Log" else None
-            #ax_raw.imshow(measurement_data, aspect='equal', norm=norm)
             sns.heatmap(measurement_data, ax=ax_raw, robust=True, square=True, cbar=True)
             ax_raw.set_aspect('equal')
+        if not hasattr(self, 'raw_annot'):
+            self.raw_annot = ax_raw.annotate(
+                "",
+                xy=(0, 0),
+                xytext=(10, 10),
+                textcoords="offset points",
+                color='white',
+                backgroundcolor='black'
+            )
+            self.raw_annot.set_visible(False)
         self.canvas_raw.draw_idle()
 
         # --- Plot 2: XY Plot (Azimuthal Integration) ---
         self.fig_xy.clf()
         ax_xy = self.fig_xy.add_subplot(111)
         radial_profile_data = row.get('radial_profile_data')
-        a = row2D.get('radial_profile_data')
-        radial_profile_data2D = np.sum(row2D.get('radial_profile_data'), axis=0)
-        q_range2D = row2D.get('q_range')
         q_range = row.get('q_range')
         if radial_profile_data is not None and q_range is not None:
             ax_xy.plot(q_range, radial_profile_data, label='Azimuthal Integration')
-            ax_xy.plot(q_range2D, radial_profile_data2D, label='Cake sum')
             ax_xy.set_xlabel("q_range (nm-1)")
             ax_xy.set_ylabel("radial_profile_data")
             ax_xy.set_yscale("log" if self.scale_combo_xy.currentText() == "Log" else "linear")
@@ -213,18 +261,28 @@ class VisualizationMixin:
         self.canvas_xy.draw_idle()
 
         # --- Plot 3: AgBH Plot using sns.heatmap ---
-        self.fig_agbh.clf()
         ax_agbh = self.fig_agbh.add_subplot(111)
         calib_name = row.get('calib_name')
+        agbh_data = None
         if self.calibration_df is not None and calib_name is not None:
             calib_rows = self.calibration_df[(self.calibration_df['calib_name'] == calib_name) &
                                              (self.calibration_df['cal_name'].str.contains('AgBh'))]
             if not calib_rows.empty:
                 calib_row = calib_rows.iloc[0]
                 agbh_data = calib_row.get('measurement_data')
-                if agbh_data is not None:
-                    # Use seaborn's heatmap with robust scaling and square cells.
+                self.current_agbh_data = agbh_data
+                if isinstance(agbh_data, np.ndarray):
                     sns.heatmap(agbh_data, ax=ax_agbh, robust=True, square=True, cbar=True)
+                    # Compute AgBH counts
+                    agbh_total_counts = np.sum(agbh_data)
+                    if pix1 and pix2 and poni1 and poni2:
+                        cy = poni1 / pix1
+                        cx = poni2 / pix2
+                        shape = agbh_data.shape
+                        radius = 0.1 * shape[0]
+                        yy, xx = np.ogrid[:shape[0], :shape[1]]
+                        mask = (yy - cy) ** 2 + (xx - cx) ** 2 <= radius ** 2
+                        agbh_masked_counts = np.sum(agbh_data[~mask])
                 else:
                     ax_agbh.text(0.5, 0.5, "No AgBH data available",
                                  ha="center", va="center", transform=ax_agbh.transAxes)
@@ -234,6 +292,16 @@ class VisualizationMixin:
         else:
             ax_agbh.text(0.5, 0.5, "No AgBH data available",
                          ha="center", va="center", transform=ax_agbh.transAxes)
+        if isinstance(agbh_data, np.ndarray) and not hasattr(self, 'agbh_annot'):
+            self.agbh_annot = ax_agbh.annotate(
+                "",
+                xy=(0, 0),
+                xytext=(10, 10),
+                textcoords="offset points",
+                color='white',
+                backgroundcolor='black'
+            )
+            self.agbh_annot.set_visible(False)
         self.canvas_agbh.draw_idle()
 
         # --- Plot 4: Cake Representation ---
@@ -256,6 +324,14 @@ class VisualizationMixin:
                          ha="center", va="center", transform=ax_cake.transAxes)
         self.canvas_cake.draw_idle()
 
+        # --- Update counts label with Total / Masked ---
+        parts = []
+        if raw_total_counts is not None:
+            parts.append(f"Raw: total={raw_total_counts:.2e}, masked={raw_masked_counts:.2e}")
+        if agbh_total_counts is not None:
+            parts.append(f"AgBH: total={agbh_total_counts:.2e}, masked={agbh_masked_counts:.2e}")
+        self.counts_label.setText(" | ".join(parts))
+
     def update_horizontal_line(self):
         """Updates the XY plot when the horizontal line value is changed."""
         self.display_measurement(self.current_index)
@@ -274,3 +350,47 @@ class VisualizationMixin:
         if self.vertical_lines_values:
             self.vertical_lines_values.pop()
             self.display_measurement(self.current_index)
+
+    def on_raw_hover(self, event):
+        """Show x, y and intensity for raw heatmap under cursor."""
+        data = getattr(self, 'current_raw_data', None)
+        # Only proceed if we're over the raw-heatmap axes and have valid data
+        if event.inaxes == self.fig_raw.axes[0] and isinstance(data, np.ndarray):
+            x, y = event.xdata, event.ydata
+            if x is None or y is None:
+                return
+            ix, iy = int(x + 0.5), int(y + 0.5)
+            h, w = data.shape
+            if 0 <= iy < h and 0 <= ix < w:
+                val = data[iy, ix]
+                self.raw_annot.xy = (x, y)
+                self.raw_annot.set_text(f"x={ix}, y={iy}, {val:.2e}")
+                self.raw_annot.set_visible(True)
+                self.canvas_raw.draw_idle()
+        else:
+            # hide if leaving the axes or no data
+            if hasattr(self, 'raw_annot'):
+                self.raw_annot.set_visible(False)
+                self.canvas_raw.draw_idle()
+
+    def on_agbh_hover(self, event):
+        """Show x, y and intensity for AgBH heatmap under cursor."""
+        data = getattr(self, 'current_agbh_data', None)
+        # Only proceed if we're over the AgBH-heatmap axes and have valid data
+        if event.inaxes == self.fig_agbh.axes[0] and isinstance(data, np.ndarray):
+            x, y = event.xdata, event.ydata
+            if x is None or y is None:
+                return
+            ix, iy = int(x + 0.5), int(y + 0.5)
+            h, w = data.shape
+            if 0 <= iy < h and 0 <= ix < w:
+                val = data[iy, ix]
+                self.agbh_annot.xy = (x, y)
+                self.agbh_annot.set_text(f"x={ix}, y={iy}, {val:.2e}")
+                self.agbh_annot.set_visible(True)
+                self.canvas_agbh.draw_idle()
+        else:
+            # hide if leaving the axes or no data
+            if hasattr(self, 'agbh_annot'):
+                self.agbh_annot.set_visible(False)
+                self.canvas_agbh.draw_idle()
