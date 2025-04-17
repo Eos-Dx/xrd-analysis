@@ -22,6 +22,7 @@ class DetectorController:
             # In DEV mode, we simply set dummy (non-None) values.
             self.pixet = True
             self.detector = True
+            return True
         else:
             # Real detector initialization.
             sys.path.insert(0, 'D:\\API_PIXet_Pro_1.8.3_Windows_x86_64')
@@ -70,16 +71,20 @@ class DetectorController:
                                               ((Y - y0_2) ** 2) / (2 * sigma_y2 ** 2)))
             combined = gaussian1 + gaussian2
             np.savetxt(filename, combined, fmt='%.6f')
+            return True
         else:
             print(f"Capturing at {filename} ...")
             try:
                 rc = self.detector.doSimpleIntegralAcquisition(Nframes, Nseconds, self.pixet.PX_FTYPE_AUTODETECT, filename)
                 if rc == 0:
                     print("Capture successful.")
+                    return True
                 else:
                     print("Capture error:", rc)
+                    return False
             except Exception as e:
                 print(f'During capture: {e}')
+                return False
 
 
 class XYStageController:

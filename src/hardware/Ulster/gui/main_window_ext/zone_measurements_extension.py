@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
     QSpacerItem, QSizePolicy, QProgressBar, QWidget, QHBoxLayout,
     QVBoxLayout, QPushButton, QDialog
 )
+from copy import copy
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5.QtCore import QTimer, Qt
@@ -251,11 +252,13 @@ class ZoneMeasurementsMixin:
         Sorts points by coordinates and then begins the measurement sequence.
         """
         self.validate_folder()
+        self.state_path_measurements = Path(self.measurement_folder) / f'{self.fileNameLineEdit.text()}_state.json'
         self.manual_save_state()
+        self.state_measurements = copy(self.state)
         try:
-            with open(Path(self.measurement_folder) / f'{self.fileNameLineEdit.text()}_state.json', "w") as f:
-                self.state['image_base64'] = encode_image_to_base64(self.image_view.current_image_path)
-                json.dump(self.state, f, indent=4)
+            with open(self.state_path_measurements, "w") as f:
+                self.state_measurements['image_base64'] = encode_image_to_base64(self.image_view.current_image_path)
+                json.dump(self.state_measurements, f, indent=4)
         except Exception as e:
             print(e)
 
@@ -341,17 +344,37 @@ class ZoneMeasurementsMixin:
         txt_filename = os.path.join(self.measurement_folder, f"{base_name}_{x_mm:.2f}_{y_mm:.2f}_{timestamp}.txt")
 
         # Capture measurement using the detector controller.
-        self.detector_controller.capture_point(1, self.integration_time, txt_filename)
+        res = self.detector_controller.capture_point(1, self.integration_time, txt_filename)
+        if res:
+            state_path = self.state_path_measurements
+            # Build the new entry
+            new_meta = {
+                Path(txt_filename).name: {
+                    'x': x_mm,
+                    'y': y_mm,
+                    'base_file': base_name,
+                    'integration_time': self.integration_time,
+                    'distance': self.add_distance_lineedit.text()
+                }
+            }
 
-        # Convert the captured data.
-        try:
-            data = np.loadtxt(txt_filename)
-            npy_filename = os.path.join(self.measurement_folder, f"{base_name}_{x_mm:.2f}_{y_mm:.2f}_{timestamp}.npy")
-            np.save(npy_filename, data)
-            print(f"Converted {txt_filename} to {npy_filename}")
-        except Exception as e:
-            print(f"Error converting file: {e}")
-            npy_filename = txt_filename  # Fallback
+            # Get the existing measurements_meta (or an empty dict), update it, and save back
+            measurements = self.state_measurements.get('measurements_meta', {})
+            measurements.update(new_meta)
+            self.state_measurements['measurements_meta'] = measurements
+
+            with open(state_path, 'w') as f:
+                json.dump(self.state_measurements, f, indent=4)
+
+            # Convert the captured data.
+            try:
+                data = np.loadtxt(txt_filename)
+                npy_filename = os.path.join(self.measurement_folder, f"{base_name}_{x_mm:.2f}_{y_mm:.2f}_{timestamp}.npy")
+                np.save(npy_filename, data)
+                print(f"Converted {txt_filename} to {npy_filename}")
+            except Exception as e:
+                print(f"Error converting file: {e}")
+                npy_filename = txt_filename  # Fallback
 
         self.add_measurement_to_table(self.sorted_indices[self.current_measurement_sorted_index], npy_filename)
 
