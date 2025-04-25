@@ -1,4 +1,4 @@
-import quality_control.eosdx_quality_tool.config as config
+import quality_control.eosdx_quality_tool.auxiliary.config as config
 from pathlib import Path
 from PyQt5.QtWidgets import QMainWindow, QAction
 from PyQt5.QtGui import QIcon
@@ -16,7 +16,7 @@ class MainWindow(QMainWindow, FileDialogMixin, H5HandlerMixin, DataFrameStatsMix
         super().__init__(parent)
         self.setWindowTitle("EosDX Quality Tool")
         self.resize(600, 400)
-        logo_path = Path('logo_quality.png')  # Adjust the path.
+        logo_path = Path(__file__).resolve().parent.parent / 'windows/logo_quality.png'
         if logo_path.exists():
             self.setWindowIcon(QIcon(str(logo_path)))
         else:

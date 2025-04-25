@@ -1,7 +1,3 @@
-"""
-This module contains the VisualizationMixin class, which is responsible for creating and managing
-"""
-
 from PyQt5.QtWidgets import (QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QComboBox, QLineEdit, QPushButton, QSpacerItem, QSizePolicy)
 from PyQt5.QtCore import Qt
@@ -69,7 +65,6 @@ class VisualizationMixin:
         plot1_layout.addWidget(self.canvas_raw)
         self.toolbar_raw = NavigationToolbar2QT(self.canvas_raw, self)
         plot1_layout.addWidget(self.toolbar_raw)
-        self.canvas_raw.mpl_connect("motion_notify_event", self.on_raw_hover)
 
         first_row_layout.addWidget(self.plot1_widget)
 
@@ -134,7 +129,6 @@ class VisualizationMixin:
         plot3_layout.addWidget(self.canvas_agbh)
         self.toolbar_agbh = NavigationToolbar2QT(self.canvas_agbh, self)
         plot3_layout.addWidget(self.toolbar_agbh)
-        self.canvas_agbh.mpl_connect("motion_notify_event", self.on_agbh_hover)
         second_row_layout.addWidget(self.plot3_widget)
 
         # Plot Panel 4: Cake Representation Placeholder (right column)
@@ -225,7 +219,9 @@ class VisualizationMixin:
         ax_raw = self.fig_raw.add_subplot(111)
         measurement_data = row.get('measurement_data')
         if measurement_data is not None:
-            sns.heatmap(measurement_data, ax=ax_raw, robust=True, square=True, cbar=True)
+            sns.heatmap(measurement_data, ax=ax_raw, robust=True,
+                        square=True, cbar=True,
+                        cmap='viridis')
             ax_raw.set_aspect('equal')
         if not hasattr(self, 'raw_annot'):
             self.raw_annot = ax_raw.annotate(
@@ -272,7 +268,9 @@ class VisualizationMixin:
                 agbh_data = calib_row.get('measurement_data')
                 self.current_agbh_data = agbh_data
                 if isinstance(agbh_data, np.ndarray):
-                    sns.heatmap(agbh_data, ax=ax_agbh, robust=True, square=True, cbar=True)
+                    sns.heatmap(agbh_data, ax=ax_agbh, robust=True,
+                                square=True, cbar=True,
+                                cmap='viridis')
                     # Compute AgBH counts
                     agbh_total_counts = np.sum(agbh_data)
                     if pix1 and pix2 and poni1 and poni2:
@@ -352,45 +350,24 @@ class VisualizationMixin:
             self.display_measurement(self.current_index)
 
     def on_raw_hover(self, event):
-        """Show x, y and intensity for raw heatmap under cursor."""
         data = getattr(self, 'current_raw_data', None)
-        # Only proceed if we're over the raw-heatmap axes and have valid data
         if event.inaxes == self.fig_raw.axes[0] and isinstance(data, np.ndarray):
-            x, y = event.xdata, event.ydata
-            if x is None or y is None:
-                return
-            ix, iy = int(x + 0.5), int(y + 0.5)
-            h, w = data.shape
-            if 0 <= iy < h and 0 <= ix < w:
+            ix, iy = int(event.xdata + 0.5), int(event.ydata + 0.5)
+            if 0 <= iy < data.shape[0] and 0 <= ix < data.shape[1]:
                 val = data[iy, ix]
-                self.raw_annot.xy = (x, y)
-                self.raw_annot.set_text(f"x={ix}, y={iy}, {val:.2e}")
-                self.raw_annot.set_visible(True)
-                self.canvas_raw.draw_idle()
-        else:
-            # hide if leaving the axes or no data
-            if hasattr(self, 'raw_annot'):
-                self.raw_annot.set_visible(False)
-                self.canvas_raw.draw_idle()
+                # <-- write directly to the QLabel
+                self.toolbar_raw.locLabel.setText(f"x={ix}, y={iy}, {val:.2e}")
+                return
+        # clear when leaving
+        self.toolbar_raw.locLabel.setText("")
 
     def on_agbh_hover(self, event):
-        """Show x, y and intensity for AgBH heatmap under cursor."""
         data = getattr(self, 'current_agbh_data', None)
-        # Only proceed if we're over the AgBH-heatmap axes and have valid data
         if event.inaxes == self.fig_agbh.axes[0] and isinstance(data, np.ndarray):
-            x, y = event.xdata, event.ydata
-            if x is None or y is None:
-                return
-            ix, iy = int(x + 0.5), int(y + 0.5)
+            ix, iy = int(event.xdata + 0.5), int(event.ydata + 0.5)
             h, w = data.shape
             if 0 <= iy < h and 0 <= ix < w:
                 val = data[iy, ix]
-                self.agbh_annot.xy = (x, y)
-                self.agbh_annot.set_text(f"x={ix}, y={iy}, {val:.2e}")
-                self.agbh_annot.set_visible(True)
-                self.canvas_agbh.draw_idle()
-        else:
-            # hide if leaving the axes or no data
-            if hasattr(self, 'agbh_annot'):
-                self.agbh_annot.set_visible(False)
-                self.canvas_agbh.draw_idle()
+                self.toolbar_agbh.set_message(f"x={ix}, y={iy}, val={val:.2e}")
+                return
+        self.toolbar_agbh.set_message("")

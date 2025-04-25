@@ -1,8 +1,7 @@
 from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLabel, QListWidget
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor
-from quality_control.eosdx_quality_tool.config import REASON
-from pathlib import Path
+from quality_control.eosdx_quality_tool.auxiliary.config import REASON
 
 
 class ExcludeIncludeMixin:

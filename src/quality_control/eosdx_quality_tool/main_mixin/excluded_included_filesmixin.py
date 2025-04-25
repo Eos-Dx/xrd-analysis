@@ -1,8 +1,6 @@
-from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLabel, QListWidget
+from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QPushButton, QLabel, QListWidget
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor
-from quality_control.eosdx_quality_tool.config import REASON
-from pathlib import Path
 
 
 class ExcludedIncludedFilesMixin:
@@ -48,10 +46,7 @@ class ExcludedIncludedFilesMixin:
     def load_excluded_included_files(self):
         """Loads the labels file and populates the list widget."""
         self.excluded_list_widget.clear()
-        try:
-            self.labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
-        except Exception:
-            return
+        self.labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
 
         if self.labels_filename.exists():
             with open(self.labels_filename, "r") as f:
@@ -60,16 +55,15 @@ class ExcludedIncludedFilesMixin:
                 line = line.strip()
                 if line:
                     self.excluded_list_widget.addItem(line)
+        else:
+            print("Labels file does not exist:", self.labels_filename)
 
     def apply_labels_from_file(self):
         """
         Reads the labels file and applies the corresponding colors to the measurement list items.
         Each record is expected to start with one of "Excluded: ", "Included: ", or "Suspicious: ".
         """
-        try:
-            labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
-        except Exception:
-            return
+        labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
 
         if labels_filename.exists():
             with open(labels_filename, "r") as f:
@@ -93,6 +87,8 @@ class ExcludedIncludedFilesMixin:
                 if parts:
                     meas_name = parts[0].strip()
                     self.mark_measurement_in_list(meas_name, color)
+        else:
+            print("Labels file does not exist:", self.labels_filename)
 
     def remove_line_from_file(self, filename, line_to_remove):
         """Removes a specific line from the given file."""
