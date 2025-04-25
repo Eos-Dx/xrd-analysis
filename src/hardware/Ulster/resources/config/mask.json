@@ -1,9 +1,0 @@
-{
-  "circ_mask_en": 0,
-  "radius": 20000,
-  "sq_mask_en": 1,
-  "diag_en": 0,
-  "sides": 60000,
-  "xline_mask_en": 0,
-  "yline_mask_en": 0
-}

@@ -11,7 +11,6 @@ from hardware.Ulster.gui.main_window_ext.zone_points_extension import ZonePoints
 from hardware.Ulster.gui.main_window_ext.zone_measurements_extension import ZoneMeasurementsMixin
 from hardware.Ulster.gui.main_window_ext.state_saver_extension import StateSaverMixin
 
-
 class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
                  ZonePointsMixin, ZoneMeasurementsMixin, StateSaverMixin,
                  MainWindowBasic):

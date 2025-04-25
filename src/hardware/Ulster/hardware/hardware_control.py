@@ -27,12 +27,15 @@ class DetectorController:
             # Real detector initialization.
             sys.path.insert(0, 'D:\\API_PIXet_Pro_1.8.3_Windows_x86_64')
             #sys.path.insert(0, r'D:\OneDrive\OneDrive - Matur\General - Ulster\Equipment\Xena\M30XY Stage\Code\XYscan')
-            import pypixet
+            try:
+                import pypixet
+            except ImportError as e:
+                print("Error importing pypixet:", e)
+                return False
             print("Initializing detector...")
             pypixet.start()
             pixet = pypixet.pixet
             devices = pixet.devices()
-            a = devices[0].fullName()
             if devices[0].fullName() == 'FileDevice 0':
                 print("No devices connected")
                 pixet.exitPixet()

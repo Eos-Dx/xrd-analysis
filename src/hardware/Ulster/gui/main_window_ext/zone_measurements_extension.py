@@ -202,7 +202,6 @@ class ZoneMeasurementsMixin:
         appended_value = '_' + self.add_distance_lineedit.text()
         self.fileNameLineEdit.setText(current_filename + appended_value)
 
-
     def browse_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
         if folder:
@@ -414,7 +413,6 @@ class ZoneMeasurementsMixin:
             green_zone.setAlphaF(0.2)
             self._zone_item.setBrush(green_zone)
         QTimer.singleShot(1000, self.measurement_finished)
-
 
     def add_measurement_to_table(self, row, measurement_filename):
         """
