@@ -162,15 +162,23 @@ class XYStageController:
             print(f"DEV mode: Dummy move_stage called. Pretending to move to ({x_new}, {y_new}).")
             return x_new, y_new
         else:
-            print(f"Moving stage: Target X = {x_new} mm, Target Y = {y_new} mm")
+            # Move Y-axis
+            print(f"Moving Y-axis to {y_new} mm")
             self.stage.move_to(y_new * self.scaling_factor, channel=self.y_chan, scale=True)
             self.stage.wait_move(channel=self.y_chan, timeout=move_timeout)
+            y = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
+            print(f"Y-axis moved to: {y}")
+
+            # Move X-axis
+            print(f"Moving X-axis to {x_new} mm")
             self.stage.move_to(x_new * self.scaling_factor, channel=self.x_chan, scale=True)
             self.stage.wait_move(channel=self.x_chan, timeout=move_timeout)
-            x_final = self.stage.get_position(channel=self.x_chan, scale=True) / self.scaling_factor
-            y_final = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
-            print(f"Final positions: X = {x_final} mm, Y = {y_final} mm")
-            return x_final, y_final
+            x = self.stage.get_position(channel=self.x_chan, scale=True) / self.scaling_factor
+            print(f"X-axis moved to: {x}")
+
+
+            print(f"Final positions: X = {x} mm, Y = {y} mm")
+            return x, y
 
     def get_xy_position(self):
         if self.stage is None:
