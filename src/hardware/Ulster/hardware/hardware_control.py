@@ -164,9 +164,9 @@ class XYStageController:
         else:
             print(f"Moving stage: Target X = {x_new} mm, Target Y = {y_new} mm")
             self.stage.move_to(y_new * self.scaling_factor, channel=self.y_chan, scale=True)
+            self.stage.wait_move(channel=self.y_chan, timeout=move_timeout)
             self.stage.move_to(x_new * self.scaling_factor, channel=self.x_chan, scale=True)
             self.stage.wait_move(channel=self.x_chan, timeout=move_timeout)
-            self.stage.wait_move(channel=self.y_chan, timeout=move_timeout)
             x_final = self.stage.get_position(channel=self.x_chan, scale=True) / self.scaling_factor
             y_final = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
             print(f"Final positions: X = {x_final} mm, Y = {y_final} mm")
