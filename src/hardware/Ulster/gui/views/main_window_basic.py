@@ -58,8 +58,11 @@ class MainWindowBasic(QMainWindow):
         if self.image_path:
             pixmap = QPixmap(self.image_path)
             self.image_view.set_image(pixmap, image_path=self.image_path)
-            self.delete_all_shapes_from_table()
-            self.delete_all_points()
+            try:
+                self.delete_all_shapes_from_table()
+                self.delete_all_points()
+            except Exception as e:
+                print(e)
 
     def check_dev_mode(self):
         # If DEV mode is enabled, automatically load the default image.

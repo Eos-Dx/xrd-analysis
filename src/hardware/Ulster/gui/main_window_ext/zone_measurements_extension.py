@@ -408,10 +408,13 @@ class ZoneMeasurementsMixin:
         # Visual feedback.
         green_brush = QColor(0, 255, 0)
         self._point_item.setBrush(green_brush)
-        if self._zone_item:
-            green_zone = QColor(0, 255, 0)
-            green_zone.setAlphaF(0.2)
-            self._zone_item.setBrush(green_zone)
+        try:
+            if self._zone_item:
+                green_zone = QColor(0, 255, 0)
+                green_zone.setAlphaF(0.2)
+                self._zone_item.setBrush(green_zone)
+        except Exception as e:
+            print(e)
         QTimer.singleShot(1000, self.measurement_finished)
 
     def add_measurement_to_table(self, row, measurement_filename):
