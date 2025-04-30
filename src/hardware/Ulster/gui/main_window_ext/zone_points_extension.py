@@ -369,9 +369,12 @@ class ZonePointsMixin:
         # Delete all user-defined points.
         user_points = self.image_view.points_dict["user"]["points"]
         user_zones = self.image_view.points_dict["user"]["zones"]
-        for point_item, zone_item in zip(reversed(user_points), reversed(user_zones)):
-            self.image_view.scene.removeItem(point_item)
-            self.image_view.scene.removeItem(zone_item)
+        try:
+            for point_item, zone_item in zip(reversed(user_points), reversed(user_zones)):
+                self.image_view.scene.removeItem(point_item)
+                self.image_view.scene.removeItem(zone_item)
+        except Exception as e:
+            print(e)
         # Clear the user-defined lists.
         self.image_view.points_dict["user"]["points"].clear()
         self.image_view.points_dict["user"]["zones"].clear()
