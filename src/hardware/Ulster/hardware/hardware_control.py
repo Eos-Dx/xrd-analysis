@@ -52,21 +52,21 @@ class DetectorController:
         if self.dev:
             # --- Dummy capture (DEV mode): Create two Gaussians and combine them. ---
             print(f"DEV mode: Dummy capture_point called. Saving to {filename}")
-            # Create a 100x100 grid.
-            x = np.arange(100)
-            y = np.arange(100)
+            # Create a 256x256 grid.
+            x = np.arange(256)
+            y = np.arange(256)
             X, Y = np.meshgrid(x, y)
             # First Gaussian: peak > 1e6.
-            x0_1 = np.random.uniform(0, 100)
-            y0_1 = np.random.uniform(0, 100)
+            x0_1 = np.random.uniform(0, 256)
+            y0_1 = np.random.uniform(0, 256)
             sigma_x1 = np.random.uniform(5, 15)
             sigma_y1 = np.random.uniform(5, 15)
             amplitude1 = np.random.uniform(1e6 + 1, 2e6)
             gaussian1 = amplitude1 * np.exp(-(((X - x0_1) ** 2) / (2 * sigma_x1 ** 2) +
                                               ((Y - y0_1) ** 2) / (2 * sigma_y1 ** 2)))
             # Second Gaussian: peak < 1e6.
-            x0_2 = np.random.uniform(0, 100)
-            y0_2 = np.random.uniform(0, 100)
+            x0_2 = np.random.uniform(0, 256)
+            y0_2 = np.random.uniform(0, 256)
             sigma_x2 = np.random.uniform(5, 15)
             sigma_y2 = np.random.uniform(5, 15)
             amplitude2 = np.random.uniform(1e5, 1e6 - 1)

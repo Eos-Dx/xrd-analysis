@@ -1,6 +1,6 @@
 {
-    "image": "D:/OneDrive/OneDrive - Matur/General - Ulster/Liver/mice_liver/U1/Xena_Cu/20250430/mice_liver_U1_Xena_Cu_20250430_P38/P38_20250430_131928.jpg",
-    "rotation_angle": 0,
+    "image": "C:\\dev\\eos_play\\unzipped_data\\Ulster\\pancreas\\sheep_pancreas\\U2\\Xena_Cu\\20250313\\P1a_L4_20250218.jpg",
+    "rotation_angle": 3,
     "crop_rect": null,
     "shapes": [
         {
@@ -8,10 +8,10 @@
             "type": "Rectangle",
             "role": "sample holder",
             "geometry": {
-                "x": 27.802322387695256,
-                "y": 9.920928955078125,
-                "width": 963.6347808837884,
-                "height": 963.6347808837884
+                "x": 105.255615234375,
+                "y": 2769.8216552734366,
+                "width": 1185.6679687499995,
+                "height": 1185.6679687499995
             }
         },
         {
@@ -19,28 +19,23 @@
             "type": "Circle",
             "role": "include",
             "geometry": {
-                "x": 331.7860107421873,
-                "y": 301.98368835449196,
-                "width": 343.74647521972634,
-                "height": 337.7860107421873
+                "x": 196.8083496093749,
+                "y": 2912.872802734374,
+                "width": 956.7861328124997,
+                "height": 937.7126464843745
             }
         }
     ],
     "zone_points": [
         {
-            "x": 441.0743713378903,
-            "y": 476.83715820312466,
-            "type": "user"
-        },
-        {
-            "x": 578.1650543212886,
-            "y": 494.71855163574185,
-            "type": "user"
+            "x": 443.846964517542,
+            "y": 3491.6691269837984,
+            "type": "generated"
         }
     ],
     "real_center": [
         -5.15,
         -4.35
     ],
-    "pixel_to_mm_ratio": 53.424154493543796
+    "pixel_to_mm_ratio": 65.7593315972222
 }

@@ -27,7 +27,7 @@ class MainWindowBasic(QMainWindow):
         self.check_dev_mode()
 
     def load_config(self):
-        config_path = logo_path = Path(__file__).resolve().parent.parent.parent / 'resources/config/main.json'
+        config_path = Path(__file__).resolve().parent.parent.parent / 'resources/config/main.json'
         try:
             with open(config_path, 'r') as f:
                 return json.load(f)

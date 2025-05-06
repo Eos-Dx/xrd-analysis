@@ -687,7 +687,7 @@ def generate_poni_from_text(ponifile_text):
     return temp_file_path
 
 
-def create_mask(faulty_pixels):
+def create_mask(faulty_pixels, size=(256, 256)):
     """
     Creates a mask array to identify faulty pixels.
 
@@ -699,8 +699,8 @@ def create_mask(faulty_pixels):
     :rtype: numpy.ndarray or None
     """
     if faulty_pixels is not None:
-        # Initialize the mask array for a 256x256 detector
-        mask = np.zeros((256, 256), dtype=np.uint8)
+        # Initialize the mask array for a size detector
+        mask = np.zeros(size, dtype=np.uint8)
         for y, x in faulty_pixels:
             mask[y, x] = 1
     else:

@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
     QSpacerItem, QSizePolicy, QProgressBar, QWidget, QHBoxLayout,
     QVBoxLayout, QPushButton, QDialog
 )
+
 from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QColor
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -41,7 +42,59 @@ class CaptureWorker(QThread):
         self.finished.emit(success, self.txt_filename)
 
 
+import os
+import json
+import time
+import numpy as np
+import seaborn as sns
+from copy import copy
+from pathlib import Path
+from PyQt5.QtWidgets import (
+    QDockWidget, QLabel, QSpinBox, QLineEdit, QFileDialog,
+    QSpacerItem, QSizePolicy, QProgressBar, QWidget, QHBoxLayout,
+    QVBoxLayout, QPushButton, QDialog
+)
+from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QColor
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+from xrdanalysis.data_processing.azimuthal_integration import initialize_azimuthal_integrator_df
+from xrdanalysis.data_processing.utility_functions import create_mask
+from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
+from hardware.Ulster.hardware.hardware_control import DetectorController, XYStageController
+
+
+class CaptureWorker(QThread):
+    # emit (success: bool, txt_filename: str)
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, detector_controller, integration_time, txt_filename, parent=None):
+        super().__init__(parent)
+        self.detector_controller = detector_controller
+        self.integration_time = integration_time
+        self.txt_filename = txt_filename
+
+    def run(self):
+        # this executes in the worker thread
+        success = self.detector_controller.capture_point(
+            1,
+            self.integration_time,
+            self.txt_filename
+        )
+        # emit back to the GUI thread
+        self.finished.emit(success, self.txt_filename)
+
+
 class ZoneMeasurementsMixin:
+
+    def load_default_mask(self):
+        faulty_pixels = Path(__file__).resolve().parent.parent.parent / 'resources/faulty_pixels.npy'
+        if faulty_pixels.exists():
+            self.mask = self._create_mask(faulty_pixels)
+        else:
+            self.mask = np.array([[]])
+            print("Faulty pixels file was not found:", faulty_pixels)
 
     def create_zone_measurements_widget(self):
         """
@@ -143,27 +196,23 @@ class ZoneMeasurementsMixin:
 
         # --- Additional controls for count and distance ---
         additionalLayout = QHBoxLayout()
-        # Button and number editor for "Add count"
         self.add_count_btn = QPushButton("Add count")
         self.addCountSpinBox = QSpinBox()
         self.addCountSpinBox.setMinimum(1)
         self.addCountSpinBox.setMaximum(10000)
-        self.addCountSpinBox.setValue(60)  # default value 60
+        self.addCountSpinBox.setValue(60)
         additionalLayout.addWidget(self.add_count_btn)
         additionalLayout.addWidget(self.addCountSpinBox)
-        # Button and text editor for "Add distance"
         self.add_distance_btn = QPushButton("Add distance")
-        self.add_distance_lineedit = QLineEdit("2cm")  # default value "2cm"
+        self.add_distance_lineedit = QLineEdit("2cm")
         additionalLayout.addWidget(self.add_distance_btn)
         additionalLayout.addWidget(self.add_distance_lineedit)
-        # Insert horizontal spacer.
         additionalLayout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
         layout.addLayout(additionalLayout)
 
         # Connect the new controls.
         self.add_distance_btn.clicked.connect(self.handle_add_distance)
         self.add_count_btn.clicked.connect(self.handle_add_count)
-
 
         # Progress indicator.
         progressLayout = QHBoxLayout()
@@ -175,20 +224,63 @@ class ZoneMeasurementsMixin:
         progressLayout.addWidget(self.timeRemainingLabel)
         layout.addLayout(progressLayout)
 
+        # Mask file selection.
+        maskLayout = QHBoxLayout()
+        maskLabel = QLabel("Mask file:")
+        self.maskLineEdit = QLineEdit()
+        self.maskBrowseBtn = QPushButton("Browse...")
+        self.maskBrowseBtn.clicked.connect(self.browse_mask_file)
+        maskLayout.addWidget(maskLabel)
+        maskLayout.addWidget(self.maskLineEdit)
+        maskLayout.addWidget(self.maskBrowseBtn)
+        layout.addLayout(maskLayout)
+
+        # Spacer to fill the remaining space.
         container.setLayout(layout)
         self.zoneMeasurementsDock.setWidget(container)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.zoneMeasurementsDock)
 
-        # Assume points_dict is used elsewhere in your app.
         self.image_view.points_dict = {
             "generated": {"points": [], "zones": []},
             "user": {"points": [], "zones": []}
         }
 
-        # Timer to update the XY stage position.
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
         self.xyTimer.start(1000)
+
+    def browse_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
+        if folder:
+            self.folderLineEdit.setText(folder)
+
+    def browse_mask_file(self):
+        """
+        Opens a file dialog to select a mask file and loads it.
+        """
+        mask_file, _ = QFileDialog.getOpenFileName(
+            self, "Select Mask File", "", "Mask Files (*.mask *.txt);;All Files (*)"
+        )
+        if mask_file:
+            self.maskLineEdit.setText(mask_file)
+            self.load_mask_file(mask_file)
+
+    def _create_mask(self, mask_file):
+        return create_mask(np.load(mask_file), (self.config["detector_size"]["width"],
+                                                self.config["detector_size"]["height"]))
+
+    def load_mask_file(self, mask_file):
+        """
+        Dummy logic to read the selected mask file.
+        """
+        mask_file = Path(mask_file)
+        if mask_file.exists():
+            try:
+                self.mask = self._create_mask(mask_file)
+            except Exception as e:
+                print("Error loading mask file:", e)
+        else:
+            print("Mask file was not found:", mask_file)
 
     def handle_add_count(self):
         # Append the value from addCountSpinBox to fileNameLineEdit.
@@ -460,9 +552,9 @@ class ZoneMeasurementsMixin:
             sample_distance_mm
         )
 
-        npt = 100  # Number of integration points.
+        npt = 200  # Number of integration points.
         try:
-            result = ai.integrate1d(data, npt, unit="q_nm^-1", error_model="azimuthal")
+            result = ai.integrate1d(data, npt, unit="q_nm^-1", error_model="azimuthal", mask=self.mask)
             radial = result.radial
             intensity = result.intensity
         except Exception as e:
