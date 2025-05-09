@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>API &#8212; MATUR  documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=649a27d8" />
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=658d757c" />
     <link rel="stylesheet" type="text/css" href="_static/custom.css?v=02e5e13e" />
     
@@ -17,7 +17,7 @@
     <script src="_static/bizstyle.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="MLPipeline: Philosophy and Structure" href="pipeline.html" />
+    <link rel="prev" title="Container -&gt; DataFrame Nomenclature" href="container_dataframe_nomenclature.html" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <!--[if lt IE 9]>
     <script src="_static/css3-mediaqueries.js"></script>
@@ -33,7 +33,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="pipeline.html" title="MLPipeline: Philosophy and Structure"
+          <a href="container_dataframe_nomenclature.html" title="Container -&gt; DataFrame Nomenclature"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">API</a></li> 
@@ -503,7 +503,7 @@ filter value.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.azimuthal_integration.perform_azimuthal_integration">
-<span class="sig-name descname"><span class="pre">perform_azimuthal_integration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1D'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calibration_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thres</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calc_cake_stats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.perform_azimuthal_integration" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">perform_azimuthal_integration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1D'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calibration_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thres</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thickness_adjustment</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thickness_adjustment_distance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">700</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calc_cake_stats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.azimuthal_integration.perform_azimuthal_integration" title="Link to this definition">¶</a></dt>
 <dd><p>Perform azimuthal integration on a single row of a DataFrame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -770,7 +770,7 @@ Defaults to UNZIP_PATH if not provided.</p>
 <p>The transformer classes are stored here</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.AzimuthalIntegration">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AzimuthalIntegration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thres</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'measurement_data'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faulty_pixels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integration_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1D'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calibration_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calc_cake_stats</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AzimuthalIntegration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thres</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'measurement_data'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faulty_pixels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integration_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1D'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calibration_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dataframe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thickness_adjustment</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thickness_adjustment_distance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">700</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calc_cake_stats</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.AzimuthalIntegration" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
 <p>Transformer class for azimuthal integration to be used in an sklearn     pipeline.</p>
 <dl class="field-list simple">
@@ -1232,7 +1232,7 @@ from the data, the fit method does not perform any operations.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.transformers.FourierTransform">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FourierTransform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fourier_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['radial_profile_data']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_beam</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'false'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.FourierTransform" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FourierTransform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fourier_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['radial_profile_data']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_beam</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'false'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.transformers.FourierTransform" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
 <p>Transformer class to apply Fourier transformation on a specific column of     a DataFrame.
 Includes batch normalization for 2D Fourier transforms.</p>
@@ -1485,7 +1485,7 @@ from the data, the fit method does not perform any operations.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="xrdanalysis.data_processing.fourier.fourier_fft2">
-<span class="sig-name descname"><span class="pre">fourier_fft2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_beam</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'false'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">700</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.fourier.fourier_fft2" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">fourier_fft2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_beam</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'false'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">700</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.fourier.fourier_fft2" title="Link to this definition">¶</a></dt>
 <dd><p>Perform FFT2 processing with selective feature extraction.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1552,53 +1552,87 @@ from the data, the fit method does not perform any operations.</p>
 </section>
 <section id="module-xrdanalysis.data_processing.fitting_functions">
 <span id="fitting-functions"></span><h2><a class="toc-backref" href="#id7" role="doc-backlink">Fitting Functions</a><a class="headerlink" href="#module-xrdanalysis.data_processing.fitting_functions" title="Link to this heading">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.create_poly_peak_fn">
-<span class="sig-name descname"><span class="pre">create_poly_peak_fn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">background_power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peak_types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.create_poly_peak_fn" title="Link to this definition">¶</a></dt>
-<dd><p>Factory function for poly peak fitting function</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FittingFunctionProducer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">functions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">FittingFunction</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to produce fitting functions based on the provided FittingFunction
+instances.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.bounds">
+<span class="sig-name descname"><span class="pre">bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the bounds for all fitting functions parameters.
+:return: Bounds for the parameters.
+:rtype: tuple</p>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.gamma_distribution">
-<span class="sig-name descname"><span class="pre">gamma_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">position</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.gamma_distribution" title="Link to this definition">¶</a></dt>
-<dd><p>Compute the Gamma distribution with amplitude and position parameters.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.initial_guess">
+<span class="sig-name descname"><span class="pre">initial_guess</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.initial_guess" title="Link to this definition">¶</a></dt>
+<dd><p>Get the initial guess for all fitting functions parameters.
+:return: Initial guess for the parameters.
+:rtype: list</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.produce_function">
+<span class="sig-name descname"><span class="pre">produce_function</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.produce_function" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the combined function value for all fitting functions.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.returned_values">
+<span class="sig-name descname"><span class="pre">returned_values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.returned_values" title="Link to this definition">¶</a></dt>
+<dd><p>Get the returned values for all fitting functions parameters.
+:return: List of returned values.
+:rtype: list</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.FittingParameter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FittingParameter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-inf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">inf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to represent a fitting parameter with its properties.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>array-like</em>) – Input values (x &gt; position).</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name of the parameter.</p></li>
+<li><p><strong>value</strong> (<em>float</em>) – Initial value of the parameter.</p></li>
+<li><p><strong>min_value</strong> (<em>float</em>) – Minimum value of the parameter.</p></li>
+<li><p><strong>max_value</strong> (<em>float</em>) – Maximum value of the parameter.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GammaDistributionPeak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">position</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">FittingFunction</span></code></p>
+<p>Class to represent a Gamma distribution with its properties.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the distribution function.</p></li>
 <li><p><strong>amp</strong> (<em>float</em>) – Amplitude of the distribution.</p></li>
 <li><p><strong>position</strong> (<em>float</em>) – Shift (location) parameter.</p></li>
 <li><p><strong>k</strong> (<em>float</em>) – Shape parameter (must be positive).</p></li>
 <li><p><strong>theta</strong> (<em>float</em>) – Scale parameter (must be positive).</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Gamma distribution PDF values.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>array-like</p>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>ValueError</strong> – If <cite>k</cite> or <cite>theta</cite> is not positive.</p>
-</dd>
 </dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.gaussian_peak">
-<span class="sig-name descname"><span class="pre">gaussian_peak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.gaussian_peak" title="Link to this definition">¶</a></dt>
-<dd><p>Generate Gaussian peak function.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.calculate" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the Gamma distribution value.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable</p></li>
-<li><p><strong>amp</strong> (<em>float</em>) – Peak amplitude</p></li>
-<li><p><strong>cen</strong> (<em>float</em>) – Peak center</p></li>
-<li><p><strong>sigma</strong> (<em>float</em>) – Peak width (standard deviation)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Gaussian peak values</p>
+<dd class="field-even"><p>Gamma distribution value.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>numpy.ndarray or float</p>
@@ -1606,21 +1640,103 @@ from the data, the fit method does not perform any operations.</p>
 </dl>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.inverse_power_background">
-<span class="sig-name descname"><span class="pre">inverse_power_background</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coef</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constant</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.inverse_power_background" title="Link to this definition">¶</a></dt>
-<dd><p>Generate background using inverse power law with constant offset.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.get_param_count">
+<span class="sig-name descname"><span class="pre">get_param_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.get_param_count" title="Link to this definition">¶</a></dt>
+<dd><p>Get the number of parameters for the Gaussian peak function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.initial_guess">
+<span class="sig-name descname"><span class="pre">initial_guess</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.initial_guess" title="Link to this definition">¶</a></dt>
+<dd><p>Get the initial guess for the Gamma distribution parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Initial guess for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.max_bounds">
+<span class="sig-name descname"><span class="pre">max_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.max_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the maximum bounds for the Gamma distribution parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Maximum bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.min_bounds">
+<span class="sig-name descname"><span class="pre">min_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.min_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the bounds for the Gamma distribution parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.returned_values">
+<span class="sig-name descname"><span class="pre">returned_values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.returned_values" title="Link to this definition">¶</a></dt>
+<dd><p>Get the returned values for the Gamma distribution parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of returned values.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GaussianPeak">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GaussianPeak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">FittingFunction</span></code></p>
+<p>Class to represent a Gaussian peak with its properties.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable</p></li>
-<li><p><strong>coef</strong> (<em>float</em>) – Coefficient of inverse power term</p></li>
-<li><p><strong>power</strong> (<em>float</em>) – Power of inverse function</p></li>
-<li><p><strong>constant</strong> (<em>float</em>) – Constant offset</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name of the peak function.</p></li>
+<li><p><strong>amp</strong> (<em>float</em>) – Amplitude of the peak.</p></li>
+<li><p><strong>cen</strong> (<em>float</em>) – Center of the peak.</p></li>
+<li><p><strong>sigma</strong> (<em>float</em>) – Width of the peak (standard deviation).</p></li>
 </ul>
 </dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GaussianPeak.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.calculate" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the Gaussian peak value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable.</p>
+</dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Background function values</p>
+<dd class="field-even"><p>Gaussian peak value.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>numpy.ndarray or float</p>
@@ -1628,21 +1744,102 @@ from the data, the fit method does not perform any operations.</p>
 </dl>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.lorentzian_peak">
-<span class="sig-name descname"><span class="pre">lorentzian_peak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.lorentzian_peak" title="Link to this definition">¶</a></dt>
-<dd><p>Generate Lorentzian peak function.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GaussianPeak.get_param_count">
+<span class="sig-name descname"><span class="pre">get_param_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.get_param_count" title="Link to this definition">¶</a></dt>
+<dd><p>Get the number of parameters for the Gaussian peak function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GaussianPeak.initial_guess">
+<span class="sig-name descname"><span class="pre">initial_guess</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.initial_guess" title="Link to this definition">¶</a></dt>
+<dd><p>Get the initial guess for the Gaussian peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Initial guess for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GaussianPeak.max_bounds">
+<span class="sig-name descname"><span class="pre">max_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.max_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the maximum bounds for the Gaussian peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Maximum bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GaussianPeak.min_bounds">
+<span class="sig-name descname"><span class="pre">min_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.min_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the bounds for the Gaussian peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.GaussianPeak.returned_values">
+<span class="sig-name descname"><span class="pre">returned_values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.returned_values" title="Link to this definition">¶</a></dt>
+<dd><p>Get the returned values for the Gaussian peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of returned values.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.InversePowerBackground">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">InversePowerBackground</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">power</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">coef</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">constant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">FittingFunction</span></code></p>
+<p>Class to represent a background function with its properties.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable</p></li>
-<li><p><strong>amp</strong> (<em>float</em>) – Peak amplitude</p></li>
-<li><p><strong>cen</strong> (<em>float</em>) – Peak center</p></li>
-<li><p><strong>gamma</strong> (<em>float</em>) – Peak half-width at half-maximum</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name of the background function.</p></li>
+<li><p><strong>func</strong> (<em>callable</em>) – Function to compute the background.</p></li>
+<li><p><strong>params</strong> (<em>list</em>) – Parameters for the background function.</p></li>
 </ul>
 </dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.InversePowerBackground.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.calculate" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the background function value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable.</p>
+</dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Lorentzian peak values</p>
+<dd class="field-even"><p>Background function value.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>numpy.ndarray or float</p>
@@ -1650,51 +1847,391 @@ from the data, the fit method does not perform any operations.</p>
 </dl>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.skewed_voigt">
-<span class="sig-name descname"><span class="pre">skewed_voigt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.skewed_voigt" title="Link to this definition">¶</a></dt>
-<dd><p>Compute the skewed Voigt profile.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.InversePowerBackground.get_param_count">
+<span class="sig-name descname"><span class="pre">get_param_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.get_param_count" title="Link to this definition">¶</a></dt>
+<dd><p>Get the number of parameters for the background function.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>array-like</em>) – Input values.</p></li>
-<li><p><strong>amp</strong> (<em>float</em>) – Amplitude of the profile.</p></li>
-<li><p><strong>mu</strong> (<em>float</em>) – Center of the profile.</p></li>
-<li><p><strong>sigma</strong> (<em>float</em>) – Gaussian standard deviation.</p></li>
-<li><p><strong>gamma</strong> (<em>float</em>) – Lorentzian half-width at half-maximum.</p></li>
-<li><p><strong>alpha</strong> (<em>float</em>) – Skewness parameter (positive for right skew,     negative for left skew).</p></li>
-</ul>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of parameters.</p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Skewed Voigt profile values.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>array-like</p>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.voigt_peak">
-<span class="sig-name descname"><span class="pre">voigt_peak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.voigt_peak" title="Link to this definition">¶</a></dt>
-<dd><p>Generate Voigt peak function.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.InversePowerBackground.initial_guess">
+<span class="sig-name descname"><span class="pre">initial_guess</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.initial_guess" title="Link to this definition">¶</a></dt>
+<dd><p>Get the initial guess for the background function parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Initial guess for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.InversePowerBackground.max_bounds">
+<span class="sig-name descname"><span class="pre">max_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.max_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the maximum bounds for the background function parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Maximum bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.InversePowerBackground.min_bounds">
+<span class="sig-name descname"><span class="pre">min_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.min_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the bounds for the background function parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.InversePowerBackground.returned_values">
+<span class="sig-name descname"><span class="pre">returned_values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.returned_values" title="Link to this definition">¶</a></dt>
+<dd><p>Get the returned values for the background function parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of returned values.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.LorentzianPeak">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">LorentzianPeak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">FittingFunction</span></code></p>
+<p>Class to represent a Lorentzian peak with its properties.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable</p></li>
-<li><p><strong>amp</strong> (<em>float</em>) – Peak amplitude</p></li>
-<li><p><strong>cen</strong> (<em>float</em>) – Peak center</p></li>
-<li><p><strong>sigma</strong> (<em>float</em>) – Gaussian width</p></li>
-<li><p><strong>gamma</strong> (<em>float</em>) – Lorentzian half-width</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name of the peak function.</p></li>
+<li><p><strong>amp</strong> (<em>float</em>) – Amplitude of the peak.</p></li>
+<li><p><strong>cen</strong> (<em>float</em>) – Center of the peak.</p></li>
+<li><p><strong>gamma</strong> (<em>float</em>) – Half-width at half-maximum of the peak.</p></li>
 </ul>
 </dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.LorentzianPeak.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.calculate" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the Lorentzian peak value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable.</p>
+</dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Voigt peak values</p>
+<dd class="field-even"><p>Lorentzian peak value.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>numpy.ndarray or float</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.LorentzianPeak.get_param_count">
+<span class="sig-name descname"><span class="pre">get_param_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.get_param_count" title="Link to this definition">¶</a></dt>
+<dd><p>Get the number of parameters for the Gaussian peak function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.LorentzianPeak.initial_guess">
+<span class="sig-name descname"><span class="pre">initial_guess</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.initial_guess" title="Link to this definition">¶</a></dt>
+<dd><p>Get the initial guess for the Lorentzian peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Initial guess for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.LorentzianPeak.max_bounds">
+<span class="sig-name descname"><span class="pre">max_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.max_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the maximum bounds for the Lorentzian peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Maximum bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.LorentzianPeak.min_bounds">
+<span class="sig-name descname"><span class="pre">min_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.min_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the bounds for the Lorentzian peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.LorentzianPeak.returned_values">
+<span class="sig-name descname"><span class="pre">returned_values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.returned_values" title="Link to this definition">¶</a></dt>
+<dd><p>Get the returned values for the Lorentzian peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of returned values.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SkewedVoigtPeak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">FittingFunction</span></code></p>
+<p>Class to represent a skewed Voigt peak with its properties.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the peak function.</p></li>
+<li><p><strong>amp</strong> (<em>float</em>) – Amplitude of the peak.</p></li>
+<li><p><strong>mu</strong> (<em>float</em>) – Center of the peak.</p></li>
+<li><p><strong>sigma</strong> (<em>float</em>) – Gaussian width of the peak.</p></li>
+<li><p><strong>gamma</strong> (<em>float</em>) – Lorentzian half-width of the peak.</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – Skewness parameter.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.calculate" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the skewed Voigt peak value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Skewed Voigt peak value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray or float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.get_param_count">
+<span class="sig-name descname"><span class="pre">get_param_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.get_param_count" title="Link to this definition">¶</a></dt>
+<dd><p>Get the number of parameters for the Gaussian peak function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.initial_guess">
+<span class="sig-name descname"><span class="pre">initial_guess</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.initial_guess" title="Link to this definition">¶</a></dt>
+<dd><p>Get the initial guess for the skewed Voigt peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Initial guess for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.max_bounds">
+<span class="sig-name descname"><span class="pre">max_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.max_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the maximum bounds for the skewed Voigt peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Maximum bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.min_bounds">
+<span class="sig-name descname"><span class="pre">min_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.min_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the bounds for the skewed Voigt peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.returned_values">
+<span class="sig-name descname"><span class="pre">returned_values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.returned_values" title="Link to this definition">¶</a></dt>
+<dd><p>Get the returned values for the skewed Voigt peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of returned values.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.VoigtPeak">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">VoigtPeak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cen</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter" title="xrdanalysis.data_processing.fitting_functions.FittingParameter"><span class="pre">FittingParameter</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">FittingFunction</span></code></p>
+<p>Class to represent a Voigt peak with its properties.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the peak function.</p></li>
+<li><p><strong>amp</strong> (<em>float</em>) – Amplitude of the peak.</p></li>
+<li><p><strong>cen</strong> (<em>float</em>) – Center of the peak.</p></li>
+<li><p><strong>sigma</strong> (<em>float</em>) – Gaussian width of the peak.</p></li>
+<li><p><strong>gamma</strong> (<em>float</em>) – Lorentzian half-width of the peak.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.VoigtPeak.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.calculate" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the Voigt peak value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>numpy.ndarray</em><em> or </em><em>float</em>) – Independent variable.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Voigt peak value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray or float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.VoigtPeak.get_param_count">
+<span class="sig-name descname"><span class="pre">get_param_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.get_param_count" title="Link to this definition">¶</a></dt>
+<dd><p>Get the number of parameters for the Gaussian peak function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.VoigtPeak.initial_guess">
+<span class="sig-name descname"><span class="pre">initial_guess</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.initial_guess" title="Link to this definition">¶</a></dt>
+<dd><p>Get the initial guess for the Voigt peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Initial guess for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.VoigtPeak.max_bounds">
+<span class="sig-name descname"><span class="pre">max_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.max_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the maximum bounds for the Voigt peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Maximum bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.VoigtPeak.min_bounds">
+<span class="sig-name descname"><span class="pre">min_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.min_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the bounds for the Voigt peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Bounds for the parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.fitting_functions.VoigtPeak.returned_values">
+<span class="sig-name descname"><span class="pre">returned_values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.returned_values" title="Link to this definition">¶</a></dt>
+<dd><p>Get the returned values for the Voigt peak parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of returned values.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -1720,6 +2257,23 @@ from the data, the fit method does not perform any operations.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Tuple[np.ndarray, np.ndarray, int, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.combine_h5_to_df">
+<span class="sig-name descname"><span class="pre">combine_h5_to_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_paths</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.combine_h5_to_df" title="Link to this definition">¶</a></dt>
+<dd><p>Combines multiple HDF5 files into pandas DataFrames for calibration and measurement data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file_paths</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of paths to the HDF5 files to process.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing two DataFrames: one with calibration data and one with measurement data.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[pd.DataFrame, pd.DataFrame]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1758,6 +2312,29 @@ from the data, the fit method does not perform any operations.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>numpy.ndarray or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="xrdanalysis.data_processing.utility_functions.extract_image_data_values">
+<span class="sig-name descname"><span class="pre">extract_image_data_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#xrdanalysis.data_processing.utility_functions.extract_image_data_values" title="Link to this definition">¶</a></dt>
+<dd><p>Extract image data values using a binary mask where 1 indicates pixels to remove.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>numpy.ndarray</em>) – Input image data array</p></li>
+<li><p><strong>mask</strong> (<em>numpy.ndarray</em>) – Binary mask array where 1 indicates pixels to remove</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Filtered image data with masked values removed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If data and mask shapes do not match</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2158,19 +2735,76 @@ It uses SCALED_DATA and age of the patient’s measurement.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-xrdanalysis.data_processing.fitting_functions">Fitting Functions</a><ul>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.create_poly_peak_fn"><code class="docutils literal notranslate"><span class="pre">create_poly_peak_fn()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.gamma_distribution"><code class="docutils literal notranslate"><span class="pre">gamma_distribution()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.gaussian_peak"><code class="docutils literal notranslate"><span class="pre">gaussian_peak()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.inverse_power_background"><code class="docutils literal notranslate"><span class="pre">inverse_power_background()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.lorentzian_peak"><code class="docutils literal notranslate"><span class="pre">lorentzian_peak()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.skewed_voigt"><code class="docutils literal notranslate"><span class="pre">skewed_voigt()</span></code></a></li>
-<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.voigt_peak"><code class="docutils literal notranslate"><span class="pre">voigt_peak()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer"><code class="docutils literal notranslate"><span class="pre">FittingFunctionProducer</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.bounds"><code class="docutils literal notranslate"><span class="pre">FittingFunctionProducer.bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.initial_guess"><code class="docutils literal notranslate"><span class="pre">FittingFunctionProducer.initial_guess()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.produce_function"><code class="docutils literal notranslate"><span class="pre">FittingFunctionProducer.produce_function()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingFunctionProducer.returned_values"><code class="docutils literal notranslate"><span class="pre">FittingFunctionProducer.returned_values()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.FittingParameter"><code class="docutils literal notranslate"><span class="pre">FittingParameter</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak"><code class="docutils literal notranslate"><span class="pre">GammaDistributionPeak</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.calculate"><code class="docutils literal notranslate"><span class="pre">GammaDistributionPeak.calculate()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.get_param_count"><code class="docutils literal notranslate"><span class="pre">GammaDistributionPeak.get_param_count()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.initial_guess"><code class="docutils literal notranslate"><span class="pre">GammaDistributionPeak.initial_guess()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.max_bounds"><code class="docutils literal notranslate"><span class="pre">GammaDistributionPeak.max_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.min_bounds"><code class="docutils literal notranslate"><span class="pre">GammaDistributionPeak.min_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GammaDistributionPeak.returned_values"><code class="docutils literal notranslate"><span class="pre">GammaDistributionPeak.returned_values()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak"><code class="docutils literal notranslate"><span class="pre">GaussianPeak</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.calculate"><code class="docutils literal notranslate"><span class="pre">GaussianPeak.calculate()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.get_param_count"><code class="docutils literal notranslate"><span class="pre">GaussianPeak.get_param_count()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.initial_guess"><code class="docutils literal notranslate"><span class="pre">GaussianPeak.initial_guess()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.max_bounds"><code class="docutils literal notranslate"><span class="pre">GaussianPeak.max_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.min_bounds"><code class="docutils literal notranslate"><span class="pre">GaussianPeak.min_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.GaussianPeak.returned_values"><code class="docutils literal notranslate"><span class="pre">GaussianPeak.returned_values()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground"><code class="docutils literal notranslate"><span class="pre">InversePowerBackground</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.calculate"><code class="docutils literal notranslate"><span class="pre">InversePowerBackground.calculate()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.get_param_count"><code class="docutils literal notranslate"><span class="pre">InversePowerBackground.get_param_count()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.initial_guess"><code class="docutils literal notranslate"><span class="pre">InversePowerBackground.initial_guess()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.max_bounds"><code class="docutils literal notranslate"><span class="pre">InversePowerBackground.max_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.min_bounds"><code class="docutils literal notranslate"><span class="pre">InversePowerBackground.min_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.InversePowerBackground.returned_values"><code class="docutils literal notranslate"><span class="pre">InversePowerBackground.returned_values()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak"><code class="docutils literal notranslate"><span class="pre">LorentzianPeak</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.calculate"><code class="docutils literal notranslate"><span class="pre">LorentzianPeak.calculate()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.get_param_count"><code class="docutils literal notranslate"><span class="pre">LorentzianPeak.get_param_count()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.initial_guess"><code class="docutils literal notranslate"><span class="pre">LorentzianPeak.initial_guess()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.max_bounds"><code class="docutils literal notranslate"><span class="pre">LorentzianPeak.max_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.min_bounds"><code class="docutils literal notranslate"><span class="pre">LorentzianPeak.min_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.LorentzianPeak.returned_values"><code class="docutils literal notranslate"><span class="pre">LorentzianPeak.returned_values()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak"><code class="docutils literal notranslate"><span class="pre">SkewedVoigtPeak</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.calculate"><code class="docutils literal notranslate"><span class="pre">SkewedVoigtPeak.calculate()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.get_param_count"><code class="docutils literal notranslate"><span class="pre">SkewedVoigtPeak.get_param_count()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.initial_guess"><code class="docutils literal notranslate"><span class="pre">SkewedVoigtPeak.initial_guess()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.max_bounds"><code class="docutils literal notranslate"><span class="pre">SkewedVoigtPeak.max_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.min_bounds"><code class="docutils literal notranslate"><span class="pre">SkewedVoigtPeak.min_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.SkewedVoigtPeak.returned_values"><code class="docutils literal notranslate"><span class="pre">SkewedVoigtPeak.returned_values()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak"><code class="docutils literal notranslate"><span class="pre">VoigtPeak</span></code></a><ul>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.calculate"><code class="docutils literal notranslate"><span class="pre">VoigtPeak.calculate()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.get_param_count"><code class="docutils literal notranslate"><span class="pre">VoigtPeak.get_param_count()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.initial_guess"><code class="docutils literal notranslate"><span class="pre">VoigtPeak.initial_guess()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.max_bounds"><code class="docutils literal notranslate"><span class="pre">VoigtPeak.max_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.min_bounds"><code class="docutils literal notranslate"><span class="pre">VoigtPeak.min_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.fitting_functions.VoigtPeak.returned_values"><code class="docutils literal notranslate"><span class="pre">VoigtPeak.returned_values()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-xrdanalysis.data_processing.utility_functions">Utilities</a><ul>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.calculate_optimal_threshold"><code class="docutils literal notranslate"><span class="pre">calculate_optimal_threshold()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.combine_h5_to_df"><code class="docutils literal notranslate"><span class="pre">combine_h5_to_df()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.compute_group_statistics"><code class="docutils literal notranslate"><span class="pre">compute_group_statistics()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.create_mask"><code class="docutils literal notranslate"><span class="pre">create_mask()</span></code></a></li>
+<li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.extract_image_data_values"><code class="docutils literal notranslate"><span class="pre">extract_image_data_values()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.generate_poni_from_text"><code class="docutils literal notranslate"><span class="pre">generate_poni_from_text()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.generate_roc_based_metrics"><code class="docutils literal notranslate"><span class="pre">generate_roc_based_metrics()</span></code></a></li>
 <li><a class="reference internal" href="#xrdanalysis.data_processing.utility_functions.get_angle_span"><code class="docutils literal notranslate"><span class="pre">get_angle_span()</span></code></a></li>
@@ -2194,8 +2828,8 @@ It uses SCALED_DATA and age of the patient’s measurement.</p>
   </div>
   <div>
     <h4>Previous topic</h4>
-    <p class="topless"><a href="pipeline.html"
-                          title="previous chapter">MLPipeline: Philosophy and Structure</a></p>
+    <p class="topless"><a href="container_dataframe_nomenclature.html"
+                          title="previous chapter">Container -&gt; DataFrame Nomenclature</a></p>
   </div>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -2228,7 +2862,7 @@ It uses SCALED_DATA and age of the patient’s measurement.</p>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="pipeline.html" title="MLPipeline: Philosophy and Structure"
+          <a href="container_dataframe_nomenclature.html" title="Container -&gt; DataFrame Nomenclature"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">API</a></li> 
