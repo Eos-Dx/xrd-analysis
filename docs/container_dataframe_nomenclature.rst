@@ -185,7 +185,7 @@ Specimen Information
      - Biological species of the specimen (human, mouse, etc.).
    * - organ
      - organ
-     - Specific tissue or organ from which the sample was collected (e.g., skin, claw, etc.).
+     - Origin organ if the specimen type is a part of the organ.
    * - organSide
      - organSide
      - Anatomical side designation for paired organs (e.g., Left/Right breast).
@@ -214,7 +214,7 @@ Patient Information
      - Patient's age in years at the time of specimen collection.
    * - cohort
      - cohort
-     - Research or study group to which the sample belongs.
+     - Cohort to which the sample belongs.
 
 Cancer Classification
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -246,4 +246,4 @@ Cancer Classification
      - Further detailed classification of the specific cancer subtype.
    * - cancerMixed
      - cancerMixed
-     - Boolean indicator denoting whether the cancer consists of multiple types.
+     - Cancer classification indicating whether the sample exhibits mixed characteristics of different cancer types.
