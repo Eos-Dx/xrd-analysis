@@ -1,0 +1,511 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Container -&gt; DataFrame Nomenclature &#8212; MATUR  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d75fae25" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=658d757c" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=02e5e13e" />
+    
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API" href="xrdanalysis.data_processing.html" />
+    <link rel="prev" title="MLPipeline: Philosophy and Structure" href="pipeline.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="xrdanalysis.data_processing.html" title="API"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="pipeline.html" title="MLPipeline: Philosophy and Structure"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="sop.html" accesskey="U">Standard Operating Procedure (SOP)</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Container -&gt; DataFrame Nomenclature</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="container-dataframe-nomenclature">
+<h1>Container -&gt; DataFrame Nomenclature<a class="headerlink" href="#container-dataframe-nomenclature" title="Link to this heading">¶</a></h1>
+<p>This document provides a description of how containers are represented as DataFrames in the context of X-ray Diffraction (XRD) data analysis.</p>
+<nav class="contents local" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#introduction" id="id1">Introduction</a></p></li>
+<li><p><a class="reference internal" href="#calibration-and-machine-configuration" id="id2">Calibration and Machine Configuration</a></p>
+<ul>
+<li><p><a class="reference internal" href="#identification-and-core-data" id="id3">Identification and Core Data</a></p></li>
+<li><p><a class="reference internal" href="#instrument-configuration" id="id4">Instrument Configuration</a></p></li>
+<li><p><a class="reference internal" href="#experimental-parameters" id="id5">Experimental Parameters</a></p></li>
+<li><p><a class="reference internal" href="#study-information" id="id6">Study Information</a></p></li>
+<li><p><a class="reference internal" href="#advanced-processing" id="id7">Advanced Processing</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#sample-measurements" id="id8">Sample Measurements</a></p>
+<ul>
+<li><p><a class="reference internal" href="#measurement-core-data" id="id9">Measurement Core Data</a></p></li>
+<li><p><a class="reference internal" href="#specimen-information" id="id10">Specimen Information</a></p></li>
+<li><p><a class="reference internal" href="#patient-information" id="id11">Patient Information</a></p></li>
+<li><p><a class="reference internal" href="#cancer-classification" id="id12">Cancer Classification</a></p></li>
+</ul>
+</li>
+</ul>
+</nav>
+<section id="introduction">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Introduction</a><a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h2>
+<p>This documentation outlines the mapping between container metadata and DataFrame column names in the XRD analysis pipeline. The tables below define how original container fields are transformed and represented in the resulting DataFrames, supporting efficient data processing and analysis.</p>
+</section>
+<section id="calibration-and-machine-configuration">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Calibration and Machine Configuration</a><a class="headerlink" href="#calibration-and-machine-configuration" title="Link to this heading">¶</a></h2>
+<p>This table details the metadata related to instrument calibration and machine configuration settings for XRD measurements, organized by functional categories.</p>
+<section id="identification-and-core-data">
+<h3><a class="toc-backref" href="#id3" role="doc-backlink">Identification and Core Data</a><a class="headerlink" href="#identification-and-core-data" title="Link to this heading">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Container Metadata Name</p></th>
+<th class="head"><p>DataFrame Column Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Dataset</p></td>
+<td><p>measurement_data</p></td>
+<td><p>Two-dimensional matrix containing the raw diffraction image data.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Dataset Name</p></td>
+<td><p>cal_name</p></td>
+<td><p>Identifier for the source raw data file from which measurements were extracted.</p></td>
+</tr>
+<tr class="row-even"><td><p>Group name</p></td>
+<td><p>id/calib_name</p></td>
+<td><p>Cross-reference key linking sample measurements to their corresponding calibration data; represents the group name in H5 files that contains both calibrations and measurements.</p></td>
+</tr>
+<tr class="row-odd"><td><p>metadata</p></td>
+<td><p>calib_metadata</p></td>
+<td><p>Raw metadata associated with the measurement file, typically stored in DSC file format or natively within H5/GFRM containers.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="instrument-configuration">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">Instrument Configuration</a><a class="headerlink" href="#instrument-configuration" title="Link to this heading">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Container Metadata Name</p></th>
+<th class="head"><p>DataFrame Column Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>source</p></td>
+<td><p>calib_source</p></td>
+<td><p>X-ray source material (Cu, Mo, Ag, etc.) which determines the characteristic wavelength used in the experiment.</p></td>
+</tr>
+<tr class="row-odd"><td><p>wavelength</p></td>
+<td><p>calib_wavelength</p></td>
+<td><p>X-ray wavelength used for data collection, measured in Angstroms (Å).</p></td>
+</tr>
+<tr class="row-even"><td><p>distanceInMM</p></td>
+<td><p>calib_distanceInMM</p></td>
+<td><p>Physical distance between the sample and detector measured in millimeters, critical for accurate 2D-to-1D data conversion.</p></td>
+</tr>
+<tr class="row-odd"><td><p>pixelSize</p></td>
+<td><p>calib_pixelSize</p></td>
+<td><p>Physical size of individual detector pixels measured in micrometers, essential for spatial calibration.</p></td>
+</tr>
+<tr class="row-even"><td><p>matrixResolution</p></td>
+<td><p>calib_matrixResolution</p></td>
+<td><p>Resolution dimensions of the detector matrix used for measurement, typically expressed as width × height in pixels.</p></td>
+</tr>
+<tr class="row-odd"><td><p>machineName</p></td>
+<td><p>calib_machineName</p></td>
+<td><p>Identifier for the specific diffractometer or instrument used for data collection as recorded in the database.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="experimental-parameters">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">Experimental Parameters</a><a class="headerlink" href="#experimental-parameters" title="Link to this heading">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Container Metadata Name</p></th>
+<th class="head"><p>DataFrame Column Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>exposure</p></td>
+<td><p>calib_exposure</p></td>
+<td><p>Duration of X-ray exposure in seconds. This is the preferred exposure time field.</p></td>
+</tr>
+<tr class="row-odd"><td><p>exposureTime <em>(legacy)</em></p></td>
+<td><p>calib_exposureTime <em>(legacy)</em></p></td>
+<td><p>Legacy field for duration of X-ray exposure in seconds. Use calib_exposure when available.</p></td>
+</tr>
+<tr class="row-even"><td><p>measurement_timestamp</p></td>
+<td><p>calib_measurement_timestamp</p></td>
+<td><p>Timestamp recording when the measurement was collected, stored as datetime format. This is the preferred and more reliable timestamp field.</p></td>
+</tr>
+<tr class="row-odd"><td><p>timestamp <em>(legacy)</em></p></td>
+<td><p>calib_timestamp <em>(legacy)</em></p></td>
+<td><p>Legacy timestamp field recording when the measurement was collected, stored as UNIX time. Use calib_measurement_timestamp when available.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="study-information">
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">Study Information</a><a class="headerlink" href="#study-information" title="Link to this heading">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Container Metadata Name</p></th>
+<th class="head"><p>DataFrame Column Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>studyName</p></td>
+<td><p>calib_studyName</p></td>
+<td><p>Name of the research study with which these measurements are associated, as recorded in the database.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="advanced-processing">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">Advanced Processing</a><a class="headerlink" href="#advanced-processing" title="Link to this heading">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Container Metadata Name</p></th>
+<th class="head"><p>DataFrame Column Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>ponifile</p></td>
+<td><p>ponifile</p></td>
+<td><p>Reference to the parameter file used by pyFAI for azimuthal integration, containing beam center coordinates and precise distance calibrations.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="sample-measurements">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Sample Measurements</a><a class="headerlink" href="#sample-measurements" title="Link to this heading">¶</a></h2>
+<p>This table details the metadata related to sample information and measurement parameters for XRD analysis.</p>
+<section id="measurement-core-data">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">Measurement Core Data</a><a class="headerlink" href="#measurement-core-data" title="Link to this heading">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Container Metadata Name</p></th>
+<th class="head"><p>DataFrame Column Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Dataset</p></td>
+<td><p>measurement_data</p></td>
+<td><p>Two-dimensional matrix containing the raw diffraction image data.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Dataset Name</p></td>
+<td><p>meas_name</p></td>
+<td><p>Identifier for the source raw data file from which measurements were extracted.</p></td>
+</tr>
+<tr class="row-even"><td><p>Group name</p></td>
+<td><p>id</p></td>
+<td><p>Cross-reference key linking sample measurements to their corresponding calibration data; represents the group name in H5 files that contains both calibrations and measurements.</p></td>
+</tr>
+<tr class="row-odd"><td><p>metadata</p></td>
+<td><p>metadata</p></td>
+<td><p>Raw metadata associated with the measurement file, typically stored in DSC file format or natively within H5/GFRM containers.</p></td>
+</tr>
+<tr class="row-even"><td><p>measurement_timestamp</p></td>
+<td><p>measurement_timestamp</p></td>
+<td><p>Precise datetime when the measurement was recorded.</p></td>
+</tr>
+<tr class="row-odd"><td><p>exposure</p></td>
+<td><p>exposure</p></td>
+<td><p>Duration of X-ray exposure in seconds for this specific sample measurement.</p></td>
+</tr>
+<tr class="row-even"><td><p>measurementsGroupId</p></td>
+<td><p>measurementsGroupId</p></td>
+<td><p>Database identifier linking related measurements performed as part of a single experimental group.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="specimen-information">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">Specimen Information</a><a class="headerlink" href="#specimen-information" title="Link to this heading">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Container Metadata Name</p></th>
+<th class="head"><p>DataFrame Column Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>specimenId</p></td>
+<td><p>specimenId</p></td>
+<td><p>Laboratory-assigned identifier for the biological specimen or sample.</p></td>
+</tr>
+<tr class="row-odd"><td><p>specimenDBId</p></td>
+<td><p>specimenDBId</p></td>
+<td><p>Unique database identifier for the specimen record associated with this measurement.</p></td>
+</tr>
+<tr class="row-even"><td><p>specimenType</p></td>
+<td><p>specimenType</p></td>
+<td><p>Anatomical origin of the specimen (e.g., breast, prostate, skin).</p></td>
+</tr>
+<tr class="row-odd"><td><p>specimenStatus</p></td>
+<td><p>specimenStatus</p></td>
+<td><p>Pathological classification of the specimen (e.g., cancerous, normal, benign).</p></td>
+</tr>
+<tr class="row-even"><td><p>species</p></td>
+<td><p>species</p></td>
+<td><p>Biological species of the specimen (human, mouse, etc.).</p></td>
+</tr>
+<tr class="row-odd"><td><p>organ</p></td>
+<td><p>organ</p></td>
+<td><p>Specific tissue or organ from which the sample was collected (e.g., skin, claw, etc.).</p></td>
+</tr>
+<tr class="row-even"><td><p>organSide</p></td>
+<td><p>organSide</p></td>
+<td><p>Anatomical side designation for paired organs (e.g., Left/Right breast).</p></td>
+</tr>
+<tr class="row-odd"><td><p>hoursSinceInoculation</p></td>
+<td><p>hoursSinceInoculation</p></td>
+<td><p>Time elapsed in hours between specimen inoculation and collection (primarily for research specimens).</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="patient-information">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">Patient Information</a><a class="headerlink" href="#patient-information" title="Link to this heading">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Container Metadata Name</p></th>
+<th class="head"><p>DataFrame Column Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>patientId</p></td>
+<td><p>patientId</p></td>
+<td><p>Laboratory-assigned identifier for the patient from whom the specimen was collected.</p></td>
+</tr>
+<tr class="row-odd"><td><p>patientDBId</p></td>
+<td><p>patientDBId</p></td>
+<td><p>Unique database identifier for the patient record associated with this measurement.</p></td>
+</tr>
+<tr class="row-even"><td><p>age</p></td>
+<td><p>age</p></td>
+<td><p>Patient’s age in years at the time of specimen collection.</p></td>
+</tr>
+<tr class="row-odd"><td><p>cohort</p></td>
+<td><p>cohort</p></td>
+<td><p>Research or study group to which the sample belongs.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="cancer-classification">
+<h3><a class="toc-backref" href="#id12" role="doc-backlink">Cancer Classification</a><a class="headerlink" href="#cancer-classification" title="Link to this heading">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Container Metadata Name</p></th>
+<th class="head"><p>DataFrame Column Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>isCancerDiagnosed</p></td>
+<td><p>isCancerDiagnosed</p></td>
+<td><p>Boolean indicator of whether the patient has received a cancer diagnosis.</p></td>
+</tr>
+<tr class="row-odd"><td><p>grade</p></td>
+<td><p>grade</p></td>
+<td><p>Clinical assessment of cancer progression level or severity.</p></td>
+</tr>
+<tr class="row-even"><td><p>cancerCategoryName</p></td>
+<td><p>cancerCategoryName</p></td>
+<td><p>Classification of cancer category according to World Health Organization (WHO) standards.</p></td>
+</tr>
+<tr class="row-odd"><td><p>cancerFamilyName</p></td>
+<td><p>cancerFamilyName</p></td>
+<td><p>Classification of cancer family according to World Health Organization (WHO) taxonomy.</p></td>
+</tr>
+<tr class="row-even"><td><p>cancerTypeName</p></td>
+<td><p>cancerTypeName</p></td>
+<td><p>Specific cancer type classification according to World Health Organization (WHO) guidelines.</p></td>
+</tr>
+<tr class="row-odd"><td><p>cancerSubtype</p></td>
+<td><p>cancerSubtype</p></td>
+<td><p>Further detailed classification of the specific cancer subtype.</p></td>
+</tr>
+<tr class="row-even"><td><p>cancerMixed</p></td>
+<td><p>cancerMixed</p></td>
+<td><p>Boolean indicator denoting whether the cancer consists of multiple types.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Container -&gt; DataFrame Nomenclature</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#calibration-and-machine-configuration">Calibration and Machine Configuration</a><ul>
+<li><a class="reference internal" href="#identification-and-core-data">Identification and Core Data</a></li>
+<li><a class="reference internal" href="#instrument-configuration">Instrument Configuration</a></li>
+<li><a class="reference internal" href="#experimental-parameters">Experimental Parameters</a></li>
+<li><a class="reference internal" href="#study-information">Study Information</a></li>
+<li><a class="reference internal" href="#advanced-processing">Advanced Processing</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#sample-measurements">Sample Measurements</a><ul>
+<li><a class="reference internal" href="#measurement-core-data">Measurement Core Data</a></li>
+<li><a class="reference internal" href="#specimen-information">Specimen Information</a></li>
+<li><a class="reference internal" href="#patient-information">Patient Information</a></li>
+<li><a class="reference internal" href="#cancer-classification">Cancer Classification</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="pipeline.html"
+                          title="previous chapter">MLPipeline: Philosophy and Structure</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="xrdanalysis.data_processing.html"
+                          title="next chapter">API</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/container_dataframe_nomenclature.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="xrdanalysis.data_processing.html" title="API"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="pipeline.html" title="MLPipeline: Philosophy and Structure"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="sop.html" >Standard Operating Procedure (SOP)</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Container -&gt; DataFrame Nomenclature</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, MATUR.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    </div>
+  </body>
+</html>
