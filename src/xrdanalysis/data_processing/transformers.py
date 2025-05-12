@@ -119,7 +119,10 @@ class AzimuthalIntegration(TransformerMixin):
         if self.mask is not None:
             mask = self.mask
         else:
-            mask = create_mask(self.faulty_pixels)
+            mask = create_mask(
+                self.faulty_pixels,
+                size=x_copy["measurement_data"].iloc[0].shape,
+            )
 
         if self.calibration_mode == "poni":
             x_copy.dropna(subset=["ponifile"], inplace=True)
