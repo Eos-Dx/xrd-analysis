@@ -223,6 +223,7 @@ def perform_azimuthal_integration(
         result = ai_cached.integrate2d(
             data,
             npt,
+            angles,
             radial_range=interpolation_q_range,
             azimuth_range=azimuthal_range,
             mask=mask,
