@@ -168,6 +168,7 @@ class StateSaverMixin:
 
         self.update_points_table()
         self.update_shape_table()
+        self.update_coordinates()
 
     def auto_save_state(self):
         """
