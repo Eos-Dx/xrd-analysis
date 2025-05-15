@@ -178,8 +178,8 @@ class XYStageController:
 
             # Move Y-axis
             print(f"Moving Y-axis to {y_new} mm: channel {self.y_chan}")
-            #self.stage.move_to(y_new * self.scaling_factor, channel=self.y_chan, scale=True)
-            #self.stage.wait_move(channel=self.y_chan, timeout=move_timeout)
+            self.stage.move_to(y_new * self.scaling_factor, channel=self.y_chan, scale=True)
+            self.stage.wait_move(channel=self.y_chan, timeout=move_timeout)
             y = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
             print(f"Y-axis moved to: {y}")
 
