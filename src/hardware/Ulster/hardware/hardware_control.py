@@ -121,6 +121,8 @@ class XYStageController:
         else:
             from pylablib.devices import Thorlabs
             devices = Thorlabs.list_kinesis_devices()
+            from pylablib.devices.Thorlabs.kinesis import KinesisMotor
+
             if not devices:
                 print("No Thorlabs devices found!")
                 self.stage = None
@@ -129,9 +131,12 @@ class XYStageController:
                 print("Detected Thorlabs devices:")
                 for dev in devices:
                     print(dev)
+
                 self.stage = Thorlabs.KinesisMotor(str(self.serial_num))
                 self.stage.open()  # Open the device connection.
-                time.sleep(1)  # Allow time for initialization.
+                self.stage.set_supported_channels(2)
+                print("Enabled channels:", self.stage.get_all_channels())
+
                 return True
 
     def home_stage(self, home_timeout=10):
@@ -154,6 +159,7 @@ class XYStageController:
             return x_final, y_final
 
     def move_stage(self, x_new, y_new, move_timeout=10):
+        import time
         if self.stage is None:
             print("Stage not initialized.")
             return None, None
@@ -162,20 +168,20 @@ class XYStageController:
             print(f"DEV mode: Dummy move_stage called. Pretending to move to ({x_new}, {y_new}).")
             return x_new, y_new
         else:
-            # Move Y-axis
-            print(f"Moving Y-axis to {y_new} mm")
-            self.stage.move_to(y_new * self.scaling_factor, channel=self.y_chan, scale=True)
-            self.stage.wait_move(channel=self.y_chan, timeout=move_timeout)
-            y = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
-            print(f"Y-axis moved to: {y}")
 
             # Move X-axis
-            print(f"Moving X-axis to {x_new} mm")
+            print(f"Moving X-axis to {x_new} mm: channel {self.x_chan}")
             self.stage.move_to(x_new * self.scaling_factor, channel=self.x_chan, scale=True)
             self.stage.wait_move(channel=self.x_chan, timeout=move_timeout)
             x = self.stage.get_position(channel=self.x_chan, scale=True) / self.scaling_factor
             print(f"X-axis moved to: {x}")
 
+            # Move Y-axis
+            print(f"Moving Y-axis to {y_new} mm: channel {self.y_chan}")
+            #self.stage.move_to(y_new * self.scaling_factor, channel=self.y_chan, scale=True)
+            #self.stage.wait_move(channel=self.y_chan, timeout=move_timeout)
+            y = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
+            print(f"Y-axis moved to: {y}")
 
             print(f"Final positions: X = {x} mm, Y = {y} mm")
             return x, y
