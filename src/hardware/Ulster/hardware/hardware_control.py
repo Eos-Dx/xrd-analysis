@@ -133,8 +133,6 @@ class XYStageController:
                 self.stage = Thorlabs.KinesisMotor(str(self.serial_num))
                 self.stage.open()  # Open the device connection.
                 self.stage.set_supported_channels(2)
-                self.stage.enable_channel(self.x_chan)
-                self.stage.enable_channel(self.y_chan)
                 print("Enabled channels:", self.stage.get_all_channels())
 
                 return True
@@ -239,7 +237,7 @@ class XYStageLibController:
             self.lib.TLI_InitializeSimulations()
 
         if self.lib.TLI_BuildDeviceList() != 0:
-            raise RuntimeError('Failed to build Thorlabs device list')
+            return False
 
         self.lib.BDC_Open(c_char_p(self.serial))
         self.lib.BDC_StartPolling(c_char_p(self.serial), c_short(self.x_chan), c_int(self.poll_interval_ms))
@@ -248,6 +246,7 @@ class XYStageLibController:
         self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.y_chan))
         time.sleep(0.5)
         print('Stage initialized and polling started.')
+        return True
 
     def home_stage(self, timeout_s: int = 45):
         if self.dev:
@@ -273,7 +272,7 @@ class XYStageLibController:
                 return x_mm, y_mm
         raise TimeoutError('Homing timed out')
 
-    def move_stage(self, x_mm: float, y_mm: float, timeout_s: int = 20):
+    def move_stage(self, x_mm: float, y_mm: float, move_timeout: int = 20):
         if self.dev:
             print(f'DEV mode: moving dummy stage to X={x_mm} mm, Y={y_mm} mm')
             time.sleep(0.5)
@@ -290,7 +289,7 @@ class XYStageLibController:
         self.lib.BDC_MoveAbsolute(c_char_p(self.serial), c_short(self.y_chan))
 
         start = time.time()
-        while time.time() - start < timeout_s:
+        while time.time() - start < move_timeout:
             self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
             self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
             time.sleep(0.5)

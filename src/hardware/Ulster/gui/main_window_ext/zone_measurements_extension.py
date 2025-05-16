@@ -62,7 +62,7 @@ from matplotlib.figure import Figure
 from xrdanalysis.data_processing.azimuthal_integration import initialize_azimuthal_integrator_df
 from xrdanalysis.data_processing.utility_functions import create_mask
 from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
-from hardware.Ulster.hardware.hardware_control import DetectorController, XYStageController
+from hardware.Ulster.hardware.hardware_control import DetectorController, XYStageController, XYStageLibController
 
 
 class CaptureWorker(QThread):
@@ -310,7 +310,7 @@ class ZoneMeasurementsMixin:
         # Instantiate the controllers.
         # Note: For the stage, pass the serial number and channel settings as needed.
         serial_str = self.config.get("serial_number_XY", "default_serial")
-        self.stage_controller = XYStageController(serial_num=serial_str, x_chan=2, y_chan=1, dev=dev_mode)
+        self.stage_controller = XYStageLibController(serial_num=serial_str, x_chan=2, y_chan=1, dev=dev_mode)
         res_xystage = self.stage_controller.init_stage()
 
         self.detector_controller = DetectorController(capture_enabled=True, dev=dev_mode)
