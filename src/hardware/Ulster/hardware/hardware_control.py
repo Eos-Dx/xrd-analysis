@@ -121,8 +121,6 @@ class XYStageController:
         else:
             from pylablib.devices import Thorlabs
             devices = Thorlabs.list_kinesis_devices()
-            from pylablib.devices.Thorlabs.kinesis import KinesisMotor
-
             if not devices:
                 print("No Thorlabs devices found!")
                 self.stage = None
@@ -135,6 +133,8 @@ class XYStageController:
                 self.stage = Thorlabs.KinesisMotor(str(self.serial_num))
                 self.stage.open()  # Open the device connection.
                 self.stage.set_supported_channels(2)
+                self.stage.enable_channel(self.x_chan)
+                self.stage.enable_channel(self.y_chan)
                 print("Enabled channels:", self.stage.get_all_channels())
 
                 return True
@@ -195,3 +195,121 @@ class XYStageController:
             x_final = self.stage.get_position(channel=self.x_chan, scale=True) / self.scaling_factor
             y_final = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
             return x_final, y_final
+
+
+import os
+import sys
+import time
+from ctypes import CDLL, c_short, c_int, c_char_p
+
+class XYStageLibController:
+    """
+    Controller for Thorlabs M30XY stage using Kinesis DLL, with optional DEV dummy mode.
+    Supports position scaling between mm and device units.
+    """
+    def __init__(self, serial_num: str = '101370874', x_chan: int = 2, y_chan: int = 1,
+                 scaling_factor: int = 10000, dev: bool = False, sim: bool = False,
+                 poll_interval_ms: int = 250):
+        self.serial = serial_num.encode()
+        self.x_chan = x_chan
+        self.y_chan = y_chan
+        self.scaling_factor = scaling_factor  # device units per 1 mm
+        self.dev = dev
+        self.sim = sim
+        self.poll_interval_ms = poll_interval_ms
+        self.lib = None
+        self.stage = None
+
+    def init_stage(self):
+        if self.dev:
+            print('DEV mode: initializing dummy stage')
+            class DummyStage:
+                def __getattr__(self, name):
+                    return lambda *args, **kwargs: print(f"DEV mode: Called {name} with args {args} {kwargs}")
+            self.stage = DummyStage()
+            return
+
+        if sys.version_info < (3, 8):
+            os.chdir(r'C:\Program Files\Thorlabs\Kinesis')
+        else:
+            os.add_dll_directory(r'C:\Program Files\Thorlabs\Kinesis')
+        self.lib = CDLL('Thorlabs.MotionControl.Benchtop.DCServo.dll')
+
+        if self.sim:
+            self.lib.TLI_InitializeSimulations()
+
+        if self.lib.TLI_BuildDeviceList() != 0:
+            raise RuntimeError('Failed to build Thorlabs device list')
+
+        self.lib.BDC_Open(c_char_p(self.serial))
+        self.lib.BDC_StartPolling(c_char_p(self.serial), c_short(self.x_chan), c_int(self.poll_interval_ms))
+        self.lib.BDC_StartPolling(c_char_p(self.serial), c_short(self.y_chan), c_int(self.poll_interval_ms))
+        self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.x_chan))
+        self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.y_chan))
+        time.sleep(0.5)
+        print('Stage initialized and polling started.')
+
+    def home_stage(self, timeout_s: int = 45):
+        if self.dev:
+            print('DEV mode: homing dummy stage')
+            time.sleep(1)
+            return 0.0, 0.0
+        if not self.lib:
+            raise RuntimeError('Stage not initialized')
+
+        self.lib.BDC_Home(c_char_p(self.serial), c_short(self.x_chan))
+        self.lib.BDC_Home(c_char_p(self.serial), c_short(self.y_chan))
+        start = time.time()
+        while time.time() - start < timeout_s:
+            self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
+            self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
+            time.sleep(0.5)
+            x_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.x_chan))
+            y_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.y_chan))
+            if abs(x_dev) + abs(y_dev) <= 3:
+                x_mm = x_dev / self.scaling_factor
+                y_mm = y_dev / self.scaling_factor
+                print(f'Homed successfully at X={x_mm:.3f} mm, Y={y_mm:.3f} mm')
+                return x_mm, y_mm
+        raise TimeoutError('Homing timed out')
+
+    def move_stage(self, x_mm: float, y_mm: float, timeout_s: int = 20):
+        if self.dev:
+            print(f'DEV mode: moving dummy stage to X={x_mm} mm, Y={y_mm} mm')
+            time.sleep(0.5)
+            return x_mm, y_mm
+        if not self.lib:
+            raise RuntimeError('Stage not initialized')
+
+        x_dev = int(x_mm * self.scaling_factor)
+        y_dev = int(y_mm * self.scaling_factor)
+        self.lib.BDC_SetMoveAbsolutePosition(c_char_p(self.serial), c_short(self.x_chan), c_int(x_dev))
+        self.lib.BDC_SetMoveAbsolutePosition(c_char_p(self.serial), c_short(self.y_chan), c_int(y_dev))
+        time.sleep(0.25)
+        self.lib.BDC_MoveAbsolute(c_char_p(self.serial), c_short(self.x_chan))
+        self.lib.BDC_MoveAbsolute(c_char_p(self.serial), c_short(self.y_chan))
+
+        start = time.time()
+        while time.time() - start < timeout_s:
+            self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
+            self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
+            time.sleep(0.5)
+            curr_x_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.x_chan))
+            curr_y_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.y_chan))
+            if abs(curr_x_dev - x_dev) + abs(curr_y_dev - y_dev) <= 4:
+                curr_x_mm = curr_x_dev / self.scaling_factor
+                curr_y_mm = curr_y_dev / self.scaling_factor
+                print(f'Moved to X={curr_x_mm:.3f} mm, Y={curr_y_mm:.3f} mm')
+                return curr_x_mm, curr_y_mm
+        raise TimeoutError('Move timed out')
+
+    def close_stage(self):
+        if self.dev:
+            print('DEV mode: closing dummy stage')
+            return
+        if self.lib:
+            self.lib.BDC_Close(c_char_p(self.serial))
+            if self.sim:
+                self.lib.TLI_UninitializeSimulations()
+            print('Stage closed.')
+
