@@ -6,8 +6,8 @@ from PyQt5.QtGui import QPen, QColor, QPixmap
 from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem
 
 class StateSaverMixin:
-    AUTO_STATE_FILE = "autosave_state.json"
-    PREV_STATE_FILE = "autosave_state_prev.json"
+    AUTO_STATE_FILE = r"D:\autosave_state.json"
+    PREV_STATE_FILE = r"D:\autosave_state_prev.json"
 
     def restore_state(self, file_path=None):
         """
