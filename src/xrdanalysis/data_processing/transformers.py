@@ -1235,7 +1235,7 @@ class CurveFittingTransformer(TransformerMixin):
 
             try:
                 # Perform curve fitting
-                popt, _ = curve_fit(
+                popt, pcov = curve_fit(
                     self.func,
                     x_values,
                     y_values,
@@ -1251,6 +1251,7 @@ class CurveFittingTransformer(TransformerMixin):
                 )
 
                 # Store fit results in new columns
+                X_copy.at[index, "fit_cond"] = np.linalg.cond(pcov)
                 X_copy.at[index, "fit_params"] = selected_params
                 X_copy.at[index, "fitted_curve"] = self.func(x_values, *popt)
 
