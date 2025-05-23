@@ -85,6 +85,80 @@ class FittingParameter:
         self.returned = returned
 
 
+class ConstantBackground(FittingFunction):
+    """
+    Class to represent a constant background with its properties.
+
+    :param name: Name of the background function.
+    :type name: str
+    :param func: Function to compute the background.
+    :type func: callable
+    :param params: Parameters for the background function.
+    :type params: list
+    """
+
+    def __init__(self, constant: FittingParameter):
+        self.constant = constant
+        self.param_count = 1
+
+    def get_param_count(self):
+        """
+        Get the number of parameters for the background function.
+
+        :return: Number of parameters.
+        :rtype: int
+        """
+        return self.param_count
+
+    def min_bounds(self):
+        """
+        Get the bounds for the background function parameters.
+
+        :return: Bounds for the parameters.
+        :rtype: tuple
+        """
+        return [self.constant.min_value]
+
+    def max_bounds(self):
+        """
+        Get the maximum bounds for the background function parameters.
+
+        :return: Maximum bounds for the parameters.
+        :rtype: tuple
+        """
+        return [self.constant.max_value]
+
+    def initial_guess(self):
+        """
+        Get the initial guess for the background function parameters.
+
+        :return: Initial guess for the parameters.
+        :rtype: list
+        """
+        return [self.constant.value]
+
+    def returned_values(self):
+        """
+        Get the returned values for the background function parameters.
+
+        :return: List of returned values.
+        :rtype: list
+        """
+        return [self.constant.returned]
+
+    def calculate(self, x, *params):
+        """
+        Calculate the background function value.
+
+        :param x: Independent variable.
+        :type x: numpy.ndarray or float
+        :return: Background function value.
+        :rtype: numpy.ndarray or float
+        """
+        constant = params[0]
+        return np.full_like(x, constant)
+
+
 class InversePowerBackground(FittingFunction):
     """
     Class to represent a background function with its properties.
