@@ -6,8 +6,8 @@ from PyQt5.QtGui import QPen, QColor, QPixmap
 from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem
 
 class StateSaverMixin:
-    AUTO_STATE_FILE = "autosave_state.json"
-    PREV_STATE_FILE = "autosave_state_prev.json"
+    AUTO_STATE_FILE = r"D:\autosave_state.json"
+    PREV_STATE_FILE = r"D:\autosave_state_prev.json"
 
     def restore_state(self, file_path=None):
         """
@@ -290,11 +290,12 @@ class StateSaverMixin:
         except Exception:
             state["pixel_to_mm_ratio"] = 1
 
+        self.state = state
         try:
             with open(self.PREV_STATE_FILE, "w") as f:
                 json.dump(state, f, indent=4)
             print("State manually saved to", self.PREV_STATE_FILE)
-            self.state = state
+
         except Exception as e:
             print("Error manually saving state:", e)
 
