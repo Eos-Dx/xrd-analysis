@@ -117,7 +117,7 @@ class XYStageController:
                 def __getattr__(self, name):
                     return lambda *args, **kwargs: print(f"DEV mode: Called {name} with args {args} and kwargs {kwargs}")
             self.stage = DummyStage()
-            return self.stage
+            return True
         else:
             from pylablib.devices import Thorlabs
             devices = Thorlabs.list_kinesis_devices()
@@ -225,7 +225,7 @@ class XYStageLibController:
                 def __getattr__(self, name):
                     return lambda *args, **kwargs: print(f"DEV mode: Called {name} with args {args} {kwargs}")
             self.stage = DummyStage()
-            return
+            return True
 
         if sys.version_info < (3, 8):
             os.chdir(r'C:\Program Files\Thorlabs\Kinesis')
