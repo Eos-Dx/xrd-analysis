@@ -59,7 +59,7 @@ from PyQt5.QtGui import QColor
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from xrdanalysis.data_processing.azimuthal_integration import initialize_azimuthal_integrator_df
+from xrdanalysis.data_processing.azimuthal_integration import initialize_azimuthal_integrator_df, initialize_azimuthal_integrator_poni_text
 from xrdanalysis.data_processing.utility_functions import create_mask
 from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
 from hardware.Ulster.hardware.hardware_control import DetectorController, XYStageController
@@ -235,6 +235,17 @@ class ZoneMeasurementsMixin:
         maskLayout.addWidget(self.maskBrowseBtn)
         layout.addLayout(maskLayout)
 
+        # --- PONI file selection ---
+        poniLayout = QHBoxLayout()
+        poniLabel = QLabel("PONI file:")
+        self.poniLineEdit = QLineEdit()
+        self.poniBrowseBtn = QPushButton("Browse...")
+        self.poniBrowseBtn.clicked.connect(self.browse_poni_file)
+        poniLayout.addWidget(poniLabel)
+        poniLayout.addWidget(self.poniLineEdit)
+        poniLayout.addWidget(self.poniBrowseBtn)
+        layout.addLayout(poniLayout)
+
         # Spacer to fill the remaining space.
         container.setLayout(layout)
         self.zoneMeasurementsDock.setWidget(container)
@@ -248,6 +259,23 @@ class ZoneMeasurementsMixin:
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
         self.xyTimer.start(1000)
+
+    def browse_poni_file(self):
+        """
+        Opens a file dialog to select a .poni file,
+        populates the line edit, and reads its contents into self.poni.
+        """
+        poni_file, _ = QFileDialog.getOpenFileName(
+            self, "Select PONI File", "", "PONI Files (*.poni);;All Files (*)"
+        )
+        if poni_file:
+            self.poniLineEdit.setText(poni_file)
+            try:
+                with open(poni_file, 'r') as f:
+                    self.poni = f.read()
+            except Exception as e:
+                print(f"Error reading PONI file: {e}")
+                self.poni = ""
 
     def browse_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
@@ -532,31 +560,36 @@ class ZoneMeasurementsMixin:
     def show_measurement(self, measurement_filename):
         """
         Opens a window that shows the raw 2D image and its azimuthal integration.
-        Uses Seaborn to render the heatmap and lineplot.
         """
         data = np.load(measurement_filename)
 
-        # Calibration parameters.
-        pixel_size = 55e-6
-        max_idx = np.unravel_index(np.argmax(data), data.shape)
-        center_row, center_column = max_idx
-        wavelength = 1.54
-        sample_distance_mm = 100.0
 
-        # Initialize integrator.
-        ai = initialize_azimuthal_integrator_df(
-            pixel_size,
-            center_column,
-            center_row,
-            wavelength,
-            sample_distance_mm
-        )
+        # choose integrator based on PONI content
+        if hasattr(self, 'poni') and self.poni:
+            ai = initialize_azimuthal_integrator_poni_text(self.poni)
+        else:
+            # manual parameters fallback
+            # find the beam center in the image
+            max_idx = np.unravel_index(np.argmax(data), data.shape)
+            center_row, center_column = max_idx
+            pixel_size = 55e-6
+            wavelength = 1.54
+            sample_distance_mm = 100.0
+            ai = initialize_azimuthal_integrator_df(
+                pixel_size,
+                center_column,
+                center_row,
+                wavelength,
+                sample_distance_mm
+            )
 
-        npt = 200  # Number of integration points.
+        # perform the integration
+        npt = 200
         try:
             result = ai.integrate1d(data, npt, unit="q_nm^-1", error_model="azimuthal", mask=self.mask)
             radial = result.radial
             intensity = result.intensity
+            cake, radial_axis, azimuthal_axis = ai.integrate2d(data, 200, npt_azim=180, mask=self.mask)
         except Exception as e:
             print("Error integrating data:", e)
             return
@@ -565,26 +598,53 @@ class ZoneMeasurementsMixin:
         dialog.setWindowTitle(f"Azimuthal Integration: {os.path.basename(measurement_filename)}")
         layout = QHBoxLayout(dialog)
 
-        # Left plot: raw 2D image using seaborn heatmap.
-        fig1 = Figure(figsize=(5, 5))
-        canvas1 = FigureCanvas(fig1)
-        ax1 = fig1.add_subplot(111)
-        sns.heatmap(data, robust=True, square=True, cmap="viridis", ax=ax1)
+        # build a smaller 2×2 figure
+        fig = Figure(figsize=(6, 6))
+        canvas = FigureCanvas(fig)
+
+        # Top-left: raw 2D heatmap
+        ax1 = fig.add_subplot(2, 2, 1)
+        sns.heatmap(data, robust=True, square=True, ax=ax1)
         ax1.set_title("2D Image")
 
-        # Right plot: integration result with y-axis on log scale using seaborn.
-        fig2 = Figure(figsize=(5, 5))
-        canvas2 = FigureCanvas(fig2)
-        ax2 = fig2.add_subplot(111)
+        # Top-right: 1D azimuthal integration
+        ax2 = fig.add_subplot(2, 2, 2)
         sns.lineplot(x=radial, y=intensity, marker='o', ax=ax2)
         ax2.set_title("Azimuthal Integration")
         ax2.set_xlabel("q (nm^-1)")
         ax2.set_ylabel("Intensity")
         ax2.set_yscale("log")
 
-        layout.addWidget(canvas1)
-        layout.addWidget(canvas2)
-        dialog.resize(1000, 500)
+        # Bottom-left: cake 2D representation via seaborn heatmap
+        ax3 = fig.add_subplot(2, 2, 3)
+        sns.heatmap(
+            cake[:, 30:],
+            robust=True,
+            square=True,
+            ax=ax3
+        )
+        ax3.set_title("Cake Representation")
+
+        # Bottom-right: deviation map via seaborn heatmap
+        cake2 = cake[:, 30:]
+        mask_zero = (cake2 == 0)
+        col_sums = cake2.sum(axis=0)
+        valid_counts = (~mask_zero).sum(axis=0)
+        col_means = np.divide(col_sums, valid_counts, where=valid_counts > 0)
+        pct_dev = (cake2 - col_means[np.newaxis, :]) / col_means[np.newaxis, :] * 100
+
+        ax4 = fig.add_subplot(2, 2, 4)
+        sns.heatmap(
+            pct_dev,
+            robust=True,
+            square=True,
+            ax=ax4
+        )
+        ax4.set_title("Deviation (%)")
+
+        # add canvas and show
+        layout.addWidget(canvas)
+        dialog.resize(700, 700)
 
         if not hasattr(self, "_open_measurement_windows"):
             self._open_measurement_windows = []
