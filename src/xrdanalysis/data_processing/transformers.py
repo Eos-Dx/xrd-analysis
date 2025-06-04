@@ -1122,14 +1122,9 @@ class CurveFittingTransformer(TransformerMixin):
     :param y_column: Name of the column containing y-values \
     (dependent variable) to be used in curve fitting.
     :type y_column: str
-    :param func: The mathematical function to fit. Must accept x as the first \
-    argument, followed by parameters to be estimated.
-    :type func: callable
-    :param p0: Initial parameter guesses for the curve fitting algorithm.
-    :type p0: list or array-like
-    :param bounds: Parameter boundaries for constrained optimization. Defaults\
-    to unconstrained (-∞, +∞) bounds.
-    :type bounds: tuple, optional
+    :param producer: An instance of a class that produces the fitting \
+    function, initial parameter estimates, and bounds for curve fitting.
+    :type producer: CurveFittingProducer
     :param param_indices: Optional indices to select specific fitted \
     parameters.
     :type param_indices: list, optional
@@ -1142,10 +1137,7 @@ class CurveFittingTransformer(TransformerMixin):
         self,
         x_column,
         y_column,
-        func,
-        p0,
-        bounds=(-np.inf, np.inf),
-        param_indices=None,
+        producer,
         cutoff_ranges=None,
     ):
         """
@@ -1159,24 +1151,15 @@ class CurveFittingTransformer(TransformerMixin):
         :type x_column: str
         :param y_column: Column name for y-values in input DataFrame.
         :type y_column: str
-        :param func: Callable function to be used for curve fitting.
-        :type func: callable
-        :param p0: Initial parameter guesses for curve fitting.
-        :type p0: list
-        :param bounds: Parameter boundaries for curve fitting. Defaults to \
-        unconstrained bounds.
-        :type bounds: tuple, optional
-        :param param_indices: Indices of parameters to retain after fitting.
-        :type param_indices: list, optional
+        :param producer: An instance of a class that produces the fitting \
+        function, initial parameter estimates, and bounds for curve fitting.
+        :type producer: CurveFittingProducer
         :param cutoff_ranges: Data segments to assign high uncertainty.
         :type cutoff_ranges: list of tuples, optional
         """
         self.x_column = x_column
         self.y_column = y_column
-        self.func = func
-        self.p0 = p0
-        self.bounds = bounds
-        self.param_indices = param_indices
+        self.producer = producer
         self.cutoff_ranges = cutoff_ranges
 
     def fit(self, X, y=None):
@@ -1212,13 +1195,26 @@ class CurveFittingTransformer(TransformerMixin):
         """
         X_copy = X.copy()
         # Create DF columns to store data
-        X_copy["fit_params"] = None
+        X_copy["fit_params_all"] = None
         X_copy["fitted_curve"] = None
+        X_copy["fit_cond"] = None
         # Make columns store objects
-        X_copy["fit_params"].astype(object)
+        X_copy["fit_params_all"].astype(object)
         X_copy["fitted_curve"].astype(object)
+        X_copy["fit_cond"].astype(object)
 
         x_value = X_copy.iloc[0][self.x_column]
+
+        func = self.producer.produce_function()
+        p0 = self.producer.initial_guess()
+        bounds = self.producer.bounds()
+
+        function_count = self.producer.get_function_count()
+        function_param_counts = self.producer.get_function_param_counts()
+
+        for i in range(function_count):
+            X_copy[f"fit_params_{i}"] = None
+            X_copy[f"fit_params_{i}"].astype(object)
 
         if self.cutoff_ranges:
             sigma = np.ones_like(x_value)
@@ -1236,29 +1232,29 @@ class CurveFittingTransformer(TransformerMixin):
             try:
                 # Perform curve fitting
                 popt, pcov = curve_fit(
-                    self.func,
+                    func,
                     x_values,
                     y_values,
-                    p0=self.p0,
-                    bounds=self.bounds,
+                    p0=p0,
+                    bounds=bounds,
                     sigma=sigma,
-                )
-
-                selected_params = (
-                    popt
-                    if self.param_indices is None
-                    else popt[np.array(self.param_indices)]
                 )
 
                 # Store fit results in new columns
                 X_copy.at[index, "fit_cond"] = np.linalg.cond(pcov)
-                X_copy.at[index, "fit_params"] = selected_params
-                X_copy.at[index, "fitted_curve"] = self.func(x_values, *popt)
+                X_copy.at[index, "fit_params_all"] = popt
+                for i in range(len(function_param_counts)):
+                    start_idx = sum(function_param_counts[:i])
+                    end_idx = start_idx + function_param_counts[i]
+                    X_copy.at[index, f"fit_params_{i}"] = popt[
+                        start_idx:end_idx
+                    ]
+                X_copy.at[index, "fitted_curve"] = func(x_values, *popt)
 
             except RuntimeError as e:
                 print(f"Fit failed for index {index}: {e}")
-                X_copy.at[index, "fit_params"] = None
+                X_copy.at[index, "fit_params_all"] = None
                 X_copy.at[index, "fitted_curve"] = None
 
-        X_copy = X_copy.dropna(subset=["fit_params"])
+        X_copy = X_copy.dropna(subset=["fit_params_all"])
         return X_copy
