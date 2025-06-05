@@ -795,6 +795,23 @@ class FittingFunctionProducer:
     def __init__(self, functions: list[FittingFunction]):
         self.functions = functions
 
+    def get_function_count(self):
+        """
+        Get the number of fitting functions.
+
+        :return: Number of fitting functions.
+        :rtype: int
+        """
+        return len(self.functions)
+
+    def get_function_param_counts(self):
+        """
+        Get individual parameter counts for each fitting function.
+        :return: List of parameter counts for each function.
+        :rtype: list
+        """
+        return [function.get_param_count() for function in self.functions]
+
     def produce_function(self):
         """
         Calculate the combined function value for all fitting functions.
