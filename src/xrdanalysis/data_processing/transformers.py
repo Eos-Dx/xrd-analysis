@@ -26,6 +26,7 @@ from xrdanalysis.data_processing.fourier import (
 )
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
+    filter_points_by_distance,
     unpack_results,
     unpack_results_cake,
     unpack_rotating_angles_results,
@@ -1257,4 +1258,77 @@ class CurveFittingTransformer(TransformerMixin):
                 X_copy.at[index, "fitted_curve"] = None
 
         X_copy = X_copy.dropna(subset=["fit_params_all"])
+        return X_copy
+
+
+class MeasurementCutter(TransformerMixin):
+    """
+    Transformer class to cut measurements based on a specified column.
+
+    :param column: The name of the column containing arrays to be cut.
+    :type column: str
+    :param cut_size: The size to which the arrays should be cut.
+    :type cut_size: int
+    """
+
+    def __init__(self, column, min_distances, max_distances):
+        """
+        Initializes the MeasurementCutter with the specified column name and
+        distance-based cut criteria.
+
+        :param column: The name of the column containing arrays of measurements to cut.
+        :type column: str
+
+        :param min_distances: A list of minimum distance thresholds for each cut segment.
+                            Use `None` to indicate no lower bound for a segment.
+                            Example: [None, 120] means the first cut has no lower limit,
+                            while the second starts from 120.
+        :type min_distances: list[float or None]
+
+        :param max_distances: A list of maximum distance thresholds for each cut segment.
+                            Use `None` to indicate no upper bound for a segment.
+                            Example: [97, None] means the first cut ends at 97, while
+                            the second has no upper limit.
+        :type max_distances: list[float or None]
+
+        :note: The cutter will remove measurements falling within any specified range
+            between min_distances[i] and max_distances[i].
+            For example, with min_distances=[None, 120] and max_distances=[97, None],
+            it defines two ranges:
+                - (−∞, 97]
+                - [120, ∞)
+            Measurements in either range will be excluded.
+        """
+        self.column = column
+        self.min_distances = min_distances
+        self.max_distances = max_distances
+
+    def fit(self, X, y=None):
+        """
+        Fit method for the transformer. No action is taken during fitting.
+
+        :param X: The input DataFrame.
+        :type X: pandas.DataFrame
+        :param y: Target values (optional, not used in this transformer).
+        :type y: array-like, optional
+        :return: The fitted transformer (self).
+        :rtype: MeasurementCutter
+        """
+        return self
+
+    def transform(self, X, y=None):
+        """
+        Transform the input DataFrame by cutting measurements based on specified distances.
+        """
+        X_copy = X.copy()
+
+        X_copy.dropna(subset=["ponifile"], inplace=True)
+
+        X_copy = filter_points_by_distance(
+            X_copy,
+            self.column,
+            self.min_distances,
+            self.max_distances,
+        )
+
         return X_copy

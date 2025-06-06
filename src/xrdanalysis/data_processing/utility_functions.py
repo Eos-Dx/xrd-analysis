@@ -1,5 +1,7 @@
 """Various utility functions used in different parts of codebase"""
 
+import json
+import re
 import tempfile
 from typing import Tuple
 
@@ -1212,3 +1214,80 @@ def extract_image_data_values(
     :raises ValueError: If data and mask shapes do not match
     """
     return data * mask
+
+
+def extract_center_from_poni(poni_text: str):
+    """
+    Extracts center_x and center_y from poni calibration text.
+
+    Args:
+        poni_text (str): The contents of a .poni calibration file.
+
+    Returns:
+        tuple: (center_x, center_y)
+    """
+    # Extract Poni1 and Poni2
+    print(poni_text)
+    poni1 = float(re.search(r"Poni1:\s*([0-9.eE+-]+)", poni_text).group(1))
+    poni2 = float(re.search(r"Poni2:\s*([0-9.eE+-]+)", poni_text).group(1))
+
+    # Extract and parse Detector_config JSON
+    detector_config_str = re.search(
+        r"Detector_config:\s*(\{.*\})", poni_text
+    ).group(1)
+    detector_config = json.loads(detector_config_str)
+
+    # Get pixel sizes
+    pixel1 = detector_config["pixel1"]
+    pixel2 = detector_config["pixel2"]
+
+    # Calculate center positions in pixels
+    center_x = poni2 / pixel2
+    center_y = poni1 / pixel1
+
+    return center_x, center_y
+
+
+def filter_points_by_distance(
+    df, column, min_distances=None, max_distances=None
+):
+    # Ensure columns exist with proper dtype
+    df = df.copy()
+
+    df["cleaned_image"] = None
+    df = df.astype({"cleaned_image": "object"})
+
+    for index, row in df.iterrows():
+        ref_x, ref_y = extract_center_from_poni(row["ponifile"])
+        image = row[column]
+
+        # Calculate distance for each pixel
+        y_coords, x_coords = np.meshgrid(
+            range(image.shape[0]), range(image.shape[1]), indexing="ij"
+        )
+        distances = np.sqrt((x_coords - ref_x) ** 2 + (y_coords - ref_y) ** 2)
+
+        # Apply distance filters
+
+        masks = []
+
+        for min_distance, max_distance in zip(
+            min_distances or [None] * len(df),
+            max_distances or [None] * len(df),
+        ):
+            mask = np.ones(image.shape, dtype=bool)
+
+            if min_distance is not None:
+                mask &= distances >= min_distance
+            if max_distance is not None:
+                mask &= distances <= max_distance
+            masks.append(mask)
+
+        # Combine masks
+        mask = np.logical_or.reduce(masks)
+
+        cleaned_image = image * mask
+
+        df.at[index, "cleaned_image"] = cleaned_image.copy()
+
+    return df
