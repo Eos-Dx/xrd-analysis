@@ -227,6 +227,6 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     # Override to subscribe automatically
     def initialize_hardware(self):
-        super().initialize_hardware()
+        pass#super().initialize_hardware()
         # No need to manually toggle controls here;
         # subscription to hardware_state_changed handles it.

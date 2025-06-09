@@ -1,13 +1,18 @@
 import os
 import json
 import shutil
+from pathlib import Path
 from PyQt5.QtCore import QTimer, QRectF
 from PyQt5.QtGui import QPen, QColor, QPixmap
 from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem
 
 class StateSaverMixin:
-    AUTO_STATE_FILE = r"D:\autosave_state.json"
-    PREV_STATE_FILE = r"D:\autosave_state_prev.json"
+    # find the drive letter (e.g. "C:") where this file is located
+    _DRIVE = Path(__file__).resolve().drive
+
+    # build your autosave paths on that drive
+    AUTO_STATE_FILE = str(Path(_DRIVE) / "autosave_state.json")
+    PREV_STATE_FILE = str(Path(_DRIVE) / "autosave_state_prev.json")
 
     def restore_state(self, file_path=None):
         """

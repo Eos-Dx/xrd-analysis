@@ -140,27 +140,31 @@ class XYStageLibController:
             self.stage = DummyStage()
             self._x, self._y = 0, 0
             return True
-
-        if sys.version_info < (3, 8):
-            os.chdir(r'C:\Program Files\Thorlabs\Kinesis')
         else:
-            os.add_dll_directory(r'C:\Program Files\Thorlabs\Kinesis')
-        self.lib = CDLL('Thorlabs.MotionControl.Benchtop.DCServo.dll')
+            try:
+                if sys.version_info < (3, 8):
+                    os.chdir(r'C:\Program Files\Thorlabs\Kinesis')
+                else:
+                    os.add_dll_directory(r'C:\Program Files\Thorlabs\Kinesis')
+                self.lib = CDLL('Thorlabs.MotionControl.Benchtop.DCServo.dll')
 
-        if self.sim:
-            self.lib.TLI_InitializeSimulations()
+                if self.sim:
+                    self.lib.TLI_InitializeSimulations()
 
-        if self.lib.TLI_BuildDeviceList() != 0:
-            return False
+                if self.lib.TLI_BuildDeviceList() != 0:
+                    return False
 
-        self.lib.BDC_Open(c_char_p(self.serial))
-        self.lib.BDC_StartPolling(c_char_p(self.serial), c_short(self.x_chan), c_int(self.poll_interval_ms))
-        self.lib.BDC_StartPolling(c_char_p(self.serial), c_short(self.y_chan), c_int(self.poll_interval_ms))
-        self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.x_chan))
-        self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.y_chan))
-        time.sleep(0.5)
-        print('Stage initialized and polling started.')
-        return True
+                self.lib.BDC_Open(c_char_p(self.serial))
+                self.lib.BDC_StartPolling(c_char_p(self.serial), c_short(self.x_chan), c_int(self.poll_interval_ms))
+                self.lib.BDC_StartPolling(c_char_p(self.serial), c_short(self.y_chan), c_int(self.poll_interval_ms))
+                self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.x_chan))
+                self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.y_chan))
+                time.sleep(0.5)
+                print('Stage initialized and polling started.')
+                return True
+            except Exception as e:
+                print(f'Error during init_stage: {e}')
+                return False
 
     def home_stage(self, timeout_s: int = 45):
         if self.dev:

@@ -340,44 +340,6 @@ class ZoneMeasurementsMixin:
         appended_value = '_' + self.add_distance_lineedit.text()
         self.fileNameLineEdit.setText(current_filename + appended_value)
 
-    def initialize_hardware(self):
-        """
-        Initializes both the XY stage and detector.
-        Depending on the self.config['DEV'] flag, this will initialize either dummy
-        or real hardware.
-        """
-        dev_mode = self.config.get("DEV", True)  # Default to DEV mode if key not present
-
-        # Instantiate the controllers.
-        # Note: For the stage, pass the serial number and channel settings as needed.
-        serial_str = self.config.get("serial_number_XY", "default_serial")
-        self.stage_controller = XYStageLibController(serial_num=serial_str, x_chan=2, y_chan=1, dev=dev_mode)
-        res_xystage = self.stage_controller.init_stage()
-
-        self.detector_controller = DetectorController(capture_enabled=True, dev=dev_mode)
-        res_det = self.detector_controller.init_detector()
-
-        # Update LED indicators based on initialization.
-        if res_xystage:
-            print("XY stage initialized.")
-            self.xyStageIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
-        else:
-            print("Error initializing XY stage:")
-            self.xyStageIndicator.setStyleSheet("background-color: red; border-radius: 10px;")
-
-        if res_det:
-            # For the detector.
-            print("Pixet camera initialized.")
-            self.cameraIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
-        else:
-            print("Error initializing Pixet camera:")
-            self.cameraIndicator.setStyleSheet("background-color: red; border-radius: 10px;")
-
-        if ("green" in self.xyStageIndicator.styleSheet() and "green" in self.cameraIndicator.styleSheet()):
-            self.start_btn.setEnabled(True)
-            self.pause_btn.setEnabled(False)
-            self.stop_btn.setEnabled(False)
-
     def home_stage_button_clicked(self):
         """
         Homes the XY stage using the controller.
