@@ -5,6 +5,7 @@ import numpy as np
 import seaborn as sns
 from copy import copy
 from pathlib import Path
+from functools import partial
 
 from PyQt5.QtWidgets import (
     QDockWidget, QLabel, QSpinBox, QLineEdit, QFileDialog,
@@ -13,40 +14,15 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QColor
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 
-from xrdanalysis.data_processing.azimuthal_integration import (
-    initialize_azimuthal_integrator_df,
-    initialize_azimuthal_integrator_poni_text
-)
 from xrdanalysis.data_processing.utility_functions import create_mask
 from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
 from hardware.Ulster.hardware.hardware_control import (
     DetectorController,
-    XYStageController,
     XYStageLibController
 )
 
-
-class CaptureWorker(QThread):
-    # emit (success: bool, txt_filename: str)
-    finished = pyqtSignal(bool, str)
-
-    def __init__(self, detector_controller, integration_time, txt_filename, parent=None):
-        super().__init__(parent)
-        self.detector_controller = detector_controller
-        self.integration_time = integration_time
-        self.txt_filename = txt_filename
-
-    def run(self):
-        success = self.detector_controller.capture_point(
-            1,
-            self.integration_time,
-            self.txt_filename
-        )
-        self.finished.emit(success, self.txt_filename)
-
+from hardware.Ulster.gui.technical.capture import CaptureWorker, validate_folder, show_measurement_window
 
 class ZoneMeasurementsMixin:
     # Signal emitted on hardware initialize (True) or deinitialize (False)
@@ -309,6 +285,11 @@ class ZoneMeasurementsMixin:
         return create_mask(np.load(mask_file), (self.config["detector_size"]["width"],
                                                 self.config["detector_size"]["height"]))
 
+    def browse_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
+        if folder:
+            self.folderLineEdit.setText(folder)
+
     def load_mask_file(self, mask_file):
         """
         Dummy logic to read the selected mask file.
@@ -333,11 +314,6 @@ class ZoneMeasurementsMixin:
         current_filename = self.fileNameLineEdit.text()
         appended_value = '_' + self.add_distance_lineedit.text()
         self.fileNameLineEdit.setText(current_filename + appended_value)
-
-    def browse_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
-        if folder:
-            self.folderLineEdit.setText(folder)
 
     def initialize_hardware(self):
         """
@@ -402,7 +378,7 @@ class ZoneMeasurementsMixin:
         """
         Sorts points by coordinates and then begins the measurement sequence.
         """
-        self.validate_folder()
+        self.measurement_folder = validate_folder(self.folderLineEdit.text().strip())
         self.state_path_measurements = Path(self.measurement_folder) / f'{self.fileNameLineEdit.text()}_state.json'
         self.manual_save_state()
         self.state_measurements = copy(self.state)
@@ -567,102 +543,14 @@ class ZoneMeasurementsMixin:
         btn = QPushButton(os.path.basename(measurement_filename))
         btn.setStyleSheet("Text-align:left; border: none; color: blue; text-decoration: underline;")
         btn.setCursor(Qt.PointingHandCursor)
-        btn.clicked.connect(lambda: self.show_measurement(measurement_filename))
+        btn.clicked.connect(partial(
+            show_measurement_window,
+            measurement_filename,
+            self.mask,
+            getattr(self, "poni", None),  # or just self.poni if you guarantee it exists
+            self  # parent window
+        ))
         layout.addWidget(btn)
-
-    def show_measurement(self, measurement_filename):
-        """
-        Opens a window that shows the raw 2D image and its azimuthal integration.
-        """
-        data = np.load(measurement_filename)
-
-        # choose integrator based on PONI content
-        if hasattr(self, 'poni') and self.poni:
-            ai = initialize_azimuthal_integrator_poni_text(self.poni)
-        else:
-            # manual parameters fallback
-            # find the beam center in the image
-            max_idx = np.unravel_index(np.argmax(data), data.shape)
-            center_row, center_column = max_idx
-            pixel_size = 55e-6
-            wavelength = 1.54
-            sample_distance_mm = 100.0
-            ai = initialize_azimuthal_integrator_df(
-                pixel_size,
-                center_column,
-                center_row,
-                wavelength,
-                sample_distance_mm
-            )
-
-        # perform the integration
-        npt = 200
-        try:
-            result = ai.integrate1d(data, npt, unit="q_nm^-1", error_model="azimuthal", mask=self.mask)
-            radial = result.radial
-            intensity = result.intensity
-            cake, radial_axis, azimuthal_axis = ai.integrate2d(data, 200, npt_azim=180, mask=self.mask)
-        except Exception as e:
-            print("Error integrating data:", e)
-            return
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"Azimuthal Integration: {os.path.basename(measurement_filename)}")
-        layout = QHBoxLayout(dialog)
-
-        # build a smaller 2×2 figure
-        fig = Figure(figsize=(6, 6))
-        canvas = FigureCanvas(fig)
-
-        # Top-left: raw 2D heatmap
-        ax1 = fig.add_subplot(2, 2, 1)
-        sns.heatmap(data, robust=True, square=True, ax=ax1)
-        ax1.set_title("2D Image")
-
-        # Top-right: 1D azimuthal integration
-        ax2 = fig.add_subplot(2, 2, 2)
-        sns.lineplot(x=radial, y=intensity, marker='o', ax=ax2)
-        ax2.set_title("Azimuthal Integration")
-        ax2.set_xlabel("q (nm^-1)")
-        ax2.set_ylabel("Intensity")
-        ax2.set_yscale("log")
-
-        # Bottom-left: cake 2D representation via seaborn heatmap
-        ax3 = fig.add_subplot(2, 2, 3)
-        sns.heatmap(
-            cake[:, 30:],
-            robust=True,
-            square=True,
-            ax=ax3
-        )
-        ax3.set_title("Cake Representation")
-
-        # Bottom-right: deviation map via seaborn heatmap
-        cake2 = cake[:, 30:]
-        mask_zero = (cake2 == 0)
-        col_sums = cake2.sum(axis=0)
-        valid_counts = (~mask_zero).sum(axis=0)
-        col_means = np.divide(col_sums, valid_counts, where=valid_counts > 0)
-        pct_dev = (cake2 - col_means[np.newaxis, :]) / col_means[np.newaxis, :] * 100
-
-        ax4 = fig.add_subplot(2, 2, 4)
-        sns.heatmap(
-            pct_dev,
-            robust=True,
-            square=True,
-            ax=ax4
-        )
-        ax4.set_title("Deviation (%)")
-
-        # add canvas and show
-        layout.addWidget(canvas)
-        dialog.resize(700, 700)
-
-        if not hasattr(self, "_open_measurement_windows"):
-            self._open_measurement_windows = []
-        self._open_measurement_windows.append(dialog)
-        dialog.finished.connect(lambda _: self._open_measurement_windows.remove(dialog))
-        dialog.show()
 
     def pause_measurements(self):
         """
@@ -720,23 +608,6 @@ class ZoneMeasurementsMixin:
                 self.pause_btn.setEnabled(False)
                 self.stop_btn.setEnabled(False)
                 self.start_btn.setEnabled(True)
-
-    def validate_folder(self):
-        """
-        Validates the selected folder.
-        """
-        self.measurement_folder = self.folderLineEdit.text().strip()
-        if not self.measurement_folder:
-            self.measurement_folder = os.getcwd()
-        if not os.path.exists(self.measurement_folder):
-            try:
-                os.makedirs(self.measurement_folder, exist_ok=True)
-            except Exception as e:
-                print(f"Error creating folder {self.measurement_folder}: {e}. Using current directory.")
-                self.measurement_folder = os.getcwd()
-        if not os.access(self.measurement_folder, os.W_OK):
-            print(f"Folder {self.measurement_folder} is not writable. Using current directory.")
-            self.measurement_folder = os.getcwd()
 
     def update_xy_pos(self):
         """

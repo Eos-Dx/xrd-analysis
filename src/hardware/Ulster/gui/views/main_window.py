@@ -20,6 +20,7 @@ class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
     def __init__(self, parent=None):
         super().__init__(parent)
         self.create_shape_table()
+        # Create the Zone Measurements widget(right bottom) + Technical .
         self.create_measurements_panel()
         self.create_drawing_actions()
         self.add_drawing_actions_to_tool_bar()
@@ -29,8 +30,7 @@ class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
         self.add_rotation_actions_to_tool_bar()
         # Create the Zone Points widget (left bottom).
         self.create_zone_points_widget()
-        # Create the Zone Measurements widget (right bottom).
-        self.create_zone_measurements_widget()
+
         self.load_default_mask()
         # Split the bottom dock area horizontally so the panels appear side by side.
         self.splitDockWidget(self.zonePointsDock, self.zoneMeasurementsDock, Qt.Horizontal)

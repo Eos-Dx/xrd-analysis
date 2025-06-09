@@ -9,12 +9,13 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
-from hardware.Ulster.hardware.hardware_control import DetectorController
 from hardware.Ulster.gui.technical.capture import CaptureWorker, validate_folder
 from hardware.Ulster.gui.main_window_ext.zone_measurements_extension import ZoneMeasurementsMixin
+from hardware.Ulster.gui.technical.capture import show_measurement_window
 
 
 class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
+
     def create_measurements_panel(self):
         # Initialize counters
         self.empty_counter = 0
@@ -27,6 +28,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         # Create technical measurements dock
         self.measDock = QDockWidget("Technical Measurements", self)
         self.measDock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+
 
         container = QWidget()
         outer = QVBoxLayout(container)
@@ -74,6 +76,13 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             outer.addWidget(lst)
 
         self.measDock.setWidget(container)
+        self.measDock.setWidget(container)
+        # Wrap in a scroll area so the contents can scroll if they exceed the dock size
+        from PyQt5.QtWidgets import QScrollArea
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(container)
+        self.measDock.setWidget(scroll)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.measDock)
 
         # Initially disable controls until hardware is initialized
@@ -114,13 +123,29 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             integration_time=self.integrationTimeSpin.value(),
             txt_filename=txt
         )
-        worker.finished.connect(lambda ok, fn, t=typ: self._on_capture_done(ok, fn, t))
+
+        # Keep it alive until it finishes:
+        if not hasattr(self, "_capture_workers"):
+            self._capture_workers = []
+        self._capture_workers.append(worker)
+
+        # Clean up when done:
+        def _cleanup(ok, fn, t=typ):
+            try:
+                self._on_capture_done(ok, fn, t)
+            finally:
+                worker.deleteLater()
+                self._capture_workers.remove(worker)
+
+        worker.finished.connect(_cleanup)
         worker.start()
 
     def _on_capture_done(self, success: bool, txt_file: str, typ: str):
         if not success:
             print(f"[{typ}] capture failed.")
             return
+        else:
+            print('[{typ}] capture successful:', txt_file)
         try:
             data = np.loadtxt(txt_file)
             npy = txt_file.replace(".txt", ".npy")
@@ -141,14 +166,20 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def measure_empty(self):
         self._start_capture("Empty")
+
     def measure_background(self):
         self._start_capture("Background")
+
     def measure_calibrant(self):
         self._start_capture("Calibrant")
 
     def open_measurement(self, item: QListWidgetItem):
-        path = item.data(Qt.UserRole)
-        print("Open measurement:", path)
+        show_measurement_window(
+            item.data(Qt.UserRole),
+            self.mask,
+            getattr(self, "poni", None),
+            self
+        )
 
     # Override to subscribe automatically
     def initialize_hardware(self):
