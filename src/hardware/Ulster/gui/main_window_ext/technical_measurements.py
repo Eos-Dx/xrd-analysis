@@ -1,6 +1,7 @@
 import os
 import time
 import numpy as np
+import subprocess
 
 from PyQt5.QtWidgets import (
     QDockWidget, QWidget, QHBoxLayout, QVBoxLayout,
@@ -75,6 +76,13 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             setattr(self, f"{typ.lower()}List", lst)
             outer.addWidget(lst)
 
+            # **Only** for Calibrant: add the PyFai button
+            if typ == "Calibrant":
+                pyfai_btn = QPushButton("PyFai")
+                pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
+                pyfai_btn.clicked.connect(self.run_pyfai)
+                outer.addWidget(pyfai_btn)
+
         self.measDock.setWidget(container)
         self.measDock.setWidget(container)
         # Wrap in a scroll area so the contents can scroll if they exceed the dock size
@@ -91,6 +99,42 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         # Subscribe to hardware init/deinit events
         # ZoneMeasurementsMixin emits hardware_state_changed(bool)
         self.hardware_state_changed.connect(self.enable_measurement_controls)
+
+    def run_pyfai(self):
+        env = self.config.get("conda")
+        if not env:
+            print("❌ No conda env set in self.config['conda']")
+            return
+
+        folder = validate_folder(self.folderLE.text())
+
+        if os.name == "nt":
+            # Build a single string that start.exe can launch
+            cmd = (
+                f'CALL conda activate {env} '
+                f'&& cd /d "{folder}" '
+                f'&& pyfai-calib2'
+            )
+            start_cmd = f'start cmd /K "{cmd}"'
+            try:
+                # shell=True is required so 'start' is recognized
+                subprocess.Popen(start_cmd, shell=True)
+                print("▶️ Launched PyFai in new cmd window.")
+            except Exception as e:
+                print("❌ Failed to launch PyFai on Windows:", e)
+
+        else:
+            # Unix branch unchanged...
+            bash_cmd = (
+                f'cd "{folder}" && '
+                f'conda activate {env} && '
+                'pyfai-calib2; exec bash'
+            )
+            try:
+                subprocess.Popen(["bash", "-lc", bash_cmd])
+                print("▶️ Launched PyFai in new bash window.")
+            except Exception as e:
+                print("❌ Failed to launch PyFai on Unix:", e)
 
     def enable_measurement_controls(self, enable: bool):
         widgets = [
