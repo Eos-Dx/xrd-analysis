@@ -10,7 +10,7 @@ from functools import partial
 from PyQt5.QtWidgets import (
     QDockWidget, QLabel, QSpinBox, QLineEdit, QFileDialog,
     QSpacerItem, QSizePolicy, QProgressBar, QWidget, QHBoxLayout,
-    QVBoxLayout, QPushButton, QDialog
+    QVBoxLayout, QPushButton, QDialog, QDoubleSpinBox
 )
 from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QColor
@@ -57,7 +57,7 @@ class ZoneMeasurementsMixin:
         buttonLayout.addWidget(self.stop_btn)
         layout.addLayout(buttonLayout)
 
-        # Hardware status indicators and extra controls.
+        # Hardware status indicators.
         statusLayout = QHBoxLayout()
         xyLabel = QLabel("XY Stage:")
         self.xyStageIndicator = QLabel()
@@ -65,9 +65,6 @@ class ZoneMeasurementsMixin:
         self.xyStageIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
         statusLayout.addWidget(xyLabel)
         statusLayout.addWidget(self.xyStageIndicator)
-
-        self.xyPosLabel = QLabel("Pos: N/A")
-        statusLayout.addWidget(self.xyPosLabel)
 
         cameraLabel = QLabel("Camera:")
         self.cameraIndicator = QLabel()
@@ -84,6 +81,26 @@ class ZoneMeasurementsMixin:
         statusLayout.addWidget(self.loadPosBtn)
 
         layout.addLayout(statusLayout)
+
+        # Add X,Y spinboxes and GoTo button
+        posLayout = QHBoxLayout()
+        posLayout.addWidget(QLabel("Stage X (mm):"))
+        self.xPosSpin = QDoubleSpinBox()
+        self.xPosSpin.setDecimals(3)
+        self.xPosSpin.setRange(-1000, 1000)
+        self.xPosSpin.setEnabled(False)
+        posLayout.addWidget(self.xPosSpin)
+        posLayout.addWidget(QLabel("Stage Y (mm):"))
+        self.yPosSpin = QDoubleSpinBox()
+        self.yPosSpin.setDecimals(3)
+        self.yPosSpin.setRange(-1000, 1000)
+        self.yPosSpin.setEnabled(False)
+        posLayout.addWidget(self.yPosSpin)
+        self.gotoBtn = QPushButton("GoTo")
+        self.gotoBtn.setEnabled(False)
+        self.gotoBtn.clicked.connect(self.goto_stage_position)
+        posLayout.addWidget(self.gotoBtn)
+        layout.addLayout(posLayout)
 
         # Integration time.
         integrationLayout = QHBoxLayout()
@@ -185,7 +202,7 @@ class ZoneMeasurementsMixin:
 
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
-        self.xyTimer.start(1000)
+        self.xyTimer.start(10000)
 
     def toggle_hardware(self):
         """
@@ -214,6 +231,10 @@ class ZoneMeasurementsMixin:
             self.start_btn.setEnabled(ok)
             self.pause_btn.setEnabled(False)
             self.stop_btn.setEnabled(False)
+            # Enable X/Y controls if hardware is initialized
+            self.xPosSpin.setEnabled(ok)
+            self.yPosSpin.setEnabled(ok)
+            self.gotoBtn.setEnabled(ok)
 
             if ok:
                 self.initializeBtn.setText("Deinitialize Hardware")
@@ -236,6 +257,10 @@ class ZoneMeasurementsMixin:
             self.start_btn.setEnabled(False)
             self.pause_btn.setEnabled(False)
             self.stop_btn.setEnabled(False)
+            # Disable X/Y controls
+            self.xPosSpin.setEnabled(False)
+            self.yPosSpin.setEnabled(False)
+            self.gotoBtn.setEnabled(False)
             self.initializeBtn.setText("Initialize Hardware")
             self.hardware_initialized = False
             self.hardware_state_changed.emit(False)
@@ -457,7 +482,7 @@ class ZoneMeasurementsMixin:
             user_index = index - len(gp)
             self._point_item = up[user_index]
             zone_item = self.image_view.points_dict["user"]["zones"][user_index]
-
+        self.update_xy_pos()
         center = self._point_item.sceneBoundingRect().center()
         self._x_mm = self.real_x_pos_mm.value() - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
         self._y_mm = self.real_y_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
@@ -611,13 +636,31 @@ class ZoneMeasurementsMixin:
 
     def update_xy_pos(self):
         """
-        Updates the XY stage position.
+        Updates the XY stage position into the spin boxes.
         """
-        if hasattr(self, 'stage_controller') and self.stage_controller is not None:
+        if getattr(self, 'hardware_initialized', False) and hasattr(self, 'stage_controller'):
             try:
-                pos = self.stage_controller.get_xy_position()
-                self.xyPosLabel.setText(f"Pos: ({pos[0]:.2f}, {pos[1]:.2f})")
+                x, y = self.stage_controller.get_xy_position()
+                self.xPosSpin.setValue(x)
+                self.yPosSpin.setValue(y)
             except Exception as e:
-                self.xyPosLabel.setText("Pos: Error")
+                print("Error reading stage pos:", e)
         else:
-            self.xyPosLabel.setText("Pos: N/A")
+            self.xPosSpin.setValue(0.0)
+            self.yPosSpin.setValue(0.0)
+
+    def goto_stage_position(self):
+        """
+        Move stage to the X,Y values specified in the spin boxes.
+        """
+        if hasattr(self, 'stage_controller') and getattr(self, 'hardware_initialized', False):
+            x = self.xPosSpin.value()
+            y = self.yPosSpin.value()
+            try:
+                new_x, new_y = self.stage_controller.move_stage(x, y)
+                self.xPosSpin.setValue(new_x)
+                self.yPosSpin.setValue(new_y)
+            except Exception as e:
+                print("Error moving stage:", e)
+        else:
+            print("Stage not initialized; cannot GoTo.")

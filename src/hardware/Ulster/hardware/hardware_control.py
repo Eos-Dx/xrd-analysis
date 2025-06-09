@@ -138,6 +138,7 @@ class XYStageLibController:
                 def __getattr__(self, name):
                     return lambda *args, **kwargs: print(f"DEV mode: Called {name} with args {args} {kwargs}")
             self.stage = DummyStage()
+            self._x, self._y = 0, 0
             return True
 
         if sys.version_info < (3, 8):
@@ -189,6 +190,7 @@ class XYStageLibController:
         if self.dev:
             print(f'DEV mode: moving dummy stage to X={x_mm} mm, Y={y_mm} mm')
             time.sleep(0.5)
+            self._x, self._y = x_mm, y_mm
             return x_mm, y_mm
         if not self.lib:
             raise RuntimeError('Stage not initialized')
@@ -240,6 +242,16 @@ class XYStageLibController:
         Alias for close_stage to deinitialize hardware safely.
         """
         self.close_stage()
+
+    def get_xy_position(self):
+         if self.stage is None:
+             return None, None
+         if self.dev:
+             return self._x, self._y
+         else:
+             x_final = self.stage.get_position(channel=self.x_chan, scale=True) / self.scaling_factor
+             y_final = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
+             return x_final, y_final
 
 # class XYStageController:
 #     def __init__(self, serial_num="default_serial", x_chan=2, y_chan=1, dev=True, scaling_factor=10000):
