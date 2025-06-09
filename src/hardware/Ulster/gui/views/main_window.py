@@ -3,6 +3,7 @@ import sys
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QAction, QFileDialog
+
 from hardware.Ulster.gui.views.main_window_basic import MainWindowBasic
 from hardware.Ulster.gui.main_window_ext.drawing_extension import DrawingMixin
 from hardware.Ulster.gui.main_window_ext.shape_table_extension import ShapeTableMixin
@@ -10,14 +11,16 @@ from hardware.Ulster.gui.main_window_ext.rotation_extension import RotationMixin
 from hardware.Ulster.gui.main_window_ext.zone_points_extension import ZonePointsMixin
 from hardware.Ulster.gui.main_window_ext.zone_measurements_extension import ZoneMeasurementsMixin
 from hardware.Ulster.gui.main_window_ext.state_saver_extension import StateSaverMixin
+from hardware.Ulster.gui.main_window_ext.technical_measurements import TechnicalMeasurementsMixin
 
 class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
-                 ZonePointsMixin, ZoneMeasurementsMixin, StateSaverMixin,
+                 ZonePointsMixin, TechnicalMeasurementsMixin, ZoneMeasurementsMixin, StateSaverMixin,
                  MainWindowBasic):
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.create_shape_table()
+        self.create_measurements_panel()
         self.create_drawing_actions()
         self.add_drawing_actions_to_tool_bar()
         self.create_delete_action()

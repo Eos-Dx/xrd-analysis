@@ -5,50 +5,7 @@ import numpy as np
 import seaborn as sns
 from copy import copy
 from pathlib import Path
-from PyQt5.QtWidgets import (
-    QDockWidget, QLabel, QSpinBox, QLineEdit, QFileDialog,
-    QSpacerItem, QSizePolicy, QProgressBar, QWidget, QHBoxLayout,
-    QVBoxLayout, QPushButton, QDialog
-)
 
-from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QColor
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-
-from xrdanalysis.data_processing.azimuthal_integration import initialize_azimuthal_integrator_df
-from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
-from hardware.Ulster.hardware.hardware_control import DetectorController, XYStageController
-
-
-class CaptureWorker(QThread):
-    # emit (success: bool, txt_filename: str)
-    finished = pyqtSignal(bool, str)
-
-    def __init__(self, detector_controller, integration_time, txt_filename, parent=None):
-        super().__init__(parent)
-        self.detector_controller = detector_controller
-        self.integration_time   = integration_time
-        self.txt_filename       = txt_filename
-
-    def run(self):
-        # this executes in the worker thread
-        success = self.detector_controller.capture_point(
-            1,
-            self.integration_time,
-            self.txt_filename
-        )
-        # emit back to the GUI thread
-        self.finished.emit(success, self.txt_filename)
-
-
-import os
-import json
-import time
-import numpy as np
-import seaborn as sns
-from copy import copy
-from pathlib import Path
 from PyQt5.QtWidgets import (
     QDockWidget, QLabel, QSpinBox, QLineEdit, QFileDialog,
     QSpacerItem, QSizePolicy, QProgressBar, QWidget, QHBoxLayout,
@@ -59,10 +16,17 @@ from PyQt5.QtGui import QColor
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from xrdanalysis.data_processing.azimuthal_integration import initialize_azimuthal_integrator_df, initialize_azimuthal_integrator_poni_text
+from xrdanalysis.data_processing.azimuthal_integration import (
+    initialize_azimuthal_integrator_df,
+    initialize_azimuthal_integrator_poni_text
+)
 from xrdanalysis.data_processing.utility_functions import create_mask
 from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
-from hardware.Ulster.hardware.hardware_control import DetectorController, XYStageController, XYStageLibController
+from hardware.Ulster.hardware.hardware_control import (
+    DetectorController,
+    XYStageController,
+    XYStageLibController
+)
 
 
 class CaptureWorker(QThread):
@@ -76,38 +40,32 @@ class CaptureWorker(QThread):
         self.txt_filename = txt_filename
 
     def run(self):
-        # this executes in the worker thread
         success = self.detector_controller.capture_point(
             1,
             self.integration_time,
             self.txt_filename
         )
-        # emit back to the GUI thread
         self.finished.emit(success, self.txt_filename)
 
 
 class ZoneMeasurementsMixin:
-
-    def load_default_mask(self):
-        faulty_pixels = Path(__file__).resolve().parent.parent.parent / 'resources/faulty_pixels.npy'
-        if faulty_pixels.exists():
-            self.mask = self._create_mask(faulty_pixels)
-        else:
-            self.mask = np.array([[]])
-            print("Faulty pixels file was not found:", faulty_pixels)
+    # Signal emitted on hardware initialize (True) or deinitialize (False)
+    hardware_state_changed = pyqtSignal(bool)
 
     def create_zone_measurements_widget(self):
         """
         Creates a dock widget for zone measurements with controls and indicators.
         """
+        self.hardware_initialized = False
+
         self.zoneMeasurementsDock = QDockWidget("Zone Measurements", self)
         container = QWidget()
         layout = QVBoxLayout(container)
 
         # Hardware control buttons.
         buttonLayout = QHBoxLayout()
-        self.initializeBtn = QPushButton("Initialize")
-        self.initializeBtn.clicked.connect(self.initialize_hardware)
+        self.initializeBtn = QPushButton("Initialize Hardware")
+        self.initializeBtn.clicked.connect(self.toggle_hardware)
         self.start_btn = QPushButton("Start measurement")
         self.start_btn.clicked.connect(self.start_measurements)
         self.pause_btn = QPushButton("Pause")
@@ -194,7 +152,7 @@ class ZoneMeasurementsMixin:
         fileNameLayout.addWidget(self.fileNameLineEdit)
         layout.addLayout(fileNameLayout)
 
-        # --- Additional controls for count and distance ---
+        # Additional controls for count and distance.
         additionalLayout = QHBoxLayout()
         self.add_count_btn = QPushButton("Add count")
         self.addCountSpinBox = QSpinBox()
@@ -210,7 +168,6 @@ class ZoneMeasurementsMixin:
         additionalLayout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
         layout.addLayout(additionalLayout)
 
-        # Connect the new controls.
         self.add_distance_btn.clicked.connect(self.handle_add_distance)
         self.add_count_btn.clicked.connect(self.handle_add_count)
 
@@ -235,7 +192,7 @@ class ZoneMeasurementsMixin:
         maskLayout.addWidget(self.maskBrowseBtn)
         layout.addLayout(maskLayout)
 
-        # --- PONI file selection ---
+        # PONI file selection.
         poniLayout = QHBoxLayout()
         poniLabel = QLabel("PONI file:")
         self.poniLineEdit = QLineEdit()
@@ -246,19 +203,74 @@ class ZoneMeasurementsMixin:
         poniLayout.addWidget(self.poniBrowseBtn)
         layout.addLayout(poniLayout)
 
-        # Spacer to fill the remaining space.
         container.setLayout(layout)
         self.zoneMeasurementsDock.setWidget(container)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.zoneMeasurementsDock)
 
-        self.image_view.points_dict = {
-            "generated": {"points": [], "zones": []},
-            "user": {"points": [], "zones": []}
-        }
-
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
         self.xyTimer.start(1000)
+
+    def toggle_hardware(self):
+        """
+        Toggle hardware initialization state.
+        """
+        if not self.hardware_initialized:
+            dev_mode = self.config.get("DEV", True)
+            serial_str = self.config.get("serial_number_XY", "default_serial")
+            self.stage_controller = XYStageLibController(serial_num=serial_str, x_chan=2, y_chan=1, dev=dev_mode)
+            res_xystage = self.stage_controller.init_stage()
+
+            self.detector_controller = DetectorController(capture_enabled=True, dev=dev_mode)
+            res_det = self.detector_controller.init_detector()
+
+            # Update indicators
+            self.xyStageIndicator.setStyleSheet(
+                "background-color: green; border-radius: 10px;" if res_xystage else
+                "background-color: red; border-radius: 10px;"
+            )
+            self.cameraIndicator.setStyleSheet(
+                "background-color: green; border-radius: 10px;" if res_det else
+                "background-color: red; border-radius: 10px;"
+            )
+
+            ok = res_xystage and res_det
+            self.start_btn.setEnabled(ok)
+            self.pause_btn.setEnabled(False)
+            self.stop_btn.setEnabled(False)
+
+            if ok:
+                self.initializeBtn.setText("Deinitialize Hardware")
+                self.hardware_initialized = True
+                self.hardware_state_changed.emit(True)
+        else:
+            # Deinitialize hardware
+            try:
+                self.stage_controller.deinit()
+            except Exception as e:
+                print(f"Error deinitializing stage: {e}")
+            try:
+                self.detector_controller.deinit_detector()
+            except Exception as e:
+                print(f"Error deinitializing detector: {e}")
+
+            # Reset indicators and controls
+            self.xyStageIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
+            self.cameraIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
+            self.start_btn.setEnabled(False)
+            self.pause_btn.setEnabled(False)
+            self.stop_btn.setEnabled(False)
+            self.initializeBtn.setText("Initialize Hardware")
+            self.hardware_initialized = False
+            self.hardware_state_changed.emit(False)
+
+    def load_default_mask(self):
+        faulty_pixels = Path(__file__).resolve().parent.parent.parent / 'resources/faulty_pixels.npy'
+        if faulty_pixels.exists():
+            self.mask = self._create_mask(faulty_pixels)
+        else:
+            self.mask = np.array([[]])
+            print("Faulty pixels file was not found:", faulty_pixels)
 
     def browse_poni_file(self):
         """
@@ -480,7 +492,8 @@ class ZoneMeasurementsMixin:
         # Build filename.
         self._timestamp = time.strftime("%Y%m%d_%H%M%S")
         self._base_name = self.fileNameLineEdit.text().strip()
-        txt_filename = os.path.join(self.measurement_folder, f"{self._base_name}_{self._x_mm:.2f}_{self._y_mm:.2f}_{self._timestamp}.txt")
+        txt_filename = os.path.join(self.measurement_folder,
+                                    f"{self._base_name}_{self._x_mm:.2f}_{self._y_mm:.2f}_{self._timestamp}.txt")
 
         # launch the capture in its own thread:
         self.capture_worker = CaptureWorker(
@@ -562,7 +575,6 @@ class ZoneMeasurementsMixin:
         Opens a window that shows the raw 2D image and its azimuthal integration.
         """
         data = np.load(measurement_filename)
-
 
         # choose integrator based on PONI content
         if hasattr(self, 'poni') and self.poni:
