@@ -248,14 +248,14 @@ class XYStageLibController:
         self.close_stage()
 
     def get_xy_position(self):
-         if self.stage is None:
-             return None, None
          if self.dev:
              return self._x, self._y
          else:
-             x_final = self.stage.get_position(channel=self.x_chan, scale=True) / self.scaling_factor
-             y_final = self.stage.get_position(channel=self.y_chan, scale=True) / self.scaling_factor
-             return x_final, y_final
+             curr_x_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.x_chan))
+             curr_y_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.y_chan))
+             curr_x_mm = curr_x_dev / self.scaling_factor
+             curr_y_mm = curr_y_dev / self.scaling_factor
+             return curr_x_mm, curr_y_mm
 
 # class XYStageController:
 #     def __init__(self, serial_num="default_serial", x_chan=2, y_chan=1, dev=True, scaling_factor=10000):
