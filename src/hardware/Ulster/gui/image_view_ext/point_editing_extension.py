@@ -4,13 +4,17 @@ from PyQt5.QtGui import QPen, QColor
 from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
 
 
+null_dict = {
+            "generated": {"points": [], "zones": []},
+            "user": {"points": [], "zones": []},
+            "beam": [],
+            }
+
 class PointEditingMixin:
 
     def init_point_editing(self):
-        self.points_dict = {
-            "generated": {"points": [], "zones": []},
-            "user": {"points": [], "zones": []}
-            }
+        self.points_dict = null_dict.copy()
+
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton:

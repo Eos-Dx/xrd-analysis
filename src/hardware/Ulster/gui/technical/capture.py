@@ -119,7 +119,7 @@ def show_measurement_window(
 
     # Top-right: 1D integration
     ax2 = fig.add_subplot(2, 2, 2)
-    sns.lineplot(x=radial, y=intensity, marker='o', ax=ax2)
+    sns.lineplot(x=radial, y=intensity, ax=ax2)
     ax2.set_title("Azimuthal Integration")
     ax2.set_xlabel("q (nm^-1)")
     ax2.set_ylabel("Intensity")

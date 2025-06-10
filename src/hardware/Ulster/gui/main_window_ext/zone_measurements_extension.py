@@ -600,6 +600,9 @@ class ZoneMeasurementsMixin:
         """
         Updates the XY stage position into the spin boxes.
         """
+        from PyQt5.QtWidgets import QGraphicsLineItem
+        from PyQt5.QtGui import QPen
+        from PyQt5.QtCore import Qt
         if getattr(self, 'hardware_initialized', False) and hasattr(self, 'stage_controller'):
             try:
                 x, y = self.stage_controller.get_xy_position()
@@ -608,8 +611,41 @@ class ZoneMeasurementsMixin:
             except Exception as e:
                 print("Error reading stage pos:", e)
         else:
+            x, y = 0, 0
             self.xPosSpin.setValue(0.0)
             self.yPosSpin.setValue(0.0)
+            # --- redraw beam cross ---
+
+        # 1) remove old beam items
+        old = self.image_view.points_dict.get("beam", [])
+        for itm in old:
+            self.image_view.scene.removeItem(itm)
+
+        def mm_to_pixels(self, x_mm: float, y_mm: float) -> tuple[float, float]:
+            x = (self.real_x_pos_mm.value() - x_mm) * self.pixel_to_mm_ratio + self.include_center[0]
+            y = (self.real_y_pos_mm.value() - y_mm) * self.pixel_to_mm_ratio + self.include_center[1]
+            return x, y
+        x, y = mm_to_pixels(self, x, y)
+
+        # 2) if we have valid coords, draw new cross
+        if x >= 0 and y >= 0:
+            size = 15  # half‐length of each line in scene coordinates
+            pen = QPen(Qt.black, 5)
+
+            # horizontal line
+            hl = QGraphicsLineItem(x - size, y, x + size, y)
+            hl.setPen(pen)
+            self.image_view.scene.addItem(hl)
+
+            # vertical line
+            vl = QGraphicsLineItem(x, y - size, x, y + size)
+            vl.setPen(pen)
+            self.image_view.scene.addItem(vl)
+
+            # 3) store for next time
+            self.image_view.points_dict["beam"] = [hl, vl]
+        else:
+            self.image_view.points_dict["beam"] = []
 
     def goto_stage_position(self):
         """
@@ -622,6 +658,7 @@ class ZoneMeasurementsMixin:
                 new_x, new_y = self.stage_controller.move_stage(x, y)
                 self.xPosSpin.setValue(new_x)
                 self.yPosSpin.setValue(new_y)
+                self.update_xy_pos()
             except Exception as e:
                 print("Error moving stage:", e)
         else:

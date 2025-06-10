@@ -6,22 +6,19 @@ import subprocess
 from PyQt5.QtWidgets import (
     QDockWidget, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QLineEdit, QPushButton, QFileDialog,
-    QListWidget, QListWidgetItem, QDoubleSpinBox
+    QListWidget, QListWidgetItem, QDoubleSpinBox, QScrollArea
 )
 from PyQt5.QtCore import Qt
 
 from hardware.Ulster.gui.technical.capture import CaptureWorker, validate_folder
-from hardware.Ulster.gui.main_window_ext.zone_measurements_extension import ZoneMeasurementsMixin
 from hardware.Ulster.gui.technical.capture import show_measurement_window
-
+from hardware.Ulster.gui.main_window_ext.zone_measurements_extension import ZoneMeasurementsMixin
 
 class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def create_measurements_panel(self):
-        # Initialize counters
-        self.empty_counter = 0
-        self.background_counter = 0
-        self.calibrant_counter = 0
+        # Initialize counter for auxiliary measurements
+        self.aux_counter = 0
 
         # Call parent widget creation if needed
         super().create_zone_measurements_widget()
@@ -29,7 +26,6 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         # Create technical measurements dock
         self.measDock = QDockWidget("Technical Measurements", self)
         self.measDock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-
 
         container = QWidget()
         outer = QVBoxLayout(container)
@@ -56,37 +52,32 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         fld.addWidget(b)
         outer.addLayout(fld)
 
-        # Measurement types
-        for typ in ("Empty", "Background", "Calibrant"):
-            outer.addWidget(QLabel(f"{typ} Measurements:"))
-            row = QHBoxLayout()
-            btn = QPushButton(f"Measure {typ}")
-            btn.clicked.connect(getattr(self, f"measure_{typ.lower()}"))
-            setattr(self, f"{typ.lower()}Btn", btn)
-            row.addWidget(btn)
+        # Auxiliary Measurement
+        outer.addWidget(QLabel("Aux Measurement:"))
+        row = QHBoxLayout()
+        btn = QPushButton("Measure Aux")
+        btn.clicked.connect(self.measure_aux)
+        self.auxBtn = btn
+        row.addWidget(btn)
 
-            le = QLineEdit()
-            le.setPlaceholderText(f"Name for {typ}")
-            setattr(self, f"{typ.lower()}NameLE", le)
-            row.addWidget(le, 1)
-            outer.addLayout(row)
+        le = QLineEdit()
+        le.setPlaceholderText("Name for Aux Measurement")
+        self.auxNameLE = le
+        row.addWidget(le, 1)
+        outer.addLayout(row)
 
-            lst = QListWidget()
-            lst.itemActivated.connect(self.open_measurement)
-            setattr(self, f"{typ.lower()}List", lst)
-            outer.addWidget(lst)
+        # Measurement list
+        self.auxList = QListWidget()
+        self.auxList.itemActivated.connect(self.open_measurement)
+        outer.addWidget(self.auxList)
 
-            # **Only** for Calibrant: add the PyFai button
-            if typ == "Calibrant":
-                pyfai_btn = QPushButton("PyFai")
-                pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
-                pyfai_btn.clicked.connect(self.run_pyfai)
-                outer.addWidget(pyfai_btn)
+        # PyFai button
+        pyfai_btn = QPushButton("PyFai")
+        pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
+        pyfai_btn.clicked.connect(self.run_pyfai)
+        outer.addWidget(pyfai_btn)
 
-        self.measDock.setWidget(container)
-        self.measDock.setWidget(container)
-        # Wrap in a scroll area so the contents can scroll if they exceed the dock size
-        from PyQt5.QtWidgets import QScrollArea
+        # Wrap in a scroll area so contents can scroll if needed
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(container)
@@ -95,53 +86,12 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
         # Initially disable controls until hardware is initialized
         self.enable_measurement_controls(False)
-
-        # Subscribe to hardware init/deinit events
-        # ZoneMeasurementsMixin emits hardware_state_changed(bool)
         self.hardware_state_changed.connect(self.enable_measurement_controls)
-
-    def run_pyfai(self):
-        env = self.config.get("conda")
-        if not env:
-            print("❌ No conda env set in self.config['conda']")
-            return
-
-        folder = validate_folder(self.folderLE.text())
-
-        if os.name == "nt":
-            # Build a single string that start.exe can launch
-            cmd = (
-                f'CALL conda activate {env} '
-                f'&& cd /d "{folder}" '
-                f'&& pyfai-calib2'
-            )
-            start_cmd = f'start cmd /K "{cmd}"'
-            try:
-                # shell=True is required so 'start' is recognized
-                subprocess.Popen(start_cmd, shell=True)
-                print("▶️ Launched PyFai in new cmd window.")
-            except Exception as e:
-                print("❌ Failed to launch PyFai on Windows:", e)
-
-        else:
-            # Unix branch unchanged...
-            bash_cmd = (
-                f'cd "{folder}" && '
-                f'conda activate {env} && '
-                'pyfai-calib2; exec bash'
-            )
-            try:
-                subprocess.Popen(["bash", "-lc", bash_cmd])
-                print("▶️ Launched PyFai in new bash window.")
-            except Exception as e:
-                print("❌ Failed to launch PyFai on Unix:", e)
 
     def enable_measurement_controls(self, enable: bool):
         widgets = [
             self.integrationTimeSpin, self.folderLE,
-            self.emptyBtn, self.emptyNameLE, self.emptyList,
-            self.backgroundBtn, self.backgroundNameLE, self.backgroundList,
-            self.calibrantBtn, self.calibrantNameLE, self.calibrantList
+            self.auxBtn, self.auxNameLE, self.auxList
         ]
         for w in widgets:
             w.setEnabled(enable)
@@ -160,7 +110,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         base = self._file_base(typ)
         base_with_count = f"{base}_{count:03d}"
         ts = time.strftime("%Y%m%d_%H%M%S")
-        txt = os.path.join(folder, f"{base_with_count}_{ts}.txt")
+        txt = os.path.join(folder, f"{base_with_count}_{ts}_{int(self.integrationTimeSpin.value())}s.txt")
 
         worker = CaptureWorker(
             detector_controller=self.detector_controller,
@@ -168,12 +118,10 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             txt_filename=txt
         )
 
-        # Keep it alive until it finishes:
         if not hasattr(self, "_capture_workers"):
             self._capture_workers = []
         self._capture_workers.append(worker)
 
-        # Clean up when done:
         def _cleanup(ok, fn, t=typ):
             try:
                 self._on_capture_done(ok, fn, t)
@@ -189,7 +137,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             print(f"[{typ}] capture failed.")
             return
         else:
-            print('[{typ}] capture successful:', txt_file)
+            print(f'[{typ}] capture successful: {txt_file}')
         try:
             data = np.loadtxt(txt_file)
             npy = txt_file.replace(".txt", ".npy")
@@ -208,14 +156,9 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         txt = le.text().strip().replace(" ", "_")
         return txt or typ.lower()
 
-    def measure_empty(self):
-        self._start_capture("Empty")
-
-    def measure_background(self):
-        self._start_capture("Background")
-
-    def measure_calibrant(self):
-        self._start_capture("Calibrant")
+    def measure_aux(self):
+        # Start an auxiliary measurement capture
+        self._start_capture("Aux")
 
     def open_measurement(self, item: QListWidgetItem):
         show_measurement_window(
@@ -225,8 +168,38 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             self
         )
 
-    # Override to subscribe automatically
+    def run_pyfai(self):
+        env = self.config.get("conda")
+        if not env:
+            print("❌ No conda env set in self.config['conda']")
+            return
+
+        folder = validate_folder(self.folderLE.text())
+
+        if os.name == "nt":
+            cmd = (
+                f'CALL conda activate {env} '
+                f'&& cd /d "{folder}" '
+                f'&& pyfai-calib2'
+            )
+            start_cmd = f'start cmd /K "{cmd}"'
+            try:
+                subprocess.Popen(start_cmd, shell=True)
+                print("▶️ Launched PyFai in new cmd window.")
+            except Exception as e:
+                print("❌ Failed to launch PyFai on Windows:", e)
+        else:
+            bash_cmd = (
+                f'cd "{folder}" && '
+                f'conda activate {env} && '
+                'pyfai-calib2; exec bash'
+            )
+            try:
+                subprocess.Popen(["bash", "-lc", bash_cmd])
+                print("▶️ Launched PyFai in new bash window.")
+            except Exception as e:
+                print("❌ Failed to launch PyFai on Unix:", e)
+
     def initialize_hardware(self):
-        pass#super().initialize_hardware()
-        # No need to manually toggle controls here;
-        # subscription to hardware_state_changed handles it.
+        # Override to subscribe automatically
+        pass  # subscription to hardware_state_changed handles control toggling
