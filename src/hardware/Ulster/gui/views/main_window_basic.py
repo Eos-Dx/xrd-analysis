@@ -88,8 +88,8 @@ class MainWindowBasic(QMainWindow):
             try:
                 self.delete_all_shapes_from_table()
                 self.delete_all_points()
-            except Exception:
-                pass
+            except Exception as e:
+                print(e)
 
     def check_dev_mode(self):
         if self.config.get("DEV", False):

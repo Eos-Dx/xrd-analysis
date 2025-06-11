@@ -46,8 +46,10 @@ def show_measurement_window(
     measurement_filename: str,
     mask: np.ndarray,
     poni_text: str = None,
-    parent=None
-) -> QDialog:
+    parent=None,
+    columns_to_remove: int = 30,
+    goodness: float = 0.0,
+):
     """
     Opens a dialog window displaying the raw 2D image and its azimuthal integration.
 
@@ -104,9 +106,12 @@ def show_measurement_window(
         return None
 
     # Create dialog and layout
-    dialog = QDialog(parent)
-    dialog.setWindowTitle(f"Azimuthal Integration: {os.path.basename(measurement_filename)}")
-    layout = QHBoxLayout(dialog)
+    try:
+        dialog = QDialog(parent)
+        dialog.setWindowTitle(f"Azimuthal Integration: {os.path.basename(measurement_filename)}")
+        layout = QHBoxLayout(dialog)
+    except Exception as e:
+        raise e
 
     # Create figure and canvas
     fig = Figure(figsize=(6, 6))
@@ -131,7 +136,7 @@ def show_measurement_window(
     ax3.set_title("Cake Representation")
 
     # Bottom-right: deviation map
-    cake2 = cake[:, 30:]
+    cake2 = cake[:, columns_to_remove:]
     mask_zero = (cake2 == 0)
     col_sums = cake2.sum(axis=0)
     valid_counts = (~mask_zero).sum(axis=0)
@@ -140,7 +145,7 @@ def show_measurement_window(
 
     ax4 = fig.add_subplot(2, 2, 4)
     sns.heatmap(pct_dev, robust=True, square=True, ax=ax4)
-    ax4.set_title("Deviation (%)")
+    ax4.set_title(f"Deviation (%), goodness: {goodness}")
 
     # Show the canvas
     layout.addWidget(canvas)
@@ -148,3 +153,96 @@ def show_measurement_window(
     dialog.show()
 
     return dialog
+
+
+def compute_hf_score_from_cake(
+    measurement_filename: np.ndarray,
+    poni_text: str = None,
+    mask=None,
+    hf_cutoff_fraction: float = 0.2,
+    skip_bins: int = 30
+):
+    """
+    Compute the percentage of power in 'high' spatial frequencies
+    from a 2D 'cake' integration array.
+    """
+    try:
+        data = np.load(measurement_filename)
+    except Exception as e:
+        print(e)
+        return -1
+
+    # Choose integrator
+    if poni_text:
+        ai = initialize_azimuthal_integrator_poni_text(poni_text)
+    else:
+        # Fallback: manual integration parameters
+        max_idx = np.unravel_index(np.argmax(data), data.shape)
+        center_row, center_column = max_idx
+        pixel_size = 55e-6
+        wavelength = 1.54
+        sample_distance_mm = 100.0
+        ai = initialize_azimuthal_integrator_df(
+            pixel_size,
+            center_column,
+            center_row,
+            wavelength,
+            sample_distance_mm
+        )
+
+    # Perform integration
+    npt = 200
+    try:
+        result = ai.integrate1d(
+            data,
+            npt,
+            unit="q_nm^-1",
+            error_model="azimuthal",
+            mask=mask
+        )
+        radial = result.radial
+        intensity = result.intensity
+        cake, _, _ = ai.integrate2d(
+            data,
+            200,
+            npt_azim=180,
+            mask=mask
+        )
+    except Exception as e:
+        print(f"Error integrating data: {e}")
+        return None
+
+    # 1) Skip low-q bins
+    Z = cake[:, skip_bins:]
+    n_az, n_q = Z.shape
+
+    # 2) Percent deviation per bin
+    Z_norm = np.full_like(Z, np.nan, dtype=float)
+    for j in range(n_q):
+        col = Z[:, j]
+        valid = col != 0
+        if np.any(valid):
+            mean_val = col[valid].mean()
+            if mean_val != 0:
+                Z_norm[valid, j] = (col[valid] - mean_val) / mean_val * 100
+
+    # 3) Prepare for FFT
+    Z_fft = np.nan_to_num(Z_norm, nan=0.0)
+    Z_fft -= Z_fft.mean()
+
+    # 4) FFT → power spectrum → shift
+    F = np.fft.fft2(Z_fft)
+    P = np.abs(F) ** 2
+    P_shift = np.fft.fftshift(P)
+
+    # 5) Build normalized frequency grid
+    fy = np.fft.fftshift(np.fft.fftfreq(n_az))
+    fx = np.fft.fftshift(np.fft.fftfreq(n_q))
+    FX, FY = np.meshgrid(fx, fy)
+    FreqMag = np.sqrt(FX**2 + FY**2)
+
+    # 6) High-freq mask + fraction
+    mask_hf = FreqMag > hf_cutoff_fraction
+    P_high = P_shift[mask_hf].sum()
+    P_total = P_shift.sum()
+    return float((P_high / P_total) * 100) if P_total > 0 else 0.0

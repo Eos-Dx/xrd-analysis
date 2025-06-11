@@ -1,19 +1,20 @@
-import os
 import json
 import time
+import os
 import numpy as np
-import seaborn as sns
 from copy import copy
 from pathlib import Path
 from functools import partial
 
 from PyQt5.QtWidgets import (
     QDockWidget, QLabel, QSpinBox, QLineEdit, QFileDialog,
-    QSpacerItem, QSizePolicy, QProgressBar, QWidget, QHBoxLayout,
-    QVBoxLayout, QPushButton, QDialog, QDoubleSpinBox
+    QSpacerItem, QSizePolicy, QProgressBar,
+    QVBoxLayout, QDoubleSpinBox, QGraphicsLineItem
 )
-from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QColor, QPen
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, Qt
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton
 
 from xrdanalysis.data_processing.utility_functions import create_mask
 from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
@@ -22,7 +23,32 @@ from hardware.Ulster.hardware.hardware_control import (
     XYStageLibController
 )
 
-from hardware.Ulster.gui.technical.capture import CaptureWorker, validate_folder, show_measurement_window
+from hardware.Ulster.gui.technical.capture import (CaptureWorker, validate_folder,
+                                                   show_measurement_window, compute_hf_score_from_cake)
+
+
+class MeasurementWorker(QObject):
+    # this signal carries the row number and filename back to the GUI thread
+    measurement_ready = pyqtSignal(int, str, float, int)
+
+    def __init__(self, row, measurement_filename, mask, poni, parent, hf_cutoff_fraction: float = 0.2,
+                 columns_to_remove: int = 30):
+        super().__init__()
+        self.row = row
+        self.measurement_filename = measurement_filename
+        self.mask = mask
+        self.poni = poni
+        self.parent = parent,
+        self.hf_cutoff_fraction = hf_cutoff_fraction
+        self.columns_to_remove = columns_to_remove
+        self.goodness = 0
+
+    def run(self):
+        self.goodness = compute_hf_score_from_cake(self.measurement_filename, self.poni, self.mask,
+                                                   hf_cutoff_fraction=self.hf_cutoff_fraction,
+                                                   skip_bins=self.columns_to_remove)
+        self.measurement_ready.emit(self.row, self.measurement_filename, self.goodness, self.columns_to_remove)
+
 
 class ZoneMeasurementsMixin:
     # Signal emitted on hardware initialize (True) or deinitialize (False)
@@ -32,6 +58,7 @@ class ZoneMeasurementsMixin:
         """
         Creates a dock widget for zone measurements with controls and indicators.
         """
+        self._measurement_threads = []
         self.hardware_initialized = False
 
         self.zoneMeasurementsDock = QDockWidget("Zone Measurements", self)
@@ -500,7 +527,7 @@ class ZoneMeasurementsMixin:
                 print(f"Error converting file: {e}")
                 npy_filename = txt_filename  # Fallback
 
-        self.add_measurement_to_table(self.sorted_indices[self.current_measurement_sorted_index], npy_filename)
+        self.spawn_measurement_thread(self.sorted_indices[self.current_measurement_sorted_index], npy_filename)
         # Visual feedback.
         green_brush = QColor(0, 255, 0)
         self._point_item.setBrush(green_brush)
@@ -513,31 +540,87 @@ class ZoneMeasurementsMixin:
             print(e)
         QTimer.singleShot(1000, self.measurement_finished)
 
-    def add_measurement_to_table(self, row, measurement_filename):
+
+
+    def add_measurement_to_table(self, row, measurement_filename, goodness, columns_to_remove=30):
         """
-        Adds a clickable button to the measurement cell.
+        Adds a clickable button to column 5 and a goodness label to column 6.
         """
-        from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton
-        widget = self.pointsTable.cellWidget(row, 5)
-        if widget is None:
-            widget = QWidget()
-            layout = QHBoxLayout(widget)
-            layout.setContentsMargins(0, 0, 0, 0)
-            widget.setLayout(layout)
-            self.pointsTable.setCellWidget(row, 5, widget)
+        # — COLUMN 5: measurement button —
+        widget5 = self.pointsTable.cellWidget(row, 5)
+        if widget5 is None:
+            widget5 = QWidget()
+            layout5 = QHBoxLayout(widget5)
+            layout5.setContentsMargins(0, 0, 0, 0)
+            widget5.setLayout(layout5)
+            self.pointsTable.setCellWidget(row, 5, widget5)
         else:
-            layout = widget.layout()
+            layout5 = widget5.layout()
+
         btn = QPushButton(os.path.basename(measurement_filename))
-        btn.setStyleSheet("Text-align:left; border: none; color: blue; text-decoration: underline;")
+        btn.setStyleSheet(
+            "Text-align:left; "
+            "border: none; "
+            "color: blue; "
+            "text-decoration: underline;"
+        )
         btn.setCursor(Qt.PointingHandCursor)
         btn.clicked.connect(partial(
             show_measurement_window,
             measurement_filename,
             self.mask,
-            getattr(self, "poni", None),  # or just self.poni if you guarantee it exists
-            self  # parent window
+            getattr(self, "poni", None),
+            self,
+            columns_to_remove,
+            round(goodness, 2)
         ))
-        layout.addWidget(btn)
+        layout5.addWidget(btn)
+
+        # — COLUMN 6: goodness value —
+        widget6 = self.pointsTable.cellWidget(row, 6)
+        if widget6 is None:
+            widget6 = QWidget()
+            layout6 = QHBoxLayout(widget6)
+            layout6.setContentsMargins(0, 0, 0, 0)
+            widget6.setLayout(layout6)
+            self.pointsTable.setCellWidget(row, 6, widget6)
+        else:
+            layout6 = widget6.layout()
+
+        # Format goodness as percent with one decimal
+        goodness_label = QLabel(f"{goodness:.1f}%")
+        goodness_label.setAlignment(Qt.AlignCenter)
+        # Optionally style it (gray text, fixed width, etc.)
+        goodness_label.setStyleSheet("color: gray;")
+        layout6.addWidget(goodness_label)
+
+    def spawn_measurement_thread(self, row, measurement_filename):
+        """
+        Creates a QThread + worker to do heavy lifting, then
+        adds the button in the GUI when ready.
+        """
+        thread = QThread(self)  # create a new thread
+        worker = MeasurementWorker(
+            row=row,
+            measurement_filename=measurement_filename,
+            mask=self.mask,
+            poni=getattr(self, "poni", None),
+            parent=self,
+            hf_cutoff_fraction=.2,
+            columns_to_remove=30
+        )
+        worker.moveToThread(thread)
+
+        # when the thread starts, run the worker
+        thread.started.connect(worker.run)
+        # when the worker is done, add the button and clean up
+        worker.measurement_ready.connect(self.add_measurement_to_table)
+        worker.measurement_ready.connect(thread.quit)
+        worker.measurement_ready.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        self._measurement_threads.append((thread, worker))
+
+        thread.start()
 
     def pause_measurements(self):
         """
@@ -600,9 +683,7 @@ class ZoneMeasurementsMixin:
         """
         Updates the XY stage position into the spin boxes.
         """
-        from PyQt5.QtWidgets import QGraphicsLineItem
-        from PyQt5.QtGui import QPen
-        from PyQt5.QtCore import Qt
+
         if getattr(self, 'hardware_initialized', False) and hasattr(self, 'stage_controller'):
             try:
                 x, y = self.stage_controller.get_xy_position()
@@ -621,7 +702,7 @@ class ZoneMeasurementsMixin:
         for itm in old:
             self.image_view.scene.removeItem(itm)
 
-        def mm_to_pixels(self, x_mm: float, y_mm: float) -> tuple[float, float]:
+        def mm_to_pixels(self, x_mm: float, y_mm: float):
             x = (self.real_x_pos_mm.value() - x_mm) * self.pixel_to_mm_ratio + self.include_center[0]
             y = (self.real_y_pos_mm.value() - y_mm) * self.pixel_to_mm_ratio + self.include_center[1]
             return x, y

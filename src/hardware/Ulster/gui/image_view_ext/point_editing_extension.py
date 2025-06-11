@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QGraphicsEllipseItem
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPen, QColor
 from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
-
+import copy
 
 null_dict = {
             "generated": {"points": [], "zones": []},
@@ -13,7 +13,7 @@ null_dict = {
 class PointEditingMixin:
 
     def init_point_editing(self):
-        self.points_dict = null_dict.copy()
+        self.points_dict = copy.deepcopy(null_dict)
 
 
     def mouseDoubleClickEvent(self, event):
