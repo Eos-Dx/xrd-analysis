@@ -376,8 +376,11 @@ class ZonePointsMixin:
         except Exception as e:
             print(e)
         # Clear the user-defined lists.
-        self.image_view.points_dict["user"]["points"].clear()
-        self.image_view.points_dict["user"]["zones"].clear()
+        #self.image_view.points_dict["user"]["points"].clear()
+        #self.image_view.points_dict["user"]["zones"].clear()
+
+        from hardware.Ulster.gui.image_view_ext.point_editing_extension import null_dict
+        self.image_view.points_dict = null_dict
 
         # Update the points table UI.
         self.update_points_table()

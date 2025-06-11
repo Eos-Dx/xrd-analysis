@@ -30,7 +30,7 @@ class CaptureWorker(QThread):
         self.finished.emit(success, self.txt_filename)
 
 
-def validate_folder(path: str) -> str:
+def validate_folder(path: str):
     if not path:
         path = os.getcwd()
     try:

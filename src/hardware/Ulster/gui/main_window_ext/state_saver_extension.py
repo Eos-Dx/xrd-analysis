@@ -119,7 +119,8 @@ class StateSaverMixin:
 
         # --- Restore zone points using the unified dictionary ---
         zone_points = state.get("zone_points", [])
-        self.image_view.points_dict = null_dict.copy()
+        import copy
+        self.image_view.points_dict = copy.deepcopy(null_dict)
 
         for pt in zone_points:
             x = pt.get("x")
