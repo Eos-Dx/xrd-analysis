@@ -540,8 +540,6 @@ class ZoneMeasurementsMixin:
             print(e)
         QTimer.singleShot(1000, self.measurement_finished)
 
-
-
     def add_measurement_to_table(self, row, measurement_filename, goodness, columns_to_remove=30):
         """
         Adds a clickable button to column 5 and a goodness label to column 6.

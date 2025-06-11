@@ -1,21 +1,21 @@
+from ctypes import CDLL, c_short, c_int, c_char_p
+import sys
+import threading
+import time
 import numpy as np
 import os
-import sys
-import time
-from ctypes import CDLL, c_short, c_int, c_char_p
+import tempfile
+
 
 class DetectorController:
+
     def __init__(self, capture_enabled=True, dev=True):
-        """
-        Initializes the detector controller.
-        Parameters:
-          capture_enabled (bool): Whether to enable capture.
-          dev (bool): If True, uses dummy functions.
-        """
         self.capture_enabled = capture_enabled
         self.dev = dev
         self.pixet = None
         self.detector = None
+        self._stream_thread = None
+        self._streaming = threading.Event()
 
     def init_detector(self):
         if self.dev:
@@ -111,6 +111,86 @@ class DetectorController:
                 print(f"Error during deinit_detector: {e}")
             finally:
                 self.pixet, self.detector = None, None
+
+    # ──────── Real-Time (Looped) Streaming ──────────────────────────
+
+    def start_stream(self, callback, exposure=0.1, interval=0.0, frames=1):
+        """
+        Begin continuous frame acquisition.
+        callback(frame: np.ndarray) -> None
+        exposure: seconds per frame
+        interval: extra idle time between frames
+        """
+        if not self.capture_enabled:
+            raise RuntimeError("Capture not enabled")
+
+        # Stop existing stream if any
+        self.stop_stream()
+
+        self._streaming.set()
+        self._stream_thread = threading.Thread(
+            target=self._stream_loop,
+            args=(callback, exposure, interval, frames),
+            daemon=True
+        )
+        self._stream_thread.start()
+        mode = "DEV" if self.dev else "REAL"
+        print(f"{mode} mode: Stream started (exp={exposure}s, interval={interval}s)")
+
+    def stop_stream(self):
+        """Stop any running stream."""
+        if self._stream_thread and self._stream_thread.is_alive():
+            self._streaming.clear()
+            self._stream_thread.join(timeout=2.0)
+            print("Stream stopped.")
+        self._stream_thread = None
+
+    def _stream_loop(self, callback, exposure, interval, frames):
+        """Internal: loop that grabs frames back‐to‐back."""
+        tmpdir = None
+        tmpfile = None
+
+        if not self.dev:
+            # prepare a temp file for real captures
+            tmpdir = tempfile.mkdtemp()
+            tmpfile = os.path.join(tmpdir, "stream_frame.txt")
+
+        try:
+            while self._streaming.is_set():
+                if self.dev:
+                    # Dummy Gaussian blob
+                    x = np.arange(256); y = np.arange(256)
+                    X, Y = np.meshgrid(x, y)
+                    x0, y0 = np.random.uniform(0,256), np.random.uniform(0,256)
+                    sigma = np.random.uniform(5,20)
+                    amp  = np.random.uniform(1e5,2e6)
+                    frame = amp * np.exp(-(((X-x0)**2 + (Y-y0)**2)/(2*sigma**2)))
+                    time.sleep(exposure)
+                    callback(frame)
+
+                else:
+                    # Real acquisition: 1 frame
+                    rc = self.detector.doSimpleIntegralAcquisition(
+                        frames,
+                        exposure,
+                        self.pixet.PX_FTYPE_AUTODETECT,
+                        tmpfile
+                    )
+                    if rc != 0:
+                        print("Frame error:", rc, self.detector.lastError())
+                    else:
+                        frame = np.loadtxt(tmpfile)
+                        callback(frame)
+                    if interval:
+                        time.sleep(interval)
+        finally:
+            # Cleanup
+            if tmpdir:
+                try:
+                    os.remove(tmpfile)
+                    os.rmdir(tmpdir)
+                except:
+                    pass
 
 
 class XYStageLibController:
