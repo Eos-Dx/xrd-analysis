@@ -2,25 +2,28 @@ import os
 import time
 import numpy as np
 import subprocess
+import matplotlib.pyplot as plt
 
 from PyQt5.QtWidgets import (
     QDockWidget, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QLineEdit, QPushButton, QFileDialog,
-    QListWidget, QListWidgetItem, QDoubleSpinBox, QScrollArea
+    QListWidget, QListWidgetItem, QDoubleSpinBox,
+    QSpinBox, QScrollArea
 )
 from PyQt5.QtCore import Qt
-
-from hardware.Ulster.gui.technical.capture import CaptureWorker, validate_folder
-from hardware.Ulster.gui.technical.capture import show_measurement_window
+import queue
+from PyQt5.QtCore import QTimer
+from hardware.Ulster.gui.technical.capture import (
+    CaptureWorker, validate_folder, show_measurement_window
+)
 from hardware.Ulster.gui.main_window_ext.zone_measurements_extension import ZoneMeasurementsMixin
+
 
 class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def create_measurements_panel(self):
         # Initialize counter for auxiliary measurements
         self.aux_counter = 0
-
-        # Call parent widget creation if needed
         super().create_zone_measurements_widget()
 
         # Create technical measurements dock
@@ -32,7 +35,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         outer.setContentsMargins(8, 8, 8, 8)
         outer.setSpacing(12)
 
-        # Integration time control
+        # — Integration time control —
         it_layout = QHBoxLayout()
         it_layout.addWidget(QLabel("Integration Time (s):"))
         self.integrationTimeSpin = QDoubleSpinBox()
@@ -42,7 +45,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         it_layout.addWidget(self.integrationTimeSpin)
         outer.addLayout(it_layout)
 
-        # Save folder selector
+        # — Save folder selector —
         fld = QHBoxLayout()
         fld.addWidget(QLabel("Save Folder:"))
         self.folderLE = QLineEdit()
@@ -52,55 +55,66 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         fld.addWidget(b)
         outer.addLayout(fld)
 
-        # Auxiliary Measurement
+        # — Auxiliary Measurement controls —
         outer.addWidget(QLabel("Aux Measurement:"))
         row = QHBoxLayout()
-        btn = QPushButton("Measure Aux")
-        btn.clicked.connect(self.measure_aux)
-        self.auxBtn = btn
-        row.addWidget(btn)
+        self.auxBtn = QPushButton("Measure Aux")
+        self.auxBtn.clicked.connect(self.measure_aux)
+        row.addWidget(self.auxBtn)
 
-        # --- status label for timer + spinner ---
         from PyQt5.QtCore import QTimer
         self._aux_status = QLabel("")
         row.addWidget(self._aux_status)
-        # timer to tick every 200ms and update label
         self._aux_timer = QTimer(self)
         self._aux_timer.setInterval(200)
         self._aux_timer.timeout.connect(self._update_aux_status)
 
-        le = QLineEdit()
-        le.setPlaceholderText("Name for Aux Measurement")
-        self.auxNameLE = le
-        row.addWidget(le, 1)
+        self.auxNameLE = QLineEdit()
+        self.auxNameLE.setPlaceholderText("Name for Aux Measurement")
+        row.addWidget(self.auxNameLE, 1)
         outer.addLayout(row)
 
-        # Measurement list
         self.auxList = QListWidget()
         self.auxList.itemActivated.connect(self.open_measurement)
         outer.addWidget(self.auxList)
 
-        # PyFai button
+        # — PyFai button —
         pyfai_btn = QPushButton("PyFai")
         pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
         pyfai_btn.clicked.connect(self.run_pyfai)
         outer.addWidget(pyfai_btn)
 
-        # Wrap in a scroll area so contents can scroll if needed
+        # — Real-time controls —
+        rt_layout = QHBoxLayout()
+        rt_layout.addWidget(QLabel("Frames/⟳:"))
+        self.framesSpin = QSpinBox()
+        self.framesSpin.setRange(1, 1_000_000)
+        self.framesSpin.setValue(1)
+        rt_layout.addWidget(self.framesSpin)
+
+        self.rtBtn = QPushButton("Real-time")
+        self.rtBtn.setCheckable(True)
+        self.rtBtn.clicked.connect(self._toggle_realtime)
+        rt_layout.addWidget(self.rtBtn)
+
+        outer.addLayout(rt_layout)
+
+        # Wrap in a scroll area and add to dock
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(container)
         self.measDock.setWidget(scroll)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.measDock)
 
-        # Initially disable controls until hardware is initialized
+        # Controls disabled until hardware is ready
         self.enable_measurement_controls(False)
         self.hardware_state_changed.connect(self.enable_measurement_controls)
 
     def enable_measurement_controls(self, enable: bool):
         widgets = [
             self.integrationTimeSpin, self.folderLE,
-            self.auxBtn, self.auxNameLE, self.auxList
+            self.auxBtn, self.auxNameLE, self.auxList,
+            self.framesSpin, self.rtBtn
         ]
         for w in widgets:
             w.setEnabled(enable)
@@ -236,3 +250,68 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self._aux_spinner_state += 1
         # update label: "12 s ⠼"
         self._aux_status.setText(f"{elapsed} s {ch}")
+
+    def _toggle_realtime(self, checked: bool):
+        if checked:
+            self._start_realtime()
+            self.rtBtn.setText("Stop RT")
+        else:
+            self._stop_realtime()
+            self.rtBtn.setText("Real-time")
+
+    def _start_realtime(self):
+        exposure = float(self.integrationTimeSpin.value())
+
+        # 1) Thread-safe queue for frames
+        self._rt_queue = queue.Queue()
+
+        # 2) Set up Matplotlib figure in main thread
+        plt.ion()
+        self._rt_fig, ax = plt.subplots()
+        self._rt_img = ax.imshow(
+            np.zeros((256,256)),
+            origin='lower',
+            interpolation='none'
+        )
+        plt.show()
+
+        # 3) GUI timer fires frequently to pull newest frame
+        self._plot_timer = QTimer(self)
+        self._plot_timer.setInterval(50)            # every 50 ms
+        self._plot_timer.timeout.connect(self._rt_plot_tick)
+        self._plot_timer.start()
+
+        # 4) Worker callback just enqueues every frame
+        def callback(frame: np.ndarray):
+            # always enqueue; we drop old frames in the GUI thread
+            self._rt_queue.put(frame)
+
+        # 5) Kick off the DetectorController loop forever
+        self.detector_controller.start_stream(
+            callback=callback,
+            exposure=exposure,
+            interval=0.0,
+            frames=1
+        )
+
+    def _rt_plot_tick(self):
+        """Runs in GUI thread: drain queue and display the very latest frame."""
+        frame = None
+        while True:
+            try:
+                frame = self._rt_queue.get_nowait()
+            except queue.Empty:
+                break
+
+        if frame is not None:
+            self._rt_img.set_data(frame)
+            self._rt_img.set_clim(frame.min(), frame.max())
+            self._rt_fig.canvas.draw_idle()
+
+    def _stop_realtime(self):
+        self.detector_controller.stop_stream()
+        if hasattr(self, '_plot_timer'):
+            self._plot_timer.stop()
+            del self._plot_timer
+        plt.close(self._rt_fig)
+        del self._rt_queue
