@@ -600,6 +600,7 @@ class ZoneMeasurementsMixin:
         """
         Updates the XY stage position into the spin boxes.
         """
+        print('in update')
         from PyQt5.QtWidgets import QGraphicsLineItem
         from PyQt5.QtGui import QPen
         from PyQt5.QtCore import Qt
@@ -612,8 +613,8 @@ class ZoneMeasurementsMixin:
                 print("Error reading stage pos:", e)
         else:
             x, y = 0, 0
-            self.xPosSpin.setValue(0.0)
-            self.yPosSpin.setValue(0.0)
+            self.xPosSpin.setValue(x)
+            self.yPosSpin.setValue(y)
             # --- redraw beam cross ---
 
         # 1) remove old beam items
@@ -621,7 +622,7 @@ class ZoneMeasurementsMixin:
         for itm in old:
             self.image_view.scene.removeItem(itm)
 
-        def mm_to_pixels(self, x_mm: float, y_mm: float) -> tuple[float, float]:
+        def mm_to_pixels(self, x_mm: float, y_mm: float):
             x = (self.real_x_pos_mm.value() - x_mm) * self.pixel_to_mm_ratio + self.include_center[0]
             y = (self.real_y_pos_mm.value() - y_mm) * self.pixel_to_mm_ratio + self.include_center[1]
             return x, y
