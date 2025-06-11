@@ -60,6 +60,15 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self.auxBtn = btn
         row.addWidget(btn)
 
+        # --- status label for timer + spinner ---
+        from PyQt5.QtCore import QTimer
+        self._aux_status = QLabel("")
+        row.addWidget(self._aux_status)
+        # timer to tick every 200ms and update label
+        self._aux_timer = QTimer(self)
+        self._aux_timer.setInterval(200)
+        self._aux_timer.timeout.connect(self._update_aux_status)
+
         le = QLineEdit()
         le.setPlaceholderText("Name for Aux Measurement")
         self.auxNameLE = le
@@ -135,9 +144,14 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
     def _on_capture_done(self, success: bool, txt_file: str, typ: str):
         if not success:
             print(f"[{typ}] capture failed.")
+            self._aux_timer.stop()
+            self._aux_status.setText("")
             return
         else:
             print(f'[{typ}] capture successful: {txt_file}')
+            self._aux_timer.stop()
+            self._aux_status.setText("Done")
+
         try:
             data = np.loadtxt(txt_file)
             npy = txt_file.replace(".txt", ".npy")
@@ -145,6 +159,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         except Exception as e:
             print("Conversion error:", e)
             npy = txt_file
+
 
         lst: QListWidget = getattr(self, f"{typ.lower()}List")
         item = QListWidgetItem(os.path.basename(npy))
@@ -157,6 +172,11 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         return txt or typ.lower()
 
     def measure_aux(self):
+        # record start time and start status timer
+        self._aux_start = time.time()
+        self._aux_spinner_state = 0
+        self._aux_status.setText("0 s ⠋")  # initial text
+        self._aux_timer.start()
         # Start an auxiliary measurement capture
         self._start_capture("Aux")
 
@@ -203,3 +223,16 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
     def initialize_hardware(self):
         # Override to subscribe automatically
         pass  # subscription to hardware_state_changed handles control toggling
+
+    def _update_aux_status(self):
+        """
+        Called every 200ms to update the elapsed seconds
+        and spinner character.
+        """
+        elapsed = int(time.time() - self._aux_start)
+        # cycle through a simple 4‐step spinner
+        spinner = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
+        ch = spinner[self._aux_spinner_state % len(spinner)]
+        self._aux_spinner_state += 1
+        # update label: "12 s ⠼"
+        self._aux_status.setText(f"{elapsed} s {ch}")
