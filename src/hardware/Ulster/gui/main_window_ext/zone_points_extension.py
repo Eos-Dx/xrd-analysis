@@ -3,12 +3,13 @@ import math
 from PyQt5.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QSpinBox, QPushButton, QTableWidget, QTableWidgetItem,
-    QGraphicsEllipseItem, QLabel, QSpacerItem, QSizePolicy, QProgressBar, QFileDialog, QDoubleSpinBox
+    QGraphicsEllipseItem, QLabel, QDoubleSpinBox
 )
-from PyQt5.QtCore import Qt, QEvent, QPointF, QRectF, QTimer
+from PyQt5.QtCore import Qt, QEvent, QPointF
 from PyQt5.QtGui import QColor, QPen, QTransform
 from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
-
+import copy
+from hardware.Ulster.gui.image_view_ext.point_editing_extension import null_dict
 
 class ZonePointsMixin:
 
@@ -69,9 +70,9 @@ class ZonePointsMixin:
         layout.addLayout(inputLayout)
 
         # Table to display points.
-        self.pointsTable = QTableWidget(0, 6)
+        self.pointsTable = QTableWidget(0, 7)
         self.pointsTable.setHorizontalHeaderLabels([
-            "ID", "X (px)", "Y (px)", "X (mm)", "Y (mm)", "Measurement"
+            "ID", "X (px)", "Y (px)", "X (mm)", "Y (mm)", "Measurement", "Goodness"
         ])
         layout.addWidget(self.pointsTable)
         # Install an event filter on the table to capture key presses (for Delete key)
@@ -353,35 +354,7 @@ class ZonePointsMixin:
         and clears the corresponding entries in the points dictionary.
         """
         # Delete all generated points.
-        generated_points = self.image_view.points_dict["generated"]["points"]
-        generated_zones = self.image_view.points_dict["generated"]["zones"]
-        # Iterate in reverse order (good practice when removing items from a list)
-        try:
-            for point_item, zone_item in zip(reversed(generated_points), reversed(generated_zones)):
-                self.image_view.scene.removeItem(point_item)
-                self.image_view.scene.removeItem(zone_item)
-        except Exception as e:
-            print(e)
-        # Clear the generated lists.
-        self.image_view.points_dict["generated"]["points"].clear()
-        self.image_view.points_dict["generated"]["zones"].clear()
-
-        # Delete all user-defined points.
-        user_points = self.image_view.points_dict["user"]["points"]
-        user_zones = self.image_view.points_dict["user"]["zones"]
-        try:
-            for point_item, zone_item in zip(reversed(user_points), reversed(user_zones)):
-                self.image_view.scene.removeItem(point_item)
-                self.image_view.scene.removeItem(zone_item)
-        except Exception as e:
-            print(e)
-        # Clear the user-defined lists.
-        #self.image_view.points_dict["user"]["points"].clear()
-        #self.image_view.points_dict["user"]["zones"].clear()
-
-        from hardware.Ulster.gui.image_view_ext.point_editing_extension import null_dict
-        self.image_view.points_dict = null_dict
-
+        self.image_view.points_dict = copy.deepcopy(null_dict)
         # Update the points table UI.
         self.update_points_table()
 
