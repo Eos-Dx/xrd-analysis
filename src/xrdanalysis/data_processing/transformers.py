@@ -10,6 +10,7 @@ import pandas as pd
 from scipy.optimize import curve_fit
 from sklearn.base import TransformerMixin
 from sklearn.preprocessing import Normalizer, StandardScaler
+from pyhank import HankelTransform
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     calculate_deviation,
@@ -30,6 +31,9 @@ from xrdanalysis.data_processing.utility_functions import (
     unpack_results,
     unpack_results_cake,
     unpack_rotating_angles_results,
+    resize_image,
+    find_common_region,
+    cut_common_region,
 )
 
 
@@ -1324,11 +1328,125 @@ class MeasurementCutter(TransformerMixin):
 
         X_copy.dropna(subset=["ponifile"], inplace=True)
 
-        X_copy = filter_points_by_distance(
-            X_copy,
-            self.column,
-            self.min_distances,
-            self.max_distances,
+        X_copy[self.column] = X_copy.apply(
+            lambda row: filter_points_by_distance(
+                row, self.column, self.min_distances, self.max_distances
+            ),
+            axis=1,
         )
+        return X_copy
+
+
+class ImageResizer(TransformerMixin):
+    """
+    Transformer class to resize images in a specified column of a DataFrame.
+
+    :param column: The name of the column containing images to be resized.
+    :type column: str
+    :param ref_distance: Reference distance for resizing images in mm.
+    :type ref_distance: float
+    """
+
+    def __init__(self, column, ref_distance):
+        self.column = column
+        self.ref_distance = ref_distance
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        X_copy = X.copy()
+        # Resize images based on the reference distance
+        X_copy[[self.column, "ponifile"]] = X_copy.apply(
+            lambda row: pd.Series(
+                resize_image(row, self.column, self.ref_distance)
+            ),
+            axis=1,
+        )
+        return X_copy
+
+
+class CommonRegionCutter(TransformerMixin):
+    """
+    Transformer class to cut common square regions from images in a specified column
+    of a DataFrame.
+
+    :param column: The name of the column containing images to be cut.
+    :type column: str
+    """
+
+    def __init__(self, column, square=False):
+        self.column = column
+        self.square = square
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        X_copy = X.copy()
+
+        max_up, max_down, max_left, max_right = find_common_region(
+            X_copy, self.column, self.square
+        )
+
+        X_copy[[self.column, "ponifile"]] = X_copy.apply(
+            lambda row: pd.Series(
+                cut_common_region(
+                    row, self.column, max_up, max_down, max_left, max_right
+                )
+            ),
+            axis=1,
+        )
+
+        return X_copy
+
+
+class HankelTransformer(TransformerMixin):
+    """
+    Transformer class to compute Hankel transforms of images stored in a DataFrame column.
+
+    Parameters
+    ----------
+    column : str
+        Name of the column containing the images (2D arrays) to transform.
+    f : int, optional (default=0)
+        Start index for radial cropping on the second axis.
+    order : int, optional (default=0)
+        Order of the Hankel transform.
+    output_column : str, optional (default='H_full')
+        Name of the column to store the Hankel-transformed results.
+    """
+
+    def __init__(self, column, f=0, order=0):
+        self.column = column
+        self.f = f
+        self.order = order
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        if self.column not in X.columns or "q_range" not in X.columns:
+            raise ValueError("DataFrame must contain the required columns.")
+
+        X_copy = X.copy()
+
+        X_copy["hankel"] = None
+        X_copy["hankel"].astype(object)
+
+        for i, row in X_copy.iterrows():
+            polar_img = row[self.column].copy().astype(float)[:, self.f :]
+            r = row["q_range"][self.f :]
+            polar_img = np.nan_to_num(polar_img, nan=0.0)
+
+            _, n_radial = polar_img.shape
+            R = r.max()
+
+            transformer = HankelTransform(
+                order=self.order, max_radius=R, n_points=n_radial
+            )
+            H = transformer.qdht(polar_img, axis=1)
+
+            X_copy.at[i, "hankel"] = H
 
         return X_copy
