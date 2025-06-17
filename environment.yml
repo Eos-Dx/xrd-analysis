@@ -19,9 +19,11 @@ dependencies:
   - isort=5.13.2
   - matplotlib=3.8.4
   - mlflow=2.13.0
+  - libegl
   - lightgbm
   - numpy=1.26.4
   - numpydoc=1.7.0
+  - opencv
   - optuna
   - pandas=2.2.2
   - pre-commit=3.7.1
@@ -35,3 +37,6 @@ dependencies:
   - sphinx=7.3.7
   - umap-learn=0.5.7
   - xgboost=2.0.3
+  - pip # Install pip in your environment
+  - pip: # Include pip dependencies last
+    - pyhank
