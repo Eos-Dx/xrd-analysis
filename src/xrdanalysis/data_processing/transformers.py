@@ -7,10 +7,10 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from pyhank import HankelTransform
 from scipy.optimize import curve_fit
 from sklearn.base import TransformerMixin
 from sklearn.preprocessing import Normalizer, StandardScaler
-from pyhank import HankelTransform
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     calculate_deviation,
@@ -27,13 +27,13 @@ from xrdanalysis.data_processing.fourier import (
 )
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
+    cut_common_region,
     filter_points_by_distance,
+    find_common_region,
+    resize_image,
     unpack_results,
     unpack_results_cake,
     unpack_rotating_angles_results,
-    resize_image,
-    find_common_region,
-    cut_common_region,
 )
 
 

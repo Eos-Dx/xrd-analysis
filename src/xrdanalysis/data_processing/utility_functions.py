@@ -5,6 +5,7 @@ import re
 import tempfile
 from typing import Tuple
 
+import cv2
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +19,6 @@ from sklearn.metrics import (
     precision_score,
     roc_curve,
 )
-import cv2
 
 
 def combine_h5_to_df(file_paths):
