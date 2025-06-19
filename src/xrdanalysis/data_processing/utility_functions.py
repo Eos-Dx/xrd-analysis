@@ -1,5 +1,7 @@
 """Various utility functions used in different parts of codebase"""
 
+import json
+import re
 import tempfile
 from typing import Tuple
 
@@ -16,6 +18,7 @@ from sklearn.metrics import (
     precision_score,
     roc_curve,
 )
+import cv2
 
 
 def combine_h5_to_df(file_paths):
@@ -155,11 +158,7 @@ def h5_to_df(file_path):
     calibration_df = pd.DataFrame(calibration_data)
     measurement_df = pd.DataFrame(measurement_data)
     measurement_df.rename(columns={"calib_ponifile": "ponifile"}, inplace=True)
-    # Merge calibration_df with unique ponifile values from measurement_df
-    unique_ponifiles = measurement_df[["ponifile", "id"]].drop_duplicates()
-    calibration_df = calibration_df.merge(
-        unique_ponifiles, on="id", how="left"
-    )
+    calibration_df.rename(columns={"calib_ponifile": "ponifile"}, inplace=True)
 
     return calibration_df, measurement_df
 
@@ -624,10 +623,58 @@ def mask_beam_center(image: np.ndarray, thresh: float, padding: int = 0):
     return beam
 
 
-def format_poni_string(input_str):
+def calculate_poni_from_pixels(poni_str, center_x, center_y):
+    detector_config_str = re.search(
+        r"Detector_config:\s*(\{.*\})", poni_str
+    ).group(1)
+    detector_config = json.loads(detector_config_str)
+
+    # Get pixel sizes
+    pixel1 = detector_config["pixel1"]
+    pixel2 = detector_config["pixel2"]
+
+    # Calculate PONI values
+    poni1 = center_y * pixel1
+    poni2 = center_x * pixel2
+
+    return poni1, poni2
+
+
+def adjust_poni_centers_coef(poni_str, k):
+    centers_poni = ["Poni1", "Poni2"]
+    new_ponifile_text = poni_str
+    adjusted_poni = []
+    for center in centers_poni:
+        distance_index = new_ponifile_text.find(center) + len(center) + 1
+        end_of_line_index = new_ponifile_text.find("\n", distance_index)
+        adjusted = (
+            float(new_ponifile_text[distance_index:end_of_line_index]) * k
+        )
+        adjusted_poni.append(adjusted)
+
+    return adjusted_poni
+
+
+def substitute_poni_centers(poni_str, poni1, poni2):
+    centers_poni = ["Poni1", "Poni2"]
+    new_ponifile_text = poni_str
+    for center, adjusted in zip(centers_poni, [poni1, poni2]):
+        distance_index = new_ponifile_text.find(center) + len(center) + 1
+        end_of_line_index = new_ponifile_text.find("\n", distance_index)
+        new_ponifile_text = (
+            new_ponifile_text[:distance_index]
+            + f"{adjusted}"
+            + new_ponifile_text[end_of_line_index:]
+        )
+        adjusted_poni = new_ponifile_text
+
+    return adjusted_poni
+
+
+def format_poni_string(poni_str):
     # Check if string already contains newlines
-    if "\n" in input_str:
-        return input_str
+    if "\n" in poni_str:
+        return poni_str
 
     # Keywords that should trigger a new line
     keywords = [
@@ -652,16 +699,16 @@ def format_poni_string(input_str):
     current_pos = 0
 
     for keyword in keywords:
-        pos = input_str.find(keyword, current_pos)
+        pos = poni_str.find(keyword, current_pos)
         if pos != -1:
             # If not at the start, add the previous part
             if pos > current_pos:
-                formatted_parts.append(input_str[current_pos:pos].strip())
+                formatted_parts.append(poni_str[current_pos:pos].strip())
             current_pos = pos
 
     # Add the last part
-    if current_pos < len(input_str):
-        formatted_parts.append(input_str[current_pos:].strip())
+    if current_pos < len(poni_str):
+        formatted_parts.append(poni_str[current_pos:].strip())
 
     # Join the parts with newlines
     return "\n".join(formatted_parts)
@@ -1216,3 +1263,187 @@ def extract_image_data_values(
     :raises ValueError: If data and mask shapes do not match
     """
     return data * mask
+
+
+def extract_center_from_poni(poni_text: str):
+    """
+    Extracts center_x and center_y from poni calibration text.
+
+    Args:
+        poni_text (str): The contents of a .poni calibration file.
+
+    Returns:
+        tuple: (center_x, center_y)
+    """
+    # Extract Poni1 and Poni2
+    poni1 = float(re.search(r"Poni1:\s*([0-9.eE+-]+)", poni_text).group(1))
+    poni2 = float(re.search(r"Poni2:\s*([0-9.eE+-]+)", poni_text).group(1))
+
+    # Extract and parse Detector_config JSON
+    detector_config_str = re.search(
+        r"Detector_config:\s*(\{.*\})", poni_text
+    ).group(1)
+    detector_config = json.loads(detector_config_str)
+
+    # Get pixel sizes
+    pixel1 = detector_config["pixel1"]
+    pixel2 = detector_config["pixel2"]
+
+    # Calculate center positions in pixels
+    center_x = poni2 / pixel2
+    center_y = poni1 / pixel1
+
+    return center_x, center_y
+
+
+def filter_points_by_distance(
+    row, column, min_distances=None, max_distances=None
+):
+    ref_x, ref_y = extract_center_from_poni(row["ponifile"])
+    image = row[column]
+
+    # Calculate distance for each pixel
+    y_coords, x_coords = np.meshgrid(
+        range(image.shape[0]), range(image.shape[1]), indexing="ij"
+    )
+    distances = np.sqrt((x_coords - ref_x) ** 2 + (y_coords - ref_y) ** 2)
+
+    # Apply distance filters
+
+    masks = []
+
+    for min_distance, max_distance in zip(
+        min_distances or [None] * len(max_distances),
+        max_distances or [None] * len(min_distances),
+    ):
+        mask = np.ones(image.shape, dtype=bool)
+
+        if min_distance is not None:
+            mask &= distances >= min_distance
+        if max_distance is not None:
+            mask &= distances <= max_distance
+        masks.append(mask)
+
+    # Combine masks
+    mask = np.logical_or.reduce(masks)
+
+    cleaned_image = image * mask
+
+    return cleaned_image
+
+
+def extract_distance_from_poni(poni_text: str):
+    """
+    Extracts the distance from the center for a given poni calibration text.
+
+    Args:
+        poni_text (str): The contents of a .poni calibration file.
+
+    Returns:
+        float: The distance from the center.
+    """
+    # Extract Distance
+    distance = float(
+        re.search(r"Distance:\s*([0-9.eE+-]+)", poni_text).group(1)
+    )
+
+    return distance
+
+
+def resize_image(row, column, ref_dist):
+    """Resize image by scale factor k using cubic interpolation."""
+    image = row[column]
+    poni_str = row["ponifile"]
+    distance = extract_distance_from_poni(poni_str)
+    k = ref_dist * 10e-4 / distance
+    adjusted_poni_centers = adjust_poni_centers_coef(poni_str, k)
+    center_adjusted_poni = substitute_poni_centers(
+        poni_str, adjusted_poni_centers[0], adjusted_poni_centers[1]
+    )
+    new_h = int(image.shape[0] * k)
+    new_w = int(image.shape[1] * k)
+    resized = cv2.resize(
+        image.astype(np.uint16), (new_w, new_h), interpolation=cv2.INTER_CUBIC
+    )
+    return resized, center_adjusted_poni
+
+
+def find_common_region(df, column, square=False):
+    # For each image, find distance from center to each boundary
+    distances_up = []
+    distances_down = []
+    distances_left = []
+    distances_right = []
+    for _, row in df.iterrows():
+        image = row[column]
+        poni_str = row["ponifile"]
+        center_x, center_y = extract_center_from_poni(poni_str)
+
+        # Calculate distances to each boundary
+        distances_up.append(center_x)
+        distances_down.append(image.shape[0] - center_x)
+        distances_left.append(center_y)
+        distances_right.append(image.shape[1] - center_y)
+
+    # Find the minimum distances
+    max_up = min(distances_up)
+    max_down = min(distances_down)
+    max_left = min(distances_left)
+    max_right = min(distances_right)
+
+    if square:
+        height = max_up + max_down
+        width = max_left + max_right
+        if height < width:
+            # Need to reduce left and right
+            max_left = (max_left / width) * height
+            max_right = (max_right / width) * height
+        else:
+            # Need to reduce up and down
+            max_up = (max_up / height) * width
+            max_down = (max_down / height) * width
+
+    return (
+        np.floor(max_up),
+        np.floor(max_down),
+        np.floor(max_left),
+        np.floor(max_right),
+    )
+
+
+def cut_common_region(row, column, max_up, max_down, max_left, max_right):
+    """
+    Cuts a common region from the image based on the minimum distances to the boundaries.
+
+    :param row: DataFrame row containing the image and poni file.
+    :type row: pandas.Series
+    :param column: Column name containing the image data.
+    :type column: str
+    :param max_up: Minimum distance to the top boundary.
+    :type max_up: int
+    :param max_down: Minimum distance to the bottom boundary.
+    :type max_down: int
+    :param max_left: Minimum distance to the left boundary.
+    :type max_left: int
+    :param max_right: Minimum distance to the right boundary.
+    :type max_right: int
+    :returns: Cropped image and adjusted poni string.
+    :rtype: tuple
+    """
+    image = row[column]
+    poni_str = row["ponifile"]
+
+    center_x, center_y = extract_center_from_poni(poni_str)
+
+    x_start = int(center_x - max_up)
+    x_end = int(center_x + max_down)
+    y_start = int(center_y - max_left)
+    y_end = int(center_y + max_right)
+
+    # Crop the image
+    cropped_image = image[y_start:y_end, x_start:x_end]
+
+    poni1, poni2 = calculate_poni_from_pixels(poni_str, max_up, max_left)
+    new_poni_str = substitute_poni_centers(poni_str, poni1, poni2)
+
+    return cropped_image, new_poni_str

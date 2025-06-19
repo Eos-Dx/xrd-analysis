@@ -15,6 +15,7 @@ This SOP outlines the standard procedures for handling and processing data withi
    hdf5
    validation
    pipeline
+   container_dataframe_nomenclature
 
 HDF5 File Structure
 --------------------

@@ -10,6 +10,7 @@ import pandas as pd
 from scipy.optimize import curve_fit
 from sklearn.base import TransformerMixin
 from sklearn.preprocessing import Normalizer, StandardScaler
+from pyhank import HankelTransform
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     calculate_deviation,
@@ -26,9 +27,13 @@ from xrdanalysis.data_processing.fourier import (
 )
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
+    filter_points_by_distance,
     unpack_results,
     unpack_results_cake,
     unpack_rotating_angles_results,
+    resize_image,
+    find_common_region,
+    cut_common_region,
 )
 
 
@@ -119,11 +124,13 @@ class AzimuthalIntegration(TransformerMixin):
         if self.mask is not None:
             mask = self.mask
         else:
-            mask = create_mask(self.faulty_pixels, size=x_copy['measurement_data'].iloc[0].shape)
+            mask = create_mask(
+                self.faulty_pixels,
+                size=x_copy["measurement_data"].iloc[0].shape,
+            )
 
         if self.calibration_mode == "poni":
             x_copy.dropna(subset=["ponifile"], inplace=True)
-
 
         integration_results = x_copy.apply(
             lambda row: perform_azimuthal_integration(
@@ -1120,14 +1127,9 @@ class CurveFittingTransformer(TransformerMixin):
     :param y_column: Name of the column containing y-values \
     (dependent variable) to be used in curve fitting.
     :type y_column: str
-    :param func: The mathematical function to fit. Must accept x as the first \
-    argument, followed by parameters to be estimated.
-    :type func: callable
-    :param p0: Initial parameter guesses for the curve fitting algorithm.
-    :type p0: list or array-like
-    :param bounds: Parameter boundaries for constrained optimization. Defaults\
-    to unconstrained (-∞, +∞) bounds.
-    :type bounds: tuple, optional
+    :param producer: An instance of a class that produces the fitting \
+    function, initial parameter estimates, and bounds for curve fitting.
+    :type producer: CurveFittingProducer
     :param param_indices: Optional indices to select specific fitted \
     parameters.
     :type param_indices: list, optional
@@ -1140,10 +1142,7 @@ class CurveFittingTransformer(TransformerMixin):
         self,
         x_column,
         y_column,
-        func,
-        p0,
-        bounds=(-np.inf, np.inf),
-        param_indices=None,
+        producer,
         cutoff_ranges=None,
     ):
         """
@@ -1157,24 +1156,15 @@ class CurveFittingTransformer(TransformerMixin):
         :type x_column: str
         :param y_column: Column name for y-values in input DataFrame.
         :type y_column: str
-        :param func: Callable function to be used for curve fitting.
-        :type func: callable
-        :param p0: Initial parameter guesses for curve fitting.
-        :type p0: list
-        :param bounds: Parameter boundaries for curve fitting. Defaults to \
-        unconstrained bounds.
-        :type bounds: tuple, optional
-        :param param_indices: Indices of parameters to retain after fitting.
-        :type param_indices: list, optional
+        :param producer: An instance of a class that produces the fitting \
+        function, initial parameter estimates, and bounds for curve fitting.
+        :type producer: CurveFittingProducer
         :param cutoff_ranges: Data segments to assign high uncertainty.
         :type cutoff_ranges: list of tuples, optional
         """
         self.x_column = x_column
         self.y_column = y_column
-        self.func = func
-        self.p0 = p0
-        self.bounds = bounds
-        self.param_indices = param_indices
+        self.producer = producer
         self.cutoff_ranges = cutoff_ranges
 
     def fit(self, X, y=None):
@@ -1210,13 +1200,26 @@ class CurveFittingTransformer(TransformerMixin):
         """
         X_copy = X.copy()
         # Create DF columns to store data
-        X_copy["fit_params"] = None
+        X_copy["fit_params_all"] = None
         X_copy["fitted_curve"] = None
+        X_copy["fit_cond"] = None
         # Make columns store objects
-        X_copy["fit_params"].astype(object)
+        X_copy["fit_params_all"].astype(object)
         X_copy["fitted_curve"].astype(object)
+        X_copy["fit_cond"].astype(object)
 
         x_value = X_copy.iloc[0][self.x_column]
+
+        func = self.producer.produce_function()
+        p0 = self.producer.initial_guess()
+        bounds = self.producer.bounds()
+
+        function_count = self.producer.get_function_count()
+        function_param_counts = self.producer.get_function_param_counts()
+
+        for i in range(function_count):
+            X_copy[f"fit_params_{i}"] = None
+            X_copy[f"fit_params_{i}"].astype(object)
 
         if self.cutoff_ranges:
             sigma = np.ones_like(x_value)
@@ -1233,29 +1236,217 @@ class CurveFittingTransformer(TransformerMixin):
 
             try:
                 # Perform curve fitting
-                popt, _ = curve_fit(
-                    self.func,
+                popt, pcov = curve_fit(
+                    func,
                     x_values,
                     y_values,
-                    p0=self.p0,
-                    bounds=self.bounds,
+                    p0=p0,
+                    bounds=bounds,
                     sigma=sigma,
                 )
 
-                selected_params = (
-                    popt
-                    if self.param_indices is None
-                    else popt[np.array(self.param_indices)]
-                )
-
                 # Store fit results in new columns
-                X_copy.at[index, "fit_params"] = selected_params
-                X_copy.at[index, "fitted_curve"] = self.func(x_values, *popt)
+                X_copy.at[index, "fit_cond"] = np.linalg.cond(pcov)
+                X_copy.at[index, "fit_params_all"] = popt
+                for i in range(len(function_param_counts)):
+                    start_idx = sum(function_param_counts[:i])
+                    end_idx = start_idx + function_param_counts[i]
+                    X_copy.at[index, f"fit_params_{i}"] = popt[
+                        start_idx:end_idx
+                    ]
+                X_copy.at[index, "fitted_curve"] = func(x_values, *popt)
 
             except RuntimeError as e:
                 print(f"Fit failed for index {index}: {e}")
-                X_copy.at[index, "fit_params"] = None
+                X_copy.at[index, "fit_params_all"] = None
                 X_copy.at[index, "fitted_curve"] = None
 
-        X_copy = X_copy.dropna(subset=["fit_params"])
+        X_copy = X_copy.dropna(subset=["fit_params_all"])
+        return X_copy
+
+
+class MeasurementCutter(TransformerMixin):
+    """
+    Transformer class to cut measurements based on a specified column.
+
+    :param column: The name of the column containing arrays to be cut.
+    :type column: str
+    :param cut_size: The size to which the arrays should be cut.
+    :type cut_size: int
+    """
+
+    def __init__(self, column, min_distances, max_distances):
+        """
+        Initializes the MeasurementCutter with the specified column name and
+        distance-based cut criteria.
+
+        :param column: The name of the column containing arrays of measurements to cut.
+        :type column: str
+
+        :param min_distances: A list of minimum distance thresholds for each cut segment.
+                            Use `None` to indicate no lower bound for a segment.
+                            Example: [None, 120] means the first cut has no lower limit,
+                            while the second starts from 120.
+        :type min_distances: list[float or None]
+
+        :param max_distances: A list of maximum distance thresholds for each cut segment.
+                            Use `None` to indicate no upper bound for a segment.
+                            Example: [97, None] means the first cut ends at 97, while
+                            the second has no upper limit.
+        :type max_distances: list[float or None]
+
+        :note: The cutter will remove measurements falling within any specified range
+            between min_distances[i] and max_distances[i].
+            For example, with min_distances=[None, 120] and max_distances=[97, None],
+            it defines two ranges:
+                - (−∞, 97]
+                - [120, ∞)
+            Measurements in either range will be excluded.
+        """
+        self.column = column
+        self.min_distances = min_distances
+        self.max_distances = max_distances
+
+    def fit(self, X, y=None):
+        """
+        Fit method for the transformer. No action is taken during fitting.
+
+        :param X: The input DataFrame.
+        :type X: pandas.DataFrame
+        :param y: Target values (optional, not used in this transformer).
+        :type y: array-like, optional
+        :return: The fitted transformer (self).
+        :rtype: MeasurementCutter
+        """
+        return self
+
+    def transform(self, X, y=None):
+        """
+        Transform the input DataFrame by cutting measurements based on specified distances.
+        """
+        X_copy = X.copy()
+
+        X_copy.dropna(subset=["ponifile"], inplace=True)
+
+        X_copy[self.column] = X_copy.apply(
+            lambda row: filter_points_by_distance(
+                row, self.column, self.min_distances, self.max_distances
+            ),
+            axis=1,
+        )
+        return X_copy
+
+
+class ImageResizer(TransformerMixin):
+    """
+    Transformer class to resize images in a specified column of a DataFrame.
+
+    :param column: The name of the column containing images to be resized.
+    :type column: str
+    :param ref_distance: Reference distance for resizing images in mm.
+    :type ref_distance: float
+    """
+
+    def __init__(self, column, ref_distance):
+        self.column = column
+        self.ref_distance = ref_distance
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        X_copy = X.copy()
+        # Resize images based on the reference distance
+        X_copy[[self.column, "ponifile"]] = X_copy.apply(
+            lambda row: pd.Series(
+                resize_image(row, self.column, self.ref_distance)
+            ),
+            axis=1,
+        )
+        return X_copy
+
+
+class CommonRegionCutter(TransformerMixin):
+    """
+    Transformer class to cut common square regions from images in a specified column
+    of a DataFrame.
+
+    :param column: The name of the column containing images to be cut.
+    :type column: str
+    """
+
+    def __init__(self, column, square=False):
+        self.column = column
+        self.square = square
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        X_copy = X.copy()
+
+        max_up, max_down, max_left, max_right = find_common_region(
+            X_copy, self.column, self.square
+        )
+
+        X_copy[[self.column, "ponifile"]] = X_copy.apply(
+            lambda row: pd.Series(
+                cut_common_region(
+                    row, self.column, max_up, max_down, max_left, max_right
+                )
+            ),
+            axis=1,
+        )
+
+        return X_copy
+
+
+class HankelTransformer(TransformerMixin):
+    """
+    Transformer class to compute Hankel transforms of images stored in a DataFrame column.
+
+    Parameters
+    ----------
+    column : str
+        Name of the column containing the images (2D arrays) to transform.
+    f : int, optional (default=0)
+        Start index for radial cropping on the second axis.
+    order : int, optional (default=0)
+        Order of the Hankel transform.
+    output_column : str, optional (default='H_full')
+        Name of the column to store the Hankel-transformed results.
+    """
+
+    def __init__(self, column, f=0, order=0):
+        self.column = column
+        self.f = f
+        self.order = order
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        if self.column not in X.columns or "q_range" not in X.columns:
+            raise ValueError("DataFrame must contain the required columns.")
+
+        X_copy = X.copy()
+
+        X_copy["hankel"] = None
+        X_copy["hankel"].astype(object)
+
+        for i, row in X_copy.iterrows():
+            polar_img = row[self.column].copy().astype(float)[:, self.f :]
+            r = row["q_range"][self.f :]
+            polar_img = np.nan_to_num(polar_img, nan=0.0)
+
+            _, n_radial = polar_img.shape
+            R = r.max()
+
+            transformer = HankelTransform(
+                order=self.order, max_radius=R, n_points=n_radial
+            )
+            H = transformer.qdht(polar_img, axis=1)
+
+            X_copy.at[i, "hankel"] = H
+
         return X_copy
