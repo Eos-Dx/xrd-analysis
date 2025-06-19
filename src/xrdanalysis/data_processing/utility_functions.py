@@ -1448,3 +1448,64 @@ def cut_common_region(row, column, max_up, max_down, max_left, max_right):
     new_poni_str = substitute_poni_centers(poni_str, poni1, poni2)
 
     return cropped_image, new_poni_str
+
+
+def analyze_surface_roughness(
+    radial_profile_data, roughness_cutoff=0.25, skip_bins=5
+):
+    """
+    Analyze surface roughness using 2D FFT power spectral density.
+
+    Parameters:
+    - radial_profile_data: 2D array (angles x q_values)
+    - roughness_cutoff: normalized frequency cutoff (0-0.5) for high-freq content
+    - skip_bins: number of initial q-bins to skip
+
+    Returns:
+    - roughness_percent: percentage of power in high frequencies (roughness metric)
+    """
+
+    raw_data = np.array(radial_profile_data)
+    if raw_data.ndim != 2:
+        raise ValueError("Input must be 2D array")
+
+    # Skip initial bins and get dimensions
+    data = raw_data[:, skip_bins:]
+    n_angles, n_q_bins = data.shape
+
+    # Normalize each q-bin to percent deviations from its mean
+    normalized_data = np.full_like(data, np.nan, dtype=float)
+    q_bin_means = np.nanmean(np.where(data != 0, data, np.nan), axis=0)
+
+    for q_idx in range(n_q_bins):
+        if not np.isnan(q_bin_means[q_idx]) and q_bin_means[q_idx] != 0:
+            valid_points = data[:, q_idx] != 0
+            normalized_data[valid_points, q_idx] = (
+                (data[valid_points, q_idx] - q_bin_means[q_idx])
+                / q_bin_means[q_idx]
+                * 100
+            )
+
+    # Prepare for FFT: replace NaNs with zeros and remove DC component
+    fft_input = np.nan_to_num(normalized_data, nan=0.0)
+    fft_input -= fft_input.mean()
+
+    # Compute 2D FFT and shift to center DC component
+    fft_result = np.fft.fft2(fft_input)
+    power_spectrum = np.fft.fftshift(np.abs(fft_result) ** 2)
+
+    # Create normalized frequency grids (range: -0.5 to +0.5)
+    freq_angles = np.fft.fftshift(np.fft.fftfreq(n_angles))
+    freq_q = np.fft.fftshift(np.fft.fftfreq(n_q_bins))
+    freq_q_grid, freq_angle_grid = np.meshgrid(freq_q, freq_angles)
+
+    # Calculate frequency magnitude: distance from DC (0,0) in frequency space
+    frequency_magnitude = np.sqrt(freq_q_grid**2 + freq_angle_grid**2)
+
+    # Sum power in high-frequency region (roughness) vs total power
+    high_freq_power = power_spectrum[
+        frequency_magnitude > roughness_cutoff
+    ].sum()
+    total_power = power_spectrum.sum()
+
+    return (high_freq_power / total_power * 100) if total_power > 0 else 0

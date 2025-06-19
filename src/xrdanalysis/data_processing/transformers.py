@@ -26,6 +26,7 @@ from xrdanalysis.data_processing.fourier import (
     slope_removal_custom,
 )
 from xrdanalysis.data_processing.utility_functions import (
+    analyze_surface_roughness,
     create_mask,
     cut_common_region,
     filter_points_by_distance,
@@ -1448,4 +1449,46 @@ class HankelTransformer(TransformerMixin):
 
             X_copy.at[i, "hankel"] = H
 
+        return X_copy
+
+
+class GoodnessAnalysisTransformer(TransformerMixin):
+    """
+    Transformer class to compute goodness of fit for curve fitting results.
+
+    :param columns: List of column names containing fit parameters.
+    :type columns: List[str]
+    :param threshold: Threshold for determining a good fit.
+    :type threshold: float
+    """
+
+    def __init__(self, column, threshold=0.25, start_radius=0):
+        """
+        Initializes the GoodnessAnalysisTransformer with specified parameters.
+
+        :param column: Name of the column containing fit parameters.
+        :type column: str
+        :param threshold: Threshold for determining a good fit.
+        :type threshold: float
+        """
+        self.column = column
+        self.start_radius = start_radius
+        self.threshold = threshold
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        if self.column not in X.columns:
+            raise ValueError(f"Column '{self.column}' not found in DataFrame.")
+
+        X_copy = X.copy()
+
+        X_copy["goodness"] = X_copy[self.column].apply(
+            lambda x: analyze_surface_roughness(
+                x,
+                roughness_cutoff=self.threshold,
+                skip_bins=self.start_radius,
+            )
+        )
         return X_copy
