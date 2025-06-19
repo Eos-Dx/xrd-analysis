@@ -1296,9 +1296,7 @@ def extract_center_from_poni(poni_text: str):
     return center_x, center_y
 
 
-def filter_points_by_distance(
-    row, column, min_distances=None, max_distances=None
-):
+def filter_points_by_distance(row, column, distances=None):
     ref_x, ref_y = extract_center_from_poni(row["ponifile"])
     image = row[column]
 
@@ -1306,26 +1304,29 @@ def filter_points_by_distance(
     y_coords, x_coords = np.meshgrid(
         range(image.shape[0]), range(image.shape[1]), indexing="ij"
     )
-    distances = np.sqrt((x_coords - ref_x) ** 2 + (y_coords - ref_y) ** 2)
+    image_distances = np.sqrt(
+        (x_coords - ref_x) ** 2 + (y_coords - ref_y) ** 2
+    )
 
     # Apply distance filters
 
     masks = []
 
-    for min_distance, max_distance in zip(
-        min_distances or [None] * len(max_distances),
-        max_distances or [None] * len(min_distances),
-    ):
+    for distance in distances:
         mask = np.ones(image.shape, dtype=bool)
 
-        if min_distance is not None:
-            mask &= distances >= min_distance
-        if max_distance is not None:
-            mask &= distances <= max_distance
+        if distance[0] is not None:
+            mask &= image_distances >= distance[0]
+        if distance[1] is not None:
+            mask &= image_distances <= distance[1]
+
         masks.append(mask)
 
     # Combine masks
     mask = np.logical_or.reduce(masks)
+
+    # Invert mask
+    mask = np.logical_not(mask)
 
     cleaned_image = image * mask
 

@@ -1275,7 +1275,7 @@ class MeasurementCutter(TransformerMixin):
     :type cut_size: int
     """
 
-    def __init__(self, column, min_distances, max_distances):
+    def __init__(self, column, distances):
         """
         Initializes the MeasurementCutter with the specified column name and
         distance-based cut criteria.
@@ -1283,29 +1283,26 @@ class MeasurementCutter(TransformerMixin):
         :param column: The name of the column containing arrays of measurements to cut.
         :type column: str
 
-        :param min_distances: A list of minimum distance thresholds for each cut segment.
-                            Use `None` to indicate no lower bound for a segment.
-                            Example: [None, 120] means the first cut has no lower limit,
+        :param distances: A list of distance thresholds for each cut segment.
+                          Use `None` to indicate no bound for a segment.
+                          Example: [None, 120] means the first cut has no lower limit,
                             while the second starts from 120.
-        :type min_distances: list[float or None]
+        :type distances: list[tuples(float or None, float or None)]
 
-        :param max_distances: A list of maximum distance thresholds for each cut segment.
-                            Use `None` to indicate no upper bound for a segment.
-                            Example: [97, None] means the first cut ends at 97, while
-                            the second has no upper limit.
-        :type max_distances: list[float or None]
-
-        :note: The cutter will remove measurements falling within any specified range
-            between min_distances[i] and max_distances[i].
-            For example, with min_distances=[None, 120] and max_distances=[97, None],
-            it defines two ranges:
-                - (−∞, 97]
-                - [120, ∞)
-            Measurements in either range will be excluded.
+        :note: The `distances` parameter should be a list of tuples,
+               where each tuple contains two values:
+               - min_distances: Minimum distance for the cut segment (can be None).
+               - max_distances: Maximum distance for the cut segment (can be None).
+               If both values are None, the segment is not cut.
+               Example: [(None, 120), (120, None)] means the first segment is
+               cut from the start to 120, and the second segment starts from 120
+               and goes to the end of the array.
+        :note: If the `distances` list is empty, no cutting is performed.
+        :note: If the `distances` list contains only one tuple with both values as
+               None, the entire array is returned without cutting.
         """
         self.column = column
-        self.min_distances = min_distances
-        self.max_distances = max_distances
+        self.distances = distances
 
     def fit(self, X, y=None):
         """
@@ -1330,7 +1327,7 @@ class MeasurementCutter(TransformerMixin):
 
         X_copy[self.column] = X_copy.apply(
             lambda row: filter_points_by_distance(
-                row, self.column, self.min_distances, self.max_distances
+                row, self.column, self.distances
             ),
             axis=1,
         )
