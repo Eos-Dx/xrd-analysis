@@ -1406,7 +1406,7 @@ class HankelTransformer(TransformerMixin):
     ----------
     column : str
         Name of the column containing the images (2D arrays) to transform.
-    f : int, optional (default=0)
+    start_radius : int, optional (default=0)
         Start index for radial cropping on the second axis.
     order : int, optional (default=0)
         Order of the Hankel transform.
@@ -1414,9 +1414,9 @@ class HankelTransformer(TransformerMixin):
         Name of the column to store the Hankel-transformed results.
     """
 
-    def __init__(self, column, f=0, order=0):
+    def __init__(self, column, start_radius=0, order=0):
         self.column = column
-        self.f = f
+        self.start_radius = start_radius
         self.order = order
 
     def fit(self, X, y=None):
@@ -1432,8 +1432,10 @@ class HankelTransformer(TransformerMixin):
         X_copy["hankel"].astype(object)
 
         for i, row in X_copy.iterrows():
-            polar_img = row[self.column].copy().astype(float)[:, self.f :]
-            r = row["q_range"][self.f :]
+            polar_img = (
+                row[self.column].copy().astype(float)[:, self.start_radius :]
+            )
+            r = row["q_range"][self.start_radius :]
             polar_img = np.nan_to_num(polar_img, nan=0.0)
 
             _, n_radial = polar_img.shape
