@@ -7,10 +7,10 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from pyhank import HankelTransform
 from scipy.optimize import curve_fit
 from sklearn.base import TransformerMixin
 from sklearn.preprocessing import Normalizer, StandardScaler
-from pyhank import HankelTransform
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     calculate_deviation,
@@ -27,13 +27,13 @@ from xrdanalysis.data_processing.fourier import (
 )
 from xrdanalysis.data_processing.utility_functions import (
     create_mask,
+    cut_common_region,
     filter_points_by_distance,
+    find_common_region,
+    resize_image,
     unpack_results,
     unpack_results_cake,
     unpack_rotating_angles_results,
-    resize_image,
-    find_common_region,
-    cut_common_region,
 )
 
 
@@ -1275,7 +1275,7 @@ class MeasurementCutter(TransformerMixin):
     :type cut_size: int
     """
 
-    def __init__(self, column, min_distances, max_distances):
+    def __init__(self, column, distances):
         """
         Initializes the MeasurementCutter with the specified column name and
         distance-based cut criteria.
@@ -1283,29 +1283,26 @@ class MeasurementCutter(TransformerMixin):
         :param column: The name of the column containing arrays of measurements to cut.
         :type column: str
 
-        :param min_distances: A list of minimum distance thresholds for each cut segment.
-                            Use `None` to indicate no lower bound for a segment.
-                            Example: [None, 120] means the first cut has no lower limit,
+        :param distances: A list of distance thresholds for each cut segment.
+                          Use `None` to indicate no bound for a segment.
+                          Example: [None, 120] means the first cut has no lower limit,
                             while the second starts from 120.
-        :type min_distances: list[float or None]
+        :type distances: list[tuples(float or None, float or None)]
 
-        :param max_distances: A list of maximum distance thresholds for each cut segment.
-                            Use `None` to indicate no upper bound for a segment.
-                            Example: [97, None] means the first cut ends at 97, while
-                            the second has no upper limit.
-        :type max_distances: list[float or None]
-
-        :note: The cutter will remove measurements falling within any specified range
-            between min_distances[i] and max_distances[i].
-            For example, with min_distances=[None, 120] and max_distances=[97, None],
-            it defines two ranges:
-                - (−∞, 97]
-                - [120, ∞)
-            Measurements in either range will be excluded.
+        :note: The `distances` parameter should be a list of tuples,
+               where each tuple contains two values:
+               - min_distances: Minimum distance for the cut segment (can be None).
+               - max_distances: Maximum distance for the cut segment (can be None).
+               If both values are None, the segment is not cut.
+               Example: [(None, 120), (120, None)] means the first segment is
+               cut from the start to 120, and the second segment starts from 120
+               and goes to the end of the array.
+        :note: If the `distances` list is empty, no cutting is performed.
+        :note: If the `distances` list contains only one tuple with both values as
+               None, the entire array is returned without cutting.
         """
         self.column = column
-        self.min_distances = min_distances
-        self.max_distances = max_distances
+        self.distances = distances
 
     def fit(self, X, y=None):
         """
@@ -1330,7 +1327,7 @@ class MeasurementCutter(TransformerMixin):
 
         X_copy[self.column] = X_copy.apply(
             lambda row: filter_points_by_distance(
-                row, self.column, self.min_distances, self.max_distances
+                row, self.column, self.distances
             ),
             axis=1,
         )
@@ -1409,7 +1406,7 @@ class HankelTransformer(TransformerMixin):
     ----------
     column : str
         Name of the column containing the images (2D arrays) to transform.
-    f : int, optional (default=0)
+    start_radius : int, optional (default=0)
         Start index for radial cropping on the second axis.
     order : int, optional (default=0)
         Order of the Hankel transform.
@@ -1417,9 +1414,9 @@ class HankelTransformer(TransformerMixin):
         Name of the column to store the Hankel-transformed results.
     """
 
-    def __init__(self, column, f=0, order=0):
+    def __init__(self, column, start_radius=0, order=0):
         self.column = column
-        self.f = f
+        self.start_radius = start_radius
         self.order = order
 
     def fit(self, X, y=None):
@@ -1435,8 +1432,10 @@ class HankelTransformer(TransformerMixin):
         X_copy["hankel"].astype(object)
 
         for i, row in X_copy.iterrows():
-            polar_img = row[self.column].copy().astype(float)[:, self.f :]
-            r = row["q_range"][self.f :]
+            polar_img = (
+                row[self.column].copy().astype(float)[:, self.start_radius :]
+            )
+            r = row["q_range"][self.start_radius :]
             polar_img = np.nan_to_num(polar_img, nan=0.0)
 
             _, n_radial = polar_img.shape
