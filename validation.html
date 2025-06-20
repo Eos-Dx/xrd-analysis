@@ -1,0 +1,263 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Data Validation &#8212; MATUR  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d75fae25" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=658d757c" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=02e5e13e" />
+    
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="MLPipeline: Philosophy and Structure" href="pipeline.html" />
+    <link rel="prev" title="HDF5 File Structure" href="hdf5.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="pipeline.html" title="MLPipeline: Philosophy and Structure"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="hdf5.html" title="HDF5 File Structure"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="sop.html" accesskey="U">Standard Operating Procedure (SOP)</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Data Validation</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="data-validation">
+<h1>Data Validation<a class="headerlink" href="#data-validation" title="Link to this heading">¶</a></h1>
+<section id="abstract">
+<h2>Abstract<a class="headerlink" href="#abstract" title="Link to this heading">¶</a></h2>
+<p>This document describes the types of validation checks performed to ensure data quality during X-ray diffraction (XRD) measurements. These checks align with standard XRD practices to ensure accuracy and reliability of the data.</p>
+<p>There are three types of validation:</p>
+<ol class="arabic simple">
+<li><p>Form validation</p></li>
+<li><p>Measurement validation</p></li>
+<li><p>Manual validation</p></li>
+</ol>
+</section>
+<section id="form-validation">
+<h2>Form Validation<a class="headerlink" href="#form-validation" title="Link to this heading">¶</a></h2>
+<p>Form validations are performed by restricting inputs to predefined values to maintain consistency in data entry. The following parameters are validated through the form:</p>
+<ul class="simple">
+<li><p><strong>Existence of files:</strong> Confirms all required files, such as measurement data and standards, are uploaded before analysis.</p></li>
+<li><p><strong>Project:</strong> Ensures that the project is correctly associated with the data.</p></li>
+<li><p><strong>Machine:</strong> Verifies that the selected machine is correct for the chosen project.</p></li>
+<li><p><strong>Date:</strong> Confirms that the entered date is valid.</p></li>
+<li><p><strong>Measurement distance:</strong> Ensures the measurement distance is within acceptable bounds based on instrument configuration.</p></li>
+<li><p><strong>Poni file:</strong> Ensures that a calibration file is present to correct for detector geometry. Missing or incorrect calibration files will lead to inaccurate diffraction patterns.</p></li>
+<li><p><strong>Metadata:</strong> Verifies that proper metadata (e.g., patient ID, sample ID, and experiment details) is provided for traceability.</p></li>
+</ul>
+</section>
+<section id="measurement-validation">
+<h2>Measurement Validation<a class="headerlink" href="#measurement-validation" title="Link to this heading">¶</a></h2>
+<p>Measurement validation focuses on ensuring the reliability and accuracy of the XRD data collected. Some checks are specific to particular types of measurements, while others are general and apply to most XRD data.</p>
+<section id="shared-validation-checks">
+<h3>Shared Validation Checks<a class="headerlink" href="#shared-validation-checks" title="Link to this heading">¶</a></h3>
+<p>These checks apply to all types of XRD measurements (calibration, tissue, etc.):</p>
+<ul class="simple">
+<li><p><strong>Symmetry of diffraction pattern:</strong> The diffraction pattern should be radially symmetric around the beam center. Asymmetry may indicate issues with sample alignment or equipment calibration.</p></li>
+<li><p><strong>Center shape check:</strong> The center of the diffraction pattern should be circular. Deformed or irregular shapes could indicate misalignment or detector issues.</p></li>
+<li><p><strong>Center position check:</strong> Confirms that the beam center is correctly aligned. Misalignment leads to distorted diffraction data and could invalidate measurements.</p></li>
+<li><p><strong>Beam peak position:</strong> Diffraction patterns should exhibit decaying intensity with the highest value near zero. Deviations from this expected behavior can indicate instrument or calibration issues.</p></li>
+<li><p><strong>Overall intensity check:</strong> Ensures that the diffraction pattern intensity remains stable across repeated measurements. Variations may indicate sample preparation errors, beam inconsistencies, or detector sensitivity problems.</p></li>
+<li><p><strong>Broken pixel check:</strong> Identifies broken or dead pixels in the detector, which appear as consistently under or overexposed spots in the diffraction pattern. Persistent anomalies in specific pixel positions across multiple measurements suggest detector defects that need to be corrected or masked.</p></li>
+<li><p><strong>Cosmic ray artifact check:</strong> Detects sudden, sharp intensity spikes in the diffraction pattern caused by cosmic rays. These artifacts typically appear as single-pixel or short streak anomalies.</p></li>
+</ul>
+</section>
+<section id="calibration-validation-checks">
+<h3>Calibration Validation Checks<a class="headerlink" href="#calibration-validation-checks" title="Link to this heading">¶</a></h3>
+<p>Calibration measurements require additional checks to verify the accuracy of the instrument calibration:</p>
+<ul class="simple">
+<li><p><strong>Poni file consistency:</strong> Verifies that the <strong>Poni file</strong> used in calibration matches the manually inputted distance within acceptable tolerance. A mismatch can indicate calibration errors.</p></li>
+<li><p><strong>Peak consistency (±1%):</strong> The positions of the diffraction peaks in well-studied calibration materials should remain consistent across repeated measurements. Deviations greater than 1% may point to issues like instrument drift, temperature fluctuation, or sample changes.</p></li>
+</ul>
+</section>
+<section id="tissue-measurements-validation-checks">
+<h3>Tissue Measurements Validation Checks<a class="headerlink" href="#tissue-measurements-validation-checks" title="Link to this heading">¶</a></h3>
+<p>Tissue samples present unique challenges compared to crystalline standards. These checks are designed specifically for biological samples:</p>
+<ul class="simple">
+<li><p><strong>Background signal check:</strong> Tissue measurements often have weaker signals. This check ensures that the signal-to-noise ratio is sufficient for reliable analysis. Excess noise could indicate contamination, poor sample quality, or improper instrument settings.</p></li>
+</ul>
+</section>
+</section>
+<section id="additional-measurement-types">
+<h2>Additional Measurement Types<a class="headerlink" href="#additional-measurement-types" title="Link to this heading">¶</a></h2>
+<p>The following checks might be relevant for additional measurement types in the future, such as background, empty, and dark measurements:</p>
+<ul class="simple">
+<li><p><strong>Background measurements:</strong> Ensures no significant diffraction features are present in the background, indicating that any observed features come from the sample and not environmental noise or contamination.</p></li>
+<li><p><strong>Empty measurements:</strong> Confirms that no diffraction pattern is present when no sample is loaded, ensuring that the instrument is correctly calibrated.</p></li>
+<li><p><strong>Dark measurements:</strong> Verifies that no signal is detected when the X-ray beam is off, ensuring the detector is functioning properly and there is no electronic noise affecting the measurements.</p></li>
+</ul>
+</section>
+<section id="manual-validation">
+<h2>Manual Validation<a class="headerlink" href="#manual-validation" title="Link to this heading">¶</a></h2>
+<p>Manual validation is performed by the quality control (QC) team after all automated checks are completed. The team visually inspects the diffraction patterns, checks logs for inconsistencies, and compares results with historical data to ensure the measurement meets the expected quality standards.</p>
+</section>
+<section id="tools">
+<h2>Tools<a class="headerlink" href="#tools" title="Link to this heading">¶</a></h2>
+<p>To perform the various validation checks outlined in this document, several tools and libraries will be integrated into the workflow. These tools ensure both automated and manual validations can be carried out efficiently and accurately:</p>
+<ol class="arabic simple">
+<li><dl class="simple">
+<dt><strong>pyFAI:</strong> A Python library for azimuthal integration of diffraction images. pyFAI will be used for:</dt><dd><ul class="simple">
+<li><p><strong>1D and 2D azimuthal integration</strong> to transform diffraction images into usable data (radial profiles).</p></li>
+<li><p><strong>Calibration checks</strong>, such as verifying the consistency of the Poni file with manual distances and performing symmetry checks.</p></li>
+<li><p><strong>Intensity checks</strong> by enabling integration of diffraction data to compare intensities across repeated measurements.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>SciPy (for peak analysis):</strong> SciPy provides functions for detecting peaks in 1D data, which will be critical for:</dt><dd><ul class="simple">
+<li><p><strong>Main peak position checks</strong> to ensure the highest value is around 0 for both calibration and tissue measurements.</p></li>
+<li><p><strong>Peak consistency checks</strong> by comparing peak positions across repeated measurements.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>NumPy (for data consistency):</strong> NumPy will be employed for general numerical operations required in checks like:</dt><dd><ul class="simple">
+<li><p><strong>Intensity comparison</strong> across different measurements.</p></li>
+<li><p><strong>Background noise subtraction</strong> to ensure proper signal-to-noise ratio in tissue samples.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>Matplotlib:</strong> A plotting library used to generate visual representations of diffraction data for:</dt><dd><ul class="simple">
+<li><p><strong>Visual inspection</strong> of diffraction patterns during manual validation.</p></li>
+<li><p><strong>Graphing radial profiles</strong> to easily identify issues with intensity and symmetry.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>h5py (for HDF5 integration):</strong> As diffraction data is stored in HDF5 format, h5py will be used for:</dt><dd><ul class="simple">
+<li><p><strong>Managing and retrieving patient and sample-specific metadata</strong> associated with diffraction measurements.</p></li>
+<li><p><strong>Validating the existence and consistency of calibration files, measurement data, and associated metadata</strong> in the HDF5 structure.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><em>UNDER CONSIDERATION</em> <strong>xrayutilities (for advanced XRD analysis):</strong> A Python library designed for X-ray diffraction and scattering data analysis. It will help with:</dt><dd><ul class="simple">
+<li><p><strong>Advanced peak fitting and lattice parameter determination</strong>, which could be useful for more detailed tissue and calibration measurements.</p></li>
+<li><p><strong>Angle and position checks</strong> of the diffraction peaks.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Data Validation</a><ul>
+<li><a class="reference internal" href="#abstract">Abstract</a></li>
+<li><a class="reference internal" href="#form-validation">Form Validation</a></li>
+<li><a class="reference internal" href="#measurement-validation">Measurement Validation</a><ul>
+<li><a class="reference internal" href="#shared-validation-checks">Shared Validation Checks</a></li>
+<li><a class="reference internal" href="#calibration-validation-checks">Calibration Validation Checks</a></li>
+<li><a class="reference internal" href="#tissue-measurements-validation-checks">Tissue Measurements Validation Checks</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#additional-measurement-types">Additional Measurement Types</a></li>
+<li><a class="reference internal" href="#manual-validation">Manual Validation</a></li>
+<li><a class="reference internal" href="#tools">Tools</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="hdf5.html"
+                          title="previous chapter">HDF5 File Structure</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="pipeline.html"
+                          title="next chapter">MLPipeline: Philosophy and Structure</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/validation.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="pipeline.html" title="MLPipeline: Philosophy and Structure"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="hdf5.html" title="HDF5 File Structure"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">MATUR  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="sop.html" >Standard Operating Procedure (SOP)</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Data Validation</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, MATUR.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    </div>
+  </body>
+</html>
