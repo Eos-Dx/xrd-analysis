@@ -95,6 +95,8 @@ def show_measurement_window(
         )
         radial = result.radial
         intensity = result.intensity
+        std = result.std
+        sigma = result.sigma
         cake, _, _ = ai.integrate2d(
             data,
             200,
@@ -122,13 +124,64 @@ def show_measurement_window(
     sns.heatmap(data, robust=True, square=True, ax=ax1)
     ax1.set_title("2D Image")
 
+    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+    # Top-right: 1D integration
+    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
     # Top-right: 1D integration
     ax2 = fig.add_subplot(2, 2, 2)
-    sns.lineplot(x=radial, y=intensity, ax=ax2)
-    ax2.set_title("Azimuthal Integration")
-    ax2.set_xlabel("q (nm^-1)")
-    ax2.set_ylabel("Intensity")
+
+    # 1) main curve with σ‐errorbars in “candle” style
+    ax2.errorbar(
+        radial,
+        intensity,
+        yerr=sigma,
+        fmt='-o',  # line + circle marker
+        markersize=3,
+        linewidth=1,
+        ecolor='black',  # error‐bar color
+        capsize=3,  # horizontal bar at ends
+        capthick=1,  # thickness of caps
+        label='Intensity ± σ'
+    )
+
+    # 2) extend x-limits by 30%
+    xmin, xmax = radial.min(), radial.max()
+    ax2.set_xlim(xmin, xmax * 1.3)
+
     ax2.set_yscale("log")
+    ax2.set_title("Azimuthal Integration")
+    ax2.set_xlabel("q (nm⁻¹)")
+    ax2.set_ylabel("Intensity")
+    ax2.legend(loc='upper right', fontsize='small')
+
+    # 3) inset for std (top-left)
+    ax_std = inset_axes(
+        ax2,
+        width="30%",  # 30% of ax2 width
+        height="30%",  # 30% of ax2 height
+        bbox_to_anchor=(0.05, -0.2, 1, 1),  # x0, y0, w, h in axes fraction
+        bbox_transform=ax2.transAxes
+    )
+    ax_std.plot(radial, std, '-', linewidth=1)
+    ax_std.set_title("std", fontsize='x-small')
+    ax_std.tick_params(labelsize='x-small', axis='both', which='both')
+
+
+    # 4) inset for SNR = I / σ (below the std inset)
+    snr = intensity / sigma
+    ax_snr = inset_axes(
+        ax2,
+        width="30%",
+        height="30%",
+        bbox_to_anchor=(0.05, -.5, 1, 1),
+        bbox_transform=ax2.transAxes
+    )
+    ax_snr.plot(radial, snr, '-', linewidth=1)
+    ax_snr.set_title("SNR", fontsize='x-small')
+    ax_snr.tick_params(labelsize='x-small', axis='both', which='both')
+
 
     # Bottom-left: cake representation
     ax3 = fig.add_subplot(2, 2, 3)
