@@ -126,7 +126,7 @@ class AzimuthalIntegration(TransformerMixin):
         else:
             mask = create_mask(
                 self.faulty_pixels,
-                size=x_copy["measurement_data"].iloc[0].shape,
+                size=x_copy[self.column].iloc[0].shape,
             )
 
         if self.calibration_mode == "poni":
