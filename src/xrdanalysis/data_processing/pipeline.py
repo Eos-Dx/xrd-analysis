@@ -316,26 +316,26 @@ class MLPipeline:
             results["accuracy"] = accuracy_score(y_true, y_pred)
 
         if "roc_auc" in metrics:
-            (
-                sensitivity,
-                specificity,
-                precision,
-                ba_accuracy,
-            ) = generate_roc_based_metrics(
-                y_true,
-                y_score,
-                show_flag,
-                min_sensitivity=min_sensitivity,
-                min_specificity=min_specificity,
+            (sensitivity, specificity, precision, ba_accuracy, threshold) = (
+                generate_roc_based_metrics(
+                    y_true,
+                    y_score,
+                    show_flag,
+                    min_sensitivity=min_sensitivity,
+                    min_specificity=min_specificity,
+                )
             )
             results["roc_auc"] = round(roc_auc_score(y_true, y_score) * 100, 1)
             results["sensitivity"] = sensitivity
             results["specificity"] = specificity
             results["precision"] = precision
             results["ba_accuracy"] = ba_accuracy
+            results["threshold"] = threshold
 
         if print_flag:
             print(results)
+
+        self.last_results = results
 
         return results
 

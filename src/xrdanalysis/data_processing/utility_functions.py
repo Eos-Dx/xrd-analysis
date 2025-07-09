@@ -1188,6 +1188,7 @@ def generate_roc_based_metrics(
         optimal_specificity,
         optimal_precision,
         balanced_accuracy,
+        optimal_threshold,
     )
 
 
