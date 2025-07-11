@@ -335,8 +335,6 @@ class MLPipeline:
         if print_flag:
             print(results)
 
-        self.last_results = results
-
         return results
 
     def train(
@@ -420,7 +418,7 @@ class MLPipeline:
         y_score = estimator.predict_proba(X_test)[:, 1]
 
         # Validate the training results
-        self.validate(
+        results = self.validate(
             y_test,
             y_score,
             print_flag=print_flag,
@@ -428,6 +426,8 @@ class MLPipeline:
             min_sensitivity=min_sensitivity,
             min_specificity=min_specificity,
         )
+
+        return results
 
     def export_pipeline(self, wrangle=False, preprocess=True, save_path=None):
         """
