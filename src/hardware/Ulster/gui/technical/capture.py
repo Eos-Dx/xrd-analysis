@@ -11,24 +11,30 @@ from xrdanalysis.data_processing.azimuthal_integration import (
     initialize_azimuthal_integrator_poni_text
 )
 
-class CaptureWorker(QThread):
-    # emit (success: bool, txt_filename: str)
-    finished = pyqtSignal(bool, str)
+from PyQt5.QtCore import QThread, pyqtSignal
 
-    def __init__(self, detector_controller, integration_time, txt_filename, parent=None):
+class CaptureWorker(QThread):
+    # Emits (success: bool, result_files: dict) e.g. {"WAXS": path1, "SAXS": path2}
+    finished = pyqtSignal(bool, dict)
+
+    def __init__(self, detector_controller, integration_time, txt_filename_base, parent=None):
         super().__init__(parent)
         self.detector_controller = detector_controller
         self.integration_time = integration_time
-        self.txt_filename = txt_filename
+        self.txt_filename_base = txt_filename_base  # Only the base; suffixes will be added
 
     def run(self):
+        # Perform dual acquisition
         success = self.detector_controller.capture_point(
             1,
             self.integration_time,
-            self.txt_filename
+            self.txt_filename_base
         )
-        self.finished.emit(success, self.txt_filename)
-
+        # Collect the expected filenames for both detectors
+        result_files = {}
+        for name in ["WAXS", "SAXS"]:
+            result_files[name] = f"{self.txt_filename_base}_{name}.txt"
+        self.finished.emit(success, result_files)
 
 def validate_folder(path: str):
     if not path:

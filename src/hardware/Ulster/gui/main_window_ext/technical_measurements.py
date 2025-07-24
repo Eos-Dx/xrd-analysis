@@ -10,9 +10,9 @@ from PyQt5.QtWidgets import (
     QListWidget, QListWidgetItem, QDoubleSpinBox,
     QSpinBox, QScrollArea
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 import queue
-from PyQt5.QtCore import QTimer
+
 from hardware.Ulster.gui.technical.capture import (
     CaptureWorker, validate_folder, show_measurement_window
 )
@@ -22,11 +22,9 @@ from hardware.Ulster.gui.main_window_ext.zone_measurements_extension import Zone
 class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def create_measurements_panel(self):
-        # Initialize counter for auxiliary measurements
         self.aux_counter = 0
         super().create_zone_measurements_widget()
 
-        # Create technical measurements dock
         self.measDock = QDockWidget("Technical Measurements", self)
         self.measDock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
 
@@ -35,7 +33,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         outer.setContentsMargins(8, 8, 8, 8)
         outer.setSpacing(12)
 
-        # — Integration time control —
+        # Integration time control
         it_layout = QHBoxLayout()
         it_layout.addWidget(QLabel("Integration Time (s):"))
         self.integrationTimeSpin = QDoubleSpinBox()
@@ -45,7 +43,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         it_layout.addWidget(self.integrationTimeSpin)
         outer.addLayout(it_layout)
 
-        # — Save folder selector —
+        # Save folder selector
         fld = QHBoxLayout()
         fld.addWidget(QLabel("Save Folder:"))
         self.folderLE = QLineEdit()
@@ -55,14 +53,13 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         fld.addWidget(b)
         outer.addLayout(fld)
 
-        # — Auxiliary Measurement controls —
+        # Auxiliary Measurement controls
         outer.addWidget(QLabel("Aux Measurement:"))
         row = QHBoxLayout()
         self.auxBtn = QPushButton("Measure Aux")
         self.auxBtn.clicked.connect(self.measure_aux)
         row.addWidget(self.auxBtn)
 
-        from PyQt5.QtCore import QTimer
         self._aux_status = QLabel("")
         row.addWidget(self._aux_status)
         self._aux_timer = QTimer(self)
@@ -78,13 +75,13 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self.auxList.itemActivated.connect(self.open_measurement)
         outer.addWidget(self.auxList)
 
-        # — PyFai button —
+        # PyFai button
         pyfai_btn = QPushButton("PyFai")
         pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
         pyfai_btn.clicked.connect(self.run_pyfai)
         outer.addWidget(pyfai_btn)
 
-        # — Real-time controls —
+        # Real-time controls
         rt_layout = QHBoxLayout()
         rt_layout.addWidget(QLabel("Frames/⟳:"))
         self.framesSpin = QSpinBox()
@@ -106,7 +103,6 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self.measDock.setWidget(scroll)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.measDock)
 
-        # Controls disabled until hardware is ready
         self.enable_measurement_controls(False)
         self.hardware_state_changed.connect(self.enable_measurement_controls)
 
@@ -133,21 +129,21 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         base = self._file_base(typ)
         base_with_count = f"{base}_{count:03d}"
         ts = time.strftime("%Y%m%d_%H%M%S")
-        txt = os.path.join(folder, f"{base_with_count}_{ts}_{int(self.integrationTimeSpin.value())}s.txt")
+        txt_filename_base = os.path.join(folder, f"{base_with_count}_{ts}_{int(self.integrationTimeSpin.value())}s")
 
         worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=self.integrationTimeSpin.value(),
-            txt_filename=txt
+            txt_filename_base=txt_filename_base
         )
 
         if not hasattr(self, "_capture_workers"):
             self._capture_workers = []
         self._capture_workers.append(worker)
 
-        def _cleanup(ok, fn, t=typ):
+        def _cleanup(success, result_files, t=typ):
             try:
-                self._on_capture_done(ok, fn, t)
+                self._on_capture_done(success, result_files, t)
             finally:
                 worker.deleteLater()
                 self._capture_workers.remove(worker)
@@ -155,30 +151,31 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         worker.finished.connect(_cleanup)
         worker.start()
 
-    def _on_capture_done(self, success: bool, txt_file: str, typ: str):
+    def _on_capture_done(self, success: bool, result_files: dict, typ: str):
         if not success:
             print(f"[{typ}] capture failed.")
             self._aux_timer.stop()
             self._aux_status.setText("")
             return
         else:
-            print(f'[{typ}] capture successful: {txt_file}')
+            print(f'[{typ}] capture successful: {result_files}')
             self._aux_timer.stop()
             self._aux_status.setText("Done")
 
-        try:
-            data = np.loadtxt(txt_file)
-            npy = txt_file.replace(".txt", ".npy")
-            np.save(npy, data)
-        except Exception as e:
-            print("Conversion error:", e)
-            npy = txt_file
+        for det in ['WAXS', 'SAXS']:
+            txt_file = result_files[det]
+            try:
+                data = np.loadtxt(txt_file)
+                npy = txt_file.replace(".txt", ".npy")
+                np.save(npy, data)
+            except Exception as e:
+                print(f"Conversion error for {det}:", e)
+                npy = txt_file
 
-
-        lst: QListWidget = getattr(self, f"{typ.lower()}List")
-        item = QListWidgetItem(os.path.basename(npy))
-        item.setData(Qt.UserRole, npy)
-        lst.addItem(item)
+            # Add to auxList: show detector label
+            item = QListWidgetItem(f"{det}: {os.path.basename(npy)}")
+            item.setData(Qt.UserRole, npy)
+            self.auxList.addItem(item)
 
     def _file_base(self, typ: str) -> str:
         le: QLineEdit = getattr(self, f"{typ.lower()}NameLE")
@@ -186,18 +183,16 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         return txt or typ.lower()
 
     def measure_aux(self):
-        # record start time and start status timer
         self._aux_start = time.time()
         self._aux_spinner_state = 0
-        self._aux_status.setText("0 s ⠋")  # initial text
+        self._aux_status.setText("0 s ⠋")
         self._aux_timer.start()
-        # Start an auxiliary measurement capture
         self._start_capture("Aux")
 
     def open_measurement(self, item: QListWidgetItem):
         show_measurement_window(
             item.data(Qt.UserRole),
-            self.mask,
+            getattr(self, "mask", None),
             getattr(self, "poni", None),
             self
         )
@@ -235,20 +230,13 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
                 print("❌ Failed to launch PyFai on Unix:", e)
 
     def initialize_hardware(self):
-        # Override to subscribe automatically
-        pass  # subscription to hardware_state_changed handles control toggling
+        pass
 
     def _update_aux_status(self):
-        """
-        Called every 200ms to update the elapsed seconds
-        and spinner character.
-        """
         elapsed = int(time.time() - self._aux_start)
-        # cycle through a simple 4‐step spinner
         spinner = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
         ch = spinner[self._aux_spinner_state % len(spinner)]
         self._aux_spinner_state += 1
-        # update label: "12 s ⠼"
         self._aux_status.setText(f"{elapsed} s {ch}")
 
     def _toggle_realtime(self, checked: bool):
@@ -261,32 +249,27 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def _start_realtime(self):
         exposure = float(self.integrationTimeSpin.value())
-
-        # 1) Thread-safe queue for frames
         self._rt_queue = queue.Queue()
 
-        # 2) Set up Matplotlib figure in main thread
+        import matplotlib.pyplot as plt
         plt.ion()
-        self._rt_fig, ax = plt.subplots()
-        self._rt_img = ax.imshow(
-            np.zeros((256,256)),
-            origin='lower',
-            interpolation='none'
-        )
+        self._rt_fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+        self._rt_img = {
+            "WAXS": ax1.imshow(np.zeros((256, 256)), origin='lower', interpolation='none'),
+            "SAXS": ax2.imshow(np.zeros((256, 256)), origin='lower', interpolation='none')
+        }
+        ax1.set_title("WAXS")
+        ax2.set_title("SAXS")
         plt.show()
 
-        # 3) GUI timer fires frequently to pull newest frame
         self._plot_timer = QTimer(self)
-        self._plot_timer.setInterval(50)            # every 50 ms
+        self._plot_timer.setInterval(50)
         self._plot_timer.timeout.connect(self._rt_plot_tick)
         self._plot_timer.start()
 
-        # 4) Worker callback just enqueues every frame
-        def callback(frame: np.ndarray):
-            # always enqueue; we drop old frames in the GUI thread
-            self._rt_queue.put(frame)
+        def callback(frames_dict):
+            self._rt_queue.put(frames_dict)
 
-        # 5) Kick off the DetectorController loop forever
         self.detector_controller.start_stream(
             callback=callback,
             exposure=exposure,
@@ -295,17 +278,18 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         )
 
     def _rt_plot_tick(self):
-        """Runs in GUI thread: drain queue and display the very latest frame."""
-        frame = None
+        frames_dict = None
         while True:
             try:
-                frame = self._rt_queue.get_nowait()
+                frames_dict = self._rt_queue.get_nowait()
             except queue.Empty:
                 break
-
-        if frame is not None:
-            self._rt_img.set_data(frame)
-            self._rt_img.set_clim(frame.min(), frame.max())
+        if frames_dict is not None:
+            for name in ("WAXS", "SAXS"):
+                frame = frames_dict.get(name)
+                if frame is not None and name in self._rt_img:
+                    self._rt_img[name].set_data(frame)
+                    self._rt_img[name].set_clim(frame.min(), frame.max())
             self._rt_fig.canvas.draw_idle()
 
     def _stop_realtime(self):
@@ -313,5 +297,6 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         if hasattr(self, '_plot_timer'):
             self._plot_timer.stop()
             del self._plot_timer
+        import matplotlib.pyplot as plt
         plt.close(self._rt_fig)
         del self._rt_queue

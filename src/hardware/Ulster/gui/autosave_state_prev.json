@@ -1,51 +1,45 @@
 {
-    "image": "C:\\dev\\eos_play\\unzipped_data\\Ulster\\pancreas\\sheep_pancreas\\U2\\Xena_Cu\\20250313\\P1a_L4_20250218.jpg",
-    "rotation_angle": 3,
+    "image": "C:/Users/Ulster/Desktop/Heather Nesbit/20250702/mice_hair_U1_20250702_P175/WhatsApp Image 2025-07-02 at 11.25.02 AM (2).jpeg",
+    "rotation_angle": 0,
     "crop_rect": null,
     "shapes": [
         {
-            "id": 3201,
+            "id": 201,
             "type": "Rectangle",
             "role": "sample holder",
             "geometry": {
-                "x": 155.9211277961731,
-                "y": 2703.0883693695055,
-                "width": 1215.5267667770377,
-                "height": 1215.5267667770377
+                "x": 16.0,
+                "y": -2.0,
+                "width": 431.0,
+                "height": 431.0
             }
         },
         {
-            "id": 3233,
+            "id": 204,
             "type": "Circle",
             "role": "include",
             "geometry": {
-                "x": 240.18136596679665,
-                "y": 2892.588058471677,
-                "width": 819.0185241699212,
-                "height": 860.7417755126949
-            }
-        },
-        {
-            "id": 3061,
-            "type": "Circle",
-            "role": "exclude",
-            "geometry": {
-                "x": 417.2269287109373,
-                "y": 3235.3345336914044,
-                "width": 352.870666503906,
-                "height": 333.79718017578125
+                "x": 191.0,
+                "y": 179.0,
+                "width": 87.0,
+                "height": 77.0
             }
         }
     ],
     "zone_points": [
         {
-            "x": 676.6839350045345,
-            "y": 3288.9399475813443,
+            "x": 236.38279780742477,
+            "y": 226.24787805390704,
             "type": "generated"
         },
         {
-            "x": 521.8402772999767,
-            "y": 3678.5056544654835,
+            "x": 275.8483521413732,
+            "y": 226.74931122207636,
+            "type": "generated"
+        },
+        {
+            "x": 197.24130091335732,
+            "y": 228.78980732290773,
             "type": "generated"
         }
     ],
@@ -53,5 +47,5 @@
         -5.15,
         -4.35
     ],
-    "pixel_to_mm_ratio": 67.41815370983542
+    "pixel_to_mm_ratio": 23.833333333333332
 }

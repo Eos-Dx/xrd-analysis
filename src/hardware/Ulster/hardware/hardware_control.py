@@ -7,98 +7,122 @@ import os
 import tempfile
 
 
+import threading
+import sys
+import numpy as np
+import time
+import os
+
 class DetectorController:
+    SAXS_ID = "MiniPIX G08-W0299"
+    WAXS_ID = "MiniPIX G05-W0339"
 
     def __init__(self, capture_enabled=True, dev=True):
         self.capture_enabled = capture_enabled
         self.dev = dev
         self.pixet = None
-        self.detector = None
+        self.detectors = {}  # {'WAXS': device, 'SAXS': device}
         self._stream_thread = None
         self._streaming = threading.Event()
 
     def init_detector(self):
         if self.dev:
             print("DEV mode: Dummy init_detector called.")
-            # In DEV mode, we simply set dummy (non-None) values.
             self.pixet = True
-            self.detector = True
+            self.detectors = {"WAXS": True, "SAXS": True}
             return True
         else:
-            # Real detector initialization.
             sys.path.insert(0, 'D:\\API_PIXet_Pro_1.8.3_Windows_x86_64')
-            #sys.path.insert(0, r'D:\OneDrive\OneDrive - Matur\General - Ulster\Equipment\Xena\M30XY Stage\Code\XYscan')
             try:
                 import pypixet
             except ImportError as e:
                 print("Error importing pypixet:", e)
                 return False
-            print("Initializing detector...")
+            print("Initializing detectors...")
             pypixet.start()
             pixet = pypixet.pixet
             devices = pixet.devices()
-            if devices[0].fullName() == 'FileDevice 0':
+            if not devices or devices[0].fullName() == 'FileDevice 0':
                 print("No devices connected")
                 pixet.exitPixet()
                 pypixet.exit()
-                self.pixet, self.detector = None, None
+                self.pixet, self.detectors = None, {}
                 return False
-            else:
-                self.pixet = pixet
-                self.detector = devices[0]
-                print("Detector initialized.")
-                return True
 
-    def capture_point(self, Nframes, Nseconds, filename):
+            # Assign detectors by ID
+            for dev in devices:
+                name = dev.fullName()
+                if self.WAXS_ID in name:
+                    self.detectors["WAXS"] = dev
+                elif self.SAXS_ID in name:
+                    self.detectors["SAXS"] = dev
+            if len(self.detectors) < 2:
+                print(f"Could not find both detectors: Found {self.detectors.keys()}")
+                return False
+            self.pixet = pixet
+            print(f"Detector assignment: {self.detectors.keys()}")
+            return True
+
+    def capture_point(self, Nframes, Nseconds, filename_base):
+        """Parallel acquisition for both detectors."""
         if self.dev:
-            # --- Dummy capture (DEV mode): Create two Gaussians and combine them. ---
-            print(f"DEV mode: Dummy capture_point called. Saving to {filename}")
-            # Create a 256x256 grid.
-            x = np.arange(256)
-            y = np.arange(256)
-            X, Y = np.meshgrid(x, y)
-            # First Gaussian: peak > 1e6.
-            x0_1 = np.random.uniform(0, 256)
-            y0_1 = np.random.uniform(0, 256)
-            sigma_x1 = np.random.uniform(5, 15)
-            sigma_y1 = np.random.uniform(5, 15)
-            amplitude1 = np.random.uniform(1e6 + 1, 2e6)
-            gaussian1 = amplitude1 * np.exp(-(((X - x0_1) ** 2) / (2 * sigma_x1 ** 2) +
-                                              ((Y - y0_1) ** 2) / (2 * sigma_y1 ** 2)))
-            # Second Gaussian: peak < 1e6.
-            x0_2 = np.random.uniform(0, 256)
-            y0_2 = np.random.uniform(0, 256)
-            sigma_x2 = np.random.uniform(5, 15)
-            sigma_y2 = np.random.uniform(5, 15)
-            amplitude2 = np.random.uniform(1e5, 1e6 - 1)
-            gaussian2 = amplitude2 * np.exp(-(((X - x0_2) ** 2) / (2 * sigma_x2 ** 2) +
-                                              ((Y - y0_2) ** 2) / (2 * sigma_y2 ** 2)))
-            combined = gaussian1 + gaussian2
-            import time
-            time.sleep(Nseconds)
-            np.savetxt(filename, combined, fmt='%.6f')
+            print("DEV mode: Dummy parallel capture_point for both detectors.")
+            threads = []
+            for name in self.detectors.keys():
+                filename = f"{filename_base}_{name}.txt"
+                t = threading.Thread(
+                    target=self._dummy_acquire,
+                    args=(filename, Nseconds)
+                )
+                threads.append(t)
+                t.start()
+            for t in threads:
+                t.join()
             return True
         else:
-            print(f"Capturing at {filename} ...")
-            try:
-                rc = self.detector.doSimpleIntegralAcquisition(Nframes, Nseconds, self.pixet.PX_FTYPE_AUTODETECT, filename)
-                if rc == 0:
-                    print("Capture successful.")
-                    return True
-                else:
-                    print("Capture error:", rc)
+            threads = []
+            results = {}
+
+            def acquire(det, fname, name):
+                try:
+                    rc = det.doSimpleIntegralAcquisition(
+                        Nframes, Nseconds, self.pixet.PX_FTYPE_AUTODETECT, fname
+                    )
+                    results[name] = rc
+                except Exception as e:
+                    results[name] = str(e)
+
+            for name, det in self.detectors.items():
+                filename = f"{filename_base}_{name}.txt"
+                t = threading.Thread(
+                    target=acquire,
+                    args=(det, filename, name)
+                )
+                threads.append(t)
+                t.start()
+            for t in threads:
+                t.join()
+
+            # Check for errors
+            for name, rc in results.items():
+                if rc != 0:
+                    print(f"Capture error for {name}:", rc)
                     return False
-            except Exception as e:
-                print(f'During capture: {e}')
-                return False
+            print("Capture successful for both detectors (parallel).")
+            return True
+
+    def _dummy_acquire(self, filename, Nseconds):
+        x = np.arange(256)
+        y = np.arange(256)
+        X, Y = np.meshgrid(x, y)
+        gaussian = np.random.normal(loc=1e6, scale=1e5, size=(256,256))
+        time.sleep(Nseconds)
+        np.savetxt(filename, gaussian, fmt='%.6f')
 
     def deinit_detector(self):
-        """
-        Safely deinitialize the detector hardware and cleanup resources.
-        """
         if self.dev:
             print("DEV mode: Dummy deinit_detector called.")
-            self.pixet, self.detector = None, None
+            self.pixet, self.detectors = None, {}
             return
         if self.pixet:
             try:
@@ -110,16 +134,12 @@ class DetectorController:
             except Exception as e:
                 print(f"Error during deinit_detector: {e}")
             finally:
-                self.pixet, self.detector = None, None
-
-    # ──────── Real-Time (Looped) Streaming ──────────────────────────
+                self.pixet, self.detectors = None, {}
 
     def start_stream(self, callback, exposure=0.1, interval=0.0, frames=1):
         """
-        Begin continuous frame acquisition.
-        callback(frame: np.ndarray) -> None
-        exposure: seconds per frame
-        interval: extra idle time between frames
+        Begin continuous frame acquisition from both detectors in parallel.
+        callback(frames: dict) -> None, e.g. {"WAXS": np.ndarray, "SAXS": np.ndarray}
         """
         if not self.capture_enabled:
             raise RuntimeError("Capture not enabled")
@@ -135,7 +155,7 @@ class DetectorController:
         )
         self._stream_thread.start()
         mode = "DEV" if self.dev else "REAL"
-        print(f"{mode} mode: Stream started (exp={exposure}s, interval={interval}s)")
+        print(f"{mode} mode: Parallel stream started (exp={exposure}s, interval={interval}s)")
 
     def stop_stream(self):
         """Stop any running stream."""
@@ -146,51 +166,75 @@ class DetectorController:
         self._stream_thread = None
 
     def _stream_loop(self, callback, exposure, interval, frames):
-        """Internal: loop that grabs frames back‐to‐back."""
-        tmpdir = None
-        tmpfile = None
-
-        if not self.dev:
-            # prepare a temp file for real captures
-            tmpdir = tempfile.mkdtemp()
-            tmpfile = os.path.join(tmpdir, "stream_frame.txt")
-
-        try:
+        """Internal: parallel loop that grabs frames from both detectors back-to-back."""
+        if self.dev:
             while self._streaming.is_set():
-                if self.dev:
-                    # Dummy Gaussian blob
-                    x = np.arange(256); y = np.arange(256)
+                results = {}
+                for name in self.detectors.keys():
+                    x = np.arange(256)
+                    y = np.arange(256)
                     X, Y = np.meshgrid(x, y)
-                    x0, y0 = np.random.uniform(0,256), np.random.uniform(0,256)
-                    sigma = np.random.uniform(5,20)
-                    amp  = np.random.uniform(1e5,2e6)
-                    frame = amp * np.exp(-(((X-x0)**2 + (Y-y0)**2)/(2*sigma**2)))
-                    time.sleep(exposure)
-                    callback(frame)
+                    x0, y0 = np.random.uniform(0, 256), np.random.uniform(0, 256)
+                    sigma = np.random.uniform(5, 20)
+                    amp = np.random.uniform(1e5, 2e6)
+                    frame = amp * np.exp(-(((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma ** 2)))
+                    results[name] = frame
+                time.sleep(exposure)
+                callback(results)
+                if interval:
+                    time.sleep(interval)
+        else:
+            while self._streaming.is_set():
+                threads = []
+                results = {}
+                tmpdirs = {}
+                tmpfiles = {}
 
-                else:
-                    # Real acquisition: 1 frame
-                    rc = self.detector.doSimpleIntegralAcquisition(
+                def acquire_frame(det, name):
+                    tmpdir = tempfile.mkdtemp()
+                    tmpfile = os.path.join(tmpdir, f"stream_{name}.txt")
+                    tmpdirs[name] = tmpdir
+                    tmpfiles[name] = tmpfile
+                    rc = det.doSimpleIntegralAcquisition(
                         frames,
                         exposure,
                         self.pixet.PX_FTYPE_AUTODETECT,
                         tmpfile
                     )
                     if rc != 0:
-                        print("Frame error:", rc, self.detector.lastError())
+                        print(f"Frame error for {name}:", rc, det.lastError())
+                        results[name] = None
                     else:
-                        frame = np.loadtxt(tmpfile)
-                        callback(frame)
-                    if interval:
-                        time.sleep(interval)
-        finally:
-            # Cleanup
-            if tmpdir:
-                try:
-                    os.remove(tmpfile)
-                    os.rmdir(tmpdir)
-                except:
-                    pass
+                        try:
+                            frame = np.loadtxt(tmpfile)
+                            results[name] = frame
+                        except Exception as e:
+                            print(f"Loading error for {name}: {e}")
+                            results[name] = None
+
+                # Start one thread per detector
+                for name, det in self.detectors.items():
+                    t = threading.Thread(target=acquire_frame, args=(det, name))
+                    threads.append(t)
+                    t.start()
+                for t in threads:
+                    t.join()
+
+                callback(results)
+
+                # Cleanup
+                for name in tmpdirs:
+                    try:
+                        os.remove(tmpfiles[name])
+                        os.rmdir(tmpdirs[name])
+                    except Exception:
+                        pass
+
+                if interval:
+                    time.sleep(interval)
+
+
+
 
 
 class XYStageLibController:
