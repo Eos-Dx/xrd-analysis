@@ -71,8 +71,6 @@ Wavelength: 1.5406e-10
 """.strip()
 
 
-
-
 class MeasurementWorker(QObject):
     measurement_ready = pyqtSignal(int, str, str, float, float, int)
 
@@ -685,24 +683,43 @@ class ZoneMeasurementsMixin:
             return
 
         print(f"[Measurement] capture successful: {result_files}")
+        import shutil  # at the top if not already imported
+
+        def _move_to_detector_folder(src_file, detector):
+            # detector is 'WAXS' or 'SAXS'
+            det_folder = os.path.join(os.path.dirname(src_file), detector)
+            os.makedirs(det_folder, exist_ok=True)
+            dst_file = os.path.join(det_folder, os.path.basename(src_file))
+            shutil.move(src_file, dst_file)
+            return dst_file
+
+        # Save WAXS
         waxs_file = result_files.get("WAXS")
+        if waxs_file:
+            waxs_file = _move_to_detector_folder(waxs_file, "WAXS")
+            try:
+                data_waxs = np.loadtxt(waxs_file)
+                waxs_npy = waxs_file.replace(".txt", ".npy")
+                np.save(waxs_npy, data_waxs)
+            except Exception as e:
+                print(f"Conversion error for WAXS: {e}")
+                waxs_npy = waxs_file
+        else:
+            waxs_npy = None
+
+        # Save SAXS
         saxs_file = result_files.get("SAXS")
-
-        try:
-            data_waxs = np.loadtxt(waxs_file)
-            waxs_npy = waxs_file.replace(".txt", ".npy")
-            np.save(waxs_npy, data_waxs)
-        except Exception as e:
-            print(f"Conversion error for WAXS: {e}")
-            waxs_npy = waxs_file
-
-        try:
-            data_saxs = np.loadtxt(saxs_file)
-            saxs_npy = saxs_file.replace(".txt", ".npy")
-            np.save(saxs_npy, data_saxs)
-        except Exception as e:
-            print(f"Conversion error for SAXS: {e}")
-            saxs_npy = saxs_file
+        if saxs_file:
+            saxs_file = _move_to_detector_folder(saxs_file, "SAXS")
+            try:
+                data_saxs = np.loadtxt(saxs_file)
+                saxs_npy = saxs_file.replace(".txt", ".npy")
+                np.save(saxs_npy, data_saxs)
+            except Exception as e:
+                print(f"Conversion error for SAXS: {e}")
+                saxs_npy = saxs_file
+        else:
+            saxs_npy = None
 
         current_row = self.sorted_indices[
             self.current_measurement_sorted_index

@@ -164,13 +164,21 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
         for det in ['WAXS', 'SAXS']:
             txt_file = result_files[det]
+
+            # --- Save in subfolder ---
+            det_folder = os.path.join(os.path.dirname(txt_file), det)
+            os.makedirs(det_folder, exist_ok=True)
+            new_txt_file = os.path.join(det_folder, os.path.basename(txt_file))
+            os.replace(txt_file, new_txt_file)  # Move file to subfolder
+
+            # Convert to .npy in same subfolder
             try:
-                data = np.loadtxt(txt_file)
-                npy = txt_file.replace(".txt", ".npy")
+                data = np.loadtxt(new_txt_file)
+                npy = new_txt_file.replace(".txt", ".npy")
                 np.save(npy, data)
             except Exception as e:
                 print(f"Conversion error for {det}:", e)
-                npy = txt_file
+                npy = new_txt_file
 
             # Add to auxList: show detector label
             item = QListWidgetItem(f"{det}: {os.path.basename(npy)}")
@@ -190,13 +198,20 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self._start_capture("Aux")
 
     def open_measurement(self, item: QListWidgetItem):
+        file_path = item.data(Qt.UserRole)
+        # Detect which detector (assumes filename contains "WAXS" or "SAXS")
+        if "WAXS" in file_path:
+            detector = "WAXS"
+        elif "SAXS" in file_path:
+            detector = "SAXS"
+        else:
+            detector = "WAXS"  # fallback
         show_measurement_window(
-            item.data(Qt.UserRole),
-            getattr(self, "mask", None),
-            getattr(self, "poni", None),
+            file_path,
+            self.masks.get(detector),
+            self.ponis.get(detector),
             self
         )
-
     def run_pyfai(self):
         env = self.config.get("conda")
         if not env:
