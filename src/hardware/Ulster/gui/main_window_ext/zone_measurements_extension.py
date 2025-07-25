@@ -1,53 +1,104 @@
 import json
-import time
 import os
-import numpy as np
+import time
 from copy import copy
-from pathlib import Path
 from functools import partial
+from pathlib import Path
 
-from PyQt5.QtWidgets import (
-    QDockWidget, QLabel, QSpinBox, QLineEdit, QFileDialog,
-    QSpacerItem, QSizePolicy, QProgressBar,
-    QVBoxLayout, QDoubleSpinBox, QGraphicsLineItem
-)
-from PyQt5.QtCore import QTimer
+import numpy as np
+from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QPen
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, Qt
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton
+from PyQt5.QtWidgets import (
+    QDockWidget,
+    QDoubleSpinBox,
+    QFileDialog,
+    QGraphicsLineItem,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QProgressBar,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
+)
 
-from xrdanalysis.data_processing.utility_functions import create_mask
+from hardware.Ulster.gui.technical.capture import (
+    CaptureWorker,
+    compute_hf_score_from_cake,
+    show_measurement_window,
+    validate_folder,
+)
+from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
 from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
 from hardware.Ulster.hardware.hardware_control import (
     DetectorController,
-    XYStageLibController
+    XYStageLibController,
 )
-
-from hardware.Ulster.gui.technical.capture import (CaptureWorker, validate_folder,
-                                                   show_measurement_window, compute_hf_score_from_cake)
+from xrdanalysis.data_processing.utility_functions import create_mask
 
 
 class MeasurementWorker(QObject):
-    # this signal carries the row number and filename back to the GUI thread
-    measurement_ready = pyqtSignal(int, str, float, int)
+    measurement_ready = pyqtSignal(int, str, str, float, float, int)
 
-    def __init__(self, row, measurement_filename, mask, poni, parent, hf_cutoff_fraction: float = 0.2,
-                 columns_to_remove: int = 30):
+    def __init__(
+        self,
+        row,
+        waxs_filename,
+        saxs_filename,
+        mask,
+        poni,
+        parent,
+        hf_cutoff_fraction=0.2,
+        columns_to_remove=30,
+    ):
         super().__init__()
         self.row = row
-        self.measurement_filename = measurement_filename
+        self.waxs_filename = waxs_filename
+        self.saxs_filename = saxs_filename
         self.mask = mask
         self.poni = poni
-        self.parent = parent,
+        self.parent = parent
         self.hf_cutoff_fraction = hf_cutoff_fraction
         self.columns_to_remove = columns_to_remove
-        self.goodness = 0
 
     def run(self):
-        self.goodness = compute_hf_score_from_cake(self.measurement_filename, self.poni, self.mask,
-                                                   hf_cutoff_fraction=self.hf_cutoff_fraction,
-                                                   skip_bins=self.columns_to_remove)
-        self.measurement_ready.emit(self.row, self.measurement_filename, self.goodness, self.columns_to_remove)
+        from hardware.Ulster.gui.technical.capture import (
+            compute_hf_score_from_cake,
+        )
+
+        try:
+            goodness_waxs = compute_hf_score_from_cake(
+                self.waxs_filename,
+                self.poni,
+                self.mask,
+                hf_cutoff_fraction=self.hf_cutoff_fraction,
+                skip_bins=self.columns_to_remove,
+            )
+        except Exception as e:
+            print(f"Error WAXS: {e}")
+            goodness_waxs = float("nan")
+        try:
+            goodness_saxs = compute_hf_score_from_cake(
+                self.saxs_filename,
+                self.poni,
+                self.mask,
+                hf_cutoff_fraction=self.hf_cutoff_fraction,
+                skip_bins=self.columns_to_remove,
+            )
+        except Exception as e:
+            print(f"Error SAXS: {e}")
+            goodness_saxs = float("nan")
+        self.measurement_ready.emit(
+            self.row,
+            self.waxs_filename,
+            self.saxs_filename,
+            goodness_waxs,
+            goodness_saxs,
+            self.columns_to_remove,
+        )
 
 
 class ZoneMeasurementsMixin:
@@ -89,14 +140,18 @@ class ZoneMeasurementsMixin:
         xyLabel = QLabel("XY Stage:")
         self.xyStageIndicator = QLabel()
         self.xyStageIndicator.setFixedSize(20, 20)
-        self.xyStageIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
+        self.xyStageIndicator.setStyleSheet(
+            "background-color: gray; border-radius: 10px;"
+        )
         statusLayout.addWidget(xyLabel)
         statusLayout.addWidget(self.xyStageIndicator)
 
         cameraLabel = QLabel("Camera:")
         self.cameraIndicator = QLabel()
         self.cameraIndicator.setFixedSize(20, 20)
-        self.cameraIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
+        self.cameraIndicator.setStyleSheet(
+            "background-color: gray; border-radius: 10px;"
+        )
         statusLayout.addWidget(cameraLabel)
         statusLayout.addWidget(self.cameraIndicator)
 
@@ -155,7 +210,11 @@ class ZoneMeasurementsMixin:
         folderLayout = QHBoxLayout()
         folderLabel = QLabel("Save Folder:")
         self.folderLineEdit = QLineEdit()
-        default_folder = self.config.get("default_folder", "") if hasattr(self, "config") else ""
+        default_folder = (
+            self.config.get("default_folder", "")
+            if hasattr(self, "config")
+            else ""
+        )
         self.folderLineEdit.setText(default_folder)
         self.browseBtn = QPushButton("Browse...")
         self.browseBtn.clicked.connect(self.browse_folder)
@@ -185,7 +244,9 @@ class ZoneMeasurementsMixin:
         self.add_distance_lineedit = QLineEdit("2cm")
         additionalLayout.addWidget(self.add_distance_btn)
         additionalLayout.addWidget(self.add_distance_lineedit)
-        additionalLayout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        additionalLayout.addItem(
+            QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        )
         layout.addLayout(additionalLayout)
 
         self.add_distance_btn.clicked.connect(self.handle_add_distance)
@@ -238,20 +299,26 @@ class ZoneMeasurementsMixin:
         if not self.hardware_initialized:
             dev_mode = self.config.get("DEV", True)
             serial_str = self.config.get("serial_number_XY", "default_serial")
-            self.stage_controller = XYStageLibController(serial_num=serial_str, x_chan=2, y_chan=1, dev=dev_mode)
+            self.stage_controller = XYStageLibController(
+                serial_num=serial_str, x_chan=2, y_chan=1, dev=dev_mode
+            )
             res_xystage = self.stage_controller.init_stage()
 
-            self.detector_controller = DetectorController(capture_enabled=True, dev=dev_mode)
+            self.detector_controller = DetectorController(
+                capture_enabled=True, dev=dev_mode
+            )
             res_det = self.detector_controller.init_detector()
 
             # Update indicators
             self.xyStageIndicator.setStyleSheet(
-                "background-color: green; border-radius: 10px;" if res_xystage else
-                "background-color: red; border-radius: 10px;"
+                "background-color: green; border-radius: 10px;"
+                if res_xystage
+                else "background-color: red; border-radius: 10px;"
             )
             self.cameraIndicator.setStyleSheet(
-                "background-color: green; border-radius: 10px;" if res_det else
-                "background-color: red; border-radius: 10px;"
+                "background-color: green; border-radius: 10px;"
+                if res_det
+                else "background-color: red; border-radius: 10px;"
             )
 
             ok = res_xystage and res_det
@@ -279,8 +346,12 @@ class ZoneMeasurementsMixin:
                 print(f"Error deinitializing detector: {e}")
 
             # Reset indicators and controls
-            self.xyStageIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
-            self.cameraIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
+            self.xyStageIndicator.setStyleSheet(
+                "background-color: gray; border-radius: 10px;"
+            )
+            self.cameraIndicator.setStyleSheet(
+                "background-color: gray; border-radius: 10px;"
+            )
             self.start_btn.setEnabled(False)
             self.pause_btn.setEnabled(False)
             self.stop_btn.setEnabled(False)
@@ -293,7 +364,10 @@ class ZoneMeasurementsMixin:
             self.hardware_state_changed.emit(False)
 
     def load_default_mask(self):
-        faulty_pixels = Path(__file__).resolve().parent.parent.parent / 'resources/faulty_pixels.npy'
+        faulty_pixels = (
+            Path(__file__).resolve().parent.parent.parent
+            / "resources/faulty_pixels.npy"
+        )
         if faulty_pixels.exists():
             self.mask = self._create_mask(faulty_pixels)
         else:
@@ -311,7 +385,7 @@ class ZoneMeasurementsMixin:
         if poni_file:
             self.poniLineEdit.setText(poni_file)
             try:
-                with open(poni_file, 'r') as f:
+                with open(poni_file, "r") as f:
                     self.poni = f.read()
             except Exception as e:
                 print(f"Error reading PONI file: {e}")
@@ -327,15 +401,23 @@ class ZoneMeasurementsMixin:
         Opens a file dialog to select a mask file and loads it.
         """
         mask_file, _ = QFileDialog.getOpenFileName(
-            self, "Select Mask File", "", "Mask Files (*.mask *.txt);;All Files (*)"
+            self,
+            "Select Mask File",
+            "",
+            "Mask Files (*.mask *.txt);;All Files (*)",
         )
         if mask_file:
             self.maskLineEdit.setText(mask_file)
             self.load_mask_file(mask_file)
 
     def _create_mask(self, mask_file):
-        return create_mask(np.load(mask_file), (self.config["detector_size"]["width"],
-                                                self.config["detector_size"]["height"]))
+        return create_mask(
+            np.load(mask_file),
+            (
+                self.config["detector_size"]["width"],
+                self.config["detector_size"]["height"],
+            ),
+        )
 
     def browse_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
@@ -358,23 +440,28 @@ class ZoneMeasurementsMixin:
     def handle_add_count(self):
         # Append the value from addCountSpinBox to fileNameLineEdit.
         current_filename = self.fileNameLineEdit.text()
-        appended_value = '_' + str(self.addCountSpinBox.value())
+        appended_value = "_" + str(self.addCountSpinBox.value())
         self.fileNameLineEdit.setText(current_filename + appended_value)
 
     def handle_add_distance(self):
         # Append the text from add_distance_lineedit to fileNameLineEdit.
         current_filename = self.fileNameLineEdit.text()
-        appended_value = '_' + self.add_distance_lineedit.text()
+        appended_value = "_" + self.add_distance_lineedit.text()
         self.fileNameLineEdit.setText(current_filename + appended_value)
 
     def home_stage_button_clicked(self):
         """
         Homes the XY stage using the controller.
         """
-        if hasattr(self, 'stage_controller') and self.stage_controller is not None:
+        if (
+            hasattr(self, "stage_controller")
+            and self.stage_controller is not None
+        ):
             x, y = self.stage_controller.home_stage(home_timeout=10)
             print(f"Home position reached: ({x}, {y})")
-            self.xyStageIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
+            self.xyStageIndicator.setStyleSheet(
+                "background-color: green; border-radius: 10px;"
+            )
         else:
             print("Stage not initialized.")
 
@@ -382,8 +469,13 @@ class ZoneMeasurementsMixin:
         """
         Moves the XY stage to a fixed position when the Load Position button is clicked.
         """
-        if hasattr(self, 'stage_controller') and self.stage_controller is not None:
-            new_x, new_y = self.stage_controller.move_stage(-10, -15, move_timeout=10)
+        if (
+            hasattr(self, "stage_controller")
+            and self.stage_controller is not None
+        ):
+            new_x, new_y = self.stage_controller.move_stage(
+                -10, -15, move_timeout=10
+            )
             print(f"Loaded position: ({new_x}, {new_y})")
         else:
             print("Stage not initialized.")
@@ -392,13 +484,20 @@ class ZoneMeasurementsMixin:
         """
         Sorts points by coordinates and then begins the measurement sequence.
         """
-        self.measurement_folder = validate_folder(self.folderLineEdit.text().strip())
-        self.state_path_measurements = Path(self.measurement_folder) / f'{self.fileNameLineEdit.text()}_state.json'
+        self.measurement_folder = validate_folder(
+            self.folderLineEdit.text().strip()
+        )
+        self.state_path_measurements = (
+            Path(self.measurement_folder)
+            / f"{self.fileNameLineEdit.text()}_state.json"
+        )
         self.manual_save_state()
         self.state_measurements = copy(self.state)
         try:
             with open(self.state_path_measurements, "w") as f:
-                self.state_measurements['image_base64'] = encode_image_to_base64(self.image_view.current_image_path)
+                self.state_measurements["image_base64"] = (
+                    encode_image_to_base64(self.image_view.current_image_path)
+                )
                 json.dump(self.state_measurements, f, indent=4)
         except Exception as e:
             print(e)
@@ -420,16 +519,34 @@ class ZoneMeasurementsMixin:
         for i, item in enumerate(generated_points):
             center = item.sceneBoundingRect().center()
             # Calculate x_mm and y_mm as needed (adjusting for pixel scale etc.)
-            x_mm = self.real_x_pos_mm.value() - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
-            y_mm = self.real_x_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
+            x_mm = (
+                self.real_x_pos_mm.value()
+                - (center.x() - self.include_center[0])
+                / self.pixel_to_mm_ratio
+            )
+            y_mm = (
+                self.real_x_pos_mm.value()
+                - (center.y() - self.include_center[1])
+                / self.pixel_to_mm_ratio
+            )
             all_points.append((i, x_mm, y_mm))
         offset = len(generated_points)
         for j, item in enumerate(user_points):
             center = item.sceneBoundingRect().center()
-            x_mm = self.real_x_pos_mm.value() - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
-            y_mm = self.real_x_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
+            x_mm = (
+                self.real_x_pos_mm.value()
+                - (center.x() - self.include_center[0])
+                / self.pixel_to_mm_ratio
+            )
+            y_mm = (
+                self.real_x_pos_mm.value()
+                - (center.y() - self.include_center[1])
+                / self.pixel_to_mm_ratio
+            )
             all_points.append((offset + j, x_mm, y_mm))
-        all_points_sorted = sorted(all_points, key=lambda tup: (tup[1], tup[2]))
+        all_points_sorted = sorted(
+            all_points, key=lambda tup: (tup[1], tup[2])
+        )
         self.sorted_indices = [tup[0] for tup in all_points_sorted]
         self.total_points = len(self.sorted_indices)
         self.current_measurement_sorted_index = 0
@@ -439,14 +556,16 @@ class ZoneMeasurementsMixin:
         self.integration_time = self.integrationSpinBox.value()
         self.initial_estimate = self.total_points * self.integration_time
         self.measurementStartTime = time.time()
-        self.timeRemainingLabel.setText(f"Estimated time: {self.initial_estimate:.0f} sec")
+        self.timeRemainingLabel.setText(
+            f"Estimated time: {self.initial_estimate:.0f} sec"
+        )
         print("Starting measurements in sorted order...")
         self.measure_next_point()
 
     def measure_next_point(self):
         """
         Moves the stage to each point, performs a measurement,
-        and converts the data.
+        and converts the data for both detectors.
         """
         if self.stopped:
             print("Measurement stopped.")
@@ -466,68 +585,80 @@ class ZoneMeasurementsMixin:
         up = self.image_view.points_dict["user"]["points"]
         if index < len(gp):
             self._point_item = gp[index]
-            self._zone_item = self.image_view.points_dict["generated"]["zones"][index]
+            self._zone_item = self.image_view.points_dict["generated"][
+                "zones"
+            ][index]
         else:
             user_index = index - len(gp)
             self._point_item = up[user_index]
-            zone_item = self.image_view.points_dict["user"]["zones"][user_index]
+            self._zone_item = self.image_view.points_dict["user"]["zones"][
+                user_index
+            ]
         self.update_xy_pos()
         center = self._point_item.sceneBoundingRect().center()
-        self._x_mm = self.real_x_pos_mm.value() - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
-        self._y_mm = self.real_y_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
+        self._x_mm = (
+            self.real_x_pos_mm.value()
+            - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
+        )
+        self._y_mm = (
+            self.real_y_pos_mm.value()
+            - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
+        )
 
         # Move the stage using the new controller.
-        new_x, new_y = self.stage_controller.move_stage(self._x_mm, self._y_mm, move_timeout=10)
+        new_x, new_y = self.stage_controller.move_stage(
+            self._x_mm, self._y_mm, move_timeout=10
+        )
 
-        # Build filename.
+        # Build a common filename base (WITHOUT extension or detector label)
         self._timestamp = time.strftime("%Y%m%d_%H%M%S")
         self._base_name = self.fileNameLineEdit.text().strip()
-        txt_filename = os.path.join(self.measurement_folder,
-                                    f"{self._base_name}_{self._x_mm:.2f}_{self._y_mm:.2f}_{self._timestamp}.txt")
+        txt_filename_base = os.path.join(
+            self.measurement_folder,
+            f"{self._base_name}_{self._x_mm:.2f}_{self._y_mm:.2f}_{self._timestamp}",
+        )
 
-        # launch the capture in its own thread:
+        # Launch the dual-capture worker in its own thread
         self.capture_worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=self.integration_time,
-            txt_filename=txt_filename
+            txt_filename_base=txt_filename_base,  # <--- KEY POINT
         )
         self.capture_worker.finished.connect(self.on_capture_finished)
         self.capture_worker.start()
 
-    def on_capture_finished(self, success: bool, txt_filename: str):
-        if success:
-            state_path = self.state_path_measurements
-            # Build the new entry
-            new_meta = {
-                Path(txt_filename).name: {
-                    'x': self._x_mm,
-                    'y': self._y_mm,
-                    'base_file': self._base_name,
-                    'integration_time': self.integration_time,
-                    'distance': self.add_distance_lineedit.text()
-                }
-            }
+    def on_capture_finished(self, success: bool, result_files: dict):
+        if not success:
+            print("[Measurement] capture failed.")
+            # handle fail...
+            return
 
-            # Get the existing measurements_meta (or an empty dict), update it, and save back
-            measurements = self.state_measurements.get('measurements_meta', {})
-            measurements.update(new_meta)
-            self.state_measurements['measurements_meta'] = measurements
+        print(f"[Measurement] capture successful: {result_files}")
+        waxs_file = result_files.get("WAXS")
+        saxs_file = result_files.get("SAXS")
 
-            with open(state_path, 'w') as f:
-                json.dump(self.state_measurements, f, indent=4)
+        try:
+            data_waxs = np.loadtxt(waxs_file)
+            waxs_npy = waxs_file.replace(".txt", ".npy")
+            np.save(waxs_npy, data_waxs)
+        except Exception as e:
+            print(f"Conversion error for WAXS: {e}")
+            waxs_npy = waxs_file
 
-            # Convert the captured data.
-            try:
-                data = np.loadtxt(txt_filename)
-                npy_filename = os.path.join(self.measurement_folder,
-                                            f"{self._base_name}_{self._x_mm:.2f}_{self._y_mm:.2f}_{self._timestamp}.npy")
-                np.save(npy_filename, data)
-                print(f"Converted {txt_filename} to {npy_filename}")
-            except Exception as e:
-                print(f"Error converting file: {e}")
-                npy_filename = txt_filename  # Fallback
+        try:
+            data_saxs = np.loadtxt(saxs_file)
+            saxs_npy = saxs_file.replace(".txt", ".npy")
+            np.save(saxs_npy, data_saxs)
+        except Exception as e:
+            print(f"Conversion error for SAXS: {e}")
+            saxs_npy = saxs_file
 
-        self.spawn_measurement_thread(self.sorted_indices[self.current_measurement_sorted_index], npy_filename)
+        current_row = self.sorted_indices[
+            self.current_measurement_sorted_index
+        ]
+
+        # Launch post-processing for both detectors
+        self.spawn_measurement_thread(current_row, waxs_npy, saxs_npy)
         # Visual feedback.
         green_brush = QColor(0, 255, 0)
         self._point_item.setBrush(green_brush)
@@ -540,91 +671,55 @@ class ZoneMeasurementsMixin:
             print(e)
         QTimer.singleShot(1000, self.measurement_finished)
 
-    def add_measurement_to_table(self, row, measurement_filename, goodness, columns_to_remove=30):
-        """
-        Adds a clickable button to column 5 and a goodness label to column 6.
-        """
-        # — COLUMN 5: measurement button —
-        widget5 = self.pointsTable.cellWidget(row, 5)
-        if widget5 is None:
-            widget5 = QWidget()
-            layout5 = QHBoxLayout(widget5)
-            layout5.setContentsMargins(0, 0, 0, 0)
-            widget5.setLayout(layout5)
-            self.pointsTable.setCellWidget(row, 5, widget5)
-        else:
-            layout5 = widget5.layout()
-
-        btn = QPushButton(os.path.basename(measurement_filename))
-        btn.setStyleSheet(
-            "Text-align:left; "
-            "border: none; "
-            "color: blue; "
-            "text-decoration: underline;"
+    def add_measurement_to_table(
+        self,
+        row,
+        waxs_filename,
+        saxs_filename,
+        goodness_waxs,
+        goodness_saxs,
+        columns_to_remove=30,
+    ):
+        widget = self.pointsTable.cellWidget(row, 5)
+        if not isinstance(widget, MeasurementHistoryWidget):
+            widget = MeasurementHistoryWidget(
+                mask=self.mask, poni=getattr(self, "poni", None), parent=self
+            )
+            self.pointsTable.setCellWidget(row, 5, widget)
+        widget.add_measurement(
+            waxs_filename,
+            saxs_filename,
+            goodness_waxs,
+            goodness_saxs,
+            getattr(self, "_timestamp", ""),
         )
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.clicked.connect(partial(
-            show_measurement_window,
-            measurement_filename,
-            self.mask,
-            getattr(self, "poni", None),
-            self,
-            columns_to_remove,
-            round(goodness, 2)
-        ))
-        layout5.addWidget(btn)
 
-        # — COLUMN 6: goodness value —
-        widget6 = self.pointsTable.cellWidget(row, 6)
-        if widget6 is None:
-            widget6 = QWidget()
-            layout6 = QHBoxLayout(widget6)
-            layout6.setContentsMargins(0, 0, 0, 0)
-            widget6.setLayout(layout6)
-            self.pointsTable.setCellWidget(row, 6, widget6)
-        else:
-            layout6 = widget6.layout()
-
-        # Format goodness as percent with one decimal
-        goodness_label = QLabel(f"{goodness:.1f}%")
-        goodness_label.setAlignment(Qt.AlignCenter)
-        # Optionally style it (gray text, fixed width, etc.)
-        goodness_label.setStyleSheet("color: gray;")
-        layout6.addWidget(goodness_label)
-
-    def spawn_measurement_thread(self, row, measurement_filename):
-        """
-        Creates a QThread + worker to do heavy lifting, then
-        adds the button in the GUI when ready.
-        """
-        thread = QThread(self)  # create a new thread
+    def spawn_measurement_thread(self, row, waxs_filename, saxs_filename):
+        thread = QThread(self)
         worker = MeasurementWorker(
             row=row,
-            measurement_filename=measurement_filename,
+            waxs_filename=waxs_filename,
+            saxs_filename=saxs_filename,
             mask=self.mask,
             poni=getattr(self, "poni", None),
             parent=self,
-            hf_cutoff_fraction=.2,
-            columns_to_remove=30
+            hf_cutoff_fraction=0.2,
+            columns_to_remove=30,
         )
         worker.moveToThread(thread)
-
-        # when the thread starts, run the worker
         thread.started.connect(worker.run)
-        # when the worker is done, add the button and clean up
         worker.measurement_ready.connect(self.add_measurement_to_table)
         worker.measurement_ready.connect(thread.quit)
         worker.measurement_ready.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
         self._measurement_threads.append((thread, worker))
-
         thread.start()
 
     def pause_measurements(self):
         """
         Toggles pause/resume state.
         """
-        if not hasattr(self, 'paused'):
+        if not hasattr(self, "paused"):
             self.paused = False
         if not self.paused:
             self.paused = True
@@ -664,11 +759,21 @@ class ZoneMeasurementsMixin:
         elapsed = time.time() - self.measurementStartTime
         if self.current_measurement_sorted_index > 0:
             avg_time = elapsed / self.current_measurement_sorted_index
-            remaining = avg_time * (self.total_points - self.current_measurement_sorted_index)
-            percent_complete = (self.current_measurement_sorted_index / self.total_points) * 100
-            self.timeRemainingLabel.setText(f"{percent_complete:.0f}% done, {remaining:.0f} sec remaining")
+            remaining = avg_time * (
+                self.total_points - self.current_measurement_sorted_index
+            )
+            percent_complete = (
+                self.current_measurement_sorted_index / self.total_points
+            ) * 100
+            self.timeRemainingLabel.setText(
+                f"{percent_complete:.0f}% done, {remaining:.0f} sec remaining"
+            )
 
-        if self.current_measurement_sorted_index < self.total_points and not self.paused and not self.stopped:
+        if (
+            self.current_measurement_sorted_index < self.total_points
+            and not self.paused
+            and not self.stopped
+        ):
             self.measure_next_point()
         else:
             if self.current_measurement_sorted_index >= self.total_points:
@@ -682,7 +787,9 @@ class ZoneMeasurementsMixin:
         Updates the XY stage position into the spin boxes.
         """
 
-        if getattr(self, 'hardware_initialized', False) and hasattr(self, 'stage_controller'):
+        if getattr(self, "hardware_initialized", False) and hasattr(
+            self, "stage_controller"
+        ):
             try:
                 x, y = self.stage_controller.get_xy_position()
                 self.xPosSpin.setValue(x)
@@ -701,9 +808,14 @@ class ZoneMeasurementsMixin:
             self.image_view.scene.removeItem(itm)
 
         def mm_to_pixels(self, x_mm: float, y_mm: float):
-            x = (self.real_x_pos_mm.value() - x_mm) * self.pixel_to_mm_ratio + self.include_center[0]
-            y = (self.real_y_pos_mm.value() - y_mm) * self.pixel_to_mm_ratio + self.include_center[1]
+            x = (
+                self.real_x_pos_mm.value() - x_mm
+            ) * self.pixel_to_mm_ratio + self.include_center[0]
+            y = (
+                self.real_y_pos_mm.value() - y_mm
+            ) * self.pixel_to_mm_ratio + self.include_center[1]
             return x, y
+
         x, y = mm_to_pixels(self, x, y)
 
         # 2) if we have valid coords, draw new cross
@@ -730,7 +842,9 @@ class ZoneMeasurementsMixin:
         """
         Move stage to the X,Y values specified in the spin boxes.
         """
-        if hasattr(self, 'stage_controller') and getattr(self, 'hardware_initialized', False):
+        if hasattr(self, "stage_controller") and getattr(
+            self, "hardware_initialized", False
+        ):
             x = self.xPosSpin.value()
             y = self.yPosSpin.value()
             try:

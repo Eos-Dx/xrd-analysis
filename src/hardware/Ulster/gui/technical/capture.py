@@ -1,40 +1,49 @@
-from PyQt5.QtCore import  QThread, pyqtSignal
 import os
+
 import numpy as np
 import seaborn as sns
-from PyQt5.QtWidgets import QDialog, QHBoxLayout
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import (
+    FigureCanvasQTAgg as FigureCanvas,
+)
 from matplotlib.figure import Figure
+from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtWidgets import QDialog, QHBoxLayout
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     initialize_azimuthal_integrator_df,
-    initialize_azimuthal_integrator_poni_text
+    initialize_azimuthal_integrator_poni_text,
 )
 
-from PyQt5.QtCore import QThread, pyqtSignal
 
 class CaptureWorker(QThread):
     # Emits (success: bool, result_files: dict) e.g. {"WAXS": path1, "SAXS": path2}
     finished = pyqtSignal(bool, dict)
 
-    def __init__(self, detector_controller, integration_time, txt_filename_base, parent=None):
+    def __init__(
+        self,
+        detector_controller,
+        integration_time,
+        txt_filename_base,
+        parent=None,
+    ):
         super().__init__(parent)
         self.detector_controller = detector_controller
         self.integration_time = integration_time
-        self.txt_filename_base = txt_filename_base  # Only the base; suffixes will be added
+        self.txt_filename_base = (
+            txt_filename_base  # Only the base; suffixes will be added
+        )
 
     def run(self):
         # Perform dual acquisition
         success = self.detector_controller.capture_point(
-            1,
-            self.integration_time,
-            self.txt_filename_base
+            1, self.integration_time, self.txt_filename_base
         )
         # Collect the expected filenames for both detectors
         result_files = {}
         for name in ["WAXS", "SAXS"]:
             result_files[name] = f"{self.txt_filename_base}_{name}.txt"
         self.finished.emit(success, result_files)
+
 
 def validate_folder(path: str):
     if not path:
@@ -86,29 +95,20 @@ def show_measurement_window(
             center_column,
             center_row,
             wavelength,
-            sample_distance_mm
+            sample_distance_mm,
         )
 
     # Perform integration
     npt = 200
     try:
         result = ai.integrate1d(
-            data,
-            npt,
-            unit="q_nm^-1",
-            error_model="azimuthal",
-            mask=mask
+            data, npt, unit="q_nm^-1", error_model="azimuthal", mask=mask
         )
         radial = result.radial
         intensity = result.intensity
         std = result.std
         sigma = result.sigma
-        cake, _, _ = ai.integrate2d(
-            data,
-            200,
-            npt_azim=180,
-            mask=mask
-        )
+        cake, _, _ = ai.integrate2d(data, 200, npt_azim=180, mask=mask)
     except Exception as e:
         print(f"Error integrating data: {e}")
         return None
@@ -116,7 +116,9 @@ def show_measurement_window(
     # Create dialog and layout
     try:
         dialog = QDialog(parent)
-        dialog.setWindowTitle(f"Azimuthal Integration: {os.path.basename(measurement_filename)}")
+        dialog.setWindowTitle(
+            f"Azimuthal Integration: {os.path.basename(measurement_filename)}"
+        )
         layout = QHBoxLayout(dialog)
     except Exception as e:
         raise e
@@ -130,8 +132,6 @@ def show_measurement_window(
     sns.heatmap(data, robust=True, square=True, ax=ax1)
     ax1.set_title("2D Image")
 
-    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-
     # Top-right: 1D integration
     from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
@@ -143,13 +143,13 @@ def show_measurement_window(
         radial,
         intensity,
         yerr=sigma,
-        fmt='-o',  # line + circle marker
+        fmt="-o",  # line + circle marker
         markersize=3,
         linewidth=1,
-        ecolor='black',  # error‐bar color
+        ecolor="black",  # error‐bar color
         capsize=3,  # horizontal bar at ends
         capthick=1,  # thickness of caps
-        label='Intensity ± σ'
+        label="Intensity ± σ",
     )
 
     # 2) extend x-limits by 30%
@@ -160,7 +160,7 @@ def show_measurement_window(
     ax2.set_title("Azimuthal Integration")
     ax2.set_xlabel("q (nm⁻¹)")
     ax2.set_ylabel("Intensity")
-    ax2.legend(loc='upper right', fontsize='small')
+    ax2.legend(loc="upper right", fontsize="small")
 
     # 3) inset for std (top-left)
     ax_std = inset_axes(
@@ -168,12 +168,11 @@ def show_measurement_window(
         width="30%",  # 30% of ax2 width
         height="30%",  # 30% of ax2 height
         bbox_to_anchor=(0.05, -0.2, 1, 1),  # x0, y0, w, h in axes fraction
-        bbox_transform=ax2.transAxes
+        bbox_transform=ax2.transAxes,
     )
-    ax_std.plot(radial, std, '-', linewidth=1)
-    ax_std.set_title("std", fontsize='x-small')
-    ax_std.tick_params(labelsize='x-small', axis='both', which='both')
-
+    ax_std.plot(radial, std, "-", linewidth=1)
+    ax_std.set_title("std", fontsize="x-small")
+    ax_std.tick_params(labelsize="x-small", axis="both", which="both")
 
     # 4) inset for SNR = I / σ (below the std inset)
     snr = intensity / sigma
@@ -181,13 +180,12 @@ def show_measurement_window(
         ax2,
         width="30%",
         height="30%",
-        bbox_to_anchor=(0.05, -.5, 1, 1),
-        bbox_transform=ax2.transAxes
+        bbox_to_anchor=(0.05, -0.5, 1, 1),
+        bbox_transform=ax2.transAxes,
     )
-    ax_snr.plot(radial, snr, '-', linewidth=1)
-    ax_snr.set_title("SNR", fontsize='x-small')
-    ax_snr.tick_params(labelsize='x-small', axis='both', which='both')
-
+    ax_snr.plot(radial, snr, "-", linewidth=1)
+    ax_snr.set_title("SNR", fontsize="x-small")
+    ax_snr.tick_params(labelsize="x-small", axis="both", which="both")
 
     # Bottom-left: cake representation
     ax3 = fig.add_subplot(2, 2, 3)
@@ -196,11 +194,13 @@ def show_measurement_window(
 
     # Bottom-right: deviation map
     cake2 = cake[:, columns_to_remove:]
-    mask_zero = (cake2 == 0)
+    mask_zero = cake2 == 0
     col_sums = cake2.sum(axis=0)
     valid_counts = (~mask_zero).sum(axis=0)
     col_means = np.divide(col_sums, valid_counts, where=valid_counts > 0)
-    pct_dev = (cake2 - col_means[np.newaxis, :]) / col_means[np.newaxis, :] * 100
+    pct_dev = (
+        (cake2 - col_means[np.newaxis, :]) / col_means[np.newaxis, :] * 100
+    )
 
     ax4 = fig.add_subplot(2, 2, 4)
     sns.heatmap(pct_dev, robust=True, square=True, ax=ax4)
@@ -219,7 +219,7 @@ def compute_hf_score_from_cake(
     poni_text: str = None,
     mask=None,
     hf_cutoff_fraction: float = 0.2,
-    skip_bins: int = 30
+    skip_bins: int = 30,
 ):
     """
     Compute the percentage of power in 'high' spatial frequencies
@@ -246,27 +246,18 @@ def compute_hf_score_from_cake(
             center_column,
             center_row,
             wavelength,
-            sample_distance_mm
+            sample_distance_mm,
         )
 
     # Perform integration
     npt = 200
     try:
         result = ai.integrate1d(
-            data,
-            npt,
-            unit="q_nm^-1",
-            error_model="azimuthal",
-            mask=mask
+            data, npt, unit="q_nm^-1", error_model="azimuthal", mask=mask
         )
         radial = result.radial
         intensity = result.intensity
-        cake, _, _ = ai.integrate2d(
-            data,
-            200,
-            npt_azim=180,
-            mask=mask
-        )
+        cake, _, _ = ai.integrate2d(data, 200, npt_azim=180, mask=mask)
     except Exception as e:
         print(f"Error integrating data: {e}")
         return None
