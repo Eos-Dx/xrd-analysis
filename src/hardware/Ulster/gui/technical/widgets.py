@@ -13,11 +13,11 @@ from hardware.Ulster.gui.technical.capture import show_measurement_window
 
 
 class MeasurementHistoryWidget(QWidget):
-    def __init__(self, mask=None, poni=None, parent=None):
+    def __init__(self, masks, ponis, parent=None):
         super().__init__(parent)
         self.measurements = []
-        self.mask = mask
-        self.poni = poni
+        self.masks = masks    # expects a dict: {"WAXS": ..., "SAXS": ...}
+        self.ponis = ponis    # expects a dict: {"WAXS": ..., "SAXS": ...}
         self.parent_window = parent  # main window, for dialog parent
         self.layout = QVBoxLayout(self)
         self.summary_btn = QPushButton("No measurements")
@@ -88,17 +88,18 @@ class MeasurementHistoryWidget(QWidget):
         # Double-click logic
         def cell_double_clicked(row, col):
             if col == 1:  # WAXS File
-                filename = self.measurements[row]["WAXS_filename"]
+                filename = self.measurements[row]['WAXS_filename']
+                detector = "WAXS"
             elif col == 3:  # SAXS File
-                filename = self.measurements[row]["SAXS_filename"]
+                filename = self.measurements[row]['SAXS_filename']
+                detector = "SAXS"
             else:
-                return  # Ignore non-file columns
-            # Call the measurement viewer
+                return
             show_measurement_window(
                 filename,
-                self.mask,
-                self.poni,
-                self.parent_window,  # for dialog parent
+                self.masks.get(detector),
+                self.ponis.get(detector),
+                self.parent_window
             )
 
         table.cellDoubleClicked.connect(cell_double_clicked)

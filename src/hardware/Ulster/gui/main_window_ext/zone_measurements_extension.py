@@ -40,6 +40,39 @@ from hardware.Ulster.hardware.hardware_control import (
 from xrdanalysis.data_processing.utility_functions import create_mask
 
 
+DEFAULT_PONI_WAXS = """
+# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis 
+# Calibration done at Mon Jun  3 16:40:56 2024
+poni_version: 2.1
+Detector: Detector
+Detector_config: {"pixel1": 5.4999999999999995e-05, "pixel2": 5.4999999999999995e-05, "max_shape": [256, 256], "orientation": 3}
+Distance: 0.023128625835860867
+Poni1: 0.00703271933414593
+Poni2: 0.000810597359260136
+Rot1: 0.0
+Rot2: 0.0
+Rot3: 0.0
+Wavelength: 1.5406e-10
+""".strip()
+
+DEFAULT_PONI_SAXS = """
+# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis
+# Calibration done at Mon Jun  3 17:04:33 2024
+poni_version: 2.1
+Detector: Detector
+Detector_config: {"pixel1": 5.4999999999999995e-05, "pixel2": 5.4999999999999995e-05, "max_shape": [256, 256], "orientation": 3}
+Distance: 0.17239906043601042
+Poni1: 0.007020022187721548
+Poni2: 0.0008600585417045749
+Rot1: 0.0
+Rot2: 0.0
+Rot3: 0.0
+Wavelength: 1.5406e-10
+""".strip()
+
+
+
+
 class MeasurementWorker(QObject):
     measurement_ready = pyqtSignal(int, str, str, float, float, int)
 
@@ -48,8 +81,8 @@ class MeasurementWorker(QObject):
         row,
         waxs_filename,
         saxs_filename,
-        mask,
-        poni,
+        masks,   # Dict: {"WAXS": ..., "SAXS": ...}
+        ponis,   # Dict: {"WAXS": ..., "SAXS": ...}
         parent,
         hf_cutoff_fraction=0.2,
         columns_to_remove=30,
@@ -58,39 +91,43 @@ class MeasurementWorker(QObject):
         self.row = row
         self.waxs_filename = waxs_filename
         self.saxs_filename = saxs_filename
-        self.mask = mask
-        self.poni = poni
+        self.masks = masks   # Dict!
+        self.ponis = ponis   # Dict!
         self.parent = parent
         self.hf_cutoff_fraction = hf_cutoff_fraction
         self.columns_to_remove = columns_to_remove
 
     def run(self):
-        from hardware.Ulster.gui.technical.capture import (
-            compute_hf_score_from_cake,
-        )
+        from hardware.Ulster.gui.technical.capture import compute_hf_score_from_cake
 
         try:
             goodness_waxs = compute_hf_score_from_cake(
                 self.waxs_filename,
-                self.poni,
-                self.mask,
+                self.ponis.get("WAXS"),
+                self.masks.get("WAXS"),
                 hf_cutoff_fraction=self.hf_cutoff_fraction,
                 skip_bins=self.columns_to_remove,
             )
+            if goodness_waxs is None:
+                goodness_waxs = float("nan")
         except Exception as e:
             print(f"Error WAXS: {e}")
             goodness_waxs = float("nan")
+
         try:
             goodness_saxs = compute_hf_score_from_cake(
                 self.saxs_filename,
-                self.poni,
-                self.mask,
+                self.ponis.get("SAXS"),
+                self.masks.get("SAXS"),
                 hf_cutoff_fraction=self.hf_cutoff_fraction,
                 skip_bins=self.columns_to_remove,
             )
+            if goodness_saxs is None:
+                goodness_saxs = float("nan")
         except Exception as e:
             print(f"Error SAXS: {e}")
             goodness_saxs = float("nan")
+
         self.measurement_ready.emit(
             self.row,
             self.waxs_filename,
@@ -262,27 +299,29 @@ class ZoneMeasurementsMixin:
         progressLayout.addWidget(self.timeRemainingLabel)
         layout.addLayout(progressLayout)
 
-        # Mask file selection.
-        maskLayout = QHBoxLayout()
-        maskLabel = QLabel("Mask file:")
-        self.maskLineEdit = QLineEdit()
-        self.maskBrowseBtn = QPushButton("Browse...")
-        self.maskBrowseBtn.clicked.connect(self.browse_mask_file)
-        maskLayout.addWidget(maskLabel)
-        maskLayout.addWidget(self.maskLineEdit)
-        maskLayout.addWidget(self.maskBrowseBtn)
-        layout.addLayout(maskLayout)
+        # --- Mask selection widgets ---
+        for det in ["WAXS", "SAXS"]:
+            mask_layout = QHBoxLayout()
+            mask_layout.addWidget(QLabel(f"{det} Mask:"))
+            lineedit = QLineEdit()
+            setattr(self, f"{det.lower()}_mask_lineedit", lineedit)
+            mask_layout.addWidget(lineedit)
+            btn = QPushButton("Browse...")
+            btn.clicked.connect(lambda _, d=det: self.browse_mask_file(detector=d))
+            mask_layout.addWidget(btn)
+            layout.addLayout(mask_layout)
 
-        # PONI file selection.
-        poniLayout = QHBoxLayout()
-        poniLabel = QLabel("PONI file:")
-        self.poniLineEdit = QLineEdit()
-        self.poniBrowseBtn = QPushButton("Browse...")
-        self.poniBrowseBtn.clicked.connect(self.browse_poni_file)
-        poniLayout.addWidget(poniLabel)
-        poniLayout.addWidget(self.poniLineEdit)
-        poniLayout.addWidget(self.poniBrowseBtn)
-        layout.addLayout(poniLayout)
+        # --- PONI selection widgets ---
+        for det in ["WAXS", "SAXS"]:
+            poni_layout = QHBoxLayout()
+            poni_layout.addWidget(QLabel(f"{det} PONI:"))
+            lineedit = QLineEdit()
+            setattr(self, f"{det.lower()}_poni_lineedit", lineedit)
+            poni_layout.addWidget(lineedit)
+            btn = QPushButton("Browse...")
+            btn.clicked.connect(lambda _, d=det: self.browse_poni_file(detector=d))
+            poni_layout.addWidget(btn)
+            layout.addLayout(poni_layout)
 
         container.setLayout(layout)
         self.zoneMeasurementsDock.setWidget(container)
@@ -291,6 +330,78 @@ class ZoneMeasurementsMixin:
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
         self.xyTimer.start(10000)
+
+    def browse_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
+        if folder:
+            self.folderLineEdit.setText(folder)
+
+    def browse_mask_file(self, detector):
+        mask_file, _ = QFileDialog.getOpenFileName(
+            self, f"Select {detector} Mask File", "", "Mask Files (*.mask *.npy *.txt);;All Files (*)"
+        )
+        if mask_file:
+            getattr(self, f"{detector.lower()}_mask_lineedit").setText(mask_file)
+            self.load_mask_file(mask_file, detector)
+
+    def browse_poni_file(self, detector):
+        poni_file, _ = QFileDialog.getOpenFileName(
+            self, f"Select {detector} PONI File", "", "PONI Files (*.poni);;All Files (*)"
+        )
+        if poni_file:
+            getattr(self, f"{detector.lower()}_poni_lineedit").setText(poni_file)
+            self.load_poni_file(poni_file, detector)
+
+    def load_default_mask_and_poni(self):
+        from pathlib import Path
+        import numpy as np
+
+        resource_dir = Path(__file__).resolve().parent.parent.parent / "resources"
+        default_masks = {"WAXS": None, "SAXS": None}
+        default_ponis = {"WAXS": None, "SAXS": None}
+
+        for det in ["WAXS", "SAXS"]:
+            # Load mask
+            mask_path = resource_dir / f"faulty_pixels_{det}.npy"
+            if mask_path.exists():
+                try:
+                    default_masks[det] = self._create_mask(mask_path)
+                except Exception as e:
+                    print(f"Error loading default mask for {det}:", e)
+                    default_masks[det] = np.array([[]])
+            else:
+                print(f"Faulty pixels file was not found for {det}:", mask_path)
+                default_masks[det] = np.array([[]])
+
+            # Load PONI, fallback to hardcoded default if missing
+            poni_path = resource_dir / f"default_{det}.poni"
+            if poni_path.exists():
+                try:
+                    with open(poni_path, "r") as f:
+                        default_ponis[det] = f.read()
+                except Exception as e:
+                    print(f"Error loading default PONI for {det}: {e}")
+                    default_ponis[det] = DEFAULT_PONI_WAXS if det == "WAXS" else DEFAULT_PONI_SAXS
+            else:
+                print(f"Default PONI file was not found for {det}: {poni_path}, using hardcoded default.")
+                default_ponis[det] = DEFAULT_PONI_WAXS if det == "WAXS" else DEFAULT_PONI_SAXS
+
+        self.masks = default_masks
+        self.ponis = default_ponis
+
+    def load_mask_file(self, mask_file, detector):
+        try:
+            data = np.load(mask_file)
+            self.masks[detector] = self._create_mask(data)
+        except Exception as e:
+            print(f"Error loading mask file for {detector}:", e)
+
+    def load_poni_file(self, poni_file, detector):
+        try:
+            with open(poni_file, 'r') as f:
+                self.ponis[detector] = f.read()
+        except Exception as e:
+            print(f"Error loading PONI file for {detector}:", e)
 
     def toggle_hardware(self):
         """
@@ -363,53 +474,6 @@ class ZoneMeasurementsMixin:
             self.hardware_initialized = False
             self.hardware_state_changed.emit(False)
 
-    def load_default_mask(self):
-        faulty_pixels = (
-            Path(__file__).resolve().parent.parent.parent
-            / "resources/faulty_pixels.npy"
-        )
-        if faulty_pixels.exists():
-            self.mask = self._create_mask(faulty_pixels)
-        else:
-            self.mask = np.array([[]])
-            print("Faulty pixels file was not found:", faulty_pixels)
-
-    def browse_poni_file(self):
-        """
-        Opens a file dialog to select a .poni file,
-        populates the line edit, and reads its contents into self.poni.
-        """
-        poni_file, _ = QFileDialog.getOpenFileName(
-            self, "Select PONI File", "", "PONI Files (*.poni);;All Files (*)"
-        )
-        if poni_file:
-            self.poniLineEdit.setText(poni_file)
-            try:
-                with open(poni_file, "r") as f:
-                    self.poni = f.read()
-            except Exception as e:
-                print(f"Error reading PONI file: {e}")
-                self.poni = ""
-
-    def browse_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
-        if folder:
-            self.folderLineEdit.setText(folder)
-
-    def browse_mask_file(self):
-        """
-        Opens a file dialog to select a mask file and loads it.
-        """
-        mask_file, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Mask File",
-            "",
-            "Mask Files (*.mask *.txt);;All Files (*)",
-        )
-        if mask_file:
-            self.maskLineEdit.setText(mask_file)
-            self.load_mask_file(mask_file)
-
     def _create_mask(self, mask_file):
         return create_mask(
             np.load(mask_file),
@@ -423,19 +487,6 @@ class ZoneMeasurementsMixin:
         folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
         if folder:
             self.folderLineEdit.setText(folder)
-
-    def load_mask_file(self, mask_file):
-        """
-        Dummy logic to read the selected mask file.
-        """
-        mask_file = Path(mask_file)
-        if mask_file.exists():
-            try:
-                self.mask = self._create_mask(mask_file)
-            except Exception as e:
-                print("Error loading mask file:", e)
-        else:
-            print("Mask file was not found:", mask_file)
 
     def handle_add_count(self):
         # Append the value from addCountSpinBox to fileNameLineEdit.
@@ -672,18 +723,20 @@ class ZoneMeasurementsMixin:
         QTimer.singleShot(1000, self.measurement_finished)
 
     def add_measurement_to_table(
-        self,
-        row,
-        waxs_filename,
-        saxs_filename,
-        goodness_waxs,
-        goodness_saxs,
-        columns_to_remove=30,
+            self,
+            row,
+            waxs_filename,
+            saxs_filename,
+            goodness_waxs,
+            goodness_saxs,
+            columns_to_remove=30,
     ):
         widget = self.pointsTable.cellWidget(row, 5)
         if not isinstance(widget, MeasurementHistoryWidget):
             widget = MeasurementHistoryWidget(
-                mask=self.mask, poni=getattr(self, "poni", None), parent=self
+                masks=self.masks,  # <-- pass masks dict
+                ponis=self.ponis,  # <-- pass ponis dict
+                parent=self
             )
             self.pointsTable.setCellWidget(row, 5, widget)
         widget.add_measurement(
@@ -695,24 +748,32 @@ class ZoneMeasurementsMixin:
         )
 
     def spawn_measurement_thread(self, row, waxs_filename, saxs_filename):
-        thread = QThread(self)
+        """
+        Creates a QThread + worker to do heavy lifting (for both detectors), then
+        adds the results in the GUI when ready.
+        """
+        thread = QThread(self)  # create a new thread
         worker = MeasurementWorker(
             row=row,
             waxs_filename=waxs_filename,
             saxs_filename=saxs_filename,
-            mask=self.mask,
-            poni=getattr(self, "poni", None),
+            masks=self.masks,  # Pass full dict
+            ponis=self.ponis,  # Pass full dict
             parent=self,
             hf_cutoff_fraction=0.2,
-            columns_to_remove=30,
+            columns_to_remove=30
         )
         worker.moveToThread(thread)
+
+        # when the thread starts, run the worker
         thread.started.connect(worker.run)
+        # when the worker is done, add the results and clean up
         worker.measurement_ready.connect(self.add_measurement_to_table)
         worker.measurement_ready.connect(thread.quit)
         worker.measurement_ready.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
         self._measurement_threads.append((thread, worker))
+
         thread.start()
 
     def pause_measurements(self):
