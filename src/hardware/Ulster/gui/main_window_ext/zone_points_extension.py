@@ -46,7 +46,7 @@ class ZonePointsMixin:
         self.real_x_pos_mm = QDoubleSpinBox()
         self.real_x_pos_mm.setDecimals(2)
         self.real_x_pos_mm.setRange(-1000.0, 1000.0)
-        self.real_x_pos_mm.setValue(-5.15)  # default value; can be adjusted
+        self.real_x_pos_mm.setValue(8.25)  # default value; can be adjusted
         inputLayout.addWidget(self.real_x_pos_mm)
 
         self.realYLabel = QLabel("Y_pos, mm")
@@ -54,7 +54,7 @@ class ZonePointsMixin:
         self.real_y_pos_mm = QDoubleSpinBox()
         self.real_y_pos_mm.setDecimals(2)
         self.real_y_pos_mm.setRange(-1000.0, 1000.0)
-        self.real_y_pos_mm.setValue(-4.35)  # default value; can be adjusted
+        self.real_y_pos_mm.setValue(-6.0)  # default value; can be adjusted
         inputLayout.addWidget(self.real_y_pos_mm)
 
         # Conversion label remains to show the pixel-to-mm conversion factor.

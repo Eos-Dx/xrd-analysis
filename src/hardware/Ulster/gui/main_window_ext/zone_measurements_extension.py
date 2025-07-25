@@ -525,7 +525,7 @@ class ZoneMeasurementsMixin:
             and self.stage_controller is not None
         ):
             new_x, new_y = self.stage_controller.move_stage(
-                -10, -15, move_timeout=10
+                -15, -6, move_timeout=10
             )
             print(f"Loaded position: ({new_x}, {new_y})")
         else:
