@@ -3,7 +3,6 @@ import time
 import numpy as np
 import subprocess
 import matplotlib.pyplot as plt
-
 from PyQt5.QtWidgets import (
     QDockWidget, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QLineEdit, QPushButton, QFileDialog,
@@ -132,7 +131,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         txt_filename_base = os.path.join(folder, f"{base_with_count}_{ts}_{int(self.integrationTimeSpin.value())}s")
 
         worker = CaptureWorker(
-            detector_controller=self.detector_controller,
+            detector_controller=self.detector_controller,  # dict!
             integration_time=self.integrationTimeSpin.value(),
             txt_filename_base=txt_filename_base
         )
@@ -144,6 +143,8 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         def _cleanup(success, result_files, t=typ):
             try:
                 self._on_capture_done(success, result_files, t)
+            except Exception as e:
+                print(f"Error in _on_capture_done for {t}: {e}")
             finally:
                 worker.deleteLater()
                 self._capture_workers.remove(worker)
@@ -162,11 +163,9 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             self._aux_timer.stop()
             self._aux_status.setText("Done")
 
-        for det in ['WAXS', 'SAXS']:
-            txt_file = result_files[det]
-
-            # --- Save in subfolder ---
-            det_folder = os.path.join(os.path.dirname(txt_file), det)
+        # Use aliases dynamically
+        for alias, txt_file in result_files.items():
+            det_folder = os.path.join(os.path.dirname(txt_file), alias)
             os.makedirs(det_folder, exist_ok=True)
             new_txt_file = os.path.join(det_folder, os.path.basename(txt_file))
             os.replace(txt_file, new_txt_file)  # Move file to subfolder
@@ -177,11 +176,10 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
                 npy = new_txt_file.replace(".txt", ".npy")
                 np.save(npy, data)
             except Exception as e:
-                print(f"Conversion error for {det}:", e)
+                print(f"Conversion error for {alias}:", e)
                 npy = new_txt_file
 
-            # Add to auxList: show detector label
-            item = QListWidgetItem(f"{det}: {os.path.basename(npy)}")
+            item = QListWidgetItem(f"{alias}: {os.path.basename(npy)}")
             item.setData(Qt.UserRole, npy)
             self.auxList.addItem(item)
 
@@ -199,19 +197,22 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def open_measurement(self, item: QListWidgetItem):
         file_path = item.data(Qt.UserRole)
-        # Detect which detector (assumes filename contains "WAXS" or "SAXS")
-        if "WAXS" in file_path:
-            detector = "WAXS"
-        elif "SAXS" in file_path:
-            detector = "SAXS"
-        else:
-            detector = "WAXS"  # fallback
+        # Guess alias from file path
+        detector = None
+        for alias in self.detector_controller:
+            if alias in file_path:
+                detector = alias
+                break
+        if not detector:
+            detector = next(iter(self.detector_controller))  # fallback to first
+
         show_measurement_window(
             file_path,
             self.masks.get(detector),
             self.ponis.get(detector),
             self
         )
+
     def run_pyfai(self):
         env = self.config.get("conda")
         if not env:
@@ -249,7 +250,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def _update_aux_status(self):
         elapsed = int(time.time() - self._aux_start)
-        spinner = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
+        spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         ch = spinner[self._aux_spinner_state % len(spinner)]
         self._aux_spinner_state += 1
         self._aux_status.setText(f"{elapsed} s {ch}")
@@ -266,15 +267,22 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         exposure = float(self.integrationTimeSpin.value())
         self._rt_queue = queue.Queue()
 
-        import matplotlib.pyplot as plt
         plt.ion()
-        self._rt_fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
-        self._rt_img = {
-            "WAXS": ax1.imshow(np.zeros((256, 256)), origin='lower', interpolation='none'),
-            "SAXS": ax2.imshow(np.zeros((256, 256)), origin='lower', interpolation='none')
-        }
-        ax1.set_title("WAXS")
-        ax2.set_title("SAXS")
+        detector_aliases = list(self.detector_controller.keys())
+        n_det = len(detector_aliases)
+        self._rt_img = {}
+        self._rt_last_frame = {}  # <--- Cache for latest frame per alias
+
+        # One subplot per detector alias
+        fig, axes = plt.subplots(1, n_det, figsize=(5 * n_det, 5))
+        if n_det == 1:
+            axes = [axes]
+
+        for ax, alias in zip(axes, detector_aliases):
+            size = getattr(self.detector_controller[alias], "size", (256, 256))
+            self._rt_img[alias] = ax.imshow(np.zeros(size), origin='lower', interpolation='none')
+            ax.set_title(alias)
+        self._rt_fig = fig
         plt.show()
 
         self._plot_timer = QTimer(self)
@@ -283,35 +291,42 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self._plot_timer.start()
 
         def callback(frames_dict):
-            self._rt_queue.put(frames_dict)
+            # Cache most recent frame per alias
+            for alias, frame in frames_dict.items():
+                self._rt_last_frame[alias] = frame
+            self._rt_queue.put(True)  # Just a signal to the timer
 
-        self.detector_controller.start_stream(
-            callback=callback,
-            exposure=exposure,
-            interval=0.0,
-            frames=1
-        )
+        # Start stream on all detectors
+        for controller in self.detector_controller.values():
+            controller.start_stream(
+                callback=callback,
+                exposure=exposure,
+                interval=0.0,
+                frames=1
+            )
 
     def _rt_plot_tick(self):
-        frames_dict = None
+        # Drain the queue (we only need to plot once per timer tick)
         while True:
             try:
-                frames_dict = self._rt_queue.get_nowait()
+                _ = self._rt_queue.get_nowait()
             except queue.Empty:
                 break
-        if frames_dict is not None:
-            for name in ("WAXS", "SAXS"):
-                frame = frames_dict.get(name)
-                if frame is not None and name in self._rt_img:
-                    self._rt_img[name].set_data(frame)
-                    self._rt_img[name].set_clim(frame.min(), frame.max())
-            self._rt_fig.canvas.draw_idle()
+        # Update all subplots with their latest frame
+        for alias in self._rt_img:
+            frame = self._rt_last_frame.get(alias)
+            if frame is not None:
+                self._rt_img[alias].set_data(frame)
+                self._rt_img[alias].set_clim(frame.min(), frame.max())
+        self._rt_fig.canvas.draw_idle()
 
     def _stop_realtime(self):
-        self.detector_controller.stop_stream()
+        for controller in self.detector_controller.values():
+            controller.stop_stream()
         if hasattr(self, '_plot_timer'):
             self._plot_timer.stop()
             del self._plot_timer
         import matplotlib.pyplot as plt
         plt.close(self._rt_fig)
         del self._rt_queue
+        del self._rt_last_frame

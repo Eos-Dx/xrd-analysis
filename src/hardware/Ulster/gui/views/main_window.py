@@ -31,7 +31,7 @@ class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
         # Create the Zone Points widget (left bottom).
         self.create_zone_points_widget()
 
-        self.load_default_mask_and_poni()
+        self.load_default_masks_and_ponis()
         # Split the bottom dock area horizontally so the panels appear side by side.
         self.splitDockWidget(self.zonePointsDock, self.zoneMeasurementsDock, Qt.Horizontal)
         # Set a callback so that when shapes change, the shape table updates.

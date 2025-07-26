@@ -6,43 +6,46 @@ from matplotlib.backends.backend_qt5agg import (
     FigureCanvasQTAgg as FigureCanvas,
 )
 from matplotlib.figure import Figure
-from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QHBoxLayout
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     initialize_azimuthal_integrator_df,
     initialize_azimuthal_integrator_poni_text,
 )
+from PyQt5.QtCore import QObject, pyqtSignal
 
-
-class CaptureWorker(QThread):
-    # Emits (success: bool, result_files: dict) e.g. {"WAXS": path1, "SAXS": path2}
+class CaptureWorker(QObject):
+    # Emits: (success: bool, result_files: dict)
     finished = pyqtSignal(bool, dict)
 
-    def __init__(
-        self,
-        detector_controller,
-        integration_time,
-        txt_filename_base,
-        parent=None,
-    ):
+    def __init__(self, detector_controller, integration_time, txt_filename_base, parent=None):
         super().__init__(parent)
-        self.detector_controller = detector_controller
+        self.detector_controller = detector_controller  # dict: {alias: controller}
         self.integration_time = integration_time
-        self.txt_filename_base = (
-            txt_filename_base  # Only the base; suffixes will be added
-        )
+        self.txt_filename_base = txt_filename_base
 
-    def run(self):
-        # Perform dual acquisition
-        success = self.detector_controller.capture_point(
-            1, self.integration_time, self.txt_filename_base
-        )
-        # Collect the expected filenames for both detectors
+    def start(self):
+        # Run in main thread for minimal test (real code: moveToThread)
         result_files = {}
-        for name in ["WAXS", "SAXS"]:
-            result_files[name] = f"{self.txt_filename_base}_{name}.txt"
-        self.finished.emit(success, result_files)
+        try:
+            for alias, controller in self.detector_controller.items():
+                # File naming: base_alias.txt (could be improved)
+                filename = f"{self.txt_filename_base}_{alias}.txt"
+                # You may need to adapt this call to match your controller API:
+                success = controller.capture_point(
+                    Nframes=1,  # or use frames param if needed
+                    Nseconds=self.integration_time,
+                    filename_base=filename.replace(".txt", "")
+                )
+                if success:
+                    result_files[alias] = filename
+                else:
+                    print(f"Acquisition failed for {alias}")
+            ok = len(result_files) == len(self.detector_controller)
+        except Exception as e:
+            print(f"CaptureWorker error: {e}")
+            ok = False
+        self.finished.emit(ok, result_files)
 
 
 def validate_folder(path: str):

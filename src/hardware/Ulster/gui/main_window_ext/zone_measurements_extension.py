@@ -6,25 +6,13 @@ from functools import partial
 from pathlib import Path
 
 import numpy as np
-from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QPen
+from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
-    QDockWidget,
-    QDoubleSpinBox,
-    QFileDialog,
-    QGraphicsLineItem,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QProgressBar,
-    QPushButton,
-    QSizePolicy,
-    QSpacerItem,
-    QSpinBox,
-    QVBoxLayout,
-    QWidget,
+    QDockWidget, QDoubleSpinBox, QFileDialog, QHBoxLayout, QLabel, QLineEdit,
+    QProgressBar, QPushButton, QSpinBox, QVBoxLayout, QWidget, QListWidget, QListWidgetItem,
+    QSpacerItem, QSizePolicy, QGraphicsLineItem, QTabWidget
 )
-
 from hardware.Ulster.gui.technical.capture import (
     CaptureWorker,
     compute_hf_score_from_cake,
@@ -33,107 +21,11 @@ from hardware.Ulster.gui.technical.capture import (
 )
 from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
 from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
-from hardware.Ulster.hardware.hardware_control import (
-    DetectorController,
-    XYStageLibController,
-)
+from hardware.Ulster.hardware.hardware_control import HardwareController
 from xrdanalysis.data_processing.utility_functions import create_mask
 
 
-DEFAULT_PONI_WAXS = """
-# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis 
-# Calibration done at Mon Jun  3 16:40:56 2024
-poni_version: 2.1
-Detector: Detector
-Detector_config: {"pixel1": 5.4999999999999995e-05, "pixel2": 5.4999999999999995e-05, "max_shape": [256, 256], "orientation": 3}
-Distance: 0.023128625835860867
-Poni1: 0.00703271933414593
-Poni2: 0.000810597359260136
-Rot1: 0.0
-Rot2: 0.0
-Rot3: 0.0
-Wavelength: 1.5406e-10
-""".strip()
-
-DEFAULT_PONI_SAXS = """
-# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis
-# Calibration done at Mon Jun  3 17:04:33 2024
-poni_version: 2.1
-Detector: Detector
-Detector_config: {"pixel1": 5.4999999999999995e-05, "pixel2": 5.4999999999999995e-05, "max_shape": [256, 256], "orientation": 3}
-Distance: 0.17239906043601042
-Poni1: 0.007020022187721548
-Poni2: 0.0008600585417045749
-Rot1: 0.0
-Rot2: 0.0
-Rot3: 0.0
-Wavelength: 1.5406e-10
-""".strip()
-
-
-class MeasurementWorker(QObject):
-    measurement_ready = pyqtSignal(int, str, str, float, float, int)
-
-    def __init__(
-        self,
-        row,
-        waxs_filename,
-        saxs_filename,
-        masks,   # Dict: {"WAXS": ..., "SAXS": ...}
-        ponis,   # Dict: {"WAXS": ..., "SAXS": ...}
-        parent,
-        hf_cutoff_fraction=0.2,
-        columns_to_remove=30,
-    ):
-        super().__init__()
-        self.row = row
-        self.waxs_filename = waxs_filename
-        self.saxs_filename = saxs_filename
-        self.masks = masks   # Dict!
-        self.ponis = ponis   # Dict!
-        self.parent = parent
-        self.hf_cutoff_fraction = hf_cutoff_fraction
-        self.columns_to_remove = columns_to_remove
-
-    def run(self):
-        from hardware.Ulster.gui.technical.capture import compute_hf_score_from_cake
-
-        try:
-            goodness_waxs = compute_hf_score_from_cake(
-                self.waxs_filename,
-                self.ponis.get("WAXS"),
-                self.masks.get("WAXS"),
-                hf_cutoff_fraction=self.hf_cutoff_fraction,
-                skip_bins=self.columns_to_remove,
-            )
-            if goodness_waxs is None:
-                goodness_waxs = float("nan")
-        except Exception as e:
-            print(f"Error WAXS: {e}")
-            goodness_waxs = float("nan")
-
-        try:
-            goodness_saxs = compute_hf_score_from_cake(
-                self.saxs_filename,
-                self.ponis.get("SAXS"),
-                self.masks.get("SAXS"),
-                hf_cutoff_fraction=self.hf_cutoff_fraction,
-                skip_bins=self.columns_to_remove,
-            )
-            if goodness_saxs is None:
-                goodness_saxs = float("nan")
-        except Exception as e:
-            print(f"Error SAXS: {e}")
-            goodness_saxs = float("nan")
-
-        self.measurement_ready.emit(
-            self.row,
-            self.waxs_filename,
-            self.saxs_filename,
-            goodness_waxs,
-            goodness_saxs,
-            self.columns_to_remove,
-        )
+from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 
 
 class ZoneMeasurementsMixin:
@@ -142,16 +34,27 @@ class ZoneMeasurementsMixin:
 
     def create_zone_measurements_widget(self):
         """
-        Creates a dock widget for zone measurements with controls and indicators.
+        Creates a dock widget with two tabs:
+        1) Measurements (experiment control)
+        2) Detector param (masks and PONI for each detector from config)
         """
         self._measurement_threads = []
         self.hardware_initialized = False
 
         self.zoneMeasurementsDock = QDockWidget("Zone Measurements", self)
         container = QWidget()
-        layout = QVBoxLayout(container)
+        main_layout = QVBoxLayout(container)
 
-        # Hardware control buttons.
+        # --- Tab Widget ---
+        self.tabs = QTabWidget()
+        main_layout.addWidget(self.tabs)
+
+        # ==== Tab 1: Measurements ====
+        meas_tab = QWidget()
+        meas_layout = QVBoxLayout(meas_tab)
+        self.tabs.addTab(meas_tab, "Measurements")
+
+        # -- Measurement controls --
         buttonLayout = QHBoxLayout()
         self.initializeBtn = QPushButton("Initialize Hardware")
         self.initializeBtn.clicked.connect(self.toggle_hardware)
@@ -168,9 +71,9 @@ class ZoneMeasurementsMixin:
         buttonLayout.addWidget(self.start_btn)
         buttonLayout.addWidget(self.pause_btn)
         buttonLayout.addWidget(self.stop_btn)
-        layout.addLayout(buttonLayout)
+        meas_layout.addLayout(buttonLayout)
 
-        # Hardware status indicators.
+        # -- Hardware status indicators --
         statusLayout = QHBoxLayout()
         xyLabel = QLabel("XY Stage:")
         self.xyStageIndicator = QLabel()
@@ -180,7 +83,6 @@ class ZoneMeasurementsMixin:
         )
         statusLayout.addWidget(xyLabel)
         statusLayout.addWidget(self.xyStageIndicator)
-
         cameraLabel = QLabel("Camera:")
         self.cameraIndicator = QLabel()
         self.cameraIndicator.setFixedSize(20, 20)
@@ -189,17 +91,15 @@ class ZoneMeasurementsMixin:
         )
         statusLayout.addWidget(cameraLabel)
         statusLayout.addWidget(self.cameraIndicator)
-
         self.homeBtn = QPushButton("Home")
         self.homeBtn.clicked.connect(self.home_stage_button_clicked)
         statusLayout.addWidget(self.homeBtn)
         self.loadPosBtn = QPushButton("Load Position")
         self.loadPosBtn.clicked.connect(self.load_position_button_clicked)
         statusLayout.addWidget(self.loadPosBtn)
+        meas_layout.addLayout(statusLayout)
 
-        layout.addLayout(statusLayout)
-
-        # Add X,Y spinboxes and GoTo button
+        # -- Stage position controls --
         posLayout = QHBoxLayout()
         posLayout.addWidget(QLabel("Stage X (mm):"))
         self.xPosSpin = QDoubleSpinBox()
@@ -217,9 +117,9 @@ class ZoneMeasurementsMixin:
         self.gotoBtn.setEnabled(False)
         self.gotoBtn.clicked.connect(self.goto_stage_position)
         posLayout.addWidget(self.gotoBtn)
-        layout.addLayout(posLayout)
+        meas_layout.addLayout(posLayout)
 
-        # Integration time.
+        # -- Integration time --
         integrationLayout = QHBoxLayout()
         integrationLabel = QLabel("Integration Time (sec):")
         self.integrationSpinBox = QSpinBox()
@@ -228,9 +128,9 @@ class ZoneMeasurementsMixin:
         self.integrationSpinBox.setValue(1)
         integrationLayout.addWidget(integrationLabel)
         integrationLayout.addWidget(self.integrationSpinBox)
-        layout.addLayout(integrationLayout)
+        meas_layout.addLayout(integrationLayout)
 
-        # Repeat count.
+        # -- Repeat count --
         repeatLayout = QHBoxLayout()
         repeatLabel = QLabel("Repeat:")
         self.repeatSpinBox = QSpinBox()
@@ -239,9 +139,9 @@ class ZoneMeasurementsMixin:
         self.repeatSpinBox.setValue(1)
         repeatLayout.addWidget(repeatLabel)
         repeatLayout.addWidget(self.repeatSpinBox)
-        layout.addLayout(repeatLayout)
+        meas_layout.addLayout(repeatLayout)
 
-        # Folder selection.
+        # -- Folder selection --
         folderLayout = QHBoxLayout()
         folderLabel = QLabel("Save Folder:")
         self.folderLineEdit = QLineEdit()
@@ -256,17 +156,17 @@ class ZoneMeasurementsMixin:
         folderLayout.addWidget(folderLabel)
         folderLayout.addWidget(self.folderLineEdit)
         folderLayout.addWidget(self.browseBtn)
-        layout.addLayout(folderLayout)
+        meas_layout.addLayout(folderLayout)
 
-        # File name.
+        # -- File name --
         fileNameLayout = QHBoxLayout()
         fileNameLabel = QLabel("File Name:")
         self.fileNameLineEdit = QLineEdit()
         fileNameLayout.addWidget(fileNameLabel)
         fileNameLayout.addWidget(self.fileNameLineEdit)
-        layout.addLayout(fileNameLayout)
+        meas_layout.addLayout(fileNameLayout)
 
-        # Additional controls for count and distance.
+        # -- Additional controls for count and distance --
         additionalLayout = QHBoxLayout()
         self.add_count_btn = QPushButton("Add count")
         self.addCountSpinBox = QSpinBox()
@@ -282,12 +182,11 @@ class ZoneMeasurementsMixin:
         additionalLayout.addItem(
             QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
         )
-        layout.addLayout(additionalLayout)
-
+        meas_layout.addLayout(additionalLayout)
         self.add_distance_btn.clicked.connect(self.handle_add_distance)
         self.add_count_btn.clicked.connect(self.handle_add_count)
 
-        # Progress indicator.
+        # -- Progress indicator --
         progressLayout = QHBoxLayout()
         self.progressBar = QProgressBar()
         self.progressBar.setMinimum(0)
@@ -295,39 +194,66 @@ class ZoneMeasurementsMixin:
         self.timeRemainingLabel = QLabel("Estimated time: N/A")
         progressLayout.addWidget(self.progressBar)
         progressLayout.addWidget(self.timeRemainingLabel)
-        layout.addLayout(progressLayout)
+        meas_layout.addLayout(progressLayout)
 
-        # --- Mask selection widgets ---
-        for det in ["WAXS", "SAXS"]:
-            mask_layout = QHBoxLayout()
-            mask_layout.addWidget(QLabel(f"{det} Mask:"))
-            lineedit = QLineEdit()
-            setattr(self, f"{det.lower()}_mask_lineedit", lineedit)
-            mask_layout.addWidget(lineedit)
-            btn = QPushButton("Browse...")
-            btn.clicked.connect(lambda _, d=det: self.browse_mask_file(detector=d))
-            mask_layout.addWidget(btn)
-            layout.addLayout(mask_layout)
+        # ==== Tab 2: Detector param ====
+        self.param_tab = QWidget()
+        self.param_layout = QVBoxLayout(self.param_tab)
+        self.tabs.addTab(self.param_tab, "Detector param")
 
-        # --- PONI selection widgets ---
-        for det in ["WAXS", "SAXS"]:
-            poni_layout = QHBoxLayout()
-            poni_layout.addWidget(QLabel(f"{det} PONI:"))
-            lineedit = QLineEdit()
-            setattr(self, f"{det.lower()}_poni_lineedit", lineedit)
-            poni_layout.addWidget(lineedit)
-            btn = QPushButton("Browse...")
-            btn.clicked.connect(lambda _, d=det: self.browse_poni_file(detector=d))
-            poni_layout.addWidget(btn)
-            layout.addLayout(poni_layout)
-
-        container.setLayout(layout)
+        container.setLayout(main_layout)
         self.zoneMeasurementsDock.setWidget(container)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.zoneMeasurementsDock)
 
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
         self.xyTimer.start(10000)
+
+    def populate_detector_param_tab(self):
+        # First, clear the param tab layout
+        self.clear_detector_param_tab()
+
+        self.detector_aliases = self.hardware_controller.active_detector_aliases
+
+        for alias in self.detector_aliases:
+            # Mask widget
+            mask_layout = QHBoxLayout()
+            mask_layout.addWidget(QLabel(f"{alias} Mask:"))
+            mask_lineedit = QLineEdit()
+            setattr(self, f"{alias.lower()}_mask_lineedit", mask_lineedit)
+            mask_layout.addWidget(mask_lineedit)
+            mask_btn = QPushButton("Browse...")
+            mask_btn.clicked.connect(partial(self.browse_mask_file, detector=alias))
+            mask_layout.addWidget(mask_btn)
+            self.param_layout.addLayout(mask_layout)
+
+            # PONI widget
+            poni_layout = QHBoxLayout()
+            poni_layout.addWidget(QLabel(f"{alias} PONI:"))
+            poni_lineedit = QLineEdit()
+            setattr(self, f"{alias.lower()}_poni_lineedit", poni_lineedit)
+            poni_layout.addWidget(poni_lineedit)
+            poni_btn = QPushButton("Browse...")
+            poni_btn.clicked.connect(partial(self.browse_poni_file, detector=alias))
+            poni_layout.addWidget(poni_btn)
+            self.param_layout.addLayout(poni_layout)
+
+    def clear_detector_param_tab(self):
+        """Remove all widgets from param_layout."""
+        while self.param_layout.count():
+            item = self.param_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+            # If the item is a layout, delete its children
+            elif item.layout() is not None:
+                sub_layout = item.layout()
+                while sub_layout.count():
+                    sub_item = sub_layout.takeAt(0)
+                    sub_widget = sub_item.widget()
+                    if sub_widget:
+                        sub_widget.deleteLater()
+                del sub_layout
 
     def browse_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
@@ -350,42 +276,53 @@ class ZoneMeasurementsMixin:
             getattr(self, f"{detector.lower()}_poni_lineedit").setText(poni_file)
             self.load_poni_file(poni_file, detector)
 
-    def load_default_mask_and_poni(self):
+    def load_default_masks_and_ponis(self):
+        """Load masks and poni from config for each detector alias."""
+        import os
         from pathlib import Path
-        import numpy as np
 
+        self.masks = {}
+        self.ponis = {}
+        self.detector_aliases = []
+
+        detectors = self.config.get("detectors", [])
         resource_dir = Path(__file__).resolve().parent.parent.parent / "resources"
-        default_masks = {"WAXS": None, "SAXS": None}
-        default_ponis = {"WAXS": None, "SAXS": None}
 
-        for det in ["WAXS", "SAXS"]:
-            # Load mask
-            mask_path = resource_dir / f"faulty_pixels_{det}.npy"
-            if mask_path.exists():
+        for det_cfg in detectors:
+            alias = det_cfg["alias"]
+            self.detector_aliases.append(alias)
+
+            # Faulty pixels mask (optional)
+            mask_file = det_cfg.get("faulty_pixels")
+            mask_path = None
+            if mask_file:
+                mask_path = Path(mask_file)
+                if not mask_path.is_absolute():
+                    mask_path = resource_dir / mask_path
                 try:
-                    default_masks[det] = self._create_mask(mask_path)
+                    self.masks[alias] = np.load(str(mask_path))
                 except Exception as e:
-                    print(f"Error loading default mask for {det}:", e)
-                    default_masks[det] = np.array([[]])
+                    print(f"Failed to load faulty pixels for {alias}: {e}")
+                    self.masks[alias] = None
             else:
-                print(f"Faulty pixels file was not found for {det}:", mask_path)
-                default_masks[det] = np.array([[]])
+                self.masks[alias] = None
 
-            # Load PONI, fallback to hardcoded default if missing
-            poni_path = resource_dir / f"default_{det}.poni"
-            if poni_path.exists():
+            # PONI: prefer poni_file, fallback to default_poni, fallback to empty
+            poni = ""
+            poni_file = det_cfg.get("poni_file")
+            if poni_file:
+                poni_path = Path(poni_file)
+                if not poni_path.is_absolute():
+                    poni_path = resource_dir / poni_path
                 try:
-                    with open(poni_path, "r") as f:
-                        default_ponis[det] = f.read()
+                    with open(str(poni_path), "r") as f:
+                        poni = f.read()
                 except Exception as e:
-                    print(f"Error loading default PONI for {det}: {e}")
-                    default_ponis[det] = DEFAULT_PONI_WAXS if det == "WAXS" else DEFAULT_PONI_SAXS
+                    print(f"Failed to load poni for {alias}: {e}")
+                    poni = ""
             else:
-                print(f"Default PONI file was not found for {det}: {poni_path}, using hardcoded default.")
-                default_ponis[det] = DEFAULT_PONI_WAXS if det == "WAXS" else DEFAULT_PONI_SAXS
-
-        self.masks = default_masks
-        self.ponis = default_ponis
+                poni = det_cfg.get("default_poni", "")
+            self.ponis[alias] = poni
 
     def load_mask_file(self, mask_file, detector):
         try:
@@ -403,31 +340,27 @@ class ZoneMeasurementsMixin:
 
     def toggle_hardware(self):
         """
-        Toggle hardware initialization state.
+        Toggle hardware initialization state. Dynamically (re)builds detector param tab widgets
+        for only active detectors after hardware is initialized.
         """
-        if not self.hardware_initialized:
-            dev_mode = self.config.get("DEV", True)
-            serial_str = self.config.get("serial_number_XY", "default_serial")
-            self.stage_controller = XYStageLibController(
-                serial_num=serial_str, x_chan=2, y_chan=1, dev=dev_mode
-            )
-            res_xystage = self.stage_controller.init_stage()
+        if not getattr(self, "hardware_initialized", False):
+            # --- Initialize hardware using your config-driven HardwareController ---
+            from hardware.Ulster.hardware.hardware_control import HardwareController
+            self.hardware_controller = HardwareController(self.config)
+            res_xystage, res_det = self.hardware_controller.initialize()
 
-            self.detector_controller = DetectorController(
-                capture_enabled=True, dev=dev_mode
-            )
-            res_det = self.detector_controller.init_detector()
+            # Use updated controllers from hardware_controller
+            self.stage_controller = self.hardware_controller.stage_controller
+            self.detector_controller = self.hardware_controller.detectors  # dict: {alias: controller}
 
             # Update indicators
             self.xyStageIndicator.setStyleSheet(
                 "background-color: green; border-radius: 10px;"
-                if res_xystage
-                else "background-color: red; border-radius: 10px;"
+                if res_xystage else "background-color: red; border-radius: 10px;"
             )
             self.cameraIndicator.setStyleSheet(
                 "background-color: green; border-radius: 10px;"
-                if res_det
-                else "background-color: red; border-radius: 10px;"
+                if res_det else "background-color: red; border-radius: 10px;"
             )
 
             ok = res_xystage and res_det
@@ -440,31 +373,25 @@ class ZoneMeasurementsMixin:
             self.gotoBtn.setEnabled(ok)
 
             if ok:
+                self.populate_detector_param_tab()  # Populate "Detector param" tab now
                 self.initializeBtn.setText("Deinitialize Hardware")
                 self.hardware_initialized = True
                 self.hardware_state_changed.emit(True)
         else:
-            # Deinitialize hardware
+            # --- Deinitialize hardware and clean up ---
             try:
-                self.stage_controller.deinit()
+                self.hardware_controller.deinitialize()
             except Exception as e:
-                print(f"Error deinitializing stage: {e}")
-            try:
-                self.detector_controller.deinit_detector()
-            except Exception as e:
-                print(f"Error deinitializing detector: {e}")
+                print(f"Error deinitializing hardware: {e}")
 
-            # Reset indicators and controls
-            self.xyStageIndicator.setStyleSheet(
-                "background-color: gray; border-radius: 10px;"
-            )
-            self.cameraIndicator.setStyleSheet(
-                "background-color: gray; border-radius: 10px;"
-            )
+            # Clear the param tab UI
+            self.clear_detector_param_tab()
+
+            self.xyStageIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
+            self.cameraIndicator.setStyleSheet("background-color: gray; border-radius: 10px;")
             self.start_btn.setEnabled(False)
             self.pause_btn.setEnabled(False)
             self.stop_btn.setEnabled(False)
-            # Disable X/Y controls
             self.xPosSpin.setEnabled(False)
             self.yPosSpin.setEnabled(False)
             self.gotoBtn.setEnabled(False)
@@ -480,11 +407,6 @@ class ZoneMeasurementsMixin:
                 self.config["detector_size"]["height"],
             ),
         )
-
-    def browse_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder")
-        if folder:
-            self.folderLineEdit.setText(folder)
 
     def handle_add_count(self):
         # Append the value from addCountSpinBox to fileNameLineEdit.
@@ -683,51 +605,39 @@ class ZoneMeasurementsMixin:
             return
 
         print(f"[Measurement] capture successful: {result_files}")
-        import shutil  # at the top if not already imported
 
-        def _move_to_detector_folder(src_file, detector):
-            # detector is 'WAXS' or 'SAXS'
-            det_folder = os.path.join(os.path.dirname(src_file), detector)
-            os.makedirs(det_folder, exist_ok=True)
-            dst_file = os.path.join(det_folder, os.path.basename(src_file))
-            shutil.move(src_file, dst_file)
-            return dst_file
-
-        # Save WAXS
-        waxs_file = result_files.get("WAXS")
-        if waxs_file:
-            waxs_file = _move_to_detector_folder(waxs_file, "WAXS")
+        def move_and_save_npy(src_file, alias):
+            import shutil
+            src_path = Path(src_file)
+            det_folder = src_path.parent / alias
+            det_folder.mkdir(parents=True, exist_ok=True)
+            dst_file = det_folder / src_path.name
             try:
-                data_waxs = np.loadtxt(waxs_file)
-                waxs_npy = waxs_file.replace(".txt", ".npy")
-                np.save(waxs_npy, data_waxs)
+                shutil.move(str(src_path), str(dst_file))
             except Exception as e:
-                print(f"Conversion error for WAXS: {e}")
-                waxs_npy = waxs_file
-        else:
-            waxs_npy = None
-
-        # Save SAXS
-        saxs_file = result_files.get("SAXS")
-        if saxs_file:
-            saxs_file = _move_to_detector_folder(saxs_file, "SAXS")
+                print(f"[ERROR] Moving file {src_path} → {dst_file}: {e}")
+                dst_file = src_path  # fallback
             try:
-                data_saxs = np.loadtxt(saxs_file)
-                saxs_npy = saxs_file.replace(".txt", ".npy")
-                np.save(saxs_npy, data_saxs)
+                data = np.loadtxt(dst_file)
+                npy_path = dst_file.with_suffix(".npy")
+                np.save(npy_path, data)
             except Exception as e:
-                print(f"Conversion error for SAXS: {e}")
-                saxs_npy = saxs_file
-        else:
-            saxs_npy = None
+                print(f"Conversion error for {alias}: {e}")
+                npy_path = dst_file  # fallback
+            return str(npy_path)
 
-        current_row = self.sorted_indices[
-            self.current_measurement_sorted_index
-        ]
+        # Map aliases to .npy file paths
+        npy_files = {}
+        for alias, src_file in result_files.items():
+            npy_files[alias] = move_and_save_npy(src_file, alias)
 
-        # Launch post-processing for both detectors
-        self.spawn_measurement_thread(current_row, waxs_npy, saxs_npy)
-        # Visual feedback.
+        # Use the current row as before
+        current_row = self.sorted_indices[self.current_measurement_sorted_index]
+
+        # Launch a post-processing thread that can handle any number of detectors
+        self.spawn_measurement_thread(current_row, npy_files)
+
+        # Visual feedback
         green_brush = QColor(0, 255, 0)
         self._point_item.setBrush(green_brush)
         try:
@@ -739,58 +649,72 @@ class ZoneMeasurementsMixin:
             print(e)
         QTimer.singleShot(1000, self.measurement_finished)
 
-    def add_measurement_to_table(
-            self,
-            row,
-            waxs_filename,
-            saxs_filename,
-            goodness_waxs,
-            goodness_saxs,
-            columns_to_remove=30,
-    ):
+    def process_measurement_result(self, success, result_files, typ):
+        """Handle new measurement files, organize by alias, convert, and update list."""
+        if not success:
+            print(f"[{typ}] capture failed.")
+            self._aux_timer.stop()
+            self._aux_status.setText("")
+            return {}
+        else:
+            print(f'[{typ}] capture successful: {result_files}')
+            self._aux_timer.stop()
+            self._aux_status.setText("Done")
+
+        file_map = {}
+        for alias, txt_file in result_files.items():
+            txt_path = Path(txt_file)
+            det_folder = txt_path.parent / alias
+            det_folder.mkdir(parents=True, exist_ok=True)
+            new_txt_file = det_folder / txt_path.name
+            try:
+                txt_path.replace(new_txt_file)
+            except Exception as e:
+                print(f"[ERROR] Moving file {txt_path} → {new_txt_file}: {e}")
+                new_txt_file = txt_path
+            try:
+                data = np.loadtxt(new_txt_file)
+                npy = new_txt_file.with_suffix(".npy")
+                np.save(npy, data)
+            except Exception as e:
+                print(f"Conversion error for {alias}: {e}")
+                npy = new_txt_file
+            file_map[alias] = str(npy)
+            item = QListWidgetItem(f"{alias}: {Path(npy).name}")
+            item.setData(Qt.UserRole, str(npy))
+            self.auxList.addItem(item)
+        return file_map
+
+    def add_measurement_to_table(self, row, results, timestamp=None):
         widget = self.pointsTable.cellWidget(row, 5)
         if not isinstance(widget, MeasurementHistoryWidget):
             widget = MeasurementHistoryWidget(
-                masks=self.masks,  # <-- pass masks dict
-                ponis=self.ponis,  # <-- pass ponis dict
+                masks=self.masks,
+                ponis=self.ponis,
                 parent=self
             )
             self.pointsTable.setCellWidget(row, 5, widget)
-        widget.add_measurement(
-            waxs_filename,
-            saxs_filename,
-            goodness_waxs,
-            goodness_saxs,
-            getattr(self, "_timestamp", ""),
-        )
+        # Add all results as dict: {alias: {'filename': ..., 'goodness': ...}, ...}
+        widget.add_measurement(results, timestamp or getattr(self, "_timestamp", ""))
 
-    def spawn_measurement_thread(self, row, waxs_filename, saxs_filename):
-        """
-        Creates a QThread + worker to do heavy lifting (for both detectors), then
-        adds the results in the GUI when ready.
-        """
-        thread = QThread(self)  # create a new thread
+    def spawn_measurement_thread(self, row, file_map):
+        thread = QThread(self)
         worker = MeasurementWorker(
             row=row,
-            waxs_filename=waxs_filename,
-            saxs_filename=saxs_filename,
-            masks=self.masks,  # Pass full dict
-            ponis=self.ponis,  # Pass full dict
+            filenames=file_map,  # now a dict of {alias: file}
+            masks=self.masks,
+            ponis=self.ponis,
             parent=self,
             hf_cutoff_fraction=0.2,
             columns_to_remove=30
         )
         worker.moveToThread(thread)
-
-        # when the thread starts, run the worker
         thread.started.connect(worker.run)
-        # when the worker is done, add the results and clean up
         worker.measurement_ready.connect(self.add_measurement_to_table)
         worker.measurement_ready.connect(thread.quit)
         worker.measurement_ready.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
         self._measurement_threads.append((thread, worker))
-
         thread.start()
 
     def pause_measurements(self):
