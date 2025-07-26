@@ -107,10 +107,10 @@ class DummyDetectorController:
                 time.sleep(interval)
 
 
-class PixetDetectorController:
+class PixetDetectorController(DetectorController):
     def __init__(self, alias, size=(256, 256), config=None):
-        self.alias = alias                      # e.g. "WAXS" or "SAXS" or custom alias from config
-        self.size = size                        # (width, height)
+        self.alias = alias
+        self.size = tuple(size)            # (width, height)
         self.config = config or {}              # detector config from main.json
         self.dev_id = self.config.get("id")     # physical device id string to match (from config)
         self.detector = None                    # will be set after init
@@ -207,7 +207,11 @@ class PixetDetectorController:
                 else:
                     try:
                         frame = np.loadtxt(tmpfile)
-                        # Optionally: pad/crop/reshape to self.size if needed
+                        if frame is not None:
+                            # Crop to the expected size if the loaded frame is larger
+                            frame = frame[:self.size[0], :self.size[1]]
+                            # Optionally: if you want, assert the shape now
+                            assert frame.shape == self.size, f"Frame shape {frame.shape} does not match expected {self.size}"
                     except Exception as e:
                         print(f"Loading error for {self.alias}: {e}")
                         frame = None
