@@ -19,38 +19,45 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from xrdanalysis.data_processing.utility_functions import create_mask
 
 
+from PyQt5.QtCore import QObject, pyqtSignal
+import threading
+
 class CaptureWorker(QObject):
-    # Emits: (success: bool, result_files: dict)
-    finished = pyqtSignal(bool, dict)
+    finished = pyqtSignal(bool, dict)  # Or as appropriate for your use
 
     def __init__(self, detector_controller, integration_time, txt_filename_base, parent=None):
         super().__init__(parent)
-        self.detector_controller = detector_controller  # dict: {alias: controller}
+        self.detector_controller = detector_controller
         self.integration_time = integration_time
         self.txt_filename_base = txt_filename_base
 
-    def start(self):
-        # Run in main thread for minimal test (real code: moveToThread)
-        result_files = {}
-        try:
-            for alias, controller in self.detector_controller.items():
-                # File naming: base_alias.txt (could be improved)
-                filename = f"{self.txt_filename_base}_{alias}.txt"
-                # You may need to adapt this call to match your controller API:
+    def run(self):
+        threads = {}
+        results = {}
+
+        def run_capture(alias, controller):
+            try:
                 success = controller.capture_point(
-                    Nframes=1,  # or use frames param if needed
+                    Nframes=1,
                     Nseconds=self.integration_time,
-                    filename_base=filename.replace(".txt", "")
+                    filename_base=self.txt_filename_base + f"_{alias}"
                 )
-                if success:
-                    result_files[alias] = filename
-                else:
-                    print(f"Acquisition failed for {alias}")
-            ok = len(result_files) == len(self.detector_controller)
-        except Exception as e:
-            print(f"CaptureWorker error: {e}")
-            ok = False
-        self.finished.emit(ok, result_files)
+                results[alias] = self.txt_filename_base + f"_{alias}.txt" if success else None
+            except Exception as e:
+                print(f"Error in capture for {alias}: {e}")
+                results[alias] = None
+
+        for alias, controller in self.detector_controller.items():
+            t = threading.Thread(target=run_capture, args=(alias, controller))
+            threads[alias] = t
+            t.start()
+
+        for t in threads.values():
+            t.join()
+
+        overall_success = all(r is not None for r in results.values())
+        self.finished.emit(overall_success, results)
+
 
 
 from pathlib import Path

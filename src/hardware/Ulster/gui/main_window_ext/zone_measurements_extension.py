@@ -596,14 +596,29 @@ class ZoneMeasurementsMixin:
             f"{self._base_name}_{self._x_mm:.2f}_{self._y_mm:.2f}_{self._timestamp}",
         )
 
+        from PyQt5.QtCore import QThread
+
         # Launch the dual-capture worker in its own thread
         self.capture_worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=self.integration_time,
             txt_filename_base=txt_filename_base,  # <--- KEY POINT
         )
+
+        self.capture_thread = QThread()
+        self.capture_worker.moveToThread(self.capture_thread)
+
+        # Connect thread start to worker run
+        self.capture_thread.started.connect(self.capture_worker.run)
+
+        # Connect signals for cleanup and post-processing
         self.capture_worker.finished.connect(self.on_capture_finished)
-        self.capture_worker.start()
+        self.capture_worker.finished.connect(self.capture_thread.quit)
+        self.capture_worker.finished.connect(self.capture_worker.deleteLater)
+        self.capture_thread.finished.connect(self.capture_thread.deleteLater)
+
+        # Start the thread
+        self.capture_thread.start()
 
     def on_capture_finished(self, success: bool, result_files: dict):
         if not success:

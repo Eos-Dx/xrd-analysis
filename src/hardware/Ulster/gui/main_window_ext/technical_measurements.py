@@ -9,15 +9,15 @@ from PyQt5.QtWidgets import (
     QListWidget, QListWidgetItem, QDoubleSpinBox,
     QSpinBox, QScrollArea
 )
-from hardware.Ulster.gui.technical.capture import move_and_convert_measurement_file
-from pathlib import Path
-from PyQt5.QtCore import Qt, QTimer
+
+from PyQt5.QtCore import Qt, QTimer, QThread
 import queue
 
 from hardware.Ulster.gui.technical.capture import (
     CaptureWorker, validate_folder, show_measurement_window
 )
 from hardware.Ulster.gui.main_window_ext.zone_measurements_extension import ZoneMeasurementsMixin
+from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 
 
 class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
@@ -48,6 +48,13 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         fld = QHBoxLayout()
         fld.addWidget(QLabel("Save Folder:"))
         self.folderLE = QLineEdit()
+        default_folder = (
+            self.config.get("default_folder", "")
+            if hasattr(self, "config")
+            else ""
+        )
+        self.folderLE.setText(default_folder)
+
         fld.addWidget(self.folderLE, 1)
         b = QPushButton("Browse…")
         b.clicked.connect(self._browse_folder)
@@ -133,14 +140,13 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         txt_filename_base = os.path.join(folder, f"{base_with_count}_{ts}_{int(self.integrationTimeSpin.value())}s")
 
         worker = CaptureWorker(
-            detector_controller=self.detector_controller,  # dict!
+            detector_controller=self.detector_controller,
             integration_time=self.integrationTimeSpin.value(),
             txt_filename_base=txt_filename_base
         )
-
-        if not hasattr(self, "_capture_workers"):
-            self._capture_workers = []
-        self._capture_workers.append(worker)
+        thread = QThread()
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)  # .run() method needed in worker
 
         def _cleanup(success, result_files, t=typ):
             try:
@@ -149,10 +155,16 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
                 print(f"Error in _on_capture_done for {t}: {e}")
             finally:
                 worker.deleteLater()
+                thread.quit()
+                thread.deleteLater()
                 self._capture_workers.remove(worker)
 
         worker.finished.connect(_cleanup)
-        worker.start()
+        thread.start()
+
+        if not hasattr(self, "_capture_workers"):
+            self._capture_workers = []
+        self._capture_workers.append(worker)
 
     def _on_capture_done(self, success: bool, result_files: dict, typ: str):
         if not success:
@@ -160,19 +172,24 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             self._aux_timer.stop()
             self._aux_status.setText("")
             return
-        else:
-            print(f'[{typ}] capture successful: {result_files}')
-            self._aux_timer.stop()
-            self._aux_status.setText("Done")
 
-        # Use aliases dynamically
-        for alias, txt_file in result_files.items():
-            # Compute alias folder (example)
-            alias_folder = Path(txt_file).parent / alias
-            npy_path = move_and_convert_measurement_file(txt_file, alias_folder)
-            item = QListWidgetItem(f"{alias}: {Path(npy_path).name}")
-            item.setData(Qt.UserRole, str(npy_path))
-            self.auxList.addItem(item)
+        print(f'[{typ}] capture successful: {result_files}')
+        self._aux_timer.stop()
+        self._aux_status.setText("Processing...")
+
+        # --- Set up worker
+        worker = MeasurementWorker(
+            filenames=result_files,
+        )
+        worker.add_aux_item.connect(self._add_aux_item_to_list)
+        worker.run()
+
+    def _add_aux_item_to_list(self, alias, npy_path):
+        from pathlib import Path
+        from PyQt5.QtCore import Qt
+        item = QListWidgetItem(f"{alias}: {Path(npy_path).name}")
+        item.setData(Qt.UserRole, str(npy_path))  # ✅ use Qt.UserRole to store the path
+        self.auxList.addItem(item)
 
     def _file_base(self, typ: str) -> str:
         le: QLineEdit = getattr(self, f"{typ.lower()}NameLE")
