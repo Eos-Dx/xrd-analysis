@@ -291,6 +291,11 @@ class ZoneMeasurementsMixin:
             alias = det_cfg["alias"]
             self.detector_aliases.append(alias)
 
+            # Get detector size from config, fallback to (256, 256)
+            det_size = tuple(det_cfg.get("size", {}).values()) if "size" in det_cfg else (256, 256)
+            if len(det_size) != 2:
+                det_size = (256, 256)
+
             # Faulty pixels mask (optional)
             mask_file = det_cfg.get("faulty_pixels")
             mask_path = None
@@ -299,7 +304,10 @@ class ZoneMeasurementsMixin:
                 if not mask_path.is_absolute():
                     mask_path = resource_dir / mask_path
                 try:
-                    self.masks[alias] = np.load(str(mask_path))
+                    faulty_pixels = np.load(str(mask_path), allow_pickle=True)
+                    # Handle both list/array and possibly None
+                    mask = create_mask(faulty_pixels, size=det_size)
+                    self.masks[alias] = mask
                 except Exception as e:
                     print(f"Failed to load faulty pixels for {alias}: {e}")
                     self.masks[alias] = None

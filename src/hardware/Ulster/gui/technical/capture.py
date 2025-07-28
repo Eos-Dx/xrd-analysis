@@ -16,6 +16,9 @@ from xrdanalysis.data_processing.azimuthal_integration import (
 )
 from PyQt5.QtCore import QObject, pyqtSignal
 
+from xrdanalysis.data_processing.utility_functions import create_mask
+
+
 class CaptureWorker(QObject):
     # Emits: (success: bool, result_files: dict)
     finished = pyqtSignal(bool, dict)
@@ -50,9 +53,13 @@ class CaptureWorker(QObject):
         self.finished.emit(ok, result_files)
 
 
+from pathlib import Path
+import shutil
+import numpy as np
+
 def move_and_convert_measurement_file(src_file, alias_folder):
     """
-    Move the .txt and .dsc file to alias_folder, convert .txt to .npy.
+    Move .txt and .dsc (of any extension style) to alias_folder, convert .txt to .npy.
     Args:
         src_file: str or Path, path to the original .txt file
         alias_folder: str or Path, target directory for detector alias (will be created if needed)
@@ -71,14 +78,19 @@ def move_and_convert_measurement_file(src_file, alias_folder):
         print(f"[move_and_convert_measurement_file] Error moving .txt: {e}")
         dest_txt = src_file  # fallback
 
-    # Move .dsc file (if present)
-    dsc_file = src_file.with_suffix('.dsc')
-    if dsc_file.exists():
-        dest_dsc = alias_folder / dsc_file.name
-        try:
-            shutil.move(str(dsc_file), str(dest_dsc))
-        except Exception as e:
-            print(f"[move_and_convert_measurement_file] Error moving .dsc: {e}")
+    # Move both .dsc and .txt.dsc (Pixet style)
+    candidates = [
+        src_file.with_suffix('.dsc'),                    # aux_001_..._SAXS.dsc
+        src_file.parent / (src_file.name + '.dsc')       # aux_001_..._SAXS.txt.dsc
+    ]
+    for dsc_candidate in candidates:
+        if dsc_candidate.exists():
+            dest_dsc = alias_folder / dsc_candidate.name
+            try:
+                shutil.move(str(dsc_candidate), str(dest_dsc))
+                print(f"Moved {dsc_candidate} → {dest_dsc}")
+            except Exception as e:
+                print(f"[move_and_convert_measurement_file] Error moving {dsc_candidate}: {e}")
 
     # Convert to .npy in alias folder
     try:
