@@ -147,7 +147,7 @@ class PixetDetectorController(DetectorController):
         return True
 
     def capture_point(self, Nframes, Nseconds, filename_base):
-        filename = f"{filename_base}_{self.alias}.txt"
+        filename = f"{filename_base}.txt"
         try:
             rc = self.detector.doSimpleIntegralAcquisition(
                 Nframes, Nseconds, self.pixet.PX_FTYPE_AUTODETECT, filename
