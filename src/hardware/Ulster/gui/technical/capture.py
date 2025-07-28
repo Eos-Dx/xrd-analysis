@@ -2,6 +2,8 @@ import os
 
 import numpy as np
 import seaborn as sns
+from pathlib import Path
+import shutil
 from matplotlib.backends.backend_qt5agg import (
     FigureCanvasQTAgg as FigureCanvas,
 )
@@ -46,6 +48,48 @@ class CaptureWorker(QObject):
             print(f"CaptureWorker error: {e}")
             ok = False
         self.finished.emit(ok, result_files)
+
+
+def move_and_convert_measurement_file(src_file, alias_folder):
+    """
+    Move the .txt and .dsc file to alias_folder, convert .txt to .npy.
+    Args:
+        src_file: str or Path, path to the original .txt file
+        alias_folder: str or Path, target directory for detector alias (will be created if needed)
+    Returns:
+        str: Path to the saved .npy file
+    """
+    src_file = Path(src_file)
+    alias_folder = Path(alias_folder)
+    alias_folder.mkdir(parents=True, exist_ok=True)
+
+    # Move .txt file
+    dest_txt = alias_folder / src_file.name
+    try:
+        shutil.move(str(src_file), str(dest_txt))
+    except Exception as e:
+        print(f"[move_and_convert_measurement_file] Error moving .txt: {e}")
+        dest_txt = src_file  # fallback
+
+    # Move .dsc file (if present)
+    dsc_file = src_file.with_suffix('.dsc')
+    if dsc_file.exists():
+        dest_dsc = alias_folder / dsc_file.name
+        try:
+            shutil.move(str(dsc_file), str(dest_dsc))
+        except Exception as e:
+            print(f"[move_and_convert_measurement_file] Error moving .dsc: {e}")
+
+    # Convert to .npy in alias folder
+    try:
+        data = np.loadtxt(dest_txt)
+        npy_file = dest_txt.with_suffix('.npy')
+        np.save(npy_file, data)
+    except Exception as e:
+        print(f"[move_and_convert_measurement_file] Error converting to .npy: {e}")
+        npy_file = dest_txt  # fallback
+
+    return str(npy_file)
 
 
 def validate_folder(path: str):

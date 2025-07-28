@@ -9,6 +9,8 @@ from PyQt5.QtWidgets import (
     QListWidget, QListWidgetItem, QDoubleSpinBox,
     QSpinBox, QScrollArea
 )
+from hardware.Ulster.gui.technical.capture import move_and_convert_measurement_file
+from pathlib import Path
 from PyQt5.QtCore import Qt, QTimer
 import queue
 
@@ -165,22 +167,11 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
         # Use aliases dynamically
         for alias, txt_file in result_files.items():
-            det_folder = os.path.join(os.path.dirname(txt_file), alias)
-            os.makedirs(det_folder, exist_ok=True)
-            new_txt_file = os.path.join(det_folder, os.path.basename(txt_file))
-            os.replace(txt_file, new_txt_file)  # Move file to subfolder
-
-            # Convert to .npy in same subfolder
-            try:
-                data = np.loadtxt(new_txt_file)
-                npy = new_txt_file.replace(".txt", ".npy")
-                np.save(npy, data)
-            except Exception as e:
-                print(f"Conversion error for {alias}:", e)
-                npy = new_txt_file
-
-            item = QListWidgetItem(f"{alias}: {os.path.basename(npy)}")
-            item.setData(Qt.UserRole, npy)
+            # Compute alias folder (example)
+            alias_folder = Path(txt_file).parent / alias
+            npy_path = move_and_convert_measurement_file(txt_file, alias_folder)
+            item = QListWidgetItem(f"{alias}: {Path(npy_path).name}")
+            item.setData(Qt.UserRole, str(npy_path))
             self.auxList.addItem(item)
 
     def _file_base(self, typ: str) -> str:

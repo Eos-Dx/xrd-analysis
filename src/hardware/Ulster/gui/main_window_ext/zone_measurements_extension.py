@@ -15,8 +15,7 @@ from PyQt5.QtWidgets import (
 )
 from hardware.Ulster.gui.technical.capture import (
     CaptureWorker,
-    compute_hf_score_from_cake,
-    show_measurement_window,
+    move_and_convert_measurement_file,
     validate_folder,
 )
 from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
@@ -606,30 +605,12 @@ class ZoneMeasurementsMixin:
 
         print(f"[Measurement] capture successful: {result_files}")
 
-        def move_and_save_npy(src_file, alias):
-            import shutil
-            src_path = Path(src_file)
-            det_folder = src_path.parent / alias
-            det_folder.mkdir(parents=True, exist_ok=True)
-            dst_file = det_folder / src_path.name
-            try:
-                shutil.move(str(src_path), str(dst_file))
-            except Exception as e:
-                print(f"[ERROR] Moving file {src_path} → {dst_file}: {e}")
-                dst_file = src_path  # fallback
-            try:
-                data = np.loadtxt(dst_file)
-                npy_path = dst_file.with_suffix(".npy")
-                np.save(npy_path, data)
-            except Exception as e:
-                print(f"Conversion error for {alias}: {e}")
-                npy_path = dst_file  # fallback
-            return str(npy_path)
-
         # Map aliases to .npy file paths
         npy_files = {}
         for alias, src_file in result_files.items():
-            npy_files[alias] = move_and_save_npy(src_file, alias)
+            src_path = Path(src_file)
+            alias_folder = src_path.parent / alias
+            npy_files[alias] = move_and_convert_measurement_file(src_path, alias_folder)
 
         # Use the current row as before
         current_row = self.sorted_indices[self.current_measurement_sorted_index]

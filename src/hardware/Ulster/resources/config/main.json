@@ -3,14 +3,19 @@
     "DEV": true,
     "default_image": "C:\\dev\\eos_play\\unzipped_data\\Ulster\\pancreas\\sheep_pancreas\\U2\\Xena_Cu\\20250313\\P1a_L4_20250218.jpg",
     "default_folder": "E:\\test",
-
     "detectors": [
         {
             "alias": "WAXS",
             "type": "Pixet",
             "id": "MiniPIX G05-W0339",
-            "size": {"width": 256, "height": 256},
-            "pixel_size_um": [55, 55],
+            "size": {
+                "width": 256,
+                "height": 256
+            },
+            "pixel_size_um": [
+                55,
+                55
+            ],
             "faulty_pixels": "faulty_pixels_MiniPIX-G05-W0339.npy",
             "default_poni": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis \n# Calibration done at Mon Jun  3 16:40:56 2024\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 5.4999999999999995e-05, \"pixel2\": 5.4999999999999995e-05, \"max_shape\": [256, 256], \"orientation\": 3}\nDistance: 0.023128625835860867\nPoni1: 0.00703271933414593\nPoni2: 0.000810597359260136\nRot1: 0.0\nRot2: 0.0\nRot3: 0.0\nWavelength: 1.5406e-10\n"
         },
@@ -18,8 +23,14 @@
             "alias": "SAXS",
             "type": "Pixet",
             "id": "MiniPIX G08-W0299",
-            "size": {"width": 256, "height": 256},
-            "pixel_size_um": [55, 55],
+            "size": {
+                "width": 256,
+                "height": 256
+            },
+            "pixel_size_um": [
+                55,
+                55
+            ],
             "faulty_pixels": "faulty_pixels_MiniPIX-G08-W0299.npy",
             "default_poni": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done at Mon Jun  3 17:04:33 2024\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 5.4999999999999995e-05, \"pixel2\": 5.4999999999999995e-05, \"max_shape\": [256, 256], \"orientation\": 3}\nDistance: 0.17239906043601042\nPoni1: 0.007020022187721548\nPoni2: 0.0008600585417045749\nRot1: 0.0\nRot2: 0.0\nRot3: 0.0\nWavelength: 1.5406e-10\n"
         },
@@ -27,8 +38,14 @@
             "alias": "DUMMY_DETECTOR_1",
             "type": "DummyDetector",
             "id": "DUMMY-0001",
-            "size": {"width": 128, "height": 128},
-            "pixel_size_um": [100, 100],
+            "size": {
+                "width": 128,
+                "height": 128
+            },
+            "pixel_size_um": [
+                100,
+                100
+            ],
             "faulty_pixels": null,
             "default_poni": null
         },
@@ -36,32 +53,50 @@
             "alias": "DUMMY_DETECTOR_2",
             "type": "DummyDetector",
             "id": "DUMMY-0002",
-            "size": {"width": 128, "height": 128},
-            "pixel_size_um": [100, 100],
+            "size": {
+                "width": 128,
+                "height": 128
+            },
+            "pixel_size_um": [
+                100,
+                100
+            ],
             "faulty_pixels": null,
             "default_poni": null
         }
     ],
-
-    "active_detectors": ["MiniPIX G08-W0299", "MiniPIX G05-W0339"],
-    "dev_active_detectors": ["DUMMY-0001", "DUMMY-0002"],
-
+    "active_detectors": [
+        "MiniPIX G08-W0299",
+        "MiniPIX G05-W0339"
+    ],
+    "dev_active_detectors": [
+        "DUMMY-0001"
+    ],
     "translation_stages": [
         {
             "alias": "XY_STAGE",
             "type": "Kinesis",
             "id": "101370874",
-            "real_zero": {"x_mm": 8.00, "y_mm": -6.25}
+            "real_zero": {
+                "x_mm": 8.0,
+                "y_mm": -6.25
+            }
         },
         {
             "alias": "DUMMY_STAGE",
             "type": "DummyStage",
             "id": "DUMMY-XY-000",
-            "real_zero": {"x_mm": 0.00, "y_mm": 0.00}
+            "real_zero": {
+                "x_mm": 0.0,
+                "y_mm": 0.0
+            }
         }
     ],
-    "active_translation_stages": ["101370874"],
-    "dev_active_stages": ["DUMMY-XY-000"],
-
+    "active_translation_stages": [
+        "101370874"
+    ],
+    "dev_active_stages": [
+        "DUMMY-XY-000"
+    ],
     "conda": "ulster37"
 }
