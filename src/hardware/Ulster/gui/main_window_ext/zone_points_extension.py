@@ -95,10 +95,6 @@ class ZonePointsMixin:
         # That pixel coordinate corresponds to (self.real_x_pos_mm, self.real_y_pos_mm) in real mm.
         self.include_center = (0, 0)  # default value, should be set by the other mixin
 
-    def update_coordinates(self):
-        """Recalculates the coordinates in the table using the updated spin box values."""
-        self.update_points_table()
-
     def update_conversion_label(self):
         self.conversionLabel.setText(f"Conversion: {self.pixel_to_mm_ratio:.2f} px/mm")
 
@@ -238,39 +234,6 @@ class ZonePointsMixin:
 
         self.update_points_table()
 
-    def update_points_table(self):
-        """Updates the table with the list of points.
-
-        The mm coordinates are calculated by mapping the pixel coordinates (with (0,0)
-        in the top left) using self.pixel_to_mm_ratio and then correcting with an offset.
-        The offset is determined so that the sample holder center (self.include_center) in pixels
-        maps to the real coordinates given by self.real_x_pos_mm and self.real_y_pos_mm.
-        """
-        points = []
-        # Process auto-generated points.
-        for item in self.image_view.points_dict["generated"]["points"]:
-            center = item.sceneBoundingRect().center()
-            points.append((center.x(), center.y(), "generated"))
-        # Process user-defined points.
-        for item in self.image_view.points_dict["user"]["points"]:
-            center = item.sceneBoundingRect().center()
-            points.append((center.x(), center.y(), "user"))
-        self.pointsTable.setRowCount(len(points))
-        # Populate the table with point data.
-        for idx, (x, y, ptype) in enumerate(points):
-            self.pointsTable.setItem(idx, 0, QTableWidgetItem(str(idx + 1)))
-            self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
-            self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
-            if self.pixel_to_mm_ratio:
-                x_mm = self.real_x_pos_mm.value() - (x - self.include_center[0]) / self.pixel_to_mm_ratio
-                y_mm = self.real_y_pos_mm.value() - (y - self.include_center[1]) / self.pixel_to_mm_ratio
-                self.pointsTable.setItem(idx, 3, QTableWidgetItem(f"{x_mm:.2f}"))
-                self.pointsTable.setItem(idx, 4, QTableWidgetItem(f"{y_mm:.2f}"))
-            else:
-                self.pointsTable.setItem(idx, 3, QTableWidgetItem("N/A"))
-                self.pointsTable.setItem(idx, 4, QTableWidgetItem("N/A"))
-            self.pointsTable.setItem(idx, 5, QTableWidgetItem(""))
-
     def pointHoverChanged(self, item, hovered):
         """
         When a point is hovered, update its corresponding zone and highlight the table row.
@@ -317,10 +280,50 @@ class ZonePointsMixin:
                     table.item(row, col).setBackground(highlight if hovered else normal)
 
     def delete_selected_points(self):
+        # Get unique selected row indices.
+        selected_rows = sorted({index.row() for index in self.pointsTable.selectedIndexes()}, reverse=True)
+        if not selected_rows:
+            return
+
+        n_generated = len(self.image_view.points_dict["generated"]["points"])
+        gen_rows = [r for r in selected_rows if r < n_generated]
+        user_rows = [r - n_generated for r in selected_rows if r >= n_generated]
+
+        # Remove measurement widgets
+        for r in selected_rows:
+            # Remove widget in column 5 (Measurement)
+            widget = self.pointsTable.cellWidget(r, 5)
+            if widget is not None:
+                self.pointsTable.removeCellWidget(r, 5)
+                widget.deleteLater()
+            # Optionally also for Goodness (col 6)
+            widget = self.pointsTable.cellWidget(r, 6)
+            if widget is not None:
+                self.pointsTable.removeCellWidget(r, 6)
+                widget.deleteLater()
+
+        # Remove generated/user points as before...
+        # (your original logic)
+        for r in sorted(gen_rows, reverse=True):
+            point_item = self.image_view.points_dict["generated"]["points"].pop(r)
+            zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
+            self.image_view.scene.removeItem(point_item)
+            self.image_view.scene.removeItem(zone_item)
+        for r in sorted(user_rows, reverse=True):
+            if r < len(self.image_view.points_dict["user"]["points"]):
+                point_item = self.image_view.points_dict["user"]["points"].pop(r)
+                if r < len(self.image_view.points_dict["user"]["zones"]):
+                    zone_item = self.image_view.points_dict["user"]["zones"].pop(r)
+                    self.image_view.scene.removeItem(zone_item)
+                self.image_view.scene.removeItem(point_item)
+        self.update_points_table()
+
+    def delete_selected_points(self):
         """
         Deletes the points corresponding to the selected rows in the table from both the scene and the points dictionary.
+        Also removes the associated measurement/history widgets.
         """
-        # Get unique selected row indices.
+        # Get unique selected row indices, sorted descending so row indices don't shift during deletion
         selected_rows = sorted({index.row() for index in self.pointsTable.selectedIndexes()}, reverse=True)
         if not selected_rows:
             return
@@ -330,14 +333,28 @@ class ZonePointsMixin:
         gen_rows = [r for r in selected_rows if r < n_generated]
         user_rows = [r - n_generated for r in selected_rows if r >= n_generated]
 
-        # Remove generated points in descending order.
-        for r in sorted(gen_rows, reverse=True):
-            point_item = self.image_view.points_dict["generated"]["points"].pop(r)
-            zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
-            self.image_view.scene.removeItem(point_item)
-            self.image_view.scene.removeItem(zone_item)
+        # Remove from measurement_widgets first to prevent shifting
+        for r in selected_rows:
+            # Remove measurement/history widget from both the table and the list
+            if r < len(self.measurement_widgets):
+                widget = self.measurement_widgets.pop(r)
+                if widget:
+                    widget.deleteLater()
+            # Remove widget from table column 5 if present
+            widget_in_table = self.pointsTable.cellWidget(r, 5)
+            if widget_in_table:
+                self.pointsTable.removeCellWidget(r, 5)
+                widget_in_table.deleteLater()
 
-        # Remove user-defined points in descending order.
+        # Remove generated points and zones
+        for r in sorted(gen_rows, reverse=True):
+            if r < len(self.image_view.points_dict["generated"]["points"]):
+                point_item = self.image_view.points_dict["generated"]["points"].pop(r)
+                zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
+                self.image_view.scene.removeItem(point_item)
+                self.image_view.scene.removeItem(zone_item)
+
+        # Remove user-defined points and zones
         for r in sorted(user_rows, reverse=True):
             if r < len(self.image_view.points_dict["user"]["points"]):
                 point_item = self.image_view.points_dict["user"]["points"].pop(r)
@@ -346,16 +363,7 @@ class ZonePointsMixin:
                     self.image_view.scene.removeItem(zone_item)
                 self.image_view.scene.removeItem(point_item)
 
-        self.update_points_table()
-
-    def delete_all_points(self):
-        """
-        Deletes all points (both generated and user-defined) from the scene
-        and clears the corresponding entries in the points dictionary.
-        """
-        # Delete all generated points.
-        self.image_view.points_dict = copy.deepcopy(null_dict)
-        # Update the points table UI.
+        # Update the points table, which will also clear orphaned table widgets
         self.update_points_table()
 
     def eventFilter(self, source, event):
@@ -369,3 +377,52 @@ class ZonePointsMixin:
                 return True
         # Pass other events to the parent class.
         return super().eventFilter(source, event)
+
+    def update_coordinates(self):
+        """Recalculates the coordinates in the table using the updated spin box values."""
+        self.update_points_table()
+
+    def update_points_table(self):
+        # Gather current points as before
+        points = []
+        for item in self.image_view.points_dict["generated"]["points"]:
+            center = item.sceneBoundingRect().center()
+            points.append((center.x(), center.y(), "generated"))
+        for item in self.image_view.points_dict["user"]["points"]:
+            center = item.sceneBoundingRect().center()
+            points.append((center.x(), center.y(), "user"))
+
+        # Adjust measurement_widgets list to match number of points
+        # Delete extra widgets if points have been deleted
+        while len(self.measurement_widgets) > len(points):
+            widget = self.measurement_widgets.pop()
+            if widget:
+                widget.deleteLater()
+
+        # Add empty entries for new points (no measurement yet)
+        while len(self.measurement_widgets) < len(points):
+            self.measurement_widgets.append(None)
+
+        self.pointsTable.setRowCount(len(points))
+
+        for idx, (x, y, ptype) in enumerate(points):
+            self.pointsTable.setItem(idx, 0, QTableWidgetItem(str(idx + 1)))
+            self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
+            self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
+            if self.pixel_to_mm_ratio:
+                x_mm = self.real_x_pos_mm.value() - (x - self.include_center[0]) / self.pixel_to_mm_ratio
+                y_mm = self.real_y_pos_mm.value() - (y - self.include_center[1]) / self.pixel_to_mm_ratio
+                self.pointsTable.setItem(idx, 3, QTableWidgetItem(f"{x_mm:.2f}"))
+                self.pointsTable.setItem(idx, 4, QTableWidgetItem(f"{y_mm:.2f}"))
+            else:
+                self.pointsTable.setItem(idx, 3, QTableWidgetItem("N/A"))
+                self.pointsTable.setItem(idx, 4, QTableWidgetItem("N/A"))
+
+            # Restore or set the measurement/history widget
+            if self.measurement_widgets[idx] is not None:
+                self.pointsTable.setCellWidget(idx, 5, self.measurement_widgets[idx])
+            else:
+                self.pointsTable.setItem(idx, 5, QTableWidgetItem(""))
+
+            # Optionally set Goodness cell, or clear it (similarly)
+            self.pointsTable.setItem(idx, 6, QTableWidgetItem(""))

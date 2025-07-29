@@ -19,6 +19,7 @@ class MainWindow(RotationMixin, ShapeTableMixin, DrawingMixin,
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.measurement_widgets = []
         self.create_shape_table()
         # Create the Zone Measurements widget(right bottom) + Technical .
         self.create_measurements_panel()

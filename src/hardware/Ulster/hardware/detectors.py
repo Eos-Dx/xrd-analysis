@@ -54,8 +54,8 @@ class DummyDetectorController:
         t.join()
         return True
 
-    def _dummy_acquire(self, filename, Nseconds):
-        time.sleep(Nseconds)  # Simulate integration time
+    def _dummy_acquire(self, filename, Nseconds, Nframes=1):
+        time.sleep(Nseconds * Nframes)  # Simulate integration time
         width, height = self.size
         # Generate a random 2D Gaussian blob
         x, y = np.arange(width), np.arange(height)

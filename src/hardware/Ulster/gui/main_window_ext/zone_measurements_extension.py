@@ -26,6 +26,17 @@ from xrdanalysis.data_processing.utility_functions import create_mask
 
 from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 
+def integrate_central_area(frame, center_x, center_y, size=2):
+    """Integrate square of (2*size)x(2*size) around (center_x, center_y)"""
+    x0 = int(round(center_x)) - size
+    x1 = int(round(center_x)) + size
+    y0 = int(round(center_y)) - size
+    y1 = int(round(center_y)) + size
+    # Bounds check
+    x0, x1 = max(x0, 0), min(x1, frame.shape[1])
+    y0, y1 = max(y0, 0), min(y1, frame.shape[0])
+    return np.sum(frame[y0:y1, x0:x1])
+
 
 class ZoneMeasurementsMixin:
     # Signal emitted on hardware initialize (True) or deinitialize (False)
@@ -207,6 +218,50 @@ class ZoneMeasurementsMixin:
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
         self.xyTimer.start(10000)
+
+        # ==== Tab 3: Attenuation ====
+        atten_tab = QWidget()
+        atten_layout = QVBoxLayout(atten_tab)
+        self.tabs.addTab(atten_tab, "Attenuation")
+
+        # Controls
+        self.n_repeat_spin = QSpinBox()
+        self.n_repeat_spin.setMinimum(1)
+        self.n_repeat_spin.setMaximum(1000)
+        self.n_repeat_spin.setValue(100)
+        self.integration_time_spin = QDoubleSpinBox()
+        self.integration_time_spin.setDecimals(6)
+        self.integration_time_spin.setSuffix(" s")
+        self.integration_time_spin.setValue(0.00005)  # 50 µs
+
+        atten_layout.addWidget(QLabel("Number of frames:"))
+        atten_layout.addWidget(self.n_repeat_spin)
+        atten_layout.addWidget(QLabel("Integration time (s):"))
+        atten_layout.addWidget(self.integration_time_spin)
+
+        self.measure_without_sample_btn = QPushButton("Measure Without Sample")
+        self.measure_with_sample_btn = QPushButton("Measure With Sample")
+        atten_layout.addWidget(self.measure_without_sample_btn)
+        atten_layout.addWidget(self.measure_with_sample_btn)
+
+        self.result_label = QLabel("No results yet.")
+        atten_layout.addWidget(self.result_label)
+
+        self.measure_without_sample_btn.clicked.connect(self.measure_without_sample)
+        self.measure_with_sample_btn.clicked.connect(self.measure_with_sample)
+
+    def add_measurement_to_table(self, row, results, timestamp=None):
+        widget = self.pointsTable.cellWidget(row, 5)
+        if not isinstance(widget, MeasurementHistoryWidget):
+            widget = MeasurementHistoryWidget(
+                masks=self.masks,
+                ponis=self.ponis,
+                parent=self
+            )
+            self.pointsTable.setCellWidget(row, 5, widget)
+            # --- Track the widget ---
+            self.measurement_widgets[row] = widget
+        widget.add_measurement(results, timestamp or getattr(self, "_timestamp", ""))
 
     def populate_detector_param_tab(self):
         # First, clear the param tab layout
@@ -628,18 +683,11 @@ class ZoneMeasurementsMixin:
 
         print(f"[Measurement] capture successful: {result_files}")
 
-        # Map aliases to .npy file paths
-        npy_files = {}
-        for alias, src_file in result_files.items():
-            src_path = Path(src_file)
-            alias_folder = src_path.parent / alias
-            npy_files[alias] = move_and_convert_measurement_file(src_path, alias_folder)
-
         # Use the current row as before
         current_row = self.sorted_indices[self.current_measurement_sorted_index]
 
-        # Launch a post-processing thread that can handle any number of detectors
-        self.spawn_measurement_thread(current_row, npy_files)
+        # Pass raw result_files, let worker handle conversion to .npy
+        self.spawn_measurement_thread(current_row, result_files)
 
         # Visual feedback
         green_brush = QColor(0, 255, 0)
@@ -652,6 +700,26 @@ class ZoneMeasurementsMixin:
         except Exception as e:
             print(e)
         QTimer.singleShot(1000, self.measurement_finished)
+
+    def spawn_measurement_thread(self, row, file_map):
+        thread = QThread(self)
+        worker = MeasurementWorker(
+            row=row,
+            filenames=file_map,  # now a dict of {alias: file}
+            masks=self.masks,
+            ponis=self.ponis,
+            parent=self,
+            hf_cutoff_fraction=0.2,
+            columns_to_remove=30
+        )
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.measurement_ready.connect(self.add_measurement_to_table)
+        worker.measurement_ready.connect(thread.quit)
+        worker.measurement_ready.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        self._measurement_threads.append((thread, worker))
+        thread.start()
 
     def process_measurement_result(self, success, result_files, typ):
         """Handle new measurement files, organize by alias, convert, and update list."""
@@ -688,38 +756,6 @@ class ZoneMeasurementsMixin:
             item.setData(Qt.UserRole, str(npy))
             self.auxList.addItem(item)
         return file_map
-
-    def add_measurement_to_table(self, row, results, timestamp=None):
-        widget = self.pointsTable.cellWidget(row, 5)
-        if not isinstance(widget, MeasurementHistoryWidget):
-            widget = MeasurementHistoryWidget(
-                masks=self.masks,
-                ponis=self.ponis,
-                parent=self
-            )
-            self.pointsTable.setCellWidget(row, 5, widget)
-        # Add all results as dict: {alias: {'filename': ..., 'goodness': ...}, ...}
-        widget.add_measurement(results, timestamp or getattr(self, "_timestamp", ""))
-
-    def spawn_measurement_thread(self, row, file_map):
-        thread = QThread(self)
-        worker = MeasurementWorker(
-            row=row,
-            filenames=file_map,  # now a dict of {alias: file}
-            masks=self.masks,
-            ponis=self.ponis,
-            parent=self,
-            hf_cutoff_fraction=0.2,
-            columns_to_remove=30
-        )
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.measurement_ready.connect(self.add_measurement_to_table)
-        worker.measurement_ready.connect(thread.quit)
-        worker.measurement_ready.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        self._measurement_threads.append((thread, worker))
-        thread.start()
 
     def pause_measurements(self):
         """
@@ -862,3 +898,102 @@ class ZoneMeasurementsMixin:
                 print("Error moving stage:", e)
         else:
             print("Stage not initialized; cannot GoTo.")
+
+    def measure_without_sample(self):
+        self._attenuation_measure("without")
+
+    def measure_with_sample(self):
+        self._attenuation_measure("with")
+
+    import os
+    import numpy as np
+    from datetime import datetime
+
+    def _attenuation_measure(self, mode):
+        N = self.n_repeat_spin.value()
+        t_exp = self.integration_time_spin.value()
+
+        # Use the current measurement folder from your UI
+        save_folder = self.folderLineEdit.text().strip()
+        os.makedirs(save_folder, exist_ok=True)
+
+        results = {}
+        for alias, detector in self.hardware_controller.detectors.items():
+            center_x, center_y = self.get_beam_center(alias)
+            size = detector.size if hasattr(detector, "size") else (256, 256)
+            if not (0 <= center_x < size[0] and 0 <= center_y < size[1]):
+                continue
+
+            # Compose a unique file name
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename_base = os.path.join(
+                save_folder, f"attenuation_{mode}_{alias}_{timestamp}"
+            )
+
+            # Acquire measurement (single call, multiple frames)
+            success = detector.capture_point(
+                Nframes=N,
+                Nseconds=t_exp,
+                filename_base=filename_base
+            )
+            txt_file = filename_base + ".txt"
+            if not success or not os.path.isfile(txt_file):
+                print(f"[{mode}] {alias}: Acquisition failed or file not found: {txt_file}")
+                continue
+
+            # Move and (optionally) convert file using your utility
+            # This places the file into detector-specific folder and returns new path
+            final_npy_file = move_and_convert_measurement_file(txt_file, os.path.join(save_folder, alias))
+
+            # Load and integrate
+            frame = np.load(final_npy_file)
+            value = integrate_central_area(frame, center_x, center_y)
+            results[alias] = value
+            print(f"[{mode}] {alias}: {results[alias]} (file saved to {final_npy_file})")
+
+        setattr(self, f"atten_{mode}_results", results)
+        self.display_attenuation_result()
+
+    def get_beam_center(self, alias):
+        import re
+        poni = self.ponis.get(alias, "")
+        # Parse lines
+        lines = poni.splitlines()
+        poni1 = poni2 = pixel1 = pixel2 = None
+        # First, extract Poni1 and Poni2 (in meters)
+        for line in lines:
+            if line.startswith("Poni1:"):
+                poni1 = float(line.split(":")[1].strip())
+            if line.startswith("Poni2:"):
+                poni2 = float(line.split(":")[1].strip())
+            if line.startswith("Detector_config:"):
+                # Value is a JSON dict after the colon
+                m = re.search(r'Detector_config:\s*(\{.*\})', line)
+                if m:
+                    cfg = json.loads(m.group(1))
+                    pixel1 = float(cfg["pixel1"])
+                    pixel2 = float(cfg["pixel2"])
+        # Calculate center coordinates in pixels (col, row)
+        if None not in (poni1, poni2, pixel1, pixel2):
+            center_y = poni1 / pixel1  # row
+            center_x = poni2 / pixel2  # col
+            return center_x, center_y  # (x, y), both in pixels
+        # Fallback to image center if any value missing
+        size = self.detector_controller[alias].size
+        return (size[0] // 2, size[1] // 2)
+
+    def display_attenuation_result(self):
+        # Only calculate if both are present
+        if hasattr(self, "atten_without_results") and hasattr(self, "atten_with_results"):
+            texts = []
+            for alias in self.atten_without_results:
+                I0 = self.atten_without_results[alias]
+                I = self.atten_with_results.get(alias)
+                if I is None or I0 <= 0 or I <= 0:
+                    alpha = "N/A"
+                else:
+                    alpha = -np.log(I / I0)
+                texts.append(f"{alias}: I0={I0:.1f}, I={I:.1f}, α={alpha}")
+            self.result_label.setText("\n".join(texts))
+        else:
+            self.result_label.setText("Need both measurements for attenuation.")
