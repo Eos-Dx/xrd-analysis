@@ -905,11 +905,8 @@ class ZoneMeasurementsMixin:
     def measure_with_sample(self):
         self._attenuation_measure("with")
 
-    import os
-    import numpy as np
-    from datetime import datetime
-
     def _attenuation_measure(self, mode):
+        from datetime import datetime
         N = self.n_repeat_spin.value()
         t_exp = self.integration_time_spin.value()
 
