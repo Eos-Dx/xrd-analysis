@@ -26,6 +26,9 @@ from xrdanalysis.data_processing.utility_functions import create_mask
 
 from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 
+from hardware.Ulster.gui.technical.capture import show_measurement_window
+
+
 def integrate_central_area(frame, center_x, center_y, size=2):
     """Integrate square of (2*size)x(2*size) around (center_x, center_y)"""
     x0 = int(round(center_x)) - size
@@ -244,11 +247,30 @@ class ZoneMeasurementsMixin:
         atten_layout.addWidget(self.measure_without_sample_btn)
         atten_layout.addWidget(self.measure_with_sample_btn)
 
+        self.integration_radius_spin = QSpinBox()
+        self.integration_radius_spin.setRange(1, 20)
+        self.integration_radius_spin.setValue(2)
+        atten_layout.addWidget(QLabel("Integration radius (pixels):"))
+        atten_layout.addWidget(self.integration_radius_spin)
+
         self.result_label = QLabel("No results yet.")
         atten_layout.addWidget(self.result_label)
 
+        self.attenuationList = QListWidget()
+        atten_layout.addWidget(QLabel("Measurements:"))
+        atten_layout.addWidget(self.attenuationList)
+        self.attenuationList.itemActivated.connect(self.open_attenuation_measurement)
+
         self.measure_without_sample_btn.clicked.connect(self.measure_without_sample)
         self.measure_with_sample_btn.clicked.connect(self.measure_with_sample)
+
+        self.calc_atten_btn = QPushButton("Calculate Attenuation (all pairs)")
+        atten_layout.addWidget(self.calc_atten_btn)
+        self.calc_atten_btn.clicked.connect(self.calculate_all_attenuations)
+
+        self.load_atten_btn = QPushButton("Load Attenuation Data")
+        atten_layout.addWidget(self.load_atten_btn)
+        self.load_atten_btn.clicked.connect(self.load_attenuation_data)
 
     def add_measurement_to_table(self, row, results, timestamp=None):
         widget = self.pointsTable.cellWidget(row, 5)
@@ -919,6 +941,7 @@ class ZoneMeasurementsMixin:
             center_x, center_y = self.get_beam_center(alias)
             size = detector.size if hasattr(detector, "size") else (256, 256)
             if not (0 <= center_x < size[0] and 0 <= center_y < size[1]):
+                print(f"[{mode}] {alias}: Invalid beam center ({center_x}, {center_y}) for detector size {size}")
                 continue
 
             # Compose a unique file name
@@ -939,17 +962,109 @@ class ZoneMeasurementsMixin:
                 continue
 
             # Move and (optionally) convert file using your utility
-            # This places the file into detector-specific folder and returns new path
-            final_npy_file = move_and_convert_measurement_file(txt_file, os.path.join(save_folder, alias))
+            final_npy_file = move_and_convert_measurement_file(
+                txt_file, os.path.join(save_folder, alias)
+            )
 
             # Load and integrate
-            frame = np.load(final_npy_file)
-            value = integrate_central_area(frame, center_x, center_y)
-            results[alias] = value
-            print(f"[{mode}] {alias}: {results[alias]} (file saved to {final_npy_file})")
+            try:
+                frame = np.load(final_npy_file)
+                radius = self.integration_radius_spin.value()
+                value = integrate_central_area(frame, center_x, center_y, size=radius)
+                results[alias] = value
+                print(f"[{mode}] {alias}: {results[alias]} (file saved to {final_npy_file})")
+            except Exception as e:
+                print(f"[{mode}] {alias}: Error loading/integrating file {final_npy_file}: {e}")
+                continue
+
+            # ---- NEW: Add measurement to attenuationList ----
+            item = QListWidgetItem(f"{mode}: {alias} {timestamp}")
+            item.setData(Qt.UserRole, final_npy_file)
+            item.setData(Qt.UserRole + 1, {
+                "mode": mode,
+                "alias": alias,
+                "timestamp": timestamp,
+                "center": (center_x, center_y),
+                "radius": radius,
+                "value": value
+            })
+            self.attenuationList.addItem(item)
 
         setattr(self, f"atten_{mode}_results", results)
         self.display_attenuation_result()
+
+    def load_attenuation_data(self):
+        # Open file dialog for user to select one or more files
+        files, _ = QFileDialog.getOpenFileNames(
+            self, "Select Attenuation Data Files", "",
+            "Numpy files (*.npy);;All Files (*)"
+        )
+        if not files:
+            return
+
+        from datetime import datetime
+        for file_path in files:
+            file_name = os.path.basename(file_path)
+            # Guess alias/mode/timestamp from file name if possible
+            # Example: attenuation_with_SAXS_20250730_133301.npy
+            import re
+            match = re.match(r"attenuation_(with|without)_([A-Za-z0-9]+)_(\d{8}_\d{6})", file_name)
+            if match:
+                mode, alias, timestamp = match.groups()
+            else:
+                # Fallbacks if not in expected format
+                mode = "unknown"
+                alias = "unknown"
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            # Optional: Compute value if desired
+            try:
+                frame = np.load(file_path)
+                center_x, center_y = self.get_beam_center(alias)
+                radius = self.integration_radius_spin.value()
+                value = integrate_central_area(frame, center_x, center_y, size=radius)
+            except Exception as e:
+                print(f"Failed to load/integrate {file_path}: {e}")
+                value = None
+
+            # Add to attenuationList
+            item = QListWidgetItem(f"{mode}: {alias} {timestamp}")
+            item.setData(Qt.UserRole, file_path)
+            item.setData(Qt.UserRole + 1, {
+                "mode": mode,
+                "alias": alias,
+                "timestamp": timestamp,
+                "center": (center_x, center_y),
+                "radius": radius,
+                "value": value,
+            })
+            self.attenuationList.addItem(item)
+
+    def open_attenuation_measurement(self, item):
+        file_path = item.data(Qt.UserRole)
+        meta = item.data(Qt.UserRole + 1) or {}
+        alias = meta.get("alias", "unknown")
+
+        # Always try to determine center from PONI
+        try:
+            center_x, center_y = self.get_beam_center(alias)
+            center = (center_y, center_x)  # for plotting: (y, x)
+        except Exception as e:
+            # fallback: image center
+            frame = np.load(file_path)
+            center = (frame.shape[0] // 2, frame.shape[1] // 2)
+
+        radius = meta.get("radius", self.integration_radius_spin.value())
+        show_measurement_window(
+            measurement_filename=file_path,
+            mask=None,
+            poni_text=self.ponis.get(alias) if hasattr(self, "ponis") and alias in self.ponis else None,
+            parent=self,
+            columns_to_remove=30,
+            goodness=0.0,
+            center=center,
+            integration_radius=radius,
+        )
 
     def get_beam_center(self, alias):
         import re
@@ -989,8 +1104,41 @@ class ZoneMeasurementsMixin:
                 if I is None or I0 <= 0 or I <= 0:
                     alpha = "N/A"
                 else:
-                    alpha = -np.log(I / I0)
+                    alpha = -np.log10(I / I0)
                 texts.append(f"{alias}: I0={I0:.1f}, I={I:.1f}, α={alpha}")
             self.result_label.setText("\n".join(texts))
         else:
             self.result_label.setText("Need both measurements for attenuation.")
+
+    def integrate_file(self, file_path, alias):
+        frame = np.load(file_path)
+        center_x, center_y = self.get_beam_center(alias)
+        radius = self.integration_radius_spin.value()
+        return integrate_central_area(frame, center_x, center_y, size=radius)
+
+    def calculate_all_attenuations(self):
+        # Collect all measurements from list, group by alias and mode
+        from collections import defaultdict
+        by_alias = defaultdict(lambda: {"with": [], "without": []})
+        for i in range(self.attenuationList.count()):
+            item = self.attenuationList.item(i)
+            meta = item.data(Qt.UserRole + 1)
+            file_path = item.data(Qt.UserRole)
+            if meta:
+                by_alias[meta["alias"]][meta["mode"]].append((meta["timestamp"], file_path))
+        results = []
+        for alias, modes in by_alias.items():
+            withs = sorted(modes["with"])
+            withouts = sorted(modes["without"])
+            # Pairing strategy: match by order or by timestamp (as you wish)
+            for (t_with, file_with), (t_wo, file_wo) in zip(withs, withouts):
+                I = self.integrate_file(file_with, alias)
+                I0 = self.integrate_file(file_wo, alias)
+                if I > 0 and I0 > 0:
+                    alpha = -np.log10(I / I0)
+                else:
+                    alpha = "N/A"
+                results.append((alias, t_with, t_wo, I, I0, alpha))
+        # Display or export results
+        txts = [f"{alias}: I0={I0:.1f}, I={I:.1f}, α={alpha}" for alias, t_with, t_wo, I, I0, alpha in results]
+        self.result_label.setText("\n".join(txts))

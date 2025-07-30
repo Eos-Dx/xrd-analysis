@@ -130,19 +130,15 @@ def show_measurement_window(
     parent=None,
     columns_to_remove: int = 30,
     goodness: float = 0.0,
+    center=None,                  # <-- NEW
+    integration_radius=None,      # <-- NEW
 ):
     """
     Opens a dialog window displaying the raw 2D image and its azimuthal integration.
-
-    Parameters:
-    - measurement_filename: Path to the .txt or .npy data file.
-    - mask: 2D numpy array mask to apply during integration.
-    - poni_text: Optional PONI file contents as text. If provided, uses PONI integrator.
-    - parent: Optional Qt parent for the dialog.
-
-    Returns:
-    - The QDialog instance (which has already been shown).
+    Optionally overlays the beam center and integration region.
     """
+    import matplotlib.pyplot as plt
+
     # Load data
     data = np.load(measurement_filename)
 
@@ -195,33 +191,39 @@ def show_measurement_window(
 
     # Top-left: raw 2D heatmap
     ax1 = fig.add_subplot(2, 2, 1)
-    sns.heatmap(data, robust=True, square=True, ax=ax1)
+    sns.heatmap(data, robust=True, square=True, ax=ax1, cbar=False)
     ax1.set_title("2D Image")
+
+    # === Overlay beam center and integration region ===
+    if center is not None:
+        cy, cx = center
+        print(cx, cy)
+        # Mark center
+        ax1.plot([cx], [cy], marker="x", color="red", markersize=10, label="Beam center")
+        # Mark integration region
+        if integration_radius is not None and integration_radius > 0:
+            from matplotlib.patches import Circle
+            circ = Circle((cx, cy), integration_radius, edgecolor="red", facecolor="none", lw=2, ls="--", label="Integration area")
+            ax1.add_patch(circ)
+        ax1.legend(fontsize="x-small")
 
     # Top-right: 1D integration
     from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-
-    # Top-right: 1D integration
     ax2 = fig.add_subplot(2, 2, 2)
-
-    # 1) main curve with σ‐errorbars in “candle” style
     ax2.errorbar(
         radial,
         intensity,
         yerr=sigma,
-        fmt="-o",  # line + circle marker
+        fmt="-o",
         markersize=3,
         linewidth=1,
-        ecolor="black",  # error‐bar color
-        capsize=3,  # horizontal bar at ends
-        capthick=1,  # thickness of caps
+        ecolor="black",
+        capsize=3,
+        capthick=1,
         label="Intensity ± σ",
     )
-
-    # 2) extend x-limits by 30%
     xmin, xmax = radial.min(), radial.max()
     ax2.set_xlim(xmin, xmax * 1.3)
-
     ax2.set_yscale("log")
     ax2.set_title("Azimuthal Integration")
     ax2.set_xlabel("q (nm⁻¹)")
@@ -231,9 +233,9 @@ def show_measurement_window(
     # 3) inset for std (top-left)
     ax_std = inset_axes(
         ax2,
-        width="30%",  # 30% of ax2 width
-        height="30%",  # 30% of ax2 height
-        bbox_to_anchor=(0.05, -0.2, 1, 1),  # x0, y0, w, h in axes fraction
+        width="30%",
+        height="30%",
+        bbox_to_anchor=(0.05, -0.2, 1, 1),
         bbox_transform=ax2.transAxes,
     )
     ax_std.plot(radial, std, "-", linewidth=1)
@@ -278,7 +280,6 @@ def show_measurement_window(
     dialog.show()
 
     return dialog
-
 
 def compute_hf_score_from_cake(
     measurement_filename: np.ndarray,

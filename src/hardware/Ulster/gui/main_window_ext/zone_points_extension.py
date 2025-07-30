@@ -70,9 +70,9 @@ class ZonePointsMixin:
         layout.addLayout(inputLayout)
 
         # Table to display points.
-        self.pointsTable = QTableWidget(0, 7)
+        self.pointsTable = QTableWidget(0, 6)
         self.pointsTable.setHorizontalHeaderLabels([
-            "ID", "X (px)", "Y (px)", "X (mm)", "Y (mm)", "Measurement", "Goodness"
+            "ID", "X (px)", "Y (px)", "X (mm)", "Y (mm)", "Measurement"
         ])
         layout.addWidget(self.pointsTable)
         # Install an event filter on the table to capture key presses (for Delete key)
@@ -296,11 +296,7 @@ class ZonePointsMixin:
             if widget is not None:
                 self.pointsTable.removeCellWidget(r, 5)
                 widget.deleteLater()
-            # Optionally also for Goodness (col 6)
-            widget = self.pointsTable.cellWidget(r, 6)
-            if widget is not None:
-                self.pointsTable.removeCellWidget(r, 6)
-                widget.deleteLater()
+
 
         # Remove generated/user points as before...
         # (your original logic)
@@ -424,5 +420,3 @@ class ZonePointsMixin:
             else:
                 self.pointsTable.setItem(idx, 5, QTableWidgetItem(""))
 
-            # Optionally set Goodness cell, or clear it (similarly)
-            self.pointsTable.setItem(idx, 6, QTableWidgetItem(""))
