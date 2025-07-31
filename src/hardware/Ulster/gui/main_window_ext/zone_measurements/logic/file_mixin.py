@@ -18,13 +18,6 @@ class ZoneMeasurementsFileMixin:
         if folder:
             self.folderLineEdit.setText(folder)
 
-    def manual_save_state(self):
-        """
-        Saves current measurement state to a file (if needed).
-        You can implement this method if you want custom state-saving (e.g. to JSON or Notion).
-        """
-        # Example: pass  # implement if you need manual saving
-        pass
 
     def process_measurement_result(self, success, result_files, typ):
         """

@@ -95,7 +95,7 @@ class MainWindow(
         self.main_layout.addWidget(self.image_view)
 
         self.tabs = QTabWidget()
-        self.main_layout.addWidget(self.tabs)
+        #self.main_layout.addWidget(self.tabs)
         self.hardware_controller = HardwareController(self.config)
 
     def add_restore_state_action(self):
