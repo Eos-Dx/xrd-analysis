@@ -15,8 +15,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from hardware.Ulster.gui.views.image_view import ImageView
-
+from hardware.Ulster.hardware.camera_capture_dialog import CameraCaptureDialog
 
 class MainWindowBasic(QMainWindow):
     def __init__(self, parent=None):
@@ -67,6 +66,8 @@ class MainWindowBasic(QMainWindow):
     def create_actions(self):
         # File open
         self.open_act = QAction("Open Image", self, triggered=self.open_image)
+        # Camera
+        self.capture_camera_act = QAction("Capture from Camera", self, triggered=self.capture_from_camera)
         # Edit config dialog
         self.editConfigAct = QAction(
             "Edit Config…", self, triggered=self.edit_config
@@ -77,7 +78,7 @@ class MainWindowBasic(QMainWindow):
     def create_menus(self):
         fileMenu = self.menuBar().addMenu("File")
         fileMenu.addAction(self.open_act)
-
+        fileMenu.addAction(self.capture_camera_act)
         settingsMenu = self.menuBar().addMenu("Settings")
         settingsMenu.addAction(self.editConfigAct)
 
@@ -85,6 +86,7 @@ class MainWindowBasic(QMainWindow):
         self.toolbar = QToolBar("Tools", self)
         self.addToolBar(self.toolbar)
         self.toolbar.addAction(self.open_act)
+        self.toolbar.addAction(self.capture_camera_act)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.toggleDevAct)
 
@@ -99,6 +101,19 @@ class MainWindowBasic(QMainWindow):
         if path:
             pixmap = QPixmap(path)
             self.image_view.set_image(pixmap, image_path=path)
+            try:
+                self.delete_all_shapes_from_table()
+                self.delete_all_points()
+            except Exception as e:
+                print(e)
+
+    def capture_from_camera(self):
+        default_folder = self.config.get("default_folder", "")
+        dialog = CameraCaptureDialog(self, default_folder=default_folder)
+        if dialog.exec_() == QDialog.Accepted:
+            image_path = dialog.selected_image_path
+            pixmap = QPixmap(image_path)
+            self.image_view.set_image(pixmap, image_path=image_path)
             try:
                 self.delete_all_shapes_from_table()
                 self.delete_all_points()
