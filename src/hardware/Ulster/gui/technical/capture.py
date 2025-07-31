@@ -1,31 +1,34 @@
 import os
+import shutil
+import threading
+from pathlib import Path
 
 import numpy as np
 import seaborn as sns
-from pathlib import Path
-import shutil
 from matplotlib.backends.backend_qt5agg import (
     FigureCanvasQTAgg as FigureCanvas,
 )
 from matplotlib.figure import Figure
+from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QHBoxLayout
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     initialize_azimuthal_integrator_df,
     initialize_azimuthal_integrator_poni_text,
 )
-from PyQt5.QtCore import QObject, pyqtSignal
-
 from xrdanalysis.data_processing.utility_functions import create_mask
 
-
-from PyQt5.QtCore import QObject, pyqtSignal
-import threading
 
 class CaptureWorker(QObject):
     finished = pyqtSignal(bool, dict)  # Or as appropriate for your use
 
-    def __init__(self, detector_controller, integration_time, txt_filename_base, parent=None):
+    def __init__(
+        self,
+        detector_controller,
+        integration_time,
+        txt_filename_base,
+        parent=None,
+    ):
         super().__init__(parent)
         self.detector_controller = detector_controller
         self.integration_time = integration_time
@@ -40,9 +43,13 @@ class CaptureWorker(QObject):
                 success = controller.capture_point(
                     Nframes=1,
                     Nseconds=self.integration_time,
-                    filename_base=self.txt_filename_base + f"_{alias}"
+                    filename_base=self.txt_filename_base + f"_{alias}",
                 )
-                results[alias] = self.txt_filename_base + f"_{alias}.txt" if success else None
+                results[alias] = (
+                    self.txt_filename_base + f"_{alias}.txt"
+                    if success
+                    else None
+                )
             except Exception as e:
                 print(f"Error in capture for {alias}: {e}")
                 results[alias] = None
@@ -59,10 +66,11 @@ class CaptureWorker(QObject):
         self.finished.emit(overall_success, results)
 
 
-
-from pathlib import Path
 import shutil
+from pathlib import Path
+
 import numpy as np
+
 
 def move_and_convert_measurement_file(src_file, alias_folder):
     """
@@ -87,8 +95,8 @@ def move_and_convert_measurement_file(src_file, alias_folder):
 
     # Move both .dsc and .txt.dsc (Pixet style)
     candidates = [
-        src_file.with_suffix('.dsc'),                    # aux_001_..._SAXS.dsc
-        src_file.parent / (src_file.name + '.dsc')       # aux_001_..._SAXS.txt.dsc
+        src_file.with_suffix(".dsc"),  # aux_001_..._SAXS.dsc
+        src_file.parent / (src_file.name + ".dsc"),  # aux_001_..._SAXS.txt.dsc
     ]
     for dsc_candidate in candidates:
         if dsc_candidate.exists():
@@ -97,15 +105,19 @@ def move_and_convert_measurement_file(src_file, alias_folder):
                 shutil.move(str(dsc_candidate), str(dest_dsc))
                 print(f"Moved {dsc_candidate} → {dest_dsc}")
             except Exception as e:
-                print(f"[move_and_convert_measurement_file] Error moving {dsc_candidate}: {e}")
+                print(
+                    f"[move_and_convert_measurement_file] Error moving {dsc_candidate}: {e}"
+                )
 
     # Convert to .npy in alias folder
     try:
         data = np.loadtxt(dest_txt)
-        npy_file = dest_txt.with_suffix('.npy')
+        npy_file = dest_txt.with_suffix(".npy")
         np.save(npy_file, data)
     except Exception as e:
-        print(f"[move_and_convert_measurement_file] Error converting to .npy: {e}")
+        print(
+            f"[move_and_convert_measurement_file] Error converting to .npy: {e}"
+        )
         npy_file = dest_txt  # fallback
 
     return str(npy_file)
@@ -120,7 +132,7 @@ def validate_folder(path: str):
         path = os.getcwd()
     if not os.access(path, os.W_OK):
         path = os.getcwd()
-    return path
+    return Path(path)
 
 
 def show_measurement_window(
@@ -130,8 +142,8 @@ def show_measurement_window(
     parent=None,
     columns_to_remove: int = 30,
     goodness: float = 0.0,
-    center=None,                  # <-- NEW
-    integration_radius=None,      # <-- NEW
+    center=None,  # <-- NEW
+    integration_radius=None,  # <-- NEW
 ):
     """
     Opens a dialog window displaying the raw 2D image and its azimuthal integration.
@@ -197,18 +209,31 @@ def show_measurement_window(
     # === Overlay beam center and integration region ===
     if center is not None:
         cy, cx = center
-        print(cx, cy)
-        # Mark center
-        ax1.plot([cx], [cy], marker="x", color="red", markersize=10, label="Beam center")
-        # Mark integration region
+        ax1.plot(
+            [cx],
+            [cy],
+            marker="x",
+            color="red",
+            markersize=10,
+            label="Beam center",
+        )
         if integration_radius is not None and integration_radius > 0:
             from matplotlib.patches import Circle
-            circ = Circle((cx, cy), integration_radius, edgecolor="red", facecolor="none", lw=2, ls="--", label="Integration area")
+
+            circ = Circle(
+                (cx, cy),
+                integration_radius,
+                edgecolor="red",
+                facecolor="none",
+                lw=3,
+                ls="--",
+                label="Integration area",
+            )
             ax1.add_patch(circ)
-        ax1.legend(fontsize="x-small")
 
     # Top-right: 1D integration
     from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
     ax2 = fig.add_subplot(2, 2, 2)
     ax2.errorbar(
         radial,
@@ -280,6 +305,7 @@ def show_measurement_window(
     dialog.show()
 
     return dialog
+
 
 def compute_hf_score_from_cake(
     measurement_filename: np.ndarray,

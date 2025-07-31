@@ -1,33 +1,48 @@
 import os
-import time
-import numpy as np
-import subprocess
-import matplotlib.pyplot as plt
-from PyQt5.QtWidgets import (
-    QDockWidget, QWidget, QHBoxLayout, QVBoxLayout,
-    QLabel, QLineEdit, QPushButton, QFileDialog,
-    QListWidget, QListWidgetItem, QDoubleSpinBox,
-    QSpinBox, QScrollArea
-)
-
-from PyQt5.QtCore import Qt, QTimer, QThread
 import queue
+import subprocess
+import time
 
-from hardware.Ulster.gui.technical.capture import (
-    CaptureWorker, validate_folder, show_measurement_window
+import matplotlib.pyplot as plt
+import numpy as np
+from PyQt5.QtCore import Qt, QThread, QTimer
+from PyQt5.QtWidgets import (
+    QDockWidget,
+    QDoubleSpinBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QScrollArea,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
-from hardware.Ulster.gui.main_window_ext.zone_measurements_extension import ZoneMeasurementsMixin
+
+from hardware.Ulster.gui.main_window_ext.zone_measurements import (
+    ZoneMeasurementsMixin,
+)
+from hardware.Ulster.gui.technical.capture import (
+    CaptureWorker,
+    show_measurement_window,
+    validate_folder,
+)
 from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 
 
 class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
-    def create_measurements_panel(self):
+    def create_technical_panel(self):
         self.aux_counter = 0
-        super().create_zone_measurements_widget()
+        super().create_zone_measurements()
 
         self.measDock = QDockWidget("Technical Measurements", self)
-        self.measDock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        self.measDock.setAllowedAreas(
+            Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea
+        )
 
         container = QWidget()
         outer = QVBoxLayout(container)
@@ -116,9 +131,13 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def enable_measurement_controls(self, enable: bool):
         widgets = [
-            self.integrationTimeSpin, self.folderLE,
-            self.auxBtn, self.auxNameLE, self.auxList,
-            self.framesSpin, self.rtBtn
+            self.integrationTimeSpin,
+            self.folderLE,
+            self.auxBtn,
+            self.auxNameLE,
+            self.auxList,
+            self.framesSpin,
+            self.rtBtn,
         ]
         for w in widgets:
             w.setEnabled(enable)
@@ -137,12 +156,15 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         base = self._file_base(typ)
         base_with_count = f"{base}_{count:03d}"
         ts = time.strftime("%Y%m%d_%H%M%S")
-        txt_filename_base = os.path.join(folder, f"{base_with_count}_{ts}_{int(self.integrationTimeSpin.value())}s")
+        txt_filename_base = os.path.join(
+            folder,
+            f"{base_with_count}_{ts}_{int(self.integrationTimeSpin.value())}s",
+        )
 
         worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=self.integrationTimeSpin.value(),
-            txt_filename_base=txt_filename_base
+            txt_filename_base=txt_filename_base,
         )
         thread = QThread()
         worker.moveToThread(thread)
@@ -173,7 +195,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             self._aux_status.setText("")
             return
 
-        print(f'[{typ}] capture successful: {result_files}')
+        print(f"[{typ}] capture successful: {result_files}")
         self._aux_timer.stop()
         self._aux_status.setText("Processing...")
 
@@ -186,9 +208,13 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def _add_aux_item_to_list(self, alias, npy_path):
         from pathlib import Path
+
         from PyQt5.QtCore import Qt
+
         item = QListWidgetItem(f"{alias}: {Path(npy_path).name}")
-        item.setData(Qt.UserRole, str(npy_path))  # ✅ use Qt.UserRole to store the path
+        item.setData(
+            Qt.UserRole, str(npy_path)
+        )  # ✅ use Qt.UserRole to store the path
         self.auxList.addItem(item)
 
     def _file_base(self, typ: str) -> str:
@@ -212,13 +238,12 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
                 detector = alias
                 break
         if not detector:
-            detector = next(iter(self.detector_controller))  # fallback to first
+            detector = next(
+                iter(self.detector_controller)
+            )  # fallback to first
 
         show_measurement_window(
-            file_path,
-            self.masks.get(detector),
-            self.ponis.get(detector),
-            self
+            file_path, self.masks.get(detector), self.ponis.get(detector), self
         )
 
     def run_pyfai(self):
@@ -231,9 +256,9 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
         if os.name == "nt":
             cmd = (
-                f'CALL conda activate {env} '
+                f"CALL conda activate {env} "
                 f'&& cd /d "{folder}" '
-                f'&& pyfai-calib2'
+                f"&& pyfai-calib2"
             )
             start_cmd = f'start cmd /K "{cmd}"'
             try:
@@ -244,8 +269,8 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         else:
             bash_cmd = (
                 f'cd "{folder}" && '
-                f'conda activate {env} && '
-                'pyfai-calib2; exec bash'
+                f"conda activate {env} && "
+                "pyfai-calib2; exec bash"
             )
             try:
                 subprocess.Popen(["bash", "-lc", bash_cmd])
@@ -288,7 +313,9 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
         for ax, alias in zip(axes, detector_aliases):
             size = getattr(self.detector_controller[alias], "size", (256, 256))
-            self._rt_img[alias] = ax.imshow(np.zeros(size), origin='lower', interpolation='none')
+            self._rt_img[alias] = ax.imshow(
+                np.zeros(size), origin="lower", interpolation="none"
+            )
             ax.set_title(alias)
         self._rt_fig = fig
         plt.show()
@@ -307,10 +334,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         # Start stream on all detectors
         for controller in self.detector_controller.values():
             controller.start_stream(
-                callback=callback,
-                exposure=exposure,
-                interval=0.0,
-                frames=1
+                callback=callback, exposure=exposure, interval=0.0, frames=1
             )
 
     def _rt_plot_tick(self):
@@ -331,10 +355,11 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
     def _stop_realtime(self):
         for controller in self.detector_controller.values():
             controller.stop_stream()
-        if hasattr(self, '_plot_timer'):
+        if hasattr(self, "_plot_timer"):
             self._plot_timer.stop()
             del self._plot_timer
         import matplotlib.pyplot as plt
+
         plt.close(self._rt_fig)
         del self._rt_queue
         del self._rt_last_frame

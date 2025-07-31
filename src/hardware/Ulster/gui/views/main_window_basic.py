@@ -1,12 +1,19 @@
-import os
 import json
+import os
 from pathlib import Path
 
+from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import (
-    QMainWindow, QAction, QFileDialog, QToolBar,
-    QDialog, QPlainTextEdit, QDialogButtonBox, QVBoxLayout, QMessageBox
+    QAction,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QMainWindow,
+    QMessageBox,
+    QPlainTextEdit,
+    QToolBar,
+    QVBoxLayout,
 )
-from PyQt5.QtGui import QPixmap, QIcon
 
 from hardware.Ulster.gui.views.image_view import ImageView
 
@@ -18,7 +25,10 @@ class MainWindowBasic(QMainWindow):
         self.setWindowTitle(base_title)
 
         # Window icon
-        logo_path = Path(__file__).resolve().parent.parent.parent / 'resources/images/rick_final.png'
+        logo_path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "resources/images/rick_final.png"
+        )
         if logo_path.exists():
             self.setWindowIcon(QIcon(str(logo_path)))
         else:
@@ -27,13 +37,16 @@ class MainWindowBasic(QMainWindow):
         self.resize(800, 600)
 
         # Load config and remember path
-        config_path = Path(__file__).resolve().parent.parent.parent / 'resources/config/main.json'
+        config_path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "resources/config/main.json"
+        )
         self._config_path = config_path
         self.config = self.load_config()
 
         # Central image view
-        self.image_view = ImageView(self)
-        self.setCentralWidget(self.image_view)
+        # self.image_view = ImageView(self)
+        # self.setCentralWidget(self.image_view)
 
         # Actions, menus, toolbar
         self.create_actions()
@@ -43,12 +56,9 @@ class MainWindowBasic(QMainWindow):
         # Reflect DEV mode visually
         self.update_dev_visuals()
 
-        # If DEV mode, auto-open default image
-        self.check_dev_mode()
-
     def load_config(self):
         try:
-            with open(self._config_path, 'r') as f:
+            with open(self._config_path, "r") as f:
                 return json.load(f)
         except Exception as e:
             print("Error loading config:", e)
@@ -58,9 +68,11 @@ class MainWindowBasic(QMainWindow):
         # File open
         self.open_act = QAction("Open Image", self, triggered=self.open_image)
         # Edit config dialog
-        self.editConfigAct = QAction("Edit Config…", self, triggered=self.edit_config)
+        self.editConfigAct = QAction(
+            "Edit Config…", self, triggered=self.edit_config
+        )
         # Toggle DEV/demo mode
-        self.toggleDevAct  = QAction("", self, triggered=self.toggle_dev_mode)
+        self.toggleDevAct = QAction("", self, triggered=self.toggle_dev_mode)
 
     def create_menus(self):
         fileMenu = self.menuBar().addMenu("File")
@@ -79,8 +91,10 @@ class MainWindowBasic(QMainWindow):
     def open_image(self):
         default_folder = self.config.get("default_image_folder", "")
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open Image", default_folder,
-            "Image Files (*.png *.jpg *.jpeg);;All Files (*)"
+            self,
+            "Open Image",
+            default_folder,
+            "Image Files (*.png *.jpg *.jpeg);;All Files (*)",
         )
         if path:
             pixmap = QPixmap(path)
@@ -118,7 +132,9 @@ class MainWindowBasic(QMainWindow):
         editor.setPlainText(text)
         layout.addWidget(editor)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel, dlg)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.Save | QDialogButtonBox.Cancel, dlg
+        )
         layout.addWidget(buttons)
 
         def on_save():
@@ -126,16 +142,22 @@ class MainWindowBasic(QMainWindow):
             try:
                 parsed = json.loads(new_text)
             except Exception as parse_e:
-                QMessageBox.warning(dlg, "JSON Error", f"Invalid JSON:\n{parse_e}")
+                QMessageBox.warning(
+                    dlg, "JSON Error", f"Invalid JSON:\n{parse_e}"
+                )
                 return
             try:
                 self._config_path.write_text(json.dumps(parsed, indent=4))
             except Exception as write_e:
-                QMessageBox.critical(self, "Error", f"Cannot write config:\n{write_e}")
+                QMessageBox.critical(
+                    self, "Error", f"Cannot write config:\n{write_e}"
+                )
                 return
             self.config = parsed
             self.update_dev_visuals()
-            QMessageBox.information(self, "Config Saved", "Configuration reloaded.")
+            QMessageBox.information(
+                self, "Config Saved", "Configuration reloaded."
+            )
             dlg.accept()
 
         buttons.accepted.connect(on_save)
@@ -166,7 +188,7 @@ class MainWindowBasic(QMainWindow):
         new_dev = not self.config.get("DEV", False)
         self.config["DEV"] = new_dev
         try:
-            with open(self._config_path, 'w') as f:
+            with open(self._config_path, "w") as f:
                 json.dump(self.config, f, indent=4)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not save config:\n{e}")
