@@ -420,3 +420,32 @@ class ZonePointsMixin:
             else:
                 self.pointsTable.setItem(idx, 5, QTableWidgetItem(""))
 
+    def delete_all_points(self):
+        """
+        Deletes all zone points (generated + user) and their associated zones and widgets from both the
+        graphics scene and the points table. Also clears all measurement/history widgets.
+        """
+        # Remove all generated points and zones
+        for item in self.image_view.points_dict["generated"]["points"]:
+            self.image_view.scene.removeItem(item)
+        for item in self.image_view.points_dict["generated"]["zones"]:
+            self.image_view.scene.removeItem(item)
+        self.image_view.points_dict["generated"]["points"].clear()
+        self.image_view.points_dict["generated"]["zones"].clear()
+
+        # Remove all user-defined points and zones
+        for item in self.image_view.points_dict["user"]["points"]:
+            self.image_view.scene.removeItem(item)
+        for item in self.image_view.points_dict["user"]["zones"]:
+            self.image_view.scene.removeItem(item)
+        self.image_view.points_dict["user"]["points"].clear()
+        self.image_view.points_dict["user"]["zones"].clear()
+
+        # Clear measurement/history widgets
+        for widget in self.measurement_widgets:
+            if widget:
+                widget.deleteLater()
+        self.measurement_widgets.clear()
+
+        # Update table (will clear all rows and widgets)
+        self.update_points_table()
