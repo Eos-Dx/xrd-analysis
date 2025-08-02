@@ -127,10 +127,19 @@ class ZonePointsMixin:
 
         # Remove previously drawn generated items.
         for item in self.image_view.points_dict["generated"]["points"]:
-            self.image_view.scene.removeItem(item)
+            try:
+                self.image_view.scene.removeItem(item)
+            except:
+                pass
+
         self.image_view.points_dict["generated"]["points"] = []
+
+        # Remove previously drawn generated zones.
         for item in self.image_view.points_dict["generated"]["zones"]:
-            self.image_view.scene.removeItem(item)
+            try:
+                self.image_view.scene.removeItem(item)
+            except:
+                pass
         self.image_view.points_dict["generated"]["zones"] = []
 
         # Candidate sampling area.
