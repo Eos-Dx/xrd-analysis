@@ -1,46 +1,35 @@
 {
-    "image": "C:\\dev\\eos_play\\unzipped_data\\Ulster\\pancreas\\sheep_pancreas\\U2\\Xena_Cu\\20250313\\P1a_L4_20250218.jpg",
+    "image": "C:/dev/eos_play/unzipped_data/Ulster/pancreas/sheep_pancreas/U2/Xena_Cu/20250306/P1_aL1_20250218.jpg",
     "rotation_angle": 0,
     "crop_rect": null,
     "shapes": [
         {
-            "id": 1001,
+            "id": 1,
             "type": "Rectangle",
             "role": "sample holder",
             "geometry": {
-                "x": 391.3313522338865,
-                "y": 2868.6494007110578,
-                "width": 968.2237358093257,
-                "height": 968.2237358093257
+                "x": 441.37822294235195,
+                "y": 2845.354618668555,
+                "width": 921.6810424327844,
+                "height": 921.6810424327844
             }
         },
         {
-            "id": 1012,
+            "id": 2,
             "type": "Circle",
             "role": "include",
             "geometry": {
-                "x": 517.9912223815916,
-                "y": 3133.145011901854,
-                "width": 558.4418029785154,
-                "height": 521.188899993896
+                "x": 755.6995918750758,
+                "y": 3130.5721571445447,
+                "width": 293.0383045673368,
+                "height": 362.88749766349747
             }
         }
     ],
-    "zone_points": [
-        {
-            "x": 800.471812082129,
-            "y": 3394.5115716283276,
-            "type": "generated"
-        },
-        {
-            "x": 541.8694859149,
-            "y": 3381.753327542393,
-            "type": "generated"
-        }
-    ],
+    "zone_points": [],
     "real_center": [
         8.25,
         -6.0
     ],
-    "pixel_to_mm_ratio": 53.67909643385143
+    "pixel_to_mm_ratio": 51.093391246265796
 }

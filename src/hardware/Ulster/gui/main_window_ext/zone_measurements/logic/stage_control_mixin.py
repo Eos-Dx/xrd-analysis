@@ -102,8 +102,11 @@ class StageControlMixin:
 
         # Remove old beam cross
         old = self.image_view.points_dict.get("beam", [])
-        for itm in old:
-            self.image_view.scene.removeItem(itm)
+        try:
+            for itm in old:
+                self.image_view.scene.removeItem(itm)
+        except Exception as e:
+            print("Error removing old beam cross:", e)
 
         x_pix, y_pix = self.mm_to_pixels(x, y)
 
