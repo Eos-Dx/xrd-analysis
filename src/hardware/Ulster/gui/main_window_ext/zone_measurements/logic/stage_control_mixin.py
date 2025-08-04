@@ -170,7 +170,7 @@ class StageControlMixin:
             and self.stage_controller is not None
         ):
             new_x, new_y = self.stage_controller.move_stage(
-                -15, -6, move_timeout=10
+                -15, -6, move_timeout=15
             )
             print(f"Loaded position: ({new_x}, {new_y})")
         else:

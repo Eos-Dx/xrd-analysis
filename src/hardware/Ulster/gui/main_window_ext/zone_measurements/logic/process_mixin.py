@@ -2,7 +2,9 @@
 
 import time
 from copy import copy
-
+import json
+import hashlib
+from pathlib import Path
 from PyQt5.QtCore import QThread, QTimer
 from PyQt5.QtGui import QColor
 
@@ -28,7 +30,7 @@ class ZoneMeasurementsProcessMixin:
             self.measurement_folder
             / f"{self.fileNameLineEdit.text()}_state.json"
         )
-        self.manual_save_state()
+
 
         self.state_measurements = copy(self.state)
         try:
@@ -103,6 +105,26 @@ class ZoneMeasurementsProcessMixin:
             f"Estimated time: {self.initial_estimate:.0f} sec"
         )
         print("Starting measurements in sorted order...")
+
+        # Assuming: all_points_sorted is a list of (original_point_index, x_mm, y_mm) tuples
+        measurement_points = []
+        for idx, (pt_idx, x_mm, y_mm) in enumerate(all_points_sorted):
+            id_str = f"{idx}:{pt_idx}:{x_mm:.6f}:{y_mm:.6f}"
+            unique_id = hashlib.md5(id_str.encode('utf-8')).hexdigest()[:16]
+            measurement_points.append({
+                'unique_id': unique_id,  # unique identifier for this point
+                'index': idx,  # order of measurement
+                'point_index': pt_idx,  # original index
+                'x': x_mm,
+                'y': y_mm,
+                # Optionally: add more, e.g. type ("user" or "generated")
+            })
+
+        self.state['measurement_points'] = measurement_points
+
+        # Also save this in state_measurements if you use a copy
+        self.state_measurements['measurement_points'] = measurement_points
+        self.manual_save_state()
         self.measure_next_point()
 
     def measure_next_point(self):
@@ -184,12 +206,58 @@ class ZoneMeasurementsProcessMixin:
         """
         Callback after detector(s) finish capturing.
         Handles errors, triggers post-processing, colors UI.
+        Adds detector meta to measurements_meta for each measurement file.
         """
         if not success:
             print("[Measurement] capture failed.")
             return
         print(f"[Measurement] capture successful: {result_files}")
 
+        # Get UID for current measurement
+        current_index = self.current_measurement_sorted_index
+        measurement_points = self.state_measurements['measurement_points']
+        point_uid = measurement_points[current_index]['unique_id']
+        x = measurement_points[current_index]['x']
+        y = measurement_points[current_index]['y']
+
+
+        # Build detector meta as before
+        detector_lookup = {d["alias"]: d for d in self.config['detectors']}
+        measurements = self.state_measurements.get('measurements_meta', {})
+
+        point_measurements = measurements.get(point_uid, {
+            'unique_id': point_uid,
+            'index': current_index,
+            'x': x,
+            'y': y,
+            'detectors': {}
+        })
+
+        for alias, txt_filename in result_files.items():
+            detector_meta = detector_lookup.get(alias, {})
+            point_measurements['detectors'][alias] = {
+                'txt_file': Path(txt_filename).name,
+                'base_file': self._base_name,
+                'integration_time': self.integration_time,
+                'distance': self.add_distance_lineedit.text(),
+                'detector_alias': alias,
+                'detector_id': detector_meta.get("id"),
+                'detector_type': detector_meta.get("type"),
+                'detector_size': detector_meta.get("size"),
+                'pixel_size_um': detector_meta.get("pixel_size_um"),
+                'faulty_pixels': detector_meta.get("faulty_pixels"),
+                'default_poni': detector_meta.get("default_poni"),
+            }
+
+        measurements[point_uid] = point_measurements
+        self.state_measurements['measurements_meta'] = measurements
+
+        # Save updated state
+        state_path = self.state_path_measurements
+        with open(state_path, 'w') as f:
+            json.dump(self.state_measurements, f, indent=4)
+
+        # === The rest is unchanged (your logic) ===
         current_row = self.sorted_indices[
             self.current_measurement_sorted_index
         ]

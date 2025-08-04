@@ -5,7 +5,7 @@
     "default_folder": "E:\\test",
     "detectors": [
         {
-            "alias": "WAXS",
+            "alias": "SECONDARY",
             "type": "Pixet",
             "id": "MiniPIX G05-W0339",
             "size": {
@@ -20,7 +20,7 @@
             "default_poni": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis \n# Calibration done at Mon Jun  3 16:40:56 2024\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 5.4999999999999995e-05, \"pixel2\": 5.4999999999999995e-05, \"max_shape\": [256, 256], \"orientation\": 3}\nDistance: 0.023128625835860867\nPoni1: 0.00703271933414593\nPoni2: 0.000810597359260136\nRot1: 0.0\nRot2: 0.0\nRot3: 0.0\nWavelength: 1.5406e-10\n"
         },
         {
-            "alias": "SAXS",
+            "alias": "PRIMARY",
             "type": "Pixet",
             "id": "MiniPIX G08-W0299",
             "size": {
