@@ -240,14 +240,12 @@ class ZoneMeasurementsProcessMixin:
                 'unique_id': point_unique_id,  # <-- use the precomputed one!
                 'base_file': self._base_name,
                 'integration_time': self.integration_time,
-                'distance': self.add_distance_lineedit.text(),
                 'detector_alias': alias,
                 'detector_id': detector_meta.get("id"),
                 'detector_type': detector_meta.get("type"),
                 'detector_size': detector_meta.get("size"),
                 'pixel_size_um': detector_meta.get("pixel_size_um"),
                 'faulty_pixels': detector_meta.get("faulty_pixels"),
-                'default_poni': detector_meta.get("default_poni"),
             }
 
         self.state_measurements['measurements_meta'] = measurements
