@@ -225,18 +225,19 @@ class ZoneMeasurementsProcessMixin:
         detector_lookup = {d["alias"]: d for d in self.config['detectors']}
         measurements = self.state_measurements.get('measurements_meta', {})
 
-        point_measurements = measurements.get(point_uid, {
-            'unique_id': point_uid,
-            'index': current_index,
-            'x': x,
-            'y': y,
-            'detectors': {}
-        })
+        measurements = self.state_measurements.get('measurements_meta', {})
+        measurement_points = self.state_measurements['measurement_points']
+        current_index = self.current_measurement_sorted_index
+        x = self._x_mm
+        y = self._y_mm
+        point_unique_id = measurement_points[current_index]['unique_id']
 
         for alias, txt_filename in result_files.items():
             detector_meta = detector_lookup.get(alias, {})
-            point_measurements['detectors'][alias] = {
-                'txt_file': Path(txt_filename).name,
+            measurements[Path(txt_filename).name] = {
+                'x': x,
+                'y': y,
+                'unique_id': point_unique_id,  # <-- use the precomputed one!
                 'base_file': self._base_name,
                 'integration_time': self.integration_time,
                 'distance': self.add_distance_lineedit.text(),
@@ -249,12 +250,10 @@ class ZoneMeasurementsProcessMixin:
                 'default_poni': detector_meta.get("default_poni"),
             }
 
-        measurements[point_uid] = point_measurements
         self.state_measurements['measurements_meta'] = measurements
 
         # Save updated state
-        state_path = self.state_path_measurements
-        with open(state_path, 'w') as f:
+        with open(self.state_path_measurements, 'w') as f:
             json.dump(self.state_measurements, f, indent=4)
 
         # === The rest is unchanged (your logic) ===
