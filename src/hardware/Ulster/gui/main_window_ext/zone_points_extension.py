@@ -350,8 +350,8 @@ class ZonePointsMixin:
             if r < len(self.image_view.points_dict["generated"]["points"]):
                 point_item = self.image_view.points_dict["generated"]["points"].pop(r)
                 zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
-                self.save_remove_item(zone_item)
-                self.save_remove_item(point_item)
+                self.safe_remove_item(zone_item)
+                self.safe_remove_item(point_item)
 
         # Remove user-defined points and zones
         for r in sorted(user_rows, reverse=True):
@@ -455,5 +455,8 @@ class ZonePointsMixin:
 
     def safe_remove_item(self, item):
         """Remove item from scene only if it is still present."""
-        if hasattr(item, 'scene') and item.scene() is not None:
-            self.image_view.scene.removeItem(item)
+        try:
+            if item in self.image_view.scene.items():
+                self.image_view.scene.removeItem(item)
+        except Exception as e:
+            print(f"Error removing item: {e}")
