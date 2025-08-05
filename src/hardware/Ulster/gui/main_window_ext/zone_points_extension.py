@@ -127,19 +127,13 @@ class ZonePointsMixin:
 
         # Remove previously drawn generated items.
         for item in self.image_view.points_dict["generated"]["points"]:
-            try:
-                self.image_view.scene.removeItem(item)
-            except:
-                pass
+            self.safe_remove_item(item)
 
         self.image_view.points_dict["generated"]["points"] = []
 
         # Remove previously drawn generated zones.
         for item in self.image_view.points_dict["generated"]["zones"]:
-            try:
-                self.image_view.scene.removeItem(item)
-            except:
-                pass
+            self.safe_remove_item(item)
         self.image_view.points_dict["generated"]["zones"] = []
 
         # Candidate sampling area.
@@ -311,11 +305,9 @@ class ZonePointsMixin:
         for r in sorted(gen_rows, reverse=True):
             point_item = self.image_view.points_dict["generated"]["points"].pop(r)
             zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
-            try:
-                self.image_view.scene.removeItem(point_item)
-                self.image_view.scene.removeItem(zone_item)
-            except Exception as e:
-                print(f"Error removing generated point/zone: {e}")
+            self.safe_remove_item(zone_item)
+            self.safe_remove_item(point_item)
+
         for r in sorted(user_rows, reverse=True):
             if r < len(self.image_view.points_dict["user"]["points"]):
                 point_item = self.image_view.points_dict["user"]["points"].pop(r)
@@ -358,11 +350,8 @@ class ZonePointsMixin:
             if r < len(self.image_view.points_dict["generated"]["points"]):
                 point_item = self.image_view.points_dict["generated"]["points"].pop(r)
                 zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
-                try:
-                    self.image_view.scene.removeItem(point_item)
-                    self.image_view.scene.removeItem(zone_item)
-                except Exception as e:
-                    print(f"Error removing generated point/zone: {e}")
+                self.save_remove_item(zone_item)
+                self.save_remove_item(point_item)
 
         # Remove user-defined points and zones
         for r in sorted(user_rows, reverse=True):
@@ -463,3 +452,8 @@ class ZonePointsMixin:
 
         # Update table (will clear all rows and widgets)
         self.update_points_table()
+
+    def safe_remove_item(self, item):
+        """Remove item from scene only if it is still present."""
+        if hasattr(item, 'scene') and item.scene() is not None:
+            self.image_view.scene.removeItem(item)
