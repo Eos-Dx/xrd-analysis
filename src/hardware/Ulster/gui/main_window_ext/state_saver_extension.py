@@ -10,15 +10,38 @@ from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem
 from hardware.Ulster.gui.image_view_ext.point_editing_extension import (
     null_dict,
 )
+import hashlib
 
+import os
+import string
+from pathlib import Path
 
 class StateSaverMixin:
-    # find the drive letter (e.g. "C:") where this file is located
-    _DRIVE = Path(__file__).resolve().drive
+    @staticmethod
+    def _get_autosave_drive():
+        """
+        Returns a Path to the most appropriate drive for autosave files (Windows only):
+        - Prefers any drive other than C: if available.
+        - Falls back to C: if that's the only one present.
+        """
+        available_drives = [f"{d}:/" for d in string.ascii_uppercase if os.path.exists(f"{d}:/")]
+        available_drives = [d for d in available_drives if d.lower() not in ('a:/', 'b:/')]
+        if not available_drives:
+            # fallback to current working dir if no drives found (should never happen)
+            return Path.cwd()
+        if len(available_drives) > 1:
+            # Prefer first drive that is NOT C:
+            for drive in available_drives:
+                if not drive.lower().startswith('c'):
+                    return Path(drive)
+        # Fallback: use C: or whatever is present
+        return Path(available_drives[0])
 
-    # build your autosave paths on that drive
-    AUTO_STATE_FILE = Path(_DRIVE) / "autosave_state.json"
-    PREV_STATE_FILE = Path(_DRIVE) / "autosave_state_prev.json"
+    _AUTOSAVE_DRIVE = _get_autosave_drive.__func__()
+
+    AUTO_STATE_FILE = _AUTOSAVE_DRIVE / "autosave_state.json"
+    PREV_STATE_FILE = _AUTOSAVE_DRIVE / "autosave_state_prev.json"
+
 
     def restore_state(self, file_path=None):
         """
@@ -221,6 +244,9 @@ class StateSaverMixin:
         Before saving, copies the current autosave file to PREV_STATE_FILE (if it exists).
         """
         state = {}
+
+        # Before saving, add measurement_points
+        state["measurement_points"] = self.generate_measurement_points()
         state["image"] = getattr(self.image_view, "current_image_path", None)
         state["rotation_angle"] = getattr(self.image_view, "rotation_angle", 0)
         if (
@@ -293,6 +319,10 @@ class StateSaverMixin:
         This method is intended to be triggered by a toolbar button.
         """
         state = {}
+
+        # Before saving, add measurement_points
+        state["measurement_points"] = self.generate_measurement_points()
+
         state["image"] = getattr(self.image_view, "current_image_path", None)
         state["rotation_angle"] = getattr(self.image_view, "rotation_angle", 0)
         if (
@@ -372,3 +402,50 @@ class StateSaverMixin:
         self.autoSaveTimer = QTimer(self)
         self.autoSaveTimer.timeout.connect(self.auto_save_state)
         self.autoSaveTimer.start(interval)
+
+    def generate_measurement_points(self):
+        generated_points = self.image_view.points_dict["generated"]["points"]
+        user_points = self.image_view.points_dict["user"]["points"]
+        all_points = []
+        for i, item in enumerate(generated_points):
+            center = item.sceneBoundingRect().center()
+            x_mm = (
+                    self.real_x_pos_mm.value()
+                    - (center.x() - self.include_center[0])
+                    / self.pixel_to_mm_ratio
+            )
+            y_mm = (
+                    self.real_y_pos_mm.value()
+                    - (center.y() - self.include_center[1])
+                    / self.pixel_to_mm_ratio
+            )
+            all_points.append((i, x_mm, y_mm))
+        offset = len(generated_points)
+        for j, item in enumerate(user_points):
+            center = item.sceneBoundingRect().center()
+            x_mm = (
+                    self.real_x_pos_mm.value()
+                    - (center.x() - self.include_center[0])
+                    / self.pixel_to_mm_ratio
+            )
+            y_mm = (
+                    self.real_y_pos_mm.value()
+                    - (center.y() - self.include_center[1])
+                    / self.pixel_to_mm_ratio
+            )
+            all_points.append((offset + j, x_mm, y_mm))
+        all_points_sorted = sorted(
+            all_points, key=lambda tup: (tup[1], tup[2])
+        )
+        measurement_points = []
+        for idx, (pt_idx, x_mm, y_mm) in enumerate(all_points_sorted):
+            id_str = f"{idx}:{pt_idx}:{x_mm:.6f}:{y_mm:.6f}"
+            unique_id = hashlib.md5(id_str.encode('utf-8')).hexdigest()[:16]
+            measurement_points.append({
+                'unique_id': unique_id,
+                'index': idx,
+                'point_index': pt_idx,
+                'x': x_mm,
+                'y': y_mm,
+            })
+        return measurement_points

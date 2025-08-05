@@ -306,14 +306,16 @@ class ZonePointsMixin:
                 self.pointsTable.removeCellWidget(r, 5)
                 widget.deleteLater()
 
-
         # Remove generated/user points as before...
         # (your original logic)
         for r in sorted(gen_rows, reverse=True):
             point_item = self.image_view.points_dict["generated"]["points"].pop(r)
             zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
-            self.image_view.scene.removeItem(point_item)
-            self.image_view.scene.removeItem(zone_item)
+            try:
+                self.image_view.scene.removeItem(point_item)
+                self.image_view.scene.removeItem(zone_item)
+            except Exception as e:
+                print(f"Error removing generated point/zone: {e}")
         for r in sorted(user_rows, reverse=True):
             if r < len(self.image_view.points_dict["user"]["points"]):
                 point_item = self.image_view.points_dict["user"]["points"].pop(r)
@@ -356,8 +358,11 @@ class ZonePointsMixin:
             if r < len(self.image_view.points_dict["generated"]["points"]):
                 point_item = self.image_view.points_dict["generated"]["points"].pop(r)
                 zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
-                self.image_view.scene.removeItem(point_item)
-                self.image_view.scene.removeItem(zone_item)
+                try:
+                    self.image_view.scene.removeItem(point_item)
+                    self.image_view.scene.removeItem(zone_item)
+                except Exception as e:
+                    print(f"Error removing generated point/zone: {e}")
 
         # Remove user-defined points and zones
         for r in sorted(user_rows, reverse=True):

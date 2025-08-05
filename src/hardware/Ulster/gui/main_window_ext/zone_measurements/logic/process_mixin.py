@@ -14,7 +14,7 @@ from hardware.Ulster.gui.technical.capture import (
 )
 from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
-
+from PyQt5.QtWidgets import QMessageBox
 
 class ZoneMeasurementsProcessMixin:
     def start_measurements(self):
@@ -22,8 +22,10 @@ class ZoneMeasurementsProcessMixin:
         Starts the measurements for all sorted points.
         Prepares measurement folder, state, sorts points, starts progress bar, etc.
         """
+
+        self.manual_save_state()  # Save current state before starting measurements
         # Folder validation and state saving
-        self.measurement_folder = validate_folder(
+        self.measurement_folder = Path(
             self.folderLineEdit.text().strip()
         )
         self.state_path_measurements = (
@@ -31,8 +33,22 @@ class ZoneMeasurementsProcessMixin:
             / f"{self.fileNameLineEdit.text()}_state.json"
         )
 
+        # ===== FOLDER EXISTENCE CHECK =====
+        if not self.measurement_folder.exists():
+            # Show a dialog or message box (PyQt5 example)
+            QMessageBox.warning(self, "Folder Error",
+                                "Selected folder does not exist. Please select the correct folder.")
+            return  # Exit the function early
+        # ==================================
 
-        self.state_measurements = copy(self.state)
+        try:
+            self.state_measurements = copy(self.state)
+        except Exception as e:
+            print(f"Error copying state: {e}")
+            QMessageBox.warning(self, "No state",
+                                "Save it.")
+            return  # Exit the function early
+
         try:
             from hardware.Ulster.hardware.auxiliary import (
                 encode_image_to_base64,
@@ -173,7 +189,7 @@ class ZoneMeasurementsProcessMixin:
 
         # Move the stage using the controller
         new_x, new_y = self.stage_controller.move_stage(
-            self._x_mm, self._y_mm, move_timeout=10
+            self._x_mm, self._y_mm, move_timeout=15
         )
 
         # Build a common filename base (without extension or detector label)
@@ -213,17 +229,8 @@ class ZoneMeasurementsProcessMixin:
             return
         print(f"[Measurement] capture successful: {result_files}")
 
-        # Get UID for current measurement
-        current_index = self.current_measurement_sorted_index
-        measurement_points = self.state_measurements['measurement_points']
-        point_uid = measurement_points[current_index]['unique_id']
-        x = measurement_points[current_index]['x']
-        y = measurement_points[current_index]['y']
-
-
         # Build detector meta as before
         detector_lookup = {d["alias"]: d for d in self.config['detectors']}
-        measurements = self.state_measurements.get('measurements_meta', {})
 
         measurements = self.state_measurements.get('measurements_meta', {})
         measurement_points = self.state_measurements['measurement_points']
