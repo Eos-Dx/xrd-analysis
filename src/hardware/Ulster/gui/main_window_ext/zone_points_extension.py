@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QEvent, QPointF
 from PyQt5.QtGui import QColor, QPen, QTransform
 from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
-import copy
+import sip
 from hardware.Ulster.gui.image_view_ext.point_editing_extension import null_dict
 
 class ZonePointsMixin:
@@ -93,6 +93,9 @@ class ZonePointsMixin:
             "ID", "X (px)", "Y (px)", "X (mm)", "Y (mm)", "Measurement"
         ])
         layout.addWidget(self.pointsTable)
+
+        self.pointsTable.selectionModel().selectionChanged.connect(self.on_points_table_selection)
+
         # Install an event filter on the table to capture key presses (for Delete key)
         self.pointsTable.installEventFilter(self)
 
@@ -484,3 +487,40 @@ class ZonePointsMixin:
                 self.image_view.scene.removeItem(item)
         except Exception as e:
             print(f"Error removing item: {e}")
+
+    def on_points_table_selection(self, selected, deselected):
+        try:
+            # First, clear all highlights
+            def reset_point_style(item, ptype):
+                if sip.isdeleted(item):
+                    return  # Do not access deleted items
+                if ptype == "generated":
+                    item.setBrush(QColor("red"))
+                elif ptype == "user":
+                    item.setBrush(QColor("blue"))
+
+            points = []
+            types = []
+            for item in self.image_view.points_dict["generated"]["points"]:
+                points.append(item)
+                types.append("generated")
+            for item in self.image_view.points_dict["user"]["points"]:
+                points.append(item)
+                types.append("user")
+            for item, ptype in zip(points, types):
+                reset_point_style(item, ptype)
+
+            # Now, highlight all selected rows
+            for index in self.pointsTable.selectionModel().selectedRows():
+                row = index.row()
+                if row < len(self.image_view.points_dict["generated"]["points"]):
+                    item = self.image_view.points_dict["generated"]["points"][row]
+                    item.setBrush(QColor(255, 255, 0))  # yellow highlight for generated
+                else:
+                    user_row = row - len(self.image_view.points_dict["generated"]["points"])
+                    if user_row < len(self.image_view.points_dict["user"]["points"]):
+                        item = self.image_view.points_dict["user"]["points"][user_row]
+                        item.setBrush(QColor(255, 255, 0))  # yellow highlight for user
+        except Exception as e:
+            print(e)
+
