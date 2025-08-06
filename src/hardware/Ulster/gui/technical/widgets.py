@@ -1,13 +1,19 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QDialog, QTableWidget, QTableWidgetItem, QHeaderView
 
 class MeasurementHistoryWidget(QWidget):
-    def __init__(self, masks, ponis, parent=None):
+    def __init__(self, masks, ponis, parent=None, point_id=None):
         super().__init__(parent)
-        self.measurements = []  # List[dict] with {timestamp, results}
+        self.measurements = []
         self.masks = masks
         self.ponis = ponis
+        self.point_id = point_id  # Store the ID
         self.parent_window = parent
         self.layout = QVBoxLayout(self)
+        # Set window title to include point_id
+        if point_id is not None:
+            self.setWindowTitle(f"Measurement History: Point #{point_id}")
+        else:
+            self.setWindowTitle("Measurement History")
         self.summary_btn = QPushButton("No measurements")
         self.summary_btn.clicked.connect(self.show_history_dialog)
         self.layout.addWidget(self.summary_btn)
@@ -35,7 +41,10 @@ class MeasurementHistoryWidget(QWidget):
 
     def show_history_dialog(self):
         dlg = QDialog(self)
-        dlg.setWindowTitle("Measurement History")
+        if self.point_id is not None:
+            dlg.setWindowTitle(f"Measurement History: Point #{self.point_id + 1}")
+        else:
+            dlg.setWindowTitle("Measurement History")
         layout = QVBoxLayout(dlg)
         if not self.measurements:
             return

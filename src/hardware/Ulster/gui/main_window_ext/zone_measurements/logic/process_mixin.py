@@ -350,7 +350,7 @@ class ZoneMeasurementsProcessMixin:
         widget = self.pointsTable.cellWidget(row, 5)
         if not isinstance(widget, MeasurementHistoryWidget):
             widget = MeasurementHistoryWidget(
-                masks=self.masks, ponis=self.ponis, parent=self
+                masks=self.masks, ponis=self.ponis, parent=self, point_id=row
             )
             self.pointsTable.setCellWidget(row, 5, widget)
             self.measurement_widgets[row] = widget
