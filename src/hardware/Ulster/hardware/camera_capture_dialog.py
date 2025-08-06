@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import (
     QDialog, QLabel, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLineEdit, QFileDialog, QMessageBox, QComboBox
+    QLineEdit, QFileDialog, QMessageBox, QComboBox, QCheckBox
 )
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QPixmap, QImage
@@ -10,6 +10,7 @@ import cv2
 import os
 
 class CameraCaptureDialog(QDialog):
+
     def __init__(self, parent=None, default_folder=None):
         super().__init__(parent)
         self.setWindowTitle("Camera Capture")
@@ -38,6 +39,14 @@ class CameraCaptureDialog(QDialog):
         self.preview_label = QLabel()
         self.preview_label.setFixedSize(480, 360)
         self.layout.addWidget(self.preview_label)
+
+        # --- Flip controls ---
+        flip_layout = QHBoxLayout()
+        self.flip_h_checkbox = QCheckBox("Flip Left-Right")
+        self.flip_v_checkbox = QCheckBox("Flip Up-Down")
+        flip_layout.addWidget(self.flip_h_checkbox)
+        flip_layout.addWidget(self.flip_v_checkbox)
+        self.layout.addLayout(flip_layout)
 
         # File controls
         controls_layout = QHBoxLayout()
@@ -99,7 +108,14 @@ class CameraCaptureDialog(QDialog):
         ret, frame = self.camera.read()
         if not ret:
             return
-        self.current_frame = frame  # Store BGR frame for saving!
+
+        # --- Apply flip if needed ---
+        if self.flip_h_checkbox.isChecked():
+            frame = cv2.flip(frame, 1)  # horizontal
+        if self.flip_v_checkbox.isChecked():
+            frame = cv2.flip(frame, 0)  # vertical
+
+        self.current_frame = frame  # Store flipped BGR frame for saving!
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb_frame.shape
         bytes_per_line = ch * w
