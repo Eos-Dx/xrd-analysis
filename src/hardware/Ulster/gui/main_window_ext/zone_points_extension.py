@@ -40,13 +40,31 @@ class ZonePointsMixin:
         self.shrinkSpinBox.setValue(5)
         inputLayout.addWidget(self.shrinkSpinBox)
 
+        real_x, real_y = 9.25, -6.6  # sensible fallback defaults
+        try:
+            active_stage_ids = self.config.get("active_translation_stages", [])
+            translation_stages = self.config.get("translation_stages", [])
+            # Take the first active stage, or fallback
+            active_id = active_stage_ids[0] if active_stage_ids else None
+            real_zero = None
+            for stage in translation_stages:
+                if stage.get("id") == active_id:
+                    real_zero = stage.get("real_zero", {})
+                    break
+            if real_zero:
+                real_x = real_zero.get("x_mm", real_x)
+                real_y = real_zero.get("y_mm", real_y)
+        except Exception as e:
+            print(f"Error fetching real_zero for active stage: {e}")
+
+
         # Instead of a mmComboBox, add user-defined real center position controls.
         self.realXLabel = QLabel("X_pos, mm")
         inputLayout.addWidget(self.realXLabel)
         self.real_x_pos_mm = QDoubleSpinBox()
         self.real_x_pos_mm.setDecimals(2)
         self.real_x_pos_mm.setRange(-1000.0, 1000.0)
-        self.real_x_pos_mm.setValue(8.25)  # default value; can be adjusted
+        self.real_x_pos_mm.setValue(real_x)  # default value; can be adjusted
         inputLayout.addWidget(self.real_x_pos_mm)
 
         self.realYLabel = QLabel("Y_pos, mm")
@@ -54,7 +72,7 @@ class ZonePointsMixin:
         self.real_y_pos_mm = QDoubleSpinBox()
         self.real_y_pos_mm.setDecimals(2)
         self.real_y_pos_mm.setRange(-1000.0, 1000.0)
-        self.real_y_pos_mm.setValue(-6.0)  # default value; can be adjusted
+        self.real_y_pos_mm.setValue(real_y)  # default value; can be adjusted
         inputLayout.addWidget(self.real_y_pos_mm)
 
         # Conversion label remains to show the pixel-to-mm conversion factor.
@@ -359,8 +377,8 @@ class ZonePointsMixin:
                 point_item = self.image_view.points_dict["user"]["points"].pop(r)
                 if r < len(self.image_view.points_dict["user"]["zones"]):
                     zone_item = self.image_view.points_dict["user"]["zones"].pop(r)
-                    self.image_view.scene.removeItem(zone_item)
-                self.image_view.scene.removeItem(point_item)
+                    self.safe_remove_item(zone_item)
+                self.safe_remove_item(point_item)
 
         # Update the points table, which will also clear orphaned table widgets
         self.update_points_table()
@@ -383,11 +401,17 @@ class ZonePointsMixin:
 
     def update_points_table(self):
         # Gather current points as before
+        # Gather current points as before
         points = []
+        import sip
         for item in self.image_view.points_dict["generated"]["points"]:
+            if sip.isdeleted(item):
+                continue  # skip deleted item!
             center = item.sceneBoundingRect().center()
             points.append((center.x(), center.y(), "generated"))
         for item in self.image_view.points_dict["user"]["points"]:
+            if sip.isdeleted(item):
+                continue  # skip deleted item!
             center = item.sceneBoundingRect().center()
             points.append((center.x(), center.y(), "user"))
 
