@@ -111,14 +111,19 @@ class MainWindowBasic(QMainWindow):
         default_folder = self.config.get("default_folder", "")
         dialog = CameraCaptureDialog(self, default_folder=default_folder)
         if dialog.exec_() == QDialog.Accepted:
-            image_path = dialog.selected_image_path
-            pixmap = QPixmap(image_path)
-            self.image_view.set_image(pixmap, image_path=image_path)
-            try:
-                self.delete_all_shapes_from_table()
-                self.delete_all_points()
-            except Exception as e:
-                print(e)
+            image_path = getattr(dialog, "selected_image_path", None)
+            if image_path and os.path.exists(image_path):
+                pixmap = QPixmap(image_path)
+                self.image_view.set_image(pixmap, image_path=image_path)
+                try:
+                    self.delete_all_shapes_from_table()
+                    self.delete_all_points()
+                except Exception as e:
+                    print(e)
+            else:
+                QMessageBox.warning(self, "Load Error",
+                                    "Image was not saved or cannot be found. "
+                                    "Please check the folder and try again.")
 
     def check_dev_mode(self):
         if self.config.get("DEV", False):

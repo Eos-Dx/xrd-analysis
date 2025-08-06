@@ -135,6 +135,7 @@ class CameraCaptureDialog(QDialog):
         if self.current_frame is None:
             QMessageBox.warning(self, "No Image", "No frame to save!")
             return
+
         filename = self.filename_edit.text().strip()
         folder = self.folder_edit.text().strip()
         if not filename:
@@ -143,10 +144,21 @@ class CameraCaptureDialog(QDialog):
         if not os.path.isdir(folder):
             QMessageBox.warning(self, "Folder", "Selected folder does not exist.")
             return
+
         full_path = os.path.join(folder, filename)
-        cv2.imwrite(full_path, self.current_frame)
-        self.selected_image_path = full_path
-        self.accept()
+        try:
+            # Try to save image
+            success = cv2.imwrite(full_path, self.current_frame)
+            if not success or not os.path.exists(full_path):
+                raise IOError("cv2.imwrite failed or file does not exist after save.")
+            self.selected_image_path = full_path
+            self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, "Save Error",
+                                 f"Failed to save image:\n{e}\n"
+                                 "Check permissions and disk space.")
+            self.selected_image_path = None
+            # Do not call accept()
 
     def closeEvent(self, event):
         self.timer.stop()
