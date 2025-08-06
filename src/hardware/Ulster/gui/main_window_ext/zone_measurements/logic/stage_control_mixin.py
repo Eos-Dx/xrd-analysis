@@ -153,10 +153,8 @@ class StageControlMixin:
             hasattr(self, "stage_controller")
             and self.stage_controller is not None
         ):
-            x, y = self.stage_controller.home_stage(home_timeout=10)
-            print(f"Home position reached: ({x}, {y})")
-            self.xyStageIndicator.setStyleSheet(
-                "background-color: green; border-radius: 10px;"
+            new_x, new_y = self.stage_controller.move_stage(
+                8.25, -6, move_timeout=15
             )
         else:
             print("Stage not initialized.")
