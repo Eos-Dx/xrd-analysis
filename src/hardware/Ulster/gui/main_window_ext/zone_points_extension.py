@@ -445,10 +445,12 @@ class ZonePointsMixin:
                 self.pointsTable.setItem(idx, 4, QTableWidgetItem("N/A"))
 
             # Restore or set the measurement/history widget
-            if self.measurement_widgets[idx] is not None:
-                self.pointsTable.setCellWidget(idx, 5, self.measurement_widgets[idx])
+            widget = self.measurement_widgets[idx]
+            if widget is not None and not sip.isdeleted(widget):
+                self.pointsTable.setCellWidget(idx, 5, widget)
             else:
                 self.pointsTable.setItem(idx, 5, QTableWidgetItem(""))
+                self.measurement_widgets[idx] = None  # Remove ref to deleted widget
 
     def delete_all_points(self):
         """
