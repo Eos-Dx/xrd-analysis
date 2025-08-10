@@ -1,489 +1,246 @@
-import random
-import math
+"""Main zone points extension functionality."""
+
+from typing import Any, Dict, List, Optional, Tuple
+
+from PyQt5 import sip
+from PyQt5.QtCore import QEvent, Qt
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
-    QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
-    QSpinBox, QPushButton, QTableWidget, QTableWidgetItem,
-    QGraphicsEllipseItem, QLabel, QDoubleSpinBox
+    QDockWidget,
+    QHBoxLayout,
+    QLabel,
+    QSplitter,
+    QTableWidgetItem,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QEvent, QPointF
-from PyQt5.QtGui import QColor, QPen, QTransform
-from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
-import sip
-from hardware.Ulster.gui.image_view_ext.point_editing_extension import null_dict
+
+from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
+
+from .points.zone_geometry import compute_ideal_radius, farthest_point_sampling
+from .points.zone_points_constants import ZonePointsConstants
+from .points.zone_points_renderer import ZonePointsRenderer, ZonePointsTableManager
+from .points.zone_points_ui_builder import ZonePointsGeometry, ZonePointsUIBuilder
+
 
 class ZonePointsMixin:
+    """
+    Mixin for zone-based point generation and management in a Qt GUI.
+
+    Host class must define/initialize:
+        - self.config
+        - self.image_view (with .scene, .shapes, .points_dict)
+        - self.measurement_widgets (list)
+        - self.include_center (tuple)
+        - self.pixel_to_mm_ratio (float)
+    """
 
     def create_zone_points_widget(self):
-        """
-        Creates a dock widget that generates and displays zone points.
-        Auto-generated points appear as a red circle with an underlying transparent cyan circle.
-        User-defined points (added via double left-click) appear as larger blue circles.
-        The table lists all points.
-        """
+        """Create the zone points widget with all UI components."""
+        self._initialize_state()
+
         self.zonePointsDock = QDockWidget("Zone Points", self)
         container = QWidget()
         layout = QVBoxLayout(container)
 
-        # Input controls.
-        inputLayout = QHBoxLayout()
-        inputLayout.addWidget(QLabel("N points"))
-        self.pointCountSpinBox = QSpinBox()
-        self.pointCountSpinBox.setMinimum(2)
-        self.pointCountSpinBox.setMaximum(1000)
-        self.pointCountSpinBox.setValue(10)
-        inputLayout.addWidget(self.pointCountSpinBox)
+        # Create UI components using helper classes
+        controls_layout = self._create_all_controls()
+        layout.addLayout(controls_layout)
 
-        inputLayout.addWidget(QLabel("% offset"))
-        self.shrinkSpinBox = QSpinBox()
-        self.shrinkSpinBox.setMinimum(0)
-        self.shrinkSpinBox.setMaximum(100)
-        self.shrinkSpinBox.setValue(5)
-        inputLayout.addWidget(self.shrinkSpinBox)
+        # Splitter with left table and right measurements panel
+        splitter = QSplitter(Qt.Horizontal)
 
-        real_x, real_y = 9.25, -6.6  # sensible fallback defaults
-        try:
-            active_stage_ids = self.config.get("active_translation_stages", [])
-            translation_stages = self.config.get("translation_stages", [])
-            # Take the first active stage, or fallback
-            active_id = active_stage_ids[0] if active_stage_ids else None
-            real_zero = None
-            for stage in translation_stages:
-                if stage.get("id") == active_id:
-                    real_zero = stage.get("real_zero", {})
-                    break
-            if real_zero:
-                real_x = real_zero.get("x_mm", real_x)
-                real_y = real_zero.get("y_mm", real_y)
-        except Exception as e:
-            print(f"Error fetching real_zero for active stage: {e}")
+        # Left: points table
+        self.pointsTable = ZonePointsUIBuilder.create_points_table(self)
+        splitter.addWidget(self.pointsTable)
 
+        # Right: measurements tree (collapsible sections per point)
+        self.measurementsTree = QTreeWidget()
+        self.measurementsTree.setColumnCount(1)
+        self.measurementsTree.setHeaderLabels(["Point"])
+        self.measurementsTree.setExpandsOnDoubleClick(True)
+        splitter.addWidget(self.measurementsTree)
 
-        # Instead of a mmComboBox, add user-defined real center position controls.
-        self.realXLabel = QLabel("X_pos, mm")
-        inputLayout.addWidget(self.realXLabel)
-        self.real_x_pos_mm = QDoubleSpinBox()
-        self.real_x_pos_mm.setDecimals(2)
-        self.real_x_pos_mm.setRange(-1000.0, 1000.0)
-        self.real_x_pos_mm.setValue(real_x)  # default value; can be adjusted
-        inputLayout.addWidget(self.real_x_pos_mm)
+        layout.addWidget(splitter)
 
-        self.realYLabel = QLabel("Y_pos, mm")
-        inputLayout.addWidget(self.realYLabel)
-        self.real_y_pos_mm = QDoubleSpinBox()
-        self.real_y_pos_mm.setDecimals(2)
-        self.real_y_pos_mm.setRange(-1000.0, 1000.0)
-        self.real_y_pos_mm.setValue(real_y)  # default value; can be adjusted
-        inputLayout.addWidget(self.real_y_pos_mm)
-
-        # Conversion label remains to show the pixel-to-mm conversion factor.
-        self.conversionLabel = QLabel("Conversion: 1.00 px/mm")
-        inputLayout.addWidget(self.conversionLabel)
-
-        self.generatePointsBtn = QPushButton("Generate Points")
-        inputLayout.addWidget(self.generatePointsBtn)
-        self.updateCoordinatesBtn = QPushButton("Update Coordinates")
-        inputLayout.addWidget(self.updateCoordinatesBtn)
-        self.updateCoordinatesBtn.clicked.connect(self.update_coordinates)
-
-        layout.addLayout(inputLayout)
-
-        # Table to display points.
-        self.pointsTable = QTableWidget(0, 6)
-        self.pointsTable.setHorizontalHeaderLabels([
-            "ID", "X (px)", "Y (px)", "X (mm)", "Y (mm)", "Measurement"
-        ])
-        layout.addWidget(self.pointsTable)
-
-        self.pointsTable.selectionModel().selectionChanged.connect(self.on_points_table_selection)
-
-        # Install an event filter on the table to capture key presses (for Delete key)
-        self.pointsTable.installEventFilter(self)
+        self._setup_event_handlers()
 
         container.setLayout(layout)
         self.zonePointsDock.setWidget(container)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.zonePointsDock)
 
-        self.generatePointsBtn.clicked.connect(self.generate_zone_points)
+    def _initialize_state(self):
+        """Initialize required state attributes."""
+        if not hasattr(self, "next_point_id"):
+            self.next_point_id = 1
+        if not hasattr(self, "measurement_widgets"):
+            self.measurement_widgets = {}
+        # Hidden parking parent to keep widgets alive when detaching from table
+        if not hasattr(self, "_widgets_parking") or self._widgets_parking is None:
+            self._widgets_parking = QWidget()
+            self._widgets_parking.hide()
+        # Mapping for tree items per point
+        if not hasattr(self, "_measurement_items"):
+            self._measurement_items = {}
+        if not hasattr(self, "include_center"):
+            self.include_center = (0, 0)
+        if not hasattr(self, "pixel_to_mm_ratio"):
+            self.pixel_to_mm_ratio = 1.0
+        if not hasattr(self.image_view, "points_dict"):
+            self.image_view.points_dict = {
+                "generated": {"points": [], "zones": []},
+                "user": {"points": [], "zones": []},
+            }
 
-        # Initialize the unified points dictionary.
-        # We assume that self.image_view is your graphics view.
-        self.image_view.points_dict = {
-            "generated": {"points": [], "zones": []},
-            "user": {"points": [], "zones": []}
-        }
-        self.pixel_to_mm_ratio = 1.0
-        # self.include_center is determined from the center of the include shape.
-        # That pixel coordinate corresponds to (self.real_x_pos_mm, self.real_y_pos_mm) in real mm.
-        self.include_center = (0, 0)  # default value, should be set by the other mixin
+    def _create_all_controls(self) -> QHBoxLayout:
+        """Create all control layouts in a single horizontal layout."""
+        layout = QHBoxLayout()
+
+        # Point count and shrink controls
+        controls = ZonePointsUIBuilder.create_controls_layout(self)
+        for i in range(controls.count()):
+            item = controls.itemAt(i)
+            if item:
+                layout.addWidget(item.widget())
+
+        # Coordinate controls
+        coord_controls = ZonePointsUIBuilder.create_coordinate_controls(self)
+        for i in range(coord_controls.count()):
+            item = coord_controls.itemAt(i)
+            if item:
+                layout.addWidget(item.widget())
+
+        # Action buttons
+        button_controls = ZonePointsUIBuilder.create_action_buttons(self)
+        for i in range(button_controls.count()):
+            item = button_controls.itemAt(i)
+            if item:
+                layout.addWidget(item.widget())
+
+        return layout
+
+    def _setup_event_handlers(self):
+        """Set up all event handlers for the UI components."""
+        self.generatePointsBtn.clicked.connect(self.generate_zone_points)
+        self.updateCoordinatesBtn.clicked.connect(self.update_coordinates)
+        self.pointsTable.selectionModel().selectionChanged.connect(
+            self.on_points_table_selection
+        )
+        self.pointsTable.installEventFilter(self)
 
     def update_conversion_label(self):
         self.conversionLabel.setText(f"Conversion: {self.pixel_to_mm_ratio:.2f} px/mm")
 
     def generate_zone_points(self):
-        N = self.pointCountSpinBox.value()
+        """Main method to generate zone points."""
+        self._reset_point_counter()
+
+        # Get parameters from UI
+        n_points = self.pointCountSpinBox.value()
         shrink_percent = self.shrinkSpinBox.value()
         shrink_factor = (100 - shrink_percent) / 100.0
 
-        # For simplicity, assume one include shape is available.
-        include_shape = None
-        exclude_shapes = []
-        for shape in self.image_view.shapes:
-            role = shape.get("role", "include")
-            if role == "include":
-                include_shape = shape["item"]
-                # Set self.include_center from the include shape.
-                if hasattr(include_shape, 'center'):
-                    self.include_center = include_shape.center
-                else:
-                    inc_rect = include_shape.rect() if hasattr(include_shape, 'rect') else include_shape.boundingRect()
-                    self.include_center = (inc_rect.x() + inc_rect.width() / 2,
-                                           inc_rect.y() + inc_rect.height() / 2)
-            elif role == "exclude":
-                exclude_shapes.append(shape["item"])
+        # Get shapes for inclusion and exclusion
+        include_shape, exclude_shapes = self._get_inclusion_exclusion_shapes()
         if include_shape is None:
             print("No include shape defined. Cannot generate points.")
             return
 
-        self.update_conversion_label()
-
-        # Remove previously drawn generated items.
-        for item in self.image_view.points_dict["generated"]["points"]:
-            self.safe_remove_item(item)
-
-        self.image_view.points_dict["generated"]["points"] = []
-
-        # Remove previously drawn generated zones.
-        for item in self.image_view.points_dict["generated"]["zones"]:
-            self.safe_remove_item(item)
-        self.image_view.points_dict["generated"]["zones"] = []
-
-        # Candidate sampling area.
-        inc_rect = include_shape.rect() if hasattr(include_shape, 'rect') else include_shape.boundingRect()
-        x_min, y_min = inc_rect.x(), inc_rect.y()
-        x_max, y_max = x_min + inc_rect.width(), y_min + inc_rect.height()
-
-        candidates = []
-        num_candidates = 10000
-        attempts = 0
-
-        def distance(p, q):
-            return math.hypot(p[0] - q[0], p[1] - q[1])
-
-        if hasattr(include_shape, 'center') and hasattr(include_shape, 'radius'):
-            inc_center = include_shape.center
-            reduced_radius = include_shape.radius * shrink_factor
-
-            def sample_from_circle(center, radius):
-                angle = random.uniform(0, 2 * math.pi)
-                r = math.sqrt(random.random()) * radius
-                return (center[0] + r * math.cos(angle), center[1] + r * math.sin(angle))
-
-            while len(candidates) < num_candidates and attempts < num_candidates * 10:
-                attempts += 1
-                pt = sample_from_circle(inc_center, reduced_radius)
-                if not include_shape.contains(include_shape.mapFromScene(pt[0], pt[1])):
-                    continue
-                if any(ex.contains(ex.mapFromScene(pt[0], pt[1])) for ex in exclude_shapes):
-                    continue
-                candidates.append(pt)
-        else:
-            path = include_shape.shape()
-            bounding = include_shape.boundingRect()
-            center_point = bounding.center()
-            transform = QTransform()
-            transform.translate(center_point.x(), center_point.y())
-            transform.scale(shrink_factor, shrink_factor)
-            transform.translate(-center_point.x(), -center_point.y())
-            shrunk_path = transform.map(path)
-            while len(candidates) < num_candidates and attempts < num_candidates * 10:
-                attempts += 1
-                x = random.uniform(x_min, x_max)
-                y = random.uniform(y_min, y_max)
-                if not shrunk_path.contains(QPointF(x, y)):
-                    continue
-                if any(ex.contains(ex.mapFromScene(x, y)) for ex in exclude_shapes):
-                    continue
-                candidates.append((x, y))
+        # Generate candidate points
+        candidates, area = self._generate_candidate_points(
+            include_shape, exclude_shapes, shrink_factor
+        )
         if not candidates:
-            print("No candidate points found in the shrunk allowed region.")
+            print("No candidate points found in allowed region.")
             return
 
-        bbox_area = (x_max - x_min) * (y_max - y_min)
-        allowed_area = bbox_area * (len(candidates) / float(attempts))
-        circle_area = allowed_area / N
-        ideal_radius = math.sqrt(circle_area / math.pi)
-        print(f"Allowed area: {allowed_area:.2f}, ideal radius: {ideal_radius:.2f}")
+        # Sample final points and compute ideal radius
+        final_points = farthest_point_sampling(candidates, n_points)
+        ideal_radius = compute_ideal_radius(
+            area * len(candidates) / ZonePointsConstants.MAX_CANDIDATES,
+            n_points,
+        )
 
-        # Farthest-point sampling.
-        sum_x = sum(pt[0] for pt in candidates)
-        sum_y = sum(pt[1] for pt in candidates)
-        centroid = (sum_x / len(candidates), sum_y / len(candidates))
-        initial = min(candidates, key=lambda pt: distance(pt, centroid))
-        chosen = [initial]
-        candidates.remove(initial)
-        while len(chosen) < N and candidates:
-            best_candidate = None
-            best_dist = -1
-            for cand in candidates:
-                d = min(distance(cand, p) for p in chosen)
-                if d > best_dist:
-                    best_dist = d
-                    best_candidate = cand
-            if best_candidate is None:
-                break
-            chosen.append(best_candidate)
-            candidates.remove(best_candidate)
-        final_points = chosen[:N]
-
-        # Draw generated points.
-        for (x, y) in final_points:
-            # Draw the cyan zone.
-            cyan_item = QGraphicsEllipseItem(x - ideal_radius, y - ideal_radius,
-                                             2 * ideal_radius, 2 * ideal_radius)
-            cyan_color = QColor("cyan")
-            cyan_color.setAlphaF(0.2)
-            cyan_item.setBrush(cyan_color)
-            cyan_item.setPen(QPen(Qt.NoPen))
-            self.image_view.scene.addItem(cyan_item)
-            self.image_view.points_dict["generated"]["zones"].append(cyan_item)
-            # Draw the red point.
-            red_item = HoverableEllipseItem(x - 4, y - 4, 8, 8)
-            red_item.setBrush(QColor("red"))
-            red_item.setPen(QPen(Qt.NoPen))
-            red_item.setFlags(QGraphicsEllipseItem.ItemIsSelectable | QGraphicsEllipseItem.ItemIsMovable)
-            red_item.setData(0, "generated")
-            red_item.hoverCallback = self.pointHoverChanged
-            self.image_view.scene.addItem(red_item)
-            self.image_view.points_dict["generated"]["points"].append(red_item)
+        # Clear existing generated points and render new ones
+        self._clear_generated_points()
+        self._render_generated_points(final_points, ideal_radius)
 
         self.update_points_table()
 
-    def pointHoverChanged(self, item, hovered):
-        """
-        When a point is hovered, update its corresponding zone and highlight the table row.
-        Handles both generated and user-defined points.
-        """
-        table = self.pointsTable
-        row = None
-        if item.data(0) == "generated":
-            try:
-                idx = self.image_view.points_dict["generated"]["points"].index(item)
-                row = idx
-                if idx < len(self.image_view.points_dict["generated"]["zones"]):
-                    zone_item = self.image_view.points_dict["generated"]["zones"][idx]
-                    if hovered:
-                        highlight = QColor(255, 0, 0, 51)
-                        zone_item.setBrush(highlight)
-                    else:
-                        orig = QColor("cyan")
-                        orig.setAlphaF(0.2)
-                        zone_item.setBrush(orig)
-            except ValueError:
-                pass
-        elif item.data(0) == "user":
-            try:
-                idx = self.image_view.points_dict["user"]["points"].index(item)
-                row = len(self.image_view.points_dict["generated"]["points"]) + idx
-                if idx < len(self.image_view.points_dict["user"]["zones"]):
-                    zone_item = self.image_view.points_dict["user"]["zones"][idx]
-                    if hovered:
-                        highlight = QColor(255, 0, 0, 51)
-                        zone_item.setBrush(highlight)
-                    else:
-                        default_zone = QColor("blue")
-                        default_zone.setAlphaF(0.2)
-                        zone_item.setBrush(default_zone)
-            except ValueError:
-                pass
+    def _reset_point_counter(self):
+        """Reset the point ID counter."""
+        if not hasattr(self, "next_point_id"):
+            self.next_point_id = 1
+        else:
+            self.next_point_id = 1
 
-        if row is not None and table.rowCount() > row:
-            highlight = QColor(255, 0, 0, 51)
-            normal = QColor("white")
-            for col in range(table.columnCount()):
-                if table.item(row, col):
-                    table.item(row, col).setBackground(highlight if hovered else normal)
+    def _get_inclusion_exclusion_shapes(
+        self,
+    ) -> Tuple[Optional[Any], List[Any]]:
+        """Get inclusion and exclusion shapes from the image view."""
+        include_shape = None
+        exclude_shapes = []
 
-    def delete_selected_points(self):
-        # Get unique selected row indices.
-        selected_rows = sorted({index.row() for index in self.pointsTable.selectedIndexes()}, reverse=True)
-        if not selected_rows:
-            return
+        for shape in self.image_view.shapes:
+            role = shape.get("role", "include")
+            if role == "include":
+                include_shape = shape["item"]
+            elif role == "exclude":
+                exclude_shapes.append(shape["item"])
 
-        n_generated = len(self.image_view.points_dict["generated"]["points"])
-        gen_rows = [r for r in selected_rows if r < n_generated]
-        user_rows = [r - n_generated for r in selected_rows if r >= n_generated]
+        return include_shape, exclude_shapes
 
-        # Remove measurement widgets
-        for r in selected_rows:
-            # Remove widget in column 5 (Measurement)
-            widget = self.pointsTable.cellWidget(r, 5)
-            if widget is not None:
-                self.pointsTable.removeCellWidget(r, 5)
-                widget.deleteLater()
+    def _generate_candidate_points(
+        self, include_shape, exclude_shapes: List, shrink_factor: float
+    ) -> Tuple[List[Tuple[float, float]], float]:
+        """Generate and filter candidate points based on shapes."""
+        # Get initial candidates and area using geometry helper
+        candidates, area, bounds = ZonePointsGeometry.get_shape_bounds_and_candidates(
+            include_shape, shrink_factor
+        )
 
-        # Remove generated/user points as before...
-        # (your original logic)
-        for r in sorted(gen_rows, reverse=True):
-            point_item = self.image_view.points_dict["generated"]["points"].pop(r)
-            zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
-            self.safe_remove_item(zone_item)
-            self.safe_remove_item(point_item)
+        # Filter candidates by inclusion/exclusion shapes
+        filtered_candidates = ZonePointsGeometry.filter_candidates_by_shapes(
+            candidates, include_shape, exclude_shapes
+        )
 
-        for r in sorted(user_rows, reverse=True):
-            if r < len(self.image_view.points_dict["user"]["points"]):
-                point_item = self.image_view.points_dict["user"]["points"].pop(r)
-                if r < len(self.image_view.points_dict["user"]["zones"]):
-                    zone_item = self.image_view.points_dict["user"]["zones"].pop(r)
-                    self.image_view.scene.removeItem(zone_item)
-                self.image_view.scene.removeItem(point_item)
-        self.update_points_table()
+        return filtered_candidates, area
 
-    def delete_selected_points(self):
-        """
-        Deletes the points corresponding to the selected rows in the table from both the scene and the points dictionary.
-        Also removes the associated measurement/history widgets.
-        """
-        # Get unique selected row indices, sorted descending so row indices don't shift during deletion
-        selected_rows = sorted({index.row() for index in self.pointsTable.selectedIndexes()}, reverse=True)
-        if not selected_rows:
-            return
-
-        n_generated = len(self.image_view.points_dict["generated"]["points"])
-        # Separate indices for generated and user points.
-        gen_rows = [r for r in selected_rows if r < n_generated]
-        user_rows = [r - n_generated for r in selected_rows if r >= n_generated]
-
-        # Remove from measurement_widgets first to prevent shifting
-        for r in selected_rows:
-            # Remove measurement/history widget from both the table and the list
-            if r < len(self.measurement_widgets):
-                widget = self.measurement_widgets.pop(r)
-                if widget:
-                    widget.deleteLater()
-            # Remove widget from table column 5 if present
-            widget_in_table = self.pointsTable.cellWidget(r, 5)
-            if widget_in_table:
-                self.pointsTable.removeCellWidget(r, 5)
-                widget_in_table.deleteLater()
-
-        # Remove generated points and zones
-        for r in sorted(gen_rows, reverse=True):
-            if r < len(self.image_view.points_dict["generated"]["points"]):
-                point_item = self.image_view.points_dict["generated"]["points"].pop(r)
-                zone_item = self.image_view.points_dict["generated"]["zones"].pop(r)
-                self.safe_remove_item(zone_item)
-                self.safe_remove_item(point_item)
-
-        # Remove user-defined points and zones
-        for r in sorted(user_rows, reverse=True):
-            if r < len(self.image_view.points_dict["user"]["points"]):
-                point_item = self.image_view.points_dict["user"]["points"].pop(r)
-                if r < len(self.image_view.points_dict["user"]["zones"]):
-                    zone_item = self.image_view.points_dict["user"]["zones"].pop(r)
-                    self.safe_remove_item(zone_item)
-                self.safe_remove_item(point_item)
-
-        # Update the points table, which will also clear orphaned table widgets
-        self.update_points_table()
-
-    def eventFilter(self, source, event):
-        """
-        Captures key press events on the points table. If the Delete key is pressed,
-        the corresponding points are removed.
-        """
-        if source == self.pointsTable and event.type() == QEvent.KeyPress:
-            if event.key() == Qt.Key_Delete:
-                self.delete_selected_points()
-                return True
-        # Pass other events to the parent class.
-        return super().eventFilter(source, event)
-
-    def update_coordinates(self):
-        """Recalculates the coordinates in the table using the updated spin box values."""
-        self.update_points_table()
-
-    def update_points_table(self):
-        # Gather current points as before
-        # Gather current points as before
-        points = []
-        import sip
+    def _clear_generated_points(self):
+        """Clear all existing generated points and zones from the scene."""
         for item in self.image_view.points_dict["generated"]["points"]:
-            if sip.isdeleted(item):
-                continue  # skip deleted item!
-            center = item.sceneBoundingRect().center()
-            points.append((center.x(), center.y(), "generated"))
-        for item in self.image_view.points_dict["user"]["points"]:
-            if sip.isdeleted(item):
-                continue  # skip deleted item!
-            center = item.sceneBoundingRect().center()
-            points.append((center.x(), center.y(), "user"))
-
-        # Adjust measurement_widgets list to match number of points
-        # Delete extra widgets if points have been deleted
-        while len(self.measurement_widgets) > len(points):
-            widget = self.measurement_widgets.pop()
-            if widget:
-                widget.deleteLater()
-
-        # Add empty entries for new points (no measurement yet)
-        while len(self.measurement_widgets) < len(points):
-            self.measurement_widgets.append(None)
-
-        self.pointsTable.setRowCount(len(points))
-
-        for idx, (x, y, ptype) in enumerate(points):
-            self.pointsTable.setItem(idx, 0, QTableWidgetItem(str(idx + 1)))
-            self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
-            self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
-            if self.pixel_to_mm_ratio:
-                x_mm = self.real_x_pos_mm.value() - (x - self.include_center[0]) / self.pixel_to_mm_ratio
-                y_mm = self.real_y_pos_mm.value() - (y - self.include_center[1]) / self.pixel_to_mm_ratio
-                self.pointsTable.setItem(idx, 3, QTableWidgetItem(f"{x_mm:.2f}"))
-                self.pointsTable.setItem(idx, 4, QTableWidgetItem(f"{y_mm:.2f}"))
-            else:
-                self.pointsTable.setItem(idx, 3, QTableWidgetItem("N/A"))
-                self.pointsTable.setItem(idx, 4, QTableWidgetItem("N/A"))
-
-            # Restore or set the measurement/history widget
-            widget = self.measurement_widgets[idx]
-            if widget is not None and not sip.isdeleted(widget):
-                self.pointsTable.setCellWidget(idx, 5, widget)
-            else:
-                self.pointsTable.setItem(idx, 5, QTableWidgetItem(""))
-                self.measurement_widgets[idx] = None  # Remove ref to deleted widget
-
-    def delete_all_points(self):
-        """
-        Deletes all zone points (generated + user) and their associated zones and widgets from both the
-        graphics scene and the points table. Also clears all measurement/history widgets.
-        """
-        # Remove all generated points and zones
-        for item in self.image_view.points_dict["generated"]["points"]:
-            self.image_view.scene.removeItem(item)
+            self.safe_remove_item(item)
         for item in self.image_view.points_dict["generated"]["zones"]:
-            self.image_view.scene.removeItem(item)
+            self.safe_remove_item(item)
+
         self.image_view.points_dict["generated"]["points"].clear()
         self.image_view.points_dict["generated"]["zones"].clear()
 
-        # Remove all user-defined points and zones
-        for item in self.image_view.points_dict["user"]["points"]:
-            self.image_view.scene.removeItem(item)
-        for item in self.image_view.points_dict["user"]["zones"]:
-            self.image_view.scene.removeItem(item)
-        self.image_view.points_dict["user"]["points"].clear()
-        self.image_view.points_dict["user"]["zones"].clear()
+    def _render_generated_points(
+        self, points: List[Tuple[float, float]], ideal_radius: float
+    ):
+        """Render the generated points and zones on the scene."""
+        for x, y in points:
+            # Create and add zone (background circle)
+            zone_item = ZonePointsRenderer.create_zone_item(x, y, ideal_radius)
+            self.image_view.scene.addItem(zone_item)
+            self.image_view.points_dict["generated"]["zones"].append(zone_item)
 
-        # Clear measurement/history widgets
-        for widget in self.measurement_widgets:
-            if widget:
-                widget.deleteLater()
-        self.measurement_widgets.clear()
+            # Create and add point (foreground dot)
+            point_item = ZonePointsRenderer.create_point_item(
+                x, y, self.next_point_id, "generated"
+            )
+            self.next_point_id += 1
+            self.image_view.scene.addItem(point_item)
+            self.image_view.points_dict["generated"]["points"].append(point_item)
 
-        # Update table (will clear all rows and widgets)
+    # --- Table and selection methods remain as before, with attribute checks as needed ---
+    def update_coordinates(self):
         self.update_points_table()
 
     def safe_remove_item(self, item):
-        """Remove item from scene only if it is still present."""
         try:
             if item in self.image_view.scene.items():
                 self.image_view.scene.removeItem(item)
@@ -491,38 +248,391 @@ class ZonePointsMixin:
             print(f"Error removing item: {e}")
 
     def on_points_table_selection(self, selected, deselected):
+        """Handle table row selection by highlighting corresponding points in the scene."""
+        # Skip if we're in the middle of updating the table to avoid re-entrancy issues
+        if getattr(self, "_updating_points_table", False):
+            return
+        # Reset all points to their default colors
+        self._reset_all_point_styles()
+
+        # Highlight selected points
+        self._highlight_selected_points()
+
+    def _reset_all_point_styles(self):
+        """Reset all points to their default colors."""
+
+        def reset_point_style(item, point_type: str):
+            if sip.isdeleted(item):
+                return
+            color = (
+                ZonePointsConstants.POINT_COLOR_GENERATED
+                if point_type == "generated"
+                else ZonePointsConstants.POINT_COLOR_USER
+            )
+            item.setBrush(QColor(color))
+
+        # Reset generated points
+        for item in self.image_view.points_dict["generated"]["points"]:
+            reset_point_style(item, "generated")
+
+        # Reset user points
+        for item in self.image_view.points_dict["user"]["points"]:
+            reset_point_style(item, "user")
+
+    def _highlight_selected_points(self):
+        """Highlight points corresponding to selected table rows."""
+        for index in self.pointsTable.selectionModel().selectedRows():
+            row = index.row()
+            n_generated = len(self.image_view.points_dict["generated"]["points"])
+
+            if row < n_generated:
+                # Selected row corresponds to a generated point
+                item = self.image_view.points_dict["generated"]["points"][row]
+                item.setBrush(ZonePointsConstants.POINT_COLOR_SELECTED)
+            else:
+                # Selected row corresponds to a user point
+                user_row = row - n_generated
+                if user_row < len(self.image_view.points_dict["user"]["points"]):
+                    item = self.image_view.points_dict["user"]["points"][user_row]
+                    item.setBrush(ZonePointsConstants.POINT_COLOR_SELECTED)
+
+    def eventFilter(self, source, event):
+        if source == self.pointsTable and event.type() == QEvent.KeyPress:
+            if event.key() == Qt.Key_Delete:
+                self.delete_selected_points()
+                return True
+        return super().eventFilter(source, event)
+
+    def update_points_table_safe(self):
+        """Minimal safe table update for restore operations (no widgets)."""
         try:
-            # First, clear all highlights
-            def reset_point_style(item, ptype):
-                if sip.isdeleted(item):
-                    return  # Do not access deleted items
-                if ptype == "generated":
-                    item.setBrush(QColor("red"))
-                elif ptype == "user":
-                    item.setBrush(QColor("blue"))
+            if not hasattr(self, "pointsTable") or self.pointsTable is None:
+                print("Info: pointsTable not available for safe update")
+                return
 
-            points = []
-            types = []
-            for item in self.image_view.points_dict["generated"]["points"]:
-                points.append(item)
-                types.append("generated")
-            for item in self.image_view.points_dict["user"]["points"]:
-                points.append(item)
-                types.append("user")
-            for item, ptype in zip(points, types):
-                reset_point_style(item, ptype)
+            # Guard against re-entrancy and selection signals
+            self._updating_points_table = True
+            try:
+                self.pointsTable.blockSignals(True)
+                points = self._build_points_snapshot()
+                self.pointsTable.setRowCount(len(points))
 
-            # Now, highlight all selected rows
-            for index in self.pointsTable.selectionModel().selectedRows():
-                row = index.row()
-                if row < len(self.image_view.points_dict["generated"]["points"]):
-                    item = self.image_view.points_dict["generated"]["points"][row]
-                    item.setBrush(QColor(255, 255, 0))  # yellow highlight for generated
-                else:
-                    user_row = row - len(self.image_view.points_dict["generated"]["points"])
-                    if user_row < len(self.image_view.points_dict["user"]["points"]):
-                        item = self.image_view.points_dict["user"]["points"][user_row]
-                        item.setBrush(QColor(255, 255, 0))  # yellow highlight for user
+                for idx, (x, y, ptype, point_id) in enumerate(points):
+                    from PyQt5.QtWidgets import QTableWidgetItem
+
+                    self.pointsTable.setItem(
+                        idx,
+                        0,
+                        QTableWidgetItem("" if point_id is None else str(point_id)),
+                    )
+                    self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
+                    self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
+                    self.pointsTable.setItem(idx, 3, QTableWidgetItem("N/A"))
+                    self.pointsTable.setItem(idx, 4, QTableWidgetItem("N/A"))
+            finally:
+                self.pointsTable.blockSignals(False)
+                self._updating_points_table = False
+
+            print(f"Safe table update completed with {len(points)} points")
+
         except Exception as e:
-            print(e)
+            print(f"Error in safe table update: {e}")
 
+    def update_points_table(self):
+        """Update the points table with current point data and measurement widgets."""
+        try:
+            # Safety check - ensure we have the required attributes
+            if not hasattr(self, "pointsTable") or self.pointsTable is None:
+                print("Info: pointsTable is not initialized, skipping table update")
+                return
+
+            # Skip if zone points widget hasn't been created yet
+            if not hasattr(self, "zonePointsDock"):
+                print("Info: Zone points widget not created yet, using safe update")
+                self.update_points_table_safe()
+                return
+
+            # Check if we have the measurement_widgets attribute
+            if not hasattr(self, "measurement_widgets"):
+                self.measurement_widgets = {}
+
+            # Guard against re-entrancy and selection signals during updates
+            self._updating_points_table = True
+            try:
+                self.pointsTable.blockSignals(True)
+
+                # 1) Build the current points snapshot
+                points = self._build_points_snapshot()
+
+                # 3) Clean up deleted measurement widgets
+                self._cleanup_deleted_widgets(points)
+
+                # 4) Set the table row count and populate rows
+                self.pointsTable.setRowCount(len(points))
+
+                # 5) Populate table rows and reattach widgets
+                self._populate_table_rows(points)
+            finally:
+                self.pointsTable.blockSignals(False)
+                self._updating_points_table = False
+
+            print(
+                f"Updated table with {len(points)} points. Widget keys: {list(self.measurement_widgets.keys())}"
+            )
+
+        except Exception as e:
+            print(f"Error updating points table: {e}")
+            import traceback
+
+            traceback.print_exc()
+
+    def _build_points_snapshot(
+        self,
+    ) -> List[Tuple[float, float, str, Optional[int]]]:
+        """Build a snapshot of all current points with their data."""
+        points = []
+
+        # Safety check - ensure image_view and points_dict exist
+        if not hasattr(self, "image_view") or not hasattr(
+            self.image_view, "points_dict"
+        ):
+            print("Warning: image_view or points_dict not available")
+            return points
+
+        try:
+            # Generated points
+            for item in self.image_view.points_dict["generated"]["points"]:
+                try:
+                    if item is None or sip.isdeleted(item):
+                        continue
+                    c = item.sceneBoundingRect().center()
+                    pid = item.data(1)
+                    points.append(
+                        (
+                            c.x(),
+                            c.y(),
+                            "generated",
+                            int(pid) if pid is not None else None,
+                        )
+                    )
+                except Exception as e:
+                    print(f"Error processing generated point: {e}")
+                    continue
+
+            # User points
+            for item in self.image_view.points_dict["user"]["points"]:
+                try:
+                    if item is None or sip.isdeleted(item):
+                        continue
+                    c = item.sceneBoundingRect().center()
+                    pid = item.data(1)
+                    points.append(
+                        (
+                            c.x(),
+                            c.y(),
+                            "user",
+                            int(pid) if pid is not None else None,
+                        )
+                    )
+                except Exception as e:
+                    print(f"Error processing user point: {e}")
+                    continue
+
+        except Exception as e:
+            print(f"Error building points snapshot: {e}")
+
+        return points
+
+    def _cleanup_deleted_widgets(
+        self, points: List[Tuple[float, float, str, Optional[int]]]
+    ):
+        """Clean up measurement widgets for points that no longer exist."""
+        current_point_ids = {pid for (_, _, _, pid) in points if pid is not None}
+
+        # Remove widgets for deleted points
+        for pid in list(self.measurement_widgets.keys()):
+            if pid not in current_point_ids:
+                widget = self.measurement_widgets.pop(pid)
+                if widget and not sip.isdeleted(widget):
+                    widget.setParent(None)
+                    widget.deleteLater()
+                    print(f"Cleaned up widget for deleted point ID {pid}")
+
+    def _populate_table_rows(
+        self, points: List[Tuple[float, float, str, Optional[int]]]
+    ):
+        """Populate table rows with point data and reattach measurement widgets."""
+        for idx, (x, y, ptype, point_id) in enumerate(points):
+            # Set basic point data
+            self.pointsTable.setItem(
+                idx,
+                0,
+                QTableWidgetItem("" if point_id is None else str(point_id)),
+            )
+            self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
+            self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
+
+            # Set coordinate data
+            if self.pixel_to_mm_ratio:
+                x_mm = (
+                    self.real_x_pos_mm.value()
+                    - (x - self.include_center[0]) / self.pixel_to_mm_ratio
+                )
+                y_mm = (
+                    self.real_y_pos_mm.value()
+                    - (y - self.include_center[1]) / self.pixel_to_mm_ratio
+                )
+                self.pointsTable.setItem(idx, 3, QTableWidgetItem(f"{x_mm:.2f}"))
+                self.pointsTable.setItem(idx, 4, QTableWidgetItem(f"{y_mm:.2f}"))
+            else:
+                self.pointsTable.setItem(idx, 3, QTableWidgetItem("N/A"))
+                self.pointsTable.setItem(idx, 4, QTableWidgetItem("N/A"))
+
+            # Do not attach measurement widgets in the table anymore. They live in the right panel.
+
+    def _attach_measurement_widget(self, row_index: int, point_id: Optional[int]):
+        """Deprecated for table. Measurement widgets are managed in the right panel."""
+        if point_id is None:
+            return
+        # No-op: widgets are added via add_measurement_widget_to_panel
+
+    def _create_measurement_widget(self, point_id: int) -> Any:
+        """Create a new measurement widget for a point."""
+        return MeasurementHistoryWidget(
+            masks=getattr(self, "masks", {}),
+            ponis=getattr(self, "ponis", {}),
+            parent=self,
+            point_id=point_id,
+        )
+
+    def add_measurement_widget_to_panel(self, point_id: int):
+        """Add a measurement widget for a point to the right tree (if not exists)."""
+        if getattr(self, "_restoring_state", False):
+            return
+        # If already exists, do nothing
+        if point_id in self._measurement_items:
+            top_item, child_item, w = self._measurement_items.get(
+                point_id, (None, None, None)
+            )
+            if w is not None and not sip.isdeleted(w):
+                return
+        # Create tree items
+        top_item = QTreeWidgetItem(self.measurementsTree, [f"Point #{point_id}"])
+        child_item = QTreeWidgetItem(top_item, [""])
+        self.measurementsTree.addTopLevelItem(top_item)
+        top_item.setExpanded(True)
+        # Create widget and place into child row, column 0
+        w = self._create_measurement_widget(point_id)
+        self.measurementsTree.setItemWidget(child_item, 0, w)
+        self.measurement_widgets[point_id] = w
+        self._measurement_items[point_id] = (top_item, child_item, w)
+
+    def remove_measurement_widget_from_panel(self, point_id: int):
+        """Remove the measurement widget and its items from the tree."""
+        top_item, child_item, w = self._measurement_items.pop(
+            point_id, (None, None, None)
+        )
+        if w and not sip.isdeleted(w):
+            try:
+                # Detach from tree cell
+                self.measurementsTree.setItemWidget(child_item, 0, None)
+            except Exception:
+                pass
+            w.setParent(None)
+            w.deleteLater()
+        if top_item is not None:
+            try:
+                index = self.measurementsTree.indexOfTopLevelItem(top_item)
+                if index != -1:
+                    self.measurementsTree.takeTopLevelItem(index)
+            except Exception:
+                pass
+        self.measurement_widgets.pop(point_id, None)
+
+    def delete_selected_points(self):
+        """Delete selected points and preserve measurement widget history."""
+        # 1) Get selected rows and extract point IDs to delete
+        selected_rows = sorted(
+            {ix.row() for ix in self.pointsTable.selectedIndexes()},
+            reverse=True,
+        )
+        if not selected_rows:
+            return
+
+        # 2) Collect point IDs that will be deleted
+        pids_to_delete = set()
+        for r in selected_rows:
+            id_item = self.pointsTable.item(r, 0)
+            if id_item is not None:
+                try:
+                    pid = int(id_item.text())
+                    pids_to_delete.add(pid)
+                except (ValueError, TypeError):
+                    pass
+
+        print(f"Deleting point IDs: {pids_to_delete}")
+
+        # 3) Remove points from scene by ID (not by index to avoid shifting issues)
+        for pid in pids_to_delete:
+            self._remove_point_items_by_id(pid)
+
+        # 4) Remove deleted point IDs from measurement widgets (right panel)
+        for pid in pids_to_delete:
+            self.remove_measurement_widget_from_panel(pid)
+
+        # 5) Rebuild the table with remaining points
+        self.update_points_table()
+
+    def delete_all_points(self):
+        for item in self.image_view.points_dict["generated"]["points"]:
+            self.safe_remove_item(item)
+        for item in self.image_view.points_dict["generated"]["zones"]:
+            self.safe_remove_item(item)
+        self.image_view.points_dict["generated"]["points"].clear()
+        self.image_view.points_dict["generated"]["zones"].clear()
+        for item in self.image_view.points_dict["user"]["points"]:
+            self.safe_remove_item(item)
+        for item in self.image_view.points_dict["user"]["zones"]:
+            self.safe_remove_item(item)
+        self.image_view.points_dict["user"]["points"].clear()
+        self.image_view.points_dict["user"]["zones"].clear()
+        # Clear measurement tree
+        for pid in list(getattr(self, "_measurement_items", {}).keys()):
+            self.remove_measurement_widget_from_panel(pid)
+        self.measurement_widgets = {}
+        self.next_point_id = 1
+        self.update_points_table()
+
+    def _remove_point_items_by_id(self, point_id):
+        # Try generated first
+        gp = self.image_view.points_dict["generated"]["points"]
+        gz = self.image_view.points_dict["generated"]["zones"]
+        for i, item in enumerate(gp):
+            if not sip.isdeleted(item) and item.data(1) == point_id:
+                # remove both point and its matching zone
+                point_item = gp.pop(i)
+                zone_item = gz.pop(i) if i < len(gz) else None
+                if zone_item:
+                    self.safe_remove_item(zone_item)
+                self.safe_remove_item(point_item)
+                return
+
+        # Then user points
+        up = self.image_view.points_dict["user"]["points"]
+        uz = self.image_view.points_dict["user"]["zones"]
+        for i, item in enumerate(up):
+            if not sip.isdeleted(item) and item.data(1) == point_id:
+                point_item = up.pop(i)
+                zone_item = uz.pop(i) if i < len(uz) else None
+                if zone_item:
+                    self.safe_remove_item(zone_item)
+                self.safe_remove_item(point_item)
+                return
+
+    def _snapshot_history_widgets(self):
+        """Return {point_id: [measurement_dict, ...]} from existing widgets."""
+        snap = {}
+        for pid, w in list(getattr(self, "measurement_widgets", {}).items()):
+            if w is not None and not sip.isdeleted(w):
+                snap[pid] = list(getattr(w, "measurements", []))
+        return snap

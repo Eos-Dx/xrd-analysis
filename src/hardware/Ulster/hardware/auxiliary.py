@@ -1,6 +1,7 @@
-import math
-from ctypes import cdll, c_int, c_short, c_char_p
 import base64
+import math
+from ctypes import c_char_p, c_int, c_short, cdll
+
 
 def encode_image_to_base64(image_path):
     """
@@ -15,11 +16,12 @@ def encode_image_to_base64(image_path):
     try:
         with open(image_path, "rb") as image_file:
             image_data = image_file.read()
-        encoded_str = base64.b64encode(image_data).decode('utf-8')
+        encoded_str = base64.b64encode(image_data).decode("utf-8")
         return encoded_str
     except Exception as e:
         print(f"Error encoding image: {e}")
         return None
+
 
 def decode_base64_to_image(encoded_str):
     """
@@ -67,9 +69,8 @@ def in_y_line(x, y, cx, cy, side):
     return x == cx and abs(y - cy) < half
 
 
-
 def scan():
-    input('Check X-ray beam, detector, and sample position. Press Enter to continue...')
+    input("Check X-ray beam, detector, and sample position. Press Enter to continue...")
 
     # Move sample to a load position before scanning
     load_x = -100000
@@ -79,11 +80,11 @@ def scan():
     # ------------------------------
     # Grid Scanning Loop
     # ------------------------------
-    print('Starting grid scan...')
+    print("Starting grid scan...")
     points_processed = 0
 
     for r in range(Nrepeat):
-        sample_id = input('Load new sample. Enter sample identifier (P number): ')
+        sample_id = input("Load new sample. Enter sample identifier (P number): ")
 
         for y in range(y_min, y_max + step, step):
             # If scanning only a horizontal line, set y to centre
@@ -103,23 +104,39 @@ def scan():
                 y_s = int(y * coordunit / step)
 
                 # Check if the point is within the active mask region
-                if ((circ_mask_en and in_circle(x, y, centre_x, centre_y, radius)) or
-                        (sq_mask_en and in_square(x, y, centre_x, centre_y, sides)) or
-                        (xline_mask_en and in_x_line(x, y, centre_x, centre_y, sides)) or
-                        (yline_mask_en and in_y_line(x, y, centre_x, centre_y, sides)) or
-                        (not (circ_mask_en or sq_mask_en or xline_mask_en or yline_mask_en))):
+                if (
+                    (circ_mask_en and in_circle(x, y, centre_x, centre_y, radius))
+                    or (sq_mask_en and in_square(x, y, centre_x, centre_y, sides))
+                    or (xline_mask_en and in_x_line(x, y, centre_x, centre_y, sides))
+                    or (yline_mask_en and in_y_line(x, y, centre_x, centre_y, sides))
+                    or (
+                        not (
+                            circ_mask_en or sq_mask_en or xline_mask_en or yline_mask_en
+                        )
+                    )
+                ):
 
                     # Calculate absolute stage coordinates
                     x_abs = x + x_zero
                     y_abs = y + y_zero
 
                     # Move stage to the calculated position
-                    move_stage(lib, serial_num, x_chan, y_chan, x_abs, y_abs, move_timeout)
+                    move_stage(
+                        lib,
+                        serial_num,
+                        x_chan,
+                        y_chan,
+                        x_abs,
+                        y_abs,
+                        move_timeout,
+                    )
 
                     # Construct the filename for the capture data
                     filestring1 = f"{x_s}-{y_s}"
-                    filename = os.path.join(filepath,
-                                            f"{filestring0a}{sample_id}{filestring0c}{filestring1}{filestring2}")
+                    filename = os.path.join(
+                        filepath,
+                        f"{filestring0a}{sample_id}{filestring0c}{filestring1}{filestring2}",
+                    )
 
                     # Optionally, copy filename to clipboard
                     # pyperclip.copy(filename)

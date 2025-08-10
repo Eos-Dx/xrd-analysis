@@ -1,7 +1,7 @@
-from hardware.Ulster.gui.views.image_view_basic import ImageViewBasic
-from hardware.Ulster.gui.image_view_ext.zoom_extension import ZoomMixin
 from hardware.Ulster.gui.image_view_ext.drawing_extension import DrawingMixin
 from hardware.Ulster.gui.image_view_ext.point_editing_extension import PointEditingMixin
+from hardware.Ulster.gui.image_view_ext.zoom_extension import ZoomMixin
+from hardware.Ulster.gui.views.image_view_basic import ImageViewBasic
 
 
 class ImageView(ZoomMixin, DrawingMixin, PointEditingMixin, ImageViewBasic):

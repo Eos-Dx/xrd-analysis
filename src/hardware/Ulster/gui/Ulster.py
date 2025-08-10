@@ -6,8 +6,8 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from PyQt5.QtCore import QDate, QSettings
 from PyQt5.QtWidgets import QApplication, QMessageBox
-from PyQt5.QtCore import QSettings, QDate
 
 from hardware.Ulster.gui.views.main_window import MainWindow
 from hardware.Ulster.resources.motivation import motivation_phrases

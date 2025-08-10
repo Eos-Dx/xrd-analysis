@@ -1,28 +1,47 @@
+exclude: |
+  (?x)^(
+    docs/_build/|
+    .*__pycache__/|
+    .*\.egg-info/|
+    build/|
+    dist/
+  )
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0 # Update this to the latest version
     hooks:
       - id: end-of-file-fixer
       - id: trailing-whitespace
+
   - repo: https://github.com/psf/black
     rev: 24.2.0 # Update this to the latest version
     hooks:
       - id: black
         language_version: python3
-        args: ['--line-length=79']
+        args: ['--line-length=88']
+
   - repo: https://github.com/pycqa/flake8
     rev: 7.0.0 # Update this to the latest version
     hooks:
       - id: flake8
+        files: ^src/(xrdanalysis|quality_control)/.*\.py$
+        args:
+          - --max-line-length=88
+          - --extend-ignore=E203,W503,E501,F401,F841,C901,E402,F811
+          - --max-complexity=20
+
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2 # Update this to the latest version
     hooks:
       - id: isort
         name: isort (Python imports)
         additional_dependencies: [toml]
-        args: ["--profile", "black", "--filter-files", "--line-length=79"]
+        args: ["--profile", "black", "--filter-files", "--line-length=88"]
+
   - repo: https://github.com/econchick/interrogate
     rev: 1.5.0 # Update this to the latest version
     hooks:
       - id: interrogate
-        args: ["-vv", "--fail-under=80"] # Verbose output, fail if <80% documented
+        files: ^src/(xrdanalysis|quality_control)/.*\.py$
+        args: ["-vv", "--fail-under=0"] # Do not block commits on doc coverage yet

@@ -12,24 +12,14 @@ from PyQt5.QtWidgets import (
 )
 
 from hardware.Ulster.gui.main_window_ext.drawing_extension import DrawingMixin
-from hardware.Ulster.gui.main_window_ext.rotation_extension import (
-    RotationMixin,
-)
-from hardware.Ulster.gui.main_window_ext.shape_table_extension import (
-    ShapeTableMixin,
-)
-from hardware.Ulster.gui.main_window_ext.state_saver_extension import (
-    StateSaverMixin,
-)
+from hardware.Ulster.gui.main_window_ext.rotation_extension import RotationMixin
+from hardware.Ulster.gui.main_window_ext.shape_table_extension import ShapeTableMixin
+from hardware.Ulster.gui.main_window_ext.state_saver_extension import StateSaverMixin
 from hardware.Ulster.gui.main_window_ext.technical_measurements import (
     TechnicalMeasurementsMixin,
 )
-from hardware.Ulster.gui.main_window_ext.zone_measurements import (
-    ZoneMeasurementsMixin,
-)
-from hardware.Ulster.gui.main_window_ext.zone_points_extension import (
-    ZonePointsMixin,
-)
+from hardware.Ulster.gui.main_window_ext.zone_measurements import ZoneMeasurementsMixin
+from hardware.Ulster.gui.main_window_ext.zone_points_extension import ZonePointsMixin
 from hardware.Ulster.gui.views.image_view import ImageView
 from hardware.Ulster.gui.views.main_window_basic import MainWindowBasic
 from hardware.Ulster.hardware.hardware_control import HardwareController
@@ -48,6 +38,7 @@ class MainWindow(
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.state = {}
         self.setup_main_layout()
         self.measurement_widgets = []
         self.create_shape_table()
@@ -95,13 +86,11 @@ class MainWindow(
         self.main_layout.addWidget(self.image_view)
 
         self.tabs = QTabWidget()
-        #self.main_layout.addWidget(self.tabs)
+        # self.main_layout.addWidget(self.tabs)
         self.hardware_controller = HardwareController(self.config)
 
     def add_restore_state_action(self):
-        restore_state_act = QAction(
-            "Restore State", self, triggered=self.restore_state
-        )
+        restore_state_act = QAction("Restore State", self, triggered=self.restore_state)
         if self.menuBar().actions():
             fileMenu = self.menuBar().actions()[0].menu()
             if fileMenu:
@@ -114,9 +103,7 @@ class MainWindow(
 
     def add_restore_state_action_from_file(self):
         restore_state_from_file_act = QAction("Restore State From File", self)
-        restore_state_from_file_act.triggered.connect(
-            self.restore_state_from_file
-        )
+        restore_state_from_file_act.triggered.connect(self.restore_state_from_file)
         if self.menuBar().actions():
             fileMenu = self.menuBar().actions()[0].menu()
             if fileMenu:
@@ -135,7 +122,5 @@ class MainWindow(
             self.restore_state(file_path)
 
     def add_save_state_action(self):
-        save_state_act = QAction(
-            "Save State", self, triggered=self.manual_save_state
-        )
+        save_state_act = QAction("Save State", self, triggered=self.manual_save_state)
         self.toolbar.addAction(save_state_act)

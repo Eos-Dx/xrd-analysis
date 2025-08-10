@@ -1,13 +1,22 @@
+import os
 import sys
-from PyQt5.QtWidgets import (
-    QDialog, QLabel, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLineEdit, QFileDialog, QMessageBox, QComboBox, QCheckBox
-)
-from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtGui import QPixmap, QImage
 
 import cv2
-import os
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
+
 
 class CameraCaptureDialog(QDialog):
 
@@ -121,13 +130,16 @@ class CameraCaptureDialog(QDialog):
         bytes_per_line = ch * w
         qt_img = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(qt_img).scaled(
-            self.preview_label.width(), self.preview_label.height(),
-            Qt.KeepAspectRatio
+            self.preview_label.width(),
+            self.preview_label.height(),
+            Qt.KeepAspectRatio,
         )
         self.preview_label.setPixmap(pixmap)
 
     def select_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Folder", self.folder_edit.text())
+        folder = QFileDialog.getExistingDirectory(
+            self, "Select Folder", self.folder_edit.text()
+        )
         if folder:
             self.folder_edit.setText(folder)
 
@@ -154,9 +166,11 @@ class CameraCaptureDialog(QDialog):
             self.selected_image_path = full_path
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Save Error",
-                                 f"Failed to save image:\n{e}\n"
-                                 "Check permissions and disk space.")
+            QMessageBox.critical(
+                self,
+                "Save Error",
+                f"Failed to save image:\n{e}\n" "Check permissions and disk space.",
+            )
             self.selected_image_path = None
             # Do not call accept()
 

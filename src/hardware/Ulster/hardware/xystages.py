@@ -1,28 +1,33 @@
 # xystages.py
-from ctypes import CDLL, c_char_p, c_int, c_short
-from abc import ABC, abstractmethod
-import time
-import sys
 import os
+import sys
+import time
+from abc import ABC, abstractmethod
+from ctypes import CDLL, c_char_p, c_int, c_short
 
 
 class BaseStageController(ABC):
     """Abstract base for all translation stages."""
 
     @abstractmethod
-    def init_stage(self): pass
+    def init_stage(self):
+        pass
 
     @abstractmethod
-    def home_stage(self, timeout_s=45): pass
+    def home_stage(self, timeout_s=45):
+        pass
 
     @abstractmethod
-    def move_stage(self, x_mm, y_mm, move_timeout=20): pass
+    def move_stage(self, x_mm, y_mm, move_timeout=20):
+        pass
 
     @abstractmethod
-    def get_xy_position(self): pass
+    def get_xy_position(self):
+        pass
 
     @abstractmethod
-    def deinit(self): pass
+    def deinit(self):
+        pass
 
 
 class DummyStageController(BaseStageController):
@@ -93,8 +98,16 @@ class XYStageLibController(BaseStageController):
                 return False
 
             self.lib.BDC_Open(c_char_p(self.serial))
-            self.lib.BDC_StartPolling(c_char_p(self.serial), c_short(self.x_chan), c_int(self.poll_interval_ms))
-            self.lib.BDC_StartPolling(c_char_p(self.serial), c_short(self.y_chan), c_int(self.poll_interval_ms))
+            self.lib.BDC_StartPolling(
+                c_char_p(self.serial),
+                c_short(self.x_chan),
+                c_int(self.poll_interval_ms),
+            )
+            self.lib.BDC_StartPolling(
+                c_char_p(self.serial),
+                c_short(self.y_chan),
+                c_int(self.poll_interval_ms),
+            )
             self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.x_chan))
             self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.y_chan))
             time.sleep(0.5)
@@ -112,8 +125,12 @@ class XYStageLibController(BaseStageController):
             self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
             self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
             time.sleep(0.5)
-            x_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.x_chan))
-            y_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.y_chan))
+            x_dev = self.lib.BDC_GetPosition(
+                c_char_p(self.serial), c_short(self.x_chan)
+            )
+            y_dev = self.lib.BDC_GetPosition(
+                c_char_p(self.serial), c_short(self.y_chan)
+            )
             if abs(x_dev) + abs(y_dev) <= 3:
                 x_mm = x_dev / self.scaling_factor
                 y_mm = y_dev / self.scaling_factor
@@ -124,8 +141,12 @@ class XYStageLibController(BaseStageController):
     def move_stage(self, x_mm, y_mm, move_timeout=20):
         x_dev = int(x_mm * self.scaling_factor)
         y_dev = int(y_mm * self.scaling_factor)
-        self.lib.BDC_SetMoveAbsolutePosition(c_char_p(self.serial), c_short(self.x_chan), c_int(x_dev))
-        self.lib.BDC_SetMoveAbsolutePosition(c_char_p(self.serial), c_short(self.y_chan), c_int(y_dev))
+        self.lib.BDC_SetMoveAbsolutePosition(
+            c_char_p(self.serial), c_short(self.x_chan), c_int(x_dev)
+        )
+        self.lib.BDC_SetMoveAbsolutePosition(
+            c_char_p(self.serial), c_short(self.y_chan), c_int(y_dev)
+        )
         time.sleep(0.25)
         self.lib.BDC_MoveAbsolute(c_char_p(self.serial), c_short(self.x_chan))
         self.lib.BDC_MoveAbsolute(c_char_p(self.serial), c_short(self.y_chan))
@@ -134,8 +155,12 @@ class XYStageLibController(BaseStageController):
             self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
             self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
             time.sleep(0.5)
-            curr_x_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.x_chan))
-            curr_y_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.y_chan))
+            curr_x_dev = self.lib.BDC_GetPosition(
+                c_char_p(self.serial), c_short(self.x_chan)
+            )
+            curr_y_dev = self.lib.BDC_GetPosition(
+                c_char_p(self.serial), c_short(self.y_chan)
+            )
             if abs(curr_x_dev - x_dev) + abs(curr_y_dev - y_dev) <= 4:
                 x_mm = curr_x_dev / self.scaling_factor
                 y_mm = curr_y_dev / self.scaling_factor

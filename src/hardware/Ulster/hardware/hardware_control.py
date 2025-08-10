@@ -1,13 +1,13 @@
 # hardware_control.py
 from hardware.Ulster.hardware.detectors import (
-    PixetDetectorController,
-    DummyDetectorController,
     DetectorController,
+    DummyDetectorController,
+    PixetDetectorController,
 )
 from hardware.Ulster.hardware.xystages import (
-    XYStageLibController,
-    DummyStageController,
     BaseStageController,
+    DummyStageController,
+    XYStageLibController,
 )
 
 # Mapping types from config to classes
@@ -68,7 +68,9 @@ class HardwareController:
             if det_type == "DummyDetector":
                 controller = det_class(alias=alias, size=size)
             elif det_type == "Pixet":
-                controller = det_class(alias=alias, size=size, config=det_cfg)  # Adjust as needed
+                controller = det_class(
+                    alias=alias, size=size, config=det_cfg
+                )  # Adjust as needed
             else:
                 controller = det_class(alias=alias, size=size)
             success = controller.init_detector()
@@ -83,7 +85,9 @@ class HardwareController:
             if dev_mode
             else self.config.get("active_translation_stages", [])
         )
-        selected_stage = next((s for s in stage_list if s["id"] in selected_stage_ids), None)
+        selected_stage = next(
+            (s for s in stage_list if s["id"] in selected_stage_ids), None
+        )
 
         if selected_stage:
             stage_type = selected_stage.get("type")

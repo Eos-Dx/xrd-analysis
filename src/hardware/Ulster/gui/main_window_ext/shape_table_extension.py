@@ -1,9 +1,14 @@
-from PyQt5.QtWidgets import (
-    QDockWidget, QTableWidget, QTableWidgetItem, QAbstractItemView, QMenu,
-    QGraphicsLineItem, QGraphicsEllipseItem
-)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QBrush, QPen
+from PyQt5.QtGui import QBrush, QColor, QPen
+from PyQt5.QtWidgets import (
+    QAbstractItemView,
+    QDockWidget,
+    QGraphicsEllipseItem,
+    QGraphicsLineItem,
+    QMenu,
+    QTableWidget,
+    QTableWidgetItem,
+)
 
 
 class ShapeTableMixin:
@@ -12,9 +17,9 @@ class ShapeTableMixin:
         self.shapeDock = QDockWidget("Shapes", self)
         # Increase the column count to include a "Role" column.
         self.shapeTable = QTableWidget(0, 7, self)
-        self.shapeTable.setHorizontalHeaderLabels([
-            "ID", "Type", "X", "Y", "Width", "Height", "Role"
-        ])
+        self.shapeTable.setHorizontalHeaderLabels(
+            ["ID", "Type", "X", "Y", "Width", "Height", "Role"]
+        )
         self.shapeTable.setEditTriggers(
             QAbstractItemView.DoubleClicked | QAbstractItemView.SelectedClicked
         )
@@ -66,7 +71,7 @@ class ShapeTableMixin:
             item.setPen(pen)
         elif role == "sample holder":
             # Convert the shape to a square and update its appearance.
-            rect = item.rect() if hasattr(item, 'rect') else item.boundingRect()
+            rect = item.rect() if hasattr(item, "rect") else item.boundingRect()
             cx = rect.x() + rect.width() / 2
             cy = rect.y() + rect.height() / 2
             side = min(rect.width(), rect.height())
@@ -91,8 +96,12 @@ class ShapeTableMixin:
 
             # Draw center marker.
             center_radius = 3
-            center_point = QGraphicsEllipseItem(cx - center_radius, cy - center_radius,
-                                                2 * center_radius, 2 * center_radius)
+            center_point = QGraphicsEllipseItem(
+                cx - center_radius,
+                cy - center_radius,
+                2 * center_radius,
+                2 * center_radius,
+            )
             center_point.setBrush(QColor("purple"))
             center_point.setPen(QPen(Qt.NoPen))
             self.image_view.scene.addItem(center_point)
@@ -131,7 +140,7 @@ class ShapeTableMixin:
             print("Error updating shape role:", e)
 
     def update_shape_table(self):
-        shapes = getattr(self.image_view, 'shapes', [])
+        shapes = getattr(self.image_view, "shapes", [])
         self.shapeTable.blockSignals(True)
         self.shapeTable.setRowCount(len(shapes))
         for row, shape_info in enumerate(shapes):
@@ -144,11 +153,15 @@ class ShapeTableMixin:
 
             role = shape_info["role"]
             item = shape_info.get("item")
-            rect = item.rect() if hasattr(item, 'rect') else item.boundingRect()
+            rect = item.rect() if hasattr(item, "rect") else item.boundingRect()
 
             # Update table cells.
-            self.shapeTable.setItem(row, 0, QTableWidgetItem(str(shape_info.get("id", ""))))
-            self.shapeTable.setItem(row, 1, QTableWidgetItem(shape_info.get("type", "")))
+            self.shapeTable.setItem(
+                row, 0, QTableWidgetItem(str(shape_info.get("id", "")))
+            )
+            self.shapeTable.setItem(
+                row, 1, QTableWidgetItem(shape_info.get("type", ""))
+            )
             self.shapeTable.setItem(row, 2, QTableWidgetItem(f"{rect.x():.2f}"))
             self.shapeTable.setItem(row, 3, QTableWidgetItem(f"{rect.y():.2f}"))
             self.shapeTable.setItem(row, 4, QTableWidgetItem(f"{rect.width():.2f}"))
@@ -183,7 +196,7 @@ class ShapeTableMixin:
                         y = float(self.shapeTable.item(row, 3).text())
                         w = float(self.shapeTable.item(row, 4).text())
                         h = float(self.shapeTable.item(row, 5).text())
-                        if hasattr(item, 'setRect'):
+                        if hasattr(item, "setRect"):
                             item.setRect(x, y, w, h)
                         break
         except Exception as e:
@@ -204,7 +217,7 @@ class ShapeTableMixin:
         # Delete selected rows from the table and remove corresponding shapes from the image view.
         selected_rows = sorted(
             {index.row() for index in self.shapeTable.selectedIndexes()},
-            reverse=True
+            reverse=True,
         )
         for row in selected_rows:
             try:

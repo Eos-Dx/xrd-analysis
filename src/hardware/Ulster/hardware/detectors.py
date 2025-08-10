@@ -1,44 +1,48 @@
 # detectors.py
-import time
-import threading
-import tempfile
-import numpy as np
 import os
-from abc import ABC, abstractmethod
 import sys
+import tempfile
+import threading
+import time
+from abc import ABC, abstractmethod
+
+import numpy as np
+
 
 class DetectorController(ABC):
     """Abstract base class for all detector controllers."""
 
     @abstractmethod
-    def init_detector(self): pass
+    def init_detector(self):
+        pass
 
     @abstractmethod
-    def capture_point(self, Nframes, Nseconds, filename_base): pass
+    def capture_point(self, Nframes, Nseconds, filename_base):
+        pass
 
     @abstractmethod
-    def deinit_detector(self): pass
+    def deinit_detector(self):
+        pass
 
     @abstractmethod
-    def start_stream(self, callback, exposure=0.1, interval=0.0, frames=1): pass
+    def start_stream(self, callback, exposure=0.1, interval=0.0, frames=1):
+        pass
 
     @abstractmethod
-    def stop_stream(self): pass
+    def stop_stream(self):
+        pass
 
 
 import threading
-import numpy as np
 import time
 
-
-import threading
 import numpy as np
-import time
+
 
 class DummyDetectorController:
     def __init__(self, alias="DUMMY", size=(256, 256)):
         self.alias = alias  # Unique name from config, e.g. "DUMMY_DETECTOR_1"
-        self.size = size    # (width, height), from config
+        self.size = size  # (width, height), from config
         self._stream_thread = None
         self._streaming = threading.Event()
 
@@ -63,10 +67,12 @@ class DummyDetectorController:
         x0, y0 = np.random.uniform(0, width), np.random.uniform(0, height)
         sigma = np.random.uniform(5, min(width, height) / 4)
         amp = np.random.uniform(1e5, 2e6)
-        frame = amp * np.exp(-(((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma ** 2)))
+        frame = amp * np.exp(-(((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma**2)))
         frame += np.random.normal(scale=amp * 0.1, size=frame.shape)
         np.savetxt(filename, frame, fmt="%.6f")
-        print(f"DEV mode: Dummy acquisition complete for {self.alias}, saved to {filename}.")
+        print(
+            f"DEV mode: Dummy acquisition complete for {self.alias}, saved to {filename}."
+        )
 
     def deinit_detector(self):
         print(f"DEV mode: Dummy deinit_detector called for {self.alias}.")
@@ -98,7 +104,7 @@ class DummyDetectorController:
             x0, y0 = np.random.uniform(0, width), np.random.uniform(0, height)
             sigma = np.random.uniform(5, min(width, height) / 4)
             amp = np.random.uniform(1e5, 2e6)
-            frame = amp * np.exp(-(((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma ** 2)))
+            frame = amp * np.exp(-(((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma**2)))
             frame += np.random.normal(scale=amp * 0.1, size=frame.shape)
             # Callback with correct alias
             callback({self.alias: frame})
@@ -110,10 +116,12 @@ class DummyDetectorController:
 class PixetDetectorController(DetectorController):
     def __init__(self, alias, size=(256, 256), config=None):
         self.alias = alias
-        self.size = tuple(size)            # (width, height)
-        self.config = config or {}              # detector config from main.json
-        self.dev_id = self.config.get("id")     # physical device id string to match (from config)
-        self.detector = None                    # will be set after init
+        self.size = tuple(size)  # (width, height)
+        self.config = config or {}  # detector config from main.json
+        self.dev_id = self.config.get(
+            "id"
+        )  # physical device id string to match (from config)
+        self.detector = None  # will be set after init
         self.pixet = None
         self._stream_thread = None
         self._streaming = threading.Event()
@@ -167,6 +175,7 @@ class PixetDetectorController(DetectorController):
                 print(f"Deinitializing detector hardware for {self.alias}...")
                 self.pixet.exitPixet()
                 import pypixet
+
                 pypixet.exit()
                 print(f"Detector {self.alias} safely deinitialized.")
             except Exception as e:
@@ -194,6 +203,7 @@ class PixetDetectorController(DetectorController):
 
     def _stream_loop(self, callback, exposure, interval, frames):
         import tempfile
+
         while self._streaming.is_set():
             tmpdir = tempfile.mkdtemp()
             tmpfile = os.path.join(tmpdir, f"stream_{self.alias}.txt")
@@ -202,16 +212,20 @@ class PixetDetectorController(DetectorController):
                     frames, exposure, self.pixet.PX_FTYPE_AUTODETECT, tmpfile
                 )
                 if rc != 0:
-                    print(f"Frame error for {self.alias}: {rc}, {self.detector.lastError()}")
+                    print(
+                        f"Frame error for {self.alias}: {rc}, {self.detector.lastError()}"
+                    )
                     frame = None
                 else:
                     try:
                         frame = np.loadtxt(tmpfile)
                         if frame is not None:
                             # Crop to the expected size if the loaded frame is larger
-                            frame = frame[:self.size[0], :self.size[1]]
+                            frame = frame[: self.size[0], : self.size[1]]
                             # Optionally: if you want, assert the shape now
-                            assert frame.shape == self.size, f"Frame shape {frame.shape} does not match expected {self.size}"
+                            assert (
+                                frame.shape == self.size
+                            ), f"Frame shape {frame.shape} does not match expected {self.size}"
                     except Exception as e:
                         print(f"Loading error for {self.alias}: {e}")
                         frame = None

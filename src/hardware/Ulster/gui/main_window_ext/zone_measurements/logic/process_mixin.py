@@ -1,20 +1,20 @@
 # zone_measurements/logic/process_mixin.py
 
+import hashlib
+import json
 import time
 from copy import copy
-import json
-import hashlib
 from pathlib import Path
+from typing import Optional
+
 from PyQt5.QtCore import QThread, QTimer
 from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QMessageBox
 
-from hardware.Ulster.gui.technical.capture import (
-    CaptureWorker,
-    validate_folder,
-)
+from hardware.Ulster.gui.technical.capture import CaptureWorker, validate_folder
 from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
-from PyQt5.QtWidgets import QMessageBox
+
 
 class ZoneMeasurementsProcessMixin:
     def start_measurements(self):
@@ -25,19 +25,19 @@ class ZoneMeasurementsProcessMixin:
 
         self.manual_save_state()  # Save current state before starting measurements
         # Folder validation and state saving
-        self.measurement_folder = Path(
-            self.folderLineEdit.text().strip()
-        )
+        self.measurement_folder = Path(self.folderLineEdit.text().strip())
         self.state_path_measurements = (
-            self.measurement_folder
-            / f"{self.fileNameLineEdit.text()}_state.json"
+            self.measurement_folder / f"{self.fileNameLineEdit.text()}_state.json"
         )
 
         # ===== FOLDER EXISTENCE CHECK =====
         if not self.measurement_folder.exists():
             # Show a dialog or message box (PyQt5 example)
-            QMessageBox.warning(self, "Folder Error",
-                                "Selected folder does not exist. Please select the correct folder.")
+            QMessageBox.warning(
+                self,
+                "Folder Error",
+                "Selected folder does not exist. Please select the correct folder.",
+            )
             return  # Exit the function early
         # ==================================
 
@@ -45,14 +45,11 @@ class ZoneMeasurementsProcessMixin:
             self.state_measurements = copy(self.state)
         except Exception as e:
             print(f"Error copying state: {e}")
-            QMessageBox.warning(self, "No state",
-                                "Save it.")
+            QMessageBox.warning(self, "No state", "Save it.")
             return  # Exit the function early
 
         try:
-            from hardware.Ulster.hardware.auxiliary import (
-                encode_image_to_base64,
-            )
+            from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
 
             self.state_measurements["image_base64"] = encode_image_to_base64(
                 self.image_view.current_image_path
@@ -82,13 +79,11 @@ class ZoneMeasurementsProcessMixin:
             center = item.sceneBoundingRect().center()
             x_mm = (
                 self.real_x_pos_mm.value()
-                - (center.x() - self.include_center[0])
-                / self.pixel_to_mm_ratio
+                - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
             )
             y_mm = (
                 self.real_y_pos_mm.value()
-                - (center.y() - self.include_center[1])
-                / self.pixel_to_mm_ratio
+                - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
             )
             all_points.append((i, x_mm, y_mm))
         offset = len(generated_points)
@@ -96,18 +91,14 @@ class ZoneMeasurementsProcessMixin:
             center = item.sceneBoundingRect().center()
             x_mm = (
                 self.real_x_pos_mm.value()
-                - (center.x() - self.include_center[0])
-                / self.pixel_to_mm_ratio
+                - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
             )
             y_mm = (
                 self.real_y_pos_mm.value()
-                - (center.y() - self.include_center[1])
-                / self.pixel_to_mm_ratio
+                - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
             )
             all_points.append((offset + j, x_mm, y_mm))
-        all_points_sorted = sorted(
-            all_points, key=lambda tup: (tup[1], tup[2])
-        )
+        all_points_sorted = sorted(all_points, key=lambda tup: (tup[1], tup[2]))
         self.sorted_indices = [tup[0] for tup in all_points_sorted]
         self.total_points = len(self.sorted_indices)
         self.current_measurement_sorted_index = 0
@@ -126,20 +117,22 @@ class ZoneMeasurementsProcessMixin:
         measurement_points = []
         for idx, (pt_idx, x_mm, y_mm) in enumerate(all_points_sorted):
             id_str = f"{idx}:{pt_idx}:{x_mm:.6f}:{y_mm:.6f}"
-            unique_id = hashlib.md5(id_str.encode('utf-8')).hexdigest()[:16]
-            measurement_points.append({
-                'unique_id': unique_id,  # unique identifier for this point
-                'index': idx,  # order of measurement
-                'point_index': pt_idx,  # original index
-                'x': x_mm,
-                'y': y_mm,
-                # Optionally: add more, e.g. type ("user" or "generated")
-            })
+            unique_id = hashlib.md5(id_str.encode("utf-8")).hexdigest()[:16]
+            measurement_points.append(
+                {
+                    "unique_id": unique_id,  # unique identifier for this point
+                    "index": idx,  # order of measurement
+                    "point_index": pt_idx,  # original index
+                    "x": x_mm,
+                    "y": y_mm,
+                    # Optionally: add more, e.g. type ("user" or "generated")
+                }
+            )
 
-        self.state['measurement_points'] = measurement_points
+        self.state["measurement_points"] = measurement_points
 
         # Also save this in state_measurements if you use a copy
-        self.state_measurements['measurement_points'] = measurement_points
+        self.state_measurements["measurement_points"] = measurement_points
         self.manual_save_state()
         self.measure_next_point()
 
@@ -166,15 +159,11 @@ class ZoneMeasurementsProcessMixin:
         up = self.image_view.points_dict["user"]["points"]
         if index < len(gp):
             self._point_item = gp[index]
-            self._zone_item = self.image_view.points_dict["generated"][
-                "zones"
-            ][index]
+            self._zone_item = self.image_view.points_dict["generated"]["zones"][index]
         else:
             user_index = index - len(gp)
             self._point_item = up[user_index]
-            self._zone_item = self.image_view.points_dict["user"]["zones"][
-                user_index
-            ]
+            self._zone_item = self.image_view.points_dict["user"]["zones"][user_index]
 
         self.update_xy_pos()
         center = self._point_item.sceneBoundingRect().center()
@@ -230,41 +219,39 @@ class ZoneMeasurementsProcessMixin:
         print(f"[Measurement] capture successful: {result_files}")
 
         # Build detector meta as before
-        detector_lookup = {d["alias"]: d for d in self.config['detectors']}
+        detector_lookup = {d["alias"]: d for d in self.config["detectors"]}
 
-        measurements = self.state_measurements.get('measurements_meta', {})
-        measurement_points = self.state_measurements['measurement_points']
+        measurements = self.state_measurements.get("measurements_meta", {})
+        measurement_points = self.state_measurements["measurement_points"]
         current_index = self.current_measurement_sorted_index
         x = self._x_mm
         y = self._y_mm
-        point_unique_id = measurement_points[current_index]['unique_id']
+        point_unique_id = measurement_points[current_index]["unique_id"]
 
         for alias, txt_filename in result_files.items():
             detector_meta = detector_lookup.get(alias, {})
             measurements[Path(txt_filename).name] = {
-                'x': x,
-                'y': y,
-                'unique_id': point_unique_id,  # <-- use the precomputed one!
-                'base_file': self._base_name,
-                'integration_time': self.integration_time,
-                'detector_alias': alias,
-                'detector_id': detector_meta.get("id"),
-                'detector_type': detector_meta.get("type"),
-                'detector_size': detector_meta.get("size"),
-                'pixel_size_um': detector_meta.get("pixel_size_um"),
-                'faulty_pixels': detector_meta.get("faulty_pixels"),
+                "x": x,
+                "y": y,
+                "unique_id": point_unique_id,  # <-- use the precomputed one!
+                "base_file": self._base_name,
+                "integration_time": self.integration_time,
+                "detector_alias": alias,
+                "detector_id": detector_meta.get("id"),
+                "detector_type": detector_meta.get("type"),
+                "detector_size": detector_meta.get("size"),
+                "pixel_size_um": detector_meta.get("pixel_size_um"),
+                "faulty_pixels": detector_meta.get("faulty_pixels"),
             }
 
-        self.state_measurements['measurements_meta'] = measurements
+        self.state_measurements["measurements_meta"] = measurements
 
         # Save updated state
-        with open(self.state_path_measurements, 'w') as f:
+        with open(self.state_path_measurements, "w") as f:
             json.dump(self.state_measurements, f, indent=4)
 
         # === The rest is unchanged (your logic) ===
-        current_row = self.sorted_indices[
-            self.current_measurement_sorted_index
-        ]
+        current_row = self.sorted_indices[self.current_measurement_sorted_index]
         self.spawn_measurement_thread(current_row, result_files)
 
         # Visual feedback
@@ -343,20 +330,137 @@ class ZoneMeasurementsProcessMixin:
                 self.start_btn.setEnabled(True)
 
     def add_measurement_to_table(self, row, results, timestamp=None):
+        """Add measurement results to the appropriate point's widget (right panel, not the table).
+        Also updates the widget title and the tree item text to include "#ID X:Y mm".
         """
-        Adds the measurement results to the points table at the specified row,
-        creates/updates the associated MeasurementHistoryWidget.
-        """
-        widget = self.pointsTable.cellWidget(row, 5)
-        if not isinstance(widget, MeasurementHistoryWidget):
-            widget = MeasurementHistoryWidget(
-                masks=self.masks, ponis=self.ponis, parent=self, point_id=row
-            )
-            self.pointsTable.setCellWidget(row, 5, widget)
-            self.measurement_widgets[row] = widget
-        widget.add_measurement(
-            results, timestamp or getattr(self, "_timestamp", "")
+        # --- Determine a stable point_id from table ---
+        point_id = self._get_point_id_from_table_row(row)
+        if point_id is None:
+            print(f"Warning: Could not determine point_id for row {row}")
+            return
+
+        # Extract X:Y in mm from the table row if available
+        x_mm = None
+        y_mm = None
+        try:
+            x_item = self.pointsTable.item(row, 3)
+            y_item = self.pointsTable.item(row, 4)
+            if x_item is not None and y_item is not None:
+                x_mm = (
+                    float(x_item.text())
+                    if x_item.text() not in (None, "", "N/A")
+                    else None
+                )
+                y_mm = (
+                    float(y_item.text())
+                    if y_item.text() not in (None, "", "N/A")
+                    else None
+                )
+        except Exception:
+            pass
+
+        # Ensure a measurement widget exists in the right-side panel
+        add_to_panel = getattr(self, "add_measurement_widget_to_panel", None)
+        if callable(add_to_panel):
+            add_to_panel(point_id)
+
+        # --- Get or create the measurement widget (without using the table column) ---
+        widget = self._get_or_create_measurement_widget(point_id)
+        if widget is None:
+            print(f"Error: Could not get/create widget for point_id {point_id}")
+            return
+
+        # Update widget title to include #ID and X:Y in mm, and store coords in widget
+        try:
+            if x_mm is not None and y_mm is not None:
+                if hasattr(widget, "set_mm_coordinates"):
+                    widget.set_mm_coordinates(x_mm, y_mm)
+                else:
+                    widget.setWindowTitle(
+                        f"Measurement History: Point #{point_id} {x_mm:.2f}:{y_mm:.2f} mm"
+                    )
+            else:
+                widget.setWindowTitle(f"Measurement History: Point #{point_id}")
+        except Exception:
+            pass
+
+        # Update the tree item text to reflect the same
+        try:
+            items_map = getattr(self, "_measurement_items", {})
+            if point_id in items_map:
+                top_item, child_item, _w = items_map.get(point_id, (None, None, None))
+                if top_item is not None:
+                    if x_mm is not None and y_mm is not None:
+                        top_item.setText(
+                            0, f"Point #{point_id} {x_mm:.2f}:{y_mm:.2f} mm"
+                        )
+                    else:
+                        top_item.setText(0, f"Point #{point_id}")
+        except Exception:
+            pass
+
+        # --- Add the measurement to the widget ---
+        widget.add_measurement(results, timestamp or getattr(self, "_timestamp", ""))
+        print(f"Added measurement to point_id {point_id} (row {row})")
+
+    def _get_point_id_from_table_row(self, row: int) -> Optional[int]:
+        """Extract point_id from table row."""
+        point_id = None
+
+        # Try to get point_id from table cell first
+        item0 = self.pointsTable.item(row, 0)
+        if item0 is not None:
+            txt = item0.text().strip()
+            if txt:
+                try:
+                    point_id = int(txt)
+                except ValueError:
+                    pass
+
+        # Fallback: read from underlying graphics item data
+        if point_id is None:
+            gp = self.image_view.points_dict["generated"]["points"]
+            up = self.image_view.points_dict["user"]["points"]
+
+            if row < len(gp):
+                pid = gp[row].data(1)
+                point_id = int(pid) if pid is not None else None
+            else:
+                urow = row - len(gp)
+                if 0 <= urow < len(up):
+                    pid = up[urow].data(1)
+                    point_id = int(pid) if pid is not None else None
+
+        return point_id
+
+    def _get_or_create_measurement_widget(
+        self, point_id: int
+    ) -> Optional[MeasurementHistoryWidget]:
+        """Get existing widget or create a new one (managed in the right panel, not in the table)."""
+        # Check if we already have a widget for this point_id
+        widget = getattr(self, "measurement_widgets", {}).get(point_id)
+        if widget is not None and not getattr(widget, "isHidden", None) is None:
+            return widget
+
+        # Prefer to let the ZonePoints UI create/manage the widget in the right panel if available
+        add_to_panel = getattr(self, "add_measurement_widget_to_panel", None)
+        if callable(add_to_panel):
+            add_to_panel(point_id)
+            widget = getattr(self, "measurement_widgets", {}).get(point_id)
+            if widget is not None:
+                return widget
+
+        # Fallback: create a standalone widget and store it in the mapping
+        widget = MeasurementHistoryWidget(
+            masks=getattr(self, "masks", {}),
+            ponis=getattr(self, "ponis", {}),
+            parent=self,
+            point_id=point_id,
         )
+        if not hasattr(self, "measurement_widgets"):
+            self.measurement_widgets = {}
+        self.measurement_widgets[point_id] = widget
+        return widget
 
     def pause_measurements(self):
         """

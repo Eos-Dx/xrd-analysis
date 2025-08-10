@@ -5,9 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import seaborn as sns
-from matplotlib.backends.backend_qt5agg import (
-    FigureCanvasQTAgg as FigureCanvas,
-)
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QHBoxLayout
@@ -46,9 +44,7 @@ class CaptureWorker(QObject):
                     filename_base=self.txt_filename_base + f"_{alias}",
                 )
                 results[alias] = (
-                    self.txt_filename_base + f"_{alias}.txt"
-                    if success
-                    else None
+                    self.txt_filename_base + f"_{alias}.txt" if success else None
                 )
             except Exception as e:
                 print(f"Error in capture for {alias}: {e}")
@@ -115,9 +111,7 @@ def move_and_convert_measurement_file(src_file, alias_folder):
         npy_file = dest_txt.with_suffix(".npy")
         np.save(npy_file, data)
     except Exception as e:
-        print(
-            f"[move_and_convert_measurement_file] Error converting to .npy: {e}"
-        )
+        print(f"[move_and_convert_measurement_file] Error converting to .npy: {e}")
         npy_file = dest_txt  # fallback
 
     return str(npy_file)
@@ -291,9 +285,7 @@ def show_measurement_window(
     col_sums = cake2.sum(axis=0)
     valid_counts = (~mask_zero).sum(axis=0)
     col_means = np.divide(col_sums, valid_counts, where=valid_counts > 0)
-    pct_dev = (
-        (cake2 - col_means[np.newaxis, :]) / col_means[np.newaxis, :] * 100
-    )
+    pct_dev = (cake2 - col_means[np.newaxis, :]) / col_means[np.newaxis, :] * 100
 
     ax4 = fig.add_subplot(2, 2, 4)
     sns.heatmap(pct_dev, robust=True, square=True, ax=ax4)

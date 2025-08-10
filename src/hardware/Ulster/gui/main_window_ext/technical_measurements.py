@@ -22,9 +22,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from hardware.Ulster.gui.main_window_ext.zone_measurements import (
-    ZoneMeasurementsMixin,
-)
+from hardware.Ulster.gui.main_window_ext.zone_measurements import ZoneMeasurementsMixin
 from hardware.Ulster.gui.technical.capture import (
     CaptureWorker,
     show_measurement_window,
@@ -40,9 +38,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         super().create_zone_measurements()
 
         self.measDock = QDockWidget("Technical Measurements", self)
-        self.measDock.setAllowedAreas(
-            Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea
-        )
+        self.measDock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
 
         container = QWidget()
         outer = QVBoxLayout(container)
@@ -64,9 +60,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         fld.addWidget(QLabel("Save Folder:"))
         self.folderLE = QLineEdit()
         default_folder = (
-            self.config.get("default_folder", "")
-            if hasattr(self, "config")
-            else ""
+            self.config.get("default_folder", "") if hasattr(self, "config") else ""
         )
         self.folderLE.setText(default_folder)
 
@@ -212,9 +206,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         from PyQt5.QtCore import Qt
 
         item = QListWidgetItem(f"{alias}: {Path(npy_path).name}")
-        item.setData(
-            Qt.UserRole, str(npy_path)
-        )  # ✅ use Qt.UserRole to store the path
+        item.setData(Qt.UserRole, str(npy_path))  # ✅ use Qt.UserRole to store the path
         self.auxList.addItem(item)
 
     def _file_base(self, typ: str) -> str:
@@ -238,9 +230,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
                 detector = alias
                 break
         if not detector:
-            detector = next(
-                iter(self.detector_controller)
-            )  # fallback to first
+            detector = next(iter(self.detector_controller))  # fallback to first
 
         show_measurement_window(
             file_path, self.masks.get(detector), self.ponis.get(detector), self
@@ -256,9 +246,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
         if os.name == "nt":
             cmd = (
-                f"CALL conda activate {env} "
-                f'&& cd /d "{folder}" '
-                f"&& pyfai-calib2"
+                f"CALL conda activate {env} " f'&& cd /d "{folder}" ' f"&& pyfai-calib2"
             )
             start_cmd = f'start cmd /K "{cmd}"'
             try:

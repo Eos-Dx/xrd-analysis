@@ -1,5 +1,6 @@
-from PyQt5.QtWidgets import QToolButton, QMenu, QAction
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QAction, QMenu, QToolButton
+
 
 class RotatorToolButton(QToolButton):
     """
@@ -8,6 +9,7 @@ class RotatorToolButton(QToolButton):
     Left-click will rotate using a default angle.
     Right-click will display a menu to select a different rotation angle.
     """
+
     def __init__(self, text: str, default_angle: float, rotate_callback, parent=None):
         """
         Initialize the RotatorToolButton.
@@ -21,7 +23,9 @@ class RotatorToolButton(QToolButton):
         super().__init__(parent)
         self.setText(text)
         self.default_angle = default_angle  # Store the default rotation angle.
-        self.rotate_callback = rotate_callback  # Store the callback function to execute a rotation.
+        self.rotate_callback = (
+            rotate_callback  # Store the callback function to execute a rotation.
+        )
 
         # Create a QMenu to allow the user to choose among different rotation angles.
         self.menu = QMenu(self)
@@ -92,8 +96,12 @@ class RotationMixin:
         Create rotation action buttons for rotating the image left or right.
         """
         # Instantiate buttons with the default angle set to 1 degree.
-        self.rotate_left_btn = RotatorToolButton("Rotate Left", 1, self.rotate_left, self)
-        self.rotate_right_btn = RotatorToolButton("Rotate Right", 1, self.rotate_right, self)
+        self.rotate_left_btn = RotatorToolButton(
+            "Rotate Left", 1, self.rotate_left, self
+        )
+        self.rotate_right_btn = RotatorToolButton(
+            "Rotate Right", 1, self.rotate_right, self
+        )
 
     def add_rotation_actions_to_tool_bar(self):
         """

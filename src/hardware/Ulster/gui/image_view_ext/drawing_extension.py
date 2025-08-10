@@ -1,6 +1,6 @@
-from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtWidgets import QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsItem
+from PyQt5.QtCore import QRectF, Qt
 from PyQt5.QtGui import QPen
+from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsItem, QGraphicsRectItem
 
 
 class DrawingMixin:
@@ -11,7 +11,7 @@ class DrawingMixin:
         self.pen = self._create_pen()
         self.start_point = None
         self.current_shape = None
-        self.shapes = []         # List to hold drawn shapes (each: {"id", "type", "item"})
+        self.shapes = []  # List to hold drawn shapes (each: {"id", "type", "item"})
         self.shape_counter = 1
         self.shape_updated_callback = None
 
@@ -33,13 +33,17 @@ class DrawingMixin:
                 rect_item = QGraphicsRectItem(rect)
                 rect_item.setPen(self.pen)
                 if self.drawing_mode == "rect":
-                    rect_item.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable)
+                    rect_item.setFlags(
+                        QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable
+                    )
                 self.current_shape = rect_item
                 self.scene.addItem(rect_item)
             elif self.drawing_mode == "ellipse":
                 ellipse_item = QGraphicsEllipseItem(rect)
                 ellipse_item.setPen(self.pen)
-                ellipse_item.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable)
+                ellipse_item.setFlags(
+                    QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable
+                )
                 self.current_shape = ellipse_item
                 self.scene.addItem(ellipse_item)
         else:
@@ -49,7 +53,7 @@ class DrawingMixin:
         if self.drawing_mode and self.start_point and self.current_shape:
             current_point = self.mapToScene(event.pos())
             rect = QRectF(self.start_point, current_point).normalized()
-            if hasattr(self.current_shape, 'setRect'):
+            if hasattr(self.current_shape, "setRect"):
                 self.current_shape.setRect(rect)
         else:
             super().mouseMoveEvent(event)
@@ -60,6 +64,7 @@ class DrawingMixin:
                 if self.current_shape and self.current_pixmap:
                     rect = self.current_shape.rect().normalized()
                     from PyQt5.QtCore import QRectF
+
                     image_rect = QRectF(self.current_pixmap.rect())
                     crop_rect = rect.intersected(image_rect)
                     # Remove the crop rectangle BEFORE applying the crop.
@@ -70,7 +75,7 @@ class DrawingMixin:
                             int(crop_rect.x()),
                             int(crop_rect.y()),
                             int(crop_rect.width()),
-                            int(crop_rect.height())
+                            int(crop_rect.height()),
                         )
                         self.setImage(cropped_pixmap)
                     else:
@@ -79,9 +84,11 @@ class DrawingMixin:
                 if self.current_shape:
                     shape_info = {
                         "id": self.shape_counter,
-                        "type": "Rectangle" if self.drawing_mode == "rect" else "Circle",
+                        "type": (
+                            "Rectangle" if self.drawing_mode == "rect" else "Circle"
+                        ),
                         "item": self.current_shape,
-                        "role": "include"  # Default role is include.
+                        "role": "include",  # Default role is include.
                     }
                     self.shapes.append(shape_info)
                     self.shape_counter += 1

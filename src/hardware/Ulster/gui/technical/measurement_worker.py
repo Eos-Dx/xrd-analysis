@@ -1,10 +1,14 @@
 # measurement_worker.py
+import time
+from pathlib import Path
+
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot  # <-- add pyqtSlot
 from PyQt5.QtWidgets import QListWidgetItem
-from pathlib import Path
-from hardware.Ulster.gui.technical.capture import compute_hf_score_from_cake
-from hardware.Ulster.gui.technical.capture import move_and_convert_measurement_file
-import time
+
+from hardware.Ulster.gui.technical.capture import (
+    compute_hf_score_from_cake,
+    move_and_convert_measurement_file,
+)
 
 
 class MeasurementWorker(QObject):
@@ -17,10 +21,10 @@ class MeasurementWorker(QObject):
 
     def __init__(
         self,
-        filenames,                  # dict: {alias: filename}
-        masks=None,                 # dict: {alias: mask}
-        ponis=None,                 # dict: {alias: poni}
-        row=None,                   # int: row in table, for zone measurements
+        filenames,  # dict: {alias: filename}
+        masks=None,  # dict: {alias: mask}
+        ponis=None,  # dict: {alias: poni}
+        row=None,  # int: row in table, for zone measurements
         parent=None,
         hf_cutoff_fraction=0.2,
         columns_to_remove=30,
@@ -33,8 +37,6 @@ class MeasurementWorker(QObject):
         self.ponis = ponis or {}
         self.hf_cutoff_fraction = hf_cutoff_fraction
         self.columns_to_remove = columns_to_remove
-
-
 
     @pyqtSlot()
     def run(self):
@@ -59,14 +61,10 @@ class MeasurementWorker(QObject):
             except Exception as e:
                 print(f"[{alias}] Error in compute_hf_score_from_cake: {e}")
                 goodness = float("nan")
-            results[alias] = {
-                "filename": str(npy_path),
-                "goodness": goodness
-            }
+            results[alias] = {"filename": str(npy_path), "goodness": goodness}
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         if self.row is not None:
             print(f"[MeasurementWorker] Emitting measurement_ready for row {self.row}")
             self.measurement_ready.emit(self.row, results, timestamp)
         print("[MeasurementWorker] Emitting finished")
         self.finished.emit()
-

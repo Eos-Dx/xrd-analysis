@@ -1,6 +1,8 @@
-import os
 import json
+import os
+
 from hardware_control import *
+
 
 # ------------------------------
 # Main Scanning Routine
@@ -14,7 +16,12 @@ def main():
     with open("../resources/config/xy_stage.json", "r") as f:
         xy_stage_params = json.load(f)
 
-    x_max, x_min, y_max, y_min = params["x_max"], params["x_min"], params["y_max"], params["y_min"]
+    x_max, x_min, y_max, y_min = (
+        params["x_max"],
+        params["x_min"],
+        params["y_max"],
+        params["y_min"],
+    )
     sim_en = params["sim_en"]
     serial_num = params["serial_number"]
     home_timeout = params["home_timeout"]
@@ -38,9 +45,5 @@ def main():
     home_stage(lib, serial_num, x_chan, y_chan, home_timeout)
 
 
-
-
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

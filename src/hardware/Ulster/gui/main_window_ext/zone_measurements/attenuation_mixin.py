@@ -85,12 +85,8 @@ class AttenuationMixin:
         atten_layout.addWidget(self.attenuationList)
 
         # --- Connections ---
-        self.attenuationList.itemActivated.connect(
-            self.open_attenuation_measurement
-        )
-        self.measure_without_sample_btn.clicked.connect(
-            self.measure_without_sample
-        )
+        self.attenuationList.itemActivated.connect(self.open_attenuation_measurement)
+        self.measure_without_sample_btn.clicked.connect(self.measure_without_sample)
         self.measure_with_sample_btn.clicked.connect(self.measure_with_sample)
         self.calc_atten_btn.clicked.connect(self.calculate_all_attenuations)
         self.load_atten_btn.clicked.connect(self.load_attenuation_data)
@@ -265,9 +261,7 @@ class AttenuationMixin:
 
     def open_attenuation_measurement(self, item):
         """Opens and displays an attenuation measurement."""
-        from hardware.Ulster.gui.technical.capture import (
-            show_measurement_window,
-        )
+        from hardware.Ulster.gui.technical.capture import show_measurement_window
 
         file_path = item.data(Qt.UserRole)
         meta = item.data(Qt.UserRole + 1) or {}
@@ -312,18 +306,14 @@ class AttenuationMixin:
                 texts.append(f"{alias}: I0={I0:.1f}, I={I:.1f}, α={alpha}")
             self.result_label.setText("\n".join(texts))
         else:
-            self.result_label.setText(
-                "Need both measurements for attenuation."
-            )
+            self.result_label.setText("Need both measurements for attenuation.")
 
     def integrate_file(self, file_path, alias):
         """Integrates loaded file for central area."""
         frame = np.load(file_path)
         center_x, center_y = self.get_beam_center(alias)
         radius = self.integration_radius_spin.value()
-        return self.integrate_central_area(
-            frame, center_x, center_y, size=radius
-        )
+        return self.integrate_central_area(frame, center_x, center_y, size=radius)
 
     def calculate_all_attenuations(self):
         """Calculates attenuation for all loaded measurements."""

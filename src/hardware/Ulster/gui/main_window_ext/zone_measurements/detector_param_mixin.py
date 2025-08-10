@@ -31,9 +31,7 @@ class DetectorParamMixin:
     def populate_detector_param_tab(self):
         """Populates detector param tab with widgets for each detector."""
         self.clear_detector_param_tab()
-        self.detector_aliases = (
-            self.hardware_controller.active_detector_aliases
-        )
+        self.detector_aliases = self.hardware_controller.active_detector_aliases
 
         for alias in self.detector_aliases:
             # Mask widget
@@ -43,9 +41,7 @@ class DetectorParamMixin:
             setattr(self, f"{alias.lower()}_mask_lineedit", mask_lineedit)
             mask_layout.addWidget(mask_lineedit)
             mask_btn = QPushButton("Browse...")
-            mask_btn.clicked.connect(
-                partial(self.browse_mask_file, detector=alias)
-            )
+            mask_btn.clicked.connect(partial(self.browse_mask_file, detector=alias))
             mask_layout.addWidget(mask_btn)
             self.param_layout.addLayout(mask_layout)
 
@@ -56,9 +52,7 @@ class DetectorParamMixin:
             setattr(self, f"{alias.lower()}_poni_lineedit", poni_lineedit)
             poni_layout.addWidget(poni_lineedit)
             poni_btn = QPushButton("Browse...")
-            poni_btn.clicked.connect(
-                partial(self.browse_poni_file, detector=alias)
-            )
+            poni_btn.clicked.connect(partial(self.browse_poni_file, detector=alias))
             poni_layout.addWidget(poni_btn)
             self.param_layout.addLayout(poni_layout)
 
@@ -87,9 +81,7 @@ class DetectorParamMixin:
             "Mask Files (*.mask *.npy *.txt);;All Files (*)",
         )
         if mask_file:
-            getattr(self, f"{detector.lower()}_mask_lineedit").setText(
-                mask_file
-            )
+            getattr(self, f"{detector.lower()}_mask_lineedit").setText(mask_file)
             self.load_mask_file(mask_file, detector)
 
     def browse_poni_file(self, detector):
@@ -101,9 +93,7 @@ class DetectorParamMixin:
             "PONI Files (*.poni);;All Files (*)",
         )
         if poni_file:
-            getattr(self, f"{detector.lower()}_poni_lineedit").setText(
-                poni_file
-            )
+            getattr(self, f"{detector.lower()}_poni_lineedit").setText(poni_file)
             self.load_poni_file(poni_file, detector)
 
     def load_default_masks_and_ponis(self):

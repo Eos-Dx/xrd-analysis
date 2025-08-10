@@ -1,17 +1,13 @@
 # zone_measurements/measurement_table_utils.py
 
 
-def add_measurement_to_table(
-    points_table, row, measurement_widget, results, timestamp
-):
+def add_measurement_to_table(points_table, row, measurement_widget, results, timestamp):
     """
-    Attaches a MeasurementHistoryWidget to the specified row in the table and updates it.
+    Deprecated: measurement widgets are not embedded into the table anymore.
+    This helper only forwards the measurement to the provided widget.
     """
-    if not isinstance(measurement_widget, object):
-        # Instantiate your widget if not present
-        # measurement_widget = MeasurementHistoryWidget(...)
-        pass
-    points_table.setCellWidget(row, 5, measurement_widget)
+    if measurement_widget is None:
+        return
     measurement_widget.add_measurement(results, timestamp)
 
 

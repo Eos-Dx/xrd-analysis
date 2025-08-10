@@ -18,7 +18,6 @@ class ZoneMeasurementsFileMixin:
         if folder:
             self.folderLineEdit.setText(folder)
 
-
     def process_measurement_result(self, success, result_files, typ):
         """
         Handles measurement files, organizes by alias, converts .txt to .npy,

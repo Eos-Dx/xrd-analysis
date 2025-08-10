@@ -23,13 +23,17 @@ class ZoomMixin:
             super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if event.buttons() & Qt.MiddleButton and hasattr(self, '_dragPos'):
+        if event.buttons() & Qt.MiddleButton and hasattr(self, "_dragPos"):
             # Calculate the delta movement.
             delta = event.pos() - self._dragPos
             self._dragPos = event.pos()
             # Pan the view by updating the scrollbars.
-            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
-            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
+            self.horizontalScrollBar().setValue(
+                self.horizontalScrollBar().value() - delta.x()
+            )
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() - delta.y()
+            )
             event.accept()
         else:
             super().mouseMoveEvent(event)
@@ -37,7 +41,7 @@ class ZoomMixin:
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MiddleButton:
             self.unsetCursor()
-            if hasattr(self, '_dragPos'):
+            if hasattr(self, "_dragPos"):
                 del self._dragPos
             event.accept()
         else:

@@ -11,9 +11,7 @@ class StageControlMixin:
         """
         if not getattr(self, "hardware_initialized", False):
             # --- Initialize hardware using your config-driven HardwareController ---
-            from hardware.Ulster.hardware.hardware_control import (
-                HardwareController,
-            )
+            from hardware.Ulster.hardware.hardware_control import HardwareController
 
             self.hardware_controller = HardwareController(self.config)
             res_xystage, res_det = self.hardware_controller.initialize()
@@ -115,12 +113,8 @@ class StageControlMixin:
             from PyQt5.QtGui import QPen
 
             pen = QPen(Qt.black, 5)
-            hl = self._add_beam_line(
-                x_pix - size, y_pix, x_pix + size, y_pix, pen
-            )
-            vl = self._add_beam_line(
-                x_pix, y_pix - size, x_pix, y_pix + size, pen
-            )
+            hl = self._add_beam_line(x_pix - size, y_pix, x_pix + size, y_pix, pen)
+            vl = self._add_beam_line(x_pix, y_pix - size, x_pix, y_pix + size, pen)
             self.image_view.points_dict["beam"] = [hl, vl]
         else:
             self.image_view.points_dict["beam"] = []
@@ -149,13 +143,8 @@ class StageControlMixin:
         """
         Moves the XY stage to home using the controller.
         """
-        if (
-            hasattr(self, "stage_controller")
-            and self.stage_controller is not None
-        ):
-            new_x, new_y = self.stage_controller.move_stage(
-                8.25, -6, move_timeout=15
-            )
+        if hasattr(self, "stage_controller") and self.stage_controller is not None:
+            new_x, new_y = self.stage_controller.move_stage(8.25, -6, move_timeout=15)
         else:
             print("Stage not initialized.")
 
@@ -163,13 +152,8 @@ class StageControlMixin:
         """
         Moves the XY stage to a fixed or user-defined load position.
         """
-        if (
-            hasattr(self, "stage_controller")
-            and self.stage_controller is not None
-        ):
-            new_x, new_y = self.stage_controller.move_stage(
-                -15, -6, move_timeout=15
-            )
+        if hasattr(self, "stage_controller") and self.stage_controller is not None:
+            new_x, new_y = self.stage_controller.move_stage(-15, -6, move_timeout=15)
             print(f"Loaded position: ({new_x}, {new_y})")
         else:
             print("Stage not initialized.")

@@ -25,10 +25,18 @@ class DrawingMixin:
         The 'Select' mode is checked by default.
         """
         # Create actions with checkable states and assign each its callback.
-        self.select_rect_act = QAction("Rectangle", self, checkable=True, triggered=self.select_rect_mode)
-        self.select_ellipse_act = QAction("Circle", self, checkable=True, triggered=self.select_ellipse_mode)
-        self.crop_act = QAction("Crop", self, checkable=True, triggered=self.select_crop_mode)
-        self.select_act = QAction("Select", self, checkable=True, triggered=self.select_select_mode)
+        self.select_rect_act = QAction(
+            "Rectangle", self, checkable=True, triggered=self.select_rect_mode
+        )
+        self.select_ellipse_act = QAction(
+            "Circle", self, checkable=True, triggered=self.select_ellipse_mode
+        )
+        self.crop_act = QAction(
+            "Crop", self, checkable=True, triggered=self.select_crop_mode
+        )
+        self.select_act = QAction(
+            "Select", self, checkable=True, triggered=self.select_select_mode
+        )
 
         # Group actions to ensure only one mode is active at a time.
         self.drawingModeGroup = QActionGroup(self)
@@ -99,5 +107,5 @@ class DrawingMixin:
 
         Checks if the image_view attribute exists before attempting deletion.
         """
-        if hasattr(self, 'image_view'):
+        if hasattr(self, "image_view"):
             self.image_view.delete_selected_shapes()

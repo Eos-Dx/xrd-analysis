@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
 
 from hardware.Ulster.hardware.camera_capture_dialog import CameraCaptureDialog
 
+
 class MainWindowBasic(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -37,8 +38,7 @@ class MainWindowBasic(QMainWindow):
 
         # Load config and remember path
         config_path = (
-            Path(__file__).resolve().parent.parent.parent
-            / "resources/config/main.json"
+            Path(__file__).resolve().parent.parent.parent / "resources/config/main.json"
         )
         self._config_path = config_path
         self.config = self.load_config()
@@ -67,11 +67,11 @@ class MainWindowBasic(QMainWindow):
         # File open
         self.open_act = QAction("Open Image", self, triggered=self.open_image)
         # Camera
-        self.capture_camera_act = QAction("Capture from Camera", self, triggered=self.capture_from_camera)
-        # Edit config dialog
-        self.editConfigAct = QAction(
-            "Edit Config…", self, triggered=self.edit_config
+        self.capture_camera_act = QAction(
+            "Capture from Camera", self, triggered=self.capture_from_camera
         )
+        # Edit config dialog
+        self.editConfigAct = QAction("Edit Config…", self, triggered=self.edit_config)
         # Toggle DEV/demo mode
         self.toggleDevAct = QAction("", self, triggered=self.toggle_dev_mode)
 
@@ -121,9 +121,12 @@ class MainWindowBasic(QMainWindow):
                 except Exception as e:
                     print(e)
             else:
-                QMessageBox.warning(self, "Load Error",
-                                    "Image was not saved or cannot be found. "
-                                    "Please check the folder and try again.")
+                QMessageBox.warning(
+                    self,
+                    "Load Error",
+                    "Image was not saved or cannot be found. "
+                    "Please check the folder and try again.",
+                )
 
     def check_dev_mode(self):
         if self.config.get("DEV", False):
@@ -152,9 +155,7 @@ class MainWindowBasic(QMainWindow):
         editor.setPlainText(text)
         layout.addWidget(editor)
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Save | QDialogButtonBox.Cancel, dlg
-        )
+        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel, dlg)
         layout.addWidget(buttons)
 
         def on_save():
@@ -162,22 +163,16 @@ class MainWindowBasic(QMainWindow):
             try:
                 parsed = json.loads(new_text)
             except Exception as parse_e:
-                QMessageBox.warning(
-                    dlg, "JSON Error", f"Invalid JSON:\n{parse_e}"
-                )
+                QMessageBox.warning(dlg, "JSON Error", f"Invalid JSON:\n{parse_e}")
                 return
             try:
                 self._config_path.write_text(json.dumps(parsed, indent=4))
             except Exception as write_e:
-                QMessageBox.critical(
-                    self, "Error", f"Cannot write config:\n{write_e}"
-                )
+                QMessageBox.critical(self, "Error", f"Cannot write config:\n{write_e}")
                 return
             self.config = parsed
             self.update_dev_visuals()
-            QMessageBox.information(
-                self, "Config Saved", "Configuration reloaded."
-            )
+            QMessageBox.information(self, "Config Saved", "Configuration reloaded.")
             dlg.accept()
 
         buttons.accepted.connect(on_save)

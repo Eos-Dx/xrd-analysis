@@ -118,9 +118,7 @@ class ZoneMeasurementsUIMixin:
         folderLabel = QLabel("Save Folder:")
         self.folderLineEdit = QLineEdit()
         default_folder = (
-            self.config.get("default_folder", "")
-            if hasattr(self, "config")
-            else ""
+            self.config.get("default_folder", "") if hasattr(self, "config") else ""
         )
         self.folderLineEdit.setText(default_folder)
         self.browseBtn = QPushButton("Browse...")
