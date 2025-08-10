@@ -11,7 +11,7 @@ class StageControlMixin:
         """
         if not getattr(self, "hardware_initialized", False):
             # --- Initialize hardware using your config-driven HardwareController ---
-            from hardware.Ulster.hardware.hardware_control import HardwareController
+            from ulster_hardware.hardware_control import HardwareController
 
             self.hardware_controller = HardwareController(self.config)
             res_xystage, res_det = self.hardware_controller.initialize()

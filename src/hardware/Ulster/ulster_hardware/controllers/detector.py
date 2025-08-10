@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from hardware.Ulster.utils.logger import (
+from utils.logging import (
     get_module_logger,
     log_hardware_state,
     with_logging,

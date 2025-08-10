@@ -2,7 +2,7 @@ import base64
 import math
 from ctypes import c_char_p, c_int, c_short, cdll
 
-from hardware.Ulster.utils.logger import get_module_logger
+from utils.logging import get_module_logger
 
 logger = get_module_logger(__name__)
 

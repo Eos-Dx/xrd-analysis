@@ -15,6 +15,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+# Path setup is handled in Ulster.__init__.py
+
 from xrdanalysis.data_processing.utility_functions import create_mask
 
 

@@ -1,13 +1,17 @@
 """Ulster utilities package."""
 
-from .logging_setup import (
-    configure_third_party_logging,
-    get_log_stats,
+# Re-export logging functionality from the logging submodule
+from .logging import (
+    setup_logging,
     get_logger,
     log_context,
-    log_exceptions,
     log_performance,
-    setup_logging,
+    log_exceptions,
+    get_module_logger,
+    UlsterLogger,
+    with_logging,
+    log_hardware_state,
+    log_measurement
 )
 
 __all__ = [
@@ -16,6 +20,9 @@ __all__ = [
     "log_context",
     "log_performance",
     "log_exceptions",
-    "configure_third_party_logging",
-    "get_log_stats",
+    "get_module_logger",
+    "UlsterLogger",
+    "with_logging",
+    "log_hardware_state",
+    "log_measurement"
 ]

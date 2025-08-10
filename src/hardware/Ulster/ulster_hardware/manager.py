@@ -1,14 +1,17 @@
-# hardware_control.py
-from hardware.Ulster.hardware.detectors import (
+# hardware/manager.py
+from .controllers.detector import (
     DetectorController,
-    DummyDetectorController,
+    DummyDetectorController, 
     PixetDetectorController,
 )
-from hardware.Ulster.hardware.xystages import (
-    BaseStageController,
+from .controllers.stage import (
+    StageController,
     DummyStageController,
-    XYStageLibController,
+    BrushlessStageController,
 )
+from utils.logging import get_module_logger
+
+logger = get_module_logger(__name__)
 
 # Mapping types from config to classes
 DETECTOR_CLASSES = {
@@ -17,8 +20,8 @@ DETECTOR_CLASSES = {
 }
 
 STAGE_CLASSES = {
-    "Kinesis": XYStageLibController,
-    "DummyStage": DummyStageController,
+    "brushless": BrushlessStageController,
+    "dummy": DummyStageController,
 }
 
 
@@ -26,7 +29,7 @@ class HardwareController:
     def __init__(self, config):
         self.config = config
         self.detectors = {}  # alias → DetectorController
-        self.stage_controller: BaseStageController = None
+        self.stage_controller: StageController = None
         self.hardware_initialized = False
 
     @property
@@ -97,7 +100,7 @@ class HardwareController:
             self.stage_controller = stage_class(config=selected_stage)
             stage_success = self.stage_controller.init_stage()
         else:
-            print("⚠ No translation stage selected.")
+            logger.warning("No translation stage selected")
             stage_success = False
 
         self.hardware_initialized = stage_success and bool(self.detectors)
@@ -108,12 +111,12 @@ class HardwareController:
             try:
                 self.stage_controller.deinit()
             except Exception as e:
-                print(f"[Stage Deinit Error] {e}")
+                logger.error("Stage deinitialization error", error=str(e))
         for alias, detector in self.detectors.items():
             try:
                 detector.deinit_detector()
             except Exception as e:
-                print(f"[Detector '{alias}' Deinit Error] {e}")
+                logger.error("Detector deinitialization error", detector=alias, error=str(e))
         self.hardware_initialized = False
 
     def get_xy_position(self):
