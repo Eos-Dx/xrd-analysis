@@ -1,3 +1,5 @@
+import logging
+
 from PyQt5.QtWidgets import (
     QDialog,
     QHeaderView,
@@ -30,10 +32,9 @@ class MeasurementHistoryWidget(QWidget):
             self.setLayout(self.layout)
             self.update_summary()
         except Exception as e:
-            import traceback
-
-            print(f"Error initializing MeasurementHistoryWidget: {e}")
-            traceback.print_exc()
+            logging.getLogger(__name__).exception(
+                "Error initializing MeasurementHistoryWidget: %s", e
+            )
 
     def add_measurement(self, results, timestamp):
         try:
@@ -41,10 +42,7 @@ class MeasurementHistoryWidget(QWidget):
             self.measurements.append({"timestamp": timestamp, "results": results or {}})
             self.update_summary()
         except Exception as e:
-            import traceback
-
-            print(f"Error adding measurement: {e}")
-            traceback.print_exc()
+            logging.getLogger(__name__).exception("Error adding measurement: %s", e)
 
     def set_mm_coordinates(self, x_mm: float, y_mm: float):
         """Optionally set coordinates (in mm) and refresh the title."""
@@ -123,10 +121,7 @@ class MeasurementHistoryWidget(QWidget):
                 ts = last.get("timestamp", "-")
                 self.summary_btn.setText(f"{n} measurement(s), last: {ts}")
         except Exception as e:
-            import traceback
-
-            print(f"Error updating summary: {e}")
-            traceback.print_exc()
+            logging.getLogger(__name__).exception("Error updating summary: %s", e)
 
     def show_history_dialog(self):
         try:
@@ -184,7 +179,9 @@ class MeasurementHistoryWidget(QWidget):
                     try:
                         alias = all_aliases[alias_idx]
                     except IndexError:
-                        print(f"[DoubleClick] Alias index out of range for col={col}")
+                        logging.getLogger(__name__).exception(
+                            "Alias index out of range for col=%s", col
+                        )
                         return
                     res_map = self.measurements[row].get("results") or {}
                     res = res_map.get(alias, {})
@@ -202,17 +199,15 @@ class MeasurementHistoryWidget(QWidget):
                                 self.parent_window,
                             )
                         except Exception as e:
-                            print(f"Error opening measurement window: {e}")
+                            logging.getLogger(__name__).exception(
+                                "Error opening measurement window: %s", e
+                            )
                 except Exception as e:
-                    import traceback
-
-                    print(f"Error handling cell double click: {e}")
-                    traceback.print_exc()
+                    logging.getLogger(__name__).exception(
+                        "Error handling cell double click: %s", e
+                    )
 
             table.cellDoubleClicked.connect(cell_double_clicked)
             dlg.exec_()
         except Exception as e:
-            import traceback
-
-            print(f"Error showing history dialog: {e}")
-            traceback.print_exc()
+            logging.getLogger(__name__).exception("Error showing history dialog: %s", e)

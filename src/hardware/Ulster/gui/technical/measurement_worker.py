@@ -9,6 +9,9 @@ from hardware.Ulster.gui.technical.capture import (
     compute_hf_score_from_cake,
     move_and_convert_measurement_file,
 )
+from hardware.Ulster.utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
 
 
 class MeasurementWorker(QObject):
@@ -30,7 +33,9 @@ class MeasurementWorker(QObject):
         columns_to_remove=30,
     ):
         super().__init__(parent)
-        print("MeasurementWorker constructed")
+        logger.debug(
+            "MeasurementWorker constructed", row=row, detectors=list(filenames.keys())
+        )
         self.row = row
         self.filenames = filenames
         self.masks = masks or {}
@@ -43,7 +48,9 @@ class MeasurementWorker(QObject):
 
         results = {}
         for alias, txt_file in self.filenames.items():
-            print(f"[MeasurementWorker] Processing {alias}: {txt_file}")
+            logger.debug(
+                f"Processing detector measurement", detector=alias, file=txt_file
+            )
             src_path = Path(txt_file)
             alias_folder = src_path.parent / alias
             npy_path = move_and_convert_measurement_file(src_path, alias_folder)
@@ -58,13 +65,22 @@ class MeasurementWorker(QObject):
                     hf_cutoff_fraction=self.hf_cutoff_fraction,
                     skip_bins=self.columns_to_remove,
                 )
+                logger.debug(
+                    f"Computed goodness score", detector=alias, goodness=goodness
+                )
             except Exception as e:
-                print(f"[{alias}] Error in compute_hf_score_from_cake: {e}")
+                logger.error(
+                    f"Error computing goodness score", detector=alias, error=str(e)
+                )
                 goodness = float("nan")
             results[alias] = {"filename": str(npy_path), "goodness": goodness}
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         if self.row is not None:
-            print(f"[MeasurementWorker] Emitting measurement_ready for row {self.row}")
+            logger.info(
+                f"Measurement completed for zone row",
+                row=self.row,
+                detectors=list(results.keys()),
+            )
             self.measurement_ready.emit(self.row, results, timestamp)
-        print("[MeasurementWorker] Emitting finished")
+        logger.debug("MeasurementWorker finished")
         self.finished.emit()

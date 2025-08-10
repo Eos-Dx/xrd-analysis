@@ -8,8 +8,11 @@ from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtWidgets import QGraphicsEllipseItem, QTableWidgetItem
 
 from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
+from hardware.Ulster.utils.logger import get_module_logger
 
 from .zone_points_constants import ZonePointsConstants
+
+logger = get_module_logger(__name__)
 
 
 class ZonePointsRenderer:
@@ -99,7 +102,9 @@ class ZonePointsTableManager:
                 if widget and not sip.isdeleted(widget):
                     widget.setParent(None)
                     widget.deleteLater()
-                    print(f"Cleaned up widget for deleted point ID {pid}")
+                    logger.debug(
+                        "Cleaned up measurement widget for deleted point", point_id=pid
+                    )
 
     @staticmethod
     def populate_table_rows(

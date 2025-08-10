@@ -2,6 +2,10 @@ import base64
 import math
 from ctypes import c_char_p, c_int, c_short, cdll
 
+from hardware.Ulster.utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
+
 
 def encode_image_to_base64(image_path):
     """
@@ -19,7 +23,7 @@ def encode_image_to_base64(image_path):
         encoded_str = base64.b64encode(image_data).decode("utf-8")
         return encoded_str
     except Exception as e:
-        print(f"Error encoding image: {e}")
+        logger.error("Error encoding image to base64", path=image_path, error=str(e))
         return None
 
 
@@ -42,7 +46,7 @@ def decode_base64_to_image(encoded_str):
         image = Image.open(image_stream)
         return image
     except Exception as e:
-        print("Error decoding image:", e)
+        logger.error("Error decoding base64 image", error=str(e))
         return None
 
 
@@ -80,7 +84,7 @@ def scan():
     # ------------------------------
     # Grid Scanning Loop
     # ------------------------------
-    print("Starting grid scan...")
+    logger.info("Starting grid scan")
     points_processed = 0
 
     for r in range(Nrepeat):
@@ -141,18 +145,18 @@ def scan():
                     # Optionally, copy filename to clipboard
                     # pyperclip.copy(filename)
 
-                    print(f"Capturing point ({x_s}, {y_s})")
+                    logger.debug("Capturing scan point", x=x_s, y=y_s, file=filename)
                     if capture_en:
                         capture_point(dev, pixet, Nframes, Nseconds, filename)
                     points_processed += 1
                 else:
-                    print(f"Skipping point ({x_s}, {y_s}) - outside mask")
-        print(f"{points_processed} points processed.")
+                    logger.debug("Skipping scan point - outside mask", x=x_s, y=y_s)
+        logger.info("Scan repeat completed", points_processed=points_processed)
 
         # Move sample back to load position after scanning
         move_stage(lib, serial_num, x_chan, y_chan, load_x, load_y, move_timeout)
         if r >= Nrepeat - 1:
-            print("Exiting scan.")
+            logger.info("Exiting scan - all repeats completed")
 
     # ------------------------------
     # Clean-up and Shutdown

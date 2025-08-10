@@ -14,6 +14,9 @@ from PyQt5.QtWidgets import QMessageBox
 from hardware.Ulster.gui.technical.capture import CaptureWorker, validate_folder
 from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
+from hardware.Ulster.utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
 
 
 class ZoneMeasurementsProcessMixin:
@@ -44,7 +47,7 @@ class ZoneMeasurementsProcessMixin:
         try:
             self.state_measurements = copy(self.state)
         except Exception as e:
-            print(f"Error copying state: {e}")
+            logger.error("Error copying state for measurements", error=str(e))
             QMessageBox.warning(self, "No state", "Save it.")
             return  # Exit the function early
 
@@ -59,10 +62,10 @@ class ZoneMeasurementsProcessMixin:
 
                 json.dump(self.state_measurements, f, indent=4)
         except Exception as e:
-            print(e)
+            logger.error("Error saving state with encoded image", error=str(e))
 
         if self.pointsTable.rowCount() == 0:
-            print("No points available for measurement.")
+            logger.warning("No points available for measurement")
             return
 
         self.start_btn.setEnabled(False)
@@ -111,7 +114,11 @@ class ZoneMeasurementsProcessMixin:
         self.timeRemainingLabel.setText(
             f"Estimated time: {self.initial_estimate:.0f} sec"
         )
-        print("Starting measurements in sorted order...")
+        logger.info(
+            "Starting measurements in sorted order",
+            total_points=self.total_points,
+            integration_time=self.integration_time,
+        )
 
         # Assuming: all_points_sorted is a list of (original_point_index, x_mm, y_mm) tuples
         measurement_points = []
@@ -142,13 +149,13 @@ class ZoneMeasurementsProcessMixin:
         Advances through sorted_indices and updates progress.
         """
         if self.stopped:
-            print("Measurement stopped.")
+            logger.debug("Measurement stopped")
             return
         if self.paused:
-            print("Measurement is paused. Waiting for resume.")
+            logger.debug("Measurement is paused. Waiting for resume")
             return
         if self.current_measurement_sorted_index >= self.total_points:
-            print("All points measured.")
+            logger.info("All points measured")
             self.start_btn.setEnabled(True)
             self.pause_btn.setEnabled(False)
             self.stop_btn.setEnabled(False)
@@ -214,9 +221,9 @@ class ZoneMeasurementsProcessMixin:
         Adds detector meta to measurements_meta for each measurement file.
         """
         if not success:
-            print("[Measurement] capture failed.")
+            logger.error("Measurement capture failed")
             return
-        print(f"[Measurement] capture successful: {result_files}")
+        logger.info("Measurement capture successful", files=list(result_files.keys()))
 
         # Build detector meta as before
         detector_lookup = {d["alias"]: d for d in self.config["detectors"]}
@@ -263,7 +270,7 @@ class ZoneMeasurementsProcessMixin:
                 green_zone.setAlphaF(0.2)
                 self._zone_item.setBrush(green_zone)
         except Exception as e:
-            print(e)
+            logger.warning("Error updating zone item color", error=str(e))
         QTimer.singleShot(1000, self.measurement_finished)
 
     def spawn_measurement_thread(self, row, file_map):
@@ -298,7 +305,7 @@ class ZoneMeasurementsProcessMixin:
         Advances progress, updates time estimates, and triggers next point if not done.
         """
         if self.stopped:
-            print("Measurement stopped.")
+            logger.debug("Measurement stopped in measurement_finished")
             return
 
         self.current_measurement_sorted_index += 1
@@ -324,7 +331,7 @@ class ZoneMeasurementsProcessMixin:
             self.measure_next_point()
         else:
             if self.current_measurement_sorted_index >= self.total_points:
-                print("All points measured.")
+                logger.info("All measurement points completed")
                 self.pause_btn.setEnabled(False)
                 self.stop_btn.setEnabled(False)
                 self.start_btn.setEnabled(True)
@@ -336,7 +343,7 @@ class ZoneMeasurementsProcessMixin:
         # --- Determine a stable point_id from table ---
         point_id = self._get_point_id_from_table_row(row)
         if point_id is None:
-            print(f"Warning: Could not determine point_id for row {row}")
+            logger.warning("Could not determine point_id for measurement", row=row)
             return
 
         # Extract X:Y in mm from the table row if available
@@ -367,7 +374,7 @@ class ZoneMeasurementsProcessMixin:
         # --- Get or create the measurement widget (without using the table column) ---
         widget = self._get_or_create_measurement_widget(point_id)
         if widget is None:
-            print(f"Error: Could not get/create widget for point_id {point_id}")
+            logger.error("Could not get/create measurement widget", point_id=point_id)
             return
 
         # Update widget title to include #ID and X:Y in mm, and store coords in widget
@@ -401,7 +408,7 @@ class ZoneMeasurementsProcessMixin:
 
         # --- Add the measurement to the widget ---
         widget.add_measurement(results, timestamp or getattr(self, "_timestamp", ""))
-        print(f"Added measurement to point_id {point_id} (row {row})")
+        logger.debug("Added measurement to widget", point_id=point_id, row=row)
 
     def _get_point_id_from_table_row(self, row: int) -> Optional[int]:
         """Extract point_id from table row."""
@@ -471,11 +478,11 @@ class ZoneMeasurementsProcessMixin:
         if not self.paused:
             self.paused = True
             self.pause_btn.setText("Resume")
-            print("Measurements paused.")
+            logger.info("Measurements paused")
         else:
             self.paused = False
             self.pause_btn.setText("Pause")
-            print("Measurements resumed.")
+            logger.info("Measurements resumed")
             self.measure_next_point()
 
     def stop_measurements(self):
@@ -491,4 +498,4 @@ class ZoneMeasurementsProcessMixin:
         self.pause_btn.setText("Pause")
         self.pause_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
-        print("Measurements stopped and reset.")
+        logger.info("Measurements stopped and reset")

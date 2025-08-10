@@ -5,6 +5,10 @@ from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtWidgets import QGraphicsEllipseItem
 
 from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
+from hardware.Ulster.utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
+
 
 null_dict = {
     "generated": {"points": [], "zones": []},
@@ -27,10 +31,10 @@ class PointEditingMixin:
                     include_shape = shape["item"]
                     break
             if include_shape is None:
-                print("No include zone defined.")
+                logger.warning("No include zone defined for point editing")
                 return
             if not include_shape.contains(include_shape.mapFromScene(pos)):
-                print("Double-click point is not inside the include zone.")
+                logger.debug("Double-click point is not inside the include zone")
                 return
 
             # Define the zone radius for the shade zone.

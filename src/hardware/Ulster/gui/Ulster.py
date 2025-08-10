@@ -1,3 +1,4 @@
+import logging
 import random
 import sys
 from pathlib import Path
@@ -11,6 +12,23 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from hardware.Ulster.gui.views.main_window import MainWindow
 from hardware.Ulster.resources.motivation import motivation_phrases
+from hardware.Ulster.utils.logging_setup import (
+    configure_third_party_logging,
+    log_context,
+    setup_logging,
+)
+
+# Setup enhanced logging
+log_config = {
+    "console_level": logging.INFO,
+    "file_level": logging.DEBUG,
+    "max_bytes": 20 * 1024 * 1024,  # 20MB
+    "backup_count": 10,
+}
+log_path = setup_logging(config=log_config, structured=True)
+configure_third_party_logging()
+
+logger = logging.getLogger(__name__)
 
 
 def show_motivation_dialog(parent=None):
@@ -24,19 +42,32 @@ def show_motivation_dialog(parent=None):
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    with log_context(
+        session_id=f"session_{QDate.currentDate().toString('yyyy-MM-dd')}",
+        hardware_state="initializing",
+    ):
+        logger.info("Ulster application starting", extra={"log_path": str(log_path)})
 
-    # --- only show once per day ---
-    settings = QSettings("Ulster", "UlsterApp")
-    last_date_shown = settings.value("lastMotivationDate", "")
-    today = QDate.currentDate().toString("yyyy-MM-dd")
+        app = QApplication(sys.argv)
 
-    if last_date_shown != today:
-        show_motivation_dialog()
-        settings.setValue("lastMotivationDate", today)
-    # --------------------------------
+        # --- only show once per day ---
+        settings = QSettings("Ulster", "UlsterApp")
+        last_date_shown = settings.value("lastMotivationDate", "")
+        today = QDate.currentDate().toString("yyyy-MM-dd")
 
-    # then proceed as normal
-    win = MainWindow()
-    win.show()
-    sys.exit(app.exec_())
+        if last_date_shown != today:
+            logger.debug("Showing motivation dialog")
+            show_motivation_dialog()
+            settings.setValue("lastMotivationDate", today)
+        else:
+            logger.debug("Skipping motivation dialog (already shown today)")
+        # --------------------------------
+
+        logger.info("Creating main window")
+        win = MainWindow()
+        win.show()
+
+        logger.info("Ulster application ready")
+        exit_code = app.exec_()
+        logger.info("Ulster application shutting down", extra={"exit_code": exit_code})
+        sys.exit(exit_code)

@@ -16,6 +16,9 @@ from PyQt5.QtWidgets import (
 )
 
 from hardware.Ulster.hardware.camera_capture_dialog import CameraCaptureDialog
+from hardware.Ulster.utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
 
 
 class MainWindowBasic(QMainWindow):
@@ -32,7 +35,7 @@ class MainWindowBasic(QMainWindow):
         if logo_path.exists():
             self.setWindowIcon(QIcon(str(logo_path)))
         else:
-            print("Logo file not found:", logo_path)
+            logger.warning("Logo file not found", path=str(logo_path))
 
         self.resize(800, 600)
 
@@ -60,7 +63,9 @@ class MainWindowBasic(QMainWindow):
             with open(self._config_path, "r") as f:
                 return json.load(f)
         except Exception as e:
-            print("Error loading config:", e)
+            logger.error(
+                "Error loading config", error=str(e), path=str(self._config_path)
+            )
             return {}
 
     def create_actions(self):
@@ -105,7 +110,9 @@ class MainWindowBasic(QMainWindow):
                 self.delete_all_shapes_from_table()
                 self.delete_all_points()
             except Exception as e:
-                print(e)
+                logger.warning(
+                    "Error clearing shapes/points after image load", error=str(e)
+                )
 
     def capture_from_camera(self):
         default_folder = self.config.get("default_folder", "")
@@ -119,7 +126,10 @@ class MainWindowBasic(QMainWindow):
                     self.delete_all_shapes_from_table()
                     self.delete_all_points()
                 except Exception as e:
-                    print(e)
+                    logger.warning(
+                        "Error clearing shapes/points after camera capture",
+                        error=str(e),
+                    )
             else:
                 QMessageBox.warning(
                     self,
@@ -135,7 +145,9 @@ class MainWindowBasic(QMainWindow):
                 pixmap = QPixmap(default_image)
                 self.image_view.set_image(pixmap, image_path=default_image)
             else:
-                print("Default image file not found:", default_image)
+                logger.warning(
+                    "Default image file not found in DEV mode", path=default_image
+                )
 
     def edit_config(self):
         """

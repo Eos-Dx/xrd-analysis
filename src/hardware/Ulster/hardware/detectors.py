@@ -8,6 +8,14 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+from hardware.Ulster.utils.logger import (
+    get_module_logger,
+    log_hardware_state,
+    with_logging,
+)
+
+logger = get_module_logger(__name__)
+
 
 class DetectorController(ABC):
     """Abstract base class for all detector controllers."""
@@ -45,9 +53,13 @@ class DummyDetectorController:
         self.size = size  # (width, height), from config
         self._stream_thread = None
         self._streaming = threading.Event()
+        logger.debug(f"Initialized DummyDetectorController", detector=alias, size=size)
 
+    @log_hardware_state("dev")
+    @with_logging("detector_init")
     def init_detector(self):
-        print(f"DEV mode: Dummy init_detector called for {self.alias}.")
+        logger.detector_event(self.alias, "initialization started")
+        logger.detector_event(self.alias, "initialization completed")
         return True
 
     def capture_point(self, Nframes, Nseconds, filename_base):
@@ -70,12 +82,17 @@ class DummyDetectorController:
         frame = amp * np.exp(-(((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma**2)))
         frame += np.random.normal(scale=amp * 0.1, size=frame.shape)
         np.savetxt(filename, frame, fmt="%.6f")
-        print(
-            f"DEV mode: Dummy acquisition complete for {self.alias}, saved to {filename}."
+        logger.file_operation(
+            "save",
+            filename,
+            detector=self.alias,
+            integration_time=Nseconds,
+            frames=Nframes,
         )
 
+    @with_logging("detector_deinit")
     def deinit_detector(self):
-        print(f"DEV mode: Dummy deinit_detector called for {self.alias}.")
+        logger.detector_event(self.alias, "deinitialization completed")
 
     def start_stream(self, callback, exposure=0.1, interval=0.0, frames=1):
         self.stop_stream()
@@ -86,13 +103,13 @@ class DummyDetectorController:
             daemon=True,
         )
         self._stream_thread.start()
-        print(f"DEV mode: Streaming started for {self.alias}")
+        logger.detector_event(self.alias, "streaming started", exposure=exposure)
 
     def stop_stream(self):
         if self._stream_thread and self._stream_thread.is_alive():
             self._streaming.clear()
             self._stream_thread.join(timeout=2.0)
-            print(f"Stream stopped for {self.alias}.")
+            logger.detector_event(self.alias, "streaming stopped")
         self._stream_thread = None
 
     def _stream_loop(self, callback, exposure, interval):
@@ -131,14 +148,16 @@ class PixetDetectorController(DetectorController):
         try:
             import pypixet
         except ImportError as e:
-            print("Error importing pypixet:", e)
+            logger.error("Error importing pypixet", error=str(e))
             return False
-        print(f"Initializing detector for {self.alias} (ID: {self.dev_id})...")
+        logger.info(
+            "Initializing Pixet detector", detector=self.alias, device_id=self.dev_id
+        )
         pypixet.start()
         pixet = pypixet.pixet
         devices = pixet.devices()
         if not devices or devices[0].fullName() == "FileDevice 0":
-            print("No devices connected")
+            logger.error("No Pixet devices connected")
             pixet.exitPixet()
             pypixet.exit()
             return False
@@ -148,10 +167,18 @@ class PixetDetectorController(DetectorController):
                 self.detector = dev
                 break
         if not self.detector:
-            print(f"Could not find device for {self.alias} with id {self.dev_id}")
+            logger.error(
+                "Could not find Pixet device",
+                detector=self.alias,
+                device_id=self.dev_id,
+            )
             return False
         self.pixet = pixet
-        print(f"Assigned device {self.dev_id} to alias {self.alias}")
+        logger.info(
+            "Assigned Pixet device to detector",
+            device_id=self.dev_id,
+            detector=self.alias,
+        )
         return True
 
     def capture_point(self, Nframes, Nseconds, filename_base):
@@ -161,25 +188,41 @@ class PixetDetectorController(DetectorController):
                 Nframes, Nseconds, self.pixet.PX_FTYPE_AUTODETECT, filename
             )
         except Exception as e:
-            print(f"Exception during acquisition for {self.alias}: {e}")
+            logger.error(
+                "Exception during Pixet acquisition", detector=self.alias, error=str(e)
+            )
             return False
         if rc != 0:
-            print(f"Capture error for {self.alias}: {rc}, {self.detector.lastError()}")
+            logger.error(
+                "Pixet capture error",
+                detector=self.alias,
+                return_code=rc,
+                error=self.detector.lastError(),
+            )
             return False
-        print(f"Capture successful for {self.alias}")
+        logger.info(
+            "Pixet capture successful",
+            detector=self.alias,
+            frames=Nframes,
+            integration_time=Nseconds,
+        )
         return True
 
     def deinit_detector(self):
         if self.pixet:
             try:
-                print(f"Deinitializing detector hardware for {self.alias}...")
+                logger.info("Deinitializing Pixet detector", detector=self.alias)
                 self.pixet.exitPixet()
                 import pypixet
 
                 pypixet.exit()
-                print(f"Detector {self.alias} safely deinitialized.")
+                logger.info("Pixet detector safely deinitialized", detector=self.alias)
             except Exception as e:
-                print(f"Error during deinit_detector ({self.alias}): {e}")
+                logger.error(
+                    "Error during Pixet detector deinitialization",
+                    detector=self.alias,
+                    error=str(e),
+                )
             finally:
                 self.pixet, self.detector = None, None
 
@@ -192,13 +235,13 @@ class PixetDetectorController(DetectorController):
             daemon=True,
         )
         self._stream_thread.start()
-        print(f"REAL mode: Streaming started for {self.alias}")
+        logger.info("Pixet streaming started", detector=self.alias, exposure=exposure)
 
     def stop_stream(self):
         if self._stream_thread and self._stream_thread.is_alive():
             self._streaming.clear()
             self._stream_thread.join(timeout=2.0)
-            print(f"Stream stopped for {self.alias}.")
+            logger.info("Pixet streaming stopped", detector=self.alias)
         self._stream_thread = None
 
     def _stream_loop(self, callback, exposure, interval, frames):
@@ -212,8 +255,11 @@ class PixetDetectorController(DetectorController):
                     frames, exposure, self.pixet.PX_FTYPE_AUTODETECT, tmpfile
                 )
                 if rc != 0:
-                    print(
-                        f"Frame error for {self.alias}: {rc}, {self.detector.lastError()}"
+                    logger.warning(
+                        "Pixet frame capture error during streaming",
+                        detector=self.alias,
+                        return_code=rc,
+                        error=self.detector.lastError(),
                     )
                     frame = None
                 else:
@@ -227,7 +273,11 @@ class PixetDetectorController(DetectorController):
                                 frame.shape == self.size
                             ), f"Frame shape {frame.shape} does not match expected {self.size}"
                     except Exception as e:
-                        print(f"Loading error for {self.alias}: {e}")
+                        logger.warning(
+                            "Pixet frame loading error during streaming",
+                            detector=self.alias,
+                            error=str(e),
+                        )
                         frame = None
                 callback({self.alias: frame})
             finally:

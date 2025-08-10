@@ -22,6 +22,9 @@ from PyQt5.QtWidgets import (
 from hardware.Ulster.gui.main_window_ext.zone_measurements.logic.beam_center_utils import (
     get_beam_center,
 )
+from hardware.Ulster.utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
 
 
 class AttenuationMixin:
@@ -115,8 +118,12 @@ class AttenuationMixin:
             center_x, center_y = self.get_beam_center(alias)
             size = detector.size if hasattr(detector, "size") else (256, 256)
             if not (0 <= center_x < size[0] and 0 <= center_y < size[1]):
-                print(
-                    f"[{mode}] {alias}: Invalid beam center ({center_x}, {center_y}) for detector size {size}"
+                logger.error(
+                    "Invalid beam center for attenuation measurement",
+                    mode=mode,
+                    detector=alias,
+                    center=(center_x, center_y),
+                    detector_size=size,
                 )
                 continue
 
@@ -131,8 +138,11 @@ class AttenuationMixin:
             )
             txt_file = filename_base + ".txt"
             if not success or not os.path.isfile(txt_file):
-                print(
-                    f"[{mode}] {alias}: Acquisition failed or file not found: {txt_file}"
+                logger.error(
+                    "Attenuation acquisition failed or file not found",
+                    mode=mode,
+                    detector=alias,
+                    file=txt_file,
                 )
                 continue
 
@@ -147,12 +157,20 @@ class AttenuationMixin:
                     frame, center_x, center_y, size=radius
                 )
                 results[alias] = value
-                print(
-                    f"[{mode}] {alias}: {results[alias]} (file saved to {final_npy_file})"
+                logger.info(
+                    "Attenuation measurement completed",
+                    mode=mode,
+                    detector=alias,
+                    value=results[alias],
+                    file=str(final_npy_file),
                 )
             except Exception as e:
-                print(
-                    f"[{mode}] {alias}: Error loading/integrating file {final_npy_file}: {e}"
+                logger.error(
+                    "Error loading/integrating attenuation file",
+                    mode=mode,
+                    detector=alias,
+                    file=str(final_npy_file),
+                    error=str(e),
                 )
                 continue
 
@@ -211,7 +229,11 @@ class AttenuationMixin:
                     frame, center_x, center_y, size=radius
                 )
             except Exception as e:
-                print(f"Failed to load/integrate {file_path}: {e}")
+                logger.error(
+                    "Failed to load/integrate attenuation data",
+                    file=file_path,
+                    error=str(e),
+                )
                 value = None
 
             item = QListWidgetItem(f"{mode}: {alias} {timestamp}")
