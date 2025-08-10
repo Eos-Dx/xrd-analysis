@@ -18,9 +18,9 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from utils.logging import get_module_logger
 
 from ..calibration.beam_center import get_beam_center
-from utils.logging import get_module_logger
 
 logger = get_module_logger(__name__)
 
@@ -107,9 +107,7 @@ class AttenuationMixin:
         save_folder = self.folderLineEdit.text().strip()
         os.makedirs(save_folder, exist_ok=True)
 
-        from .processor import (
-            move_and_convert_measurement_file,
-        )
+        from .processor import move_and_convert_measurement_file
 
         results = {}
         for alias, detector in self.hardware_controller.detectors.items():

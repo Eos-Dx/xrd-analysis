@@ -1,15 +1,16 @@
 # hardware/manager.py
+from utils.logging import get_module_logger
+
 from .controllers.detector import (
     DetectorController,
-    DummyDetectorController, 
+    DummyDetectorController,
     PixetDetectorController,
 )
 from .controllers.stage import (
-    StageController,
-    DummyStageController,
     BrushlessStageController,
+    DummyStageController,
+    StageController,
 )
-from utils.logging import get_module_logger
 
 logger = get_module_logger(__name__)
 
@@ -116,7 +117,9 @@ class HardwareController:
             try:
                 detector.deinit_detector()
             except Exception as e:
-                logger.error("Detector deinitialization error", detector=alias, error=str(e))
+                logger.error(
+                    "Detector deinitialization error", detector=alias, error=str(e)
+                )
         self.hardware_initialized = False
 
     def get_xy_position(self):

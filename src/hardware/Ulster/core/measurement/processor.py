@@ -10,13 +10,14 @@ from matplotlib.figure import Figure
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QHBoxLayout
 
-# Path setup is handled in Ulster.__init__.py
-
 from xrdanalysis.data_processing.azimuthal_integration import (
     initialize_azimuthal_integrator_df,
     initialize_azimuthal_integrator_poni_text,
 )
 from xrdanalysis.data_processing.utility_functions import create_mask
+
+# Path setup is handled in Ulster.__init__.py
+
 
 
 class CaptureWorker(QObject):

@@ -13,11 +13,7 @@ from PyQt5.QtWidgets import (
     QTableWidget,
 )
 
-from ..points.zone_geometry import (
-    sample_points_in_circle,
-    sample_points_in_rect,
-)
-
+from ..points.zone_geometry import sample_points_in_circle, sample_points_in_rect
 from .zone_points_constants import ZonePointsConstants
 
 

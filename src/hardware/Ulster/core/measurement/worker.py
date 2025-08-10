@@ -4,12 +4,9 @@ from pathlib import Path
 
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot  # <-- add pyqtSlot
 from PyQt5.QtWidgets import QListWidgetItem
-
-from .processor import (
-    compute_hf_score_from_cake,
-    move_and_convert_measurement_file,
-)
 from utils.logging import get_module_logger
+
+from .processor import compute_hf_score_from_cake, move_and_convert_measurement_file
 
 logger = get_module_logger(__name__)
 

@@ -22,13 +22,9 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from .zone_measurements import ZoneMeasurementsMixin
-from ..technical.capture import (
-    CaptureWorker,
-    show_measurement_window,
-    validate_folder,
-)
+from ..technical.capture import CaptureWorker, show_measurement_window, validate_folder
 from ..technical.measurement_worker import MeasurementWorker
+from .zone_measurements import ZoneMeasurementsMixin
 
 
 class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):

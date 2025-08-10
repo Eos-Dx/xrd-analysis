@@ -2,14 +2,13 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from core.geometry.constants import ZonePointsConstants
+from gui.extra.elements import HoverableEllipseItem
 from PyQt5 import sip
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtWidgets import QGraphicsEllipseItem, QTableWidgetItem
-
-from gui.extra.elements import HoverableEllipseItem
 from utils.logging import get_module_logger
-from core.geometry.constants import ZonePointsConstants
 
 logger = get_module_logger(__name__)
 

@@ -7,12 +7,7 @@ import time
 from abc import ABC, abstractmethod
 
 import numpy as np
-
-from utils.logging import (
-    get_module_logger,
-    log_hardware_state,
-    with_logging,
-)
+from utils.logging import get_module_logger, log_hardware_state, with_logging
 
 logger = get_module_logger(__name__)
 

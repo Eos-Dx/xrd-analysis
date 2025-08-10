@@ -25,7 +25,9 @@ class CaptureWorker(QObject):
 
     finished = pyqtSignal(bool, dict)
 
-    def __init__(self, detector_controller, integration_time: float, txt_filename_base: str):
+    def __init__(
+        self, detector_controller, integration_time: float, txt_filename_base: str
+    ):
         super().__init__()
         self.detector_controller = detector_controller
         self.integration_time = integration_time
@@ -34,4 +36,3 @@ class CaptureWorker(QObject):
     def run(self):
         # Placeholder: immediately emit failure to indicate no real capture logic
         self.finished.emit(False, {})
-

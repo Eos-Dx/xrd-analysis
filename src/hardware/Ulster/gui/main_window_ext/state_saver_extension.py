@@ -5,11 +5,10 @@ import shutil
 import string
 from pathlib import Path
 
+from gui.image_view_ext.point_editing_extension import null_dict
 from PyQt5.QtCore import QRectF, QTimer
 from PyQt5.QtGui import QColor, QPen, QPixmap
 from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem
-
-from gui.image_view_ext.point_editing_extension import null_dict
 
 
 class StateSaverMixin:

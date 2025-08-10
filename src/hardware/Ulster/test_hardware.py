@@ -16,8 +16,11 @@ for i, path in enumerate(sys.path[:10]):  # Show first 10 entries
     print(f"  {i}: {path}")
 
 try:
-    print("\nTrying: from ulster_hardware.controllers.detector import DummyDetectorController")
+    print(
+        "\nTrying: from ulster_hardware.controllers.detector import DummyDetectorController"
+    )
     from ulster_hardware.controllers.detector import DummyDetectorController
+
     print("✓ Success!")
 except Exception as e:
     print(f"✗ Failed: {e}")
@@ -25,6 +28,7 @@ except Exception as e:
 try:
     print("\nTrying: import ulster_hardware.controllers")
     import ulster_hardware.controllers
+
     print("✓ Success!")
 except Exception as e:
     print(f"✗ Failed: {e}")
@@ -32,7 +36,10 @@ except Exception as e:
 try:
     print("\nTrying: import ulster_hardware")
     import ulster_hardware
+
     print(f"Ulster hardware module: {ulster_hardware}")
-    print(f"Ulster hardware file: {getattr(ulster_hardware, '__file__', 'No __file__')}")
+    print(
+        f"Ulster hardware file: {getattr(ulster_hardware, '__file__', 'No __file__')}"
+    )
 except Exception as e:
     print(f"✗ Failed: {e}")

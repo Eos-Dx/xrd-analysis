@@ -1,6 +1,7 @@
 from gui.image_view_ext.drawing_extension import DrawingMixin
 from gui.image_view_ext.point_editing_extension import PointEditingMixin
 from gui.image_view_ext.zoom_extension import ZoomMixin
+
 from .image_view_basic import ImageViewBasic
 
 

@@ -1,10 +1,9 @@
 import copy
 
+from gui.extra.elements import HoverableEllipseItem
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtWidgets import QGraphicsEllipseItem
-
-from gui.extra.elements import HoverableEllipseItem
 from utils.logging import get_module_logger
 
 logger = get_module_logger(__name__)

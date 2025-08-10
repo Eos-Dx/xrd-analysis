@@ -4,7 +4,7 @@ import logging
 from functools import wraps
 from typing import Any, Dict, Optional
 
-from .setup import get_logger, log_performance, log_exceptions, log_context
+from .setup import get_logger, log_context, log_exceptions, log_performance
 
 
 class UlsterLogger:

@@ -15,4 +15,3 @@ class MeasurementWorker(QObject):
     def run(self):
         # No-op: in real implementation this would process result files
         pass
-

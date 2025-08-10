@@ -7,12 +7,11 @@ from copy import copy
 from pathlib import Path
 from typing import Optional
 
+from core.measurement import CaptureWorker, MeasurementWorker, validate_folder
+from gui.widgets.measurement_widgets import MeasurementHistoryWidget
 from PyQt5.QtCore import QThread, QTimer
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox
-
-from core.measurement import CaptureWorker, validate_folder, MeasurementWorker
-from gui.widgets.measurement_widgets import MeasurementHistoryWidget
 from utils.logging import get_module_logger
 
 logger = get_module_logger(__name__)

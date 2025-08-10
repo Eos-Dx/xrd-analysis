@@ -14,9 +14,9 @@ from PyQt5.QtWidgets import (
     QToolBar,
     QVBoxLayout,
 )
+from utils.logging import get_module_logger
 
 from hardware.controllers.camera import CameraCaptureDialog
-from utils.logging import get_module_logger
 
 logger = get_module_logger(__name__)
 

@@ -17,4 +17,3 @@ class AttenuationMixin:
         layout.addWidget(QLabel("Attenuation measurements UI goes here."))
         tab.setLayout(layout)
         self.tabs.addTab(tab, "Attenuation")
-
