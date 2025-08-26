@@ -120,26 +120,77 @@ class ZoneMeasurementsProcessMixin:
             integration_time=self.integration_time,
         )
 
-        # Assuming: all_points_sorted is a list of (original_point_index, x_mm, y_mm) tuples
+        # Filter out-of-bounds points and create measurement list
+        from hardware.Ulster.hardware.xystages import BaseStageController
+
         measurement_points = []
-        for idx, (pt_idx, x_mm, y_mm) in enumerate(all_points_sorted):
-            id_str = f"{idx}:{pt_idx}:{x_mm:.6f}:{y_mm:.6f}"
-            unique_id = hashlib.md5(id_str.encode("utf-8")).hexdigest()[:16]
-            measurement_points.append(
-                {
-                    "unique_id": unique_id,  # unique identifier for this point
-                    "index": idx,  # order of measurement
-                    "point_index": pt_idx,  # original index
-                    "x": x_mm,
-                    "y": y_mm,
-                    # Optionally: add more, e.g. type ("user" or "generated")
-                }
+        skipped_points = []
+        valid_idx = 0
+
+        for orig_idx, (pt_idx, x_mm, y_mm) in enumerate(all_points_sorted):
+            # Check if point is within axis limits
+            if (
+                abs(x_mm) <= BaseStageController.AXIS_LIMIT_MM
+                and abs(y_mm) <= BaseStageController.AXIS_LIMIT_MM
+            ):
+                # Point is valid - include in measurement
+                id_str = f"{valid_idx}:{pt_idx}:{x_mm:.6f}:{y_mm:.6f}"
+                unique_id = hashlib.md5(id_str.encode("utf-8")).hexdigest()[:16]
+                measurement_points.append(
+                    {
+                        "unique_id": unique_id,  # unique identifier for this point
+                        "index": valid_idx,  # order of measurement
+                        "point_index": pt_idx,  # original index
+                        "x": x_mm,
+                        "y": y_mm,
+                        # Optionally: add more, e.g. type ("user" or "generated")
+                    }
+                )
+                valid_idx += 1
+            else:
+                # Point is out of bounds - skip and log
+                skipped_points.append((pt_idx, x_mm, y_mm))
+                logger.warning(
+                    f"Skipping measurement point {pt_idx} at ({x_mm:.3f}, {y_mm:.3f}) mm - "
+                    f"exceeds axis limits of ±{BaseStageController.AXIS_LIMIT_MM:.1f} mm"
+                )
+
+        # Update sorted indices to only include valid points
+        self.sorted_indices = [mp["point_index"] for mp in measurement_points]
+
+        # Log summary of filtering
+        if skipped_points:
+            logger.info(
+                f"Filtered measurement points: {len(measurement_points)} valid, "
+                f"{len(skipped_points)} skipped due to axis limits"
             )
 
+        # Check if we have any valid points left
+        if not measurement_points:
+            logger.error("No valid measurement points within axis limits")
+            QMessageBox.warning(
+                self,
+                "No Valid Points",
+                f"All measurement points exceed the axis limits of ±{BaseStageController.AXIS_LIMIT_MM:.1f} mm. "
+                "Please adjust your measurement grid.",
+            )
+            return
+
         self.state["measurement_points"] = measurement_points
+        # Also store skipped points for reference
+        self.state["skipped_points"] = [
+            {
+                "point_index": pt_idx,
+                "x": x_mm,
+                "y": y_mm,
+                "reason": "axis_limit_exceeded",
+            }
+            for pt_idx, x_mm, y_mm in skipped_points
+        ]
 
         # Also save this in state_measurements if you use a copy
         self.state_measurements["measurement_points"] = measurement_points
+        self.state_measurements["skipped_points"] = self.state["skipped_points"]
         self.manual_save_state()
         self.measure_next_point()
 

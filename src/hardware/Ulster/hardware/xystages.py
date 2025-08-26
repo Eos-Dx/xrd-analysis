@@ -6,8 +6,38 @@ from abc import ABC, abstractmethod
 from ctypes import CDLL, c_char_p, c_int, c_short
 
 
+class StageAxisLimitError(Exception):
+    """Exception raised when stage move exceeds axis limits."""
+
+    def __init__(self, axis, value, limit):
+        super().__init__(
+            f"Stage {axis} position {value:.3f} mm exceeds limit of ±{limit:.1f} mm"
+        )
+        self.axis = axis
+        self.value = value
+        self.limit = limit
+
+
 class BaseStageController(ABC):
     """Abstract base for all translation stages."""
+
+    # Axis limits in mm
+    AXIS_LIMIT_MM = 14.0
+
+    def _check_axis_limits(self, x_mm, y_mm):
+        """Check if the requested position is within axis limits.
+
+        Args:
+            x_mm (float): X position in mm
+            y_mm (float): Y position in mm
+
+        Raises:
+            StageAxisLimitError: If any axis exceeds limits
+        """
+        if abs(x_mm) > self.AXIS_LIMIT_MM:
+            raise StageAxisLimitError("X", x_mm, self.AXIS_LIMIT_MM)
+        if abs(y_mm) > self.AXIS_LIMIT_MM:
+            raise StageAxisLimitError("Y", y_mm, self.AXIS_LIMIT_MM)
 
     @abstractmethod
     def init_stage(self):
@@ -50,6 +80,9 @@ class DummyStageController(BaseStageController):
         return self._x, self._y
 
     def move_stage(self, x_mm, y_mm, move_timeout=20):
+        # Check axis limits before moving
+        self._check_axis_limits(x_mm, y_mm)
+
         print(f"Dummy stage moving to X={x_mm}, Y={y_mm}")
         time.sleep(0.25)
         self._x, self._y = x_mm, y_mm
@@ -139,6 +172,9 @@ class XYStageLibController(BaseStageController):
         raise TimeoutError("Stage homing timed out")
 
     def move_stage(self, x_mm, y_mm, move_timeout=20):
+        # Check axis limits before moving
+        self._check_axis_limits(x_mm, y_mm)
+
         x_dev = int(x_mm * self.scaling_factor)
         y_dev = int(y_mm * self.scaling_factor)
         self.lib.BDC_SetMoveAbsolutePosition(

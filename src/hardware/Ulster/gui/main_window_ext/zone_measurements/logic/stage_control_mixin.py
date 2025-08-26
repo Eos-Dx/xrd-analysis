@@ -153,7 +153,7 @@ class StageControlMixin:
         Moves the XY stage to a fixed or user-defined load position.
         """
         if hasattr(self, "stage_controller") and self.stage_controller is not None:
-            new_x, new_y = self.stage_controller.move_stage(-15, -6, move_timeout=15)
+            new_x, new_y = self.stage_controller.move_stage(-13.9, -6, move_timeout=15)
             print(f"Loaded position: ({new_x}, {new_y})")
         else:
             print("Stage not initialized.")
