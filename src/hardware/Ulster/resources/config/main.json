@@ -81,6 +81,13 @@
             "real_zero": {
                 "x_mm": 9.25,
                 "y_mm": -6.6
+            },
+            "settings": {
+                "number_axes": 2,
+                "limits_mm": {
+                    "x": [-14.0, 14.0],
+                    "y": [-14.0, 14.0]
+                }
             }
         },
         {
@@ -90,6 +97,13 @@
             "real_zero": {
                 "x_mm": 0.0,
                 "y_mm": 0.0
+            },
+            "settings": {
+                "number_axes": 2,
+                "limits_mm": {
+                    "x": [-14.0, 14.0],
+                    "y": [-14.0, 14.0]
+                }
             }
         }
     ],

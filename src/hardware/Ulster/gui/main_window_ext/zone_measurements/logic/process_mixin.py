@@ -120,8 +120,20 @@ class ZoneMeasurementsProcessMixin:
             integration_time=self.integration_time,
         )
 
-        # Filter out-of-bounds points and create measurement list
-        from hardware.Ulster.hardware.xystages import BaseStageController
+        # Filter out-of-bounds points and create measurement list using controller limits
+        try:
+            limits = (
+                self.stage_controller.get_limits()
+                if hasattr(self, "stage_controller")
+                else None
+            )
+        except Exception:
+            limits = None
+        # Fallback to defaults if controller is unavailable
+        if not limits:
+            limits = {"x": (-14.0, 14.0), "y": (-14.0, 14.0)}
+        x_min, x_max = limits["x"]
+        y_min, y_max = limits["y"]
 
         measurement_points = []
         skipped_points = []
@@ -129,10 +141,7 @@ class ZoneMeasurementsProcessMixin:
 
         for orig_idx, (pt_idx, x_mm, y_mm) in enumerate(all_points_sorted):
             # Check if point is within axis limits
-            if (
-                abs(x_mm) <= BaseStageController.AXIS_LIMIT_MM
-                and abs(y_mm) <= BaseStageController.AXIS_LIMIT_MM
-            ):
+            if (x_min <= x_mm <= x_max) and (y_min <= y_mm <= y_max):
                 # Point is valid - include in measurement
                 id_str = f"{valid_idx}:{pt_idx}:{x_mm:.6f}:{y_mm:.6f}"
                 unique_id = hashlib.md5(id_str.encode("utf-8")).hexdigest()[:16]
@@ -152,7 +161,7 @@ class ZoneMeasurementsProcessMixin:
                 skipped_points.append((pt_idx, x_mm, y_mm))
                 logger.warning(
                     f"Skipping measurement point {pt_idx} at ({x_mm:.3f}, {y_mm:.3f}) mm - "
-                    f"exceeds axis limits of ±{BaseStageController.AXIS_LIMIT_MM:.1f} mm"
+                    f"outside limits X[{x_min:.1f},{x_max:.1f}] Y[{y_min:.1f},{y_max:.1f}] mm"
                 )
 
         # Update sorted indices to only include valid points
@@ -171,7 +180,7 @@ class ZoneMeasurementsProcessMixin:
             QMessageBox.warning(
                 self,
                 "No Valid Points",
-                f"All measurement points exceed the axis limits of ±{BaseStageController.AXIS_LIMIT_MM:.1f} mm. "
+                f"All measurement points exceed the axis limits of X[{x_min:.1f},{x_max:.1f}] and Y[{y_min:.1f},{y_max:.1f}] mm. "
                 "Please adjust your measurement grid.",
             )
             return

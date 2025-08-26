@@ -187,9 +187,11 @@ class TestStageAxisLimits(unittest.TestCase):
         self.config = {"alias": "TEST_STAGE", "id": "TEST-123"}
         self.dummy_stage = DummyStageController(self.config)
 
-    def test_axis_limit_constant(self):
-        """Test that the axis limit constant is set correctly."""
-        self.assertEqual(BaseStageController.AXIS_LIMIT_MM, 14.0)
+    def test_default_limits_are_14mm(self):
+        """Default limits should be ±14 mm per axis when not specified in config."""
+        limits = self.dummy_stage.get_limits()
+        self.assertEqual(limits["x"], (-14.0, 14.0))
+        self.assertEqual(limits["y"], (-14.0, 14.0))
 
     def test_check_axis_limits_valid_positions(self):
         """Test that valid positions pass the axis limit check."""
@@ -220,7 +222,8 @@ class TestStageAxisLimits(unittest.TestCase):
                     self.dummy_stage._check_axis_limits(x, y)
                 self.assertEqual(cm.exception.axis, "X")
                 self.assertEqual(cm.exception.value, x)
-                self.assertEqual(cm.exception.limit, 14.0)
+                self.assertEqual(cm.exception.min_limit, -14.0)
+                self.assertEqual(cm.exception.max_limit, 14.0)
 
     def test_check_axis_limits_invalid_y(self):
         """Test that invalid Y positions raise StageAxisLimitError."""
@@ -232,7 +235,8 @@ class TestStageAxisLimits(unittest.TestCase):
                     self.dummy_stage._check_axis_limits(x, y)
                 self.assertEqual(cm.exception.axis, "Y")
                 self.assertEqual(cm.exception.value, y)
-                self.assertEqual(cm.exception.limit, 14.0)
+                self.assertEqual(cm.exception.min_limit, -14.0)
+                self.assertEqual(cm.exception.max_limit, 14.0)
 
     def test_dummy_stage_move_valid(self):
         """Test that DummyStageController allows valid moves."""
@@ -278,12 +282,12 @@ class TestStageAxisLimits(unittest.TestCase):
 
     def test_stage_axis_limit_error_message(self):
         """Test that StageAxisLimitError has correct error message."""
-        error = StageAxisLimitError("X", 15.5, 14.0)
-        expected_msg = "Stage X position 15.500 mm exceeds limit of ±14.0 mm"
+        error = StageAxisLimitError("X", 15.5, -14.0, 14.0)
+        expected_msg = "Stage X position 15.500 mm exceeds limits [-14.0, 14.0] mm"
         self.assertEqual(str(error), expected_msg)
 
-        error = StageAxisLimitError("Y", -16.2, 14.0)
-        expected_msg = "Stage Y position -16.200 mm exceeds limit of ±14.0 mm"
+        error = StageAxisLimitError("Y", -16.2, -14.0, 14.0)
+        expected_msg = "Stage Y position -16.200 mm exceeds limits [-14.0, 14.0] mm"
         self.assertEqual(str(error), expected_msg)
 
 
@@ -415,6 +419,13 @@ class TestMeasurementPointFiltering(unittest.TestCase):
         proc.measure_next_point = Mock()
         proc.integrationSpinBox = self.mock_processor.integrationSpinBox
 
+        # Provide a stage_controller with default limits
+        class _Stage:
+            def get_limits(self_inner):
+                return {"x": (-14.0, 14.0), "y": (-14.0, 14.0)}
+
+        proc.stage_controller = _Stage()
+
         # Mock the state copying
         with patch("copy.copy") as mock_copy:
             mock_copy.return_value = {}
@@ -499,6 +510,12 @@ class TestMeasurementPointFiltering(unittest.TestCase):
         proc.manual_save_state = Mock()
         proc.measure_next_point = Mock()
         proc.integrationSpinBox = self.mock_processor.integrationSpinBox
+
+        class _Stage:
+            def get_limits(self_inner):
+                return {"x": (-14.0, 14.0), "y": (-14.0, 14.0)}
+
+        proc.stage_controller = _Stage()
 
         with patch("copy.copy") as mock_copy:
             mock_copy.return_value = {}

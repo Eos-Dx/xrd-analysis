@@ -9,35 +9,66 @@ from ctypes import CDLL, c_char_p, c_int, c_short
 class StageAxisLimitError(Exception):
     """Exception raised when stage move exceeds axis limits."""
 
-    def __init__(self, axis, value, limit):
+    def __init__(self, axis: str, value: float, min_limit: float, max_limit: float):
         super().__init__(
-            f"Stage {axis} position {value:.3f} mm exceeds limit of ±{limit:.1f} mm"
+            f"Stage {axis} position {value:.3f} mm exceeds limits [{min_limit:.1f}, {max_limit:.1f}] mm"
         )
         self.axis = axis
         self.value = value
-        self.limit = limit
+        self.min_limit = min_limit
+        self.max_limit = max_limit
 
 
 class BaseStageController(ABC):
     """Abstract base for all translation stages."""
 
-    # Axis limits in mm
-    AXIS_LIMIT_MM = 14.0
+    DEFAULT_LIMIT = (-14.0, 14.0)
+
+    def _parse_limits(self, config):
+        """Parse per-axis limits from the config's settings.limits_mm.
+        Accepts either arrays [min,max] or objects {min:.., max:..} per axis.
+        """
+        limits = {"x": self.DEFAULT_LIMIT, "y": self.DEFAULT_LIMIT}
+        try:
+            settings = (config or {}).get("settings", {})
+            cfg = settings.get("limits_mm", {})
+
+            def _pair(v):
+                if isinstance(v, (list, tuple)) and len(v) == 2:
+                    return float(v[0]), float(v[1])
+                if isinstance(v, dict):
+                    mn = v.get("min")
+                    mx = v.get("max")
+                    if mn is not None and mx is not None:
+                        return float(mn), float(mx)
+                return None
+
+            x_pair = _pair(cfg.get("x")) if isinstance(cfg, dict) else None
+            y_pair = _pair(cfg.get("y")) if isinstance(cfg, dict) else None
+            if x_pair:
+                limits["x"] = x_pair
+            if y_pair:
+                limits["y"] = y_pair
+        except Exception:
+            pass
+        return limits
+
+    def get_limits(self):
+        """Return dict with per-axis (min,max) tuple: { 'x': (min,max), 'y': (min,max) }"""
+        return getattr(
+            self, "_limits", {"x": self.DEFAULT_LIMIT, "y": self.DEFAULT_LIMIT}
+        )
 
     def _check_axis_limits(self, x_mm, y_mm):
         """Check if the requested position is within axis limits.
-
-        Args:
-            x_mm (float): X position in mm
-            y_mm (float): Y position in mm
-
-        Raises:
-            StageAxisLimitError: If any axis exceeds limits
-        """
-        if abs(x_mm) > self.AXIS_LIMIT_MM:
-            raise StageAxisLimitError("X", x_mm, self.AXIS_LIMIT_MM)
-        if abs(y_mm) > self.AXIS_LIMIT_MM:
-            raise StageAxisLimitError("Y", y_mm, self.AXIS_LIMIT_MM)
+        Raises StageAxisLimitError if exceeded."""
+        limits = self.get_limits()
+        x_min, x_max = limits["x"]
+        y_min, y_max = limits["y"]
+        if x_mm < x_min or x_mm > x_max:
+            raise StageAxisLimitError("X", x_mm, x_min, x_max)
+        if y_mm < y_min or y_mm > y_max:
+            raise StageAxisLimitError("Y", y_mm, y_min, y_max)
 
     @abstractmethod
     def init_stage(self):
@@ -68,6 +99,7 @@ class DummyStageController(BaseStageController):
         self._y = 0.0
         self.alias = config.get("alias", "DUMMY")
         self.id = config.get("id", "DUMMY-000")
+        self._limits = self._parse_limits(config)
 
     def init_stage(self):
         print(f"Dummy stage '{self.alias}' initialized.")
@@ -115,6 +147,7 @@ class XYStageLibController(BaseStageController):
         self.sim = sim
         self.poll_interval_ms = poll_interval_ms
         self.lib = None
+        self._limits = self._parse_limits(config)
 
     def init_stage(self):
         try:
