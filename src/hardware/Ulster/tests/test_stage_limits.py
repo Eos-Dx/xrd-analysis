@@ -171,7 +171,7 @@ if "hardware.Ulster.utils.logger" not in sys.modules:
     l_mod.get_module_logger = _get_module_logger
     sys.modules["hardware.Ulster.utils.logger"] = l_mod
 
-from hardware.Ulster.hardware.xystages import (
+from hardware.xystages import (
     BaseStageController,
     DummyStageController,
     StageAxisLimitError,
@@ -260,7 +260,7 @@ class TestStageAxisLimits(unittest.TestCase):
                 pos_x, pos_y = self.dummy_stage.get_xy_position()
                 self.assertNotEqual((pos_x, pos_y), (x, y))
 
-    @patch("hardware.Ulster.hardware.xystages.CDLL")
+    @patch("hardware.xystages.CDLL")
     def test_real_stage_move_invalid(self, mock_cdll):
         """Test that XYStageLibController rejects invalid moves."""
         # Mock the DLL and its methods

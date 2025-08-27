@@ -1,5 +1,7 @@
 # zone_measurements/logic/stage_control_mixin.py
 
+import logging
+
 from PyQt5.QtCore import Qt
 
 
@@ -124,36 +126,139 @@ class StageControlMixin:
         Moves the stage to the user-specified X/Y coordinates.
         Updates X/Y spin boxes and calls the controller.
         """
+        from PyQt5.QtWidgets import QMessageBox
+
         if hasattr(self, "stage_controller") and getattr(
             self, "hardware_initialized", False
         ):
             x = self.xPosSpin.value()
             y = self.yPosSpin.value()
+            logging.info(
+                f"Stage goto operation started: target position ({x:.3f}, {y:.3f})"
+            )
             try:
-                new_x, new_y = self.stage_controller.move_stage(x, y)
+                new_x, new_y = self.stage_controller.move_stage(x, y, move_timeout=25)
                 self.xPosSpin.setValue(new_x)
                 self.yPosSpin.setValue(new_y)
                 self.update_xy_pos()
+                logging.info(
+                    f"Successfully moved to goto position: ({new_x:.3f}, {new_y:.3f})"
+                )
+            except TimeoutError:
+                logging.error("Stage movement timeout occurred during goto operation")
+                QMessageBox.warning(
+                    self,
+                    "Stage Timeout",
+                    "Stage movement timed out. Please check the hardware and try again.",
+                )
             except Exception as e:
-                print("Error moving stage:", e)
+                # Show a user-facing error dialog if limits are exceeded or any other error occurs
+                try:
+                    # Import here to avoid heavy imports at module load time
+                    from hardware.Ulster.hardware.xystages import StageAxisLimitError
+
+                    if isinstance(e, StageAxisLimitError):
+                        # Try to include configured limits in the message
+                        try:
+                            limits = (
+                                self.stage_controller.get_limits()
+                                if hasattr(self.stage_controller, "get_limits")
+                                else None
+                            )
+                        except Exception:
+                            limits = None
+                        if limits:
+                            x_min, x_max = limits.get("x", (None, None))
+                            y_min, y_max = limits.get("y", (None, None))
+                            QMessageBox.warning(
+                                self,
+                                "Stage Move Error",
+                                f"Requested position ({x:.3f}, {y:.3f}) is outside limits:\n"
+                                f"X[{x_min:.1f}, {x_max:.1f}] mm, Y[{y_min:.1f}, {y_max:.1f}] mm",
+                            )
+                        else:
+                            QMessageBox.warning(self, "Stage Move Error", str(e))
+                    else:
+                        QMessageBox.warning(self, "Stage Move Error", str(e))
+                except Exception:
+                    # Fallback if import above fails for any reason
+                    QMessageBox.warning(self, "Stage Move Error", str(e))
         else:
-            print("Stage not initialized; cannot GoTo.")
+            QMessageBox.warning(
+                self, "Stage Not Ready", "Stage not initialized; cannot GoTo."
+            )
 
     def home_stage_button_clicked(self):
         """
-        Moves the XY stage to home using the controller.
+        Moves the XY stage to home using the configurable home coordinates.
         """
+        from PyQt5.QtWidgets import QMessageBox
+
+        logging.info("Stage home operation started")
         if hasattr(self, "stage_controller") and self.stage_controller is not None:
-            new_x, new_y = self.stage_controller.move_stage(8.25, -6, move_timeout=15)
+            try:
+                # Get home coordinates from controller configuration
+                positions = self.stage_controller.get_home_load_positions()
+                home_x, home_y = positions["home"]
+                logging.info(
+                    f"Moving to configured home position: ({home_x:.3f}, {home_y:.3f})"
+                )
+                new_x, new_y = self.stage_controller.move_stage(
+                    home_x, home_y, move_timeout=25
+                )
+                logging.info(
+                    f"Successfully moved to home position: ({new_x:.3f}, {new_y:.3f})"
+                )
+            except TimeoutError:
+                logging.error("Stage movement timeout occurred during home operation")
+                QMessageBox.warning(
+                    self,
+                    "Stage Timeout",
+                    "Stage movement timed out. Please check the hardware and try again.",
+                )
+            except Exception as e:
+                logging.error(f"Error during home operation: {e}")
+                QMessageBox.warning(
+                    self, "Stage Error", f"Error moving to home position: {str(e)}"
+                )
         else:
+            logging.warning("Home operation failed: Stage not initialized")
             print("Stage not initialized.")
 
     def load_position_button_clicked(self):
         """
-        Moves the XY stage to a fixed or user-defined load position.
+        Moves the XY stage to the configurable load position.
         """
+        from PyQt5.QtWidgets import QMessageBox
+
+        logging.info("Stage load position operation started")
         if hasattr(self, "stage_controller") and self.stage_controller is not None:
-            new_x, new_y = self.stage_controller.move_stage(-13.9, -6, move_timeout=15)
-            print(f"Loaded position: ({new_x}, {new_y})")
+            try:
+                # Get load coordinates from controller configuration
+                positions = self.stage_controller.get_home_load_positions()
+                load_x, load_y = positions["load"]
+                logging.info(
+                    f"Moving to configured load position: ({load_x:.3f}, {load_y:.3f})"
+                )
+                new_x, new_y = self.stage_controller.move_stage(
+                    load_x, load_y, move_timeout=25
+                )
+                logging.info(
+                    f"Successfully moved to load position: ({new_x:.3f}, {new_y:.3f})"
+                )
+                print(f"Loaded position: ({new_x}, {new_y})")
+            except TimeoutError:
+                logging.error("Stage movement timeout occurred during load operation")
+                QMessageBox.warning(
+                    self,
+                    "Stage Timeout",
+                    "Stage movement timed out. Please check the hardware and try again.",
+                )
+            except Exception as e:
+                logging.error(f"Error during load operation: {e}")
+                QMessageBox.warning(
+                    self, "Stage Error", f"Error moving to load position: {str(e)}"
+                )
         else:
+            logging.warning("Load operation failed: Stage not initialized")
             print("Stage not initialized.")

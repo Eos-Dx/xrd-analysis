@@ -1,4 +1,5 @@
 # xystages.py
+import logging
 import os
 import sys
 import time
@@ -23,6 +24,8 @@ class BaseStageController(ABC):
     """Abstract base for all translation stages."""
 
     DEFAULT_LIMIT = (-14.0, 14.0)
+    DEFAULT_HOME = (9.25, 6.0)
+    DEFAULT_LOAD = (-13.9, -6.0)
 
     def _parse_limits(self, config):
         """Parse per-axis limits from the config's settings.limits_mm.
@@ -53,10 +56,40 @@ class BaseStageController(ABC):
             pass
         return limits
 
+    def _parse_home_load(self, config):
+        """Parse home and load positions from config settings.
+        Returns a dict with 'home' and 'load' keys containing (x, y) tuples.
+        """
+        positions = {"home": self.DEFAULT_HOME, "load": self.DEFAULT_LOAD}
+        try:
+            settings = (config or {}).get("settings", {})
+
+            def _parse_position(pos_data):
+                if isinstance(pos_data, (list, tuple)) and len(pos_data) == 2:
+                    return (float(pos_data[0]), float(pos_data[1]))
+                return None
+
+            home_pos = _parse_position(settings.get("home"))
+            load_pos = _parse_position(settings.get("load"))
+
+            if home_pos:
+                positions["home"] = home_pos
+            if load_pos:
+                positions["load"] = load_pos
+        except Exception:
+            pass
+        return positions
+
     def get_limits(self):
         """Return dict with per-axis (min,max) tuple: { 'x': (min,max), 'y': (min,max) }"""
         return getattr(
             self, "_limits", {"x": self.DEFAULT_LIMIT, "y": self.DEFAULT_LIMIT}
+        )
+
+    def get_home_load_positions(self):
+        """Return dict with 'home' and 'load' keys containing (x, y) tuples."""
+        return getattr(
+            self, "_positions", {"home": self.DEFAULT_HOME, "load": self.DEFAULT_LOAD}
         )
 
     def _check_axis_limits(self, x_mm, y_mm):
@@ -100,12 +133,14 @@ class DummyStageController(BaseStageController):
         self.alias = config.get("alias", "DUMMY")
         self.id = config.get("id", "DUMMY-000")
         self._limits = self._parse_limits(config)
+        self._positions = self._parse_home_load(config)
 
     def init_stage(self):
         print(f"Dummy stage '{self.alias}' initialized.")
         return True
 
     def home_stage(self, timeout_s=45):
+        logging.info(f"Dummy stage '{self.alias}' homing operation started")
         print(f"Dummy stage '{self.alias}' homing.")
         time.sleep(1)
         self._x, self._y = 0.0, 0.0
@@ -115,9 +150,15 @@ class DummyStageController(BaseStageController):
         # Check axis limits before moving
         self._check_axis_limits(x_mm, y_mm)
 
+        logging.info(
+            f"Dummy stage '{self.alias}' move operation started: target ({x_mm:.3f}, {y_mm:.3f})"
+        )
         print(f"Dummy stage moving to X={x_mm}, Y={y_mm}")
         time.sleep(0.25)
         self._x, self._y = x_mm, y_mm
+        logging.info(
+            f"Dummy stage '{self.alias}' move completed successfully to ({x_mm:.3f}, {y_mm:.3f})"
+        )
         return self._x, self._y
 
     def get_xy_position(self):
@@ -148,6 +189,7 @@ class XYStageLibController(BaseStageController):
         self.poll_interval_ms = poll_interval_ms
         self.lib = None
         self._limits = self._parse_limits(config)
+        self._positions = self._parse_home_load(config)
 
     def init_stage(self):
         try:
@@ -184,6 +226,7 @@ class XYStageLibController(BaseStageController):
             return False
 
     def home_stage(self, timeout_s=45):
+        logging.info(f"Real stage '{self.alias}' homing operation started")
         self.lib.BDC_Home(c_char_p(self.serial), c_short(self.x_chan))
         self.lib.BDC_Home(c_char_p(self.serial), c_short(self.y_chan))
         start = time.time()
@@ -208,6 +251,9 @@ class XYStageLibController(BaseStageController):
         # Check axis limits before moving
         self._check_axis_limits(x_mm, y_mm)
 
+        logging.info(
+            f"Real stage '{self.alias}' move operation started: target ({x_mm:.3f}, {y_mm:.3f})"
+        )
         x_dev = int(x_mm * self.scaling_factor)
         y_dev = int(y_mm * self.scaling_factor)
         self.lib.BDC_SetMoveAbsolutePosition(
@@ -235,7 +281,12 @@ class XYStageLibController(BaseStageController):
                 y_mm = curr_y_dev / self.scaling_factor
                 print(f"Stage moved to X={x_mm:.3f}, Y={y_mm:.3f}")
                 return x_mm, y_mm
-        raise TimeoutError("Stage move timed out")
+        # Log timeout error with details
+        logging.error(
+            f"Real stage '{self.alias}' move operation timed out after {move_timeout}s. "
+            f"Target: ({x_mm:.3f}, {y_mm:.3f}). Please check hardware and try again."
+        )
+        raise TimeoutError(f"Stage move timed out after {move_timeout} seconds")
 
     def get_xy_position(self):
         x_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.x_chan))
