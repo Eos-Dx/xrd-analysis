@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
-from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+
+try:
+    from pyFAI.integrator.azimuthal import AzimuthalIntegrator
+except ImportError:
+    from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 
 from xrdanalysis.data_processing.azimuthal_integration import (
     initialize_azimuthal_integrator_df,
@@ -16,9 +20,7 @@ from xrdanalysis.data_processing.azimuthal_integration import (
 
 @patch(("xrdanalysis.data_processing.azimuthal_integration.Detector"))
 @patch("xrdanalysis.data_processing.azimuthal_integration.AzimuthalIntegrator")
-def test_initialize_azimuthal_integrator_df(
-    mock_azimuthal_integrator, mock_detector
-):
+def test_initialize_azimuthal_integrator_df(mock_azimuthal_integrator, mock_detector):
     """Test azimuthal integrator creation from a dataframe"""
     pixel_size = 0.0001
     center_column = 1024
@@ -127,9 +129,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
             row, calibration_mode="poni", poni_dir="/path/to/poni"
         )
 
-        mock_initialize_ai_poni.assert_called_once_with(
-            "/path/to/poni/123.poni"
-        )
+        mock_initialize_ai_poni.assert_called_once_with("/path/to/poni/123.poni")
         mock_ai.integrate1d.assert_called_once()
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
@@ -224,9 +224,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
             "azimuthal_integration.initialize_azimuthal_integrator_df"
         )
     )
-    def test_azimuthal_integration_missing_optional_fields(
-        self, mock_initialize_ai_df
-    ):
+    def test_azimuthal_integration_missing_optional_fields(self, mock_initialize_ai_df):
         """Test azimuthal integrator without optional fields
         (are the default arguments provided?)"""
         # Mocked integrator object
