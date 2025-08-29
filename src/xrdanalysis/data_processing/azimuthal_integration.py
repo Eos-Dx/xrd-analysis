@@ -15,7 +15,13 @@ except ImportError:
 import numpy as np
 import pandas as pd
 import pyFAI
-from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+
+try:
+    # pyFAI >= 2024.10
+    from pyFAI.integrator.azimuthal import AzimuthalIntegrator
+except ImportError:
+    # Backward compatibility for older pyFAI
+    from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
 from scipy.stats import mstats
 
@@ -44,15 +50,13 @@ def initialize_azimuthal_integrator_df(
         millimeters.
 
     :returns:
-        - **pyFAI.azimuthalIntegrator.AzimuthalIntegrator**: An instance of\
+        - **pyFAI.integrator.azimuthal.AzimuthalIntegrator**: An instance of\
             the PyFAI AzimuthalIntegrator.
     """
 
     detector = Detector(pixel_size, pixel_size)
     ai = AzimuthalIntegrator(detector=detector)
-    ai.setFit2D(
-        sample_distance_mm, center_column, center_row, wavelength=wavelength
-    )
+    ai.setFit2D(sample_distance_mm, center_column, center_row, wavelength=wavelength)
     return ai
 
 
@@ -63,7 +67,7 @@ def initialize_azimuthal_integrator_poni_text(ponifile_text):
 
     :param str ponifile_text: Text content of the .poni file
     :returns: PyFAI AzimuthalIntegrator instance
-    :rtype: pyFAI.azimuthalIntegrator.AzimuthalIntegrator
+    :rtype: pyFAI.integrator.azimuthal.AzimuthalIntegrator
     """
     # Generate a temporary .poni file
     temp_poni_path = generate_poni_from_text(ponifile_text)
@@ -353,9 +357,7 @@ def calculate_deviation(
     )
 
     # Calculate radial array and digitize bin indices
-    radial = ai_cached.array_from_unit(
-        data.shape, "center", "q_nm^-1", scale=True
-    )
+    radial = ai_cached.array_from_unit(data.shape, "center", "q_nm^-1", scale=True)
     bin_indices = np.digitize(radial, bins)
 
     # Calculate the average intensity in each bin (distance) using vectorized
@@ -393,9 +395,7 @@ def calculate_deviation(
 
     # Calculate images and averages for each below limit
     for below_limit in below_limits:
-        lower_than_average = (data < image_with_averages * below_limit) & (
-            data != 0
-        )
+        lower_than_average = (data < image_with_averages * below_limit) & (data != 0)
         image_below = np.where(lower_than_average, data, 0)
         images_below.append(image_below)
 

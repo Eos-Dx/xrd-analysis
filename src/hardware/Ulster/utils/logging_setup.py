@@ -406,3 +406,100 @@ def get_log_stats() -> Dict[str, Any]:
             stats["loggers"].append(name)
 
     return stats
+
+
+def _env_truthy(val: Any) -> bool:
+    return str(val).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def init_logging_from_env(default_level: int = logging.INFO) -> Optional[Path]:
+    """Initialize logging based on environment variables if not already initialized.
+
+    Environment variables:
+      - ULSTER_LOG_FILE: explicit log file path
+      - ULSTER_LOG_DIR: directory for log file (defaults to AppData/Local/Ulster); ignored if ULSTER_LOG_FILE is set
+      - ULSTER_LOG_LEVEL: base level (DEBUG, INFO, WARNING, ERROR)
+      - ULSTER_LOG_CONSOLE_LEVEL: console handler level override
+      - ULSTER_LOG_FILE_LEVEL: file handler level override
+      - ULSTER_LOG_STRUCTURED: "1" to enable JSON structured logs for file handler
+      - ULSTER_LOG_MAX_BYTES: rotate size in bytes (default 10MB)
+      - ULSTER_LOG_BACKUP_COUNT: number of rotated files to keep (default 5)
+      - ULSTER_LOG_STDIO: "1" to capture stdout/stderr into logging
+    """
+    root = logging.getLogger()
+    existing_handlers = [type(h).__name__ for h in root.handlers]
+    # Only (re)configure if at least one of our desired handlers is missing
+    needs_setup = not (
+        "RotatingFileHandler" in existing_handlers
+        and "StreamHandler" in existing_handlers
+    )
+    if not needs_setup:
+        return None
+
+    level_name = os.environ.get("ULSTER_LOG_LEVEL", "")
+    try:
+        level = getattr(logging, level_name.upper()) if level_name else default_level
+    except Exception:
+        level = default_level
+
+    log_file = os.environ.get("ULSTER_LOG_FILE")
+    log_dir = os.environ.get("ULSTER_LOG_DIR")
+
+    resolved_log_path: Optional[Path] = None
+    if log_file:
+        resolved_log_path = Path(log_file)
+    elif log_dir:
+        resolved_log_path = Path(log_dir) / "ulster.log"
+
+    structured = _env_truthy(os.environ.get("ULSTER_LOG_STRUCTURED", "0"))
+    capture_stdio = _env_truthy(os.environ.get("ULSTER_LOG_STDIO", "0"))
+
+    console_level_name = os.environ.get("ULSTER_LOG_CONSOLE_LEVEL")
+    file_level_name = os.environ.get("ULSTER_LOG_FILE_LEVEL")
+
+    cfg: Dict[str, Any] = {}
+    if console_level_name:
+        try:
+            cfg["console_level"] = getattr(logging, console_level_name.upper())
+        except Exception:
+            cfg["console_level"] = level
+    else:
+        cfg["console_level"] = level
+
+    if file_level_name:
+        try:
+            cfg["file_level"] = getattr(logging, file_level_name.upper())
+        except Exception:
+            cfg["file_level"] = logging.DEBUG
+    else:
+        cfg["file_level"] = logging.DEBUG
+
+    if os.environ.get("ULSTER_LOG_MAX_BYTES"):
+        try:
+            cfg["max_bytes"] = int(os.environ.get("ULSTER_LOG_MAX_BYTES", "0"))
+        except Exception:
+            pass
+    if os.environ.get("ULSTER_LOG_BACKUP_COUNT"):
+        try:
+            cfg["backup_count"] = int(os.environ.get("ULSTER_LOG_BACKUP_COUNT", "0"))
+        except Exception:
+            pass
+
+    try:
+        path = setup_logging(
+            log_path=resolved_log_path,
+            level=level,
+            config=cfg,
+            capture_stdio=capture_stdio,
+            structured=structured,
+        )
+        try:
+            configure_third_party_logging()
+        except Exception:
+            pass
+        return path
+    except Exception:
+        # Fallback: avoid crashing import-time if configuration fails
+        if not root.handlers:
+            logging.basicConfig(level=level)
+        return None
