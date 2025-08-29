@@ -44,6 +44,10 @@ class StateSaverMixin:
         if not state:
             self._restoring_state = False
             return
+
+        # Handle PONI file restoration with user confirmation
+        self._handle_poni_restoration(state)
+
         self._restore_image(state.get("image"))
         self._restore_rotation(state.get("rotation_angle", 0))
         self._restore_crop_rect(state.get("crop_rect"))
@@ -117,6 +121,54 @@ class StateSaverMixin:
                 ry.value() if ry is not None else None,
             )
             state["pixel_to_mm_ratio"] = getattr(self, "pixel_to_mm_ratio", 1)
+
+        # --- Include active detectors and their PONI meta in the state ---
+        try:
+            active_aliases = self.hardware_controller.active_detector_aliases
+        except Exception:
+            # Fallback based on config
+            dev_mode = self.config.get("DEV", False)
+            active_ids = (
+                self.config.get("dev_active_detectors", [])
+                if dev_mode
+                else self.config.get("active_detectors", [])
+            )
+            aliases = []
+            for det_cfg in self.config.get("detectors", []):
+                if det_cfg.get("id") in active_ids:
+                    aliases.append(det_cfg.get("alias"))
+            active_aliases = aliases
+
+        state["active_detectors_aliases"] = active_aliases
+
+        ponis = getattr(self, "ponis", {}) or {}
+        # Try to get current settings from UI if available
+        try:
+            current_settings = self.get_current_poni_settings()
+        except Exception:
+            current_settings = {}
+
+        det_info = {}
+        for alias in active_aliases:
+            # Prefer current UI settings, fallback to stored settings
+            if alias in current_settings:
+                settings = current_settings[alias]
+                det_info[alias] = {
+                    "poni_filename": settings.get("name"),
+                    "poni_path": settings.get("path"),
+                    "poni_value": settings.get("value", ""),
+                }
+            else:
+                # Fallback to stored poni_files data
+                poni_files = getattr(self, "poni_files", {}) or {}
+                meta = poni_files.get(alias, {})
+                pth = meta.get("path")
+                det_info[alias] = {
+                    "poni_filename": meta.get("name"),
+                    "poni_path": str(pth) if pth is not None else None,
+                    "poni_value": ponis.get(alias, ""),
+                }
+        state["detector_poni"] = det_info
 
         self.state = state
         if is_auto and os.path.exists(self.AUTO_STATE_FILE):
@@ -401,3 +453,98 @@ class StateSaverMixin:
                 }
             )
         return measurement_points
+
+    def _handle_poni_restoration(self, state):
+        """Handle PONI file restoration with user confirmation dialog."""
+        detector_poni = state.get("detector_poni", {})
+        if not detector_poni:
+            return  # No PONI data in state
+
+        from PyQt5.QtWidgets import QMessageBox
+
+        # Create confirmation dialog
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Restore PONI Files")
+        msg.setIcon(QMessageBox.Question)
+
+        # Build message showing what PONI files are in the state
+        poni_info = []
+        for alias, poni_data in detector_poni.items():
+            filename = poni_data.get("poni_filename", "N/A")
+            path = poni_data.get("poni_path", "N/A")
+            poni_info.append(f"• {alias}: {filename}")
+            if path and path != "N/A":
+                poni_info.append(f"  Path: {path}")
+
+        poni_list = "\n".join(poni_info)
+        msg.setText(
+            "The state file contains PONI calibration files.\n\n"
+            "Do you want to restore PONI file paths from the state?\n\n"
+            f"PONI files in state:\n{poni_list}"
+        )
+
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.Yes)
+
+        result = msg.exec_()
+
+        if result == QMessageBox.Yes:
+            # User wants to restore PONI files
+            self._restore_poni_files_from_state(detector_poni)
+        else:
+            print("User chose to keep existing PONI file settings")
+
+    def _restore_poni_files_from_state(self, detector_poni):
+        """Restore PONI file paths from state, checking if files exist."""
+        from pathlib import Path
+
+        restored_count = 0
+        missing_files = []
+
+        for alias, poni_data in detector_poni.items():
+            path = poni_data.get("poni_path")
+            value = poni_data.get("poni_value", "")
+
+            # Update the internal PONI value
+            if not hasattr(self, "ponis"):
+                self.ponis = {}
+            self.ponis[alias] = value
+
+            # Update the PONI file metadata
+            if not hasattr(self, "poni_files"):
+                self.poni_files = {}
+
+            if path and Path(path).exists():
+                # File exists - restore the path
+                self.poni_files[alias] = {
+                    "path": path,
+                    "name": poni_data.get("poni_filename"),
+                }
+                # Update UI line edit if it exists
+                poni_lineedit = getattr(self, f"{alias.lower()}_poni_lineedit", None)
+                if poni_lineedit:
+                    poni_lineedit.setText(path)
+                restored_count += 1
+                print(f"Restored PONI path for {alias}: {path}")
+            else:
+                # File doesn't exist - clear the path
+                self.poni_files[alias] = {"path": None, "name": None}
+                # Clear UI line edit if it exists
+                poni_lineedit = getattr(self, f"{alias.lower()}_poni_lineedit", None)
+                if poni_lineedit:
+                    poni_lineedit.setText("")
+                missing_files.append(f"{alias}: {path or 'N/A'}")
+                print(f"PONI file missing for {alias}: {path}")
+
+        # Show summary
+        from PyQt5.QtWidgets import QMessageBox
+
+        summary_msg = f"PONI file restoration complete:\n\n• {restored_count} files restored successfully"
+        if missing_files:
+            summary_msg += (
+                f"\n• {len(missing_files)} files were missing and paths were cleared:\n"
+            )
+            for missing in missing_files:
+                summary_msg += f"  - {missing}\n"
+
+        QMessageBox.information(self, "PONI Restoration Complete", summary_msg)

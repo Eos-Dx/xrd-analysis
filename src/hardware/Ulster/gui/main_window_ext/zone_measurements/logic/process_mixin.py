@@ -44,6 +44,11 @@ class ZoneMeasurementsProcessMixin:
             return  # Exit the function early
         # ==================================
 
+        # ===== PRE-MEASUREMENT PONI UPDATE CONFIRMATION =====
+        if not self._confirm_poni_settings_before_measurement():
+            return  # User chose to update PONI settings first
+        # ==================================
+
         try:
             self.state_measurements = copy(self.state)
         except Exception as e:
@@ -559,3 +564,96 @@ class ZoneMeasurementsProcessMixin:
         self.pause_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
         logger.info("Measurements stopped and reset")
+
+    def _confirm_poni_settings_before_measurement(self):
+        """Show PONI settings confirmation dialog before starting measurements.
+        Returns True if user wants to proceed, False if they want to update PONI settings first.
+        """
+        from PyQt5.QtWidgets import QMessageBox
+
+        try:
+            active_aliases = self.hardware_controller.active_detector_aliases
+        except Exception:
+            dev_mode = self.config.get("DEV", False)
+            ids = (
+                self.config.get("dev_active_detectors", [])
+                if dev_mode
+                else self.config.get("active_detectors", [])
+            )
+            active_aliases = [
+                d.get("alias")
+                for d in self.config.get("detectors", [])
+                if d.get("id") in ids
+            ]
+
+        ponis = getattr(self, "ponis", {}) or {}
+        poni_files = getattr(self, "poni_files", {}) or {}
+
+        # Check for missing PONI calibrations
+        missing = [a for a in active_aliases if not ponis.get(a)]
+        if missing:
+            QMessageBox.warning(
+                self,
+                "Missing PONI Calibration",
+                "PONI calibration must be set for detectors: "
+                + ", ".join(missing)
+                + "\nOpen the detector tabs and set PONI files before starting measurements.",
+            )
+            return False
+
+        # Build PONI status summary
+        poni_status = []
+        for alias in active_aliases:
+            meta = poni_files.get(alias, {})
+            path = meta.get("path")
+            name = meta.get("name") or "Default/Embedded PONI"
+
+            if path:
+                from pathlib import Path
+
+                if Path(path).exists():
+                    status = "✓ File exists"
+                else:
+                    status = "⚠ File missing"
+                poni_status.append(f"• {alias}: {name}\n  {status}: {path}")
+            else:
+                poni_status.append(f"• {alias}: {name}\n  ✓ Using embedded data")
+
+        status_text = "\n\n".join(poni_status)
+
+        # Show confirmation dialog
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Confirm PONI Settings")
+        msg.setIcon(QMessageBox.Question)
+        msg.setText(
+            "Current PONI calibration settings:\n\n"
+            f"{status_text}\n\n"
+            "Do you want to start measurements with these settings?"
+        )
+
+        # Add custom buttons
+        start_button = msg.addButton("Start Measurements", QMessageBox.AcceptRole)
+        update_button = msg.addButton("Update PONI Settings", QMessageBox.RejectRole)
+        cancel_button = msg.addButton("Cancel", QMessageBox.RejectRole)
+
+        msg.setDefaultButton(start_button)
+        msg.exec_()
+
+        clicked = msg.clickedButton()
+        if clicked == start_button:
+            return True  # Proceed with measurements
+        elif clicked == update_button:
+            # Switch to first detector tab to allow user to update PONI settings
+            if hasattr(self, "tabs") and hasattr(self, "detector_tabs"):
+                # Find first detector tab and switch to it
+                first_detector_tab = None
+                min_index = float("inf")
+                for alias, tab_info in self.detector_tabs.items():
+                    if tab_info["index"] < min_index:
+                        min_index = tab_info["index"]
+                        first_detector_tab = tab_info["index"]
+                if first_detector_tab is not None:
+                    self.tabs.setCurrentIndex(first_detector_tab)
+            return False  # Don't start measurements
+        else:
+            return False  # Cancel

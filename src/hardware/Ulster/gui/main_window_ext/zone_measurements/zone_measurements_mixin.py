@@ -31,8 +31,8 @@ class ZoneMeasurementsMixin(
         # --- Add tabs ---
         self.create_zone_measurements_widget()  # Adds the Measurements tab (and its controls) to self.tabs
         self.create_attenuation_tab()  # Adds the Attenuation tab to self.tabs
-        self.setup_detector_param_tab()  # Adds Detector param tab (if not present)
-        self.populate_detector_param_tab()  # Populates detector param tab
+        self.setup_detector_param_tabs()  # Initialize detector tabs tracking
+        self.populate_detector_param_tabs()  # Creates one tab per active detector alias
 
         # --- Create and set up the Dock ---
         self.zoneMeasurementsDock = QDockWidget("Zone Measurements", self)
