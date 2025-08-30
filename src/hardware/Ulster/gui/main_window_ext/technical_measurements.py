@@ -1,3 +1,4 @@
+import json
 import os
 import queue
 import subprocess
@@ -7,17 +8,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PyQt5.QtCore import Qt, QThread, QTimer
 from PyQt5.QtWidgets import (
+    QComboBox,
+    QDialog,
     QDockWidget,
     QDoubleSpinBox,
     QFileDialog,
+    QFormLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QPushButton,
     QScrollArea,
     QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -31,7 +35,122 @@ from hardware.Ulster.gui.technical.capture import (
 from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 
 
+class PoniFileSelectionDialog(QDialog):
+    """Dialog for selecting PONI files for each detector alias."""
+
+    def __init__(self, aliases, current_poni_files=None, parent=None):
+        super().__init__(parent)
+        self.aliases = aliases
+        self.poni_files = {}
+        self.line_edits = {}
+
+        # Pre-populate with current PONI files if available
+        if current_poni_files:
+            for alias in aliases:
+                if alias in current_poni_files:
+                    poni_info = current_poni_files[alias]
+                    if isinstance(poni_info, dict) and "path" in poni_info:
+                        self.poni_files[alias] = poni_info["path"]
+                    elif (
+                        hasattr(self.parent(), "poni_files")
+                        and alias in self.parent().poni_files
+                    ):
+                        # Fallback to parent's poni_files if available
+                        parent_poni = self.parent().poni_files[alias]
+                        if isinstance(parent_poni, dict) and "path" in parent_poni:
+                            self.poni_files[alias] = parent_poni["path"]
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.setWindowTitle("Select PONI Files for Technical Meta")
+        self.setModal(True)
+        self.resize(600, 400)
+
+        layout = QVBoxLayout(self)
+
+        # Header
+        header = QLabel("Select PONI calibration files for each detector alias:")
+        header.setStyleSheet("font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(header)
+
+        # Form layout for PONI file selection
+        form_layout = QFormLayout()
+
+        for alias in self.aliases:
+            # Create horizontal layout for each alias
+            h_layout = QHBoxLayout()
+
+            # Line edit for file path
+            line_edit = QLineEdit()
+            line_edit.setPlaceholderText(f"Select PONI file for {alias}")
+            if alias in self.poni_files:
+                line_edit.setText(self.poni_files[alias])
+            self.line_edits[alias] = line_edit
+            h_layout.addWidget(line_edit)
+
+            # Browse button
+            browse_btn = QPushButton("Browse...")
+            browse_btn.clicked.connect(
+                lambda checked, a=alias: self.browse_poni_file(a)
+            )
+            h_layout.addWidget(browse_btn)
+
+            # Clear button
+            clear_btn = QPushButton("Clear")
+            clear_btn.clicked.connect(lambda checked, a=alias: self.clear_poni_file(a))
+            h_layout.addWidget(clear_btn)
+
+            form_layout.addRow(f"{alias}:", h_layout)
+
+        layout.addLayout(form_layout)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+
+        ok_btn = QPushButton("OK")
+        ok_btn.clicked.connect(self.accept)
+        button_layout.addWidget(ok_btn)
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+
+        layout.addStretch()
+        layout.addLayout(button_layout)
+
+    def browse_poni_file(self, alias):
+        """Open file dialog to select PONI file for the given alias."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            f"Select PONI File for {alias}",
+            "",
+            "PONI Files (*.poni);;All Files (*)",
+        )
+        if file_path:
+            self.line_edits[alias].setText(file_path)
+            self.poni_files[alias] = file_path
+
+    def clear_poni_file(self, alias):
+        """Clear the PONI file selection for the given alias."""
+        self.line_edits[alias].setText("")
+        if alias in self.poni_files:
+            del self.poni_files[alias]
+
+    def get_poni_files(self):
+        """Return dictionary of alias -> poni_file_path."""
+        result = {}
+        for alias, line_edit in self.line_edits.items():
+            path = line_edit.text().strip()
+            if path:
+                result[alias] = path
+        return result
+
+
 class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
+
+    NO_SELECTION_LABEL = "— Select —"
+    TYPE_OPTIONS = ["AgBH", "DARK", "EMPTY", "BACKGROUND"]
 
     def create_technical_panel(self):
         self.aux_counter = 0
@@ -88,15 +207,39 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         row.addWidget(self.auxNameLE, 1)
         outer.addLayout(row)
 
-        self.auxList = QListWidget()
-        self.auxList.itemActivated.connect(self.open_measurement)
-        outer.addWidget(self.auxList)
+        # Aux measurements table
+        self.auxTable = QTableWidget()
+        self.auxTable.setColumnCount(3)
+        self.auxTable.setHorizontalHeaderLabels(
+            [
+                "File",
+                "Type",
+                "Alias",
+            ]
+        )
+        # Stretch columns
+        try:
+            from PyQt5.QtWidgets import QHeaderView
+
+            self.auxTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        except Exception:
+            pass
+        self.auxTable.setSelectionBehavior(self.auxTable.SelectRows)
+        self.auxTable.setSelectionMode(self.auxTable.ExtendedSelection)
+        self.auxTable.cellDoubleClicked.connect(self._open_measurement_from_table)
+        outer.addWidget(self.auxTable)
 
         # PyFai button
         pyfai_btn = QPushButton("PyFai")
         pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
         pyfai_btn.clicked.connect(self.run_pyfai)
         outer.addWidget(pyfai_btn)
+
+        # Generate Meta button
+        gen_btn = QPushButton("Generate Meta")
+        gen_btn.setToolTip("Generate technical_meta_*.json from selected rows")
+        gen_btn.clicked.connect(self.generate_technical_meta)
+        outer.addWidget(gen_btn)
 
         # Real-time controls
         rt_layout = QHBoxLayout()
@@ -122,6 +265,10 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
         self.enable_measurement_controls(False)
         self.hardware_state_changed.connect(self.enable_measurement_controls)
+        # Refresh alias models when hardware state changes
+        self.hardware_state_changed.connect(
+            lambda _: self.refresh_aux_table_alias_models()
+        )
 
     def enable_measurement_controls(self, enable: bool):
         widgets = [
@@ -129,7 +276,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             self.folderLE,
             self.auxBtn,
             self.auxNameLE,
-            self.auxList,
+            self.auxTable,
             self.framesSpin,
             self.rtBtn,
         ]
@@ -201,13 +348,28 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         worker.run()
 
     def _add_aux_item_to_list(self, alias, npy_path):
+        """Add a new row to the Aux table with file, type and alias selectors."""
         from pathlib import Path
 
         from PyQt5.QtCore import Qt
 
-        item = QListWidgetItem(f"{alias}: {Path(npy_path).name}")
-        item.setData(Qt.UserRole, str(npy_path))  # ✅ use Qt.UserRole to store the path
-        self.auxList.addItem(item)
+        row = self.auxTable.rowCount()
+        self.auxTable.insertRow(row)
+
+        # File column (read-only, store full path in UserRole)
+        display = f"{alias}: {Path(npy_path).name}"
+        file_item = QTableWidgetItem(display)
+        file_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+        file_item.setData(Qt.UserRole, str(npy_path))
+        self.auxTable.setItem(row, 0, file_item)
+
+        # Type combobox (blank by default)
+        type_cb = self._make_type_combobox()
+        self.auxTable.setCellWidget(row, 1, type_cb)
+
+        # Alias combobox (preselect the source alias)
+        alias_cb = self._make_alias_combobox(preselect=alias)
+        self.auxTable.setCellWidget(row, 2, alias_cb)
 
     def _file_base(self, typ: str) -> str:
         le: QLineEdit = getattr(self, f"{typ.lower()}NameLE")
@@ -221,19 +383,37 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self._aux_timer.start()
         self._start_capture("Aux")
 
-    def open_measurement(self, item: QListWidgetItem):
-        file_path = item.data(Qt.UserRole)
-        # Guess alias from file path
-        detector = None
-        for alias in self.detector_controller:
-            if alias in file_path:
-                detector = alias
-                break
-        if not detector:
-            detector = next(iter(self.detector_controller))  # fallback to first
+    def _open_measurement_from_table(self, row: int, _col: int):
+        """Open measurement window for the selected row."""
+        from PyQt5.QtCore import Qt
+
+        file_item = self.auxTable.item(row, 0)
+        if not file_item:
+            return
+        file_path = file_item.data(Qt.UserRole)
+
+        # Prefer alias from Alias #1 if selected, else try to infer from display text
+        alias_cb = self.auxTable.cellWidget(row, 2)
+        alias = None
+        if isinstance(alias_cb, QComboBox):
+            a = alias_cb.currentText().strip()
+            if a and a != self.NO_SELECTION_LABEL:
+                alias = a
+
+        if not alias:
+            disp = file_item.text()
+            if ":" in disp:
+                alias = disp.split(":", 1)[0].strip()
+
+        if not alias:
+            # Fallback to first controller alias
+            try:
+                alias = next(iter(self.detector_controller))
+            except Exception:
+                alias = None
 
         show_measurement_window(
-            file_path, self.masks.get(detector), self.ponis.get(detector), self
+            file_path, self.masks.get(alias), self.ponis.get(alias), self
         )
 
     def run_pyfai(self):
@@ -351,3 +531,251 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         plt.close(self._rt_fig)
         del self._rt_queue
         del self._rt_last_frame
+
+    # -------------------- Helpers for Aux Table --------------------
+    def _get_active_detector_aliases(self):
+        """Return aliases from settings (main.json), honoring DEV/dev_active_detectors.
+        This intentionally reads from config instead of live hardware."""
+        dev_mode = self.config.get("DEV", False)
+        ids = (
+            self.config.get("dev_active_detectors", [])
+            if dev_mode
+            else self.config.get("active_detectors", [])
+        )
+        return [
+            d.get("alias")
+            for d in self.config.get("detectors", [])
+            if d.get("id") in ids
+        ]
+
+    def _make_type_combobox(self):
+        cb = QComboBox()
+        cb.addItem(self.NO_SELECTION_LABEL, None)
+        for t in self.TYPE_OPTIONS:
+            cb.addItem(t, t)
+        return cb
+
+    def _make_alias_combobox(self, preselect=None):
+        cb = QComboBox()
+        cb.addItem(self.NO_SELECTION_LABEL, None)
+        for alias in self._get_active_detector_aliases():
+            cb.addItem(alias, alias)
+        if preselect:
+            idx = cb.findText(preselect)
+            if idx >= 0:
+                cb.setCurrentIndex(idx)
+        return cb
+
+    def refresh_aux_table_alias_models(self):
+        aliases = self._get_active_detector_aliases()
+        for row in range(self.auxTable.rowCount()):
+            cb = self.auxTable.cellWidget(row, 2)
+            if not isinstance(cb, QComboBox):
+                continue
+            current = cb.currentText()
+            cb.blockSignals(True)
+            cb.clear()
+            cb.addItem(self.NO_SELECTION_LABEL, None)
+            for a in aliases:
+                cb.addItem(a, a)
+            # restore selection if still present
+            if current and current in aliases:
+                cb.setCurrentText(current)
+            cb.blockSignals(False)
+
+    # -------------------- Generate Technical Meta --------------------
+    def generate_technical_meta(self):
+        from pathlib import Path
+
+        from PyQt5.QtWidgets import QMessageBox
+
+        # Validate selection
+        sel = (
+            self.auxTable.selectionModel().selectedRows()
+            if self.auxTable.selectionModel()
+            else []
+        )
+        rows = [idx.row() for idx in sel]
+        if not rows:
+            QMessageBox.warning(
+                self, "No Selection", "Select one or more rows in the Aux table."
+            )
+            return
+
+        # Validate name and folder
+        name = (self.auxNameLE.text() or "").strip()
+        if not name:
+            QMessageBox.warning(
+                self, "Missing Name", "Enter a name in the Aux Measurement field."
+            )
+            return
+        safe_name = name.replace(" ", "_")
+        folder = validate_folder(self.folderLE.text())
+        if not os.path.isdir(folder):
+            QMessageBox.warning(self, "Invalid Folder", "Select a valid save folder.")
+            return
+
+        out_path = os.path.join(folder, f"technical_meta_{safe_name}.json")
+        if os.path.exists(out_path):
+            res = QMessageBox.question(
+                self,
+                "Overwrite?",
+                f"File exists:\n{out_path}\n\nDo you want to overwrite it?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if res != QMessageBox.Yes:
+                return
+
+        meta = {}
+        seen_pairs = set()  # (type, alias)
+
+        for row in rows:
+            file_item = self.auxTable.item(row, 0)
+            if not file_item:
+                continue
+            file_path = file_item.data(Qt.UserRole)
+            if not file_path or not os.path.exists(file_path):
+                QMessageBox.warning(
+                    self, "Missing File", f"Row {row+1}: file path does not exist."
+                )
+                return
+
+            # Type
+            type_cb = self.auxTable.cellWidget(row, 1)
+            if (
+                not isinstance(type_cb, QComboBox)
+                or type_cb.currentText() == self.NO_SELECTION_LABEL
+            ):
+                QMessageBox.warning(
+                    self, "Missing Type", f"Row {row+1}: select measurement type."
+                )
+                return
+            typ = type_cb.currentText()
+
+            # Alias (must be selected)
+            cb = self.auxTable.cellWidget(row, 2)
+            if (
+                not isinstance(cb, QComboBox)
+                or cb.currentText() == self.NO_SELECTION_LABEL
+            ):
+                QMessageBox.warning(
+                    self, "Missing Alias", f"Row {row+1}: select an alias."
+                )
+                return
+            al = cb.currentText()
+
+            base = os.path.basename(file_path)
+            dst = meta.setdefault(typ, {})
+            pair = (typ, al)
+            if pair in seen_pairs or al in dst:
+                QMessageBox.warning(
+                    self,
+                    "Duplicate Assignment",
+                    f"Measurement for type '{typ}' and alias '{al}' is already assigned.",
+                )
+                return
+            dst[al] = base
+            seen_pairs.add(pair)
+
+        # Get unique aliases from selected measurements for PONI file selection
+        unique_aliases = set()
+        for row in rows:
+            cb = self.auxTable.cellWidget(row, 2)
+            if (
+                isinstance(cb, QComboBox)
+                and cb.currentText() != self.NO_SELECTION_LABEL
+            ):
+                unique_aliases.add(cb.currentText())
+
+        # Show PONI file selection dialog if we have aliases
+        poni_lab = {}
+        if unique_aliases:
+            # Get current PONI files if available
+            current_poni_files = getattr(self, "poni_files", {})
+
+            poni_dialog = PoniFileSelectionDialog(
+                aliases=sorted(unique_aliases),
+                current_poni_files=current_poni_files,
+                parent=self,
+            )
+
+            if poni_dialog.exec_() == QDialog.Accepted:
+                selected_poni_files = poni_dialog.get_poni_files()
+                poni_lab_path = {}
+                poni_lab_values = {}
+
+                # Process each selected PONI file
+                for alias, file_path in selected_poni_files.items():
+                    # Store filename for PONI_LAB
+                    poni_lab[alias] = os.path.basename(file_path)
+
+                    # Store full path for PONI_LAB_PATH
+                    poni_lab_path[alias] = file_path
+
+                    # Read and store PONI file content for PONI_LAB_VALUES
+                    try:
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            poni_content = f.read()
+                            poni_lab_values[alias] = poni_content
+                    except Exception as e:
+                        QMessageBox.warning(
+                            self,
+                            "PONI File Read Error",
+                            f"Failed to read PONI file for {alias}:\n{file_path}\n\nError: {e}\n\nContinuing without this PONI file content.",
+                        )
+                        # Still include the filename and path, but mark content as unavailable
+                        poni_lab_values[alias] = (
+                            f"# ERROR: Could not read PONI file content\n# File: {file_path}\n# Error: {str(e)}"
+                        )
+
+                # Store additional PONI data for later use
+                self._temp_poni_lab_path = poni_lab_path
+                self._temp_poni_lab_values = poni_lab_values
+            else:
+                # User cancelled PONI selection, ask if they want to continue without PONI files
+                res = QMessageBox.question(
+                    self,
+                    "No PONI Files Selected",
+                    "Do you want to generate the technical meta file without PONI calibration files?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No,
+                )
+                if res != QMessageBox.Yes:
+                    return
+
+        # Add PONI sections to meta if any PONI files were selected
+        if poni_lab:
+            meta["PONI_LAB"] = poni_lab
+
+        # Add PONI_LAB_PATH section if available
+        if hasattr(self, "_temp_poni_lab_path") and self._temp_poni_lab_path:
+            meta["PONI_LAB_PATH"] = self._temp_poni_lab_path
+
+        # Add PONI_LAB_VALUES section if available
+        if hasattr(self, "_temp_poni_lab_values") and self._temp_poni_lab_values:
+            meta["PONI_LAB_VALUES"] = self._temp_poni_lab_values
+
+        # Write JSON
+        try:
+            with open(out_path, "w", encoding="utf-8") as f:
+                json.dump(meta, f, indent=2)
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Write Error", f"Failed to write meta file:\n{e}"
+            )
+            return
+        finally:
+            # Clean up temporary PONI data variables
+            if hasattr(self, "_temp_poni_lab_path"):
+                delattr(self, "_temp_poni_lab_path")
+            if hasattr(self, "_temp_poni_lab_values"):
+                delattr(self, "_temp_poni_lab_values")
+
+        # Summary
+        summary = (
+            "\n".join([f"{k}: {len(v)} file(s)" for k, v in meta.items()]) or "(empty)"
+        )
+        QMessageBox.information(
+            self, "Meta Generated", f"Saved to:\n{out_path}\n\nSummary:\n{summary}"
+        )
