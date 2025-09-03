@@ -8,7 +8,7 @@ import uuid
 
 import matplotlib.pyplot as plt
 import numpy as np
-from PyQt5.QtCore import Qt, QThread, QTimer
+from PyQt5.QtCore import QEvent, Qt, QThread, QTimer
 from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
@@ -212,6 +212,8 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         # Aux measurements table
         self.auxTable = QTableWidget()
         self.auxTable.setColumnCount(3)
+        # Listen for Delete key to remove selected rows (no file deletion)
+        self.auxTable.installEventFilter(self)
         self.auxTable.setHorizontalHeaderLabels(
             [
                 "File",
@@ -636,6 +638,40 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         else:
             self._stop_realtime()
             self.rtBtn.setText("Real-time")
+
+    # ---- Deletion of selected Aux rows via Delete key (no file removal) ----
+    def delete_selected_aux_rows(self):
+        try:
+            if not hasattr(self, "auxTable") or self.auxTable is None:
+                return
+            sel_model = self.auxTable.selectionModel()
+            if not sel_model:
+                return
+            rows = sorted({ix.row() for ix in sel_model.selectedRows()}, reverse=True)
+            if not rows:
+                return
+            for r in rows:
+                try:
+                    self.auxTable.removeRow(r)
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"Error deleting selected aux rows: {e}")
+
+    def eventFilter(self, source, event):
+        # Handle Delete key for auxTable to remove rows only from UI/state
+        if (
+            source is getattr(self, "auxTable", None)
+            and event.type() == QEvent.KeyPress
+        ):
+            try:
+                if event.key() == Qt.Key_Delete:
+                    self.delete_selected_aux_rows()
+                    return True
+            except Exception:
+                pass
+        # Chain to super to allow other mixins (e.g., ZonePoints) to handle their filters
+        return super().eventFilter(source, event)
 
     def _start_realtime(self):
         exposure = float(self.integrationTimeSpin.value())
