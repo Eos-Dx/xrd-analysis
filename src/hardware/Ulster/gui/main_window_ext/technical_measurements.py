@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -233,25 +234,28 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self.auxTable.cellDoubleClicked.connect(self._open_measurement_from_table)
         outer.addWidget(self.auxTable)
 
-        # Aux table actions
-        aux_actions = QHBoxLayout()
+        # Group technical measurement actions in a compact layout
+        actions_group = QGroupBox("Actions")
+        actions_layout = QHBoxLayout(actions_group)
+        actions_layout.setContentsMargins(6, 6, 6, 6)
+        actions_layout.setSpacing(4)
+
         load_btn = QPushButton("Load Files…")
         load_btn.setToolTip("Load existing technical measurement files into the table")
         load_btn.clicked.connect(self.load_technical_files)
-        aux_actions.addWidget(load_btn)
-        outer.addLayout(aux_actions)
+        actions_layout.addWidget(load_btn)
 
-        # PyFai button
-        pyfai_btn = QPushButton("PyFai")
+        pyfai_btn = QPushButton("PyFAI")
         pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
         pyfai_btn.clicked.connect(self.run_pyfai)
-        outer.addWidget(pyfai_btn)
+        actions_layout.addWidget(pyfai_btn)
 
-        # Generate Meta button
-        gen_btn = QPushButton("Generate Meta")
+        gen_btn = QPushButton("Gen Meta")
         gen_btn.setToolTip("Generate technical_meta_*.json from selected rows")
         gen_btn.clicked.connect(self.generate_technical_meta)
-        outer.addWidget(gen_btn)
+        actions_layout.addWidget(gen_btn)
+
+        outer.addWidget(actions_group)
 
         # Real-time controls
         rt_layout = QHBoxLayout()
