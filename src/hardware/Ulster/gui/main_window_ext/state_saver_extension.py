@@ -41,6 +41,40 @@ class StateSaverMixin:
         self.measurement_widgets = {}
         state = self._load_state(file_path)
         self.state = state
+
+        # Remove Measurement Points when restoring state and clear related UI
+        if state:
+            # Drop measurement-related entries so they are not carried over
+            state.pop("measurement_points", None)
+            state.pop("skipped_points", None)
+            try:
+                # Clear right-panel measurement widgets/tree if present
+                if (
+                    hasattr(self, "measurementsTree")
+                    and self.measurementsTree is not None
+                ):
+                    self.measurementsTree.clear()
+                if hasattr(self, "_measurement_items") and isinstance(
+                    self._measurement_items, dict
+                ):
+                    # Remove any existing widgets safely
+                    if hasattr(self, "remove_measurement_widget_from_panel"):
+                        for pid in list(self._measurement_items.keys()):
+                            try:
+                                self.remove_measurement_widget_from_panel(pid)
+                            except Exception:
+                                pass
+                    self._measurement_items.clear()
+                # Reset mapping container
+                if hasattr(self, "measurement_widgets") and isinstance(
+                    self.measurement_widgets, dict
+                ):
+                    self.measurement_widgets.clear()
+            except Exception as e:
+                print(
+                    f"Warning: failed to clear measurement widgets during restore: {e}"
+                )
+
         if not state:
             self._restoring_state = False
             return

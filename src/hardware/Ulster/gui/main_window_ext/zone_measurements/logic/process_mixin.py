@@ -3,6 +3,7 @@
 import hashlib
 import json
 import time
+import uuid
 from copy import copy
 from pathlib import Path
 from typing import Optional
@@ -48,6 +49,22 @@ class ZoneMeasurementsProcessMixin:
         if not self._confirm_poni_settings_before_measurement():
             return  # User chose to update PONI settings first
         # ==================================
+
+        # Ensure a session-level calibration group hash exists and is placed in the state before copying
+        group_hash = getattr(self, "calibration_group_hash", None)
+        if not group_hash:
+            try:
+                group_hash = uuid.uuid4().hex[:16]
+            except Exception:
+                group_hash = None
+            setattr(self, "calibration_group_hash", group_hash)
+        if group_hash:
+            try:
+                # Store in current state so it propagates everywhere
+                if isinstance(getattr(self, "state", None), dict):
+                    self.state["CALIBRATION_GROUP_HASH"] = group_hash
+            except Exception:
+                pass
 
         try:
             self.state_measurements = copy(self.state)
@@ -205,6 +222,10 @@ class ZoneMeasurementsProcessMixin:
         # Also save this in state_measurements if you use a copy
         self.state_measurements["measurement_points"] = measurement_points
         self.state_measurements["skipped_points"] = self.state["skipped_points"]
+        # Ensure CALIBRATION_GROUP_HASH is present in state_measurements
+        gh = getattr(self, "calibration_group_hash", None)
+        if gh:
+            self.state_measurements["CALIBRATION_GROUP_HASH"] = gh
         self.manual_save_state()
         self.measure_next_point()
 
@@ -302,7 +323,7 @@ class ZoneMeasurementsProcessMixin:
 
         for alias, txt_filename in result_files.items():
             detector_meta = detector_lookup.get(alias, {})
-            measurements[Path(txt_filename).name] = {
+            entry = {
                 "x": x,
                 "y": y,
                 "unique_id": point_unique_id,  # <-- use the precomputed one!
@@ -315,6 +336,11 @@ class ZoneMeasurementsProcessMixin:
                 "pixel_size_um": detector_meta.get("pixel_size_um"),
                 "faulty_pixels": detector_meta.get("faulty_pixels"),
             }
+            # Attach calibration group hash if available
+            gh = getattr(self, "calibration_group_hash", None)
+            if gh:
+                entry["CALIBRATION_GROUP_HASH"] = gh
+            measurements[Path(txt_filename).name] = entry
 
         self.state_measurements["measurements_meta"] = measurements
 

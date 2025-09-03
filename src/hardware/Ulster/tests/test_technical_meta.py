@@ -304,9 +304,9 @@ class TestTechnicalMetaGeneration(unittest.TestCase):
             obj.folderLE = _LE(tmpdir)
             obj.NO_SELECTION_LABEL = "— Select —"
 
-            # Prepare auxTable with one selected row, type AgBH for alias SAXS
+            # Prepare auxTable with one selected row, type AGBH for alias SAXS
             obj.auxTable = self._make_stub_aux_table(
-                [{"file_path": meas_path, "type_text": "AgBH", "alias_text": "SAXS"}]
+                [{"file_path": meas_path, "type_text": "AGBH", "alias_text": "SAXS"}]
             )
 
             # Configure dummy dialog return values
@@ -328,9 +328,9 @@ class TestTechnicalMetaGeneration(unittest.TestCase):
                 meta = json.load(f)
 
             # Check measurement mapping
-            self.assertIn("AgBH", meta)
-            self.assertIn("SAXS", meta["AgBH"])
-            self.assertEqual(meta["AgBH"]["SAXS"], os.path.basename(meas_path))
+            self.assertIn("AGBH", meta)
+            self.assertIn("SAXS", meta["AGBH"])
+            self.assertEqual(meta["AGBH"]["SAXS"], os.path.basename(meas_path))
 
             # Check PONI sections
             self.assertIn("PONI_LAB", meta)
@@ -341,3 +341,6 @@ class TestTechnicalMetaGeneration(unittest.TestCase):
 
             self.assertIn("PONI_LAB_VALUES", meta)
             self.assertEqual(meta["PONI_LAB_VALUES"].get("SAXS"), poni_text)
+
+            # Check calibration group hash exists
+            self.assertIn("CALIBRATION_GROUP_HASH", meta)

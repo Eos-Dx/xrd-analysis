@@ -3,6 +3,7 @@ import os
 import queue
 import subprocess
 import time
+import uuid
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -150,7 +151,7 @@ class PoniFileSelectionDialog(QDialog):
 class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     NO_SELECTION_LABEL = "— Select —"
-    TYPE_OPTIONS = ["AgBH", "DARK", "EMPTY", "BACKGROUND"]
+    TYPE_OPTIONS = ["AGBH", "DARK", "EMPTY", "BACKGROUND"]
 
     def create_technical_panel(self):
         self.aux_counter = 0
@@ -756,6 +757,17 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         if hasattr(self, "_temp_poni_lab_values") and self._temp_poni_lab_values:
             meta["PONI_LAB_VALUES"] = self._temp_poni_lab_values
 
+        # Add or reuse a calibration group hash so multiple files can be grouped together
+        try:
+            group_hash = getattr(self, "calibration_group_hash", None)
+            if not group_hash:
+                group_hash = uuid.uuid4().hex[:16]
+                setattr(self, "calibration_group_hash", group_hash)
+            meta["CALIBRATION_GROUP_HASH"] = group_hash
+        except Exception:
+            # Non-fatal; proceed without the group hash if something unexpected happens
+            pass
+
         # Write JSON
         try:
             with open(out_path, "w", encoding="utf-8") as f:
@@ -773,9 +785,16 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
                 delattr(self, "_temp_poni_lab_values")
 
         # Summary
-        summary = (
-            "\n".join([f"{k}: {len(v)} file(s)" for k, v in meta.items()]) or "(empty)"
-        )
+        try:
+            summary_lines = []
+            for k, v in meta.items():
+                if isinstance(v, dict):
+                    summary_lines.append(f"{k}: {len(v)} file(s)")
+                else:
+                    summary_lines.append(f"{k}: {v}")
+            summary = "\n".join(summary_lines) or "(empty)"
+        except Exception:
+            summary = "(summary unavailable)"
         QMessageBox.information(
             self, "Meta Generated", f"Saved to:\n{out_path}\n\nSummary:\n{summary}"
         )
