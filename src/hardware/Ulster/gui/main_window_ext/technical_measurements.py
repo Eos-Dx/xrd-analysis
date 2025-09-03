@@ -1,6 +1,7 @@
 import json
 import os
 import queue
+import re
 import subprocess
 import time
 import uuid
@@ -230,6 +231,14 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self.auxTable.cellDoubleClicked.connect(self._open_measurement_from_table)
         outer.addWidget(self.auxTable)
 
+        # Aux table actions
+        aux_actions = QHBoxLayout()
+        load_btn = QPushButton("Load Files…")
+        load_btn.setToolTip("Load existing technical measurement files into the table")
+        load_btn.clicked.connect(self.load_technical_files)
+        aux_actions.addWidget(load_btn)
+        outer.addLayout(aux_actions)
+
         # PyFai button
         pyfai_btn = QPushButton("PyFai")
         pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
@@ -349,10 +358,26 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         worker.run()
 
     def _add_aux_item_to_list(self, alias, npy_path):
-        """Add a new row to the Aux table with file, type and alias selectors."""
+        """Add a new row to the Aux table with file, type and alias selectors.
+        Also validates filename format: name_timestamp_..._ALIAS.ext (timestamp before alias).
+        """
         from pathlib import Path
 
         from PyQt5.QtCore import Qt
+
+        # Validate naming: ensure timestamp before alias
+        try:
+            if not self._validate_timestamp_before_alias(npy_path):
+                from PyQt5.QtWidgets import QMessageBox
+
+                QMessageBox.warning(
+                    self,
+                    "Filename format",
+                    "File name should include timestamp before detector alias\n"
+                    "Expected pattern like: name_YYYYMMDD_HHMMSS_..._ALIAS.ext",
+                )
+        except Exception:
+            pass
 
         row = self.auxTable.rowCount()
         self.auxTable.insertRow(row)
@@ -376,6 +401,153 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         le: QLineEdit = getattr(self, f"{typ.lower()}NameLE")
         txt = le.text().strip().replace(" ", "_")
         return txt or typ.lower()
+
+    # ---- Upload and validation helpers ----
+    def _validate_timestamp_before_alias(self, file_path: str) -> bool:
+        """Return True if the file name has a timestamp (YYYYMMDD_HHMMSS) before alias.
+        Accepts names like: name_YYYYMMDD_HHMMSS_..._ALIAS.ext"""
+        base = os.path.basename(file_path)
+        # Remove extension
+        name, _ext = os.path.splitext(base)
+        # Expect at least 3 tokens separated by underscores
+        toks = name.split("_")
+        if len(toks) < 3:
+            return False
+        # Look for timestamp token 'YYYYMMDD_HHMMSS' across two tokens or combined with underscore
+        # Our generator uses a single token with embedded '_': YYYYMMDD_HHMMSS
+        stamp_match = re.search(r"\d{8}_\d{6}", name)
+        if not stamp_match:
+            return False
+        # Ensure alias is the last token
+        alias = toks[-1]
+        # Minimal alias check: alphanumeric
+        if not re.fullmatch(r"[A-Za-z0-9]+", alias):
+            return False
+        # Ensure the timestamp appears before the alias
+        return stamp_match.start() < (len(name) - len(alias))
+
+    def _infer_alias_from_filename(self, file_path: str) -> str:
+        base = os.path.basename(file_path)
+        alias = os.path.splitext(base)[0].split("_")[-1]
+        # Validate against active aliases if available
+        try:
+            active_aliases = self._get_active_detector_aliases()
+            if alias in active_aliases:
+                return alias
+        except Exception:
+            pass
+        return alias  # fallback
+
+    def load_technical_files(self):
+        """Load existing technical measurement files into the aux table.
+        Validates file naming and tries to infer alias from the filename."""
+        from PyQt5.QtWidgets import QFileDialog, QMessageBox
+
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Load Technical Measurement Files",
+            str(self.folderLE.text() or ""),
+            "NumPy Arrays (*.npy);;Text Files (*.txt);;All Files (*)",
+        )
+        if not files:
+            return
+
+        for fpath in files:
+            # Convert .txt to .npy next to it (non-destructive)
+            path_to_use = fpath
+            try:
+                if fpath.lower().endswith(".txt"):
+                    data = np.loadtxt(fpath)
+                    npy_path = os.path.splitext(fpath)[0] + ".npy"
+                    np.save(npy_path, data)
+                    path_to_use = npy_path
+            except Exception as e:
+                QMessageBox.warning(
+                    self,
+                    "Conversion failed",
+                    f"Failed to convert TXT to NPY for:\n{fpath}\nError: {e}",
+                )
+                continue
+
+            # Validate filename format
+            if not self._validate_timestamp_before_alias(path_to_use):
+                QMessageBox.warning(
+                    self,
+                    "Filename format",
+                    "File name should include timestamp before detector alias\n"
+                    "Expected pattern like: name_YYYYMMDD_HHMMSS_..._ALIAS.ext",
+                )
+                # Continue adding anyway, but user is informed
+
+            alias = self._infer_alias_from_filename(path_to_use)
+            self._add_aux_item_to_list(alias, path_to_use)
+
+    # ---- Persist/restore aux table in global state ----
+    def build_aux_state(self):
+        """Serialize current auxTable rows to a list for state saving."""
+        rows = []
+        try:
+            if not hasattr(self, "auxTable") or self.auxTable is None:
+                return rows
+            for r in range(self.auxTable.rowCount()):
+                file_item = self.auxTable.item(r, 0)
+                file_path = (
+                    file_item.data(Qt.UserRole) if file_item is not None else None
+                )
+                # Type
+                type_cb = self.auxTable.cellWidget(r, 1)
+                type_text = None
+                try:
+                    if type_cb is not None:
+                        t = type_cb.currentText()
+                        if t and t != self.NO_SELECTION_LABEL:
+                            type_text = t
+                except Exception:
+                    pass
+                # Alias
+                alias_cb = self.auxTable.cellWidget(r, 2)
+                alias_text = None
+                try:
+                    if alias_cb is not None:
+                        a = alias_cb.currentText()
+                        if a and a != self.NO_SELECTION_LABEL:
+                            alias_text = a
+                except Exception:
+                    pass
+                rows.append(
+                    {"file_path": file_path, "type": type_text, "alias": alias_text}
+                )
+        except Exception as e:
+            print(f"Error building aux state: {e}")
+        return rows
+
+    def restore_technical_aux_rows(self, rows):
+        """Restore auxTable rows from previously saved state."""
+        try:
+            if not hasattr(self, "auxTable") or self.auxTable is None:
+                return
+            # Clear existing rows
+            self.auxTable.setRowCount(0)
+            for row in rows or []:
+                fpath = row.get("file_path")
+                alias = row.get("alias") or self._infer_alias_from_filename(fpath or "")
+                self._add_aux_item_to_list(alias or "", fpath or "")
+                # Set type if provided
+                try:
+                    rix = self.auxTable.rowCount() - 1
+                    type_cb = self.auxTable.cellWidget(rix, 1)
+                    if type_cb is not None and row.get("type"):
+                        idx = (
+                            type_cb.findText(row["type"])
+                            if hasattr(type_cb, "findText")
+                            else -1
+                        )
+                        if idx >= 0:
+                            type_cb.setCurrentIndex(idx)
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"Error restoring aux rows: {e}")
 
     def measure_aux(self):
         self._aux_start = time.time()

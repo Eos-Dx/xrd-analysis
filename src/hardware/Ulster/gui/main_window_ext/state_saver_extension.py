@@ -87,6 +87,12 @@ class StateSaverMixin:
         self._restore_crop_rect(state.get("crop_rect"))
         self._restore_shapes(state.get("shapes", []))
         self._restore_points(state.get("zone_points", []))
+        # Restore technical aux table, if available
+        try:
+            if hasattr(self, "restore_technical_aux_rows"):
+                self.restore_technical_aux_rows(state.get("technical_aux", []))
+        except Exception as e:
+            print(f"Warning: failed to restore technical aux rows: {e}")
         self._refresh_id_counter()
         # Update UI while suppressing widget creation in the points table
         try:
@@ -203,6 +209,13 @@ class StateSaverMixin:
                     "poni_value": ponis.get(alias, ""),
                 }
         state["detector_poni"] = det_info
+
+        # Include technical aux table rows if available
+        try:
+            if hasattr(self, "build_aux_state"):
+                state["technical_aux"] = self.build_aux_state()
+        except Exception as e:
+            print(f"Warning: failed to collect technical aux rows: {e}")
 
         self.state = state
         if is_auto and os.path.exists(self.AUTO_STATE_FILE):
