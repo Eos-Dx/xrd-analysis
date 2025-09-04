@@ -1,6 +1,7 @@
 # zone_measurements/logic/ui_mixin.py
 
 from PyQt5.QtWidgets import (
+    QCheckBox,
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
@@ -91,7 +92,7 @@ class ZoneMeasurementsUIMixin:
         posLayout.addWidget(self.gotoBtn)
         meas_layout.addLayout(posLayout)
 
-        # --- Integration time ---
+        # --- Integration + Attenuation ---
         integrationLayout = QHBoxLayout()
         integrationLabel = QLabel("Integration Time (sec):")
         self.integrationSpinBox = QSpinBox()
@@ -100,18 +101,31 @@ class ZoneMeasurementsUIMixin:
         self.integrationSpinBox.setValue(1)
         integrationLayout.addWidget(integrationLabel)
         integrationLayout.addWidget(self.integrationSpinBox)
-        meas_layout.addLayout(integrationLayout)
 
-        # --- Repeat count ---
-        repeatLayout = QHBoxLayout()
-        repeatLabel = QLabel("Repeat:")
-        self.repeatSpinBox = QSpinBox()
-        self.repeatSpinBox.setMinimum(1)
-        self.repeatSpinBox.setMaximum(10)
-        self.repeatSpinBox.setValue(1)
-        repeatLayout.addWidget(repeatLabel)
-        repeatLayout.addWidget(self.repeatSpinBox)
-        meas_layout.addLayout(repeatLayout)
+        # Attenuation controls (checkbox + frames + short time) on the same line
+        self.attenuationCheckBox = QCheckBox("Attenuation")
+        # Defaults from config
+        atten_cfg = (
+            self.config.get("attenuation", {}) if hasattr(self, "config") else {}
+        )
+        enabled_default = bool(atten_cfg.get("enabled_default", False))
+        self.attenuationCheckBox.setChecked(enabled_default)
+        integrationLayout.addWidget(self.attenuationCheckBox)
+
+        integrationLayout.addWidget(QLabel("Frames:"))
+        self.attenFramesSpin = QSpinBox()
+        self.attenFramesSpin.setRange(1, 100000)
+        self.attenFramesSpin.setValue(int(atten_cfg.get("frames", 100)))
+        integrationLayout.addWidget(self.attenFramesSpin)
+
+        integrationLayout.addWidget(QLabel("Short t (s):"))
+        self.attenTimeSpin = QDoubleSpinBox()
+        self.attenTimeSpin.setDecimals(6)
+        self.attenTimeSpin.setRange(0.000001, 10.0)
+        self.attenTimeSpin.setValue(float(atten_cfg.get("integration_time_s", 0.00005)))
+        integrationLayout.addWidget(self.attenTimeSpin)
+
+        meas_layout.addLayout(integrationLayout)
 
         # --- Folder selection ---
         folderLayout = QHBoxLayout()

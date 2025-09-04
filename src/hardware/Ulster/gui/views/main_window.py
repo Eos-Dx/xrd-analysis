@@ -76,6 +76,12 @@ class MainWindow(
         # If DEV mode, auto-open default image
         self.check_dev_mode()
 
+        # Enable periodic autosave of state
+        try:
+            self.setup_auto_save(interval=5000)
+        except Exception as e:
+            print(f"Warning: failed to start autosave: {e}")
+
     def setup_main_layout(self):
         central = QWidget()
         self.setCentralWidget(central)

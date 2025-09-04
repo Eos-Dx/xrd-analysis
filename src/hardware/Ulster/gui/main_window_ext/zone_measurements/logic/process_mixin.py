@@ -12,7 +12,11 @@ from PyQt5.QtCore import QThread, QTimer
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox
 
-from hardware.Ulster.gui.technical.capture import CaptureWorker, validate_folder
+from hardware.Ulster.gui.technical.capture import (
+    CaptureWorker,
+    move_and_convert_measurement_file,
+    validate_folder,
+)
 from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
 from hardware.Ulster.utils.logger import get_module_logger
@@ -95,6 +99,19 @@ class ZoneMeasurementsProcessMixin:
         self.stop_btn.setEnabled(True)
         self.stopped = False
         self.paused = False
+
+        # If attenuation is enabled, capture background (without sample) ONCE for this run
+        try:
+            if (
+                hasattr(self, "attenuationCheckBox")
+                and self.attenuationCheckBox.isChecked()
+            ):
+                self._capture_attenuation_background()
+        except Exception as e:
+            logger.warning(
+                "Failed to capture attenuation background; will continue without it",
+                error=str(e),
+            )
 
         # Consolidate and sort measurement points
         generated_points = self.image_view.points_dict["generated"]["points"]
@@ -269,11 +286,6 @@ class ZoneMeasurementsProcessMixin:
             - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
         )
 
-        # Move the stage using the controller
-        new_x, new_y = self.stage_controller.move_stage(
-            self._x_mm, self._y_mm, move_timeout=15
-        )
-
         # Build a common filename base (without extension or detector label)
         import os
         import time
@@ -285,11 +297,26 @@ class ZoneMeasurementsProcessMixin:
             f"{self._base_name}_{self._x_mm:.2f}_{self._y_mm:.2f}_{self._timestamp}",
         )
 
-        # Launch the dual-capture worker in its own thread
+        # If attenuation is enabled, run attenuation sequence first, then normal capture
+        attenuation_enabled = getattr(self, "attenuationCheckBox", None)
+        if attenuation_enabled and self.attenuationCheckBox.isChecked():
+            self._start_attenuation_then_normal(txt_filename_base)
+            return
+
+        # Otherwise, move stage and run normal capture directly
+        new_x, new_y = self.stage_controller.move_stage(
+            self._x_mm, self._y_mm, move_timeout=15
+        )
+        self._start_normal_capture(txt_filename_base)
+
+    def _start_normal_capture(self, txt_filename_base: str):
+        # Launch the dual-capture worker in its own thread (normal mode)
         self.capture_worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=self.integration_time,
             txt_filename_base=txt_filename_base,
+            frames=1,
+            naming_mode="normal",
         )
         self.capture_thread = QThread()
         self.capture_worker.moveToThread(self.capture_thread)
@@ -299,6 +326,193 @@ class ZoneMeasurementsProcessMixin:
         self.capture_worker.finished.connect(self.capture_worker.deleteLater)
         self.capture_thread.finished.connect(self.capture_thread.deleteLater)
         self.capture_thread.start()
+
+    def _get_loading_position(self):
+        try:
+            att = self.config.get("attenuation", {})
+            pos = att.get("loading_position")
+            if pos and isinstance(pos, dict):
+                return float(pos.get("x")), float(pos.get("y"))
+        except Exception:
+            pass
+        # Fallback to controller-provided load position if available
+        try:
+            positions = self.stage_controller.get_home_load_positions()
+            return positions.get("load", (None, None))
+        except Exception:
+            return (None, None)
+
+    def _capture_attenuation_background(self):
+        """Capture attenuation WITHOUT sample once at loading position for this run."""
+        frames = (
+            int(getattr(self, "attenFramesSpin", None).value())
+            if hasattr(self, "attenFramesSpin")
+            else 100
+        )
+        short_t = (
+            float(getattr(self, "attenTimeSpin", None).value())
+            if hasattr(self, "attenTimeSpin")
+            else 0.00005
+        )
+
+        load_x, load_y = self._get_loading_position()
+        if load_x is None or load_y is None:
+            logger.warning(
+                "Loading position not configured; skipping attenuation background capture"
+            )
+            self._attenuation_bg_files = None
+            return
+
+        try:
+            self.stage_controller.move_stage(load_x, load_y, move_timeout=20)
+        except Exception as e:
+            logger.warning(
+                "Failed to move to loading position; skipping attenuation background capture",
+                error=str(e),
+            )
+            self._attenuation_bg_files = None
+            return
+
+        import os
+
+        group_ts = time.strftime("%Y%m%d_%H%M%S")
+        base_name = self.fileNameLineEdit.text().strip()
+        group_base = os.path.join(self.measurement_folder, f"{base_name}_{group_ts}")
+
+        results = {}
+        for alias, controller in self.detector_controller.items():
+            try:
+                per_alias_base = f"{group_base}__{alias}_ATTENUATION0"
+                ok = controller.capture_point(
+                    Nframes=frames, Nseconds=short_t, filename_base=per_alias_base
+                )
+                txt_path = per_alias_base + ".txt" if ok else None
+                if txt_path and os.path.exists(txt_path):
+                    alias_folder = os.path.join(self.measurement_folder, alias)
+                    moved_npy = move_and_convert_measurement_file(
+                        txt_path, alias_folder
+                    )
+                    results[alias] = moved_npy
+                else:
+                    results[alias] = None
+            except Exception as e:
+                logger.warning(
+                    "Error capturing attenuation background",
+                    detector=alias,
+                    error=str(e),
+                )
+                results[alias] = None
+
+        self._attenuation_bg_files = results
+
+    def _record_attenuation_files(self, key: str, files: dict):
+        """Record attenuation files in the measurement state under current point unique_id.
+        key: "without_sample" | "with_sample"
+        files: dict alias->filepath
+        """
+        try:
+            mp = self.state_measurements.get("measurement_points", [])
+            idx = self.current_measurement_sorted_index
+            if 0 <= idx < len(mp):
+                uid = mp[idx].get("unique_id")
+            else:
+                uid = None
+        except Exception:
+            uid = None
+        if uid is None:
+            return
+        try:
+            att = self.state_measurements.setdefault("attenuation_files", {})
+            entry = att.setdefault(uid, {})
+            entry[key] = files or {}
+            # Persist to state file if available
+            if (
+                hasattr(self, "state_path_measurements")
+                and self.state_path_measurements
+            ):
+                import json
+
+                with open(self.state_path_measurements, "w") as f:
+                    json.dump(self.state_measurements, f, indent=4)
+        except Exception as e:
+            print(f"Warning: failed to record attenuation files: {e}")
+
+    def _start_attenuation_then_normal(self, txt_filename_base: str):
+        # Read attenuation params from UI
+        frames = (
+            int(getattr(self, "attenFramesSpin", None).value())
+            if hasattr(self, "attenFramesSpin")
+            else 100
+        )
+        short_t = (
+            float(getattr(self, "attenTimeSpin", None).value())
+            if hasattr(self, "attenTimeSpin")
+            else 0.00005
+        )
+
+        # Duplicate WITHOUT sample mapping from background (if available)
+        if getattr(self, "_attenuation_bg_files", None):
+            try:
+                self._record_attenuation_files(
+                    "without_sample", self._attenuation_bg_files
+                )
+            except Exception:
+                pass
+        else:
+            from PyQt5.QtWidgets import QMessageBox
+
+            QMessageBox.warning(
+                self,
+                "Attenuation Background Missing",
+                "Background attenuation (without sample) was not captured; proceeding with with-sample and normal measurements.",
+            )
+
+        # Move to point and capture WITH sample
+        try:
+            self.stage_controller.move_stage(self._x_mm, self._y_mm, move_timeout=15)
+        except Exception:
+            pass
+
+        # Start attenuation capture (with sample) in a thread
+        self._attn2_worker = CaptureWorker(
+            detector_controller=self.detector_controller,
+            integration_time=short_t,
+            txt_filename_base=txt_filename_base,
+            frames=frames,
+            naming_mode="attenuation_with",
+        )
+        self._attn2_thread = QThread()
+        self._attn2_worker.moveToThread(self._attn2_thread)
+        self._attn2_thread.started.connect(self._attn2_worker.run)
+
+        def _after_attn_with(success2, result_files2):
+            # Move WITH-sample attenuation files into alias folders and record moved paths
+            moved_map = {}
+            try:
+                import os as _os
+
+                for a, txt in (result_files2 or {}).items():
+                    if txt and _os.path.exists(txt):
+                        alias_folder = _os.path.join(self.measurement_folder, a)
+                        moved_map[a] = move_and_convert_measurement_file(
+                            txt, alias_folder
+                        )
+                    else:
+                        moved_map[a] = None
+            except Exception:
+                pass
+            try:
+                self._record_attenuation_files("with_sample", moved_map)
+            except Exception:
+                pass
+            # Proceed with normal capture
+            self._start_normal_capture(txt_filename_base)
+
+        self._attn2_worker.finished.connect(_after_attn_with)
+        self._attn2_worker.finished.connect(self._attn2_thread.quit)
+        self._attn2_worker.finished.connect(self._attn2_worker.deleteLater)
+        self._attn2_thread.finished.connect(self._attn2_thread.deleteLater)
+        self._attn2_thread.start()
 
     def on_capture_finished(self, success: bool, result_files: dict):
         """
