@@ -1,11 +1,11 @@
 # Nota: C-Order, 1 refers to the Y axis, 2 to the X axis
-# Calibration done on Mon Sep 01 11:09:45 2025 (DEMO MODE - FAKE DATA)
+# Calibration done on Wed Sep 03 20:28:15 2025 (DEMO MODE - FAKE DATA)
 poni_version: 2.1
 Detector: Detector
 Detector_config: {"pixel1": 9.999999999999999e-05, "pixel2": 9.999999999999999e-05, "max_shape": [128, 128], "orientation": 3}
-Distance: 0.174113
-Poni1: 0.006187
-Poni2: 0.002321
+Distance: 0.231225
+Poni1: 0.00734
+Poni2: 0.001496
 Rot1: 0
 Rot2: 0
 Rot3: 0

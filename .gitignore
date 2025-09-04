@@ -153,3 +153,7 @@ src/hardware/Ulster/gui/autosave_state_prev.json
 src/hardware/Ulster/gui/autosave_state_prev.json
 src/hardware/Ulster/gui/_state.json
 src/hardware/Ulster/gui/autosave_state_prev.json
+
+# Demo PONI files (user-modified)
+src/hardware/Ulster/resources/demo_poni_files/saxs_demo.poni
+src/hardware/Ulster/resources/demo_poni_files/waxs_demo.poni

@@ -222,11 +222,25 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
                 "Alias",
             ]
         )
-        # Stretch columns
+        # Configure column sizing and appearance
         try:
+            from PyQt5.QtGui import QFont
             from PyQt5.QtWidgets import QHeaderView
 
-            self.auxTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            header = self.auxTable.horizontalHeader()
+            # File column takes most space, Type and Alias are compact
+            header.setSectionResizeMode(0, QHeaderView.Stretch)  # File column
+            header.setSectionResizeMode(1, QHeaderView.Fixed)  # Type column
+            header.setSectionResizeMode(2, QHeaderView.Fixed)  # Alias column
+
+            # Set fixed widths for Type and Alias (about 5 chars + padding)
+            self.auxTable.setColumnWidth(1, 60)  # Type column
+            self.auxTable.setColumnWidth(2, 60)  # Alias column
+
+            # Set smaller font for better filename readability
+            font = QFont()
+            font.setPointSize(8)  # Smaller font size
+            self.auxTable.setFont(font)
         except Exception:
             pass
         self.auxTable.setSelectionBehavior(self.auxTable.SelectRows)
@@ -403,6 +417,18 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         alias_cb = self._make_alias_combobox(preselect=alias)
         self.auxTable.setCellWidget(row, 2, alias_cb)
 
+        # Auto-set type if we can infer it from filename
+        try:
+            inferred_type = self._infer_type_from_filename(npy_path)
+            if inferred_type:
+                type_cb = self.auxTable.cellWidget(row, 1)
+                if type_cb and hasattr(type_cb, "findText"):
+                    idx = type_cb.findText(inferred_type)
+                    if idx >= 0:
+                        type_cb.setCurrentIndex(idx)
+        except Exception:
+            pass
+
     def _file_base(self, typ: str) -> str:
         le: QLineEdit = getattr(self, f"{typ.lower()}NameLE")
         txt = le.text().strip().replace(" ", "_")
@@ -443,6 +469,22 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         except Exception:
             pass
         return alias  # fallback
+
+    def _infer_type_from_filename(self, file_path: str) -> str:
+        """Infer measurement type from filename patterns."""
+        base = os.path.basename(file_path).lower()
+        # Check for common patterns in filename
+        for type_option in self.TYPE_OPTIONS:
+            if type_option.lower() in base:
+                return type_option
+        # Check for common variations
+        if "dark" in base or "background" in base:
+            return "DARK"
+        if "empty" in base:
+            return "EMPTY"
+        if "agbh" in base or "ag" in base:
+            return "AGBH"
+        return None  # No match found
 
     def load_technical_files(self):
         """Load existing technical measurement files into the aux table.
@@ -487,6 +529,19 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
             alias = self._infer_alias_from_filename(path_to_use)
             self._add_aux_item_to_list(alias, path_to_use)
+
+            # Auto-set type if we can infer it from filename
+            try:
+                inferred_type = self._infer_type_from_filename(path_to_use)
+                if inferred_type:
+                    row_idx = self.auxTable.rowCount() - 1
+                    type_cb = self.auxTable.cellWidget(row_idx, 1)
+                    if type_cb and hasattr(type_cb, "findText"):
+                        idx = type_cb.findText(inferred_type)
+                        if idx >= 0:
+                            type_cb.setCurrentIndex(idx)
+            except Exception:
+                pass
 
     # ---- Persist/restore aux table in global state ----
     def build_aux_state(self):
@@ -843,6 +898,12 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         meta = {}
         seen_pairs = set()  # (type, alias)
 
+        # Get active detector aliases for validation
+        try:
+            active_aliases = self._get_active_detector_aliases()
+        except Exception:
+            active_aliases = []
+
         for row in rows:
             file_item = self.auxTable.item(row, 0)
             if not file_item:
@@ -890,6 +951,27 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
                 return
             dst[al] = base
             seen_pairs.add(pair)
+
+        # Validate detector completeness: all active detectors should be represented
+        if active_aliases:
+            aliases_in_meta = set()
+            for type_data in meta.values():
+                if isinstance(type_data, dict):
+                    aliases_in_meta.update(type_data.keys())
+
+            missing_aliases = set(active_aliases) - aliases_in_meta
+            if missing_aliases:
+                from PyQt5.QtWidgets import QMessageBox
+
+                QMessageBox.warning(
+                    self,
+                    "Incomplete Detector Coverage",
+                    f"The following active detectors are missing from the technical meta:\n\n"
+                    f"{', '.join(sorted(missing_aliases))}\n\n"
+                    f"Please ensure all {len(active_aliases)} active detectors have measurements "
+                    f"before generating the technical meta file.",
+                )
+                return
 
         # Get unique aliases from selected measurements for PONI file selection
         unique_aliases = set()
