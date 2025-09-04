@@ -158,6 +158,12 @@ class ZoneMeasurementsProcessMixin:
             total_points=self.total_points,
             integration_time=self.integration_time,
         )
+        try:
+            self._append_measurement_log(
+                f"Start: {self.total_points} points, T={self.integration_time:.2f}s"
+            )
+        except Exception:
+            pass
 
         # Filter out-of-bounds points and create measurement list using controller limits
         try:
@@ -286,7 +292,14 @@ class ZoneMeasurementsProcessMixin:
             - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
         )
 
-        # Build a common filename base (without extension or detector label)
+        try:
+            self._append_measurement_log(
+                f"Point {self.current_measurement_sorted_index + 1}/{self.total_points}: move to ({self._x_mm:.3f}, {self._y_mm:.3f}) mm"
+            )
+        except Exception:
+            pass
+
+        # Move the stage using the controller
         import os
         import time
 
@@ -311,6 +324,10 @@ class ZoneMeasurementsProcessMixin:
 
     def _start_normal_capture(self, txt_filename_base: str):
         # Launch the dual-capture worker in its own thread (normal mode)
+        try:
+            self._append_measurement_log("Normal: capture")
+        except Exception:
+            pass
         self.capture_worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=self.integration_time,
@@ -375,6 +392,14 @@ class ZoneMeasurementsProcessMixin:
 
         import os
 
+        try:
+            self._append_measurement_log("Attenuation: move to loading position")
+            self._append_measurement_log(
+                f"Attenuation: capture WITHOUT sample (frames={frames}, t={short_t:.6f}s)"
+            )
+        except Exception:
+            pass
+
         group_ts = time.strftime("%Y%m%d_%H%M%S")
         base_name = self.fileNameLineEdit.text().strip()
         group_base = os.path.join(self.measurement_folder, f"{base_name}_{group_ts}")
@@ -404,6 +429,13 @@ class ZoneMeasurementsProcessMixin:
                 results[alias] = None
 
         self._attenuation_bg_files = results
+        try:
+            n_ok = sum(1 for v in results.values() if v)
+            self._append_measurement_log(
+                f"Attenuation: background saved for {n_ok} detector(s)"
+            )
+        except Exception:
+            pass
 
     def _record_attenuation_files(self, key: str, files: dict):
         """Record attenuation files in the measurement state under current point unique_id.
@@ -474,6 +506,12 @@ class ZoneMeasurementsProcessMixin:
             pass
 
         # Start attenuation capture (with sample) in a thread
+        try:
+            self._append_measurement_log(
+                f"Attenuation: capture WITH sample (frames={frames}, t={short_t:.6f}s)"
+            )
+        except Exception:
+            pass
         self._attn2_worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=short_t,
@@ -487,6 +525,10 @@ class ZoneMeasurementsProcessMixin:
 
         def _after_attn_with(success2, result_files2):
             # Move WITH-sample attenuation files into alias folders and record moved paths
+            try:
+                self._append_measurement_log("Attenuation: with-sample files saved")
+            except Exception:
+                pass
             moved_map = {}
             try:
                 import os as _os
@@ -522,8 +564,16 @@ class ZoneMeasurementsProcessMixin:
         """
         if not success:
             logger.error("Measurement capture failed")
+            try:
+                self._append_measurement_log("Normal: capture failed")
+            except Exception:
+                pass
             return
         logger.info("Measurement capture successful", files=list(result_files.keys()))
+        try:
+            self._append_measurement_log("Normal: capture finished")
+        except Exception:
+            pass
 
         # Build detector meta as before
         detector_lookup = {d["alias"]: d for d in self.config["detectors"]}

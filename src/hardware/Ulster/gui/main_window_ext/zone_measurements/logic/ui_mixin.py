@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QSpinBox,
@@ -15,6 +16,21 @@ from PyQt5.QtWidgets import (
 
 
 class ZoneMeasurementsUIMixin:
+    def _append_measurement_log(self, msg: str):
+        try:
+            import time
+
+            ts = time.strftime("%H:%M:%S")
+            line = f"{ts} | {msg}"
+            if hasattr(self, "measurementLog") and self.measurementLog is not None:
+                if (
+                    getattr(self, "logCheckBox", None) is None
+                    or self.logCheckBox.isChecked()
+                ):
+                    self.measurementLog.appendPlainText(line)
+        except Exception:
+            pass
+
     def create_zone_measurements_widget(self):
         """
         Builds the Measurements tab and all its controls.
@@ -176,6 +192,19 @@ class ZoneMeasurementsUIMixin:
         progressLayout.addWidget(self.progressBar)
         progressLayout.addWidget(self.timeRemainingLabel)
         meas_layout.addLayout(progressLayout)
+
+        # --- Measurement log (optional visibility) ---
+        logLayout = QVBoxLayout()
+        self.logCheckBox = QCheckBox("Show log")
+        self.logCheckBox.setChecked(True)
+        logLayout.addWidget(self.logCheckBox)
+        self.measurementLog = QPlainTextEdit()
+        self.measurementLog.setReadOnly(True)
+        self.measurementLog.setMaximumBlockCount(2000)  # prevent memory bloat
+        logLayout.addWidget(self.measurementLog)
+        self.logCheckBox.toggled.connect(self.measurementLog.setVisible)
+        self.measurementLog.setVisible(self.logCheckBox.isChecked())
+        meas_layout.addLayout(logLayout)
 
         # Timer for stage XY updates
         from PyQt5.QtCore import QTimer
