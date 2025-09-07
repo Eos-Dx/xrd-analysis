@@ -46,7 +46,8 @@ class StageControlMixin:
             self.gotoBtn.setEnabled(ok)
 
             if ok:
-                self.populate_detector_param_tab()  # Populate "Detector param" tab now
+                # Refresh detector tabs for the new mode (demo/production)
+                self.refresh_detector_tabs_for_mode_switch()
                 self.initializeBtn.setText("Deinitialize Hardware")
                 self.hardware_initialized = True
                 if hasattr(self, "hardware_state_changed"):
@@ -58,8 +59,8 @@ class StageControlMixin:
             except Exception as e:
                 print(f"Error deinitializing hardware: {e}")
 
-            # Clear the param tab UI
-            self.clear_detector_param_tab()
+            # Clear the detector tabs UI
+            self.clear_detector_param_tabs()
 
             self.xyStageIndicator.setStyleSheet(
                 "background-color: gray; border-radius: 10px;"

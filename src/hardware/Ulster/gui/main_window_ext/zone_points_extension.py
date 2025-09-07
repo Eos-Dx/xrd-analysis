@@ -297,7 +297,12 @@ class ZonePointsMixin:
                     item.setBrush(ZonePointsConstants.POINT_COLOR_SELECTED)
 
     def eventFilter(self, source, event):
-        if source == self.pointsTable and event.type() == QEvent.KeyPress:
+        # Safety check: ensure pointsTable exists before comparing
+        if (
+            hasattr(self, "pointsTable")
+            and source == self.pointsTable
+            and event.type() == QEvent.KeyPress
+        ):
             if event.key() == Qt.Key_Delete:
                 self.delete_selected_points()
                 return True

@@ -3,6 +3,7 @@
 import hashlib
 import json
 import time
+import uuid
 from copy import copy
 from pathlib import Path
 from typing import Optional
@@ -11,7 +12,11 @@ from PyQt5.QtCore import QThread, QTimer
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox
 
-from hardware.Ulster.gui.technical.capture import CaptureWorker, validate_folder
+from hardware.Ulster.gui.technical.capture import (
+    CaptureWorker,
+    move_and_convert_measurement_file,
+    validate_folder,
+)
 from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
 from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
 from hardware.Ulster.utils.logger import get_module_logger
@@ -44,6 +49,27 @@ class ZoneMeasurementsProcessMixin:
             return  # Exit the function early
         # ==================================
 
+        # ===== PRE-MEASUREMENT PONI UPDATE CONFIRMATION =====
+        if not self._confirm_poni_settings_before_measurement():
+            return  # User chose to update PONI settings first
+        # ==================================
+
+        # Ensure a session-level calibration group hash exists and is placed in the state before copying
+        group_hash = getattr(self, "calibration_group_hash", None)
+        if not group_hash:
+            try:
+                group_hash = uuid.uuid4().hex[:16]
+            except Exception:
+                group_hash = None
+            setattr(self, "calibration_group_hash", group_hash)
+        if group_hash:
+            try:
+                # Store in current state so it propagates everywhere
+                if isinstance(getattr(self, "state", None), dict):
+                    self.state["CALIBRATION_GROUP_HASH"] = group_hash
+            except Exception:
+                pass
+
         try:
             self.state_measurements = copy(self.state)
         except Exception as e:
@@ -73,6 +99,19 @@ class ZoneMeasurementsProcessMixin:
         self.stop_btn.setEnabled(True)
         self.stopped = False
         self.paused = False
+
+        # If attenuation is enabled, capture background (without sample) ONCE for this run
+        try:
+            if (
+                hasattr(self, "attenuationCheckBox")
+                and self.attenuationCheckBox.isChecked()
+            ):
+                self._capture_attenuation_background()
+        except Exception as e:
+            logger.warning(
+                "Failed to capture attenuation background; will continue without it",
+                error=str(e),
+            )
 
         # Consolidate and sort measurement points
         generated_points = self.image_view.points_dict["generated"]["points"]
@@ -119,6 +158,12 @@ class ZoneMeasurementsProcessMixin:
             total_points=self.total_points,
             integration_time=self.integration_time,
         )
+        try:
+            self._append_measurement_log(
+                f"Start: {self.total_points} points, T={self.integration_time:.2f}s"
+            )
+        except Exception:
+            pass
 
         # Filter out-of-bounds points and create measurement list using controller limits
         try:
@@ -200,6 +245,10 @@ class ZoneMeasurementsProcessMixin:
         # Also save this in state_measurements if you use a copy
         self.state_measurements["measurement_points"] = measurement_points
         self.state_measurements["skipped_points"] = self.state["skipped_points"]
+        # Ensure CALIBRATION_GROUP_HASH is present in state_measurements
+        gh = getattr(self, "calibration_group_hash", None)
+        if gh:
+            self.state_measurements["CALIBRATION_GROUP_HASH"] = gh
         self.manual_save_state()
         self.measure_next_point()
 
@@ -243,12 +292,14 @@ class ZoneMeasurementsProcessMixin:
             - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
         )
 
-        # Move the stage using the controller
-        new_x, new_y = self.stage_controller.move_stage(
-            self._x_mm, self._y_mm, move_timeout=15
-        )
+        try:
+            self._append_measurement_log(
+                f"Point {self.current_measurement_sorted_index + 1}/{self.total_points}: move to ({self._x_mm:.3f}, {self._y_mm:.3f}) mm"
+            )
+        except Exception:
+            pass
 
-        # Build a common filename base (without extension or detector label)
+        # Move the stage using the controller
         import os
         import time
 
@@ -259,11 +310,30 @@ class ZoneMeasurementsProcessMixin:
             f"{self._base_name}_{self._x_mm:.2f}_{self._y_mm:.2f}_{self._timestamp}",
         )
 
-        # Launch the dual-capture worker in its own thread
+        # If attenuation is enabled, run attenuation sequence first, then normal capture
+        attenuation_enabled = getattr(self, "attenuationCheckBox", None)
+        if attenuation_enabled and self.attenuationCheckBox.isChecked():
+            self._start_attenuation_then_normal(txt_filename_base)
+            return
+
+        # Otherwise, move stage and run normal capture directly
+        new_x, new_y = self.stage_controller.move_stage(
+            self._x_mm, self._y_mm, move_timeout=15
+        )
+        self._start_normal_capture(txt_filename_base)
+
+    def _start_normal_capture(self, txt_filename_base: str):
+        # Launch the dual-capture worker in its own thread (normal mode)
+        try:
+            self._append_measurement_log("Normal: capture")
+        except Exception:
+            pass
         self.capture_worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=self.integration_time,
             txt_filename_base=txt_filename_base,
+            frames=1,
+            naming_mode="normal",
         )
         self.capture_thread = QThread()
         self.capture_worker.moveToThread(self.capture_thread)
@@ -274,6 +344,218 @@ class ZoneMeasurementsProcessMixin:
         self.capture_thread.finished.connect(self.capture_thread.deleteLater)
         self.capture_thread.start()
 
+    def _get_loading_position(self):
+        try:
+            att = self.config.get("attenuation", {})
+            pos = att.get("loading_position")
+            if pos and isinstance(pos, dict):
+                return float(pos.get("x")), float(pos.get("y"))
+        except Exception:
+            pass
+        # Fallback to controller-provided load position if available
+        try:
+            positions = self.stage_controller.get_home_load_positions()
+            return positions.get("load", (None, None))
+        except Exception:
+            return (None, None)
+
+    def _capture_attenuation_background(self):
+        """Capture attenuation WITHOUT sample once at loading position for this run."""
+        frames = (
+            int(getattr(self, "attenFramesSpin", None).value())
+            if hasattr(self, "attenFramesSpin")
+            else 100
+        )
+        short_t = (
+            float(getattr(self, "attenTimeSpin", None).value())
+            if hasattr(self, "attenTimeSpin")
+            else 0.00005
+        )
+
+        load_x, load_y = self._get_loading_position()
+        if load_x is None or load_y is None:
+            logger.warning(
+                "Loading position not configured; skipping attenuation background capture"
+            )
+            self._attenuation_bg_files = None
+            return
+
+        try:
+            self.stage_controller.move_stage(load_x, load_y, move_timeout=20)
+        except Exception as e:
+            logger.warning(
+                "Failed to move to loading position; skipping attenuation background capture",
+                error=str(e),
+            )
+            self._attenuation_bg_files = None
+            return
+
+        import os
+
+        try:
+            self._append_measurement_log("Attenuation: move to loading position")
+            self._append_measurement_log(
+                f"Attenuation: capture WITHOUT sample (frames={frames}, t={short_t:.6f}s)"
+            )
+        except Exception:
+            pass
+
+        group_ts = time.strftime("%Y%m%d_%H%M%S")
+        base_name = self.fileNameLineEdit.text().strip()
+        group_base = os.path.join(self.measurement_folder, f"{base_name}_{group_ts}")
+
+        results = {}
+        for alias, controller in self.detector_controller.items():
+            try:
+                per_alias_base = f"{group_base}__{alias}_ATTENUATION0"
+                ok = controller.capture_point(
+                    Nframes=frames, Nseconds=short_t, filename_base=per_alias_base
+                )
+                txt_path = per_alias_base + ".txt" if ok else None
+                if txt_path and os.path.exists(txt_path):
+                    alias_folder = os.path.join(self.measurement_folder, alias)
+                    moved_npy = move_and_convert_measurement_file(
+                        txt_path, alias_folder
+                    )
+                    results[alias] = moved_npy
+                else:
+                    results[alias] = None
+            except Exception as e:
+                logger.warning(
+                    "Error capturing attenuation background",
+                    detector=alias,
+                    error=str(e),
+                )
+                results[alias] = None
+
+        self._attenuation_bg_files = results
+        try:
+            n_ok = sum(1 for v in results.values() if v)
+            self._append_measurement_log(
+                f"Attenuation: background saved for {n_ok} detector(s)"
+            )
+        except Exception:
+            pass
+
+    def _record_attenuation_files(self, key: str, files: dict):
+        """Record attenuation files in the measurement state under current point unique_id.
+        key: "without_sample" | "with_sample"
+        files: dict alias->filepath
+        """
+        try:
+            mp = self.state_measurements.get("measurement_points", [])
+            idx = self.current_measurement_sorted_index
+            if 0 <= idx < len(mp):
+                uid = mp[idx].get("unique_id")
+            else:
+                uid = None
+        except Exception:
+            uid = None
+        if uid is None:
+            return
+        try:
+            att = self.state_measurements.setdefault("attenuation_files", {})
+            entry = att.setdefault(uid, {})
+            entry[key] = files or {}
+            # Persist to state file if available
+            if (
+                hasattr(self, "state_path_measurements")
+                and self.state_path_measurements
+            ):
+                import json
+
+                with open(self.state_path_measurements, "w") as f:
+                    json.dump(self.state_measurements, f, indent=4)
+        except Exception as e:
+            print(f"Warning: failed to record attenuation files: {e}")
+
+    def _start_attenuation_then_normal(self, txt_filename_base: str):
+        # Read attenuation params from UI
+        frames = (
+            int(getattr(self, "attenFramesSpin", None).value())
+            if hasattr(self, "attenFramesSpin")
+            else 100
+        )
+        short_t = (
+            float(getattr(self, "attenTimeSpin", None).value())
+            if hasattr(self, "attenTimeSpin")
+            else 0.00005
+        )
+
+        # Duplicate WITHOUT sample mapping from background (if available)
+        if getattr(self, "_attenuation_bg_files", None):
+            try:
+                self._record_attenuation_files(
+                    "without_sample", self._attenuation_bg_files
+                )
+            except Exception:
+                pass
+        else:
+            from PyQt5.QtWidgets import QMessageBox
+
+            QMessageBox.warning(
+                self,
+                "Attenuation Background Missing",
+                "Background attenuation (without sample) was not captured; proceeding with with-sample and normal measurements.",
+            )
+
+        # Move to point and capture WITH sample
+        try:
+            self.stage_controller.move_stage(self._x_mm, self._y_mm, move_timeout=15)
+        except Exception:
+            pass
+
+        # Start attenuation capture (with sample) in a thread
+        try:
+            self._append_measurement_log(
+                f"Attenuation: capture WITH sample (frames={frames}, t={short_t:.6f}s)"
+            )
+        except Exception:
+            pass
+        self._attn2_worker = CaptureWorker(
+            detector_controller=self.detector_controller,
+            integration_time=short_t,
+            txt_filename_base=txt_filename_base,
+            frames=frames,
+            naming_mode="attenuation_with",
+        )
+        self._attn2_thread = QThread()
+        self._attn2_worker.moveToThread(self._attn2_thread)
+        self._attn2_thread.started.connect(self._attn2_worker.run)
+
+        def _after_attn_with(success2, result_files2):
+            # Move WITH-sample attenuation files into alias folders and record moved paths
+            try:
+                self._append_measurement_log("Attenuation: with-sample files saved")
+            except Exception:
+                pass
+            moved_map = {}
+            try:
+                import os as _os
+
+                for a, txt in (result_files2 or {}).items():
+                    if txt and _os.path.exists(txt):
+                        alias_folder = _os.path.join(self.measurement_folder, a)
+                        moved_map[a] = move_and_convert_measurement_file(
+                            txt, alias_folder
+                        )
+                    else:
+                        moved_map[a] = None
+            except Exception:
+                pass
+            try:
+                self._record_attenuation_files("with_sample", moved_map)
+            except Exception:
+                pass
+            # Proceed with normal capture
+            self._start_normal_capture(txt_filename_base)
+
+        self._attn2_worker.finished.connect(_after_attn_with)
+        self._attn2_worker.finished.connect(self._attn2_thread.quit)
+        self._attn2_worker.finished.connect(self._attn2_worker.deleteLater)
+        self._attn2_thread.finished.connect(self._attn2_thread.deleteLater)
+        self._attn2_thread.start()
+
     def on_capture_finished(self, success: bool, result_files: dict):
         """
         Callback after detector(s) finish capturing.
@@ -282,8 +564,16 @@ class ZoneMeasurementsProcessMixin:
         """
         if not success:
             logger.error("Measurement capture failed")
+            try:
+                self._append_measurement_log("Normal: capture failed")
+            except Exception:
+                pass
             return
         logger.info("Measurement capture successful", files=list(result_files.keys()))
+        try:
+            self._append_measurement_log("Normal: capture finished")
+        except Exception:
+            pass
 
         # Build detector meta as before
         detector_lookup = {d["alias"]: d for d in self.config["detectors"]}
@@ -297,7 +587,7 @@ class ZoneMeasurementsProcessMixin:
 
         for alias, txt_filename in result_files.items():
             detector_meta = detector_lookup.get(alias, {})
-            measurements[Path(txt_filename).name] = {
+            entry = {
                 "x": x,
                 "y": y,
                 "unique_id": point_unique_id,  # <-- use the precomputed one!
@@ -310,6 +600,11 @@ class ZoneMeasurementsProcessMixin:
                 "pixel_size_um": detector_meta.get("pixel_size_um"),
                 "faulty_pixels": detector_meta.get("faulty_pixels"),
             }
+            # Attach calibration group hash if available
+            gh = getattr(self, "calibration_group_hash", None)
+            if gh:
+                entry["CALIBRATION_GROUP_HASH"] = gh
+            measurements[Path(txt_filename).name] = entry
 
         self.state_measurements["measurements_meta"] = measurements
 
@@ -559,3 +854,96 @@ class ZoneMeasurementsProcessMixin:
         self.pause_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
         logger.info("Measurements stopped and reset")
+
+    def _confirm_poni_settings_before_measurement(self):
+        """Show PONI settings confirmation dialog before starting measurements.
+        Returns True if user wants to proceed, False if they want to update PONI settings first.
+        """
+        from PyQt5.QtWidgets import QMessageBox
+
+        try:
+            active_aliases = self.hardware_controller.active_detector_aliases
+        except Exception:
+            dev_mode = self.config.get("DEV", False)
+            ids = (
+                self.config.get("dev_active_detectors", [])
+                if dev_mode
+                else self.config.get("active_detectors", [])
+            )
+            active_aliases = [
+                d.get("alias")
+                for d in self.config.get("detectors", [])
+                if d.get("id") in ids
+            ]
+
+        ponis = getattr(self, "ponis", {}) or {}
+        poni_files = getattr(self, "poni_files", {}) or {}
+
+        # Check for missing PONI calibrations
+        missing = [a for a in active_aliases if not ponis.get(a)]
+        if missing:
+            QMessageBox.warning(
+                self,
+                "Missing PONI Calibration",
+                "PONI calibration must be set for detectors: "
+                + ", ".join(missing)
+                + "\nOpen the detector tabs and set PONI files before starting measurements.",
+            )
+            return False
+
+        # Build PONI status summary
+        poni_status = []
+        for alias in active_aliases:
+            meta = poni_files.get(alias, {})
+            path = meta.get("path")
+            name = meta.get("name") or "Default/Embedded PONI"
+
+            if path:
+                from pathlib import Path
+
+                if Path(path).exists():
+                    status = "✓ File exists"
+                else:
+                    status = "⚠ File missing"
+                poni_status.append(f"• {alias}: {name}\n  {status}: {path}")
+            else:
+                poni_status.append(f"• {alias}: {name}\n  ✓ Using embedded data")
+
+        status_text = "\n\n".join(poni_status)
+
+        # Show confirmation dialog
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Confirm PONI Settings")
+        msg.setIcon(QMessageBox.Question)
+        msg.setText(
+            "Current PONI calibration settings:\n\n"
+            f"{status_text}\n\n"
+            "Do you want to start measurements with these settings?"
+        )
+
+        # Add custom buttons
+        start_button = msg.addButton("Start Measurements", QMessageBox.AcceptRole)
+        update_button = msg.addButton("Update PONI Settings", QMessageBox.RejectRole)
+        cancel_button = msg.addButton("Cancel", QMessageBox.RejectRole)
+
+        msg.setDefaultButton(start_button)
+        msg.exec_()
+
+        clicked = msg.clickedButton()
+        if clicked == start_button:
+            return True  # Proceed with measurements
+        elif clicked == update_button:
+            # Switch to first detector tab to allow user to update PONI settings
+            if hasattr(self, "tabs") and hasattr(self, "detector_tabs"):
+                # Find first detector tab and switch to it
+                first_detector_tab = None
+                min_index = float("inf")
+                for alias, tab_info in self.detector_tabs.items():
+                    if tab_info["index"] < min_index:
+                        min_index = tab_info["index"]
+                        first_detector_tab = tab_info["index"]
+                if first_detector_tab is not None:
+                    self.tabs.setCurrentIndex(first_detector_tab)
+            return False  # Don't start measurements
+        else:
+            return False  # Cancel
