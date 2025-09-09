@@ -397,7 +397,7 @@ def test_goodness_transformer_adds_column():
     )
     out = gt.transform(df)
     assert "goodness" in out.columns
-    assert out["goodness"].between(0, 100, inclusive="both").all()
+    assert ((out["goodness"] >= 0) & (out["goodness"] <= 100)).all()
     # First row should have 0 goodness due to zero energy after normalization
     assert out.iloc[0]["goodness"] == 0.0
 
