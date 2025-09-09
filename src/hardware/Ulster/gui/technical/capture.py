@@ -26,11 +26,15 @@ class CaptureWorker(QObject):
         integration_time,
         txt_filename_base,
         parent=None,
+        frames: int = 1,
+        naming_mode: str = "normal",  # normal | attenuation_with | attenuation_without
     ):
         super().__init__(parent)
         self.detector_controller = detector_controller
         self.integration_time = integration_time
         self.txt_filename_base = txt_filename_base
+        self.frames = frames
+        self.naming_mode = naming_mode
 
     def run(self):
         threads = {}
@@ -38,14 +42,20 @@ class CaptureWorker(QObject):
 
         def run_capture(alias, controller):
             try:
+                # Build per-alias filename base according to naming mode
+                if self.naming_mode == "attenuation_with":
+                    base = f"{self.txt_filename_base}__{alias}_ATTENUATION"
+                elif self.naming_mode == "attenuation_without":
+                    base = f"{self.txt_filename_base}__{alias}_ATTENUATION0"
+                else:
+                    base = f"{self.txt_filename_base}_{alias}"
+
                 success = controller.capture_point(
-                    Nframes=1,
+                    Nframes=self.frames,
                     Nseconds=self.integration_time,
-                    filename_base=self.txt_filename_base + f"_{alias}",
+                    filename_base=base,
                 )
-                results[alias] = (
-                    self.txt_filename_base + f"_{alias}.txt" if success else None
-                )
+                results[alias] = (base + ".txt") if success else None
             except Exception as e:
                 print(f"Error in capture for {alias}: {e}")
                 results[alias] = None
