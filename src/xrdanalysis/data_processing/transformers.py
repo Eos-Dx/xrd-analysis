@@ -166,9 +166,7 @@ class AzimuthalIntegration(TransformerMixin):
                 lambda x: pd.Series([x[0], x[1], x[2], x[3], x[4], x[5], x[6]])
             )
         elif self.integration_mode == "rotating_angles":
-            expanded_results = integration_results.apply(
-                unpack_rotating_angles_results
-            )
+            expanded_results = integration_results.apply(unpack_rotating_angles_results)
             expanded_df = pd.DataFrame(list(expanded_results))
 
             # Concatenate the original DataFrame with the new columns
@@ -309,9 +307,7 @@ class DeviationTransformer(TransformerMixin):
         x_copy.dropna(subset="ponifile", inplace=True)
 
         calc_func = (
-            calculate_deviation_cake
-            if self.mode == "cake"
-            else calculate_deviation
+            calculate_deviation_cake if self.mode == "cake" else calculate_deviation
         )
 
         integration_results = x_copy.apply(
@@ -542,9 +538,7 @@ class ColumnExtractor(TransformerMixin):
         X_copy = X.copy()
 
         # Apply flattening logic to each row
-        flattened_data = X_copy.apply(
-            lambda row: self._flatten_row(row), axis=1
-        )
+        flattened_data = X_copy.apply(lambda row: self._flatten_row(row), axis=1)
 
         # Return the DataFrame with flattened rows
         return pd.DataFrame(
@@ -640,9 +634,7 @@ class ColumnCleaner(TransformerMixin):
 
         for rule in self.rules:
             if isinstance(rule, RuleQ):
-                X_copy = X_copy[
-                    X_copy.apply(lambda row: clean_q(row, rule), axis=1)
-                ]
+                X_copy = X_copy[X_copy.apply(lambda row: clean_q(row, rule), axis=1)]
             else:
                 raise Exception(f"I do not know how to treat {type(rule)}.")
 
@@ -702,9 +694,9 @@ class QRangeSetter(TransformerMixin):
             limits_waxs = (self.limits.q_min_waxs, self.limits.q_max_waxs)
             limits_saxs = (self.limits.q_min_saxs, self.limits.q_max_saxs)
             if "type_measurement" not in dfc.columns:
-                dfc["type_measurement"] = dfc[
-                    "calibration_manual_distance"
-                ].apply(lambda d: "WAXS" if d < 50 else "SAXS")
+                dfc["type_measurement"] = dfc["calibration_manual_distance"].apply(
+                    lambda d: "WAXS" if d < 50 else "SAXS"
+                )
             dfc["interpolation_q_range"] = dfc["type_measurement"].apply(
                 lambda x: limits_waxs if x == "WAXS" else limits_saxs
             )
@@ -768,9 +760,7 @@ class SlopeRemoval(TransformerMixin):
 
         for column in self.columns:
             if self.mode == "custom":
-                X[column] = X[column].apply(
-                    lambda x: slope_removal_custom(x)[0]
-                )
+                X[column] = X[column].apply(lambda x: slope_removal_custom(x)[0])
             else:
                 X[column] = X[column].apply(lambda x: slope_removal(x))
 
@@ -867,9 +857,9 @@ class FourierTransform(TransformerMixin):
                         f"fourier_coefficients_{column}",
                         f"fourier_inverse_{column}",
                     ]
-                ] = X[column].apply(
-                    lambda x: pd.Series(fourier_func(x, self.order))
-                )
+                ] = X[
+                    column
+                ].apply(lambda x: pd.Series(fourier_func(x, self.order)))
         else:
             X[self._get_feature_columns()] = X[self.columns[0]].apply(
                 lambda x: pd.Series(
@@ -904,11 +894,130 @@ class FourierTransform(TransformerMixin):
             ]
 
         # If a single feature or list of features is provided
-        return (
-            [self.features]
-            if isinstance(self.features, str)
-            else self.features
-        )
+        return [self.features] if isinstance(self.features, str) else self.features
+
+
+class GoodnessTransformer(TransformerMixin):
+    """
+    Transformer that computes a high-frequency power fraction (HF score)
+    from a percent-deviation map derived from a 2D array column (by default
+    'radial_profile_data'). The HF score is added as a new scalar column per
+    row (default: 'goodness'). Optionally, the deviation matrices can be
+    stored in a separate column.
+
+    The processing steps for each row are:
+    - Skip the first `skip_bins` q-bins (low-q region)
+    - Compute percent deviation per remaining q-bin relative to its mean
+    - Replace NaNs with zero and remove global mean
+    - Compute 2D FFT power spectrum and take the fraction of power with
+      frequency magnitude > `hf_cutoff_fraction`
+
+    :param column: Name of the column with 2D arrays (n_angles, n_q_total).
+                   Defaults to 'radial_profile_data'.
+    :type column: str
+    :param skip_bins: Number of leading q-bins to skip before computing
+                      the deviation map. Defaults to 30.
+    :type skip_bins: int
+    :param hf_cutoff_fraction: Cutoff (0..0.5 approx) on normalized frequency
+                               magnitude to define the high-frequency region.
+                               Defaults to 0.25.
+    :type hf_cutoff_fraction: float
+    :param output_col: Name of the output scalar column for the HF score
+                       (percent). Defaults to 'goodness'.
+    :type output_col: str
+    :param save_dev: If True, store the deviation matrix (including skipped
+                     bins as NaN for alignment) in `diff_col`.
+                     Defaults to False.
+    :type save_dev: bool
+    :param diff_col: Column name for saving deviation matrices when save_dev
+                     is True. Defaults to 'data_diff'.
+    :type diff_col: str
+    """
+
+    def __init__(
+        self,
+        column: str = "radial_profile_data",
+        skip_bins: int = 30,
+        hf_cutoff_fraction: float = 0.25,
+        output_col: str = "goodness",
+        save_dev: bool = False,
+        diff_col: str = "data_diff",
+    ):
+        self.column = column
+        self.skip_bins = skip_bins
+        self.hf_cutoff_fraction = hf_cutoff_fraction
+        self.output_col = output_col
+        self.save_dev = save_dev
+        self.diff_col = diff_col
+
+    def fit(self, X: pd.DataFrame, y=None):
+        _ = X
+        _ = y
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        X = df.copy()
+        if self.column not in X.columns:
+            raise KeyError(f"Column '{self.column}' not found in the DataFrame.")
+
+        dev_matrices = [] if self.save_dev else None
+
+        def compute_hf_score(arr: np.ndarray) -> float:
+            Z_full = np.array(arr)
+            if Z_full.ndim != 2:
+                raise ValueError(f"Column '{self.column}' must contain 2D arrays.")
+
+            # Skip low-q bins
+            Z = Z_full[:, self.skip_bins :]
+            n_az, n_q = Z.shape
+
+            # Compute percent-deviation per q-bin (exclude zeros and NaNs)
+            Z_norm = np.full_like(Z, np.nan, dtype=float)
+            for j in range(n_q):
+                col = Z[:, j]
+                valid = (~np.isnan(col)) & (col != 0)
+                if np.any(valid):
+                    mean_val = col[valid].mean()
+                    if mean_val != 0:
+                        Z_norm[valid, j] = (col[valid] - mean_val) / mean_val * 100.0
+
+            # Prepare array for FFT: replace NaNs with 0 and remove global mean
+            Z_fft_input = np.nan_to_num(Z_norm, nan=0.0)
+            Z_fft_input = Z_fft_input - Z_fft_input.mean()
+
+            # 2D FFT power spectrum
+            F = np.fft.fft2(Z_fft_input)
+            P = np.abs(F) ** 2
+            P_shifted = np.fft.fftshift(P)
+
+            # Frequency grid and high-frequency mask
+            fy = np.fft.fftfreq(n_az)
+            fx = np.fft.fftfreq(n_q)
+            fy_shifted = np.fft.fftshift(fy)
+            fx_shifted = np.fft.fftshift(fx)
+            FX, FY = np.meshgrid(fx_shifted, fy_shifted)
+            freq_mag = np.sqrt(FX**2 + FY**2)
+            high_freq_mask = freq_mag > self.hf_cutoff_fraction
+
+            P_high = P_shifted[high_freq_mask].sum()
+            P_total = P_shifted.sum()
+
+            if self.save_dev:
+                dev_matrix_full = np.full_like(Z_full, np.nan, dtype=float)
+                dev_matrix_full[:, self.skip_bins :] = Z_norm
+                dev_matrices.append(dev_matrix_full)
+
+            if P_total <= 0:
+                return 0.0
+
+            return float(P_high / P_total * 100.0)
+
+        X[self.output_col] = X[self.column].apply(compute_hf_score)
+
+        if self.save_dev:
+            X[self.diff_col] = dev_matrices
+
+        return X
 
 
 class DataPreparation(TransformerMixin):
@@ -1001,9 +1110,7 @@ class NormScaler(TransformerMixin):
     :type name: str
     """
 
-    def __init__(
-        self, scalers: Dict[str, StandardScaler] = None, name="Scaler"
-    ):
+    def __init__(self, scalers: Dict[str, StandardScaler] = None, name="Scaler"):
         """
         Initialize the NormScaler transformer.
 
@@ -1045,18 +1152,14 @@ class NormScaler(TransformerMixin):
 
         if not df_saxs.empty:
             scaler_saxs = StandardScaler()
-            matrix_2d_saxs = np.vstack(
-                df_saxs["radial_profile_data_norm"].values
-            )
+            matrix_2d_saxs = np.vstack(df_saxs["radial_profile_data_norm"].values)
             scaler_saxs.fit(matrix_2d_saxs)
             self.scalers["SAXS"] = scaler_saxs
 
         # Apply the scaler for WAXS data
         if not df_waxs.empty:
             scaler_waxs = StandardScaler()
-            matrix_2d_waxs = np.vstack(
-                df_waxs["radial_profile_data_norm"].values
-            )
+            matrix_2d_waxs = np.vstack(df_waxs["radial_profile_data_norm"].values)
             scaler_waxs.fit(matrix_2d_waxs)
             self.scalers["WAXS"] = scaler_waxs
 
@@ -1089,9 +1192,7 @@ class NormScaler(TransformerMixin):
 
         # Apply the scaler for SAXS data
         if not df_saxs.empty:
-            matrix_2d_saxs = np.vstack(
-                df_saxs["radial_profile_data_norm"].values
-            )
+            matrix_2d_saxs = np.vstack(df_saxs["radial_profile_data_norm"].values)
             scaled_data_saxs = self.scalers["SAXS"].transform(matrix_2d_saxs)
             df_saxs["radial_profile_data_norm_scaled"] = [
                 arr for arr in scaled_data_saxs
@@ -1099,9 +1200,7 @@ class NormScaler(TransformerMixin):
 
         # Apply the scaler for WAXS data
         if not df_waxs.empty:
-            matrix_2d_waxs = np.vstack(
-                df_waxs["radial_profile_data_norm"].values
-            )
+            matrix_2d_waxs = np.vstack(df_waxs["radial_profile_data_norm"].values)
             scaled_data_waxs = self.scalers["WAXS"].transform(matrix_2d_waxs)
             df_waxs["radial_profile_data_norm_scaled"] = [
                 arr for arr in scaled_data_waxs
@@ -1251,9 +1350,7 @@ class CurveFittingTransformer(TransformerMixin):
                 for i in range(len(function_param_counts)):
                     start_idx = sum(function_param_counts[:i])
                     end_idx = start_idx + function_param_counts[i]
-                    X_copy.at[index, f"fit_params_{i}"] = popt[
-                        start_idx:end_idx
-                    ]
+                    X_copy.at[index, f"fit_params_{i}"] = popt[start_idx:end_idx]
                 X_copy.at[index, "fitted_curve"] = func(x_values, *popt)
 
             except RuntimeError as e:
@@ -1326,9 +1423,7 @@ class MeasurementCutter(TransformerMixin):
         X_copy.dropna(subset=["ponifile"], inplace=True)
 
         X_copy[self.column] = X_copy.apply(
-            lambda row: filter_points_by_distance(
-                row, self.column, self.distances
-            ),
+            lambda row: filter_points_by_distance(row, self.column, self.distances),
             axis=1,
         )
         return X_copy
@@ -1355,9 +1450,7 @@ class ImageResizer(TransformerMixin):
         X_copy = X.copy()
         # Resize images based on the reference distance
         X_copy[[self.column, "ponifile"]] = X_copy.apply(
-            lambda row: pd.Series(
-                resize_image(row, self.column, self.ref_distance)
-            ),
+            lambda row: pd.Series(resize_image(row, self.column, self.ref_distance)),
             axis=1,
         )
         return X_copy
@@ -1432,9 +1525,7 @@ class HankelTransformer(TransformerMixin):
         X_copy["hankel"].astype(object)
 
         for i, row in X_copy.iterrows():
-            polar_img = (
-                row[self.column].copy().astype(float)[:, self.start_radius :]
-            )
+            polar_img = row[self.column].copy().astype(float)[:, self.start_radius :]
             r = row["q_range"][self.start_radius :]
             polar_img = np.nan_to_num(polar_img, nan=0.0)
 

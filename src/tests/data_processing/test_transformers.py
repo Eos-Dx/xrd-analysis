@@ -7,14 +7,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from xrdanalysis.data_processing.containers import (
-    MLClusterContainer,
-    ModelScale,
-)
+from xrdanalysis.data_processing.containers import MLClusterContainer, ModelScale
 from xrdanalysis.data_processing.transformers import (
     AzimuthalIntegration,
     Clusterization,
     DataPreparation,
+    GoodnessTransformer,
     InterpolatorClusters,
     NormScalerClusters,
 )
@@ -103,15 +101,8 @@ def sample_dataframe():
     )
 
 
-@patch(
-    (
-        "xrdanalysis.data_processing."
-        "transformers.perform_azimuthal_integration"
-    )
-)
-def test_azimuthal_integration_1d(
-    mock_perform_azimuthal_integration, sample_dataframe
-):
+@patch(("xrdanalysis.data_processing." "transformers.perform_azimuthal_integration"))
+def test_azimuthal_integration_1d(mock_perform_azimuthal_integration, sample_dataframe):
     """Test for 1D azimuthal integration through transformer"""
     mock_perform_azimuthal_integration.side_effect = lambda *args, **kwargs: (
         [1, 2, 3],
@@ -131,15 +122,8 @@ def test_azimuthal_integration_1d(
     assert transformed_df.iloc[0]["calculated_distance"] == 0.1
 
 
-@patch(
-    (
-        "xrdanalysis.data_processing."
-        "transformers.perform_azimuthal_integration"
-    )
-)
-def test_azimuthal_integration_2d(
-    mock_perform_azimuthal_integration, sample_dataframe
-):
+@patch(("xrdanalysis.data_processing." "transformers.perform_azimuthal_integration"))
+def test_azimuthal_integration_2d(mock_perform_azimuthal_integration, sample_dataframe):
     """Test for 2D azimuthal integration through transformer"""
 
     mock_perform_azimuthal_integration.side_effect = lambda *args, **kwargs: (
@@ -162,12 +146,7 @@ def test_azimuthal_integration_2d(
     assert transformed_df.iloc[0]["calculated_distance"] == 0.1
 
 
-@patch(
-    (
-        "xrdanalysis.data_processing."
-        "transformers.perform_azimuthal_integration"
-    )
-)
+@patch(("xrdanalysis.data_processing." "transformers.perform_azimuthal_integration"))
 def test_azimuthal_integration_dataframe_mode(
     mock_perform_azimuthal_integration, sample_dataframe
 ):
@@ -194,12 +173,7 @@ def test_azimuthal_integration_dataframe_mode(
     assert transformed_df.iloc[0]["calculated_distance"] == 0.1
 
 
-@patch(
-    (
-        "xrdanalysis.data_processing."
-        "transformers.perform_azimuthal_integration"
-    )
-)
+@patch(("xrdanalysis.data_processing." "transformers.perform_azimuthal_integration"))
 def test_azimuthal_integration_pipeline_mode(
     mock_perform_azimuthal_integration, sample_dataframe
 ):
@@ -224,12 +198,7 @@ def test_azimuthal_integration_pipeline_mode(
 
 
 @patch("xrdanalysis.data_processing.transformers.generate_poni")
-@patch(
-    (
-        "xrdanalysis.data_processing."
-        "transformers.perform_azimuthal_integration"
-    )
-)
+@patch(("xrdanalysis.data_processing." "transformers.perform_azimuthal_integration"))
 def test_azimuthal_integration_poni_mode(
     mock_perform_azimuthal_integration, mock_generate_poni, sample_dataframe
 ):
@@ -271,9 +240,7 @@ def test_data_preparation_transformer(sample_dataframe):
 def test_clusterization_transform(sample_dataframe):
     """Clusterization transformer test"""
     # Initialize the transformer
-    clusterizer = Clusterization(
-        n_clusters=3, z_score_threshold=3, direction="both"
-    )
+    clusterizer = Clusterization(n_clusters=3, z_score_threshold=3, direction="both")
 
     # Transform the sample DataFrame
     result_df = clusterizer.transform(sample_dataframe)
@@ -307,9 +274,7 @@ class TestInterpolatorClusters(unittest.TestCase):
             {
                 "q_cluster_label": [1, 1, 2, 2],
                 "q_range_max": [10, 12, 15, 16],
-                "measurement_data": [
-                    np.random.rand(256, 256) for _ in range(4)
-                ],
+                "measurement_data": [np.random.rand(256, 256) for _ in range(4)],
                 "center": [(128, 128)] * 4,
                 "wavelength": [0.154] * 4,
                 "pixel_size": [0.1] * 4,
@@ -330,9 +295,7 @@ class TestInterpolatorClusters(unittest.TestCase):
         self.assertEqual(self.interpolator.perc_min, self.perc_min)
         self.assertEqual(self.interpolator.perc_max, self.perc_max)
         self.assertEqual(self.interpolator.q_resolution, self.resolution)
-        self.assertEqual(
-            self.interpolator.faulty_pixel_array, self.faulty_pixel_array
-        )
+        self.assertEqual(self.interpolator.faulty_pixel_array, self.faulty_pixel_array)
         self.assertEqual(self.interpolator.model_names, self.model_names)
 
     @patch(
@@ -346,9 +309,7 @@ class TestInterpolatorClusters(unittest.TestCase):
     @patch("xrdanalysis.data_processing.transformers.MLClusterContainer")
     def test_transform(self, MockMLClusterContainer, *args):
         """Transform test"""
-        MockMLClusterContainer.side_effect = lambda name, clusters: {
-            name: clusters
-        }
+        MockMLClusterContainer.side_effect = lambda name, clusters: {name: clusters}
         expected_output = {
             "model1": {"model1": {1: "mock_cluster", 2: "mock_cluster"}},
             "model2": {"model2": {1: "mock_cluster", 2: "mock_cluster"}},
@@ -363,9 +324,7 @@ class TestNormScalerClusters(unittest.TestCase):
         """Test class setup"""
         self.models = {"model1": ModelScale(), "model2": ModelScale()}
         self.do_fit = True
-        self.scaler = NormScalerClusters(
-            modelscales=self.models, do_fit=self.do_fit
-        )
+        self.scaler = NormScalerClusters(modelscales=self.models, do_fit=self.do_fit)
         self.containers = {
             "model1": MagicMock(spec=MLClusterContainer),
             "model2": MagicMock(spec=MLClusterContainer),
@@ -414,3 +373,76 @@ class TestNormScalerClusters(unittest.TestCase):
             norm=self.scaler.modelscales["model2"].norm,
             do_fit=self.do_fit,
         )
+
+
+def test_goodness_transformer_adds_column():
+    # Construct a DataFrame with 2D arrays
+    n_az, n_q = 32, 16
+    # Row 1: constant array -> zero deviation -> P_total=0 => goodness 0
+    Z_const = np.ones((n_az, n_q))
+    # Row 2: patterned array with variation along both axes
+    y = np.arange(n_az)
+    x = np.arange(n_q)
+    Y, X = np.meshgrid(y, x, indexing="ij")
+    Z_pat = 1.0 + 0.2 * np.sin(2 * np.pi * Y / 8.0) + 0.2 * np.cos(2 * np.pi * X / 4.0)
+
+    df = pd.DataFrame({"radial_profile_data": [Z_const, Z_pat]})
+
+    gt = GoodnessTransformer(
+        column="radial_profile_data",
+        skip_bins=1,
+        hf_cutoff_fraction=0.25,
+        output_col="goodness",
+        save_dev=False,
+    )
+    out = gt.transform(df)
+    assert "goodness" in out.columns
+    assert out["goodness"].between(0, 100, inclusive="both").all()
+    # First row should have 0 goodness due to zero energy after normalization
+    assert out.iloc[0]["goodness"] == 0.0
+
+
+def test_goodness_transformer_save_dev_matrix_alignment():
+    n_az, n_q = 16, 10
+    Z = np.tile(np.linspace(1, 2, n_q), (n_az, 1))  # monotonic across q
+    df = pd.DataFrame({"radial_profile_data": [Z]})
+
+    skip_bins = 3
+    gt = GoodnessTransformer(
+        column="radial_profile_data",
+        skip_bins=skip_bins,
+        hf_cutoff_fraction=0.25,
+        output_col="goodness",
+        save_dev=True,
+        diff_col="data_diff",
+    )
+    out = gt.transform(df)
+    assert "data_diff" in out.columns
+    dev = out.iloc[0]["data_diff"]
+    assert isinstance(dev, np.ndarray)
+    assert dev.shape == Z.shape
+    # Skipped bins must be NaN
+    assert np.isnan(dev[:, :skip_bins]).all()
+    # Remaining bins should be finite (not all NaN)
+    assert np.isfinite(dev[:, skip_bins:]).any()
+
+
+def test_goodness_transformer_cutoff_monotonic():
+    # Verify monotonic behavior: as cutoff increases, HF fraction should not increase
+    n_az, n_q = 32, 32
+    y = np.arange(n_az)
+    x = np.arange(n_q)
+    Y, X = np.meshgrid(y, x, indexing="ij")
+    # Pattern with broad frequency content
+    Z = 1 + 0.5 * np.sin(2 * np.pi * Y / 6.0) * np.cos(2 * np.pi * X / 5.0)
+    df = pd.DataFrame({"radial_profile_data": [Z]})
+
+    gt_low = GoodnessTransformer(
+        column="radial_profile_data", skip_bins=0, hf_cutoff_fraction=0.0
+    )
+    gt_high = GoodnessTransformer(
+        column="radial_profile_data", skip_bins=0, hf_cutoff_fraction=0.45
+    )
+    low = gt_low.transform(df).iloc[0]["goodness"]
+    high = gt_high.transform(df).iloc[0]["goodness"]
+    assert low >= high
