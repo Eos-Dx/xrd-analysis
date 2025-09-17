@@ -81,25 +81,35 @@ class StageControlMixin:
 
     def update_xy_pos(self):
         """
-        Updates the X/Y position display in the UI from the hardware controller.
-        Also updates beam cross overlay on the scene.
+        Updates the current XY position display and beam cross overlay on the scene.
+        Note: Does NOT update the Stage X/Y spinboxes - those are for user input only.
         """
         if getattr(self, "hardware_initialized", False) and hasattr(
             self, "stage_controller"
         ):
             try:
                 x, y = self.stage_controller.get_xy_position()
-                self.xPosSpin.setValue(x)
-                self.yPosSpin.setValue(y)
+                # Update the current position display labels (if they exist)
+                position_text = f"Current XY: ({x:.3f}, {y:.3f}) mm"
+                if hasattr(self, "currentPositionLabel"):
+                    self.currentPositionLabel.setText(position_text)
+                if hasattr(self, "zoneCurrentPositionLabel"):
+                    self.zoneCurrentPositionLabel.setText(position_text)
             except Exception as e:
                 print("Error reading stage pos:", e)
                 x, y = 0, 0
-                self.xPosSpin.setValue(0.0)
-                self.yPosSpin.setValue(0.0)
+                error_text = "Current XY: (Error reading position)"
+                if hasattr(self, "currentPositionLabel"):
+                    self.currentPositionLabel.setText(error_text)
+                if hasattr(self, "zoneCurrentPositionLabel"):
+                    self.zoneCurrentPositionLabel.setText(error_text)
         else:
             x, y = 0, 0
-            self.xPosSpin.setValue(0.0)
-            self.yPosSpin.setValue(0.0)
+            not_init_text = "Current XY: (Not initialized)"
+            if hasattr(self, "currentPositionLabel"):
+                self.currentPositionLabel.setText(not_init_text)
+            if hasattr(self, "zoneCurrentPositionLabel"):
+                self.zoneCurrentPositionLabel.setText(not_init_text)
 
         # Remove old beam cross
         old = self.image_view.points_dict.get("beam", [])
@@ -139,8 +149,7 @@ class StageControlMixin:
             )
             try:
                 new_x, new_y = self.stage_controller.move_stage(x, y, move_timeout=25)
-                self.xPosSpin.setValue(new_x)
-                self.yPosSpin.setValue(new_y)
+                # Update position display and beam cross (but keep user's target values in spinboxes)
                 self.update_xy_pos()
                 logging.info(
                     f"Successfully moved to goto position: ({new_x:.3f}, {new_y:.3f})"

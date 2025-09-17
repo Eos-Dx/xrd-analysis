@@ -28,6 +28,10 @@ class CaptureWorker(QObject):
         parent=None,
         frames: int = 1,
         naming_mode: str = "normal",  # normal | attenuation_with | attenuation_without
+        continuous_movement_controller=None,
+        stage_controller=None,
+        enable_continuous_movement: bool = False,
+        movement_radius: float = 2.0,
     ):
         super().__init__(parent)
         self.detector_controller = detector_controller
@@ -35,41 +39,121 @@ class CaptureWorker(QObject):
         self.txt_filename_base = txt_filename_base
         self.frames = frames
         self.naming_mode = naming_mode
+        self.continuous_movement_controller = continuous_movement_controller
+        self.stage_controller = stage_controller
+        self.enable_continuous_movement = enable_continuous_movement
+        self.movement_radius = movement_radius
+        self._stop_requested = False
 
     def run(self):
         threads = {}
         results = {}
+        movement_started = False
 
-        def run_capture(alias, controller):
-            try:
-                # Build per-alias filename base according to naming mode
-                if self.naming_mode == "attenuation_with":
-                    base = f"{self.txt_filename_base}__{alias}_ATTENUATION"
-                elif self.naming_mode == "attenuation_without":
-                    base = f"{self.txt_filename_base}__{alias}_ATTENUATION0"
-                else:
-                    base = f"{self.txt_filename_base}_{alias}"
+        # Determine if continuous movement should be used (checkbox-driven only)
+        is_continuous_movement = (
+            self.enable_continuous_movement
+            and self.continuous_movement_controller
+            and self.stage_controller
+        )
 
-                success = controller.capture_point(
-                    Nframes=self.frames,
-                    Nseconds=self.integration_time,
-                    filename_base=base,
+        try:
+            # Start continuous movement when enabled by the checkbox
+            if is_continuous_movement:
+                # Get current stage position as center
+                center_x, center_y = self.stage_controller.get_xy_position()
+
+                # Configure and start movement
+                self.continuous_movement_controller.configure(
+                    self.movement_radius, self.integration_time
                 )
-                results[alias] = (base + ".txt") if success else None
-            except Exception as e:
-                print(f"Error in capture for {alias}: {e}")
-                results[alias] = None
 
-        for alias, controller in self.detector_controller.items():
-            t = threading.Thread(target=run_capture, args=(alias, controller))
-            threads[alias] = t
-            t.start()
+                movement_started = self.continuous_movement_controller.start_movement(
+                    center_x, center_y
+                )
 
-        for t in threads.values():
-            t.join()
+                if movement_started:
+                    print(
+                        f"Started continuous movement for AgBH measurement (center: {center_x:.3f}, {center_y:.3f}, radius: {self.movement_radius}mm)"
+                    )
+                else:
+                    print(
+                        "Warning: Failed to start continuous movement for AgBH measurement"
+                    )
 
-        overall_success = all(r is not None for r in results.values())
+            def run_capture(alias, controller):
+                try:
+                    # Check if stop was requested
+                    if self._stop_requested:
+                        results[alias] = None
+                        return
+
+                    # Build per-alias filename base according to naming mode
+                    if self.naming_mode == "attenuation_with":
+                        base = f"{self.txt_filename_base}__{alias}_ATTENUATION"
+                    elif self.naming_mode == "attenuation_without":
+                        base = f"{self.txt_filename_base}__{alias}_ATTENUATION0"
+                    else:
+                        base = f"{self.txt_filename_base}_{alias}"
+
+                    success = controller.capture_point(
+                        Nframes=self.frames,
+                        Nseconds=self.integration_time,
+                        filename_base=base,
+                    )
+                    results[alias] = (base + ".txt") if success else None
+                except Exception as e:
+                    print(f"Error in capture for {alias}: {e}")
+                    results[alias] = None
+
+            # Start detector capture threads
+            for alias, controller in self.detector_controller.items():
+                if self._stop_requested:
+                    break
+                t = threading.Thread(target=run_capture, args=(alias, controller))
+                threads[alias] = t
+                t.start()
+
+            # Wait for all capture threads to complete
+            for t in threads.values():
+                t.join()
+
+        except Exception as e:
+            print(f"Error during capture operation: {e}")
+            results = {alias: None for alias in self.detector_controller.keys()}
+
+        finally:
+            # Stop continuous movement if it was started
+            if movement_started and self.continuous_movement_controller:
+                try:
+                    self.continuous_movement_controller.stop_movement(
+                        return_to_origin=True
+                    )
+                    print(
+                        "Stopped continuous movement and returned to original position"
+                    )
+                except Exception as e:
+                    print(f"Error stopping continuous movement: {e}")
+
+        overall_success = (
+            all(r is not None for r in results.values()) and not self._stop_requested
+        )
         self.finished.emit(overall_success, results)
+
+    def stop(self):
+        """Request the capture operation to stop."""
+        self._stop_requested = True
+
+        # Stop continuous movement immediately if active
+        if (
+            self.continuous_movement_controller
+            and self.continuous_movement_controller.is_moving()
+        ):
+            try:
+                self.continuous_movement_controller.stop_movement(return_to_origin=True)
+                print("Stopped continuous movement due to capture stop request")
+            except Exception as e:
+                print(f"Error stopping continuous movement during stop request: {e}")
 
 
 import shutil

@@ -108,6 +108,16 @@ class ZoneMeasurementsUIMixin:
         posLayout.addWidget(self.gotoBtn)
         meas_layout.addLayout(posLayout)
 
+        # --- Current position display ---
+        currentPosLayout = QHBoxLayout()
+        self.currentPositionLabel = QLabel("Current XY: (Not initialized)")
+        self.currentPositionLabel.setStyleSheet(
+            "color: #666; font-size: 10px; margin: 2px;"
+        )
+        currentPosLayout.addWidget(self.currentPositionLabel)
+        currentPosLayout.addStretch()  # Push to the left
+        meas_layout.addLayout(currentPosLayout)
+
         # --- Integration + Attenuation ---
         integrationLayout = QHBoxLayout()
         integrationLabel = QLabel("Integration Time (sec):")

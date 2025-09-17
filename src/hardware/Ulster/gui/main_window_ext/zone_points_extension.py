@@ -44,10 +44,27 @@ class ZonePointsMixin:
         self.zonePointsDock = QDockWidget("Zone Points", self)
         container = QWidget()
         layout = QVBoxLayout(container)
+        # Tighten margins/spacing to reduce vertical footprint
+        layout.setContentsMargins(6, 4, 6, 4)
+        layout.setSpacing(4)
 
-        # Create UI components using helper classes
+        # Create UI components using helper classes (packed into a compact bar)
         controls_layout = self._create_all_controls()
-        layout.addLayout(controls_layout)
+        try:
+            controls_layout.setContentsMargins(0, 0, 0, 0)
+            controls_layout.setSpacing(6)
+        except Exception:
+            pass
+        from PyQt5.QtWidgets import QSizePolicy
+
+        controls_bar = QWidget()
+        controls_bar.setLayout(controls_layout)
+        controls_bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        try:
+            controls_bar.setMaximumHeight(32)  # compact toolbar-like bar
+        except Exception:
+            pass
+        layout.addWidget(controls_bar)
 
         # Splitter with left table and right measurements panel
         splitter = QSplitter(Qt.Horizontal)
@@ -70,6 +87,11 @@ class ZonePointsMixin:
         container.setLayout(layout)
         self.zonePointsDock.setWidget(container)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.zonePointsDock)
+        try:
+            splitter.setStretchFactor(0, 3)
+            splitter.setStretchFactor(1, 2)
+        except Exception:
+            pass
 
     def _initialize_state(self):
         """Initialize required state attributes."""

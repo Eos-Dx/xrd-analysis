@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PyQt5.QtCore import QEvent, Qt, QThread, QTimer
 from PyQt5.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDockWidget,
@@ -159,6 +160,10 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self.aux_counter = 0
         super().create_zone_measurements()
 
+        # Initialize continuous movement controller
+        self.continuous_movement_controller = None
+        self._initialize_continuous_movement_controller()
+
         self.measDock = QDockWidget("Technical Measurements", self)
         self.measDock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
 
@@ -176,6 +181,27 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self.integrationTimeSpin.setValue(1.0)
         it_layout.addWidget(self.integrationTimeSpin)
         outer.addLayout(it_layout)
+
+        # Continuous movement controls for AgBH measurements
+        cm_layout = QHBoxLayout()
+        self.moveContinuousCheck = QCheckBox("Move Continuous (AgBH)")
+        self.moveContinuousCheck.setToolTip(
+            "Enable continuous circular movement during AgBH measurements to smooth out sample inconsistencies"
+        )
+        cm_layout.addWidget(self.moveContinuousCheck)
+
+        cm_layout.addWidget(QLabel("Radius (mm):"))
+        self.movementRadiusSpin = QDoubleSpinBox()
+        self.movementRadiusSpin.setRange(0.1, 10.0)
+        self.movementRadiusSpin.setSingleStep(0.1)
+        self.movementRadiusSpin.setValue(2.0)
+        self.movementRadiusSpin.setDecimals(1)
+        self.movementRadiusSpin.setToolTip(
+            "Maximum radius for continuous movement pattern (decreases during measurement)"
+        )
+        cm_layout.addWidget(self.movementRadiusSpin)
+
+        outer.addLayout(cm_layout)
 
         # Save folder selector
         fld = QHBoxLayout()
@@ -299,10 +325,16 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         self.hardware_state_changed.connect(
             lambda _: self.refresh_aux_table_alias_models()
         )
+        # Reinitialize continuous movement controller when hardware changes
+        self.hardware_state_changed.connect(
+            lambda _: self._initialize_continuous_movement_controller()
+        )
 
     def enable_measurement_controls(self, enable: bool):
         widgets = [
             self.integrationTimeSpin,
+            self.moveContinuousCheck,
+            self.movementRadiusSpin,
             self.folderLE,
             self.auxBtn,
             self.auxNameLE,
@@ -312,6 +344,36 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         ]
         for w in widgets:
             w.setEnabled(enable)
+
+    def _initialize_continuous_movement_controller(self):
+        """Initialize the continuous movement controller if stage is available."""
+        try:
+            from hardware.Ulster.gui.technical.continuous_movement import (
+                ContinuousMovementController,
+            )
+
+            # Get stage controller from hardware controller if available
+            stage_controller = None
+            if hasattr(self, "hardware_controller") and self.hardware_controller:
+                stage_controller = self.hardware_controller.stage_controller
+            elif hasattr(self, "stage_controller"):
+                stage_controller = self.stage_controller
+
+            if stage_controller:
+                self.continuous_movement_controller = ContinuousMovementController(
+                    stage_controller=stage_controller, parent=self
+                )
+                # Connect signals for monitoring
+                self.continuous_movement_controller.movement_error.connect(
+                    lambda msg: print(f"Movement error: {msg}")
+                )
+                print("Continuous movement controller initialized")
+            else:
+                print("No stage controller available for continuous movement")
+        except ImportError as e:
+            print(f"Failed to import continuous movement controller: {e}")
+        except Exception as e:
+            print(f"Error initializing continuous movement controller: {e}")
 
     def _browse_folder(self):
         f = QFileDialog.getExistingDirectory(self, "Select Folder")
@@ -332,10 +394,32 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             f"{base_with_count}_{ts}_{int(self.integrationTimeSpin.value())}s",
         )
 
+        # Get stage controller for continuous movement
+        stage_controller = None
+        if hasattr(self, "hardware_controller") and self.hardware_controller:
+            stage_controller = self.hardware_controller.stage_controller
+        elif hasattr(self, "stage_controller"):
+            stage_controller = self.stage_controller
+
+        # Check if continuous movement should be enabled
+        enable_continuous_movement = (
+            getattr(self, "moveContinuousCheck", None) is not None
+            and self.moveContinuousCheck.isChecked()
+        )
+        movement_radius = (
+            self.movementRadiusSpin.value()
+            if getattr(self, "movementRadiusSpin", None) is not None
+            else 2.0
+        )
+
         worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=self.integrationTimeSpin.value(),
             txt_filename_base=txt_filename_base,
+            continuous_movement_controller=self.continuous_movement_controller,
+            stage_controller=stage_controller,
+            enable_continuous_movement=enable_continuous_movement,
+            movement_radius=movement_radius,
         )
         thread = QThread()
         worker.moveToThread(thread)

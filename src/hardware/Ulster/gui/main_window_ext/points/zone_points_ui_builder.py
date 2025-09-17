@@ -28,10 +28,19 @@ class ZonePointsUIBuilder:
     def create_controls_layout(parent) -> QHBoxLayout:
         """Create the input controls layout."""
         layout = QHBoxLayout()
+        try:
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(6)
+        except Exception:
+            pass
 
         # Point count controls
         layout.addWidget(QLabel("N points"))
         parent.pointCountSpinBox = QSpinBox()
+        try:
+            parent.pointCountSpinBox.setFixedHeight(22)
+        except Exception:
+            pass
         parent.pointCountSpinBox.setMinimum(ZonePointsConstants.MIN_POINTS)
         parent.pointCountSpinBox.setMaximum(ZonePointsConstants.MAX_POINTS)
         parent.pointCountSpinBox.setValue(ZonePointsConstants.DEFAULT_POINTS)
@@ -40,6 +49,10 @@ class ZonePointsUIBuilder:
         # Shrink controls
         layout.addWidget(QLabel("% offset"))
         parent.shrinkSpinBox = QSpinBox()
+        try:
+            parent.shrinkSpinBox.setFixedHeight(22)
+        except Exception:
+            pass
         parent.shrinkSpinBox.setMinimum(0)
         parent.shrinkSpinBox.setMaximum(100)
         parent.shrinkSpinBox.setValue(ZonePointsConstants.DEFAULT_SHRINK_PERCENT)
@@ -51,6 +64,11 @@ class ZonePointsUIBuilder:
     def create_coordinate_controls(parent) -> QHBoxLayout:
         """Create coordinate input controls."""
         layout = QHBoxLayout()
+        try:
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(6)
+        except Exception:
+            pass
 
         real_x, real_y = ZonePointsUIBuilder._get_real_zero_coordinates(parent)
 
@@ -61,6 +79,10 @@ class ZonePointsUIBuilder:
         parent.real_x_pos_mm.setDecimals(ZonePointsConstants.COORDINATE_DECIMALS)
         parent.real_x_pos_mm.setRange(*ZonePointsConstants.COORDINATE_RANGE)
         parent.real_x_pos_mm.setValue(real_x)
+        try:
+            parent.real_x_pos_mm.setFixedHeight(22)
+        except Exception:
+            pass
         layout.addWidget(parent.real_x_pos_mm)
 
         # Y coordinate
@@ -70,6 +92,10 @@ class ZonePointsUIBuilder:
         parent.real_y_pos_mm.setDecimals(ZonePointsConstants.COORDINATE_DECIMALS)
         parent.real_y_pos_mm.setRange(*ZonePointsConstants.COORDINATE_RANGE)
         parent.real_y_pos_mm.setValue(real_y)
+        try:
+            parent.real_y_pos_mm.setFixedHeight(22)
+        except Exception:
+            pass
         layout.addWidget(parent.real_y_pos_mm)
 
         # Conversion label
@@ -82,12 +108,25 @@ class ZonePointsUIBuilder:
     def create_action_buttons(parent) -> QHBoxLayout:
         """Create action buttons."""
         layout = QHBoxLayout()
+        try:
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(6)
+        except Exception:
+            pass
 
         parent.generatePointsBtn = QPushButton("Generate Points")
         layout.addWidget(parent.generatePointsBtn)
 
         parent.updateCoordinatesBtn = QPushButton("Update Coordinates")
         layout.addWidget(parent.updateCoordinatesBtn)
+
+        # Add current position display near Update Coordinates button
+        if not hasattr(parent, "zoneCurrentPositionLabel"):
+            parent.zoneCurrentPositionLabel = QLabel("Current XY: (Not initialized)")
+            parent.zoneCurrentPositionLabel.setStyleSheet(
+                "color: #666; font-size: 9px; margin: 1px;"
+            )
+        layout.addWidget(parent.zoneCurrentPositionLabel)
 
         return layout
 
