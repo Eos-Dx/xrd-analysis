@@ -118,6 +118,7 @@ def join_detectors(
     angles: int = 180,
     type_rules: Optional[Dict[str, Tuple[Any, Any]]] = None,
     calibration_mode: str = "poni",
+    interpolation_q_range: Optional[Tuple[float, float]] = None,
     debug: bool = False,
 ) -> pd.DataFrame:
     """
@@ -142,6 +143,7 @@ def join_detectors(
       6) Return processed DataFrame (no goodness transform here).
 
     name_field auto-detection: uses 'meas_name' if present, else 'cal_name'.
+    interpolation_q_range: If provided, uses this fixed q-range instead of computing per-type ranges.
     """
     if type_rules is None:
         type_rules = {"WAXS": ("<=", 0.05), "SAXS": (">", 0.05)}
@@ -219,22 +221,37 @@ def join_detectors(
         )
 
     # --- Per-type common interpolation_q_range as TUPLE (q_start, q_end) ---
-    for t, tdf in processed_df.groupby("type_measurement", sort=False):
-        q_tuple = _common_q_range_tuple_for_type(tdf)
-        if q_tuple is None:
-            if debug:
-                print(
-                    f"[WARN] Cannot compute common tuple q-range for type '{t}'. Skipping re-integration."
-                )
-            continue
-        # assign via Series (object dtype, per-row tuples)
-        processed_df.loc[tdf.index, "interpolation_q_range"] = pd.Series(
-            [tuple(q_tuple) for _ in range(len(tdf))], index=tdf.index, dtype="object"
+    if interpolation_q_range is not None:
+        # Use manual q-range for all rows
+        processed_df["interpolation_q_range"] = pd.Series(
+            [tuple(interpolation_q_range) for _ in range(len(processed_df))],
+            index=processed_df.index,
+            dtype="object",
         )
         if debug:
             print(
-                f"[INFO] Type '{t}': interpolation_q_range tuple = ({q_tuple[0]:.6f}, {q_tuple[1]:.6f})"
+                f"[INFO] Using manual interpolation_q_range: ({interpolation_q_range[0]:.6f}, {interpolation_q_range[1]:.6f})"
             )
+    else:
+        # Compute per-type common q-range
+        for t, tdf in processed_df.groupby("type_measurement", sort=False):
+            q_tuple = _common_q_range_tuple_for_type(tdf)
+            if q_tuple is None:
+                if debug:
+                    print(
+                        f"[WARN] Cannot compute common tuple q-range for type '{t}'. Skipping re-integration."
+                    )
+                continue
+            # assign via Series (object dtype, per-row tuples)
+            processed_df.loc[tdf.index, "interpolation_q_range"] = pd.Series(
+                [tuple(q_tuple) for _ in range(len(tdf))],
+                index=tdf.index,
+                dtype="object",
+            )
+            if debug:
+                print(
+                    f"[INFO] Type '{t}': interpolation_q_range tuple = ({q_tuple[0]:.6f}, {q_tuple[1]:.6f})"
+                )
 
     # --- Re-integrate per-row on the per-type tuple range (only rows that have it) ---
     reint_indices = processed_df.index[
@@ -392,6 +409,7 @@ class DetectorJoiner(TransformerMixin):
         angles: int = 180,
         type_rules: Optional[Dict[str, Tuple[Any, Any]]] = None,
         calibration_mode: str = "poni",
+        interpolation_q_range: Optional[Tuple[float, float]] = None,
         debug: bool = False,
     ) -> None:
         self.name_field = name_field
@@ -400,6 +418,7 @@ class DetectorJoiner(TransformerMixin):
         self.angles = angles
         self.type_rules = type_rules
         self.calibration_mode = calibration_mode
+        self.interpolation_q_range = interpolation_q_range
         self.debug = debug
 
     def fit(self, X: pd.DataFrame, y=None):
@@ -414,5 +433,6 @@ class DetectorJoiner(TransformerMixin):
             angles=self.angles,
             type_rules=self.type_rules,
             calibration_mode=self.calibration_mode,
+            interpolation_q_range=self.interpolation_q_range,
             debug=self.debug,
         )
