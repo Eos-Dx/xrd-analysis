@@ -156,6 +156,15 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
     NO_SELECTION_LABEL = "— Select —"
     TYPE_OPTIONS = ["AGBH", "DARK", "EMPTY", "BACKGROUND"]
 
+    def _log_technical_event(self, message: str):
+        """Log technical measurement events to the Zone Measurements log window."""
+        try:
+            # Use the inherited logging method from ZoneMeasurementsUIMixin
+            self._append_measurement_log(f"[Technical] {message}")
+        except Exception:
+            # Fallback to print if logging fails
+            print(f"[Technical] {message}")
+
     def create_technical_panel(self):
         self.aux_counter = 0
         super().create_zone_measurements()
@@ -331,6 +340,8 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         )
 
     def enable_measurement_controls(self, enable: bool):
+        status = "enabled" if enable else "disabled"
+        self._log_technical_event(f"Technical measurement controls {status}")
         widgets = [
             self.integrationTimeSpin,
             self.moveContinuousCheck,
@@ -365,10 +376,14 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
                 )
                 # Connect signals for monitoring
                 self.continuous_movement_controller.movement_error.connect(
-                    lambda msg: print(f"Movement error: {msg}")
+                    lambda msg: self._log_technical_event(f"Movement error: {msg}")
                 )
+                self._log_technical_event("Continuous movement controller initialized")
                 print("Continuous movement controller initialized")
             else:
+                self._log_technical_event(
+                    "No stage controller available for continuous movement"
+                )
                 print("No stage controller available for continuous movement")
         except ImportError as e:
             print(f"Failed to import continuous movement controller: {e}")
@@ -445,16 +460,21 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def _on_capture_done(self, success: bool, result_files: dict, typ: str):
         if not success:
+            self._log_technical_event(f"{typ} capture failed")
             print(f"[{typ}] capture failed.")
             self._aux_timer.stop()
             self._aux_status.setText("")
             return
 
+        self._log_technical_event(
+            f"{typ} capture successful: {len(result_files)} files"
+        )
         print(f"[{typ}] capture successful: {result_files}")
         self._aux_timer.stop()
         self._aux_status.setText("Processing...")
 
         # --- Set up worker
+        self._log_technical_event("Processing measurement files...")
         worker = MeasurementWorker(
             filenames=result_files,
         )
@@ -510,6 +530,9 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
                     idx = type_cb.findText(inferred_type)
                     if idx >= 0:
                         type_cb.setCurrentIndex(idx)
+                        self._log_technical_event(
+                            f"Added {inferred_type} measurement: {alias} ({os.path.basename(npy_path)})"
+                        )
         except Exception:
             pass
 
@@ -583,6 +606,8 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         )
         if not files:
             return
+
+        self._log_technical_event(f"Loading {len(files)} technical files...")
 
         for fpath in files:
             # Convert .txt to .npy next to it (non-destructive)
@@ -695,9 +720,10 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             print(f"Error restoring aux rows: {e}")
 
     def measure_aux(self):
+        self._log_technical_event("Starting auxiliary measurement...")
         self._aux_start = time.time()
         self._aux_spinner_state = 0
-        self._aux_status.setText("0 s ⠋")
+        self._aux_status.setText("0 s ⁑")
         self._aux_timer.start()
         self._start_capture("Aux")
 
@@ -709,6 +735,10 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         if not file_item:
             return
         file_path = file_item.data(Qt.UserRole)
+
+        self._log_technical_event(
+            f"Opening measurement file: {os.path.basename(file_path) if file_path else 'Unknown'}"
+        )
 
         # Prefer alias from Alias #1 if selected, else try to infer from display text
         alias_cb = self.auxTable.cellWidget(row, 2)
@@ -735,8 +765,10 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         )
 
     def run_pyfai(self):
+        self._log_technical_event("Starting PyFAI calibration...")
         env = self.config.get("conda")
         if not env:
+            self._log_technical_event("Error: No conda environment configured")
             print("❌ No conda env set in self.config['conda']")
             return
 
@@ -749,8 +781,10 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             start_cmd = f'start cmd /K "{cmd}"'
             try:
                 subprocess.Popen(start_cmd, shell=True)
+                self._log_technical_event("PyFAI calibration launched in new window")
                 print("▶️ Launched PyFai in new cmd window.")
             except Exception as e:
+                self._log_technical_event(f"Failed to launch PyFAI on Windows: {e}")
                 print("❌ Failed to launch PyFai on Windows:", e)
         else:
             bash_cmd = (
@@ -760,8 +794,12 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             )
             try:
                 subprocess.Popen(["bash", "-lc", bash_cmd])
+                self._log_technical_event(
+                    "PyFAI calibration launched in new bash window"
+                )
                 print("▶️ Launched PyFai in new bash window.")
             except Exception as e:
+                self._log_technical_event(f"Failed to launch PyFAI on Unix: {e}")
                 print("❌ Failed to launch PyFai on Unix:", e)
 
     def initialize_hardware(self):
@@ -769,16 +807,28 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
     def _update_aux_status(self):
         elapsed = int(time.time() - self._aux_start)
-        spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        spinner = ["⁑", "⁙", "⁹", "⁸", "‼", "‴", "…", "‧", " ", "‏"]
         ch = spinner[self._aux_spinner_state % len(spinner)]
         self._aux_spinner_state += 1
         self._aux_status.setText(f"{elapsed} s {ch}")
 
+        # Log every 10 seconds
+        if (
+            elapsed > 0
+            and elapsed % 10 == 0
+            and self._aux_spinner_state % len(spinner) == 0
+        ):
+            self._log_technical_event(
+                f"Auxiliary measurement in progress: {elapsed} seconds"
+            )
+
     def _toggle_realtime(self, checked: bool):
         if checked:
+            self._log_technical_event("Starting real-time measurement display")
             self._start_realtime()
             self.rtBtn.setText("Stop RT")
         else:
+            self._log_technical_event("Stopping real-time measurement display")
             self._stop_realtime()
             self.rtBtn.setText("Real-time")
 
@@ -941,6 +991,8 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
 
         from PyQt5.QtWidgets import QMessageBox
 
+        self._log_technical_event("Generating technical metadata...")
+
         # Validate selection
         sel = (
             self.auxTable.selectionModel().selectedRows()
@@ -949,6 +1001,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
         )
         rows = [idx.row() for idx in sel]
         if not rows:
+            self._log_technical_event("Error: No rows selected for metadata generation")
             QMessageBox.warning(
                 self, "No Selection", "Select one or more rows in the Aux table."
             )
@@ -1173,6 +1226,9 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
             summary = "\n".join(summary_lines) or "(empty)"
         except Exception:
             summary = "(summary unavailable)"
+        self._log_technical_event(
+            f"Technical metadata generated: {os.path.basename(out_path)}"
+        )
         QMessageBox.information(
             self, "Meta Generated", f"Saved to:\n{out_path}\n\nSummary:\n{summary}"
         )
