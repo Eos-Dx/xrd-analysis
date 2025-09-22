@@ -1,0 +1,44 @@
+workflows:
+  - name: Launch EOSDxDc GUI (Windows)
+    description: Start the hardware GUI using the launcher script (reads conda env from config)
+    tags: [gui, windows]
+    command: bin\run_eosdxdc.bat
+
+  - name: Git: commit and push
+    description: Stage all changes, commit with a message, and push to the current branch
+    tags: [git]
+    command: |
+      git add -A
+      git commit -m "{{message}}"
+      git push
+    arguments:
+      - name: message
+        default_value: "chore: update"
+
+  - name: Pre-commit (all files)
+    description: Run all pre-commit hooks across the repo
+    tags: [lint, git]
+    command: pre-commit run --all-files
+
+  - name: Tests (pytest)
+    description: Run the test suite
+    tags: [test]
+    command: pytest -q
+
+  - name: Tests (hardware GUI only)
+    description: Run only the EOSDxDc hardware GUI tests (headless)
+    tags: [test, gui]
+    command: pytest src/hardware/eosdxdc/tests -q
+
+  - name: Env: conda update from environment.yml
+    description: Update an existing Conda environment from environment.yml
+    tags: [env, conda]
+    command: conda env update -f environment.yml -n {{env_name}}
+    arguments:
+      - name: env_name
+        default_value: "eosdx"
+
+  - name: Docs: build (Sphinx)
+    description: Build documentation using Sphinx
+    tags: [docs]
+    command: python -m sphinx -b html docs docs/_build/html
