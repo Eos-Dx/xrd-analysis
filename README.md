@@ -21,7 +21,7 @@ Quick start (Windows, Conda)
   ```
 - Launch the hardware GUI:
   - Run:
-    - `bin\run_eosdxdc.bat`
+- `src\\hardware\\bin\\run_eosdxdc.bat`
   - The script reads the conda env name from `src/hardware/eosdxdc/resources/config/global.json` (the `"conda"` field, e.g. `"ulster37"`) and runs:
     - `conda run -n <env> python src/hardware/eosdxdc/gui/main_app.py`
 

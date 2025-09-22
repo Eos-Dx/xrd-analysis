@@ -43,7 +43,7 @@ Common tasks
 
 Hardware GUI (EOSDxDc)
 - Launcher (Windows):
-  - `bin\run_eosdxdc.bat`
+- `src\\hardware\\bin\\run_eosdxdc.bat`
   - The launcher reads the conda env name from `src/hardware/eosdxdc/resources/config/global.json` (`"conda"`) and executes:
     - `conda run -n <env> python src/hardware/eosdxdc/gui/main_app.py`
 - Config:
