@@ -39,11 +39,13 @@ class MainWindowBasic(QMainWindow):
 
         self.resize(800, 600)
 
-        # Load config and remember path
-        config_path = (
-            Path(__file__).resolve().parent.parent.parent / "resources/config/main.json"
+        # Load config (global + selected setup) and remember base paths
+        self._config_dir = (
+            Path(__file__).resolve().parent.parent.parent / "resources/config"
         )
-        self._config_path = config_path
+        self._global_path = self._config_dir / "global.json"
+        self._setups_dir = self._config_dir / "setups"
+        self._legacy_main_path = self._config_dir / "main.json"
         self.config = self.load_config()
 
         # Central image view
@@ -59,14 +61,69 @@ class MainWindowBasic(QMainWindow):
         self.update_dev_visuals()
 
     def load_config(self):
+        """Load global config and merge with a selected setup config.
+        Fallback to legacy main.json if split configs are missing.
+        """
+
+        def _read_json(p: Path):
+            try:
+                return json.loads(p.read_text()) if p.exists() else {}
+            except Exception as e:
+                logger.error("Error reading JSON", error=str(e), path=str(p))
+                return {}
+
+        # Legacy fallback
+        if not self._global_path.exists() or not self._setups_dir.exists():
+            cfg = _read_json(self._legacy_main_path)
+            if not cfg:
+                logger.error("No configuration found.")
+            # Remember legacy path for the in-app editor
+            self._active_config_path = self._legacy_main_path
+            return cfg
+
+        global_cfg = _read_json(self._global_path)
+        # Determine setup: CLI arg --setup, QSettings last selection, or default from global
+        setup_name = None
         try:
-            with open(self._config_path, "r") as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(
-                "Error loading config", error=str(e), path=str(self._config_path)
-            )
-            return {}
+            import argparse
+
+            parser = argparse.ArgumentParser(add_help=False)
+            parser.add_argument("--setup", dest="setup", default=None)
+            args, _unknown = parser.parse_known_args()
+            setup_name = args.setup
+        except Exception:
+            setup_name = None
+
+        from PyQt5.QtCore import QSettings
+
+        settings = QSettings("EOSDx", "EOSDxDc")
+        if not setup_name:
+            setup_name = settings.value("lastSetup", type=str)
+        if not setup_name:
+            setup_name = global_cfg.get("default_setup")
+
+        # If still not chosen or file missing, prompt user
+        setup_path = None
+        if setup_name:
+            candidate = (self._setups_dir / f"{setup_name}.json").resolve()
+            if candidate.exists():
+                setup_path = candidate
+        if setup_path is None:
+            setup_name, setup_path = self._prompt_for_setup()
+
+        setup_cfg = _read_json(setup_path) if setup_path else {}
+
+        # Persist chosen setup
+        if setup_name:
+            settings.setValue("lastSetup", setup_name)
+
+        # Merge: setup overrides global where keys overlap
+        merged = dict(global_cfg)
+        merged.update(setup_cfg)
+
+        # Remember active config path for editor
+        self._active_config_path = setup_path if setup_path else self._legacy_main_path
+        return merged
 
     def create_actions(self):
         # File open
@@ -151,10 +208,11 @@ class MainWindowBasic(QMainWindow):
 
     def edit_config(self):
         """
-        Pop up a JSON editor for main.json; save and reload config.
+        Open a JSON editor for the currently active config file (setup or legacy), save and reload config.
         """
+        target_path = getattr(self, "_active_config_path", self._legacy_main_path)
         try:
-            text = self._config_path.read_text()
+            text = target_path.read_text()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Cannot open config:\n{e}")
             return
@@ -178,11 +236,19 @@ class MainWindowBasic(QMainWindow):
                 QMessageBox.warning(dlg, "JSON Error", f"Invalid JSON:\n{parse_e}")
                 return
             try:
-                self._config_path.write_text(json.dumps(parsed, indent=4))
+                target_path.write_text(json.dumps(parsed, indent=4))
             except Exception as write_e:
                 QMessageBox.critical(self, "Error", f"Cannot write config:\n{write_e}")
                 return
-            self.config = parsed
+            # Recompute full config if we edited a setup file; else simple assign
+            if (
+                target_path.name.endswith(".json")
+                and target_path.parent.name == "setups"
+            ):
+                # Reload merged config (global + setup)
+                self.config = self.load_config()
+            else:
+                self.config = parsed
             self.update_dev_visuals()
             QMessageBox.information(self, "Config Saved", "Configuration reloaded.")
             dlg.accept()
@@ -192,6 +258,42 @@ class MainWindowBasic(QMainWindow):
 
         dlg.resize(600, 400)
         dlg.exec_()
+
+    def _prompt_for_setup(self):
+        """Prompt user to choose a setup JSON from the setups directory.
+        Returns (setup_name, setup_path).
+        """
+        try:
+            from PyQt5.QtWidgets import (
+                QDialog,
+                QLabel,
+                QListWidget,
+                QPushButton,
+                QVBoxLayout,
+            )
+        except Exception:
+            return None, None
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Select Experimental Setup")
+        layout = QVBoxLayout(dlg)
+        layout.addWidget(QLabel("Choose an experimental setup:"))
+        lst = QListWidget(dlg)
+        setup_files = sorted([p for p in self._setups_dir.glob("*.json")])
+        for p in setup_files:
+            lst.addItem(p.stem)
+        if not setup_files:
+            layout.addWidget(QLabel("No setups found under resources/config/setups/"))
+        layout.addWidget(lst)
+        ok = QPushButton("OK", dlg)
+        ok.clicked.connect(dlg.accept)
+        layout.addWidget(ok)
+        dlg.resize(380, 300)
+        if dlg.exec_() == QDialog.Accepted and lst.currentItem():
+            name = lst.currentItem().text()
+            path = (self._setups_dir / f"{name}.json").resolve()
+            return name, path if path.exists() else (name, None)
+        return None, None
 
     def update_dev_visuals(self):
         """
@@ -210,14 +312,20 @@ class MainWindowBasic(QMainWindow):
 
     def toggle_dev_mode(self):
         """
-        Flip DEV flag, persist, and update visuals.
+        Flip DEV flag in the global config if present (fallback to active file).
         """
         new_dev = not self.config.get("DEV", False)
         self.config["DEV"] = new_dev
+        target = (
+            self._global_path
+            if self._global_path.exists()
+            else getattr(self, "_active_config_path", self._legacy_main_path)
+        )
         try:
-            with open(self._config_path, "w") as f:
-                json.dump(self.config, f, indent=4)
+            data = json.loads(target.read_text()) if target.exists() else {}
+            data["DEV"] = new_dev
+            target.write_text(json.dumps(data, indent=4))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Could not save config:\n{e}")
+            QMessageBox.critical(self, "Error", f"Cannot write config file:\n{e}")
             return
         self.update_dev_visuals()

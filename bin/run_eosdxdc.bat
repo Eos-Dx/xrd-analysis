@@ -5,7 +5,7 @@ REM Determine repository root (one level up from this script directory)
 set SCRIPT_DIR=%~dp0
 for %%I in ("%SCRIPT_DIR%..") do set REPO_ROOT=%%~fI
 
-set CONFIG_PATH=%REPO_ROOT%\src\hardware\eosdxdc\resources\config\main.json
+set CONFIG_PATH=%REPO_ROOT%\src\hardware\eosdxdc\resources\config\global.json
 
 REM Read conda env name from JSON using PowerShell
 for /f "usebackq delims=" %%E in (`powershell -NoProfile -Command "(Get-Content -Raw '%CONFIG_PATH%') | ConvertFrom-Json | Select-Object -ExpandProperty conda"`) do set CONDA_ENV=%%E

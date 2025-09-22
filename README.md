@@ -22,15 +22,18 @@ Quick start (Windows, Conda)
 - Launch the hardware GUI:
   - Run:
     - `bin\run_eosdxdc.bat`
-  - The script reads the conda env name from `src/hardware/eosdxdc/resources/config/main.json` (the `"conda"` field, e.g. `"ulster37"`) and runs:
+  - The script reads the conda env name from `src/hardware/eosdxdc/resources/config/global.json` (the `"conda"` field, e.g. `"ulster37"`) and runs:
     - `conda run -n <env> python src/hardware/eosdxdc/gui/main_app.py`
 
 
 Configuration
-- Main config: `src/hardware/eosdxdc/resources/config/main.json`
+- Global config: `src/hardware/eosdxdc/resources/config/global.json`
   - `conda`: Name of the conda environment the launcher should use
-  - `detectors`, `translation_stages`: Active hardware and settings
-  - DEV flags and demo assets for running without physical hardware
+  - `default_setup`: Name of the default experimental setup to load
+  - DEV flags and global defaults (paths)
+- Per-setup configs: `src/hardware/eosdxdc/resources/config/setups/*.json`
+  - Each file defines `detectors`, `translation_stages`, and active selections for a setup
+  - Example setups included: `ulster.json`, `queen-mary.json`
 
 
 Repository layout (key parts)
@@ -38,7 +41,7 @@ Repository layout (key parts)
 - `src/hardware/eosdxdc`: Hardware GUI, controllers, and resources
   - `gui/`: PyQt5 GUI (views, extensions, technical and zone measurements)
   - `hardware/`: Detectors, stage controllers, and movement logic
-  - `resources/`: `config/main.json`, PONI examples, images, faulty pixels
+  - `resources/`: `config/global.json`, `config/setups/*.json`, PONI examples, images, faulty pixels
   - `tests/`: Headless tests that stub GUI where needed
 - `bin/run_eosdxdc.bat`: Windows launcher (reads env from config and runs the GUI)
 
@@ -64,4 +67,4 @@ Development commands
 
 Notes
 - The legacy `src/hardware/Ulster` path has been removed in favor of `src/hardware/eosdxdc`.
-- Future direction: multiple experimental setup profiles selectable at startup (per-setup configs under `resources/config/setups/`).
+- Multiple experimental setup profiles are supported. Use `--setup <name>` when launching (e.g., `--setup Ulster` or `--setup Queen-Mary`), or select from the dialog at startup.
