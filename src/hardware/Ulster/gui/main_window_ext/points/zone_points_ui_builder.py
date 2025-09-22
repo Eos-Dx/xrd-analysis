@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QTableWidget,
 )
 
-from hardware.Ulster.gui.main_window_ext.points.zone_geometry import (
+from hardware.EosDxDc.gui.main_window_ext.points.zone_geometry import (
     sample_points_in_circle,
     sample_points_in_rect,
 )

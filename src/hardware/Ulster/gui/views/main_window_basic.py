@@ -15,8 +15,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from hardware.Ulster.hardware.camera_capture_dialog import CameraCaptureDialog
-from hardware.Ulster.utils.logger import get_module_logger
+from hardware.EosDxDc.hardware.camera_capture_dialog import CameraCaptureDialog
+from hardware.EosDxDc.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
 

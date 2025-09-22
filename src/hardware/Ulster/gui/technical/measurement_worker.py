@@ -5,11 +5,11 @@ from pathlib import Path
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot  # <-- add pyqtSlot
 from PyQt5.QtWidgets import QListWidgetItem
 
-from hardware.Ulster.gui.technical.capture import (
+from hardware.EosDxDc.gui.technical.capture import (
     compute_hf_score_from_cake,
     move_and_convert_measurement_file,
 )
-from hardware.Ulster.utils.logger import get_module_logger
+from hardware.EosDxDc.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
 

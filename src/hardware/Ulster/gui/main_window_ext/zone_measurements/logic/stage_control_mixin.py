@@ -13,7 +13,7 @@ class StageControlMixin:
         """
         if not getattr(self, "hardware_initialized", False):
             # --- Initialize hardware using your config-driven HardwareController ---
-            from hardware.Ulster.hardware.hardware_control import HardwareController
+            from hardware.EosDxDc.hardware.hardware_control import HardwareController
 
             self.hardware_controller = HardwareController(self.config)
             res_xystage, res_det = self.hardware_controller.initialize()
@@ -165,7 +165,7 @@ class StageControlMixin:
                 # Show a user-facing error dialog if limits are exceeded or any other error occurs
                 try:
                     # Import here to avoid heavy imports at module load time
-                    from hardware.Ulster.hardware.xystages import StageAxisLimitError
+                    from hardware.EosDxDc.hardware.xystages import StageAxisLimitError
 
                     if isinstance(e, StageAxisLimitError):
                         # Try to include configured limits in the message

@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
+from hardware.EosDxDc.gui.technical.widgets import MeasurementHistoryWidget
 
 from .points.zone_geometry import compute_ideal_radius, farthest_point_sampling
 from .points.zone_points_constants import ZonePointsConstants

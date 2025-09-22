@@ -7,8 +7,8 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtWidgets import QGraphicsEllipseItem, QTableWidgetItem
 
-from hardware.Ulster.gui.extra.elements import HoverableEllipseItem
-from hardware.Ulster.utils.logger import get_module_logger
+from hardware.EosDxDc.gui.extra.elements import HoverableEllipseItem
+from hardware.EosDxDc.utils.logger import get_module_logger
 
 from .zone_points_constants import ZonePointsConstants
 

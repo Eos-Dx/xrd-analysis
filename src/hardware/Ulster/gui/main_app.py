@@ -10,9 +10,9 @@ sys.path.insert(0, str(project_root))
 from PyQt5.QtCore import QDate, QSettings
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
-from hardware.Ulster.gui.views.main_window import MainWindow
-from hardware.Ulster.resources.motivation import motivation_phrases
-from hardware.Ulster.utils.logging_setup import (
+from hardware.EosDxDc.gui.views.main_window import MainWindow
+from hardware.EosDxDc.resources.motivation import motivation_phrases
+from hardware.EosDxDc.utils.logging_setup import (
     configure_third_party_logging,
     log_context,
     setup_logging,

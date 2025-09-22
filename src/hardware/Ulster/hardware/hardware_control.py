@@ -1,10 +1,10 @@
 # hardware_control.py
-from hardware.Ulster.hardware.detectors import (
+from hardware.EosDxDc.hardware.detectors import (
     DetectorController,
     DummyDetectorController,
     PixetDetectorController,
 )
-from hardware.Ulster.hardware.xystages import (
+from hardware.EosDxDc.hardware.xystages import (
     BaseStageController,
     DummyStageController,
     XYStageLibController,

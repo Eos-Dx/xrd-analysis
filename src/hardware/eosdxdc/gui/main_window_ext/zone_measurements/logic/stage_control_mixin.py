@@ -1,0 +1,274 @@
+# zone_measurements/logic/stage_control_mixin.py
+
+import logging
+
+from PyQt5.QtCore import Qt
+
+
+class StageControlMixin:
+    def toggle_hardware(self):
+        """
+        Toggle hardware initialization state. Dynamically (re)builds detector param tab widgets
+        for only active detectors after hardware is initialized.
+        """
+        if not getattr(self, "hardware_initialized", False):
+            # --- Initialize hardware using your config-driven HardwareController ---
+            from hardware.eosdxdc.hardware.hardware_control import HardwareController
+
+            self.hardware_controller = HardwareController(self.config)
+            res_xystage, res_det = self.hardware_controller.initialize()
+
+            # Use updated controllers from hardware_controller
+            self.stage_controller = self.hardware_controller.stage_controller
+            self.detector_controller = (
+                self.hardware_controller.detectors
+            )  # dict: {alias: controller}
+
+            # Update indicators
+            self.xyStageIndicator.setStyleSheet(
+                "background-color: green; border-radius: 10px;"
+                if res_xystage
+                else "background-color: red; border-radius: 10px;"
+            )
+            self.cameraIndicator.setStyleSheet(
+                "background-color: green; border-radius: 10px;"
+                if res_det
+                else "background-color: red; border-radius: 10px;"
+            )
+
+            ok = res_xystage and res_det
+            self.start_btn.setEnabled(ok)
+            self.pause_btn.setEnabled(False)
+            self.stop_btn.setEnabled(False)
+            # Enable X/Y controls if hardware is initialized
+            self.xPosSpin.setEnabled(ok)
+            self.yPosSpin.setEnabled(ok)
+            self.gotoBtn.setEnabled(ok)
+
+            if ok:
+                # Refresh detector tabs for the new mode (demo/production)
+                self.refresh_detector_tabs_for_mode_switch()
+                self.initializeBtn.setText("Deinitialize Hardware")
+                self.hardware_initialized = True
+                if hasattr(self, "hardware_state_changed"):
+                    self.hardware_state_changed.emit(True)
+        else:
+            # --- Deinitialize hardware and clean up ---
+            try:
+                self.hardware_controller.deinitialize()
+            except Exception as e:
+                print(f"Error deinitializing hardware: {e}")
+
+            # Clear the detector tabs UI
+            self.clear_detector_param_tabs()
+
+            self.xyStageIndicator.setStyleSheet(
+                "background-color: gray; border-radius: 10px;"
+            )
+            self.cameraIndicator.setStyleSheet(
+                "background-color: gray; border-radius: 10px;"
+            )
+            self.start_btn.setEnabled(False)
+            self.pause_btn.setEnabled(False)
+            self.stop_btn.setEnabled(False)
+            self.xPosSpin.setEnabled(False)
+            self.yPosSpin.setEnabled(False)
+            self.gotoBtn.setEnabled(False)
+            self.initializeBtn.setText("Initialize Hardware")
+            self.hardware_initialized = False
+            if hasattr(self, "hardware_state_changed"):
+                self.hardware_state_changed.emit(False)
+
+    def update_xy_pos(self):
+        """
+        Updates the current XY position display and beam cross overlay on the scene.
+        Note: Does NOT update the Stage X/Y spinboxes - those are for user input only.
+        """
+        if getattr(self, "hardware_initialized", False) and hasattr(
+            self, "stage_controller"
+        ):
+            try:
+                x, y = self.stage_controller.get_xy_position()
+                # Update the current position display labels (if they exist)
+                position_text = f"Current XY: ({x:.3f}, {y:.3f}) mm"
+                if hasattr(self, "currentPositionLabel"):
+                    self.currentPositionLabel.setText(position_text)
+                if hasattr(self, "zoneCurrentPositionLabel"):
+                    self.zoneCurrentPositionLabel.setText(position_text)
+            except Exception as e:
+                print("Error reading stage pos:", e)
+                x, y = 0, 0
+                error_text = "Current XY: (Error reading position)"
+                if hasattr(self, "currentPositionLabel"):
+                    self.currentPositionLabel.setText(error_text)
+                if hasattr(self, "zoneCurrentPositionLabel"):
+                    self.zoneCurrentPositionLabel.setText(error_text)
+        else:
+            x, y = 0, 0
+            not_init_text = "Current XY: (Not initialized)"
+            if hasattr(self, "currentPositionLabel"):
+                self.currentPositionLabel.setText(not_init_text)
+            if hasattr(self, "zoneCurrentPositionLabel"):
+                self.zoneCurrentPositionLabel.setText(not_init_text)
+
+        # Remove old beam cross
+        old = self.image_view.points_dict.get("beam", [])
+        try:
+            for itm in old:
+                self.image_view.scene.removeItem(itm)
+        except Exception as e:
+            print("Error removing old beam cross:", e)
+
+        x_pix, y_pix = self.mm_to_pixels(x, y)
+
+        if x_pix >= 0 and y_pix >= 0:
+            size = 15
+            from PyQt5.QtGui import QPen
+
+            pen = QPen(Qt.black, 5)
+            hl = self._add_beam_line(x_pix - size, y_pix, x_pix + size, y_pix, pen)
+            vl = self._add_beam_line(x_pix, y_pix - size, x_pix, y_pix + size, pen)
+            self.image_view.points_dict["beam"] = [hl, vl]
+        else:
+            self.image_view.points_dict["beam"] = []
+
+    def goto_stage_position(self):
+        """
+        Moves the stage to the user-specified X/Y coordinates.
+        Updates X/Y spin boxes and calls the controller.
+        """
+        from PyQt5.QtWidgets import QMessageBox
+
+        if hasattr(self, "stage_controller") and getattr(
+            self, "hardware_initialized", False
+        ):
+            x = self.xPosSpin.value()
+            y = self.yPosSpin.value()
+            logging.info(
+                f"Stage goto operation started: target position ({x:.3f}, {y:.3f})"
+            )
+            try:
+                new_x, new_y = self.stage_controller.move_stage(x, y, move_timeout=25)
+                # Update position display and beam cross (but keep user's target values in spinboxes)
+                self.update_xy_pos()
+                logging.info(
+                    f"Successfully moved to goto position: ({new_x:.3f}, {new_y:.3f})"
+                )
+            except TimeoutError:
+                logging.error("Stage movement timeout occurred during goto operation")
+                QMessageBox.warning(
+                    self,
+                    "Stage Timeout",
+                    "Stage movement timed out. Please check the hardware and try again.",
+                )
+            except Exception as e:
+                # Show a user-facing error dialog if limits are exceeded or any other error occurs
+                try:
+                    # Import here to avoid heavy imports at module load time
+                    from hardware.eosdxdc.hardware.xystages import StageAxisLimitError
+
+                    if isinstance(e, StageAxisLimitError):
+                        # Try to include configured limits in the message
+                        try:
+                            limits = (
+                                self.stage_controller.get_limits()
+                                if hasattr(self.stage_controller, "get_limits")
+                                else None
+                            )
+                        except Exception:
+                            limits = None
+                        if limits:
+                            x_min, x_max = limits.get("x", (None, None))
+                            y_min, y_max = limits.get("y", (None, None))
+                            QMessageBox.warning(
+                                self,
+                                "Stage Move Error",
+                                f"Requested position ({x:.3f}, {y:.3f}) is outside limits:\n"
+                                f"X[{x_min:.1f}, {x_max:.1f}] mm, Y[{y_min:.1f}, {y_max:.1f}] mm",
+                            )
+                        else:
+                            QMessageBox.warning(self, "Stage Move Error", str(e))
+                    else:
+                        QMessageBox.warning(self, "Stage Move Error", str(e))
+                except Exception:
+                    # Fallback if import above fails for any reason
+                    QMessageBox.warning(self, "Stage Move Error", str(e))
+        else:
+            QMessageBox.warning(
+                self, "Stage Not Ready", "Stage not initialized; cannot GoTo."
+            )
+
+    def home_stage_button_clicked(self):
+        """
+        Moves the XY stage to home using the configurable home coordinates.
+        """
+        from PyQt5.QtWidgets import QMessageBox
+
+        logging.info("Stage home operation started")
+        if hasattr(self, "stage_controller") and self.stage_controller is not None:
+            try:
+                # Get home coordinates from controller configuration
+                positions = self.stage_controller.get_home_load_positions()
+                home_x, home_y = positions["home"]
+                logging.info(
+                    f"Moving to configured home position: ({home_x:.3f}, {home_y:.3f})"
+                )
+                new_x, new_y = self.stage_controller.move_stage(
+                    home_x, home_y, move_timeout=25
+                )
+                logging.info(
+                    f"Successfully moved to home position: ({new_x:.3f}, {new_y:.3f})"
+                )
+            except TimeoutError:
+                logging.error("Stage movement timeout occurred during home operation")
+                QMessageBox.warning(
+                    self,
+                    "Stage Timeout",
+                    "Stage movement timed out. Please check the hardware and try again.",
+                )
+            except Exception as e:
+                logging.error(f"Error during home operation: {e}")
+                QMessageBox.warning(
+                    self, "Stage Error", f"Error moving to home position: {str(e)}"
+                )
+        else:
+            logging.warning("Home operation failed: Stage not initialized")
+            print("Stage not initialized.")
+
+    def load_position_button_clicked(self):
+        """
+        Moves the XY stage to the configurable load position.
+        """
+        from PyQt5.QtWidgets import QMessageBox
+
+        logging.info("Stage load position operation started")
+        if hasattr(self, "stage_controller") and self.stage_controller is not None:
+            try:
+                # Get load coordinates from controller configuration
+                positions = self.stage_controller.get_home_load_positions()
+                load_x, load_y = positions["load"]
+                logging.info(
+                    f"Moving to configured load position: ({load_x:.3f}, {load_y:.3f})"
+                )
+                new_x, new_y = self.stage_controller.move_stage(
+                    load_x, load_y, move_timeout=25
+                )
+                logging.info(
+                    f"Successfully moved to load position: ({new_x:.3f}, {new_y:.3f})"
+                )
+                print(f"Loaded position: ({new_x}, {new_y})")
+            except TimeoutError:
+                logging.error("Stage movement timeout occurred during load operation")
+                QMessageBox.warning(
+                    self,
+                    "Stage Timeout",
+                    "Stage movement timed out. Please check the hardware and try again.",
+                )
+            except Exception as e:
+                logging.error(f"Error during load operation: {e}")
+                QMessageBox.warning(
+                    self, "Stage Error", f"Error moving to load position: {str(e)}"
+                )
+        else:
+            logging.warning("Load operation failed: Stage not initialized")
+            print("Stage not initialized.")

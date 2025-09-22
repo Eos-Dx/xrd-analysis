@@ -11,18 +11,18 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from hardware.Ulster.gui.main_window_ext.drawing_extension import DrawingMixin
-from hardware.Ulster.gui.main_window_ext.rotation_extension import RotationMixin
-from hardware.Ulster.gui.main_window_ext.shape_table_extension import ShapeTableMixin
-from hardware.Ulster.gui.main_window_ext.state_saver_extension import StateSaverMixin
-from hardware.Ulster.gui.main_window_ext.technical_measurements import (
+from hardware.EosDxDc.gui.main_window_ext.drawing_extension import DrawingMixin
+from hardware.EosDxDc.gui.main_window_ext.rotation_extension import RotationMixin
+from hardware.EosDxDc.gui.main_window_ext.shape_table_extension import ShapeTableMixin
+from hardware.EosDxDc.gui.main_window_ext.state_saver_extension import StateSaverMixin
+from hardware.EosDxDc.gui.main_window_ext.technical_measurements import (
     TechnicalMeasurementsMixin,
 )
-from hardware.Ulster.gui.main_window_ext.zone_measurements import ZoneMeasurementsMixin
-from hardware.Ulster.gui.main_window_ext.zone_points_extension import ZonePointsMixin
-from hardware.Ulster.gui.views.image_view import ImageView
-from hardware.Ulster.gui.views.main_window_basic import MainWindowBasic
-from hardware.Ulster.hardware.hardware_control import HardwareController
+from hardware.EosDxDc.gui.main_window_ext.zone_measurements import ZoneMeasurementsMixin
+from hardware.EosDxDc.gui.main_window_ext.zone_points_extension import ZonePointsMixin
+from hardware.EosDxDc.gui.views.image_view import ImageView
+from hardware.EosDxDc.gui.views.main_window_basic import MainWindowBasic
+from hardware.EosDxDc.hardware.hardware_control import HardwareController
 
 
 class MainWindow(

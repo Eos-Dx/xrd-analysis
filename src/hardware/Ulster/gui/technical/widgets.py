@@ -188,7 +188,7 @@ class MeasurementHistoryWidget(QWidget):
                     filename = res.get("filename")
                     if filename:
                         try:
-                            from hardware.Ulster.gui.technical.capture import (
+                            from hardware.EosDxDc.gui.technical.capture import (
                                 show_measurement_window,
                             )
 

@@ -19,10 +19,10 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from hardware.Ulster.gui.main_window_ext.zone_measurements.logic.beam_center_utils import (
+from hardware.EosDxDc.gui.main_window_ext.zone_measurements.logic.beam_center_utils import (
     get_beam_center,
 )
-from hardware.Ulster.utils.logger import get_module_logger
+from hardware.EosDxDc.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
 
@@ -109,7 +109,7 @@ class AttenuationMixin:
         save_folder = self.folderLineEdit.text().strip()
         os.makedirs(save_folder, exist_ok=True)
 
-        from hardware.Ulster.gui.technical.capture import (
+        from hardware.EosDxDc.gui.technical.capture import (
             move_and_convert_measurement_file,
         )
 
@@ -281,7 +281,7 @@ class AttenuationMixin:
 
     def open_attenuation_measurement(self, item):
         """Opens and displays an attenuation measurement."""
-        from hardware.Ulster.gui.technical.capture import show_measurement_window
+        from hardware.EosDxDc.gui.technical.capture import show_measurement_window
 
         file_path = item.data(Qt.UserRole)
         meta = item.data(Qt.UserRole + 1) or {}

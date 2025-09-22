@@ -12,14 +12,14 @@ from PyQt5.QtCore import QThread, QTimer
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox
 
-from hardware.Ulster.gui.technical.capture import (
+from hardware.EosDxDc.gui.technical.capture import (
     CaptureWorker,
     move_and_convert_measurement_file,
     validate_folder,
 )
-from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
-from hardware.Ulster.gui.technical.widgets import MeasurementHistoryWidget
-from hardware.Ulster.utils.logger import get_module_logger
+from hardware.EosDxDc.gui.technical.measurement_worker import MeasurementWorker
+from hardware.EosDxDc.gui.technical.widgets import MeasurementHistoryWidget
+from hardware.EosDxDc.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
 
@@ -78,7 +78,7 @@ class ZoneMeasurementsProcessMixin:
             return  # Exit the function early
 
         try:
-            from hardware.Ulster.hardware.auxiliary import encode_image_to_base64
+            from hardware.EosDxDc.hardware.auxiliary import encode_image_to_base64
 
             self.state_measurements["image_base64"] = encode_image_to_base64(
                 self.image_view.current_image_path

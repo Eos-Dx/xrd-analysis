@@ -197,7 +197,7 @@ if "hardware.Ulster.gui.technical.widgets" not in sys.modules:
 class TestTechnicalMetaGeneration(unittest.TestCase):
     def setUp(self):
         # Import module under test after stubbing PyQt5
-        from hardware.Ulster.gui.main_window_ext import technical_measurements as tm
+        from hardware.EosDxDc.gui.main_window_ext import technical_measurements as tm
 
         self.tm = tm
 

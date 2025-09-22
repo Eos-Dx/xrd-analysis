@@ -30,13 +30,13 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from hardware.Ulster.gui.main_window_ext.zone_measurements import ZoneMeasurementsMixin
-from hardware.Ulster.gui.technical.capture import (
+from hardware.EosDxDc.gui.main_window_ext.zone_measurements import ZoneMeasurementsMixin
+from hardware.EosDxDc.gui.technical.capture import (
     CaptureWorker,
     show_measurement_window,
     validate_folder,
 )
-from hardware.Ulster.gui.technical.measurement_worker import MeasurementWorker
+from hardware.EosDxDc.gui.technical.measurement_worker import MeasurementWorker
 
 
 class PoniFileSelectionDialog(QDialog):
@@ -359,7 +359,7 @@ class TechnicalMeasurementsMixin(ZoneMeasurementsMixin):
     def _initialize_continuous_movement_controller(self):
         """Initialize the continuous movement controller if stage is available."""
         try:
-            from hardware.Ulster.gui.technical.continuous_movement import (
+            from hardware.EosDxDc.gui.technical.continuous_movement import (
                 ContinuousMovementController,
             )
 

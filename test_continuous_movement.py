@@ -17,10 +17,10 @@ sys.path.insert(0, str(src_path))
 try:
     from PyQt5.QtCore import QCoreApplication, QTimer
 
-    from hardware.Ulster.gui.technical.continuous_movement import (
+    from hardware.EosDxDc.gui.technical.continuous_movement import (
         ContinuousMovementController,
     )
-    from hardware.Ulster.hardware.xystages import DummyStageController
+    from hardware.EosDxDc.hardware.xystages import DummyStageController
 
     def test_continuous_movement():
         """Test the continuous movement controller with dummy stage."""
