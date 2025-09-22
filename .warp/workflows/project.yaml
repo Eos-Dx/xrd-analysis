@@ -1,0 +1,81 @@
+workflows:
+  - name: Git: commit and push
+    description: Stage all changes, commit with a message, and push to the current branch
+    tags: [git]
+    command: |
+      git add -A
+      git commit -m "{{message}}"
+      git push
+    arguments:
+      - name: message
+        default_value: "chore: update"
+
+  - name: Env: conda create from environment.yml
+    description: Create a Conda environment from environment.yml
+    tags: [env, conda, python]
+    command: conda env create -f environment.yml -n {{env_name}}
+    arguments:
+      - name: env_name
+        default_value: "xrd-analysis"
+
+  - name: Env: conda update from environment.yml
+    description: Update an existing Conda environment from environment.yml
+    tags: [env, conda, python]
+    command: conda env update -f environment.yml -n {{env_name}}
+    arguments:
+      - name: env_name
+        default_value: "xrd-analysis"
+
+  - name: Python: install (editable)
+    description: Install this package in editable mode (optionally with extras)
+    tags: [python, install]
+    command: |
+      python -m pip install -U pip
+      python -m pip install -e .{{extras}}
+    arguments:
+      - name: extras
+        default_value: "[dev]"
+        description: "Optional extras like [dev]; leave empty if not needed"
+
+  - name: Test: pytest
+    description: Run the pytest suite
+    tags: [test, python]
+    command: pytest -q
+
+  - name: Test: tox
+    description: Run tox (uses tox.ini)
+    tags: [test, python, tox]
+    command: tox -q
+
+  - name: Lint: pre-commit (all files)
+    description: Run all pre-commit hooks across the repo
+    tags: [lint, git]
+    command: pre-commit run --all-files
+
+  - name: Format: black
+    description: Format Python sources with black
+    tags: [format, python]
+    command: black src tests
+
+  - name: Docs: build HTML (Sphinx)
+    description: Build documentation using Sphinx directly
+    tags: [docs, sphinx]
+    command: python -m sphinx -b html docs docs/_build/html
+
+  - name: Docs: build with make (if available)
+    description: Build documentation with GNU make
+    tags: [docs]
+    command: make -C docs html
+
+  - name: Build: package (sdist/wheel)
+    description: Build a source distribution and wheel via PEP 517
+    tags: [build, python]
+    command: python -m build
+
+  - name: Run example script
+    description: Run a Python example in this repo
+    tags: [run, examples]
+    command: python {{script}}
+    arguments:
+      - name: script
+        default_value: "simple_goodness_example.py"

@@ -6,7 +6,7 @@ Includes a scikit-learn compatible wrapper (DetectorJoiner).
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -118,7 +118,9 @@ def join_detectors(
     angles: int = 180,
     type_rules: Optional[Dict[str, Tuple[Any, Any]]] = None,
     calibration_mode: str = "poni",
-    interpolation_q_range: Optional[Tuple[float, float]] = None,
+    interpolation_q_range: Optional[
+        Union[Tuple[float, float], Dict[str, Tuple[float, float]]]
+    ] = None,
     debug: bool = False,
 ) -> pd.DataFrame:
     """
@@ -143,7 +145,10 @@ def join_detectors(
       6) Return processed DataFrame (no goodness transform here).
 
     name_field auto-detection: uses 'meas_name' if present, else 'cal_name'.
-    interpolation_q_range: If provided, uses this fixed q-range instead of computing per-type ranges.
+    interpolation_q_range: Can be either:
+                          - Tuple[float, float]: Single q-range for all measurement types (legacy behavior)
+                          - Dict[str, Tuple[float, float]]: Per-type q-ranges, e.g., {'SAXS': (0.01, 1.5), 'WAXS': (1.0, 5.0)}
+                          If dict provided, measurement types not specified will use computed ranges.
     """
     if type_rules is None:
         type_rules = {"WAXS": ("<=", 0.05), "SAXS": (">", 0.05)}
@@ -222,16 +227,50 @@ def join_detectors(
 
     # --- Per-type common interpolation_q_range as TUPLE (q_start, q_end) ---
     if interpolation_q_range is not None:
-        # Use manual q-range for all rows
-        processed_df["interpolation_q_range"] = pd.Series(
-            [tuple(interpolation_q_range) for _ in range(len(processed_df))],
-            index=processed_df.index,
-            dtype="object",
-        )
-        if debug:
-            print(
-                f"[INFO] Using manual interpolation_q_range: ({interpolation_q_range[0]:.6f}, {interpolation_q_range[1]:.6f})"
+        # Check if interpolation_q_range is a dictionary (per-type ranges)
+        if isinstance(interpolation_q_range, dict):
+            # Use per-type manual q-ranges
+            for t, tdf in processed_df.groupby("type_measurement", sort=False):
+                if t in interpolation_q_range:
+                    q_tuple = tuple(interpolation_q_range[t])
+                    processed_df.loc[tdf.index, "interpolation_q_range"] = pd.Series(
+                        [q_tuple for _ in range(len(tdf))],
+                        index=tdf.index,
+                        dtype="object",
+                    )
+                    if debug:
+                        print(
+                            f"[INFO] Using manual interpolation_q_range for '{t}': ({q_tuple[0]:.6f}, {q_tuple[1]:.6f})"
+                        )
+                else:
+                    # Fall back to computed range for types not specified
+                    q_tuple = _common_q_range_tuple_for_type(tdf)
+                    if q_tuple is None:
+                        if debug:
+                            print(
+                                f"[WARN] Cannot compute common tuple q-range for type '{t}'. Skipping re-integration."
+                            )
+                        continue
+                    processed_df.loc[tdf.index, "interpolation_q_range"] = pd.Series(
+                        [tuple(q_tuple) for _ in range(len(tdf))],
+                        index=tdf.index,
+                        dtype="object",
+                    )
+                    if debug:
+                        print(
+                            f"[INFO] Type '{t}': computed interpolation_q_range tuple = ({q_tuple[0]:.6f}, {q_tuple[1]:.6f})"
+                        )
+        else:
+            # Original behavior: single q-range for all rows (tuple format)
+            processed_df["interpolation_q_range"] = pd.Series(
+                [tuple(interpolation_q_range) for _ in range(len(processed_df))],
+                index=processed_df.index,
+                dtype="object",
             )
+            if debug:
+                print(
+                    f"[INFO] Using manual interpolation_q_range for all types: ({interpolation_q_range[0]:.6f}, {interpolation_q_range[1]:.6f})"
+                )
     else:
         # Compute per-type common q-range
         for t, tdf in processed_df.groupby("type_measurement", sort=False):
@@ -279,6 +318,18 @@ def join_detectors(
 
     # --- Merge STRICT 1:1 (PRIMARY + SECONDARY). SINGLE / detector-only stay unmerged. ---
     drop_marks: List[int] = []
+    skip_group_indices: List[int] = []
+
+    # Stats tracking
+    stats = {
+        "groups_total": processed_df["base_meas"].nunique(),
+        "groups_merged": 0,
+        "groups_single": 0,
+        "groups_detector_only": 0,
+        "groups_skipped_multiple": 0,
+        "rows_dropped_secondary": 0,
+        "rows_removed_skipped_groups": 0,
+    }
 
     for base_meas, gdf in processed_df.groupby("base_meas", sort=False):
         prim_rows = gdf[gdf["detector"] == "PRIMARY"]
@@ -287,14 +338,20 @@ def join_detectors(
 
         # at most one of each for parallel acquisition
         if len(prim_rows) > 1 or len(sec_rows) > 1:
-            raise ValueError(
-                f"Group '{base_meas}' has multiple PRIMARY/SECONDARY rows (PRIMARY={len(prim_rows)}, SECONDARY={len(sec_rows)}); expected at most one of each."
-            )
+            # Skip entire group but count for stats
+            stats["groups_skipped_multiple"] += 1
+            skip_group_indices.extend(gdf.index.tolist())
+            if debug:
+                print(
+                    f"[GROUP] {base_meas}: skipped (PRIMARY={len(prim_rows)}, SECONDARY={len(sec_rows)})"
+                )
+            continue
 
         # A) strict pair -> merge
         if len(prim_rows) == 1 and len(sec_rows) == 1:
             p_idx = prim_rows.index[0]
             s_idx = sec_rows.index[0]
+            stats["groups_merged"] += 1
 
             p_map = np.asarray(
                 processed_df.at[p_idx, "radial_profile_data"], dtype=float
@@ -320,12 +377,15 @@ def join_detectors(
             processed_df.at[p_idx, "polar_data"] = merged_map  # 2D merged
             processed_df.at[p_idx, "radial_profile_data"] = profile_1d  # 1D collapsed
             drop_marks.append(s_idx)
+            # one secondary dropped per merged pair
+            stats["rows_dropped_secondary"] += 1
 
             if debug:
                 print(f"[GROUP] {base_meas}: merged -> canonical={p_idx}")
 
         # B) SINGLE (no suffix)
         elif len(single_rows) >= 1 and len(prim_rows) == 0 and len(sec_rows) == 0:
+            stats["groups_single"] += 1
             profiles_1d: List[np.ndarray] = []
             maps_2d: List[np.ndarray] = []
             for idx in single_rows.index:
@@ -360,6 +420,7 @@ def join_detectors(
         elif (len(prim_rows) == 1 and len(sec_rows) == 0 and len(single_rows) == 0) or (
             len(sec_rows) == 1 and len(prim_rows) == 0 and len(single_rows) == 0
         ):
+            stats["groups_detector_only"] += 1
             only_idx = prim_rows.index[0] if len(prim_rows) == 1 else sec_rows.index[0]
             m2d = np.asarray(
                 processed_df.at[only_idx, "radial_profile_data"], dtype=float
@@ -379,16 +440,34 @@ def join_detectors(
             if debug:
                 print(f"[WARN] {base_meas}: unexpected detector composition; skipped.")
 
-    # Drop secondary / duplicate rows we marked
-    if drop_marks:
-        processed_df = processed_df.drop(index=drop_marks).reset_index(drop=True)
+    # Drop rows from skipped groups and secondary duplicates
+    to_drop = set(skip_group_indices) | set(drop_marks)
+    if to_drop:
+        # adjust stats to avoid double counting if overlap
+        rows_skipped = len(set(skip_group_indices))
+        rows_secondary = len(set(drop_marks) - set(skip_group_indices))
+        stats["rows_removed_skipped_groups"] = rows_skipped
+        stats["rows_dropped_secondary"] = rows_secondary
+        processed_df = processed_df.drop(index=list(to_drop)).reset_index(drop=True)
         if debug:
             print(
-                f"[INFO] Dropped {len(drop_marks)} non-canonical rows; final rows: {processed_df.shape[0]}"
+                f"[INFO] Skipped groups rows dropped: {rows_skipped}; Secondary/duplicates dropped: {rows_secondary}; final rows: {processed_df.shape[0]}"
             )
 
     # Cleanup helper column
     processed_df = processed_df.drop(columns=["__name_raw"], errors="ignore")
+
+    # Finalize stats
+    stats["final_rows"] = len(processed_df)
+    if debug:
+        print(
+            f"[STATS] total_groups={stats['groups_total']}, merged={stats['groups_merged']}, single={stats['groups_single']}, "
+            f"detector_only={stats['groups_detector_only']}, skipped_multiple={stats['groups_skipped_multiple']}"
+        )
+    try:
+        processed_df.attrs["join_stats"] = stats
+    except Exception:
+        pass
 
     return processed_df
 
@@ -399,6 +478,10 @@ class DetectorJoiner(TransformerMixin):
 
     Automatically picks 'meas_name' or 'cal_name' for detector suffix parsing
     unless name_field is explicitly provided.
+
+    Supports flexible interpolation_q_range parameter:
+    - Single tuple for all measurement types: (0.01, 3.0)
+    - Dictionary for per-type ranges: {'SAXS': (0.01, 1.5), 'WAXS': (1.0, 5.0)}
     """
 
     def __init__(
@@ -409,8 +492,11 @@ class DetectorJoiner(TransformerMixin):
         angles: int = 180,
         type_rules: Optional[Dict[str, Tuple[Any, Any]]] = None,
         calibration_mode: str = "poni",
-        interpolation_q_range: Optional[Tuple[float, float]] = None,
+        interpolation_q_range: Optional[
+            Union[Tuple[float, float], Dict[str, Tuple[float, float]]]
+        ] = None,
         debug: bool = False,
+        print_stats: bool = True,
     ) -> None:
         self.name_field = name_field
         self.faulty_pixels = faulty_pixels
@@ -420,12 +506,14 @@ class DetectorJoiner(TransformerMixin):
         self.calibration_mode = calibration_mode
         self.interpolation_q_range = interpolation_q_range
         self.debug = debug
+        self.print_stats = print_stats
+        self.stats: Optional[dict] = None
 
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        return join_detectors(
+        df_out = join_detectors(
             X,
             name_field=self.name_field,
             faulty_pixels=self.faulty_pixels,
@@ -436,3 +524,25 @@ class DetectorJoiner(TransformerMixin):
             interpolation_q_range=self.interpolation_q_range,
             debug=self.debug,
         )
+        # capture stats if available
+        try:
+            self.stats = getattr(df_out, "attrs", {}).get("join_stats")
+        except Exception:
+            self.stats = None
+
+        # Always print a stats summary if requested
+        if self.print_stats and self.stats:
+            s = self.stats
+            print(
+                "[DetectorJoiner stats] "
+                f"groups_total={s.get('groups_total', 0)}, "
+                f"merged={s.get('groups_merged', 0)}, "
+                f"single={s.get('groups_single', 0)}, "
+                f"detector_only={s.get('groups_detector_only', 0)}, "
+                f"skipped_multiple={s.get('groups_skipped_multiple', 0)}, "
+                f"rows_removed_skipped_groups={s.get('rows_removed_skipped_groups', 0)}, "
+                f"rows_dropped_secondary={s.get('rows_dropped_secondary', 0)}, "
+                f"final_rows={s.get('final_rows', len(df_out))}"
+            )
+
+        return df_out

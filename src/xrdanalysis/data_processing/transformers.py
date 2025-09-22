@@ -3,7 +3,7 @@ The transformer classes are stored here
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -900,10 +900,9 @@ class FourierTransform(TransformerMixin):
 class GoodnessTransformer(TransformerMixin):
     """
     Transformer that computes a high-frequency power fraction (HF score)
-    from a percent-deviation map derived from a 2D array column (by default
-    'radial_profile_data'). The HF score is added as a new scalar column per
-    row (default: 'goodness'). Optionally, the deviation matrices can be
-    stored in a separate column.
+    from a percent-deviation map derived from a 2D array column. The HF score
+    is added as a new scalar column per row (default: 'goodness').
+    Optionally, the deviation matrices can be stored in a separate column.
 
     The processing steps for each row are:
     - Skip the first `skip_bins` q-bins (low-q region)
@@ -913,7 +912,8 @@ class GoodnessTransformer(TransformerMixin):
       frequency magnitude > `hf_cutoff_fraction`
 
     :param column: Name of the column with 2D arrays (n_angles, n_q_total).
-                   Defaults to 'radial_profile_data'.
+                   Can be 'polar_data' (recommended) or 'radial_profile_data' (legacy).
+                   Defaults to 'polar_data'.
     :type column: str
     :param skip_bins: Number of leading q-bins to skip before computing
                       the deviation map. Defaults to 30.
@@ -936,7 +936,7 @@ class GoodnessTransformer(TransformerMixin):
 
     def __init__(
         self,
-        column: str = "radial_profile_data",
+        column: str = "polar_data",
         skip_bins: int = 30,
         hf_cutoff_fraction: float = 0.25,
         output_col: str = "goodness",
@@ -957,15 +957,32 @@ class GoodnessTransformer(TransformerMixin):
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         X = df.copy()
+
+        # Auto-detect the best column to use if the specified one doesn't exist
         if self.column not in X.columns:
-            raise KeyError(f"Column '{self.column}' not found in the DataFrame.")
+            if "polar_data" in X.columns:
+                actual_column = "polar_data"
+                print(
+                    f"Warning: Column '{self.column}' not found. Using 'polar_data' instead."
+                )
+            elif "radial_profile_data" in X.columns:
+                actual_column = "radial_profile_data"
+                print(
+                    f"Warning: Column '{self.column}' not found. Using 'radial_profile_data' instead."
+                )
+            else:
+                raise KeyError(
+                    f"Neither '{self.column}', 'polar_data', nor 'radial_profile_data' found in DataFrame columns"
+                )
+        else:
+            actual_column = self.column
 
         dev_matrices = [] if self.save_dev else None
 
         def compute_hf_score(arr: np.ndarray) -> float:
             Z_full = np.array(arr)
             if Z_full.ndim != 2:
-                raise ValueError(f"Column '{self.column}' must contain 2D arrays.")
+                raise ValueError(f"Column '{actual_column}' must contain 2D arrays.")
 
             # Skip low-q bins
             Z = Z_full[:, self.skip_bins :]
@@ -1012,12 +1029,129 @@ class GoodnessTransformer(TransformerMixin):
 
             return float(P_high / P_total * 100.0)
 
-        X[self.output_col] = X[self.column].apply(compute_hf_score)
+        X[self.output_col] = X[actual_column].apply(compute_hf_score)
 
         if self.save_dev:
             X[self.diff_col] = dev_matrices
 
         return X
+
+
+class GoodnessFilter(TransformerMixin):
+    """
+    Transformer that filters DataFrame rows based on goodness scores with
+    configurable thresholds and comparison rules for different measurement types.
+
+    This transformer filters rows based on goodness scores using specified
+    thresholds and comparison operators for each measurement type.
+
+    :param goodness_column: Name of the column containing goodness scores.
+                            Defaults to 'goodness'.
+    :type goodness_column: str
+    :param type_column: Name of the column containing measurement type
+                        ('SAXS', 'WAXS', etc.). Defaults to 'type_measurement'.
+    :type type_column: str
+    :param thresholds: Dictionary mapping measurement types to threshold values.
+                       Example: {'SAXS': 50, 'WAXS': 30}
+                       If None, uses default {'SAXS': 50, 'WAXS': 30}.
+    :type thresholds: dict, optional
+    :param rule: Comparison rule to apply. Options: '>', '>=', '<', '<='.
+                 '>' means keep rows where goodness > threshold.
+                 '<' means keep rows where goodness < threshold.
+                 Defaults to '>'.
+    :type rule: str
+    :param default_threshold: Default threshold for measurement types not in
+                              the thresholds dictionary. Defaults to 50.
+    :type default_threshold: float
+    :param verbose: If True, print filtering statistics. Defaults to False.
+    :type verbose: bool
+    """
+
+    def __init__(
+        self,
+        goodness_column: str = "goodness",
+        type_column: str = "type_measurement",
+        thresholds: dict = None,
+        rule: str = ">",
+        default_threshold: float = 50.0,
+        verbose: bool = False,
+    ):
+        self.goodness_column = goodness_column
+        self.type_column = type_column
+        self.thresholds = (
+            thresholds if thresholds is not None else {"SAXS": 50, "WAXS": 30}
+        )
+        self.rule = rule
+        self.default_threshold = default_threshold
+        self.verbose = verbose
+
+        # Validate rule parameter
+        valid_rules = [">", ">=", "<", "<="]
+        if self.rule not in valid_rules:
+            raise ValueError(f"Rule must be one of {valid_rules}, got '{self.rule}'")
+
+    def fit(self, X: pd.DataFrame, y=None):
+        _ = X
+        _ = y
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Filter DataFrame based on goodness thresholds and comparison rules."""
+        X = df.copy()
+
+        # Check required columns exist
+        if self.goodness_column not in X.columns:
+            raise KeyError(
+                f"Goodness column '{self.goodness_column}' not found in DataFrame"
+            )
+        if self.type_column not in X.columns:
+            raise KeyError(f"Type column '{self.type_column}' not found in DataFrame")
+
+        initial_count = len(X)
+
+        # Create comparison function based on rule
+        def compare_values(goodness_score, threshold):
+            if self.rule == ">":
+                return goodness_score > threshold
+            elif self.rule == ">=":
+                return goodness_score >= threshold
+            elif self.rule == "<":
+                return goodness_score < threshold
+            elif self.rule == "<=":
+                return goodness_score <= threshold
+
+        # Create filter mask based on measurement type and goodness threshold
+        def meets_criteria(row):
+            measurement_type = row[self.type_column]
+            goodness_score = row[self.goodness_column]
+
+            # Get threshold for this measurement type
+            threshold = self.thresholds.get(measurement_type, self.default_threshold)
+
+            return compare_values(goodness_score, threshold)
+
+        # Apply filter
+        mask = X.apply(meets_criteria, axis=1)
+        X_filtered = X[mask]
+
+        if self.verbose:
+            final_count = len(X_filtered)
+            removed_count = initial_count - final_count
+            print(
+                f"GoodnessFilter: {initial_count} -> {final_count} rows ({removed_count} removed, rule: '{self.rule}')"
+            )
+
+            # Show breakdown by type
+            unique_types = X[self.type_column].unique()
+            for mtype in unique_types:
+                original = len(X[X[self.type_column] == mtype])
+                filtered = len(X_filtered[X_filtered[self.type_column] == mtype])
+                threshold = self.thresholds.get(mtype, self.default_threshold)
+                print(
+                    f"  {mtype}: {original} -> {filtered} rows (goodness {self.rule} {threshold})"
+                )
+
+        return X_filtered
 
 
 class DataPreparation(TransformerMixin):
@@ -1540,3 +1674,84 @@ class HankelTransformer(TransformerMixin):
             X_copy.at[i, "hankel"] = H
 
         return X_copy
+
+
+class DetectorJoiner(TransformerMixin):
+    """
+    scikit-learn compatible wrapper around join_detectors.
+
+    Automatically picks 'meas_name' or 'cal_name' for detector suffix parsing
+    unless name_field is explicitly provided.
+
+    Supports flexible interpolation_q_range parameter:
+    - Single tuple for all measurement types: (0.01, 3.0)
+    - Dictionary for per-type ranges: {'SAXS': (0.01, 1.5), 'WAXS': (1.0, 5.0)}
+    """
+
+    def __init__(
+        self,
+        name_field: Optional[str] = None,
+        faulty_pixels=None,
+        npt: int = 200,
+        angles: int = 180,
+        type_rules: Optional[
+            Dict[str, Tuple[Union[str, float], Union[str, float, List, Tuple]]]
+        ] = None,
+        calibration_mode: str = "poni",
+        interpolation_q_range: Optional[
+            Union[Tuple[float, float], Dict[str, Tuple[float, float]]]
+        ] = None,
+        debug: bool = False,
+        print_stats: bool = True,
+    ) -> None:
+        self.name_field = name_field
+        self.faulty_pixels = faulty_pixels
+        self.npt = npt
+        self.angles = angles
+        self.type_rules = type_rules
+        self.calibration_mode = calibration_mode
+        self.interpolation_q_range = interpolation_q_range
+        self.debug = debug
+        self.print_stats = print_stats
+        self.stats: Optional[dict] = None
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        # Import join_detectors here to avoid circular imports
+        from xrdanalysis.data_processing.detector_joining import join_detectors
+
+        df_out = join_detectors(
+            X,
+            name_field=self.name_field,
+            faulty_pixels=self.faulty_pixels,
+            npt=self.npt,
+            angles=self.angles,
+            type_rules=self.type_rules,
+            calibration_mode=self.calibration_mode,
+            interpolation_q_range=self.interpolation_q_range,
+            debug=self.debug,
+        )
+        # capture stats if available
+        try:
+            self.stats = getattr(df_out, "attrs", {}).get("join_stats")
+        except Exception:
+            self.stats = None
+
+        # Always print a stats summary if requested
+        if self.print_stats and self.stats:
+            s = self.stats
+            print(
+                "[DetectorJoiner stats] "
+                f"groups_total={s.get('groups_total', 0)}, "
+                f"merged={s.get('groups_merged', 0)}, "
+                f"single={s.get('groups_single', 0)}, "
+                f"detector_only={s.get('groups_detector_only', 0)}, "
+                f"skipped_multiple={s.get('groups_skipped_multiple', 0)}, "
+                f"rows_removed_skipped_groups={s.get('rows_removed_skipped_groups', 0)}, "
+                f"rows_dropped_secondary={s.get('rows_dropped_secondary', 0)}, "
+                f"final_rows={s.get('final_rows', len(df_out))}"
+            )
+
+        return df_out
