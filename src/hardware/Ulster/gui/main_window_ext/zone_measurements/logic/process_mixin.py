@@ -413,7 +413,9 @@ class ZoneMeasurementsProcessMixin:
                 )
                 txt_path = per_alias_base + ".txt" if ok else None
                 if txt_path and os.path.exists(txt_path):
-                    alias_folder = os.path.join(self.measurement_folder, alias)
+                    alias_folder = (
+                        self.measurement_folder
+                    )  # Save into the main folder (no subfolders)
                     moved_npy = move_and_convert_measurement_file(
                         txt_path, alias_folder
                     )
@@ -535,7 +537,9 @@ class ZoneMeasurementsProcessMixin:
 
                 for a, txt in (result_files2 or {}).items():
                     if txt and _os.path.exists(txt):
-                        alias_folder = _os.path.join(self.measurement_folder, a)
+                        alias_folder = (
+                            self.measurement_folder
+                        )  # Save into the main folder (no subfolders)
                         moved_map[a] = move_and_convert_measurement_file(
                             txt, alias_folder
                         )

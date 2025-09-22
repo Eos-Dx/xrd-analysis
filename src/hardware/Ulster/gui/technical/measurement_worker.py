@@ -52,7 +52,9 @@ class MeasurementWorker(QObject):
                 f"Processing detector measurement", detector=alias, file=txt_file
             )
             src_path = Path(txt_file)
-            alias_folder = src_path.parent / alias
+            alias_folder = (
+                src_path.parent
+            )  # Save directly in the parent folder (no subfolders)
             npy_path = move_and_convert_measurement_file(src_path, alias_folder)
             self.add_aux_item.emit(alias, str(npy_path))
             mask = self.masks.get(alias)

@@ -146,9 +146,7 @@ class AttenuationMixin:
                 )
                 continue
 
-            final_npy_file = move_and_convert_measurement_file(
-                txt_file, os.path.join(save_folder, alias)
-            )
+            final_npy_file = move_and_convert_measurement_file(txt_file, save_folder)
 
             try:
                 frame = np.load(final_npy_file)

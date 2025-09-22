@@ -164,26 +164,29 @@ import numpy as np
 
 def move_and_convert_measurement_file(src_file, alias_folder):
     """
-    Move .txt and .dsc (of any extension style) to alias_folder, convert .txt to .npy.
+    Move associated files into the target folder (no subfolders) and convert .txt to .npy.
     Args:
         src_file: str or Path, path to the original .txt file
-        alias_folder: str or Path, target directory for detector alias (will be created if needed)
+        alias_folder: str or Path, target directory where files should reside (created if needed)
     Returns:
-        str: Path to the saved .npy file
+        str: Path to the saved .npy file (in the target folder)
     """
     src_file = Path(src_file)
     alias_folder = Path(alias_folder)
     alias_folder.mkdir(parents=True, exist_ok=True)
 
-    # Move .txt file
+    # Move .txt file (skip if already in target folder)
     dest_txt = alias_folder / src_file.name
     try:
-        shutil.move(str(src_file), str(dest_txt))
+        if src_file.resolve() != dest_txt.resolve():
+            shutil.move(str(src_file), str(dest_txt))
+        else:
+            dest_txt = src_file
     except Exception as e:
         print(f"[move_and_convert_measurement_file] Error moving .txt: {e}")
         dest_txt = src_file  # fallback
 
-    # Move both .dsc and .txt.dsc (Pixet style)
+    # Move both .dsc and .txt.dsc (Pixet style), skip if already in place
     candidates = [
         src_file.with_suffix(".dsc"),  # aux_001_..._SAXS.dsc
         src_file.parent / (src_file.name + ".dsc"),  # aux_001_..._SAXS.txt.dsc
@@ -192,14 +195,15 @@ def move_and_convert_measurement_file(src_file, alias_folder):
         if dsc_candidate.exists():
             dest_dsc = alias_folder / dsc_candidate.name
             try:
-                shutil.move(str(dsc_candidate), str(dest_dsc))
-                print(f"Moved {dsc_candidate} → {dest_dsc}")
+                if dsc_candidate.resolve() != dest_dsc.resolve():
+                    shutil.move(str(dsc_candidate), str(dest_dsc))
+                    print(f"Moved {dsc_candidate} → {dest_dsc}")
             except Exception as e:
                 print(
                     f"[move_and_convert_measurement_file] Error moving {dsc_candidate}: {e}"
                 )
 
-    # Convert to .npy in alias folder
+    # Convert to .npy in target folder
     try:
         data = np.loadtxt(dest_txt)
         npy_file = dest_txt.with_suffix(".npy")
