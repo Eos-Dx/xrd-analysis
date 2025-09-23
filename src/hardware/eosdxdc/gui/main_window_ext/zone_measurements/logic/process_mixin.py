@@ -61,21 +61,18 @@ class ZoneMeasurementsProcessMixin:
 
             from .preflight_dialog import PreflightDialog
 
-            s = QSettings("EOSDx", "EOSDxDc")
-            preflight_disabled = bool(s.value("preflight_disabled", False, type=bool))
-            if not preflight_disabled:
-                d = PreflightDialog(
-                    self,
-                    self.measurement_folder,
-                    self.state_path_measurements,
-                    getattr(self, "ponis", {}),
-                    bool(
-                        getattr(self, "attenuationCheckBox", None)
-                        and self.attenuationCheckBox.isChecked()
-                    ),
-                )
-                if d.exec_() != d.Accepted:
-                    return
+            d = PreflightDialog(
+                self,
+                self.measurement_folder,
+                self.state_path_measurements,
+                getattr(self, "ponis", {}),
+                bool(
+                    getattr(self, "attenuationCheckBox", None)
+                    and self.attenuationCheckBox.isChecked()
+                ),
+            )
+            if d.exec_() != d.Accepted:
+                return
         except Exception as e:
             logger.warning(
                 "Preflight dialog failed; proceeding without it", error=str(e)

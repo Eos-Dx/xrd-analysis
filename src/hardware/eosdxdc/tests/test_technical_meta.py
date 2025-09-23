@@ -282,6 +282,15 @@ class TestTechnicalMetaGeneration(unittest.TestCase):
             meas_path = os.path.join(tmpdir, "SAXS_meas.npy")
             with open(meas_path, "wb") as f:
                 f.write(b"dummy")
+            dark_path = os.path.join(tmpdir, "SAXS_dark.npy")
+            with open(dark_path, "wb") as f:
+                f.write(b"dummy")
+            empty_path = os.path.join(tmpdir, "SAXS_empty.npy")
+            with open(empty_path, "wb") as f:
+                f.write(b"dummy")
+            background_path = os.path.join(tmpdir, "SAXS_background.npy")
+            with open(background_path, "wb") as f:
+                f.write(b"dummy")
 
             # Prepare PONI files
             poni_path = os.path.join(tmpdir, "saxs.poni")
@@ -304,9 +313,22 @@ class TestTechnicalMetaGeneration(unittest.TestCase):
             obj.folderLE = _LE(tmpdir)
             obj.NO_SELECTION_LABEL = "— Select —"
 
-            # Prepare auxTable with one selected row, type AGBH for alias SAXS
+            # Prepare auxTable with all required types for alias SAXS
             obj.auxTable = self._make_stub_aux_table(
-                [{"file_path": meas_path, "type_text": "AGBH", "alias_text": "SAXS"}]
+                [
+                    {"file_path": meas_path, "type_text": "AGBH", "alias_text": "SAXS"},
+                    {"file_path": dark_path, "type_text": "DARK", "alias_text": "SAXS"},
+                    {
+                        "file_path": empty_path,
+                        "type_text": "EMPTY",
+                        "alias_text": "SAXS",
+                    },
+                    {
+                        "file_path": background_path,
+                        "type_text": "BACKGROUND",
+                        "alias_text": "SAXS",
+                    },
+                ]
             )
 
             # Configure dummy dialog return values

@@ -1,5 +1,4 @@
 import logging
-import random
 import sys
 from pathlib import Path
 
@@ -11,7 +10,7 @@ from PyQt5.QtCore import QDate, QSettings
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from hardware.eosdxdc.gui.views.main_window import MainWindow
-from hardware.eosdxdc.resources.motivation import motivation_phrases
+from hardware.eosdxdc.gui.views.welcome_dialog import WelcomeDialog
 from hardware.eosdxdc.utils.logging_setup import (
     configure_third_party_logging,
     log_context,
@@ -31,16 +30,6 @@ configure_third_party_logging()
 logger = logging.getLogger(__name__)
 
 
-def show_motivation_dialog(parent=None):
-    msg = QMessageBox(parent)
-    msg.setWindowTitle("Welcome!")
-    phrase = random.choice(motivation_phrases)
-    msg.setText(phrase)
-    msg.setIcon(QMessageBox.Information)
-    msg.setStandardButtons(QMessageBox.Ok)
-    msg.exec_()  # blocks until OK is clicked
-
-
 if __name__ == "__main__":
     with log_context(
         session_id=f"session_{QDate.currentDate().toString('yyyy-MM-dd')}",
@@ -50,18 +39,16 @@ if __name__ == "__main__":
 
         app = QApplication(sys.argv)
 
-        # --- only show once per day ---
-        settings = QSettings("EOSDx", "EOSDxDc")
-        last_date_shown = settings.value("lastMotivationDate", "")
-        today = QDate.currentDate().toString("yyyy-MM-dd")
+        # --- Welcome dialog with setup selection and embedded motivation ---
+        # (Motivation popup removed; now shown inside Welcome dialog)
 
-        if last_date_shown != today:
-            logger.debug("Showing motivation dialog")
-            show_motivation_dialog()
-            settings.setValue("lastMotivationDate", today)
-        else:
-            logger.debug("Skipping motivation dialog (already shown today)")
-        # --------------------------------
+        # Always show Welcome dialog for setup selection before creating main window
+        try:
+            logger.debug("Showing welcome dialog for setup selection")
+            dlg = WelcomeDialog()
+            dlg.exec_()
+        except Exception as e:
+            logger.warning("Failed to show welcome dialog", exc_info=e)
 
         logger.info("Creating main window")
         win = MainWindow()
