@@ -150,6 +150,20 @@ SRC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "
 if SRC_ROOT not in sys.path:
     sys.path.insert(0, SRC_ROOT)
 
+# Ensure top-level 'hardware' package resolves correctly (avoid namespace confusion)
+import importlib
+
+if "hardware" in sys.modules:
+    try:
+        del sys.modules["hardware"]
+    except Exception:
+        pass
+try:
+    _hardware_pkg = importlib.import_module("hardware")
+    sys.modules["hardware"] = _hardware_pkg
+except Exception:
+    pass
+
 # Stub capture and widgets modules referenced by process_mixin to avoid Qt/matplotlib imports
 if "hardware.eosdxdc.gui.technical.capture" not in sys.modules:
     cap_mod = types.ModuleType("hardware.eosdxdc.gui.technical.capture")

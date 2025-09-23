@@ -13,6 +13,20 @@ from unittest.mock import MagicMock, Mock, patch
 SRC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, SRC_ROOT)
 
+# Ensure top-level 'hardware' package resolves correctly (avoid namespace confusion)
+import importlib
+
+if "hardware" in sys.modules:
+    try:
+        del sys.modules["hardware"]
+    except Exception:
+        pass
+try:
+    _hardware_pkg = importlib.import_module("hardware")
+    sys.modules["hardware"] = _hardware_pkg
+except Exception:
+    pass
+
 # Stub PyQt5 and GUI-related modules to avoid heavy dependencies during import
 if "PyQt5" not in sys.modules:
     pyqt5 = types.ModuleType("PyQt5")
@@ -22,9 +36,53 @@ if "PyQt5" not in sys.modules:
 
     # Provide minimal stubs used by process_mixin
     class _QMessageBox:
+        Yes, No, Question = 1, 0, 3
+        AcceptRole, RejectRole = 1, 0
+
+        def __init__(self, *args, **kwargs):
+            self._buttons = []
+            self._default = None
+            self._clicked = None
+
         @staticmethod
         def warning(*args, **kwargs):
             return None
+
+        @staticmethod
+        def information(*args, **kwargs):
+            return None
+
+        @staticmethod
+        def question(*args, **kwargs):
+            return _QMessageBox.Yes
+
+        def setWindowTitle(self, *args, **kwargs):
+            pass
+
+        def setText(self, *args, **kwargs):
+            pass
+
+        def setIcon(self, *args, **kwargs):
+            pass
+
+        def setStandardButtons(self, *args, **kwargs):
+            pass
+
+        def addButton(self, text, role):
+            btn = types.SimpleNamespace(text=text, role=role)
+            self._buttons.append(btn)
+            return btn
+
+        def setDefaultButton(self, btn):
+            self._default = btn
+
+        def clickedButton(self):
+            return self._clicked or self._default
+
+        def exec_(self):
+            # Simulate clicking default button
+            self._clicked = self._default
+            return 1
 
     qtwidgets.QMessageBox = _QMessageBox
 
@@ -33,10 +91,16 @@ if "PyQt5" not in sys.modules:
             pass
 
     qtwidgets.QListWidgetItem = _QListWidgetItem
+    # Register stubs in sys.modules so patching imports work
     sys.modules["PyQt5"] = pyqt5
     sys.modules["PyQt5.QtWidgets"] = qtwidgets
+    sys.modules["PyQt5.QtCore"] = qtcore
+    sys.modules["PyQt5.QtGui"] = qtgui
+    # Also attach as attributes so getattr(PyQt5, 'QtWidgets') works
+    pyqt5.QtWidgets = qtwidgets
+    pyqt5.QtCore = qtcore
+    pyqt5.QtGui = qtgui
 
-    # Minimal thread/timer stubs used by process_mixin
     class _QThread:
         def __init__(self, *a, **k):
             pass
@@ -129,10 +193,14 @@ if "hardware.eosdxdc.gui.technical.capture" not in sys.modules:
         # Return a dummy destination path string
         return str(src_path)
 
+    def _show_measurement_window(*args, **kwargs):
+        return None
+
     cap_mod.CaptureWorker = _CaptureWorker
     cap_mod.validate_folder = _validate_folder
     cap_mod.compute_hf_score_from_cake = _compute_hf_score_from_cake
     cap_mod.move_and_convert_measurement_file = _move_and_convert_measurement_file
+    cap_mod.show_measurement_window = _show_measurement_window
     sys.modules["hardware.eosdxdc.gui.technical.capture"] = cap_mod
 
 if "hardware.eosdxdc.gui.technical.widgets" not in sys.modules:
@@ -476,7 +544,7 @@ class TestMeasurementPointFiltering(unittest.TestCase):
         pm_path = os.path.join(
             SRC_ROOT,
             "hardware",
-            "Ulster",
+            "eosdxdc",
             "gui",
             "main_window_ext",
             "zone_measurements",

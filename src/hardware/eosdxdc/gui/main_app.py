@@ -46,7 +46,10 @@ if __name__ == "__main__":
         try:
             logger.debug("Showing welcome dialog for setup selection")
             dlg = WelcomeDialog()
-            dlg.exec_()
+            result = dlg.exec_()
+            if result != dlg.Accepted:
+                logger.info("Welcome dialog canceled; exiting application")
+                sys.exit(0)
         except Exception as e:
             logger.warning("Failed to show welcome dialog", exc_info=e)
 

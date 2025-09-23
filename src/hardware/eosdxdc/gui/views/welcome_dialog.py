@@ -182,6 +182,11 @@ class WelcomeDialog(QDialog):
 
         # Cancel button row (optional)
         buttons = QDialogButtonBox(QDialogButtonBox.Cancel, self)
+        # Rename Cancel to Quit and make it close the app unless a setup is chosen
+        try:
+            buttons.button(QDialogButtonBox.Cancel).setText("Quit")
+        except Exception:
+            pass
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
