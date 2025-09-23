@@ -13,7 +13,7 @@ CAB_ResvCodeSigning=0
 RebootMode=I
 TargetName=C:\dev\xrd-analysis\src\hardware\bin\run_eosdxdc.exe
 FriendlyName=EOSDxDc Launcher
-AppLaunched=run_eosdxdc.bat
+AppLaunched=run_eosdxdc_embedded.bat
 PostInstallCmd=<None>
 AdminQuietInstCmd=
 UserQuietInstCmd=
@@ -24,7 +24,7 @@ SelfDelete=0
 SourceFiles0=C:\dev\xrd-analysis\src\hardware\bin
 
 [SourceFiles0]
-%FILE0%=run_eosdxdc.bat
+%FILE0%=run_eosdxdc_embedded.bat
 
 [Strings]
-FILE0=run_eosdxdc.bat
+FILE0=run_eosdxdc_embedded.bat

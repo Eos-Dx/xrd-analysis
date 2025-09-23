@@ -53,8 +53,8 @@ python launcher.py
 
 ## Notes
 
-- The original `run_eosdxdc.exe` was removed as it was not working correctly
-- IExpress-generated executables had issues with self-extraction and persistence
+- The `run_eosdxdc.exe` is a working IExpress self-extracting executable
+- Uses embedded batch file with hardcoded repository path for proper temp directory execution
 - The batch and Python launchers provide better reliability and error reporting
 - All launchers launch the same application: `src/hardware/eosdxdc/gui/main_app.py`
 
