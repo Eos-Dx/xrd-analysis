@@ -54,6 +54,34 @@ class ZoneMeasurementsProcessMixin:
             return  # User chose to update PONI settings first
         # ==================================
 
+        # ===== PRE-FLIGHT MANDATORY CHECKLIST =====
+        try:
+            # Allow global admin disable via QSettings
+            from PyQt5.QtCore import QSettings
+
+            from .preflight_dialog import PreflightDialog
+
+            s = QSettings("EOSDx", "EOSDxDc")
+            preflight_disabled = bool(s.value("preflight_disabled", False, type=bool))
+            if not preflight_disabled:
+                d = PreflightDialog(
+                    self,
+                    self.measurement_folder,
+                    self.state_path_measurements,
+                    getattr(self, "ponis", {}),
+                    bool(
+                        getattr(self, "attenuationCheckBox", None)
+                        and self.attenuationCheckBox.isChecked()
+                    ),
+                )
+                if d.exec_() != d.Accepted:
+                    return
+        except Exception as e:
+            logger.warning(
+                "Preflight dialog failed; proceeding without it", error=str(e)
+            )
+        # ==================================
+
         # Ensure a session-level calibration group hash exists and is placed in the state before copying
         group_hash = getattr(self, "calibration_group_hash", None)
         if not group_hash:

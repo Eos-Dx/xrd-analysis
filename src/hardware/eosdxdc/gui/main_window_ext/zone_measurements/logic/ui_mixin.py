@@ -151,7 +151,18 @@ class ZoneMeasurementsUIMixin:
         self.attenTimeSpin.setValue(float(atten_cfg.get("integration_time_s", 0.00005)))
         integrationLayout.addWidget(self.attenTimeSpin)
 
+        # Quick distance buttons (SAXS/WAXS)
+        distLayout = QHBoxLayout()
+        self.saxBtn = QPushButton("SAXS distance")
+        self.waxsBtn = QPushButton("WAXS distance")
+        self.distanceStatus = QLabel("Distance: unknown")
+        distLayout.addWidget(self.saxBtn)
+        distLayout.addWidget(self.waxsBtn)
+        distLayout.addWidget(self.distanceStatus)
+        self.saxBtn.clicked.connect(lambda: self._apply_standard_distance("SAXS"))
+        self.waxsBtn.clicked.connect(lambda: self._apply_standard_distance("WAXS"))
         meas_layout.addLayout(integrationLayout)
+        meas_layout.addLayout(distLayout)
 
         # --- Folder selection ---
         folderLayout = QHBoxLayout()
@@ -222,3 +233,53 @@ class ZoneMeasurementsUIMixin:
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
         self.xyTimer.start(10000)
+
+    def _apply_standard_distance(self, mode: str):
+        """Apply a standard distance (SAXS/WAXS) by updating PONI Distance for active aliases.
+        Falls back silently if PONI text is not available.
+        """
+        try:
+            std = (
+                self.config.get("standard_distances", {})
+                if hasattr(self, "config")
+                else {}
+            )
+            dist = std.get(mode)
+            if dist is None:
+                self.distanceStatus.setText(f"Distance: {mode} (not configured)")
+                return
+            # Update self.ponis strings by substituting Distance line
+            import re as _re
+
+            if (
+                not hasattr(self, "ponis")
+                or not isinstance(self.ponis, dict)
+                or not self.ponis
+            ):
+                # Attempt to build ponis from detector default_poni in config
+                ponis = {}
+                for det in self.config.get("detectors", []):
+                    alias = det.get("alias")
+                    txt = det.get("default_poni")
+                    if alias and txt:
+                        ponis[alias] = txt
+                self.ponis = ponis
+
+            def _sub_distance(text):
+                if not text:
+                    return text
+                if "Distance:" in text:
+                    return _re.sub(
+                        r"^Distance:\s*([0-9.eE+-]+)",
+                        f"Distance: {dist}",
+                        text,
+                        flags=_re.MULTILINE,
+                    )
+                else:
+                    return f"Distance: {dist}\n" + text
+
+            for a, t in list(self.ponis.items()):
+                self.ponis[a] = _sub_distance(t)
+            self.distanceStatus.setText(f"Distance: {mode} {dist:.4f} m")
+        except Exception as e:
+            self.distanceStatus.setText(f"Distance: error {e}")

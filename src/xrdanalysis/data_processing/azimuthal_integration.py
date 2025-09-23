@@ -94,7 +94,7 @@ def perform_azimuthal_integration(
     thres=3,
     max_iter=5,
     thickness_adjustment=False,
-    thickness_adjustment_distance=700,
+    thickness_adjustment_distance=None,
     calc_cake_stats=False,
     angles=None,
 ):
@@ -171,6 +171,7 @@ def perform_azimuthal_integration(
     interpolation_q_range = row.get("interpolation_q_range")
     azimuthal_range = row.get("azimuthal_range")
     data = row[column]
+    adjusted_distance = None
 
     if calibration_mode == "dataframe":
         pixel_size = row["pixel_size"] * (10**-6)
@@ -191,17 +192,41 @@ def perform_azimuthal_integration(
         # Adjust poni file thickness. Adjusted distance = restored_thickness - t/2
 
         if thickness_adjustment:
-            adjusted_thickness = (
-                thickness_adjustment_distance - (row["thickness"] / 2)
-            ) * 10**-3  # hard coded for in-vivo machine
-            distance_index = poni_text.find("Distance") + 9
-            end_of_line_index = poni_text.find("\n", distance_index)
-            new_ponifile_text = (
-                poni_text[:distance_index]
-                + f"{adjusted_thickness:.6f}"
-                + poni_text[end_of_line_index:]
-            )
-            poni_text = new_ponifile_text
+            # Read base distance from the PONI text (meters), then subtract half thickness (mm->m)
+            distance_anchor = "Distance:"
+            p = poni_text.find(distance_anchor)
+            base_distance_m = None
+            if p != -1:
+                value_start = p + len(distance_anchor)
+                # Skip whitespace after the anchor
+                while value_start < len(poni_text) and poni_text[value_start] in " \t":
+                    value_start += 1
+                end_of_line_index = poni_text.find("\n", value_start)
+                if end_of_line_index == -1:
+                    end_of_line_index = len(poni_text)
+                try:
+                    base_distance_m = float(poni_text[value_start:end_of_line_index])
+                except Exception:
+                    base_distance_m = None
+
+            # Fallback to parameter if parsing failed (backward compatibility)
+            if base_distance_m is None:
+                base_distance_m = thickness_adjustment_distance * 1e-3
+                # If "Distance:" anchor wasn't found before, try to set indices to a reasonable default
+                # so replacement below is skipped when not found.
+                value_start = None
+                end_of_line_index = None
+
+            adjusted_distance = base_distance_m - (row["thickness"] / 2) * 1e-3
+
+            # Replace the Distance field with the adjusted value (meters)
+            if p != -1 and value_start is not None and end_of_line_index is not None:
+                new_ponifile_text = (
+                    poni_text[:value_start]
+                    + f"{adjusted_distance:.6f}"
+                    + poni_text[end_of_line_index:]
+                )
+                poni_text = new_ponifile_text
         ai_cached = initialize_azimuthal_integrator_poni_text(poni_text)
 
     center_x = ai_cached.poni2 / ai_cached.detector.pixel2
@@ -224,6 +249,7 @@ def perform_azimuthal_integration(
             ai_cached.dist,
             center_x,
             center_y,
+            adjusted_distance,
         )
     elif mode == "2D":
         result = ai_cached.integrate2d(
@@ -267,6 +293,7 @@ def perform_azimuthal_integration(
             std_col,
             skewness_col,
             kurtosis_col,
+            adjusted_distance,
         )
     elif mode == "sigma_clip":
         result = ai_cached.sigma_clip_ng(
@@ -287,6 +314,7 @@ def perform_azimuthal_integration(
             ai_cached.dist,
             center_x,
             center_y,
+            adjusted_distance,
         )
     elif mode == "rotating_angles":
         results = []
@@ -310,7 +338,7 @@ def perform_azimuthal_integration(
                 )
             )
 
-        return results, ai_cached.dist, center_x, center_y
+        return results, ai_cached.dist, center_x, center_y, adjusted_distance
 
 
 def calculate_deviation(

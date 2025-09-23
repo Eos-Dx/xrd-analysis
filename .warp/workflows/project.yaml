@@ -2,7 +2,7 @@ workflows:
   - name: Launch EOSDxDc GUI (Windows)
     description: Start the hardware GUI using the launcher script (reads conda env from config)
     tags: [gui, windows]
-command: src\\hardware\\bin\\run_eosdxdc.bat
+    command: src\\hardware\\bin\\run_eosdxdc.bat
 
   - name: Git: commit and push
     description: Stage all changes, commit with a message, and push to the current branch

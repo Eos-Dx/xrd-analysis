@@ -1,8 +1,10 @@
+import matplotlib.pyplot as plt
 import pandas as pd
 from joblib import dump
-from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.metrics import accuracy_score, auc, roc_auc_score, roc_curve
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder
 
 from xrdanalysis.data_processing.utility_functions import (
     calculate_optimal_threshold,
@@ -179,9 +181,7 @@ class MLPipeline:
         if y_value is not None:
             # Return a boolean series where y equals y_value
             return X[y_column] == y_value
-        return X[
-            y_column
-        ]  # Return the entire series if no filtering is needed
+        return X[y_column]  # Return the entire series if no filtering is needed
 
     def train_preprocessor(self, data):
         """
@@ -350,7 +350,7 @@ class MLPipeline:
         show_flag=False,
         min_sensitivity=None,
         min_specificity=None,
-        **split_args
+        **split_args,
     ):
         """
         Execute the full training pipeline, including data wrangling, \
@@ -398,9 +398,7 @@ class MLPipeline:
 
         if split:
             # Split the data (with optional arguments for custom splits)
-            X_train, X_test, y_train, y_test = self.splitter(
-                X, y, **split_args
-            )
+            X_train, X_test, y_train, y_test = self.splitter(X, y, **split_args)
         else:
             X_train = X
             y_train = y
@@ -481,9 +479,7 @@ class MLPipeline:
 
         return full_pipeline
 
-    def export_predictions(
-        self, data, save_path, wrangle=False, preprocess=True
-    ):
+    def export_predictions(self, data, save_path, wrangle=False, preprocess=True):
         """
         Exports predictions for the given dataset to a CSV file.
 
@@ -569,4 +565,248 @@ class MLPipeline:
             print_flag,
             min_sensitivity=min_sensitivity,
             min_specificity=min_specificity,
+        )
+
+
+class MLPipelineMulti(MLPipeline):
+    """
+    Multiclass variant of MLPipeline.
+
+    - Uses estimator.predict_proba to compute class probabilities for all classes
+    - Computes multiclass ROC AUC (macro/weighted) and accuracy
+    - Does not compute binary thresholds
+    """
+
+    def validate_multiclass(
+        self,
+        y_true,
+        y_proba,
+        y_pred,
+        metrics=None,
+        multi_class: str = "ovr",
+        average: str = "macro",
+        show_flag: bool = False,
+        print_flag: bool = False,
+    ):
+        if metrics is None:
+            metrics = ["accuracy", "roc_auc_macro"]
+        results = {}
+
+        # Accuracy
+        if "accuracy" in metrics:
+            results["accuracy"] = accuracy_score(y_true, y_pred)
+
+        # Align label encoding to estimator classes_ ordering
+        try:
+            clf = self.trained_estimator.steps[-1][1]
+            classes = getattr(clf, "classes_", None)
+        except Exception:
+            classes = None
+
+        le = LabelEncoder()
+        if classes is not None:
+            le.fit(classes)
+        else:
+            le.fit(pd.unique(y_true))
+            classes = list(le.classes_)
+        y_true_enc = le.transform(y_true)
+
+        # ROC AUC (macro / weighted)
+        try:
+            auc_macro = roc_auc_score(
+                y_true_enc, y_proba, multi_class=multi_class, average="macro"
+            )
+            if "roc_auc_macro" in metrics:
+                results["roc_auc_macro"] = round(auc_macro * 100, 1)
+        except Exception:
+            if "roc_auc_macro" in metrics:
+                results["roc_auc_macro"] = None
+
+        try:
+            auc_weighted = roc_auc_score(
+                y_true_enc, y_proba, multi_class=multi_class, average="weighted"
+            )
+            if "roc_auc_weighted" in metrics:
+                results["roc_auc_weighted"] = round(auc_weighted * 100, 1)
+        except Exception:
+            if "roc_auc_weighted" in metrics:
+                results["roc_auc_weighted"] = None
+
+        # Plot One-vs-Rest ROC curves for each class
+        fig = None
+        if show_flag and classes is not None and y_proba.ndim == 2:
+            try:
+                fig, ax = plt.subplots(figsize=(7, 6))
+                # Ensure y_true is a Series for boolean masking
+                y_true_series = pd.Series(y_true)
+                for i, cls in enumerate(classes):
+                    y_bin = (y_true_series == cls).astype(int)
+                    fpr, tpr, _ = roc_curve(y_bin, y_proba[:, i])
+                    cls_auc = auc(fpr, tpr)
+                    ax.plot(
+                        fpr,
+                        tpr,
+                        label=f"{cls} (AUC={cls_auc:.2f})",
+                        linewidth=2,
+                    )
+                ax.plot([0, 1], [0, 1], "k--", alpha=0.3)
+                ax.set_xlim([0.0, 1.0])
+                ax.set_ylim([0.0, 1.05])
+                ax.set_xlabel("False Positive Rate")
+                ax.set_ylabel("True Positive Rate")
+                ax.set_title("One-vs-Rest ROC Curves")
+                ax.legend(loc="lower right", fontsize="small")
+                ax.grid(True, alpha=0.3)
+                results["roc_fig"] = fig
+            except Exception:
+                pass
+
+        if print_flag:
+            print(results)
+        return results
+
+    def train(
+        self,
+        X,
+        y_column,
+        y_value=None,
+        y_data=None,
+        wrangle=True,
+        split=True,
+        preprocess=True,
+        print_flag=True,
+        show_flag=False,
+        metrics=None,
+        multi_class: str = "ovr",
+        average: str = "macro",
+        **split_args,
+    ):
+        X = X.copy()
+        if wrangle:
+            X = self.wrangle(X)
+
+        if y_data is None:
+            y = self.infer_y(X, y_column, y_value)
+        else:
+            y = y_data
+
+        if split:
+            X_train, X_test, y_train, y_test = self.splitter(X, y, **split_args)
+        else:
+            X_train, X_test, y_train, y_test = X, X, y, y
+
+        if preprocess:
+            self.train_preprocessor(X_train)
+            X_train = self.preprocess(X_train)
+            X_test = self.preprocess(X_test)
+
+        estimator = self.train_estimator(X_train, y_train)
+        y_proba = estimator.predict_proba(X_test)
+        y_pred = estimator.predict(X_test)
+
+        results = self.validate_multiclass(
+            y_true=y_test,
+            y_proba=y_proba,
+            y_pred=y_pred,
+            metrics=metrics,
+            multi_class=multi_class,
+            average=average,
+            show_flag=show_flag,
+            print_flag=print_flag,
+        )
+        return results
+
+    def export_pipeline(self, wrangle=False, preprocess=True, save_path=None):
+        """Export full pipeline (no threshold stored for multiclass)."""
+        if not self.trained_estimator:
+            raise RuntimeError("Estimator has not been fitted yet.")
+
+        if wrangle and preprocess:
+            full_pipeline = Pipeline(
+                steps=[
+                    *self.data_wrangling_steps,
+                    *self.trained_preprocessor.steps,
+                    *self.trained_estimator.steps,
+                ]
+            )
+        elif wrangle:
+            full_pipeline = Pipeline(
+                steps=[
+                    *self.data_wrangling_steps,
+                    *self.trained_estimator.steps,
+                ]
+            )
+        elif preprocess:
+            full_pipeline = Pipeline(
+                steps=[
+                    *self.trained_preprocessor.steps,
+                    *self.trained_estimator.steps,
+                ]
+            )
+        else:
+            full_pipeline = self.trained_estimator
+
+        if save_path:
+            dump(full_pipeline, save_path)
+        return full_pipeline
+
+    def export_predictions(self, data, save_path, wrangle=False, preprocess=True):
+        if not self.trained_estimator:
+            raise RuntimeError("Estimator has not been fitted yet.")
+
+        model = self.export_pipeline(wrangle, preprocess)
+        y_pred = self.predict(data, wrangle=wrangle, preprocess=preprocess)
+        try:
+            y_proba = self.predict_proba(data, wrangle=wrangle, preprocess=preprocess)
+            df_out = pd.DataFrame(index=data.index)
+            df_out["prediction"] = y_pred
+            try:
+                final_step = (
+                    model.steps[-1][1]
+                    if isinstance(model, Pipeline)
+                    else self.trained_estimator.steps[-1][1]
+                )
+                classes = getattr(final_step, "classes_", None)
+                if classes is not None and y_proba.ndim == 2:
+                    for i, cls in enumerate(classes):
+                        df_out[f"proba_{cls}"] = y_proba[:, i]
+                else:
+                    df_out["proba"] = y_proba
+            except Exception:
+                df_out["proba"] = y_proba
+        except Exception:
+            df_out = pd.DataFrame({"prediction": y_pred}, index=data.index)
+
+        df_out.to_csv(save_path)
+
+    def validate_dataset(
+        self,
+        data,
+        y_column=None,
+        y_value=None,
+        y_data=None,
+        wrangle=False,
+        preprocess=False,
+        metrics=None,
+        show_flag=False,
+        print_flag=False,
+        multi_class: str = "ovr",
+        average: str = "macro",
+    ):
+        # Calculate metrics on an arbitrary dataset after training
+        if y_data is None:
+            y_true = self.infer_y(data, y_column, y_value)
+        else:
+            y_true = y_data
+        y_proba = self.predict_proba(data, wrangle=wrangle, preprocess=preprocess)
+        y_pred = self.predict(data, wrangle=wrangle, preprocess=preprocess)
+        return self.validate_multiclass(
+            y_true=y_true,
+            y_proba=y_proba,
+            y_pred=y_pred,
+            metrics=metrics,
+            multi_class=multi_class,
+            average=average,
+            show_flag=show_flag,
+            print_flag=print_flag,
         )

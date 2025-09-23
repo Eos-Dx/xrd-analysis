@@ -40,9 +40,7 @@ class ZoneMeasurementsFileMixin:
         file_map = {}
         for alias, txt_file in result_files.items():
             txt_path = Path(txt_file)
-            dest_folder = (
-                txt_path.parent
-            )  # Save directly in the parent folder (no subfolders)
+            dest_folder = txt_path.parent  # single folder (no alias subfolders)
             new_txt_file = dest_folder / txt_path.name
             try:
                 if txt_path.resolve() != new_txt_file.resolve():

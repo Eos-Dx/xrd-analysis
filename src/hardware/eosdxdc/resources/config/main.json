@@ -141,5 +141,9 @@
     "dev_active_stages": [
         "DUMMY-XY-000"
     ],
-    "conda": "ulster37"
+    "conda": "ulster37",
+    "standard_distances": {
+        "SAXS": 0.17239906043601042,
+        "WAXS": 0.023128625835860867
+    }
 }
