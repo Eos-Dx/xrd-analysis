@@ -192,18 +192,37 @@ def perform_azimuthal_integration(
         # Adjust poni file thickness. Adjusted distance = restored_thickness - t/2
 
         if thickness_adjustment:
-            # Adjusted sample-to-detector distance in meters
-            adjusted_distance = (
-                thickness_adjustment_distance - (row["thickness"] / 2)
-            ) * 10**-3  # meters (for in-vivo machine)
-            # Replace the Distance field robustly
+            # Read base distance from the PONI text (meters), then subtract half thickness (mm->m)
             distance_anchor = "Distance:"
             p = poni_text.find(distance_anchor)
+            base_distance_m = None
             if p != -1:
-                distance_index = p + len(distance_anchor) + 1
-                end_of_line_index = poni_text.find("\n", distance_index)
+                value_start = p + len(distance_anchor)
+                # Skip whitespace after the anchor
+                while value_start < len(poni_text) and poni_text[value_start] in " \t":
+                    value_start += 1
+                end_of_line_index = poni_text.find("\n", value_start)
+                if end_of_line_index == -1:
+                    end_of_line_index = len(poni_text)
+                try:
+                    base_distance_m = float(poni_text[value_start:end_of_line_index])
+                except Exception:
+                    base_distance_m = None
+
+            # Fallback to parameter if parsing failed (backward compatibility)
+            if base_distance_m is None:
+                base_distance_m = thickness_adjustment_distance * 1e-3
+                # If "Distance:" anchor wasn't found before, try to set indices to a reasonable default
+                # so replacement below is skipped when not found.
+                value_start = None
+                end_of_line_index = None
+
+            adjusted_distance = base_distance_m - (row["thickness"] / 2) * 1e-3
+
+            # Replace the Distance field with the adjusted value (meters)
+            if p != -1 and value_start is not None and end_of_line_index is not None:
                 new_ponifile_text = (
-                    poni_text[:distance_index]
+                    poni_text[:value_start]
                     + f"{adjusted_distance:.6f}"
                     + poni_text[end_of_line_index:]
                 )
