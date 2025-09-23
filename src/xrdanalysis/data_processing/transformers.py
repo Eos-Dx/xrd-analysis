@@ -161,9 +161,21 @@ class AzimuthalIntegration(TransformerMixin):
                     "calculated_distance",
                     "center_x",
                     "center_y",
+                    "adjusted_distance",
                 ]
             ] = integration_results.apply(
-                lambda x: pd.Series([x[0], x[1], x[2], x[3], x[4], x[5], x[6]])
+                lambda x: pd.Series(
+                    [
+                        x[0],
+                        x[1],
+                        x[2],
+                        x[3],
+                        x[4],
+                        x[5],
+                        x[6],
+                        (x[7] if len(x) > 7 else None),
+                    ]
+                )
             )
         elif self.integration_mode == "rotating_angles":
             expanded_results = integration_results.apply(unpack_rotating_angles_results)
@@ -192,6 +204,7 @@ class AzimuthalIntegration(TransformerMixin):
                     "cake_col_std",
                     "cake_col_skew",
                     "cake_col_kurtosis",
+                    "adjusted_distance",
                 ]
             ] = integration_results.apply(
                 lambda x: pd.Series(
@@ -207,6 +220,7 @@ class AzimuthalIntegration(TransformerMixin):
                         x[8],
                         x[9],
                         x[10],
+                        (x[11] if len(x) > 11 else None),
                     ]
                 )
             )

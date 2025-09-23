@@ -12,13 +12,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.ticker import MultipleLocator
 from skimage.measure import label, regionprops
-from sklearn.metrics import (
-    RocCurveDisplay,
-    auc,
-    f1_score,
-    precision_score,
-    roc_curve,
-)
+from sklearn.metrics import RocCurveDisplay, auc, f1_score, precision_score, roc_curve
 
 
 def combine_h5_to_df(file_paths):
@@ -77,23 +71,17 @@ def h5_to_df(file_path):
             # Process calibrations
             for ds_name in calibration_group:
                 dataset = calibration_group[ds_name]
-                cal_data = {
-                    f"calib_{key}": dataset.attrs[key] for key in dataset.attrs
-                }
+                cal_data = {f"calib_{key}": dataset.attrs[key] for key in dataset.attrs}
                 cal_data["measurement_data"] = dataset[...]
                 cal_data["cal_name"] = ds_name
-                cal_data["id"] = (
-                    "root"  # Indicating root level for simple structure
-                )
+                cal_data["id"] = "root"  # Indicating root level for simple structure
                 cal_data = {**cal_data, **cal_metadata}
                 calibration_data.append(cal_data)
 
             # Process measurements
             for ds_name in measurements_group:
                 dataset = measurements_group[ds_name]
-                meas_data = {
-                    f"{key}": dataset.attrs[key] for key in dataset.attrs
-                }
+                meas_data = {f"{key}": dataset.attrs[key] for key in dataset.attrs}
                 meas_data["measurement_data"] = dataset[...]
                 meas_data["meas_name"] = ds_name
                 meas_data["id"] = "root"  # Indicating root level
@@ -118,8 +106,7 @@ def h5_to_df(file_path):
                     for ds_name in calibration_group:
                         dataset = calibration_group[ds_name]
                         cal_data = {
-                            f"calib_{key}": dataset.attrs[key]
-                            for key in dataset.attrs
+                            f"calib_{key}": dataset.attrs[key] for key in dataset.attrs
                         }
                         cal_data["measurement_data"] = dataset[...]
                         cal_data["cal_name"] = ds_name
@@ -144,9 +131,7 @@ def h5_to_df(file_path):
                                 }
                                 meas_data["measurement_data"] = dataset[...]
                                 meas_data["meas_name"] = ds_name
-                                meas_data["id"] = (
-                                    group_name  # Indicating root level
-                                )
+                                meas_data["id"] = group_name  # Indicating root level
                                 meas_data = {
                                     **meas_data,
                                     **meas_metadata,
@@ -198,9 +183,7 @@ def compute_group_statistics(df, label_column, array_column):
     return result_df
 
 
-def plot_group_statistics(
-    df, label_column, array_column, selected_labels=None
-):
+def plot_group_statistics(df, label_column, array_column, selected_labels=None):
     """
     Computes and visualizes group statistics (mean and standard deviation)
     for arrays within a DataFrame.
@@ -225,9 +208,7 @@ def plot_group_statistics(
     else:
         # Filter only the provided labels
         selected_labels = [
-            label
-            for label in selected_labels
-            if label in stats_df[label_column].values
+            label for label in selected_labels if label in stats_df[label_column].values
         ]
 
     # Plot each group separately
@@ -412,9 +393,7 @@ def prepare_angular_ranges(start_angle, end_angle):
     """
     # Validate angle range
     if start_angle < -180 or end_angle > 180:
-        raise ValueError(
-            "The angles must be within -180 and 180 degrees range."
-        )
+        raise ValueError("The angles must be within -180 and 180 degrees range.")
 
     # Calculate the original span
     original_span = get_angle_span(start_angle, end_angle)
@@ -486,9 +465,7 @@ def perform_weighted_integration(
     # If we had to split the range, combine the normalized results
     if range_info["is_split"]:
         combined_intensity = sum(r["intensity"] for r in normalized_results)
-        combined_sigma = np.sqrt(
-            sum(r["sigma"] ** 2 for r in normalized_results)
-        )
+        combined_sigma = np.sqrt(sum(r["sigma"] ** 2 for r in normalized_results))
         combined_std = np.sqrt(sum(r["std"] ** 2 for r in normalized_results))
 
         return (
@@ -514,12 +491,17 @@ def unpack_rotating_angles_results(results):
 
     :param results: A tuple containing results from angular analysis.
     :type results: Tuple[List[Tuple[Tuple[float, float], numpy.ndarray, \
-    numpy.ndarray, numpy.ndarray, numpy.ndarray]], float, float, float]
+    numpy.ndarray, numpy.ndarray, numpy.ndarray]], float, float, float, Optional[float]]
     :returns: A dictionary with integration results for various angle ranges \
     and calculated parameters.
     :rtype: Dict[str, Union[numpy.ndarray, float]]
     """
-    result_list, dist, center_x, center_y = results
+    # Backward compatible unpacking (with or without adjusted_distance)
+    if len(results) == 4:
+        result_list, dist, center_x, center_y = results
+        adjusted_distance = None
+    else:
+        result_list, dist, center_x, center_y, adjusted_distance = results
 
     col_dict = {}
     for angle, radial, intensity, sigma, std in result_list:
@@ -531,6 +513,7 @@ def unpack_rotating_angles_results(results):
     col_dict["calculated_distance"] = dist
     col_dict["center_x"] = center_x
     col_dict["center_y"] = center_y
+    col_dict["adjusted_distance"] = adjusted_distance
     return col_dict
 
 
@@ -613,20 +596,14 @@ def mask_beam_center(image: np.ndarray, thresh: float, padding: int = 0):
     beam = np.zeros_like(image)
 
     # Extract beam region
-    beam_region = image[
-        min_row : max_row + 1, min_col : max_col + 1  # noqa: E203
-    ]
-    beam[min_row : max_row + 1, min_col : max_col + 1] = (  # noqa: E203
-        beam_region
-    )
+    beam_region = image[min_row : max_row + 1, min_col : max_col + 1]  # noqa: E203
+    beam[min_row : max_row + 1, min_col : max_col + 1] = beam_region  # noqa: E203
 
     return beam
 
 
 def calculate_poni_from_pixels(poni_str, center_x, center_y):
-    detector_config_str = re.search(
-        r"Detector_config:\s*(\{.*\})", poni_str
-    ).group(1)
+    detector_config_str = re.search(r"Detector_config:\s*(\{.*\})", poni_str).group(1)
     detector_config = json.loads(detector_config_str)
 
     # Get pixel sizes
@@ -647,9 +624,7 @@ def adjust_poni_centers_coef(poni_str, k):
     for center in centers_poni:
         distance_index = new_ponifile_text.find(center) + len(center) + 1
         end_of_line_index = new_ponifile_text.find("\n", distance_index)
-        adjusted = (
-            float(new_ponifile_text[distance_index:end_of_line_index]) * k
-        )
+        adjusted = float(new_ponifile_text[distance_index:end_of_line_index]) * k
         adjusted_poni.append(adjusted)
 
     return adjusted_poni
@@ -903,9 +878,7 @@ def custom_splitter_balanced(df, split):
         else:
             break
     unique_patient_ids = df.patient_id.unique()
-    patients_in_train = patients_in_train_cancer.union(
-        patients_in_train_non_cancer
-    )
+    patients_in_train = patients_in_train_cancer.union(patients_in_train_non_cancer)
     patients_in_test = set(unique_patient_ids) - patients_in_train
     train = df[df["patient_id"].isin(patients_in_train)].index
     train_idx = [df.index.get_loc(label) for label in train]
@@ -1106,9 +1079,7 @@ def viz_roc_balanced(fig, axes, model_name, estimators):
         {text_max}
         """
 
-        ax.text(
-            0.45, 0.3, text, fontsize=7, color="black", ha="left", va="center"
-        )
+        ax.text(0.45, 0.3, text, fontsize=7, color="black", ha="left", va="center")
 
         ax.set_xlim([-0.01, 1.01])
         ax.set_ylim([-0.01, 1.01])
@@ -1249,9 +1220,7 @@ def calculate_optimal_threshold(
     return tpr, fpr, optimal_idx, optimal_threshold
 
 
-def extract_image_data_values(
-    data: np.ndarray, mask: np.ndarray
-) -> np.ndarray:
+def extract_image_data_values(data: np.ndarray, mask: np.ndarray) -> np.ndarray:
     """
     Extract image data values using a binary mask where 1 indicates pixels to remove.
 
@@ -1281,9 +1250,7 @@ def extract_center_from_poni(poni_text: str):
     poni2 = float(re.search(r"Poni2:\s*([0-9.eE+-]+)", poni_text).group(1))
 
     # Extract and parse Detector_config JSON
-    detector_config_str = re.search(
-        r"Detector_config:\s*(\{.*\})", poni_text
-    ).group(1)
+    detector_config_str = re.search(r"Detector_config:\s*(\{.*\})", poni_text).group(1)
     detector_config = json.loads(detector_config_str)
 
     # Get pixel sizes
@@ -1305,9 +1272,7 @@ def filter_points_by_distance(row, column, distances=None):
     y_coords, x_coords = np.meshgrid(
         range(image.shape[0]), range(image.shape[1]), indexing="ij"
     )
-    image_distances = np.sqrt(
-        (x_coords - ref_x) ** 2 + (y_coords - ref_y) ** 2
-    )
+    image_distances = np.sqrt((x_coords - ref_x) ** 2 + (y_coords - ref_y) ** 2)
 
     # Apply distance filters
 
@@ -1345,9 +1310,7 @@ def extract_distance_from_poni(poni_text: str):
         float: The distance from the center.
     """
     # Extract Distance
-    distance = float(
-        re.search(r"Distance:\s*([0-9.eE+-]+)", poni_text).group(1)
-    )
+    distance = float(re.search(r"Distance:\s*([0-9.eE+-]+)", poni_text).group(1))
 
     return distance
 

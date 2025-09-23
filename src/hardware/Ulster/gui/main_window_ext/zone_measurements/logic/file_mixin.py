@@ -40,11 +40,13 @@ class ZoneMeasurementsFileMixin:
         file_map = {}
         for alias, txt_file in result_files.items():
             txt_path = Path(txt_file)
-            det_folder = txt_path.parent / alias
-            det_folder.mkdir(parents=True, exist_ok=True)
-            new_txt_file = det_folder / txt_path.name
+            dest_folder = txt_path.parent  # single folder (no alias subfolders)
+            new_txt_file = dest_folder / txt_path.name
             try:
-                txt_path.replace(new_txt_file)
+                if txt_path.resolve() != new_txt_file.resolve():
+                    txt_path.replace(new_txt_file)
+                else:
+                    new_txt_file = txt_path
             except Exception as e:
                 print(f"[ERROR] Moving file {txt_path} → {new_txt_file}: {e}")
                 new_txt_file = txt_path

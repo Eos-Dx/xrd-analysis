@@ -274,10 +274,73 @@ class StateSaverMixin:
         return out
 
     def _restore_image(self, image_path):
-        if image_path:
-            self.image_view.set_image(QPixmap(image_path), image_path=image_path)
-        else:
-            print("No image to restore.")
+        # Try absolute path first
+        try:
+            if image_path and os.path.exists(image_path):
+                self.image_view.set_image(QPixmap(image_path), image_path=image_path)
+                return
+        except Exception:
+            pass
+
+        # Try locate by basename in selected folder
+        base = None
+        try:
+            base = Path(image_path).name if image_path else None
+        except Exception:
+            base = None
+        search_root = None
+        try:
+            if hasattr(self, "folderLineEdit") and self.folderLineEdit.text():
+                search_root = Path(self.folderLineEdit.text())
+        except Exception:
+            search_root = None
+        if search_root and base:
+            try:
+                candidates = list(search_root.rglob(base))
+                if not candidates:
+                    # Try any image with same stem
+                    stem = Path(base).stem
+                    candidates = [
+                        p
+                        for p in search_root.rglob(stem + ".*")
+                        if p.suffix.lower()
+                        in {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
+                    ]
+                if len(candidates) == 1:
+                    p = candidates[0]
+                    self.image_view.set_image(QPixmap(str(p)), image_path=str(p))
+                    return
+                elif len(candidates) > 1:
+                    # Let user choose
+                    from PyQt5.QtWidgets import QFileDialog
+
+                    chosen, _ = QFileDialog.getOpenFileName(
+                        self,
+                        "Select image",
+                        str(search_root),
+                        "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)",
+                    )
+                    if chosen:
+                        self.image_view.set_image(QPixmap(chosen), image_path=chosen)
+                        return
+            except Exception:
+                pass
+
+        # Fallback to base64 embedded image if available
+        try:
+            b64 = None
+            if isinstance(getattr(self, "state", None), dict):
+                b64 = self.state.get("image_base64") or self.state.get("image_b64")
+            if b64:
+                data = base64.b64decode(b64)
+                pm = QPixmap()
+                if pm.loadFromData(data):
+                    self.image_view.set_image(pm, image_path=None)
+                    return
+        except Exception:
+            pass
+
+        print("No image to restore.")
 
     def _restore_rotation(self, angle):
         self.image_view.rotation_angle = angle
