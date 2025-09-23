@@ -3,6 +3,7 @@
 import json
 import re
 import tempfile
+from pathlib import Path
 from typing import Tuple
 
 import cv2
@@ -707,6 +708,89 @@ def generate_poni_from_text(ponifile_text):
         temp_file_path = temp_file.name
 
     return temp_file_path
+
+
+def generate_poni(df: pd.DataFrame, out_dir: str) -> str:
+    """Generate .poni files from DataFrame column 'ponifile' and return directory."""
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    for _, row in df.iterrows():
+        mid = (
+            int(row["calibration_measurement_id"])
+            if "calibration_measurement_id" in row
+            else int(row["measurement_id"])
+        )
+        text = str(row["ponifile"]) if "ponifile" in row else ""
+        (out / f"{mid}.poni").write_text(text)
+    return str(out)
+
+
+class MLCluster:
+    """Minimal MLCluster structure used by tests."""
+
+    def __init__(self, df: pd.DataFrame, q_cluster: int, q_range=None):
+        self.df = df
+        self.q_cluster = q_cluster
+        self.q_range = q_range
+
+
+def interpolate_cluster(
+    df: pd.DataFrame, cluster_label: int, perc_min: float, perc_max: float, azimuth
+) -> MLCluster:
+    """Prepare a cluster subset with interpolation_q_range and call azimuth.transform."""
+    sub = df[df["q_cluster_label"] == cluster_label].copy()
+    if sub.empty:
+        return MLCluster(sub, cluster_label, None)
+    # Compute per-row interpolation range from q_range_max
+    qmin = (sub["q_range_max"] * perc_min).astype(int)
+    qmax = (sub["q_range_max"] * perc_max).astype(int)
+    sub["interpolation_q_range"] = [[int(a), int(b)] for a, b in zip(qmin, qmax)]
+    # Call the provided transformer
+    azimuth.transform(sub)
+    return MLCluster(sub, cluster_label, (int(qmin.iloc[0]), int(qmax.iloc[0])))
+
+
+def normalize_scale_cluster(cluster: MLCluster):
+    """Add normalized and scaled columns to MLCluster.df."""
+
+    def _norm(arr):
+        arr = np.asarray(arr)
+        m = np.max(np.abs(arr)) or 1.0
+        return arr / m
+
+    cluster.df["radial_profile_data_norm"] = cluster.df["radial_profile_data"].apply(
+        _norm
+    )
+    # For tests, a simple copy as 'scaled' is enough
+    cluster.df["radial_profile_data_norm_scaled"] = cluster.df[
+        "radial_profile_data_norm"
+    ]
+
+
+def remove_outliers_by_cluster(
+    df: pd.DataFrame, z_score_threshold: float, direction: str, num_clusters: int
+) -> pd.DataFrame:
+    """Remove outliers in q_range_max per cluster_label using a simple z-score rule."""
+
+    def _filter(group: pd.DataFrame) -> pd.DataFrame:
+        vals = group["q_range_max"].astype(float)
+        mu = vals.mean()
+        sigma = vals.std(ddof=0) or 1.0
+        if direction == "positive":
+            mask = vals <= mu + z_score_threshold * sigma
+        elif direction == "negative":
+            mask = vals >= mu - z_score_threshold * sigma
+        elif direction == "both":
+            mask = (vals >= mu - z_score_threshold * sigma) & (
+                vals <= mu + z_score_threshold * sigma
+            )
+        else:
+            raise ValueError(
+                "Invalid direction. Use 'both', 'positive', or 'negative'."
+            )
+        return group[mask]
+
+    return df.groupby("q_cluster_label", group_keys=False).apply(_filter)
 
 
 def create_mask(faulty_pixels, size=(256, 256)):

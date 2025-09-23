@@ -1,9 +1,11 @@
+import base64
 import hashlib
 import json
 import os
 import shutil
 import string
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from PyQt5.QtCore import QRectF, QTimer
 from PyQt5.QtGui import QColor, QPen, QPixmap
@@ -82,7 +84,15 @@ class StateSaverMixin:
         # Handle PONI file restoration with user confirmation
         self._handle_poni_restoration(state)
 
-        self._restore_image(state.get("image"))
+        # Pass the state file directory to improve path resolution
+        self._restore_image(
+            state.get("image"),
+            state_dir=(
+                getattr(self, "_last_state_path", None).parent
+                if getattr(self, "_last_state_path", None)
+                else None
+            ),
+        )
         self._restore_rotation(state.get("rotation_angle", 0))
         self._restore_crop_rect(state.get("crop_rect"))
         self._restore_shapes(state.get("shapes", []))
@@ -138,16 +148,31 @@ class StateSaverMixin:
             if path and os.path.exists(path):
                 with open(path, "r") as f:
                     try:
-                        return json.load(f)
+                        state = json.load(f)
+                        # Remember from where we loaded the state for path resolution
+                        try:
+                            self._last_state_path = Path(path)
+                        except Exception:
+                            self._last_state_path = None
+                        return state
                     except Exception as e:
                         print("Error loading state:", e)
         print("No saved state file found. Nothing to restore.")
+        # Clear marker if nothing loaded
+        self._last_state_path = None
         return None
 
     def _save_state(self, target_file, is_auto):
+        img_path = getattr(self.image_view, "current_image_path", None)
+        try:
+            if img_path:
+                # Persist absolute normalized path for robustness
+                img_path = str(Path(img_path).resolve())
+        except Exception:
+            pass
         state = {
             "measurement_points": self.generate_measurement_points(),
-            "image": getattr(self.image_view, "current_image_path", None),
+            "image": img_path,
             "rotation_angle": getattr(self.image_view, "rotation_angle", 0),
             "crop_rect": self._get_crop_rect(),
             "shapes": self._get_shapes(),
@@ -273,60 +298,155 @@ class StateSaverMixin:
                 )
         return out
 
-    def _restore_image(self, image_path):
-        # Try absolute path first
+    def _restore_image(self, image_path, state_dir: Path = None):
+        # Normalize/convert path-like inputs, handle file:// URIs
         try:
-            if image_path and os.path.exists(image_path):
-                self.image_view.set_image(QPixmap(image_path), image_path=image_path)
-                return
+            if image_path:
+                image_path = str(image_path)
+                if image_path.lower().startswith("file:"):
+                    parsed = urlparse(image_path)
+                    local = unquote(parsed.path)
+                    # On Windows, parsed.path can start with "/C:/..."
+                    if (
+                        os.name == "nt"
+                        and local.startswith("/")
+                        and len(local) > 3
+                        and local[2] == ":"
+                    ):
+                        local = local.lstrip("/")
+                    image_path = local
         except Exception:
             pass
 
-        # Try locate by basename in selected folder
+        def try_load(candidate_path) -> bool:
+            try:
+                cp = str(candidate_path)
+                if os.path.exists(cp):
+                    pm = QPixmap(cp)
+                    if not pm.isNull():
+                        self.image_view.set_image(pm, image_path=cp)
+                        return True
+            except Exception:
+                return False
+            return False
+
+        # 1) Absolute path or directly loadable
+        if image_path:
+            # If relative but exists in CWD, this will also succeed
+            if try_load(image_path):
+                return
+
+        # 2) Try relative to state file directory
+        try:
+            if image_path and state_dir is None:
+                state_dir = getattr(self, "_last_state_path", None)
+                state_dir = state_dir.parent if state_dir else None
+            if image_path and state_dir:
+                candidate = (Path(state_dir) / image_path).resolve()
+                if try_load(candidate):
+                    return
+        except Exception:
+            pass
+
+        # 3) Try folderLineEdit (user-selected root) if available
+        try:
+            if (
+                image_path
+                and hasattr(self, "folderLineEdit")
+                and self.folderLineEdit
+                and self.folderLineEdit.text()
+            ):
+                root = Path(self.folderLineEdit.text())
+                candidate = (root / Path(image_path).name).resolve()
+                if try_load(candidate):
+                    return
+        except Exception:
+            pass
+
+        # 4) Try config default_image_folder/default_folder
+        try:
+            default_folder = None
+            if hasattr(self, "config") and isinstance(self.config, dict):
+                default_folder = self.config.get(
+                    "default_image_folder"
+                ) or self.config.get("default_folder")
+            if image_path and default_folder:
+                candidate = (Path(default_folder) / Path(image_path).name).resolve()
+                if try_load(candidate):
+                    return
+        except Exception:
+            pass
+
+        # 5) Try basename search in likely roots (state_dir, folderLineEdit, default_folder, cwd)
         base = None
         try:
             base = Path(image_path).name if image_path else None
         except Exception:
             base = None
-        search_root = None
+        roots = []
         try:
-            if hasattr(self, "folderLineEdit") and self.folderLineEdit.text():
-                search_root = Path(self.folderLineEdit.text())
+            if state_dir:
+                roots.append(Path(state_dir))
         except Exception:
-            search_root = None
-        if search_root and base:
+            pass
+        try:
+            if (
+                hasattr(self, "folderLineEdit")
+                and self.folderLineEdit
+                and self.folderLineEdit.text()
+            ):
+                roots.append(Path(self.folderLineEdit.text()))
+        except Exception:
+            pass
+        try:
+            default_folder = None
+            if hasattr(self, "config") and isinstance(self.config, dict):
+                default_folder = self.config.get(
+                    "default_image_folder"
+                ) or self.config.get("default_folder")
+            if default_folder:
+                roots.append(Path(default_folder))
+        except Exception:
+            pass
+        roots.append(Path.cwd())
+        if base:
             try:
-                candidates = list(search_root.rglob(base))
-                if not candidates:
-                    # Try any image with same stem
-                    stem = Path(base).stem
-                    candidates = [
-                        p
-                        for p in search_root.rglob(stem + ".*")
-                        if p.suffix.lower()
-                        in {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
-                    ]
-                if len(candidates) == 1:
-                    p = candidates[0]
-                    self.image_view.set_image(QPixmap(str(p)), image_path=str(p))
-                    return
-                elif len(candidates) > 1:
-                    # Let user choose
-                    from PyQt5.QtWidgets import QFileDialog
+                for root in roots:
+                    try:
+                        candidates = list(root.rglob(base))
+                    except Exception:
+                        candidates = []
+                    if not candidates:
+                        # Try same stem any image extension
+                        stem = Path(base).stem
+                        try:
+                            candidates = [
+                                p
+                                for p in root.rglob(stem + ".*")
+                                if p.suffix.lower()
+                                in {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
+                            ]
+                        except Exception:
+                            candidates = []
+                    if len(candidates) == 1:
+                        if try_load(candidates[0]):
+                            return
+                    elif len(candidates) > 1:
+                        # Let user choose
+                        from PyQt5.QtWidgets import QFileDialog
 
-                    chosen, _ = QFileDialog.getOpenFileName(
-                        self,
-                        "Select image",
-                        str(search_root),
-                        "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)",
-                    )
-                    if chosen:
-                        self.image_view.set_image(QPixmap(chosen), image_path=chosen)
-                        return
+                        chosen, _ = QFileDialog.getOpenFileName(
+                            self,
+                            "Select image",
+                            str(root),
+                            "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)",
+                        )
+                        if chosen and try_load(chosen):
+                            return
             except Exception:
                 pass
 
-        # Fallback to base64 embedded image if available
+        # 6) Fallback to base64 embedded image if available
         try:
             b64 = None
             if isinstance(getattr(self, "state", None), dict):

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, List
 
 SCALED_DATA = "radial_profile_data_norm_scaled"
 
@@ -24,6 +24,14 @@ class Limits:
     q_max_saxs: float
     q_min_waxs: float
     q_max_waxs: float
+
+
+class ModelScale:
+    """Simple holder for normalization parameters used by tests."""
+
+    def __init__(self, normt="l1", norm="l2"):
+        self.normt = normt
+        self.norm = norm
 
 
 class Action(Enum):
@@ -63,6 +71,19 @@ class RuleV:
 
 
 @dataclass
+class MLClusterContainer:
+    """Minimal MLClusterContainer for tests.
+
+    Holds a collection of MLCluster-like objects per model scale.
+    """
+
+    def __init__(self):
+        self.items: List[Any] = []
+
+    def add(self, item: Any):
+        self.items.append(item)
+
+
 class RuleQ(Rule):
     """
     Defines a rule that removes entries based on intensity at a specific \

@@ -921,6 +921,10 @@ class ZoneMeasurementsProcessMixin:
             return False
 
         # Build PONI status summary
+        # If there are no active detectors, skip dialog and proceed
+        if not active_aliases:
+            return True
+
         poni_status = []
         for alias in active_aliases:
             meta = poni_files.get(alias, {})
@@ -941,7 +945,17 @@ class ZoneMeasurementsProcessMixin:
         status_text = "\n\n".join(poni_status)
 
         # Show confirmation dialog
-        msg = QMessageBox(self)
+        try:
+            parent = (
+                self
+                if hasattr(self, "isWidgetType")
+                and callable(getattr(self, "isWidgetType"))
+                and self.isWidgetType()
+                else None
+            )
+        except Exception:
+            parent = None
+        msg = QMessageBox(parent)
         msg.setWindowTitle("Confirm PONI Settings")
         msg.setIcon(QMessageBox.Question)
         msg.setText(

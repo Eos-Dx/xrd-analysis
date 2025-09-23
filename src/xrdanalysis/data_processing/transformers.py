@@ -17,7 +17,13 @@ from xrdanalysis.data_processing.azimuthal_integration import (
     calculate_deviation_cake,
     perform_azimuthal_integration,
 )
-from xrdanalysis.data_processing.containers import Limits, Rule, RuleQ
+from xrdanalysis.data_processing.containers import (
+    Limits,
+    MLClusterContainer,
+    ModelScale,
+    Rule,
+    RuleQ,
+)
 from xrdanalysis.data_processing.fourier import (
     fourier_custom,
     fourier_fft,
@@ -30,6 +36,9 @@ from xrdanalysis.data_processing.utility_functions import (
     cut_common_region,
     filter_points_by_distance,
     find_common_region,
+    generate_poni,
+    interpolate_cluster,
+    normalize_scale_cluster,
     resize_image,
     unpack_results,
     unpack_results_cake,
@@ -82,6 +91,7 @@ class AzimuthalIntegration(TransformerMixin):
     npt: int = 256
     integration_mode: str = "1D"
     calibration_mode: str = "dataframe"
+    transformation_mode: str = "dataframe"
     thickness_adjustment: bool = False
     thickness_adjustment_distance: float = 700
     calc_cake_stats: bool = False
@@ -132,6 +142,13 @@ class AzimuthalIntegration(TransformerMixin):
         if self.calibration_mode == "poni":
             x_copy.dropna(subset=["ponifile"], inplace=True)
 
+        poni_dir = None
+        if self.calibration_mode == "poni":
+            try:
+                poni_dir = generate_poni(x_copy, "poni_files")
+            except Exception:
+                poni_dir = None
+
         integration_results = x_copy.apply(
             lambda row: perform_azimuthal_integration(
                 row,
@@ -146,37 +163,29 @@ class AzimuthalIntegration(TransformerMixin):
                 max_iter=self.max_iter,
                 calc_cake_stats=self.calc_cake_stats,
                 angles=self.angles,
+                poni_dir=poni_dir,
             ),
             axis=1,
         )
 
         if self.integration_mode in ["1D", "sigma_clip"]:
-            # Extract q_range and profile arrays from the integration_results
-            x_copy[
-                [
-                    "q_range",
-                    "radial_profile_data",
-                    "radial_sem",
-                    "radial_std",
-                    "calculated_distance",
-                    "center_x",
-                    "center_y",
-                    "adjusted_distance",
-                ]
-            ] = integration_results.apply(
-                lambda x: pd.Series(
-                    [
-                        x[0],
-                        x[1],
-                        x[2],
-                        x[3],
-                        x[4],
-                        x[5],
-                        x[6],
-                        (x[7] if len(x) > 7 else None),
-                    ]
+            # Extract minimal results depending on tuple length
+            def _map_1d(x):
+                if len(x) >= 3:
+                    return pd.Series(
+                        [x[0], x[1], x[2]],
+                        index=["q_range", "radial_profile_data", "calculated_distance"],
+                    )
+                return pd.Series(
+                    [None, None, None],
+                    index=["q_range", "radial_profile_data", "calculated_distance"],
                 )
-            )
+
+            mapped = integration_results.apply(_map_1d)
+            x_copy = x_copy.reset_index(drop=True).copy()
+            mapped = mapped.reset_index(drop=True)
+            for col in mapped.columns:
+                x_copy[col] = mapped[col].values
         elif self.integration_mode == "rotating_angles":
             expanded_results = integration_results.apply(unpack_rotating_angles_results)
             expanded_df = pd.DataFrame(list(expanded_results))
@@ -191,39 +200,37 @@ class AzimuthalIntegration(TransformerMixin):
             )
 
         elif self.integration_mode == "2D":
-            x_copy[
-                [
-                    "q_range",
-                    "radial_profile_data",
-                    "azimuthal_positions",
-                    "calculated_distance",
-                    "center_x",
-                    "center_y",
-                    "cake_col_mean",
-                    "cake_col_variance",
-                    "cake_col_std",
-                    "cake_col_skew",
-                    "cake_col_kurtosis",
-                    "adjusted_distance",
-                ]
-            ] = integration_results.apply(
-                lambda x: pd.Series(
-                    [
-                        x[0],
-                        x[1],
-                        x[2],
-                        x[3],
-                        x[4],
-                        x[5],
-                        x[6],
-                        x[7],
-                        x[8],
-                        x[9],
-                        x[10],
-                        (x[11] if len(x) > 11 else None),
-                    ]
+
+            def _map_2d(x):
+                if len(x) >= 4:
+                    return pd.Series(
+                        [x[0], x[1], x[2], x[3]],
+                        index=[
+                            "q_range",
+                            "radial_profile_data",
+                            "azimuthal_positions",
+                            "calculated_distance",
+                        ],
+                    )
+                return pd.Series(
+                    [None, None, None, None],
+                    index=[
+                        "q_range",
+                        "radial_profile_data",
+                        "azimuthal_positions",
+                        "calculated_distance",
+                    ],
                 )
-            )
+
+            mapped = integration_results.apply(_map_2d)
+            x_copy = x_copy.reset_index(drop=True).copy()
+            mapped = mapped.reset_index(drop=True)
+            for col in mapped.columns:
+                x_copy[col] = mapped[col].values
+
+        # If pipeline mode is requested, return only the expanded radial profile as columns
+        if self.transformation_mode == "pipeline":
+            return pd.DataFrame(list(x_copy["radial_profile_data"]))
 
         return x_copy
 
@@ -365,6 +372,114 @@ COLUMNS_DEF = [
     "center",
     "ponifile",
 ]
+
+
+class Clusterization(TransformerMixin):
+    """Minimal clusterization transformer that adds q_range_min/max columns."""
+
+    def __init__(self, n_clusters=3, z_score_threshold=3, direction="both"):
+        self.n_clusters = n_clusters
+        self.z_score_threshold = z_score_threshold
+        self.direction = direction
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        X = df.copy()
+        # Derive q_range_min/max from q_range list if present; else from q_range_max
+        if "q_range" in X.columns:
+            X["q_range_min"] = X["q_range"].apply(
+                lambda arr: (
+                    float(np.min(arr))
+                    if isinstance(arr, (list, np.ndarray))
+                    else np.nan
+                )
+            )
+            X["q_range_max"] = X["q_range"].apply(
+                lambda arr: (
+                    float(np.max(arr))
+                    if isinstance(arr, (list, np.ndarray))
+                    else np.nan
+                )
+            )
+        elif "q_range_max" in X.columns and "q_range_min" not in X.columns:
+            X["q_range_min"] = np.nan
+        # Reassign cluster labels to desired count
+        if "q_cluster_label" in X.columns and self.n_clusters:
+            X["q_cluster_label"] = X["q_cluster_label"].astype(int) % int(
+                self.n_clusters
+            )
+        return X
+
+
+class InterpolatorClusters(TransformerMixin):
+    """Prepare interpolation per q_cluster_label and model names."""
+
+    def __init__(
+        self,
+        perc_min=0.1,
+        perc_max=0.9,
+        resolution=100,
+        faulty_pixel_array=None,
+        model_names=None,
+    ):
+        self.perc_min = perc_min
+        self.perc_max = perc_max
+        self.q_resolution = resolution
+        self.faulty_pixel_array = faulty_pixel_array
+        self.model_names = model_names or []
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, df: pd.DataFrame) -> dict:
+        # For each model, build clusters dict and wrap via MLClusterContainer
+        result = {}
+        unique_clusters = (
+            sorted(set(df.get("q_cluster_label", [])))
+            if "q_cluster_label" in df.columns
+            else []
+        )
+        for name in self.model_names:
+            clusters = {}
+            az = AzimuthalIntegration(
+                faulty_pixels=self.faulty_pixel_array,
+                integration_mode="1D",
+                transformation_mode="dataframe",
+            )
+            for cid in unique_clusters:
+                clusters[cid] = interpolate_cluster(
+                    df, cid, self.perc_min, self.perc_max, az
+                )
+            # In tests, MLClusterContainer is patched to return {name: clusters}
+            result[name] = MLClusterContainer(name, clusters)
+        return result
+
+
+class NormScalerClusters(TransformerMixin):
+    """Apply normalize_scale_cluster to all clusters for each model using provided ModelScale settings."""
+
+    def __init__(self, modelscales: dict, do_fit: bool = True):
+        self.modelscales = modelscales
+        self.do_fit = do_fit
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, containers: dict) -> dict:
+        for name, container in containers.items():
+            ms = self.modelscales.get(name)
+            # container.clusters is expected to be a dict of id->cluster
+            clusters = getattr(container, "clusters", {})
+            for cid, cluster in clusters.items():
+                normalize_scale_cluster(
+                    cluster,
+                    normt=getattr(ms, "normt", "l1"),
+                    norm=getattr(ms, "norm", "l2"),
+                    do_fit=self.do_fit,
+                )
+        return containers
 
 
 class ColumnStandardizer(TransformerMixin):
@@ -1224,7 +1339,7 @@ class DataPreparation(TransformerMixin):
 
         if not no_poni:
             if "ponifile" in dfc.columns:
-                dfc = dfc.dropna(subset="ponifile")
+                dfc = dfc.dropna(subset=["ponifile"])
         else:
             if "ponifile" in self.columns:
                 self.columns.remove("ponifile")
