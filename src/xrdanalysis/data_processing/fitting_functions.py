@@ -76,9 +76,7 @@ class FittingParameter:
     :type max_value: float
     """
 
-    def __init__(
-        self, value, min_value=-np.inf, max_value=np.inf, returned=True
-    ):
+    def __init__(self, value, min_value=-np.inf, max_value=np.inf, returned=True):
         self.value = value
         self.min_value = min_value
         self.max_value = max_value
@@ -771,9 +769,7 @@ class GammaDistributionPeak(FittingFunction):
         theta = params[3]
 
         if k <= 0 or theta <= 0:
-            raise ValueError(
-                "Shape (k) and scale (theta) parameters must be positive."
-            )
+            raise ValueError("Shape (k) and scale (theta) parameters must be positive.")
 
         adjusted_x = x - position
 
@@ -824,9 +820,7 @@ class FittingFunctionProducer:
             for function in self.functions:
                 last_param += function.get_param_count()
                 function.get_param_count()
-                result += function.calculate(
-                    x, *params[first_param:last_param]
-                )
+                result += function.calculate(x, *params[first_param:last_param])
                 first_param = last_param
             return result
 

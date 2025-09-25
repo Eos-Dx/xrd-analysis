@@ -90,9 +90,7 @@ def test_interpolate_cluster():
     perc_min = 0.1
     perc_max = 0.9
     azimuth = MagicMock()
-    result = interpolate_cluster(
-        df, cluster_label, perc_min, perc_max, azimuth
-    )
+    result = interpolate_cluster(df, cluster_label, perc_min, perc_max, azimuth)
 
     args, _ = azimuth.transform.call_args
 
@@ -276,6 +274,4 @@ def test_remove_outliers_by_cluster_invalid_direction():
         ValueError,
         match="Invalid direction. Use 'both', 'positive', or 'negative'.",
     ):
-        remove_outliers_by_cluster(
-            df, z_score_threshold, direction, num_clusters
-        )
+        remove_outliers_by_cluster(df, z_score_threshold, direction, num_clusters)

@@ -1,6 +1,13 @@
-from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QPushButton, QLabel, QListWidget
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtWidgets import (
+    QDockWidget,
+    QLabel,
+    QListWidget,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class ExcludedIncludedFilesMixin:
@@ -37,7 +44,9 @@ class ExcludedIncludedFilesMixin:
         self.addDockWidget(Qt.RightDockWidgetArea, self.excluded_files_dock)
 
         # Connect item click to open the measurement.
-        self.excluded_list_widget.itemClicked.connect(self.open_excluded_included_measurement)
+        self.excluded_list_widget.itemClicked.connect(
+            self.open_excluded_included_measurement
+        )
 
         # Load labels from the file and apply them.
         self.load_excluded_included_files()
@@ -46,7 +55,9 @@ class ExcludedIncludedFilesMixin:
     def load_excluded_included_files(self):
         """Loads the labels file and populates the list widget."""
         self.excluded_list_widget.clear()
-        self.labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        self.labels_filename = (
+            self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        )
 
         if self.labels_filename.exists():
             with open(self.labels_filename, "r") as f:
@@ -74,13 +85,13 @@ class ExcludedIncludedFilesMixin:
                     continue
                 if line.startswith("Excluded: "):
                     color = "red"
-                    content = line[len("Excluded: "):]
+                    content = line[len("Excluded: ") :]
                 elif line.startswith("Included: "):
                     color = "green"
-                    content = line[len("Included: "):]
+                    content = line[len("Included: ") :]
                 elif line.startswith("Suspicious: "):
                     color = "yellow"
-                    content = line[len("Suspicious: "):]
+                    content = line[len("Suspicious: ") :]
                 else:
                     continue
                 parts = content.split(":", 1)
@@ -113,11 +124,11 @@ class ExcludedIncludedFilesMixin:
         for item in selected_items:
             text = item.text()
             if text.startswith("Excluded: "):
-                actual_line = text[len("Excluded: "):]
+                actual_line = text[len("Excluded: ") :]
             elif text.startswith("Included: "):
-                actual_line = text[len("Included: "):]
+                actual_line = text[len("Included: ") :]
             elif text.startswith("Suspicious: "):
-                actual_line = text[len("Suspicious: "):]
+                actual_line = text[len("Suspicious: ") :]
             else:
                 actual_line = text
             parts = actual_line.split(":", 1)
@@ -137,21 +148,22 @@ class ExcludedIncludedFilesMixin:
         """
         text = item.text()
         if text.startswith("Excluded: "):
-            text = text[len("Excluded: "):]
+            text = text[len("Excluded: ") :]
         elif text.startswith("Included: "):
-            text = text[len("Included: "):]
+            text = text[len("Included: ") :]
         elif text.startswith("Suspicious: "):
-            text = text[len("Suspicious: "):]
-        if ':' in text:
+            text = text[len("Suspicious: ") :]
+        if ":" in text:
             meas_name = text.split(":", 1)[0].strip()
             if self.transformed_df is not None:
-                indices = self.transformed_df.index[self.transformed_df['meas_name'] == meas_name].tolist()
+                indices = self.transformed_df.index[
+                    self.transformed_df["meas_name"] == meas_name
+                ].tolist()
                 if indices:
                     self.display_measurement(indices[0])
                     # Update the Exclude Zone's status label.
-                    if hasattr(self, 'update_status_label'):
+                    if hasattr(self, "update_status_label"):
                         self.update_status_label()
-
 
     def mark_measurement_in_list(self, meas_name, color):
         """

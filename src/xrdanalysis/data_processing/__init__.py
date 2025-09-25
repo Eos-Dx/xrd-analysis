@@ -7,3 +7,4 @@ from .calibration_corrections import (
     correct_with_calib_profiles,
 )
 from .detector_joining import DetectorJoiner, join_detectors
+from .splitters import grouped_splitter

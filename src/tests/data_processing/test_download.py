@@ -69,19 +69,11 @@ def test_form_df(mock_load, mock_read_csv):
 
     result_df = form_df(Path("unzipped_path"))
 
-    mock_read_csv.assert_called_once_with(
-        Path("unzipped_path") / "description.csv"
-    )
+    mock_read_csv.assert_called_once_with(Path("unzipped_path") / "description.csv")
     assert "measurement_data" in result_df.columns
-    assert np.array_equal(
-        result_df.loc[1, "measurement_data"], np.array([1, 2, 3])
-    )
-    assert np.array_equal(
-        result_df.loc[2, "measurement_data"], np.array([4, 5, 6])
-    )
-    assert np.array_equal(
-        result_df.loc[3, "measurement_data"], np.array([7, 8, 9])
-    )
+    assert np.array_equal(result_df.loc[1, "measurement_data"], np.array([1, 2, 3]))
+    assert np.array_equal(result_df.loc[2, "measurement_data"], np.array([4, 5, 6]))
+    assert np.array_equal(result_df.loc[3, "measurement_data"], np.array([7, 8, 9]))
 
 
 # Test for get_df
@@ -89,9 +81,7 @@ def test_form_df(mock_load, mock_read_csv):
 @patch("xrdanalysis.data_processing.download.unzip_data")
 @patch("xrdanalysis.data_processing.download.form_df")
 @patch("xrdanalysis.data_processing.download.save_df")
-def test_get_df(
-    mock_save_df, mock_form_df, mock_unzip_data, mock_download_data
-):
+def test_get_df(mock_save_df, mock_form_df, mock_unzip_data, mock_download_data):
     """Test for encompassing function"""
     # Mock the DataFrame returned by form_df
     mock_df = pd.DataFrame({"measurement_id": [1, 2, 3]})
@@ -117,7 +107,5 @@ def test_get_df(
         Path("unzipped_path/file.zip"), Path("unzipped_path")
     )
     mock_form_df.assert_called_once_with(Path("unzipped_path"))
-    mock_save_df.assert_called_once_with(
-        mock_df, Path("unzipped_path"), "data"
-    )
+    mock_save_df.assert_called_once_with(mock_df, Path("unzipped_path"), "data")
     assert result_df.equals(mock_df)

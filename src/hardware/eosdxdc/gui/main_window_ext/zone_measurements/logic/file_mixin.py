@@ -71,11 +71,3 @@ class ZoneMeasurementsFileMixin:
         current_filename = self.fileNameLineEdit.text()
         appended_value = "_" + str(self.addCountSpinBox.value())
         self.fileNameLineEdit.setText(current_filename + appended_value)
-
-    def handle_add_distance(self):
-        """
-        Appends the distance value to the current file name in the UI.
-        """
-        current_filename = self.fileNameLineEdit.text()
-        appended_value = "_" + self.add_distance_lineedit.text()
-        self.fileNameLineEdit.setText(current_filename + appended_value)

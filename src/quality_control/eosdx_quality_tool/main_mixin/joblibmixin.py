@@ -1,6 +1,7 @@
 import joblib
-from quality_control.eosdx_quality_tool.utility.joblib_handler import compute_statistics
+
 from quality_control.eosdx_quality_tool.utility.data_pipeline import process_dataframe
+from quality_control.eosdx_quality_tool.utility.joblib_handler import compute_statistics
 
 
 class JoblibHandlerMixin:

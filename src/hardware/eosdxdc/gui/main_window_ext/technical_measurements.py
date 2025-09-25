@@ -284,8 +284,8 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
 
         container = QWidget()
         outer = QVBoxLayout(container)
-        outer.setContentsMargins(8, 8, 8, 8)
-        outer.setSpacing(12)
+        outer.setContentsMargins(6, 4, 6, 4)  # Reduced margins
+        outer.setSpacing(6)  # Reduced spacing between sections
 
         # Integration time control
         it_layout = QHBoxLayout()
@@ -333,8 +333,7 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         fld.addWidget(b)
         outer.addLayout(fld)
 
-        # Auxiliary Measurement controls
-        outer.addWidget(QLabel("Aux Measurement:"))
+        # Auxiliary Measurement controls (no label to save space)
         row = QHBoxLayout()
         self.auxBtn = QPushButton("Measure Aux")
         self.auxBtn.clicked.connect(self.measure_aux)
@@ -347,22 +346,22 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         self._aux_timer.timeout.connect(self._update_aux_status)
 
         self.auxNameLE = QLineEdit()
-        self.auxNameLE.setPlaceholderText("Name for Aux Measurement")
+        self.auxNameLE.setPlaceholderText("Measurement name (for metadata generation)")
+        self.auxNameLE.setToolTip(
+            "Enter name for auxiliary measurement - used for metadata file generation"
+        )
         row.addWidget(self.auxNameLE, 1)
         outer.addLayout(row)
 
-        # Aux measurements table
+        # Aux measurements table (compact layout for small screens)
         self.auxTable = QTableWidget()
         self.auxTable.setColumnCount(3)
-        # Listen for Delete key to remove selected rows (no file deletion)
-        self.auxTable.installEventFilter(self)
-        self.auxTable.setHorizontalHeaderLabels(
-            [
-                "File",
-                "Type",
-                "Alias",
-            ]
-        )
+        self.auxTable.installEventFilter(self)  # Delete key support
+        self.auxTable.setHorizontalHeaderLabels(["File", "Type", "Alias"])
+
+        # Make table more compact for small screens
+        self.auxTable.verticalHeader().setVisible(False)  # Hide row numbers
+        self.auxTable.setAlternatingRowColors(True)  # Better visual separation
         # Configure column sizing and appearance
         try:
             from PyQt5.QtGui import QFont
@@ -378,10 +377,15 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             self.auxTable.setColumnWidth(1, 60)  # Type column
             self.auxTable.setColumnWidth(2, 60)  # Alias column
 
-            # Set smaller font for better filename readability
+            # Optimize font and row height for small screens
             font = QFont()
-            font.setPointSize(8)  # Smaller font size
+            font.setPointSize(8)  # Smaller font size for more rows
             self.auxTable.setFont(font)
+
+            # Reduce row height for more compact display
+            self.auxTable.verticalHeader().setDefaultSectionSize(
+                22
+            )  # Smaller row height
         except Exception:
             pass
         self.auxTable.setSelectionBehavior(self.auxTable.SelectRows)
@@ -389,11 +393,11 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         self.auxTable.cellDoubleClicked.connect(self._open_measurement_from_table)
         outer.addWidget(self.auxTable)
 
-        # Group technical measurement actions in a compact layout
-        actions_group = QGroupBox("Actions")
-        actions_layout = QHBoxLayout(actions_group)
-        actions_layout.setContentsMargins(6, 6, 6, 6)
+        # Compact actions layout (no groupbox to save vertical space)
+        actions_layout = QHBoxLayout()
+        actions_layout.setContentsMargins(0, 0, 0, 0)
         actions_layout.setSpacing(4)
+        actions_layout.addWidget(QLabel("Actions:"))  # Simple label instead of groupbox
 
         load_btn = QPushButton("Load Files…")
         load_btn.setToolTip("Load existing technical measurement files into the table")
@@ -410,7 +414,7 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         gen_btn.clicked.connect(self.generate_technical_meta)
         actions_layout.addWidget(gen_btn)
 
-        outer.addWidget(actions_group)
+        outer.addLayout(actions_layout)
 
         # Real-time controls
         rt_layout = QHBoxLayout()

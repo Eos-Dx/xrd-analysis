@@ -1,5 +1,7 @@
 import sys
+
 from PyQt5.QtWidgets import QApplication
+
 from quality_control.eosdx_quality_tool.windows.main_window import MainWindow
 
 

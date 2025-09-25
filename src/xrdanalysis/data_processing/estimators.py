@@ -2,14 +2,15 @@
 Predictors for measurements, patients
 """
 
-import pandas as pd
-import numpy as np
 import warnings
-from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.metrics import accuracy_score, roc_curve, roc_auc_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+
+import numpy as np
+import pandas as pd
 from scipy.spatial import distance_matrix
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
+from sklearn.model_selection import train_test_split
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -69,19 +70,11 @@ class PredictorRFPatients(BaseEstimator, ClassifierMixin):
         for pat_id in df["patient_id"].unique():
             patients_id_a.append(pat_id)
             if fit:
-                value = int(
-                    df[df["patient_id"] == pat_id]["cancer_diagnosis"].iloc[0]
-                )
+                value = int(df[df["patient_id"] == pat_id]["cancer_diagnosis"].iloc[0])
                 patients_y.append(value)
 
-            saxs = df[
-                (df["patient_id"] == pat_id)
-                & (df["type_measurement"] == "SAXS")
-            ]
-            waxs = df[
-                (df["patient_id"] == pat_id)
-                & (df["type_measurement"] == "WAXS")
-            ]
+            saxs = df[(df["patient_id"] == pat_id) & (df["type_measurement"] == "SAXS")]
+            waxs = df[(df["patient_id"] == pat_id) & (df["type_measurement"] == "WAXS")]
 
             try:
                 age = saxs["age"].iloc[0]
@@ -143,9 +136,7 @@ class PredictorRFPatients(BaseEstimator, ClassifierMixin):
 
     def _first_layer(self, df):
         # Get unique patients and their corresponding diagnosis
-        unique_patients = df[
-            ["patient_id", "cancer_diagnosis"]
-        ].drop_duplicates()
+        unique_patients = df[["patient_id", "cancer_diagnosis"]].drop_duplicates()
 
         # Perform a stratified split based on the diagnosis_encoded
         train_patients, test_patients = train_test_split(
@@ -219,9 +210,7 @@ class PredictorRFPatients(BaseEstimator, ClassifierMixin):
         y_proba = cl_decider.predict_proba(x_test)
         self.y_score = y_proba[:, 1]
 
-        self.fpr, self.tpr, self.threshold = roc_curve(
-            self.y_test, self.y_score
-        )
+        self.fpr, self.tpr, self.threshold = roc_curve(self.y_test, self.y_score)
         self.accuracy = accuracy_score(self.y_test, y_pred)
         self.roc_auc = roc_auc_score(self.y_test, self.y_score)
 
@@ -245,9 +234,7 @@ class PredictorRFPatients(BaseEstimator, ClassifierMixin):
             for patient_id, diagnosis in zip(patients_id, y):
                 index = dfc["patient_id"] == patient_id
                 dfc.loc[index, "cancer_diagnosis"] = int(diagnosis)
-            return np.array(
-                [[value] for value in dfc["cancer_diagnosis"].to_list()]
-            )
+            return np.array([[value] for value in dfc["cancer_diagnosis"].to_list()])
 
         else:
             return self.cl_decider.predict(self.prep_data(dfc, fit=False))
@@ -262,10 +249,6 @@ class PredictorRFPatients(BaseEstimator, ClassifierMixin):
             for patient_id, diagnosis in zip(patients_id, y):
                 index = dfc["patient_id"] == patient_id
                 dfc.loc[index, "cancer_diagnosis"] = diagnosis[0]
-            return np.array(
-                [[value] for value in dfc["cancer_diagnosis"].to_list()]
-            )
+            return np.array([[value] for value in dfc["cancer_diagnosis"].to_list()])
         else:
-            return self.cl_decider.predict_proba(
-                self.prep_data(dfc, fit=False)
-            )
+            return self.cl_decider.predict_proba(self.prep_data(dfc, fit=False))

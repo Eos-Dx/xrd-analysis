@@ -1,6 +1,16 @@
-from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLabel, QListWidget
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtWidgets import (
+    QDockWidget,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
 from quality_control.eosdx_quality_tool.auxiliary.config import REASON
 
 
@@ -96,7 +106,10 @@ class ExcludeIncludeMixin:
                     file_reasons = [line.strip() for line in f if line.strip()]
             except FileNotFoundError:
                 file_reasons = []
-            widget_reasons = [self.reason_list_widget.item(i).text() for i in range(self.reason_list_widget.count())]
+            widget_reasons = [
+                self.reason_list_widget.item(i).text()
+                for i in range(self.reason_list_widget.count())
+            ]
             existing_reasons = set(file_reasons + widget_reasons)
             if reason not in existing_reasons:
                 self.reason_list_widget.addItem(reason)
@@ -142,7 +155,9 @@ class ExcludeIncludeMixin:
         """
         Removes any existing record for the given measurement name from the labels file.
         """
-        self.labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        self.labels_filename = (
+            self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        )
         if not self.labels_filename.exists():
             return
         with open(self.labels_filename, "r") as f:
@@ -168,7 +183,9 @@ class ExcludeIncludeMixin:
         Checks the labels file for the current measurement and updates the status label.
         """
         status = "None"
-        self.labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        self.labels_filename = (
+            self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        )
         if self.labels_filename.exists():
             with open(self.labels_filename, "r") as f:
                 for line in f:
@@ -179,7 +196,9 @@ class ExcludeIncludeMixin:
                     if len(parts) >= 2:
                         # parts[0] is the status ("Excluded", "Included", "Suspicious", "Ethalon")
                         # parts[1] is the measurement name
-                        if parts[1].strip() == self.transformed_df.iloc[self.current_index].get('meas_name', 'N/A'):
+                        if parts[1].strip() == self.transformed_df.iloc[
+                            self.current_index
+                        ].get("meas_name", "N/A"):
                             status = parts[0].strip()
                             break
         self.status_label.setText(f"Status: {status}")
@@ -191,21 +210,25 @@ class ExcludeIncludeMixin:
         """
         reason = self.reason_textedit.toPlainText().strip()
         if not reason:
-            self.status_label.setText("Error: Reason required for suspicious measurement.")
+            self.status_label.setText(
+                "Error: Reason required for suspicious measurement."
+            )
             return
         if self.transformed_df is None:
             return
         row = self.transformed_df.iloc[self.current_index]
-        meas_name = row.get('meas_name', 'N/A')
+        meas_name = row.get("meas_name", "N/A")
         self.remove_existing_label_for_measurement(meas_name)
-        measurement_group_id = row.get('measurementsGroupId', 'N/A')
-        patient_db_id = row.get('patientDBId', 'N/A')
-        specimen_db_id = row.get('specimenDBId', 'N/A')
-        self.labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        measurement_group_id = row.get("measurementsGroupId", "N/A")
+        patient_db_id = row.get("patientDBId", "N/A")
+        specimen_db_id = row.get("specimenDBId", "N/A")
+        self.labels_filename = (
+            self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        )
         line = f"Suspicious: {meas_name}: {measurement_group_id} : {patient_db_id} : {specimen_db_id} : {reason}\n"
         with open(self.labels_filename, "a") as f:
             f.write(line)
-        if hasattr(self, 'load_excluded_included_files'):
+        if hasattr(self, "load_excluded_included_files"):
             self.load_excluded_included_files()
         self.mark_measurement_in_list(meas_name, "yellow")
         self.update_status_label()
@@ -217,21 +240,25 @@ class ExcludeIncludeMixin:
         """
         reason = self.reason_textedit.toPlainText().strip()
         if not reason:
-            self.status_label.setText("Error: Reason required for excluded measurement.")
+            self.status_label.setText(
+                "Error: Reason required for excluded measurement."
+            )
             return
         if self.transformed_df is None:
             return
         row = self.transformed_df.iloc[self.current_index]
-        meas_name = row.get('meas_name', 'N/A')
+        meas_name = row.get("meas_name", "N/A")
         self.remove_existing_label_for_measurement(meas_name)
-        measurement_group_id = row.get('measurementsGroupId', 'N/A')
-        patient_db_id = row.get('patientDBId', 'N/A')
-        specimen_db_id = row.get('specimenDBId', 'N/A')
-        self.labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        measurement_group_id = row.get("measurementsGroupId", "N/A")
+        patient_db_id = row.get("patientDBId", "N/A")
+        specimen_db_id = row.get("specimenDBId", "N/A")
+        self.labels_filename = (
+            self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        )
         line = f"Excluded: {meas_name}: {measurement_group_id} : {patient_db_id} : {specimen_db_id} : {reason}\n"
         with open(self.labels_filename, "a") as f:
             f.write(line)
-        if hasattr(self, 'load_excluded_included_files'):
+        if hasattr(self, "load_excluded_included_files"):
             self.load_excluded_included_files()
         self.mark_measurement_in_list(meas_name, "red")
         self.update_status_label()
@@ -246,16 +273,18 @@ class ExcludeIncludeMixin:
         if self.transformed_df is None:
             return
         row = self.transformed_df.iloc[self.current_index]
-        meas_name = row.get('meas_name', 'N/A')
+        meas_name = row.get("meas_name", "N/A")
         self.remove_existing_label_for_measurement(meas_name)
-        measurement_group_id = row.get('measurementsGroupId', 'N/A')
-        patient_db_id = row.get('patientDBId', 'N/A')
-        specimen_db_id = row.get('specimenDBId', 'N/A')
-        self.labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        measurement_group_id = row.get("measurementsGroupId", "N/A")
+        patient_db_id = row.get("patientDBId", "N/A")
+        specimen_db_id = row.get("specimenDBId", "N/A")
+        self.labels_filename = (
+            self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        )
         line = f"Included: {meas_name}: {measurement_group_id} : {patient_db_id} : {specimen_db_id} : {reason}\n"
         with open(self.labels_filename, "a") as f:
             f.write(line)
-        if hasattr(self, 'load_excluded_included_files'):
+        if hasattr(self, "load_excluded_included_files"):
             self.load_excluded_included_files()
         self.mark_measurement_in_list(meas_name, "green")
         self.update_status_label()
@@ -273,16 +302,18 @@ class ExcludeIncludeMixin:
         if self.transformed_df is None:
             return
         row = self.transformed_df.iloc[self.current_index]
-        meas_name = row.get('meas_name', 'N/A')
+        meas_name = row.get("meas_name", "N/A")
         self.remove_existing_label_for_measurement(meas_name)
-        measurement_group_id = row.get('measurementsGroupId', 'N/A')
-        patient_db_id = row.get('patientDBId', 'N/A')
-        specimen_db_id = row.get('specimenDBId', 'N/A')
-        self.labels_filename = self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        measurement_group_id = row.get("measurementsGroupId", "N/A")
+        patient_db_id = row.get("patientDBId", "N/A")
+        specimen_db_id = row.get("specimenDBId", "N/A")
+        self.labels_filename = (
+            self.file_path.parent / f"{self.file_path.stem}_labels.txt"
+        )
         line = f"Ethalon: {meas_name}: {measurement_group_id} : {patient_db_id} : {specimen_db_id} : {reason}\n"
         with open(self.labels_filename, "a") as f:
             f.write(line)
-        if hasattr(self, 'load_excluded_included_files'):
+        if hasattr(self, "load_excluded_included_files"):
             self.load_excluded_included_files()
         # Mark the measurement with a deep gold color.
         self.mark_measurement_in_list(meas_name, "gold")

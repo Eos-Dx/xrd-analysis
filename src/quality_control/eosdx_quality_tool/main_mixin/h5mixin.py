@@ -1,6 +1,9 @@
-from xrdanalysis.data_processing.utility_functions import h5_to_df
+from quality_control.eosdx_quality_tool.utility.data_pipeline import (
+    process_dataframe,
+    process_dataframe_2D,
+)
 from quality_control.eosdx_quality_tool.utility.joblib_handler import compute_statistics
-from quality_control.eosdx_quality_tool.utility.data_pipeline import process_dataframe, process_dataframe_2D
+from xrdanalysis.data_processing.utility_functions import h5_to_df
 
 
 class H5HandlerMixin:

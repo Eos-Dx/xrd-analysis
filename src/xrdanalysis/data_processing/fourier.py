@@ -209,18 +209,16 @@ def fourier_fft2(
         "fft2_shifted": fft2_shifted,
         "fft2_real": np.real(fft2_shifted),
         "fft2_imag": np.imag(fft2_shifted),
-        "fft2_norm_magnitude": np.divide(
-            np.abs(fft2_shifted), np.abs(fft2[0, 0])
-        ),
+        "fft2_norm_magnitude": np.divide(np.abs(fft2_shifted), np.abs(fft2[0, 0])),
         "fft2_magnitude": np.abs(fft2_shifted),
         "fft2_phase": np.angle(fft2_shifted),
         "fft2_reconstructed": np.real(fft.ifft2(fft.ifftshift(fft2_shifted))),
-        "fft2_vertical_profile": np.divide(
-            np.abs(fft2_shifted), np.abs(fft2[0, 0])
-        )[:, fft2_shifted.shape[1] // 2],
-        "fft2_horizontal_profile": np.divide(
-            np.abs(fft2_shifted), np.abs(fft2[0, 0])
-        )[fft2_shifted.shape[0] // 2, :],
+        "fft2_vertical_profile": np.divide(np.abs(fft2_shifted), np.abs(fft2[0, 0]))[
+            :, fft2_shifted.shape[1] // 2
+        ],
+        "fft2_horizontal_profile": np.divide(np.abs(fft2_shifted), np.abs(fft2[0, 0]))[
+            fft2_shifted.shape[0] // 2, :
+        ],
         "fft2_freq_horizontal": fft.fftshift(fft.fftfreq(data.shape[1])),
         "fft2_freq_vertical": fft.fftshift(fft.fftfreq(data.shape[0])),
     }
