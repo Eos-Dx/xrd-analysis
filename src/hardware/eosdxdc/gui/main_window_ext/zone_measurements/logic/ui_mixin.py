@@ -179,6 +179,8 @@ class ZoneMeasurementsUIMixin:
 
         # --- Additional controls for count and distance ---
         additionalLayout = QHBoxLayout()
+
+        # Add count controls
         self.add_count_btn = QPushButton("Add count")
         self.addCountSpinBox = QSpinBox()
         self.addCountSpinBox.setMinimum(1)
@@ -186,13 +188,12 @@ class ZoneMeasurementsUIMixin:
         self.addCountSpinBox.setValue(60)
         additionalLayout.addWidget(self.add_count_btn)
         additionalLayout.addWidget(self.addCountSpinBox)
-        self.add_distance_btn = QPushButton("Add distance")
-        self.add_distance_lineedit = QLineEdit("2cm")
-        additionalLayout.addWidget(self.add_distance_btn)
-        additionalLayout.addWidget(self.add_distance_lineedit)
-        meas_layout.addLayout(additionalLayout)
-        self.add_distance_btn.clicked.connect(self.handle_add_distance)
         self.add_count_btn.clicked.connect(self.handle_add_count)
+
+        # Add configurable distance buttons
+        self._create_distance_buttons(additionalLayout)
+
+        meas_layout.addLayout(additionalLayout)
 
         # --- Progress indicator ---
         progressLayout = QHBoxLayout()
@@ -223,3 +224,43 @@ class ZoneMeasurementsUIMixin:
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
         self.xyTimer.start(10000)
+
+    def _create_distance_buttons(self, layout):
+        """
+        Create distance buttons based on configuration.
+        Each button appends its configured text to the filename when clicked.
+        """
+        self.distance_buttons = []
+
+        # Get distance buttons config from global config
+        distance_buttons_config = []
+        if hasattr(self, "config"):
+            distance_buttons_config = self.config.get("distance_buttons", [])
+
+        # Default fallback if no config
+        if not distance_buttons_config:
+            distance_buttons_config = [
+                {"text": "+2cm", "append_text": "_2cm"},
+                {"text": "+17cm", "append_text": "_17cm"},
+            ]
+
+        # Create buttons dynamically
+        for button_config in distance_buttons_config:
+            button_text = button_config.get("text", "Distance")
+            append_text = button_config.get("append_text", "_dist")
+
+            btn = QPushButton(button_text)
+            btn.clicked.connect(
+                lambda checked, text=append_text: self._handle_distance_button_click(
+                    text
+                )
+            )
+            layout.addWidget(btn)
+            self.distance_buttons.append(btn)
+
+    def _handle_distance_button_click(self, append_text):
+        """
+        Handle distance button click by appending text to filename.
+        """
+        current_filename = self.fileNameLineEdit.text()
+        self.fileNameLineEdit.setText(current_filename + append_text)
