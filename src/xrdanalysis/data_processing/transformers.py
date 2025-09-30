@@ -2,6 +2,7 @@
 The transformer classes are stored here
 """
 
+import ast
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -1884,3 +1885,327 @@ class DetectorJoiner(TransformerMixin):
             )
 
         return df_out
+
+
+class SpecimenStatusToSoftLabels(TransformerMixin):
+    """
+    Derive soft-label distributions from status + multiple rule columns.
+
+    Rules are provided as a mapping of (rule_col_name, rule_value, status_upper) -> vector,
+    aligned to class_order. This allows flexible conditioning on any number of rule columns.
+
+    Example (class_order: ['CANCER','BENIGN','NORMAL']):
+        ('biopsy', True,  'CANCER') -> [0.89, 0.09, 0.02]
+        ('biopsy', True,  'BENIGN') -> [0.09, 0.89, 0.02]
+        ('biopsy', False, 'NORMAL') -> [0.10, 0.30, 0.60]
+        ('biopsy', False, 'BENIGN') -> [0.20, 0.60, 0.20]
+        ('biopsy', False, 'CANCER') -> [0.60, 0.30, 0.10]
+    Optionally, you can also define global defaults via keys like (None, None, 'CANCER').
+
+    Parameters
+    ----------
+    status_col : str
+        Column containing status labels (e.g., 'CANCER', 'BENIGN', 'NORMAL').
+    rule_cols : list[str]
+        Columns to consider when matching rules (checked in order).
+    output_col : str
+        Output column to write the soft-label vector (list of floats).
+    class_order : list[str]
+        Order of classes in the output vector.
+    rules : dict[(str, Any, str) -> list[float]] | None
+        Mapping from (rule_col_name, rule_value, status_upper) to probability vector.
+    normalize : bool
+        If True, re-normalize vectors to sum to 1.0.
+    strict : bool
+        If True, raise if no rule matches; otherwise fill with NaNs.
+    capitalize_status : bool
+        If True, uppercase status strings before matching.
+    """
+
+    def __init__(
+        self,
+        status_col: str = "specimen_status",
+        rule_cols: Optional[List[str]] = None,
+        output_col: str = "cancer_status_soft",
+        class_order: Optional[List[Union[str, int]]] = None,
+        rules: Optional[Dict[Tuple[Optional[str], Any, str], List[float]]] = None,
+        normalize: bool = True,
+        strict: bool = False,
+        capitalize_status: bool = True,
+    ) -> None:
+        self.status_col = status_col
+        self.rule_cols = list(rule_cols) if rule_cols is not None else ["biopsy"]
+        self.output_col = output_col
+        self.class_order = (
+            list(class_order)
+            if class_order is not None
+            else ["CANCER", "BENIGN", "NORMAL"]
+        )
+        self.normalize = bool(normalize)
+        self.strict = bool(strict)
+        self.capitalize_status = bool(capitalize_status)
+
+        # Default rules rewritten to the new format (using 'biopsy' as a rule column)
+        default_rules = {
+            ("biopsy", True, "CANCER"): [0.89, 0.09, 0.02],
+            ("biopsy", True, "BENIGN"): [0.09, 0.89, 0.02],
+            ("biopsy", False, "NORMAL"): [0.10, 0.30, 0.60],
+            ("biopsy", False, "BENIGN"): [0.20, 0.60, 0.20],
+            ("biopsy", False, "CANCER"): [0.60, 0.30, 0.10],
+            # Global defaults (optional fallbacks)
+            (None, None, "NORMAL"): [0.10, 0.30, 0.60],
+            (None, None, "BENIGN"): [0.20, 0.60, 0.20],
+            (None, None, "CANCER"): [0.60, 0.30, 0.10],
+        }
+        self.rules = rules if rules is not None else default_rules
+
+        # Validate vector lengths
+        k = len(self.class_order)
+        for key, vec in list(self.rules.items()):
+            if not isinstance(vec, (list, tuple, np.ndarray)):
+                raise ValueError(
+                    f"Rule for {key} must be a vector-like; got {type(vec)}"
+                )
+            if len(vec) != k:
+                raise ValueError(
+                    f"Rule for {key} length {len(vec)} != len(class_order) {k}"
+                )
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def _to_bool(self, v) -> Optional[bool]:
+        if isinstance(v, bool):
+            return v
+        if v is None or (isinstance(v, float) and np.isnan(v)):
+            return None
+        if isinstance(v, (int, np.integer)):
+            return bool(v)
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in {"true", "1", "yes", "y", "t"}:
+                return True
+            if s in {"false", "0", "no", "n", "f"}:
+                return False
+        try:
+            return bool(v)
+        except Exception:
+            return None
+
+    def _canon_status(self, s) -> Optional[str]:
+        if s is None:
+            return None
+        if isinstance(s, str):
+            s2 = s.strip().upper() if self.capitalize_status else s
+            if s2 == "MALIGNANT":
+                s2 = "CANCER"
+            return s2
+        try:
+            return str(s).upper() if self.capitalize_status else str(s)
+        except Exception:
+            return None
+
+    def _norm_vec(self, v: List[float]) -> List[float]:
+        arr = np.asarray(v, dtype=float)
+        arr = np.clip(arr, 0.0, None)
+        if self.normalize:
+            s = float(arr.sum())
+            if s > 0:
+                arr = arr / s
+        return arr.astype(float).tolist()
+
+    def _key_variants(self, col: str, val, status: str):
+        keys = []
+        # Direct
+        keys.append((col, val, status))
+        # Uppercase string variant
+        try:
+            if isinstance(val, str):
+                keys.append((col, val.strip().upper(), status))
+        except Exception:
+            pass
+        # Boolean-canonicalized variant
+        b = self._to_bool(val)
+        if b is not None:
+            keys.append((col, b, status))
+        # Column-specific default
+        keys.append((col, None, status))
+        return keys
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        X = df.copy()
+        if self.status_col not in X.columns:
+            raise KeyError(f"Status column '{self.status_col}' not found in DataFrame")
+        # Ensure rule columns exist
+        missing = [c for c in self.rule_cols if c not in X.columns]
+        if missing:
+            raise KeyError(f"Rule columns not found in DataFrame: {missing}")
+
+        results: List[Optional[List[float]]] = []
+        for _, row in X.iterrows():
+            st = self._canon_status(row[self.status_col])
+            vec = None
+            if st is not None:
+                # Try rule columns in order
+                for col in self.rule_cols:
+                    rv = row[col]
+                    for key in self._key_variants(col, rv, st):
+                        v = self.rules.get(key)
+                        if v is not None:
+                            vec = self._norm_vec(v)
+                            break
+                    if vec is not None:
+                        break
+                # Global defaults
+                if vec is None:
+                    v = self.rules.get((None, None, st)) or self.rules.get((None, st))  # type: ignore
+                    if v is not None:
+                        vec = self._norm_vec(v)
+            if vec is None:
+                if self.strict:
+                    raise KeyError(
+                        f"No soft-label rule matched for status={st} using columns {self.rule_cols}"
+                    )
+                vec = [np.nan] * len(self.class_order)
+            results.append(vec)
+
+        X[self.output_col] = results
+        return X
+
+
+class SoftLabelToWeightedSamples(TransformerMixin):
+    """
+    Expand soft-label distributions into duplicated rows with a hard label and a weight.
+
+    Typical use: given a column like 'cancer_status_soft' that holds a length-K
+    probability vector per row (e.g. [0.7, 0.2, 0.1]), this transformer creates up to K
+    duplicated rows per original row. Duplicates carry:
+      - a hard label (label_col) set to class index or provided class name
+      - a weight (weight_col) equal to the corresponding probability value
+
+    Parameters
+    ----------
+    soft_col : str
+        Name of the column containing the soft-label vector (list/np.ndarray or JSON-like string).
+    label_col : str
+        Name of the output hard-label column to set on duplicates.
+    weight_col : str
+        Name of the output weight column to set on duplicates (to be used as sample_weight).
+    class_names : list[str] | None
+        Optional list of class names to assign instead of integer indices. Length must match K.
+    min_weight : float
+        Discard duplicates with probability <= min_weight. Default 0.0 keeps all.
+    normalize : bool
+        If True, re-normalize probabilities to sum to 1.0 per row when they are positive.
+    drop_soft_col : bool
+        If True, drop the soft_col from the output.
+
+    Notes
+    -----
+    - Use class_weight=None in your estimator, since weights are embedded via sample_weight.
+    - For LightGBM/XGBoost multiclass, fit with sample_weight=output[weight_col].values.
+    - Group-wise CV like GroupKFold should be applied BEFORE duplication to avoid leakage.
+    """
+
+    def __init__(
+        self,
+        soft_col: str = "cancer_status_soft",
+        label_col: str = "cancer_status",
+        weight_col: str = "cancer_status_weighted",
+        class_names: Optional[List[Union[str, int]]] = None,
+        min_weight: float = 0.0,
+        normalize: bool = True,
+        drop_soft_col: bool = False,
+    ) -> None:
+        self.soft_col = soft_col
+        self.label_col = label_col
+        self.weight_col = weight_col
+        self.class_names = class_names
+        self.min_weight = float(min_weight)
+        self.normalize = bool(normalize)
+        self.drop_soft_col = bool(drop_soft_col)
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def _to_prob_list(self, val) -> Optional[List[float]]:
+        # Accept list/ndarray/tuple, or JSON/py-literal strings like "[0.7,0.2,0.1]"
+        if val is None:
+            return None
+        if isinstance(val, (list, tuple, np.ndarray, pd.Series)):
+            arr = np.asarray(val, dtype=float)
+        elif isinstance(val, str):
+            try:
+                parsed = ast.literal_eval(val)
+            except Exception:
+                # Fallback: try comma-split
+
+                try:
+                    parsed = [
+                        float(x)
+                        for x in val.strip().strip("[]()").split(",")
+                        if x != ""
+                    ]
+                except Exception:
+                    return None
+            arr = np.asarray(parsed, dtype=float)
+        else:
+            try:
+                arr = np.asarray(val, dtype=float)
+            except Exception:
+                return None
+
+        if arr.ndim != 1 or arr.size == 0:
+            return None
+        # Ensure non-negative (clip tiny negatives from numeric issues)
+        arr = np.clip(arr, 0.0, None)
+        if self.normalize:
+            s = float(arr.sum())
+            if s > 0:
+                arr = arr / s
+        return arr.astype(float).tolist()
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        if self.soft_col not in df.columns:
+            raise KeyError(
+                f"Soft-label column '{self.soft_col}' not found in DataFrame"
+            )
+
+        rows = []
+        # Iterate per source row and expand
+        for idx, row in df.iterrows():
+            probs = self._to_prob_list(row[self.soft_col])
+            if probs is None:
+                continue  # skip rows without valid soft-labels
+
+            k = len(probs)
+            # If class_names provided, validate length
+            if self.class_names is not None and len(self.class_names) != k:
+                raise ValueError(
+                    f"class_names length ({len(self.class_names)}) does not match soft vector length ({k})"
+                )
+
+            for j, w in enumerate(probs):
+                if w <= self.min_weight:
+                    continue
+                new_row = row.copy()
+                new_row[self.weight_col] = float(w)
+                new_row[self.label_col] = (
+                    self.class_names[j] if self.class_names is not None else j
+                )
+                rows.append(new_row)
+
+        if not rows:
+            # Return empty dataframe with the new columns present for consistency
+            out_cols = list(df.columns)
+            if self.weight_col not in out_cols:
+                out_cols.append(self.weight_col)
+            if self.label_col not in out_cols:
+                out_cols.append(self.label_col)
+            return pd.DataFrame(columns=out_cols)
+
+        out = pd.DataFrame(rows)
+        if self.drop_soft_col and self.soft_col in out.columns:
+            out = out.drop(columns=[self.soft_col])
+        out.reset_index(drop=True, inplace=True)
+        return out
