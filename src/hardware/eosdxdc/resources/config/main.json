@@ -8,6 +8,7 @@
             "alias": "SECONDARY",
             "type": "Pixet",
             "id": "MiniPIX G05-W0339",
+            "pixet_sdk_path": "D:\\API_PIXet_Pro_1.8.3_Windows_x86_64",
             "size": {
                 "width": 256,
                 "height": 256
@@ -23,6 +24,7 @@
             "alias": "PRIMARY",
             "type": "Pixet",
             "id": "MiniPIX G08-W0299",
+            "pixet_sdk_path": "D:\\API_PIXet_Pro_1.8.3_Windows_x86_64",
             "size": {
                 "width": 256,
                 "height": 256

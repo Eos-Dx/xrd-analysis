@@ -144,11 +144,40 @@ class PixetDetectorController(DetectorController):
         self._streaming = threading.Event()
 
     def init_detector(self):
-        sys.path.insert(0, "D:\\API_PIXet_Pro_1.8.3_Windows_x86_64")
+        # Resolve PIXET SDK path from env or detector config
+        pixet_sdk_path = os.environ.get("PIXET_SDK_PATH") or self.config.get(
+            "pixet_sdk_path"
+        )
+        if pixet_sdk_path:
+            try:
+                if os.path.isdir(pixet_sdk_path):
+                    sys.path.insert(0, pixet_sdk_path)
+                    logger.debug(
+                        "Added PIXET SDK path to sys.path",
+                        sdk_path=pixet_sdk_path,
+                        detector=self.alias,
+                    )
+                else:
+                    logger.warning(
+                        "Configured PIXET SDK path does not exist",
+                        sdk_path=pixet_sdk_path,
+                        detector=self.alias,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Failed to insert PIXET SDK path to sys.path",
+                    sdk_path=str(pixet_sdk_path),
+                    detector=self.alias,
+                    error=str(e),
+                )
         try:
             import pypixet
         except ImportError as e:
-            logger.error("Error importing pypixet", error=str(e))
+            logger.error(
+                "Error importing pypixet",
+                error=str(e),
+                hint="Set PIXET_SDK_PATH env var or add 'pixet_sdk_path' to detector config",
+            )
             return False
         logger.info(
             "Initializing Pixet detector", detector=self.alias, device_id=self.dev_id
