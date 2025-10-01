@@ -137,12 +137,61 @@ except Exception:  # pragma: no cover - test stubs
         pass
 
 
-from hardware.eosdxdc.gui.technical.capture import (
-    CaptureWorker,
-    show_measurement_window,
-    validate_folder,
-)
-from hardware.eosdxdc.gui.technical.measurement_worker import MeasurementWorker
+# Defer all technical imports to avoid pyFAI crashes on startup
+# These will be imported only when actually needed
+_TECHNICAL_IMPORTS_AVAILABLE = None  # None = not yet tested
+_technical_modules = {}
+
+def _get_technical_imports():
+    """Lazy import of technical modules to avoid startup crashes."""
+    global _TECHNICAL_IMPORTS_AVAILABLE, _technical_modules
+    
+    if _TECHNICAL_IMPORTS_AVAILABLE is not None:
+        return _TECHNICAL_IMPORTS_AVAILABLE
+    
+    try:
+        from hardware.eosdxdc.gui.technical.capture import (
+            CaptureWorker,
+            show_measurement_window,
+            validate_folder,
+        )
+        from hardware.eosdxdc.gui.technical.measurement_worker import MeasurementWorker
+        
+        _technical_modules.update({
+            'CaptureWorker': CaptureWorker,
+            'show_measurement_window': show_measurement_window,
+            'validate_folder': validate_folder,
+            'MeasurementWorker': MeasurementWorker,
+        })
+        _TECHNICAL_IMPORTS_AVAILABLE = True
+        return True
+    except Exception as e:
+        print(f"Warning: Technical measurement imports failed: {e}")
+        print("Technical measurements will be disabled.")
+        _TECHNICAL_IMPORTS_AVAILABLE = False
+        return False
+
+def _get_technical_module(name):
+    """Get a technical module by name, with fallback stubs."""
+    if _get_technical_imports():
+        return _technical_modules.get(name)
+    else:
+        # Return stub implementations
+        stubs = {
+            'CaptureWorker': type('CaptureWorker', (), {
+                '__init__': lambda self, *args, **kwargs: None,
+                'moveToThread': lambda self, thread: None,
+                'finished': type('Signal', (), {'connect': lambda self, f: None})()
+            }),
+            'show_measurement_window': lambda *args, **kwargs: print("Technical measurement window not available - imports failed"),
+            'validate_folder': lambda path: str(path) if path else "",
+            'MeasurementWorker': type('MeasurementWorker', (), {
+                '__init__': lambda self, *args, **kwargs: None,
+                'run': lambda self: None,
+                'add_aux_item': type('Signal', (), {'connect': lambda self, f: None})()
+            })
+        }
+        return stubs.get(name)
 
 
 class PoniFileSelectionDialog(QDialog):
@@ -279,13 +328,19 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         self.continuous_movement_controller = None
         self._initialize_continuous_movement_controller()
 
-        self.measDock = QDockWidget("Technical Measurements", self)
+        title = "Technical Measurements"
+        # Note: We don't test imports here to avoid triggering the crash at startup
+        # The warning will be shown when the user first tries to use a technical feature
+        self.measDock = QDockWidget(title, self)
         self.measDock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
 
         container = QWidget()
         outer = QVBoxLayout(container)
         outer.setContentsMargins(6, 4, 6, 4)  # Reduced margins
         outer.setSpacing(6)  # Reduced spacing between sections
+        
+        # Note: We don't show import warnings at startup to avoid triggering crashes
+        # Warnings will be displayed when the user first tries to use technical features
 
         # Integration time control
         it_layout = QHBoxLayout()
@@ -506,10 +561,16 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             self.folderLE.setText(f)
 
     def _start_capture(self, typ: str):
+        if not _get_technical_imports():
+            self._log_technical_event(f"Cannot start {typ} capture - technical imports not available")
+            print(f"❌ Cannot start {typ} capture - technical measurements disabled due to import errors")
+            return
+            
         counter_attr = f"{typ.lower()}_counter"
         count = getattr(self, counter_attr, 0) + 1
         setattr(self, counter_attr, count)
 
+        validate_folder = _get_technical_module('validate_folder')
         folder = validate_folder(self.folderLE.text())
         base = self._file_base(typ)
         base_with_count = f"{base}_{count:03d}"
@@ -537,6 +598,7 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             else 2.0
         )
 
+        CaptureWorker = _get_technical_module('CaptureWorker')
         worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=self.integrationTimeSpin.value(),
@@ -584,7 +646,13 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         self._aux_status.setText("Processing...")
 
         # --- Set up worker
+        if not _get_technical_imports():
+            self._log_technical_event("Cannot process files - technical imports not available")
+            self._aux_status.setText("Import error")
+            return
+            
         self._log_technical_event("Processing measurement files...")
+        MeasurementWorker = _get_technical_module('MeasurementWorker')
         worker = MeasurementWorker(
             filenames=result_files,
         )
@@ -870,6 +938,11 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             except Exception:
                 alias = None
 
+        if not _get_technical_imports():
+            self._log_technical_event("Cannot open measurement window - technical imports not available")
+            return
+            
+        show_measurement_window = _get_technical_module('show_measurement_window')
         show_measurement_window(
             file_path, self.masks.get(alias), self.ponis.get(alias), self
         )
@@ -882,6 +955,7 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             print("❌ No conda env set in self.config['conda']")
             return
 
+        validate_folder = _get_technical_module('validate_folder')
         folder = validate_folder(self.folderLE.text())
 
         if os.name == "nt":
@@ -1125,6 +1199,7 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             )
             return
         safe_name = name.replace(" ", "_")
+        validate_folder = _get_technical_module('validate_folder')
         folder = validate_folder(self.folderLE.text())
         if not os.path.isdir(folder):
             QMessageBox.warning(self, "Invalid Folder", "Select a valid save folder.")

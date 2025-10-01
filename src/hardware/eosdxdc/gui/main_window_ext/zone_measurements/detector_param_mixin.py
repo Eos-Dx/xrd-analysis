@@ -15,7 +15,19 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from xrdanalysis.data_processing.utility_functions import create_mask
+# Defer problematic import to avoid pyFAI crashes on startup
+def _get_create_mask():
+    """Lazy import of create_mask to avoid startup crashes."""
+    try:
+        from xrdanalysis.data_processing.utility_functions import create_mask
+        return create_mask
+    except Exception as e:
+        print(f"Warning: create_mask import failed: {e}")
+        # Return a stub function
+        def create_mask_stub(*args, **kwargs):
+            print("create_mask not available - import failed")
+            return None
+        return create_mask_stub
 
 
 class DetectorParamMixin:
@@ -260,6 +272,7 @@ Wavelength: {wavelength}
                     mask_path = resource_dir / mask_path
                 try:
                     faulty_pixels = np.load(str(mask_path), allow_pickle=True)
+                    create_mask = _get_create_mask()
                     mask = create_mask(faulty_pixels, size=det_size)
                     self.masks[alias] = mask
                 except Exception as e:
@@ -317,6 +330,7 @@ Wavelength: {wavelength}
         try:
             data = np.load(mask_file)
             # you may want to adjust the mask creation depending on your logic:
+            create_mask = _get_create_mask()
             self.masks[detector] = create_mask(data)
         except Exception as e:
             print(f"Error loading mask file for {detector}:", e)

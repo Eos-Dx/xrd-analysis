@@ -12,13 +12,66 @@ from PyQt5.QtCore import QThread, QTimer
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox
 
-from hardware.eosdxdc.gui.technical.capture import (
-    CaptureWorker,
-    move_and_convert_measurement_file,
-    validate_folder,
-)
-from hardware.eosdxdc.gui.technical.measurement_worker import MeasurementWorker
-from hardware.eosdxdc.gui.technical.widgets import MeasurementHistoryWidget
+# Defer all technical imports to avoid pyFAI crashes on startup
+# These will be imported only when actually needed
+_ZONE_TECHNICAL_IMPORTS_AVAILABLE = None  # None = not yet tested
+_zone_technical_modules = {}
+
+def _get_zone_technical_imports():
+    """Lazy import of technical modules to avoid startup crashes."""
+    global _ZONE_TECHNICAL_IMPORTS_AVAILABLE, _zone_technical_modules
+    
+    if _ZONE_TECHNICAL_IMPORTS_AVAILABLE is not None:
+        return _ZONE_TECHNICAL_IMPORTS_AVAILABLE
+    
+    try:
+        from hardware.eosdxdc.gui.technical.capture import (
+            CaptureWorker,
+            move_and_convert_measurement_file,
+            validate_folder,
+        )
+        from hardware.eosdxdc.gui.technical.measurement_worker import MeasurementWorker
+        from hardware.eosdxdc.gui.technical.widgets import MeasurementHistoryWidget
+        
+        _zone_technical_modules.update({
+            'CaptureWorker': CaptureWorker,
+            'move_and_convert_measurement_file': move_and_convert_measurement_file,
+            'validate_folder': validate_folder,
+            'MeasurementWorker': MeasurementWorker,
+            'MeasurementHistoryWidget': MeasurementHistoryWidget,
+        })
+        _ZONE_TECHNICAL_IMPORTS_AVAILABLE = True
+        return True
+    except Exception as e:
+        print(f"Warning: Zone technical measurement imports failed: {e}")
+        print("Zone measurements will be disabled.")
+        _ZONE_TECHNICAL_IMPORTS_AVAILABLE = False
+        return False
+
+def _get_zone_technical_module(name):
+    """Get a zone technical module by name, with fallback stubs."""
+    if _get_zone_technical_imports():
+        return _zone_technical_modules.get(name)
+    else:
+        # Return stub implementations
+        stubs = {
+            'CaptureWorker': type('CaptureWorker', (), {
+                '__init__': lambda self, *args, **kwargs: None,
+                'moveToThread': lambda self, thread: None,
+                'finished': type('Signal', (), {'connect': lambda self, f: None})()
+            }),
+            'move_and_convert_measurement_file': lambda *args, **kwargs: None,
+            'validate_folder': lambda path: str(path) if path else "",
+            'MeasurementWorker': type('MeasurementWorker', (), {
+                '__init__': lambda self, *args, **kwargs: None,
+                'run': lambda self: None,
+                'add_aux_item': type('Signal', (), {'connect': lambda self, f: None})()
+            }),
+            'MeasurementHistoryWidget': type('MeasurementHistoryWidget', (), {
+                '__init__': lambda self, *args, **kwargs: None
+            })
+        }
+        return stubs.get(name)
 from hardware.eosdxdc.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -349,10 +402,19 @@ class ZoneMeasurementsProcessMixin:
 
     def _start_normal_capture(self, txt_filename_base: str):
         # Launch the dual-capture worker in its own thread (normal mode)
+        if not _get_zone_technical_imports():
+            logger.error("Cannot start normal capture - technical imports not available")
+            try:
+                self._append_measurement_log("ERROR: Technical imports not available")
+            except Exception:
+                pass
+            return
+            
         try:
             self._append_measurement_log("Normal: capture")
         except Exception:
             pass
+        CaptureWorker = _get_zone_technical_module('CaptureWorker')
         self.capture_worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=self.integration_time,
@@ -441,6 +503,7 @@ class ZoneMeasurementsProcessMixin:
                     alias_folder = (
                         self.measurement_folder
                     )  # Save into the main folder (no subfolders)
+                    move_and_convert_measurement_file = _get_zone_technical_module('move_and_convert_measurement_file')
                     moved_npy = move_and_convert_measurement_file(
                         txt_path, alias_folder
                     )
@@ -533,12 +596,21 @@ class ZoneMeasurementsProcessMixin:
             pass
 
         # Start attenuation capture (with sample) in a thread
+        if not _get_zone_technical_imports():
+            logger.error("Cannot start attenuation capture - technical imports not available")
+            try:
+                self._append_measurement_log("ERROR: Technical imports not available")
+            except Exception:
+                pass
+            return
+            
         try:
             self._append_measurement_log(
                 f"Attenuation: capture WITH sample (frames={frames}, t={short_t:.6f}s)"
             )
         except Exception:
             pass
+        CaptureWorker = _get_zone_technical_module('CaptureWorker')
         self._attn2_worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=short_t,
@@ -565,6 +637,7 @@ class ZoneMeasurementsProcessMixin:
                         alias_folder = (
                             self.measurement_folder
                         )  # Save into the main folder (no subfolders)
+                        move_and_convert_measurement_file = _get_zone_technical_module('move_and_convert_measurement_file')
                         moved_map[a] = move_and_convert_measurement_file(
                             txt, alias_folder
                         )
@@ -662,7 +735,12 @@ class ZoneMeasurementsProcessMixin:
         Spawns a MeasurementWorker in a new thread for post-processing measurement files.
         Connects signals for result handling and thread cleanup.
         """
+        if not _get_zone_technical_imports():
+            logger.error("Cannot spawn measurement thread - technical imports not available")
+            return
+            
         thread = QThread(self)
+        MeasurementWorker = _get_zone_technical_module('MeasurementWorker')
         worker = MeasurementWorker(
             row=row,
             filenames=file_map,
@@ -826,7 +904,7 @@ class ZoneMeasurementsProcessMixin:
 
     def _get_or_create_measurement_widget(
         self, point_id: int
-    ) -> Optional[MeasurementHistoryWidget]:
+    ) -> Optional["MeasurementHistoryWidget"]:
         """Get existing widget or create a new one (managed in the right panel, not in the table)."""
         # Check if we already have a widget for this point_id
         widget = getattr(self, "measurement_widgets", {}).get(point_id)
@@ -842,6 +920,11 @@ class ZoneMeasurementsProcessMixin:
                 return widget
 
         # Fallback: create a standalone widget and store it in the mapping
+        if not _get_zone_technical_imports():
+            logger.error("Cannot create measurement widget - technical imports not available")
+            return None
+            
+        MeasurementHistoryWidget = _get_zone_technical_module('MeasurementHistoryWidget')
         widget = MeasurementHistoryWidget(
             masks=getattr(self, "masks", {}),
             ponis=getattr(self, "ponis", {}),
