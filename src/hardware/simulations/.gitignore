@@ -1,0 +1,25 @@
+# Build artifacts
+build/
+out/
+bin/
+lib/
+CMakeFiles/
+CMakeCache.txt
+*.sln
+*.vcxproj*
+*.user
+*.pdb
+*.obj
+*.log
+*.dll
+*.exe
+*.ipch
+*.ilk
+*.idb
+*.o
+*.a
+*.lib
+compile_commands.json
+
+# Visual Studio
+.vs/
