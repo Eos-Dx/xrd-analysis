@@ -80,6 +80,14 @@ class AzimuthalIntegration(TransformerMixin):
     :param column: Column name containing measurement data. \
     Defaults to 'measurement_data'.
     :type column: str
+    :param output_column: Output column name for integration results. \
+    In default mode, defaults to 'radial_profile_data'. In 2D mode, this can be \
+    customized to any name.
+    :type output_column: str
+    :param q_range_column: Output column name for q_range data. \
+    Defaults to 'q_range'. In 2D mode, this can be customized to \
+    something like 'q_range_2D'.
+    :type q_range_column: str
     :param angles: List of angle ranges for integration. Defaults to None.
     :type angles: List[Tuple[int]], optional
     """
@@ -96,6 +104,8 @@ class AzimuthalIntegration(TransformerMixin):
     thickness_adjustment: bool = False
     thickness_adjustment_distance: float = 700
     calc_cake_stats: bool = False
+    output_column: str = "radial_profile_data"
+    q_range_column: str = "q_range"
     angles: List[Tuple[int]] = None
 
     def fit(self, x: pd.DataFrame, y=None):
@@ -122,8 +132,9 @@ class AzimuthalIntegration(TransformerMixin):
         :param x: Input DataFrame containing measurement data.
         :type x: pandas.DataFrame
         :returns: DataFrame with additional columns from azimuthal \
-        integration results, including 'q_range', 'radial_profile_data', \
-        and other mode-specific columns.
+        integration results. Column names are customizable via output_column \
+        and q_range_column parameters. Default columns are 'q_range', \
+        'radial_profile_data', and other mode-specific columns.
         :rtype: pandas.DataFrame
         :raises: Drops rows with missing calibration data if calibration_mode \
         is 'poni'.
@@ -175,11 +186,19 @@ class AzimuthalIntegration(TransformerMixin):
                 if len(x) >= 3:
                     return pd.Series(
                         [x[0], x[1], x[2]],
-                        index=["q_range", "radial_profile_data", "calculated_distance"],
+                        index=[
+                            self.q_range_column,
+                            self.output_column,
+                            "calculated_distance",
+                        ],
                     )
                 return pd.Series(
                     [None, None, None],
-                    index=["q_range", "radial_profile_data", "calculated_distance"],
+                    index=[
+                        self.q_range_column,
+                        self.output_column,
+                        "calculated_distance",
+                    ],
                 )
 
             mapped = integration_results.apply(_map_1d)
@@ -207,8 +226,8 @@ class AzimuthalIntegration(TransformerMixin):
                     return pd.Series(
                         [x[0], x[1], x[2], x[3]],
                         index=[
-                            "q_range",
-                            "radial_profile_data",
+                            self.q_range_column,
+                            self.output_column,
                             "azimuthal_positions",
                             "calculated_distance",
                         ],
@@ -216,8 +235,8 @@ class AzimuthalIntegration(TransformerMixin):
                 return pd.Series(
                     [None, None, None, None],
                     index=[
-                        "q_range",
-                        "radial_profile_data",
+                        self.q_range_column,
+                        self.output_column,
                         "azimuthal_positions",
                         "calculated_distance",
                     ],
@@ -231,7 +250,7 @@ class AzimuthalIntegration(TransformerMixin):
 
         # If pipeline mode is requested, return only the expanded radial profile as columns
         if self.transformation_mode == "pipeline":
-            return pd.DataFrame(list(x_copy["radial_profile_data"]))
+            return pd.DataFrame(list(x_copy[self.output_column]))
 
         return x_copy
 
@@ -2082,6 +2101,7 @@ class SoftLabelToWeightedSamples(TransformerMixin):
     duplicated rows per original row. Duplicates carry:
       - a hard label (label_col) set to class index or provided class name
       - a weight (weight_col) equal to the corresponding probability value
+      - optionally, a numeric label column (label_col_numeric) via a code map or aligned code list
 
     Parameters
     ----------
@@ -2093,6 +2113,12 @@ class SoftLabelToWeightedSamples(TransformerMixin):
         Name of the output weight column to set on duplicates (to be used as sample_weight).
     class_names : list[str] | None
         Optional list of class names to assign instead of integer indices. Length must match K.
+    label_col_numeric : str | None
+        Optional additional column to store numeric codes (e.g., 'cancer_status_multi').
+    label_codes : list[Any] | None
+        Optional list of codes aligned with class_names by index (same length as class_names).
+    label_code_map : dict[Any, Any] | None
+        Optional mapping from label value (e.g., 'CANCER' or index j) to numeric code.
     min_weight : float
         Discard duplicates with probability <= min_weight. Default 0.0 keeps all.
     normalize : bool
@@ -2113,6 +2139,9 @@ class SoftLabelToWeightedSamples(TransformerMixin):
         label_col: str = "cancer_status",
         weight_col: str = "cancer_status_weighted",
         class_names: Optional[List[Union[str, int]]] = None,
+        label_col_numeric: Optional[str] = None,
+        label_codes: Optional[List[Any]] = None,
+        label_code_map: Optional[Dict[Any, Any]] = None,
         min_weight: float = 0.0,
         normalize: bool = True,
         drop_soft_col: bool = False,
@@ -2121,9 +2150,19 @@ class SoftLabelToWeightedSamples(TransformerMixin):
         self.label_col = label_col
         self.weight_col = weight_col
         self.class_names = class_names
+        self.label_col_numeric = label_col_numeric
+        self.label_codes = label_codes
+        self.label_code_map = label_code_map
         self.min_weight = float(min_weight)
         self.normalize = bool(normalize)
         self.drop_soft_col = bool(drop_soft_col)
+
+        # Validate label_codes alignment when both provided
+        if self.label_codes is not None and self.class_names is not None:
+            if len(self.label_codes) != len(self.class_names):
+                raise ValueError(
+                    f"label_codes length {len(self.label_codes)} must equal class_names length {len(self.class_names)}"
+                )
 
     def fit(self, X: pd.DataFrame, y=None):
         return self
@@ -2190,9 +2229,29 @@ class SoftLabelToWeightedSamples(TransformerMixin):
                     continue
                 new_row = row.copy()
                 new_row[self.weight_col] = float(w)
-                new_row[self.label_col] = (
-                    self.class_names[j] if self.class_names is not None else j
-                )
+                label_value = self.class_names[j] if self.class_names is not None else j
+                new_row[self.label_col] = label_value
+
+                # Optional numeric label column
+                if self.label_col_numeric is not None:
+                    code = None
+                    # Priority 1: explicit map by label value, then by index j
+                    if self.label_code_map is not None:
+                        code = self.label_code_map.get(label_value, None)
+                        if code is None:
+                            code = self.label_code_map.get(j, None)
+                    # Priority 2: aligned codes list
+                    if (
+                        code is None
+                        and self.label_codes is not None
+                        and self.class_names is not None
+                    ):
+                        code = self.label_codes[j]
+                    # Fallback: use index j
+                    if code is None:
+                        code = j
+                    new_row[self.label_col_numeric] = code
+
                 rows.append(new_row)
 
         if not rows:
@@ -2209,3 +2268,203 @@ class SoftLabelToWeightedSamples(TransformerMixin):
             out = out.drop(columns=[self.soft_col])
         out.reset_index(drop=True, inplace=True)
         return out
+
+
+class SNRTransformer(TransformerMixin):
+    """
+    Compute signal-to-noise metrics from 1D azimuthal integration results.
+
+    For each row, this transformer:
+    - optionally re-interpolates (q, I) to a common, uniformly spaced q-grid
+    - normalizes the intensity by its area (fallback to median scaling)
+    - smooths the normalized intensity using Savitzky–Golay (fallback to moving average)
+    - computes residual = I_norm - I_smooth
+    - computes noise_std, snr_linear = var(I_smooth)/var(residual), and snr_db
+    - writes a denoised 1D profile to `radial_profile_data_snr` (smoothed in original scale)
+    - writes scalar SNR in dB to column `snr`
+
+    Parameters
+    ----------
+    x_column : str
+        Column with the q-range array. Defaults to 'q_range'.
+    y_column : str
+        Column with the 1D intensity array. Defaults to 'radial_profile_data'.
+    window_frac : float
+        Fraction of the number of points to set SavGol window length. Default 0.04.
+    polyorder : int
+        Polynomial order for SavGol. Default 2.
+    enforce_common_q : bool
+        If True, re-interpolate to a uniformly spaced q grid per row. Default True.
+    n_points : int | None
+        If set, number of points for the uniform grid. Defaults to len(I) when None.
+    save_smoothed : bool
+        If True, saves smoothed and residual arrays in the DataFrame.
+    smoothed_col : str
+        Column name for smoothed intensity when saved. Defaults to 'radial_profile_data_snr'.
+    residual_col : str
+        Column name for residual intensity when saved. Defaults to 'radial_profile_residual'.
+    snr_col : str
+        Column name to write SNR in dB. Defaults to 'snr'.
+    """
+
+    def __init__(
+        self,
+        x_column: str = "q_range",
+        y_column: str = "radial_profile_data",
+        window_frac: float = 0.04,
+        polyorder: int = 2,
+        enforce_common_q: bool = True,
+        n_points: int = None,
+        save_smoothed: bool = True,
+        smoothed_col: str = "radial_profile_data_snr",
+        residual_col: str = "radial_profile_residual",
+        snr_col: str = "snr",
+    ) -> None:
+        self.x_column = x_column
+        self.y_column = y_column
+        self.window_frac = float(window_frac)
+        self.polyorder = int(polyorder)
+        self.enforce_common_q = bool(enforce_common_q)
+        self.n_points = n_points
+        self.save_smoothed = bool(save_smoothed)
+        self.smoothed_col = smoothed_col
+        self.residual_col = residual_col
+        self.snr_col = snr_col
+
+        # Optional Savitzky–Golay import
+        try:
+            from scipy.signal import savgol_filter as _sg
+        except Exception:
+            _sg = None
+        self._savgol = _sg
+
+    def fit(self, X: pd.DataFrame, y=None):
+        _ = X
+        _ = y
+        return self
+
+    def _ensure_uniform_grid(
+        self, q: np.ndarray, intensity: np.ndarray, n_points: int | None
+    ):
+        q = np.asarray(q, float)
+        intensity = np.asarray(intensity, float)
+        if n_points is None:
+            n_points = len(intensity)
+        if n_points <= 1:
+            return q, intensity
+        q_uniform = np.linspace(np.nanmin(q), np.nanmax(q), int(n_points))
+        intensity_uniform = np.interp(q_uniform, q, intensity)
+        return q_uniform, intensity_uniform
+
+    def _normalize_by_surface(
+        self, q: np.ndarray, intensity: np.ndarray, eps: float = 1e-12
+    ):
+        area = float(np.trapz(intensity, q))
+        if not np.isfinite(area) or abs(area) < eps:
+            med = (
+                float(np.nanmedian(intensity[np.isfinite(intensity)]))
+                if np.isfinite(intensity).any()
+                else np.nan
+            )
+            scale = med if (np.isfinite(med) and med != 0.0) else 1.0
+            return intensity / scale, {"norm": "median", "scale": scale, "area": area}
+        return intensity / area, {"norm": "area", "scale": area, "area": area}
+
+    def _smooth(self, y: np.ndarray):
+        y = np.asarray(y, float)
+        n = len(y)
+        if n <= 4:
+            return y.copy(), {"method": "identity", "win": None, "poly": None}
+        w = max(5, int(round(self.window_frac * n)))
+        if w % 2 == 0:
+            w += 1
+        if w >= n:
+            w = max(5, n - 1 if (n - 1) % 2 else n - 2)
+        poly = min(self.polyorder, w - 1)
+
+        if self._savgol is not None and w > poly and w <= n:
+            try:
+                y_sm = self._savgol(y, window_length=w, polyorder=poly, mode="interp")
+                return y_sm, {"method": "savgol", "win": w, "poly": poly}
+            except Exception:
+                pass
+        # Fallback: centered moving average with reflect padding
+        pad = w // 2
+        xp = np.pad(y, (pad, pad), mode="reflect")
+        kern = np.ones(w, dtype=float) / float(w)
+        y_sm = np.convolve(xp, kern, mode="valid")
+        return y_sm, {"method": "movavg", "win": w, "poly": None}
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        df = X.copy()
+
+        # Prepare output columns
+        df["noise_std"] = np.nan
+        df["snr_linear"] = np.nan
+        df["snr_db"] = np.nan
+        df[self.snr_col] = np.nan  # alias for snr in dB as requested
+        if self.save_smoothed:
+            df[self.smoothed_col] = None
+            df[self.residual_col] = None
+            df[self.smoothed_col].astype(object)
+            df[self.residual_col].astype(object)
+
+        for i, row in df.iterrows():
+            q = np.asarray(row.get(self.x_column), float)
+            intensity = np.asarray(row.get(self.y_column), float)
+            if q is None or intensity is None or len(intensity) < 2:
+                continue
+
+            # Ensure uniform grid if requested
+            if self.enforce_common_q:
+                q_u, intensity_u = self._ensure_uniform_grid(
+                    q, intensity, self.n_points
+                )
+            else:
+                q_u, intensity_u = q, intensity
+
+            # Normalize for SNR metric
+            intensity_norm, _ = self._normalize_by_surface(q_u, intensity_u)
+
+            # Smooth for SNR (normalized domain)
+            intensity_sm_norm, _ = self._smooth(intensity_norm)
+
+            # Residuals & metrics
+            resid_norm = intensity_norm - intensity_sm_norm
+            if resid_norm.size > 1:
+                noise_std = float(np.nanstd(resid_norm, ddof=1))
+                sig_pow = float(np.nanvar(intensity_sm_norm, ddof=1))
+                noi_pow = float(np.nanvar(resid_norm, ddof=1))
+                if np.isfinite(sig_pow) and np.isfinite(noi_pow) and noi_pow > 0:
+                    snr_lin = sig_pow / noi_pow
+                    snr_db = 10.0 * float(np.log10(snr_lin))
+                else:
+                    snr_lin, snr_db = np.nan, np.nan
+            else:
+                noise_std, snr_lin, snr_db = np.nan, np.nan, np.nan
+
+            # Also produce a smoothed version in the original intensity scale
+            intensity_sm_u, _ = self._smooth(intensity_u)
+            # Map smoothed uniform-grid curve back to original q sampling if needed
+            if self.enforce_common_q:
+                intensity_sm_out = np.interp(q, q_u, intensity_sm_u)
+            else:
+                intensity_sm_out = intensity_sm_u
+            resid_out = (
+                intensity - intensity_sm_out
+                if intensity_sm_out is not None
+                and len(intensity_sm_out) == len(intensity)
+                else np.full_like(intensity, np.nan)
+            )
+
+            # Assign outputs
+            df.at[i, "noise_std"] = noise_std
+            df.at[i, "snr_linear"] = snr_lin
+            df.at[i, "snr_db"] = snr_db
+            df.at[i, self.snr_col] = snr_db  # requested alias
+
+            if self.save_smoothed:
+                df.at[i, self.smoothed_col] = intensity_sm_out
+                df.at[i, self.residual_col] = resid_out
+
+        return df

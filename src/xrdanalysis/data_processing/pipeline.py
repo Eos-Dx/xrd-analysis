@@ -1,3 +1,5 @@
+from typing import Optional
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -217,7 +219,7 @@ class MLPipeline:
 
         return self.trained_preprocessor
 
-    def train_estimator(self, X, y):
+    def train_estimator(self, X, y, sample_weight=None):
         """
         Trains the estimator using the provided features and target variable.
 
@@ -225,14 +227,21 @@ class MLPipeline:
         :type X: DataFrame
         :param y: The target variable.
         :type y: Series
+        :param sample_weight: Sample weights for training.
+        :type sample_weight: array-like, optional
         :return: The trained estimator pipeline.
         :rtype: Pipeline
         """
         # Initialize the pipeline of preprocessing steps and estimator
         estimator_pipeline = Pipeline(self.estimator)
 
-        # Fit the pipeline
-        estimator_pipeline.fit(X, y)
+        # Fit the pipeline with optional sample weights
+        if sample_weight is not None:
+            estimator_pipeline.fit(
+                X, y, **{f"{self.estimator[0][0]}__sample_weight": sample_weight}
+            )
+        else:
+            estimator_pipeline.fit(X, y)
 
         # Store the fitted pipeline
         self.trained_estimator = estimator_pipeline
@@ -452,6 +461,7 @@ class MLPipeline:
         min_sensitivity=None,
         min_specificity=None,
         print_split_summary: bool = False,
+        sample_weight_col: Optional[str] = None,
         **split_args,
     ):
         """
@@ -563,9 +573,82 @@ class MLPipeline:
 
                         print(f"Test bin counts: {_bins(X_test)}")
                         print(f"Train bin counts: {_bins(X_train)}")
+
+                # Additional label/weight stats
+                try:
+                    # Label distributions
+                    print(
+                        "Label distribution (train):",
+                        pd.Series(y_train).value_counts().to_dict(),
+                    )
+                    print(
+                        "Label distribution (test): ",
+                        pd.Series(y_test).value_counts().to_dict(),
+                    )
+                    print(
+                        "Label proportion (train):",
+                        pd.Series(y_train)
+                        .value_counts(normalize=True)
+                        .round(3)
+                        .to_dict(),
+                    )
+                    print(
+                        "Label proportion (test): ",
+                        pd.Series(y_test)
+                        .value_counts(normalize=True)
+                        .round(3)
+                        .to_dict(),
+                    )
+                    # Weight stats per label if provided
+                    if (
+                        sample_weight_col is not None
+                        and sample_weight_col in X_train.columns
+                    ):
+                        df_tr = X_train[[sample_weight_col]].copy()
+                        df_tr["__y__"] = pd.Series(y_train).values
+                        gtr = df_tr.groupby("__y__")[sample_weight_col]
+                        print("Weight stats by label (train): sum/mean/std")
+                        print(
+                            gtr.agg(["sum", "mean", "std"])
+                            .round(5)
+                            .rename_axis("label")
+                            .to_string()
+                        )
+                    if (
+                        sample_weight_col is not None
+                        and sample_weight_col in X_test.columns
+                    ):
+                        df_te = X_test[[sample_weight_col]].copy()
+                        df_te["__y__"] = pd.Series(y_test).values
+                        gte = df_te.groupby("__y__")[sample_weight_col]
+                        print("Weight stats by label (test): sum/mean/std")
+                        print(
+                            gte.agg(["sum", "mean", "std"])
+                            .round(5)
+                            .rename_axis("label")
+                            .to_string()
+                        )
+                except Exception:
+                    pass
             except Exception:
                 # Never fail training due to debug printing
                 pass
+
+        # Extract sample weights if specified
+        sample_weight_train = None
+        if sample_weight_col is not None:
+            if sample_weight_col not in X_train.columns:
+                raise KeyError(
+                    f"Sample weight column '{sample_weight_col}' not found in training data"
+                )
+            sample_weight_train = X_train[sample_weight_col].values
+            # Remove weight column from features before preprocessing
+            X_train = X_train.drop(columns=[sample_weight_col])
+            X_test = (
+                X_test.drop(columns=[sample_weight_col])
+                if sample_weight_col in X_test.columns
+                else X_test
+            )
 
         # Fit the pipeline on training data
         if preprocess:
@@ -593,7 +676,9 @@ class MLPipeline:
                 # If a DataFrame, capture and reuse its columns as feature names
                 self.feature_names_ = list(X_train.columns)
 
-        estimator = self.train_estimator(X_train, y_train)
+        estimator = self.train_estimator(
+            X_train, y_train, sample_weight=sample_weight_train
+        )
 
         # For multiclass, pass the full matrix; for binary it will still be (n, 2)
         y_score = estimator.predict_proba(X_test)
@@ -607,6 +692,19 @@ class MLPipeline:
             min_sensitivity=min_sensitivity,
             min_specificity=min_specificity,
         )
+
+        # Attach split summary info for programmatic access
+        try:
+            split_summary = {
+                "n_total": len(X),
+                "n_train": len(X_train),
+                "n_test": len(X_test),
+                "train_label_counts": pd.Series(y_train).value_counts().to_dict(),
+                "test_label_counts": pd.Series(y_test).value_counts().to_dict(),
+            }
+            results["split_summary"] = split_summary
+        except Exception:
+            pass
 
         return results
 
@@ -1307,6 +1405,10 @@ class MLPipelineMulti(MLPipeline):
                 ax.legend(loc="lower right", fontsize="small")
                 ax.grid(True, alpha=0.3)
                 results["roc_fig"] = fig
+                try:
+                    plt.show()
+                except Exception:
+                    pass
             except Exception:
                 pass
 
@@ -1329,6 +1431,7 @@ class MLPipelineMulti(MLPipeline):
         multi_class: str = "ovr",
         average: str = "macro",
         print_split_summary: bool = False,
+        sample_weight_col: Optional[str] = None,
         **split_args,
     ):
         X = X.copy()
@@ -1395,15 +1498,90 @@ class MLPipelineMulti(MLPipeline):
 
                         print(f"Test bin counts: {_bins(X_test)}")
                         print(f"Train bin counts: {_bins(X_train)}")
+
+                # Additional label/weight stats
+                try:
+                    # Label distributions
+                    print(
+                        "Label distribution (train):",
+                        pd.Series(y_train).value_counts().to_dict(),
+                    )
+                    print(
+                        "Label distribution (test): ",
+                        pd.Series(y_test).value_counts().to_dict(),
+                    )
+                    print(
+                        "Label proportion (train):",
+                        pd.Series(y_train)
+                        .value_counts(normalize=True)
+                        .round(3)
+                        .to_dict(),
+                    )
+                    print(
+                        "Label proportion (test): ",
+                        pd.Series(y_test)
+                        .value_counts(normalize=True)
+                        .round(3)
+                        .to_dict(),
+                    )
+                    # Weight stats per label if provided
+                    if (
+                        sample_weight_col is not None
+                        and sample_weight_col in X_train.columns
+                    ):
+                        df_tr = X_train[[sample_weight_col]].copy()
+                        df_tr["__y__"] = pd.Series(y_train).values
+                        gtr = df_tr.groupby("__y__")[sample_weight_col]
+                        print("Weight stats by label (train): sum/mean/std")
+                        print(
+                            gtr.agg(["sum", "mean", "std"])
+                            .round(5)
+                            .rename_axis("label")
+                            .to_string()
+                        )
+                    if (
+                        sample_weight_col is not None
+                        and sample_weight_col in X_test.columns
+                    ):
+                        df_te = X_test[[sample_weight_col]].copy()
+                        df_te["__y__"] = pd.Series(y_test).values
+                        gte = df_te.groupby("__y__")[sample_weight_col]
+                        print("Weight stats by label (test): sum/mean/std")
+                        print(
+                            gte.agg(["sum", "mean", "std"])
+                            .round(5)
+                            .rename_axis("label")
+                            .to_string()
+                        )
+                except Exception:
+                    pass
             except Exception:
                 pass
+
+        # Extract sample weights if specified
+        sample_weight_train = None
+        if sample_weight_col is not None:
+            if sample_weight_col not in X_train.columns:
+                raise KeyError(
+                    f"Sample weight column '{sample_weight_col}' not found in training data"
+                )
+            sample_weight_train = X_train[sample_weight_col].values
+            # Remove weight column from features before preprocessing
+            X_train = X_train.drop(columns=[sample_weight_col])
+            X_test = (
+                X_test.drop(columns=[sample_weight_col])
+                if sample_weight_col in X_test.columns
+                else X_test
+            )
 
         if preprocess:
             self.train_preprocessor(X_train)
             X_train = self.preprocess(X_train)
             X_test = self.preprocess(X_test)
 
-        estimator = self.train_estimator(X_train, y_train)
+        estimator = self.train_estimator(
+            X_train, y_train, sample_weight=sample_weight_train
+        )
         y_proba = estimator.predict_proba(X_test)
         y_pred = estimator.predict(X_test)
 
@@ -1417,6 +1595,20 @@ class MLPipelineMulti(MLPipeline):
             show_flag=show_flag,
             print_flag=print_flag,
         )
+
+        # Attach split summary info for programmatic access
+        try:
+            split_summary = {
+                "n_total": len(X),
+                "n_train": len(X_train),
+                "n_test": len(X_test),
+                "train_label_counts": pd.Series(y_train).value_counts().to_dict(),
+                "test_label_counts": pd.Series(y_test).value_counts().to_dict(),
+            }
+            results["split_summary"] = split_summary
+        except Exception:
+            pass
+
         return results
 
     def export_pipeline(self, wrangle=False, preprocess=True, save_path=None):
