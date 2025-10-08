@@ -184,11 +184,12 @@ def perform_azimuthal_integration(
         )
     elif calibration_mode == "poni":
         poni_text = row["ponifile"]
-        # Adjust poni file thickness. Adjusted distance = restored_thickness - t/2
+        # Adjust poni file thickness.
+        # Adjusted distance = restored_thickness - t/2
 
         if thickness_adjustment:
             adjusted_thickness = (
-                thickness_adjustment_distance - (row["thickness"] / 2)
+                row["calib_distanceInMM"] - (row["thickness"] / 2)
             ) * 10**-3  # hard coded for in-vivo machine
             distance_index = poni_text.find("Distance") + 9
             end_of_line_index = poni_text.find("\n", distance_index)
