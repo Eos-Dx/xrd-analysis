@@ -1,11 +1,12 @@
 {
   "name": "Ulster (Moli)",
+  "DEV": false,
   "detectors": [
     {
       "alias": "PRIMARY",
       "type": "Pixet",
       "id": "W0308",
-      "pixet_sdk_path": "D:\\API_PIXet_Pro_1.8.3_Windows_x86_64",
+      "pixet_sdk_path": "C:\\Program Files\\PIXet Pro",
       "size": { "width": 256, "height": 256 },
       "pixel_size_um": [55, 55],
       "faulty_pixels": "faulty_pixels_MiniPIX-G08-W0299.npy",
