@@ -1,0 +1,49 @@
+# Example configuration for Marlin/GRBL XY Stage Controller
+# This is for the Moli machine translation stage
+
+xystage:
+  # Driver type - use 'marlin' for the Marlin firmware stage
+  driver: "marlin"
+  
+  # Serial port identifier (COM4 on Windows, /dev/ttyUSB0 on Linux)
+  id: "COM4"
+  
+  # Human-readable alias for logging and display
+  alias: "MOLI_XY_STAGE"
+  
+  # Optional settings
+  settings:
+    # Stage limits in mm (min, max) for each axis
+    limits_mm:
+      x:
+        min: 0.0
+        max: 90.0
+      y:
+        min: 0.0
+        max: 100.0
+    
+    # Home position (where stage goes after G28 homing)
+    # For Marlin stages, this is typically (0, 0)
+    home: [0.0, 0.0]
+    
+    # Load/sample-out position (convenient position for sample loading)
+    # Based on your colleague's code: X=90, Y=0
+    load: [90.0, 0.0]
+    
+    # Optional: Serial communication settings
+    baudrate: 115200  # Default: 115200
+    timeout: 1.0      # Serial timeout in seconds
+    feedrate: 3000    # Movement speed in mm/min (F3000 in G-code)
+    homing_timeout: 15  # Max time to wait for homing in seconds
+
+# Alternative compact format (array-based limits):
+# xystage:
+#   driver: "marlin"
+#   id: "COM4"
+#   alias: "MOLI_XY_STAGE"
+#   settings:
+#     limits_mm:
+#       x: [0.0, 90.0]
+#       y: [0.0, 100.0]
+#     home: [0.0, 0.0]
+#     load: [90.0, 0.0]

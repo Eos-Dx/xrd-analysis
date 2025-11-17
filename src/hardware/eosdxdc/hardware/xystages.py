@@ -3,8 +3,17 @@ import logging
 import os
 import sys
 import time
+import queue
+import threading
 from abc import ABC, abstractmethod
 from ctypes import CDLL, c_char_p, c_int, c_short
+
+try:
+    import serial
+    import serial.tools.list_ports
+    SERIAL_AVAILABLE = True
+except ImportError:
+    SERIAL_AVAILABLE = False
 
 
 class StageAxisLimitError(Exception):
@@ -166,6 +175,305 @@ class DummyStageController(BaseStageController):
 
     def deinit(self):
         print(f"Dummy stage '{self.alias}' deinitialized.")
+
+
+class MarlinStageController(BaseStageController):
+    """Stage controller for Marlin/GRBL firmware via serial communication."""
+
+    DEFAULT_LIMIT = (0.0, 90.0)  # Marlin stage default limits
+    DEFAULT_HOME = (0.0, 0.0)  # Marlin home position
+    DEFAULT_LOAD = (90.0, 0.0)  # Sample out position
+
+    def __init__(
+        self,
+        config,
+        port=None,
+        baudrate=115200,
+        timeout=1.0,
+        feedrate=3000,
+        homing_timeout=15,
+    ):
+        """
+        Initialize Marlin stage controller.
+
+        Args:
+            config: Configuration dict with 'id' (port), 'alias', and optional 'settings'
+            port: Serial port (e.g., 'COM4'). If None, uses config['id']
+            baudrate: Serial baud rate (default: 115200)
+            timeout: Serial read timeout in seconds
+            feedrate: Movement speed in mm/min (default: 3000)
+            homing_timeout: Timeout for homing operation in seconds
+        """
+        if not SERIAL_AVAILABLE:
+            raise ImportError("pyserial is required for MarlinStageController")
+
+        self.alias = config.get("alias", "MARLIN_STAGE")
+        self.port = port or config.get("id")
+        self.baudrate = baudrate
+        self.timeout = timeout
+        self.feedrate = feedrate
+        self.homing_timeout = homing_timeout
+
+        self.ser = None
+        self.ser_thread = None
+        self.out_q = queue.Queue()
+        self._running = False
+
+        # Current position tracking
+        self._x = 0.0
+        self._y = 0.0
+
+        # Parse limits and positions from config
+        self._limits = self._parse_limits(config)
+        self._positions = self._parse_home_load(config)
+
+        # Override Y limits if not specified (Marlin stage typically has different Y range)
+        if "y" not in config.get("settings", {}).get("limits_mm", {}):
+            self._limits["y"] = (0.0, 100.0)
+
+    def _serial_reader_thread(self):
+        """Background thread to continuously read from serial port."""
+        while self._running:
+            try:
+                if self.ser and self.ser.in_waiting:
+                    line = self.ser.readline().decode(errors="ignore").strip()
+                    if line:
+                        self.out_q.put(line)
+                else:
+                    time.sleep(0.01)
+            except Exception as e:
+                logging.error(f"Serial read error on '{self.alias}': {e}")
+                self._running = False
+
+    def _send_gcode(self, command, wait_for_ok=True, timeout=5.0):
+        """
+        Send G-code command to the controller.
+
+        Args:
+            command: G-code command string (or multi-line string)
+            wait_for_ok: Wait for 'ok' response from controller
+            timeout: Maximum time to wait for response
+
+        Returns:
+            True if successful (or if not waiting for ok), False on timeout
+        """
+        if not self.ser or not self.ser.is_open:
+            raise RuntimeError(f"Serial port not open on '{self.alias}'")
+
+        lines = command.strip().splitlines()
+        for line in lines:
+            cmd = line.strip()
+            if not cmd:
+                continue
+            try:
+                self.ser.write((cmd + "\n").encode())
+                time.sleep(0.02)  # Small delay between commands
+                logging.debug(f"Sent to '{self.alias}': {cmd}")
+            except Exception as e:
+                logging.error(f"Error sending command to '{self.alias}': {e}")
+                raise
+
+        if wait_for_ok:
+            start = time.time()
+            while time.time() - start < timeout:
+                if not self.out_q.empty():
+                    response = self.out_q.get()
+                    if "ok" in response.lower():
+                        return True
+                time.sleep(0.05)
+            logging.warning(f"Timeout waiting for 'ok' from '{self.alias}'")
+            return False
+
+        return True
+
+    def _request_position(self):
+        """Request current position via M114 and parse response."""
+        # Clear queue before requesting
+        while not self.out_q.empty():
+            self.out_q.get()
+
+        self._send_gcode("M114", wait_for_ok=False)
+        time.sleep(0.1)
+
+        # Parse position from response
+        start = time.time()
+        while time.time() - start < 2.0:
+            if not self.out_q.empty():
+                line = self.out_q.get()
+                if line.startswith("X:"):
+                    try:
+                        parts = line.split()
+                        for i, part in enumerate(parts):
+                            if part.startswith("X:") and (
+                                i == 0 or parts[i - 1] != "Count"
+                            ):
+                                self._x = float(part[2:])
+                            elif part.startswith("Y:") and (
+                                i == 0 or parts[i - 1] != "Count"
+                            ):
+                                self._y = float(part[2:])
+                            if part == "Count":
+                                break
+                        return self._x, self._y
+                    except (ValueError, IndexError) as e:
+                        logging.warning(f"Error parsing position from '{self.alias}': {e}")
+            time.sleep(0.05)
+
+        return self._x, self._y
+
+    def init_stage(self):
+        """
+        Initialize the Marlin stage controller by opening serial connection.
+
+        Returns:
+            bool: True if initialization successful, False otherwise
+        """
+        try:
+            self.ser = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
+            time.sleep(2)  # Wait for controller to reset
+
+            # Start serial reader thread
+            self._running = True
+            self.ser_thread = threading.Thread(
+                target=self._serial_reader_thread, daemon=True
+            )
+            self.ser_thread.start()
+
+            # Clear buffers
+            self.ser.reset_input_buffer()
+            self.ser.reset_output_buffer()
+
+            # Set absolute positioning mode
+            self._send_gcode("G90", wait_for_ok=True)
+
+            # Request initial position
+            self._request_position()
+
+            print(f"Marlin stage '{self.alias}' initialized on {self.port}")
+            logging.info(
+                f"Marlin stage '{self.alias}' initialized on {self.port} at {self.baudrate} baud"
+            )
+            return True
+
+        except Exception as e:
+            logging.error(f"Error initializing Marlin stage '{self.alias}': {e}")
+            print(f"Error initializing stage '{self.alias}': {e}")
+            self.ser = None
+            return False
+
+    def home_stage(self, timeout_s=45):
+        """
+        Home the stage using G28 command.
+
+        Args:
+            timeout_s: Maximum time to wait for homing to complete
+
+        Returns:
+            tuple: (x_mm, y_mm) position after homing
+        """
+        logging.info(f"Marlin stage '{self.alias}' homing operation started")
+        print(f"Marlin stage '{self.alias}' homing...")
+
+        # Send homing command
+        self._send_gcode("G28 X Y", wait_for_ok=False)
+
+        # Wait for homing to complete
+        time.sleep(min(timeout_s, self.homing_timeout))
+
+        # Update position to home
+        self._x, self._y = 0.0, 0.0
+
+        # Request actual position from controller
+        pos = self._request_position()
+
+        print(f"Marlin stage '{self.alias}' homed to X={self._x:.3f}, Y={self._y:.3f}")
+        logging.info(
+            f"Marlin stage '{self.alias}' homing completed at ({self._x:.3f}, {self._y:.3f})"
+        )
+        return pos
+
+    def move_stage(self, x_mm, y_mm, move_timeout=20):
+        """
+        Move stage to absolute position.
+
+        Args:
+            x_mm: Target X position in mm
+            y_mm: Target Y position in mm
+            move_timeout: Maximum time to wait for move to complete
+
+        Returns:
+            tuple: (x_mm, y_mm) final position
+        """
+        # Check axis limits before moving
+        self._check_axis_limits(x_mm, y_mm)
+
+        logging.info(
+            f"Marlin stage '{self.alias}' move operation started: target ({x_mm:.3f}, {y_mm:.3f})"
+        )
+
+        # Calculate movement time based on distance and feedrate
+        start_x, start_y = self._x, self._y
+        dx = abs(x_mm - start_x)
+        dy = abs(y_mm - start_y)
+        max_distance = max(dx, dy)
+        estimated_time = (max_distance / (self.feedrate / 60.0)) + 0.5  # Add buffer
+
+        # Send move command
+        cmd = f"G90\nG0 X{x_mm:.3f} Y{y_mm:.3f} F{self.feedrate}"
+        self._send_gcode(cmd, wait_for_ok=False)
+
+        # Wait for movement to complete
+        time.sleep(min(estimated_time, move_timeout))
+
+        # Update internal position
+        self._x = x_mm
+        self._y = y_mm
+
+        # Request actual position
+        final_pos = self._request_position()
+
+        print(f"Marlin stage '{self.alias}' moved to X={self._x:.3f}, Y={self._y:.3f}")
+        logging.info(
+            f"Marlin stage '{self.alias}' move completed successfully to ({self._x:.3f}, {self._y:.3f})"
+        )
+        return final_pos
+
+    def get_xy_position(self):
+        """
+        Get current XY position.
+
+        Returns:
+            tuple: (x_mm, y_mm) current position
+        """
+        return self._request_position()
+
+    def emergency_stop(self):
+        """Send emergency stop command (M112)."""
+        if self.ser and self.ser.is_open:
+            try:
+                self.ser.write(b"M112\n")
+                logging.warning(f"Emergency stop sent to '{self.alias}'")
+                print(f"Emergency stop activated on '{self.alias}'")
+            except Exception as e:
+                logging.error(f"Error sending emergency stop to '{self.alias}': {e}")
+
+    def deinit(self):
+        """Close serial connection and cleanup."""
+        try:
+            self._running = False
+            if self.ser_thread:
+                self.ser_thread.join(timeout=0.5)
+                self.ser_thread = None
+
+            if self.ser and self.ser.is_open:
+                self.ser.close()
+
+            print(f"Marlin stage '{self.alias}' deinitialized.")
+            logging.info(f"Marlin stage '{self.alias}' deinitialized")
+        except Exception as e:
+            logging.error(f"Error during Marlin stage '{self.alias}' deinit: {e}")
+        finally:
+            self.ser = None
 
 
 class XYStageLibController(BaseStageController):
