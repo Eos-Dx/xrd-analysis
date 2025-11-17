@@ -7,6 +7,7 @@ from hardware.eosdxdc.hardware.detectors import (
 from hardware.eosdxdc.hardware.xystages import (
     BaseStageController,
     DummyStageController,
+    MarlinStageController,
     XYStageLibController,
 )
 
@@ -18,6 +19,7 @@ DETECTOR_CLASSES = {
 
 STAGE_CLASSES = {
     "Kinesis": XYStageLibController,
+    "Marlin": MarlinStageController,
     "DummyStage": DummyStageController,
 }
 
