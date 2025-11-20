@@ -144,45 +144,73 @@ class PixetDetectorController(DetectorController):
         self._streaming = threading.Event()
 
     def init_detector(self):
-        # Resolve PIXET SDK path from env or detector config
+        # Note: PIXET SDK path should be added to Windows PATH at application startup
+        # (before PyQt5 import) to prevent Qt DLL conflicts. See main_app.py.
+        # This method only validates the path is accessible.
+        
         pixet_sdk_path = os.environ.get("PIXET_SDK_PATH") or self.config.get(
             "pixet_sdk_path"
         )
+        logger.info(
+            "Initializing Pixet detector",
+            detector=self.alias,
+            device_id=self.dev_id,
+            pixet_sdk_path=pixet_sdk_path,
+        )
+        
         if pixet_sdk_path:
-            try:
-                if os.path.isdir(pixet_sdk_path):
-                    sys.path.insert(0, pixet_sdk_path)
-                    logger.debug(
-                        "Added PIXET SDK path to sys.path",
-                        sdk_path=pixet_sdk_path,
-                        detector=self.alias,
-                    )
-                else:
-                    logger.warning(
-                        "Configured PIXET SDK path does not exist",
-                        sdk_path=pixet_sdk_path,
-                        detector=self.alias,
-                    )
-            except Exception as e:
-                logger.warning(
-                    "Failed to insert PIXET SDK path to sys.path",
-                    sdk_path=str(pixet_sdk_path),
+            if not os.path.isdir(pixet_sdk_path):
+                logger.error(
+                    "Configured PIXET SDK path does not exist",
+                    sdk_path=pixet_sdk_path,
                     detector=self.alias,
-                    error=str(e),
+                    path_exists=False,
+                    hint="Check the 'pixet_sdk_path' in your setup configuration file or set PIXET_SDK_PATH environment variable",
                 )
+                return False
+        else:
+            logger.warning(
+                "No PIXET SDK path configured",
+                detector=self.alias,
+                hint="Set 'pixet_sdk_path' in detector config or PIXET_SDK_PATH environment variable",
+            )
         try:
+            logger.debug("Attempting to import pypixet module", detector=self.alias)
             import pypixet
+            logger.info("pypixet module imported successfully", detector=self.alias)
         except ImportError as e:
             logger.error(
-                "Error importing pypixet",
+                "Error importing pypixet module",
                 error=str(e),
+                detector=self.alias,
+                sys_path=sys.path[:5],  # Show first 5 paths
                 hint="Set PIXET_SDK_PATH env var or add 'pixet_sdk_path' to detector config",
+                exc_info=True,
             )
             return False
-        logger.info(
-            "Initializing Pixet detector", detector=self.alias, device_id=self.dev_id
-        )
-        pypixet.start()
+
+        # IMPORTANT: pixet.ini uses relative paths (e.g., hwlibs\\minipix.dll).
+        # Ensure those resolve by temporarily changing CWD to the PIXET SDK folder
+        original_cwd = os.getcwd()
+        try:
+            if pixet_sdk_path and os.path.isdir(pixet_sdk_path):
+                logger.debug(
+                    "Temporarily changing working directory for pypixet.start()",
+                    from_cwd=original_cwd,
+                    to_cwd=pixet_sdk_path,
+                    detector=self.alias,
+                )
+                os.chdir(pixet_sdk_path)
+            pypixet.start()
+        finally:
+            if os.getcwd() != original_cwd:
+                os.chdir(original_cwd)
+                logger.debug(
+                    "Restored working directory after pypixet.start()",
+                    cwd=original_cwd,
+                    detector=self.alias,
+                )
+
         pixet = pypixet.pixet
         devices = pixet.devices()
         if not devices or devices[0].fullName() == "FileDevice 0":

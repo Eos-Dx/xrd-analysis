@@ -1,10 +1,31 @@
 import logging
+import os
 import sys
 from pathlib import Path
 
 # Set the project root.
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
+
+# CRITICAL: Add PIXet SDK path and import pypixet BEFORE PyQt5
+# This prevents DLL conflicts between PyQt5 (Qt 5) and pypixet (Qt 6)
+# PyQt5 uses Qt 5 DLLs, while pypixet uses Qt 6 DLLs. Once Qt 5 is loaded,
+# Qt 6 DLL initialization fails. So we must load pypixet first.
+pixet_sdk_path = os.environ.get("PIXET_SDK_PATH", r"C:\Program Files\PIXet Pro")
+if os.path.isdir(pixet_sdk_path):
+    # Add to Windows PATH for DLL loading (must be done before any Qt import)
+    os.environ['PATH'] = pixet_sdk_path + os.pathsep + os.environ.get('PATH', '')
+    # Add to sys.path for Python module discovery
+    sys.path.insert(0, pixet_sdk_path)
+    try:
+        # Pre-import pypixet to load Qt 6 DLLs before PyQt5 loads Qt 5 DLLs
+        import pypixet
+        _PYPIXET_AVAILABLE = True
+    except ImportError:
+        # pypixet not available - will fall back to dummy detectors
+        _PYPIXET_AVAILABLE = False
+else:
+    _PYPIXET_AVAILABLE = False
 
 from PyQt5.QtCore import QDate, QSettings
 from PyQt5.QtWidgets import QApplication, QMessageBox
@@ -31,34 +52,105 @@ logger = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
-    with log_context(
-        session_id=f"session_{QDate.currentDate().toString('yyyy-MM-dd')}",
-        hardware_state="initializing",
-    ):
-        logger.info("EOSDxDc application starting", extra={"log_path": str(log_path)})
+    try:
+        with log_context(
+            session_id=f"session_{QDate.currentDate().toString('yyyy-MM-dd')}",
+            hardware_state="initializing",
+        ):
+            logger.info("="*80)
+            logger.info("EOSDxDc application starting")
+            logger.info("="*80)
+            logger.info(f"Python version: {sys.version}")
+            logger.info(f"PyQt5 version: {QApplication.instance()}")
+            logger.info(f"Log file path: {log_path}")
+            logger.info(f"Working directory: {Path.cwd()}")
+            logger.info(f"Project root: {project_root}")
 
-        app = QApplication(sys.argv)
+            logger.info("Creating QApplication...")
+            app = QApplication(sys.argv)
+            logger.info("QApplication created successfully")
 
-        # --- Welcome dialog with setup selection and embedded motivation ---
-        # (Motivation popup removed; now shown inside Welcome dialog)
+            # --- Welcome dialog with setup selection and embedded motivation ---
+            # (Motivation popup removed; now shown inside Welcome dialog)
 
-        # Always show Welcome dialog for setup selection before creating main window
+            # Always show Welcome dialog for setup selection before creating main window
+            try:
+                logger.info("Showing welcome dialog for setup selection")
+                dlg = WelcomeDialog()
+                logger.debug("Welcome dialog instance created")
+                result = dlg.exec_()
+                if result != dlg.Accepted:
+                    logger.info("Welcome dialog canceled by user; exiting application")
+                    sys.exit(0)
+                logger.info("Welcome dialog completed successfully")
+            except Exception as e:
+                logger.error(f"Failed to show welcome dialog: {e}", exc_info=True)
+                error_msg = (
+                    f"Failed to show welcome dialog.\n\n"
+                    f"Error: {type(e).__name__}: {e}\n\n"
+                    f"This may indicate a problem with the PyQt5 installation or system configuration.\n\n"
+                    f"Check the log file for details: {log_path}"
+                )
+                QMessageBox.critical(None, "Application Error", error_msg)
+                logger.critical("Application terminating due to welcome dialog error")
+                sys.exit(1)
+
+            try:
+                logger.info("Creating main window...")
+                win = MainWindow()
+                logger.info("Main window created successfully")
+                win.setWindowTitle("EOSDxDc")
+                logger.info("Showing main window...")
+                win.show()
+                logger.info("Main window displayed")
+            except Exception as e:
+                logger.error(f"Failed to create or show main window: {e}", exc_info=True)
+                error_msg = (
+                    f"Failed to create main window.\n\n"
+                    f"Error: {type(e).__name__}: {e}\n\n"
+                    f"This may indicate a problem with the application configuration.\n\n"
+                    f"Check the log file for details: {log_path}"
+                )
+                QMessageBox.critical(None, "Application Error", error_msg)
+                logger.critical("Application terminating due to main window creation error")
+                sys.exit(1)
+
+            logger.info("="*80)
+            logger.info("EOSDxDc application ready and running")
+            logger.info("="*80)
+            
+            try:
+                exit_code = app.exec_()
+                logger.info("="*80)
+                logger.info(f"EOSDxDc application shutting down (exit code: {exit_code})")
+                logger.info("="*80)
+                sys.exit(exit_code)
+            except Exception as e:
+                logger.error(f"Error during application execution: {e}", exc_info=True)
+                error_msg = (
+                    f"Application crashed during execution.\n\n"
+                    f"Error: {type(e).__name__}: {e}\n\n"
+                    f"Check the log file for details: {log_path}"
+                )
+                QMessageBox.critical(None, "Application Error", error_msg)
+                logger.critical("Application terminating due to runtime error")
+                sys.exit(1)
+                
+    except Exception as e:
+        # Top-level exception handler
+        logger.critical(f"Unhandled exception in main: {e}", exc_info=True)
+        error_msg = (
+            f"Critical error in application startup.\n\n"
+            f"Error: {type(e).__name__}: {e}\n\n"
+            f"The application cannot continue.\n\n"
+            f"Log file: {log_path if 'log_path' in locals() else 'Unknown'}"
+        )
         try:
-            logger.debug("Showing welcome dialog for setup selection")
-            dlg = WelcomeDialog()
-            result = dlg.exec_()
-            if result != dlg.Accepted:
-                logger.info("Welcome dialog canceled; exiting application")
-                sys.exit(0)
-        except Exception as e:
-            logger.warning("Failed to show welcome dialog", exc_info=e)
-
-        logger.info("Creating main window")
-        win = MainWindow()
-        win.setWindowTitle("EOSDxDc")
-        win.show()
-
-        logger.info("EOSDxDc application ready")
-        exit_code = app.exec_()
-        logger.info("EOSDxDc application shutting down", extra={"exit_code": exit_code})
-        sys.exit(exit_code)
+            QMessageBox.critical(None, "Critical Error", error_msg)
+        except:
+            print(f"\n{'='*80}")
+            print("CRITICAL ERROR")
+            print(f"{'-'*80}")
+            print(error_msg)
+            print(f"{'='*80}\n")
+        sys.exit(1)
