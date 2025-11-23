@@ -7,6 +7,7 @@ from hardware.eosdxdc.hardware.detectors import (
 from hardware.eosdxdc.hardware.xystages import (
     BaseStageController,
     DummyStageController,
+    MarlinStageController,
     XYStageLibController,
 )
 
@@ -18,6 +19,7 @@ DETECTOR_CLASSES = {
 
 STAGE_CLASSES = {
     "Kinesis": XYStageLibController,
+    "Marlin": MarlinStageController,
     "DummyStage": DummyStageController,
 }
 
@@ -46,6 +48,8 @@ class HardwareController:
 
     def initialize(self):
         dev_mode = self.config.get("DEV", True)
+        detector_success = False
+        stage_success = False
 
         # --- Initialize Detectors ---
         detector_list = self.config.get("detectors", [])
@@ -60,23 +64,31 @@ class HardwareController:
             det_type = det_cfg.get("type")
             det_class = DETECTOR_CLASSES.get(det_type)
             if not det_class:
-                raise ValueError(f"Unknown detector type: {det_type}")
+                print(f"⚠ Unknown detector type: {det_type}")
+                continue
             # Prepare init kwargs
             alias = det_cfg.get("alias", det_cfg["id"])
             size = (det_cfg["size"]["width"], det_cfg["size"]["height"])
             # You may add more config fields if your detector needs them
-            if det_type == "DummyDetector":
-                controller = det_class(alias=alias, size=size)
-            elif det_type == "Pixet":
-                controller = det_class(
-                    alias=alias, size=size, config=det_cfg
-                )  # Adjust as needed
-            else:
-                controller = det_class(alias=alias, size=size)
-            success = controller.init_detector()
-            if not success:
-                raise RuntimeError(f"Failed to initialize detector {det_cfg['id']}")
-            self.detectors[alias] = controller
+            try:
+                if det_type == "DummyDetector":
+                    controller = det_class(alias=alias, size=size)
+                elif det_type == "Pixet":
+                    controller = det_class(
+                        alias=alias, size=size, config=det_cfg
+                    )  # Adjust as needed
+                else:
+                    controller = det_class(alias=alias, size=size)
+                success = controller.init_detector()
+                if success:
+                    self.detectors[alias] = controller
+                    print(f"✓ Detector '{alias}' ({det_type}) initialized successfully")
+                else:
+                    print(f"✗ Detector '{alias}' ({det_type}) failed to initialize")
+            except Exception as e:
+                print(f"✗ Error initializing detector '{alias}' ({det_type}): {e}")
+
+        detector_success = bool(self.detectors)
 
         # --- Initialize Stage ---
         stage_list = self.config.get("translation_stages", [])
@@ -93,15 +105,26 @@ class HardwareController:
             stage_type = selected_stage.get("type")
             stage_class = STAGE_CLASSES.get(stage_type)
             if not stage_class:
-                raise ValueError(f"Unknown stage type: {stage_type}")
-            self.stage_controller = stage_class(config=selected_stage)
-            stage_success = self.stage_controller.init_stage()
+                print(f"⚠ Unknown stage type: {stage_type}")
+                stage_success = False
+            else:
+                try:
+                    self.stage_controller = stage_class(config=selected_stage)
+                    stage_success = self.stage_controller.init_stage()
+                    if stage_success:
+                        print(f"✓ Stage '{selected_stage.get('alias')}' ({stage_type}) initialized successfully")
+                    else:
+                        print(f"✗ Stage '{selected_stage.get('alias')}' ({stage_type}) failed to initialize")
+                except Exception as e:
+                    print(f"✗ Error initializing stage '{selected_stage.get('alias')}' ({stage_type}): {e}")
+                    stage_success = False
         else:
             print("⚠ No translation stage selected.")
             stage_success = False
 
-        self.hardware_initialized = stage_success and bool(self.detectors)
-        return stage_success, bool(self.detectors)
+        # Consider hardware initialized if at least one component succeeded
+        self.hardware_initialized = stage_success or detector_success
+        return stage_success, detector_success
 
     def deinitialize(self):
         if self.stage_controller:
