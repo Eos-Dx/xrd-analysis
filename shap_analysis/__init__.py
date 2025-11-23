@@ -15,6 +15,12 @@ from shap_analysis.core import (
     calculate_shap_interactions,
     calculate_shap_values_with_original,
 )
+from shap_analysis.higher_order import (
+    analyze_conditional_interactions,
+    calculate_shapley_taylor_interactions,
+    calculate_treeshap_iq,
+    visualize_higher_order_interactions,
+)
 from shap_analysis.interpretation import (
     extract_shap_decision_tree_rules,
     generate_diagnostic_rules,
@@ -39,4 +45,9 @@ __all__ = [
     "generate_sample_explanation",
     "extract_shap_decision_tree_rules",
     "validate_shap_additivity",
+    # Higher-order interactions
+    "calculate_shapley_taylor_interactions",
+    "calculate_treeshap_iq",
+    "analyze_conditional_interactions",
+    "visualize_higher_order_interactions",
 ]
