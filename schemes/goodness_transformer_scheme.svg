@@ -1,0 +1,74 @@
+<svg viewBox="0 0 800 900" xmlns="http://www.w3.org/2000/svg">
+  <!-- Title -->
+  <text x="400" y="30" font-size="24" font-weight="bold" text-anchor="middle" fill="#1a1a1a">
+    GoodnessTransformer: Data Quality Assessment
+  </text>
+
+  <!-- Input -->
+  <rect x="250" y="60" width="300" height="70" fill="#e3f2fd" stroke="#1976d2" stroke-width="2" rx="5"/>
+  <text x="400" y="85" font-size="14" font-weight="bold" text-anchor="middle" fill="#1976d2">INPUT</text>
+  <text x="400" y="110" font-size="12" text-anchor="middle" fill="#333">2D Polar Data Array</text>
+  <text x="400" y="128" font-size="11" text-anchor="middle" fill="#666">(n_angles × n_q_bins)</text>
+
+  <!-- Arrow 1 -->
+  <line x1="400" y1="130" x2="400" y2="160" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Step 1: Skip bins -->
+  <rect x="200" y="160" width="400" height="80" fill="#fff3e0" stroke="#f57c00" stroke-width="2" rx="5"/>
+  <text x="400" y="185" font-size="13" font-weight="bold" text-anchor="middle" fill="#f57c00">STEP 1: Skip Low-q Bins</text>
+  <text x="400" y="208" font-size="11" text-anchor="middle" fill="#333">Skip first <tspan font-family="monospace">skip_bins</tspan> (default: 30)</text>
+  <text x="400" y="227" font-size="11" text-anchor="middle" fill="#333">Focus on informative q-range</text>
+
+  <!-- Arrow 2 -->
+  <line x1="400" y1="240" x2="400" y2="270" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Step 2: Compute deviation -->
+  <rect x="150" y="270" width="500" height="95" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2" rx="5"/>
+  <text x="400" y="295" font-size="13" font-weight="bold" text-anchor="middle" fill="#7b1fa2">STEP 2: Percent Deviation per q-bin</text>
+  <text x="400" y="318" font-size="11" text-anchor="middle" fill="#333">For each q-bin: deviation = (I - mean) / mean × 100%</text>
+  <text x="400" y="337" font-size="11" text-anchor="middle" fill="#333">• Exclude zeros and NaNs • Replace NaNs with 0</text>
+  <text x="400" y="356" font-size="10" text-anchor="middle" fill="#666">Result: Normalized deviation matrix Z_norm</text>
+
+  <!-- Arrow 3 -->
+  <line x1="400" y1="365" x2="400" y2="395" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Step 3: FFT -->
+  <rect x="150" y="395" width="500" height="110" fill="#e0f2f1" stroke="#00796b" stroke-width="2" rx="5"/>
+  <text x="400" y="420" font-size="13" font-weight="bold" text-anchor="middle" fill="#00796b">STEP 3: 2D FFT Power Spectrum</text>
+  <text x="400" y="443" font-size="11" text-anchor="middle" fill="#333">• Remove global mean</text>
+  <text x="400" y="462" font-size="11" text-anchor="middle" fill="#333">• Compute 2D FFT: F = fft2(Z_norm)</text>
+  <text x="400" y="481" font-size="11" text-anchor="middle" fill="#333">• Power spectrum: P = |F|²</text>
+  <text x="400" y="500" font-size="10" text-anchor="middle" fill="#666">Shift to center using fftshift</text>
+
+  <!-- Arrow 4 -->
+  <line x1="400" y1="505" x2="400" y2="535" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Step 4: High-frequency fraction -->
+  <rect x="100" y="535" width="600" height="115" fill="#fce4ec" stroke="#c2185b" stroke-width="2" rx="5"/>
+  <text x="400" y="560" font-size="13" font-weight="bold" text-anchor="middle" fill="#c2185b">STEP 4: High-Frequency Power Fraction</text>
+  <text x="400" y="583" font-size="11" text-anchor="middle" fill="#333">• Create frequency magnitude grid: freq_mag = √(fx² + fy²)</text>
+  <text x="400" y="602" font-size="11" text-anchor="middle" fill="#333">• High-freq mask: freq_mag > <tspan font-family="monospace">hf_cutoff_fraction</tspan> (default: 0.25)</text>
+  <text x="400" y="621" font-size="11" text-anchor="middle" fill="#333">• HF score = P_high / P_total × 100%</text>
+  <text x="400" y="640" font-size="10" text-anchor="middle" fill="#666">Result: Goodness score (0-100%)</text>
+
+  <!-- Arrow 5 -->
+  <line x1="400" y1="650" x2="400" y2="680" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Output -->
+  <rect x="200" y="680" width="400" height="90" fill="#c8e6c9" stroke="#388e3c" stroke-width="2" rx="5"/>
+  <text x="400" y="710" font-size="14" font-weight="bold" text-anchor="middle" fill="#388e3c">OUTPUT</text>
+  <text x="400" y="735" font-size="12" text-anchor="middle" fill="#333">Goodness Score (scalar per row)</text>
+  <text x="400" y="755" font-size="11" text-anchor="middle" fill="#666">Higher score = Better data quality</text>
+
+  <!-- Optional: Save deviation matrices -->
+  <rect x="200" y="800" width="400" height="70" fill="#fff9c4" stroke="#fbc02d" stroke-width="2" rx="5" stroke-dasharray="5,5"/>
+  <text x="400" y="825" font-size="12" font-weight="bold" text-anchor="middle" fill="#f57f17">Optional: save_dev=True</text>
+  <text x="400" y="848" font-size="11" text-anchor="middle" fill="#333">Stores deviation matrices (with NaN padding)</text>
+
+  <!-- Arrow marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <polygon points="0 0, 10 5, 0 10" fill="#333"/>
+    </marker>
+  </defs>
+</svg>

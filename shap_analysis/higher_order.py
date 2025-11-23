@@ -83,6 +83,9 @@ def calculate_shapley_taylor_interactions(
     # Subset data
     X_subset = X.iloc[:n_samples]
     n_features = X_subset.shape[1]
+    n_samples_actual = X_subset.shape[
+        0
+    ]  # Use actual size (may be < n_samples if data smaller)
 
     # Limit features if specified
     if max_features is not None and max_features < n_features:
@@ -108,7 +111,7 @@ def calculate_shapley_taylor_interactions(
 
     print(f"Computing {order}-way interactions...")
     print(f"  Features: {n_features}")
-    print(f"  Samples: {n_samples}")
+    print(f"  Samples: {n_samples_actual} (requested: {n_samples})")
     print(f"  Combinations: {n_combinations}")
 
     # Compute higher-order interactions
@@ -126,7 +129,7 @@ def calculate_shapley_taylor_interactions(
                 np.prod(
                     [shap_values[sample_idx, feat_idx] for feat_idx in feature_tuple]
                 )
-                for sample_idx in range(n_samples)
+                for sample_idx in range(n_samples_actual)  # Use actual subset size
             ]
         )
 
@@ -222,9 +225,10 @@ def calculate_treeshap_iq(
 
     # Subset data
     X_subset = X.iloc[:n_samples]
+    n_samples_actual = X_subset.shape[0]  # Use actual size
 
     print(f"TreeSHAP-IQ: Exact {max_order}-order interactions")
-    print(f"  Samples: {n_samples}")
+    print(f"  Samples: {n_samples_actual} (requested: {n_samples})")
     print(f"  Features: {X_subset.shape[1]}")
     print(f"  Interaction type: {interaction_type}")
     print("  ⚠ This may take several minutes...")

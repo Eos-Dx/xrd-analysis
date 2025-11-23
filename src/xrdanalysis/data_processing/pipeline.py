@@ -121,6 +121,10 @@ class MLPipeline:
         :return: The wrangled dataset.
         :rtype: DataFrame
         """
+        # If no wrangling steps, return data as-is
+        if not self.data_wrangling_steps:
+            return data
+
         data_wrangling_pipeline = Pipeline(self.data_wrangling_steps)
 
         # Fit then transform to comply with sklearn Pipeline API (avoids FutureWarning)

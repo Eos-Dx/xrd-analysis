@@ -1,0 +1,112 @@
+================================================================================
+HANKEL TRANSFORM: QUICK REFERENCE - WHAT DOES THE OUTPUT MEAN?
+================================================================================
+
+INPUT SHAPE:  (N, M) = (angles, q-bins)
+OUTPUT SHAPE: (N, M) = (angles, frequencies)
+              ↑ Same shape, different meaning!
+
+
+MEANING CHANGE
+==============
+
+INPUT[angle, q_bin]:     = Intensity (counts from X-ray detector)
+OUTPUT[angle, freq]:     = Frequency amplitude (strength of that frequency)
+
+
+CONCRETE EXAMPLE
+================
+
+Input:  2×3 polar data
+        Angle  q₁    q₂    q₃
+        0°   [100,  120,  110]
+        90°  [105,  118,  108]
+
+↓ Apply Hankel Transform ↓
+
+Output: 2×3 frequency data
+        Angle  k₁    k₂    k₃
+        0°   [45.2, -2.1,  0.8]
+        90°  [46.1, -2.3,  0.9]
+
+
+WHAT EACH OUTPUT VALUE TELLS YOU
+=================================
+
+Output[0°, k₁] = 45.2
+  → "At 0°, the main frequency component has amplitude 45.2"
+  → This is the DOMINANT signal (low frequency)
+  → Most of the structure is here
+
+Output[0°, k₂] = -2.1
+  → "At 0°, the second frequency has amplitude -2.1"
+  → Smaller than k₁
+  → Negative sign indicates phase/direction
+  → Less important than k₁
+
+Output[0°, k₃] = 0.8
+  → "At 0°, high frequency component has amplitude 0.8"
+  → Very small
+  → Likely noise or fine details
+
+
+KEY INSIGHTS
+============
+
+✓ LARGE values (k₁, k₂, etc.)
+  = Important frequencies/periodicities in your data
+  = These are the "real" patterns
+  = Look at which k-indices have large amplitudes
+
+✓ SMALL values at high k
+  = High-frequency noise
+  = Not important for understanding structure
+  = These can be filtered out
+
+✓ SIMILAR patterns across angles
+  = Data has isotropic structure (same in all directions)
+
+✓ DIFFERENT patterns per angle
+  = Data has anisotropic structure (direction-dependent)
+
+
+USE CASES
+=========
+
+1) FEATURE EXTRACTION FOR ML
+   Input is raw polar data (hard to compare)
+   Output is frequency spectrum (easy to feed to ML models)
+
+   Example: Two tissue samples with different pathology
+   - Sample A output: [40.1, 5.2, 0.3, ...]
+   - Sample B output: [35.8, 12.1, 1.5, ...]
+   ML model can learn to distinguish these patterns
+
+2) NOISE FILTERING
+   Keep only low-frequency components
+   Discard high frequencies (they're mostly noise)
+   Result: Denoised data in frequency domain
+
+3) PERIODICITY DETECTION
+   If one k-value has much larger amplitude than others
+   → Your data has a strong periodic structure
+   → That k corresponds to the periodicity (e.g., fibril spacing)
+
+4) QUALITY ASSESSMENT
+   If k₁ amplitude is small and k_high amplitudes are large
+   → Noisy data, bad quality
+
+   If k₁ amplitude is large and k_high amplitudes are small
+   → Clean data, good quality
+
+
+REMEMBER
+========
+
+Same array shape (N × M) but COMPLETELY DIFFERENT MEANING!
+
+INPUT  = "This is what I measured" (intensities)
+OUTPUT = "This is what frequencies are present" (frequency spectrum)
+
+It's like converting a song from time domain (sound waves)
+to frequency domain (which notes/frequencies are present).

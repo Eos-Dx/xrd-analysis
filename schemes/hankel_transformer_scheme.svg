@@ -1,0 +1,88 @@
+<svg viewBox="0 0 900 1100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Title -->
+  <text x="450" y="30" font-size="26" font-weight="bold" text-anchor="middle" fill="#1a1a1a">
+    HankelTransformer: Radial Frequency Analysis
+  </text>
+
+  <!-- Subtitle -->
+  <text x="450" y="55" font-size="12" text-anchor="middle" fill="#666">
+    2D Polar Data → Frequency Domain via Quasi-Discrete Hankel Transform (QDHT)
+  </text>
+
+  <!-- Input -->
+  <rect x="200" y="80" width="500" height="95" fill="#e3f2fd" stroke="#1976d2" stroke-width="2" rx="5"/>
+  <text x="450" y="105" font-size="14" font-weight="bold" text-anchor="middle" fill="#1976d2">INPUT</text>
+  <text x="450" y="130" font-size="12" text-anchor="middle" fill="#333">2D Polar Diffraction Data</text>
+  <text x="450" y="150" font-size="11" text-anchor="middle" fill="#333">(n_angles × n_radial_bins)</text>
+  <text x="450" y="168" font-size="10" text-anchor="middle" fill="#666">+ q_range array (radial coordinates)</text>
+
+  <!-- Arrow 1 -->
+  <line x1="450" y1="175" x2="450" y2="210" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Step 1: Extract and crop -->
+  <rect x="150" y="210" width="600" height="100" fill="#fff3e0" stroke="#f57c00" stroke-width="2" rx="5"/>
+  <text x="450" y="235" font-size="13" font-weight="bold" text-anchor="middle" fill="#f57c00">STEP 1: Extract and Crop Data</text>
+  <text x="450" y="258" font-size="11" text-anchor="middle" fill="#333">• Extract 2D image from row (polar_data)</text>
+  <text x="450" y="277" font-size="11" text-anchor="middle" fill="#333">• Crop from <tspan font-family="monospace">start_radius</tspan> onwards: polar_img[:, start_radius:]</text>
+  <text x="450" y="296" font-size="11" text-anchor="middle" fill="#333">• Extract corresponding q-range: q = q_range[start_radius:]</text>
+  <text x="450" y="310" font-size="10" text-anchor="middle" fill="#666">Replace NaNs with zeros for transform stability</text>
+
+  <!-- Arrow 2 -->
+  <line x1="450" y1="310" x2="450" y2="345" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Step 2: Setup Transform -->
+  <rect x="100" y="345" width="700" height="115" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2" rx="5"/>
+  <text x="450" y="370" font-size="13" font-weight="bold" text-anchor="middle" fill="#7b1fa2">STEP 2: Setup Hankel Transform Parameters</text>
+  <text x="450" y="393" font-size="11" text-anchor="middle" fill="#333">• Order: <tspan font-family="monospace">order</tspan> (default=0 → Bessel J₀)</text>
+  <text x="450" y="412" font-size="11" text-anchor="middle" fill="#333">• Max radius: R = max(q_range) = upper frequency limit</text>
+  <text x="450" y="431" font-size="11" text-anchor="middle" fill="#333">• Number of points: n_points = n_radial (from data shape)</text>
+  <text x="450" y="450" font-size="10" text-anchor="middle" fill="#666">HankelTransform(order, max_radius, n_points)</text>
+
+  <!-- Arrow 3 -->
+  <line x1="450" y1="460" x2="450" y2="495" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Step 3: QDHT -->
+  <rect x="50" y="495" width="800" height="145" fill="#e0f2f1" stroke="#00796b" stroke-width="2" rx="5"/>
+  <text x="450" y="520" font-size="13" font-weight="bold" text-anchor="middle" fill="#00796b">STEP 3: Quasi-Discrete Hankel Transform (QDHT)</text>
+  <text x="450" y="543" font-size="11" text-anchor="middle" fill="#333">• Apply QDHT along axis=1 (radial direction)</text>
+  <text x="450" y="562" font-size="11" text-anchor="middle" fill="#333">• Transform each angular profile independently</text>
+  <text x="450" y="581" font-size="10" text-anchor="middle" fill="#666">For each angle θ:</text>
+  <text x="450" y="598" font-size="10" text-anchor="middle" fill="#666">H_order(k) = ∫₀^R J_order(kr) I(r,θ) r dr</text>
+  <text x="450" y="615" font-size="11" text-anchor="middle" fill="#333">Result: 2D array in (angles × frequency) domain</text>
+  <text x="450" y="632" font-size="10" text-anchor="middle" fill="#666">J_order = Bessel function of first kind, order n</text>
+
+  <!-- Arrow 4 -->
+  <line x1="450" y1="640" x2="450" y2="675" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Physical Meaning -->
+  <rect x="100" y="675" width="700" height="130" fill="#fce4ec" stroke="#c2185b" stroke-width="2" rx="5"/>
+  <text x="450" y="700" font-size="13" font-weight="bold" text-anchor="middle" fill="#c2185b">What it reveals (in frequency domain)</text>
+  <text x="450" y="723" font-size="11" text-anchor="middle" fill="#333">• Low frequencies (k≈0): Long-range radial patterns</text>
+  <text x="450" y="742" font-size="11" text-anchor="middle" fill="#333">• High frequencies (k→R): Fine radial structure, noise</text>
+  <text x="450" y="761" font-size="11" text-anchor="middle" fill="#333">• Amplitude at each k: Power of that frequency component</text>
+  <text x="450" y="780" font-size="11" text-anchor="middle" fill="#333">• Order=0: Isotropic radial patterns (no angular dependence)</text>
+
+  <!-- Arrow 5 -->
+  <line x1="450" y1="805" x2="450" y2="840" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Output -->
+  <rect x="150" y="840" width="600" height="110" fill="#c8e6c9" stroke="#388e3c" stroke-width="2" rx="5"/>
+  <text x="450" y="870" font-size="14" font-weight="bold" text-anchor="middle" fill="#388e3c">OUTPUT</text>
+  <text x="450" y="895" font-size="12" text-anchor="middle" fill="#333">Hankel-transformed 2D array</text>
+  <text x="450" y="914" font-size="11" text-anchor="middle" fill="#333">Stored in new column: <tspan font-family="monospace">hankel</tspan></text>
+  <text x="450" y="933" font-size="10" text-anchor="middle" fill="#666">Shape: (n_angles × n_radial) in frequency domain</text>
+
+  <!-- Use Cases box -->
+  <rect x="100" y="975" width="700" height="105" fill="#fff9c4" stroke="#fbc02d" stroke-width="2" rx="5"/>
+  <text x="450" y="1000" font-size="13" font-weight="bold" text-anchor="middle" fill="#f57f17">Common Applications</text>
+  <text x="450" y="1023" font-size="11" text-anchor="middle" fill="#333">✓ Radial structure analysis (fibril spacing, periodicity)</text>
+  <text x="450" y="1042" font-size="11" text-anchor="middle" fill="#333">✓ Noise filtering in frequency domain</text>
+  <text x="450" y="1061" font-size="11" text-anchor="middle" fill="#333">✓ Feature extraction for machine learning models</text>
+
+  <!-- Arrow marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <polygon points="0 0, 10 5, 0 10" fill="#333"/>
+    </marker>
+  </defs>
+</svg>
