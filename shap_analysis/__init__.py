@@ -18,10 +18,12 @@ from shap_analysis.core import (
 from shap_analysis.interpretation import (
     extract_shap_decision_tree_rules,
     generate_diagnostic_rules,
+    generate_sample_explanation,
 )
 from shap_analysis.validation import validate_shap_additivity
 from shap_analysis.visualization import (
     plot_shap_interaction_heatmap,
+    plot_shap_summary,
     plot_top_interactions,
 )
 
@@ -31,8 +33,10 @@ __all__ = [
     "calculate_shap_values_with_original",
     "calculate_shap_interactions",
     "plot_shap_interaction_heatmap",
+    "plot_shap_summary",
     "plot_top_interactions",
     "generate_diagnostic_rules",
+    "generate_sample_explanation",
     "extract_shap_decision_tree_rules",
     "validate_shap_additivity",
 ]
