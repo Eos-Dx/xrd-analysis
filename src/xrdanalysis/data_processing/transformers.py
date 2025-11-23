@@ -2,6 +2,8 @@
 The transformer classes are stored here
 """
 
+from __future__ import annotations
+
 import ast
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
