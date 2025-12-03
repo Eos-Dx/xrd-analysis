@@ -898,6 +898,18 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             print(f"Error restoring aux rows: {e}")
 
     def measure_aux(self):
+        # Check if technical imports are available before starting
+        if not _get_technical_imports():
+            self._log_technical_event("Cannot start Aux measurement - technical imports not available")
+            print("❌ Cannot start Aux measurement - technical measurements disabled due to import errors")
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "Technical Measurements Unavailable",
+                "Technical measurements are disabled due to import errors.\n\nCheck the console for details."
+            )
+            return
+        
         self._log_technical_event("Starting auxiliary measurement...")
         self._aux_start = time.time()
         self._aux_spinner_state = 0

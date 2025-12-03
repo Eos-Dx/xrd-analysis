@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "hardware"
+version = "0.1.0"
+description = "Hardware control and simulation for XRD analysis"
+authors = []
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+PyQt5 = "*"
+numpy = "*"
+pandas = "*"
+matplotlib = "*"
+pyfai = "*"
+scikit-image = "*"
+scikit-learn = "*"
+seaborn = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

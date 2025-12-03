@@ -27,7 +27,14 @@ echo Starting D2XC software...
 echo Using conda environment: %CONDA_ENV%
 echo Repository root: %REPO_ROOT%
 
-REM Launch the D2XC GUI using the specified conda environment
-conda run -n %CONDA_ENV% python "%REPO_ROOT%\src\hardware\eosdxdc\gui\main_app.py" %*
+REM Check if CONDA_ENV is a path (contains backslash or colon) or a name
+echo %CONDA_ENV% | findstr /C:":\" >nul
+if %errorlevel% equ 0 (
+  REM It's a path, use -p flag
+  conda run -p "%CONDA_ENV%" python "%REPO_ROOT%\src\hardware\eosdxdc\gui\main_app.py" %*
+) else (
+  REM It's a name, use -n flag
+  conda run -n %CONDA_ENV% python "%REPO_ROOT%\src\hardware\eosdxdc\gui\main_app.py" %*
+)
 
 endlocal

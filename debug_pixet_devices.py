@@ -10,7 +10,9 @@ import os
 pixet_sdk_path = r"C:\Program Files\PIXet Pro"
 if os.path.exists(pixet_sdk_path):
     sys.path.insert(0, pixet_sdk_path)
-    print(f"✓ Added Pixet SDK path: {pixet_sdk_path}")
+    # Add to Windows PATH for DLL loading
+    os.environ['PATH'] = pixet_sdk_path + os.pathsep + os.environ.get('PATH', '')
+    print(f"✓ Added Pixet SDK path to sys.path and Windows PATH: {pixet_sdk_path}")
 else:
     print(f"✗ Pixet SDK path not found: {pixet_sdk_path}")
     print("\nPlease update the pixet_sdk_path variable in this script to match your installation.")

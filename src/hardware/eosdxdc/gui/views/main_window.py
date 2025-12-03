@@ -1,3 +1,4 @@
+import logging
 import sys
 from pathlib import Path
 
@@ -10,6 +11,9 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
 
 from hardware.eosdxdc.gui.main_window_ext.drawing_extension import DrawingMixin
 from hardware.eosdxdc.gui.main_window_ext.rotation_extension import RotationMixin
@@ -37,63 +41,120 @@ class MainWindow(
 ):
 
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.state = {}
-        self.setup_main_layout()
-        self.measurement_widgets = []
-        self.create_shape_table()
-
-        # 1. Create the Zone Measurements dock (right bottom)
-        self.create_technical_panel()  # this defines self.zoneMeasurementsDock
-
-        # 2. Create the Zone Points dock (left bottom)
-        self.create_zone_points_widget()  # this defines self.zonePointsDock
-
-        # 3. Now it's safe to split them
-        self.splitDockWidget(
-            self.zonePointsDock, self.zoneMeasurementsDock, Qt.Horizontal
-        )
-
-        # 4. The rest as before...
-        self.create_drawing_actions()
-        self.add_drawing_actions_to_tool_bar()
-        self.create_delete_action()
-        self.add_delete_action_to_tool_bar()
-        self.create_rotation_actions()
-        self.add_rotation_actions_to_tool_bar()
-
-        self.load_default_masks_and_ponis()
-        # Set a callback so that when shapes change, the shape table updates.
-        self.image_view.shape_updated_callback = self.update_shape_table
-
-        # Add "Restore State" action to File menu.
-        self.add_restore_state_action()
-        # Add new "Restore State From File" action to the File menu.
-        self.add_restore_state_action_from_file()
-        # Add "Save State" button to the toolbar.
-        self.add_save_state_action()
-
-        # If DEV mode, auto-open default image
-        self.check_dev_mode()
-
-        # Enable periodic autosave of state
+        logger.info("Initializing MainWindow")
         try:
-            self.setup_auto_save(interval=5000)
+            super().__init__(parent)
+            logger.debug("MainWindow parent class initialized")
+            
+            self.state = {}
+            
+            logger.debug("Setting up main layout...")
+            self.setup_main_layout()
+            logger.debug("Main layout created")
+            
+            self.measurement_widgets = []
+            
+            logger.debug("Creating shape table...")
+            self.create_shape_table()
+            logger.debug("Shape table created")
+
+            # 1. Create the Zone Measurements dock (right bottom)
+            logger.debug("Creating technical panel...")
+            self.create_technical_panel()  # this defines self.zoneMeasurementsDock
+            logger.debug("Technical panel created")
+
+            # 2. Create the Zone Points dock (left bottom)
+            logger.debug("Creating zone points widget...")
+            self.create_zone_points_widget()  # this defines self.zonePointsDock
+            logger.debug("Zone points widget created")
+
+            # 3. Now it's safe to split them
+            logger.debug("Splitting dock widgets...")
+            self.splitDockWidget(
+                self.zonePointsDock, self.zoneMeasurementsDock, Qt.Horizontal
+            )
+            logger.debug("Dock widgets split")
+
+            # 4. The rest as before...
+            logger.debug("Creating drawing actions...")
+            self.create_drawing_actions()
+            self.add_drawing_actions_to_tool_bar()
+            logger.debug("Drawing actions created")
+            
+            logger.debug("Creating delete action...")
+            self.create_delete_action()
+            self.add_delete_action_to_tool_bar()
+            logger.debug("Delete action created")
+            
+            logger.debug("Creating rotation actions...")
+            self.create_rotation_actions()
+            self.add_rotation_actions_to_tool_bar()
+            logger.debug("Rotation actions created")
+
+            logger.debug("Loading default masks and ponis...")
+            self.load_default_masks_and_ponis()
+            logger.debug("Default masks and ponis loaded")
+            
+            # Set a callback so that when shapes change, the shape table updates.
+            self.image_view.shape_updated_callback = self.update_shape_table
+
+            # Add "Restore State" action to File menu.
+            logger.debug("Adding restore state action...")
+            self.add_restore_state_action()
+            logger.debug("Adding restore state from file action...")
+            # Add new "Restore State From File" action to the File menu.
+            self.add_restore_state_action_from_file()
+            logger.debug("Adding save state action...")
+            # Add "Save State" button to the toolbar.
+            self.add_save_state_action()
+            logger.debug("State actions added")
+
+            # If DEV mode, auto-open default image
+            logger.debug("Checking dev mode...")
+            self.check_dev_mode()
+
+            # Enable periodic autosave of state
+            try:
+                logger.debug("Setting up auto-save (interval=5000ms)...")
+                self.setup_auto_save(interval=5000)
+                logger.info("Auto-save enabled")
+            except Exception as e:
+                logger.warning(f"Failed to start autosave: {e}", exc_info=True)
+                print(f"Warning: failed to start autosave: {e}")
+            
+            logger.info("MainWindow initialization complete")
+            
         except Exception as e:
-            print(f"Warning: failed to start autosave: {e}")
+            logger.error(f"Error during MainWindow initialization: {e}", exc_info=True)
+            raise
 
     def setup_main_layout(self):
-        central = QWidget()
-        self.setCentralWidget(central)
-        self.main_layout = QVBoxLayout(central)
+        try:
+            logger.debug("Creating central widget...")
+            central = QWidget()
+            self.setCentralWidget(central)
+            self.main_layout = QVBoxLayout(central)
+            logger.debug("Central widget and layout created")
 
-        # Create the image view and keep a reference
-        self.image_view = ImageView(self)
-        self.main_layout.addWidget(self.image_view)
+            # Create the image view and keep a reference
+            logger.debug("Creating ImageView...")
+            self.image_view = ImageView(self)
+            logger.debug("ImageView created")
+            
+            self.main_layout.addWidget(self.image_view)
+            logger.debug("ImageView added to layout")
 
-        self.tabs = QTabWidget()
-        # self.main_layout.addWidget(self.tabs)
-        self.hardware_controller = HardwareController(self.config)
+            logger.debug("Creating tabs widget...")
+            self.tabs = QTabWidget()
+            # self.main_layout.addWidget(self.tabs)
+            
+            logger.debug(f"Initializing HardwareController with config: {self.config}")
+            self.hardware_controller = HardwareController(self.config)
+            logger.debug("HardwareController initialized")
+            
+        except Exception as e:
+            logger.error(f"Error in setup_main_layout: {e}", exc_info=True)
+            raise
 
     def add_restore_state_action(self):
         restore_state_act = QAction("Restore State", self, triggered=self.restore_state)

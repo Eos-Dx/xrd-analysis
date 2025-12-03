@@ -262,7 +262,7 @@ class StageControlMixin:
                 QMessageBox.warning(
                     self,
                     "Stage Timeout",
-                    "Stage movement timed out. Please check the hardware and try again.",
+                    "Stage movement timed out. Please check the hardware and try again. That's SAD",
                 )
             except Exception as e:
                 logging.error(f"Error during load operation: {e}")

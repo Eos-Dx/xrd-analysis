@@ -2,6 +2,24 @@ import logging
 import os
 import sys
 from pathlib import Path
+import ctypes
+
+# CRITICAL: Workaround for Windows Application Control DLL blocking
+# Must be done BEFORE any other imports that might load DLLs
+if sys.platform == 'win32':
+    try:
+        # Set DLL directory to conda's Library\bin before ANY DLL loading occurs
+        conda_lib_bin = Path(sys.executable).parent / "Library" / "bin"
+        if conda_lib_bin.exists():
+            # Try multiple approaches to set DLL search path
+            ctypes.windll.kernel32.SetDllDirectoryW(str(conda_lib_bin))
+            try:
+                ctypes.windll.kernel32.AddDllDirectory(str(conda_lib_bin))
+            except:
+                pass
+            os.environ['PATH'] = str(conda_lib_bin) + os.pathsep + os.environ.get('PATH', '')
+    except Exception:
+        pass  # Will fail with detailed error message later if PyQt5 can't load
 
 # Set the project root.
 project_root = Path(__file__).resolve().parent.parent.parent.parent
@@ -27,8 +45,51 @@ if os.path.isdir(pixet_sdk_path):
 else:
     _PYPIXET_AVAILABLE = False
 
-from PyQt5.QtCore import QDate, QSettings
-from PyQt5.QtWidgets import QApplication, QMessageBox
+kinesis_sdk_path = os.environ.get("KINESIS_SDK_PATH", r"C:\Program Files\Thorlabs\Kinesis")
+if os.path.isdir(kinesis_sdk_path):
+    # Add to Windows PATH for DLL loading
+    os.environ['PATH'] = kinesis_sdk_path + os.pathsep + os.environ.get('PATH', '')
+    # Add to sys.path for Python module discovery
+    # While Kinesis might not have a direct Python module to import this way,
+    # ensuring its DLLs are discoverable for ctypes or similar bindings is crucial.
+    sys.path.insert(0, kinesis_sdk_path)
+
+# Import PyQt5 with error handling for Application Control policies
+try:
+    from PyQt5.QtCore import QDate, QSettings
+    from PyQt5.QtWidgets import QApplication, QMessageBox
+except ImportError as e:
+    error_msg = str(e)
+    if "Application Control policy" in error_msg or "DLL load failed" in error_msg:
+        print("\n" + "="*80)
+        print("ERROR: Windows Defender Application Control (WDAC) is blocking PyQt5")
+        print("="*80)
+        print(f"\nDetails: {error_msg}\n")
+        conda_env_path = sys.executable.replace('python.exe', '').rstrip('\\\\')
+        print("This application requires PyQt5, but Windows WDAC policy is blocking the DLLs.")
+        print("\nBLOCKED FILES:")
+        print(f"  - {conda_env_path}\\Library\\bin\\Qt5*.dll")
+        print(f"  - {conda_env_path}\\Lib\\site-packages\\PyQt5\\*.pyd")
+        print("\nRECOMMENDED SOLUTIONS (in order of preference):")
+        print("\n1. Add conda environment to WDAC policy (requires Administrator):")
+        print("   Run PowerShell as Administrator and execute:")
+        print(f'   $rule = New-CIPolicyRule -Level FilePath -FilePath "{conda_env_path}\\Library\\bin"')
+        print('   Set-RuleOption -FilePath "C:\\Windows\\System32\\CodeIntegrity\\CIPolicies\\Active\\{GUID}.cip" -Option 0')
+        print("   (Replace {GUID} with your active policy GUID from Get-CIPolicyInfo)")
+        print("\n2. Disable WDAC temporarily (requires Administrator + restart):")
+        print("   a. Run: bcdedit /set {current} hypervisorlaunchtype off")
+        print("   b. Run: mountvol X: /s")
+        print("   c. Rename: X:\\EFI\\Microsoft\\Boot\\CIPolicies\\Active\\*.cip to *.cip.bak")
+        print("   d. Restart computer")
+        print("\n3. Contact your IT administrator with this information:")
+        print("   Request: Add Miniconda/Anaconda Qt5 DLLs to WDAC allow list")
+        print(f"   Paths: {conda_env_path}\\Library\\bin\\*.dll")
+        print(f"          {conda_env_path}\\Lib\\site-packages\\PyQt5\\*.pyd")
+        print("\nNOTE: Unblock-File and Set-ExecutionPolicy do NOT work with WDAC policies.")
+        print("="*80 + "\n")
+    else:
+        print(f"\nERROR: Failed to import PyQt5: {error_msg}\n")
+    sys.exit(1)
 
 from hardware.eosdxdc.gui.views.main_window import MainWindow
 from hardware.eosdxdc.gui.views.welcome_dialog import WelcomeDialog

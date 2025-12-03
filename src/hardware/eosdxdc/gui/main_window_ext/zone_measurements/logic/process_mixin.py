@@ -395,9 +395,25 @@ class ZoneMeasurementsProcessMixin:
             return
 
         # Otherwise, move stage and run normal capture directly
-        new_x, new_y = self.stage_controller.move_stage(
-            self._x_mm, self._y_mm, move_timeout=15
-        )
+        try:
+            new_x, new_y = self.stage_controller.move_stage(
+                self._x_mm, self._y_mm, move_timeout=15
+            )
+        except TimeoutError:
+            QMessageBox.warning(
+                self,
+                "Stage Timeout",
+                "Stage movement timed out. Please check the hardware and try again. That's SAD",
+            )
+            return
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Stage Error",
+                f"Stage movement failed: {str(e)}",
+            )
+            return
+
         self._start_normal_capture(txt_filename_base)
 
     def _start_normal_capture(self, txt_filename_base: str):

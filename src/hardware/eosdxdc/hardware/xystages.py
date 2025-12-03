@@ -584,7 +584,7 @@ class XYStageLibController(BaseStageController):
             curr_y_dev = self.lib.BDC_GetPosition(
                 c_char_p(self.serial), c_short(self.y_chan)
             )
-            if abs(curr_x_dev - x_dev) + abs(curr_y_dev - y_dev) <= 4:
+            if abs(curr_x_dev - x_dev) + abs(curr_y_dev - y_dev) <= 1000:
                 x_mm = curr_x_dev / self.scaling_factor
                 y_mm = curr_y_dev / self.scaling_factor
                 print(f"Stage moved to X={x_mm:.3f}, Y={y_mm:.3f}")
