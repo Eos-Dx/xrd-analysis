@@ -21,6 +21,11 @@ from xrdanalysis.data_processing.utility_functions import (
     calculate_optimal_threshold,
     generate_roc_based_metrics,
 )
+from xrdanalysis.data_processing import (
+    FaultyPixelDetector,
+    MeasurementTypeClassifier,
+)
+from xrdanalysis.data_processing.detector_joining import join_detectors
 
 
 class MLPipeline:
@@ -114,18 +119,20 @@ class MLPipeline:
         """
         self.splitter = splitter
 
-    def wrangle(self, data):
+    def wrangle(self, data, stat=False):
         """
         Applies data wrangling steps to the entire dataset.
 
         :param data: The dataset to apply the wrangling steps to.
         :type data: DataFrame
-        :return: The wrangled dataset.
-        :rtype: DataFrame
+        :param stat: If True, returns tuple (data, stats_dict). Defaults to False.
+        :type stat: bool
+        :return: The wrangled dataset, or tuple (dataset, stats) if stat=True.
+        :rtype: DataFrame or tuple
         """
         # If no wrangling steps, return data as-is
         if not self.data_wrangling_steps:
-            return data
+            return (data, {}) if stat else data
 
         data_wrangling_pipeline = Pipeline(self.data_wrangling_steps)
 
@@ -139,6 +146,20 @@ class MLPipeline:
 
         # Apply wrangling pipeline to the full dataset
         data_wrangled = data_wrangling_pipeline.transform(data)
+
+        # Collect stats from transformers if requested
+        if stat:
+            stats = {}
+            for step_name, transformer in self.data_wrangling_steps:
+                # Try to get stats from transformer
+                if hasattr(transformer, 'stats_'):
+                    stats[step_name] = transformer.stats_
+                elif hasattr(transformer, 'get_stats'):
+                    try:
+                        stats[step_name] = transformer.get_stats()
+                    except Exception:
+                        pass
+            return data_wrangled, stats
 
         return data_wrangled
 
@@ -167,6 +188,19 @@ class MLPipeline:
         preprocessed_data = self.preprocess(data)
 
         return preprocessed_data
+
+    def transform(self, data, stat=False):
+        """
+        Applies wrangling steps to the dataset.
+
+        :param data: The dataset to transform.
+        :type data: DataFrame
+        :param stat: If True, returns tuple (data, stats_dict). Defaults to False.
+        :type stat: bool
+        :return: The transformed dataset, or tuple (dataset, stats) if stat=True.
+        :rtype: DataFrame or tuple
+        """
+        return self.wrangle(data, stat=stat)
 
     def wrangle_preprocess_transform(self, data, train=True):
         """

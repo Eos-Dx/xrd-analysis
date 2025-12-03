@@ -1496,3 +1496,86 @@ def cut_common_region(row, column, max_up, max_down, max_left, max_right):
     new_poni_str = substitute_poni_centers(poni_str, poni1, poni2)
 
     return cropped_image, new_poni_str
+
+
+def filter_dataframe_by_rules(
+    df: pd.DataFrame,
+    rules: dict,
+    q_col: str = 'q_range',
+    data_col: str = 'radial_profile_data',
+    type_col: str = 'type_measurement'
+) -> pd.DataFrame:
+    """
+    Filter a DataFrame based on interpolation rules at specific q-values.
+    
+    This function allows quality control of XRD data by filtering measurements
+    based on intensity thresholds at specific q-values. Each measurement type
+    (e.g. WAXS, SAXS) can have different filtering criteria.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing XRD data to filter
+    rules : dict
+        Dictionary mapping measurement types to lists of (q_target, operator, threshold) tuples.
+        Example: {
+            'WAXS': [(4.0, '>', 0.006), (7.5, '<', 0.009)],
+            'SAXS': [(1.5, '>', 0.008), (1.32, '<', 0.02)]
+        }
+    q_col : str, default='q_range'
+        Column name for q_range (iterable of floats)
+    data_col : str, default='radial_profile_data'
+        Column name for radial_profile_data (iterable of floats)
+    type_col : str, default='type_measurement'
+        Column name for the measurement type
+    
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame containing only rows that satisfy all rules for their measurement type
+    
+    Examples
+    --------
+    >>> rules = {
+    ...     'WAXS': [(4.0, '>', 0.006), (18.5, '<', 0.02)],
+    ...     'SAXS': [(1.5, '>', 0.008)]
+    ... }
+    >>> df_filtered = filter_dataframe_by_rules(df, rules)
+    """
+    import operator as op
+    
+    # Map operator strings to functions
+    ops = {
+        '<': op.lt,
+        '<=': op.le,
+        '>': op.gt,
+        '>=': op.ge,
+        '==': op.eq,
+        '!=': op.ne,
+    }
+
+    def row_passes_rules(row):
+        """Check if a row passes all rules for its measurement type."""
+        # Retrieve the list of rules for this row's measurement type
+        rule_list = rules.get(row[type_col], [])
+        
+        # If no rules for this type, keep the row
+        if not rule_list:
+            return True
+        
+        # Check each (q_target, operator, threshold) rule
+        for q_target, op_str, thresh in rule_list:
+            # Interpolate intensity at q_target
+            intensity = np.interp(q_target, row[q_col], row[data_col])
+            
+            # Apply operator
+            if not ops[op_str](intensity, thresh):
+                return False
+        
+        return True
+
+    # Build a mask of rows to keep
+    mask = df.apply(row_passes_rules, axis=1)
+    
+    # Return the filtered DataFrame
+    return df.loc[mask].reset_index(drop=True)
