@@ -286,14 +286,30 @@ class StateSaverMixin:
     def _get_zone_points(self):
         out = []
         for t in ("generated", "user"):
-            for pt in self.image_view.points_dict[t]["points"]:
+            points = self.image_view.points_dict[t]["points"]
+            zones = self.image_view.points_dict[t]["zones"]
+            for idx, pt in enumerate(points):
                 center = pt.sceneBoundingRect().center()
+                # Get corresponding zone radius if available
+                radius = None
+                try:
+                    if idx < len(zones):
+                        zone = zones[idx]
+                        # Try to get radius from zone's data (key 99)
+                        radius = zone.data(99)
+                        # Fallback: calculate from zone geometry
+                        if radius is None:
+                            rect = zone.rect()
+                            radius = rect.width() / 2.0
+                except Exception:
+                    pass
                 out.append(
                     {
                         "x": center.x(),
                         "y": center.y(),
                         "type": t,
                         "id": pt.data(1),
+                        "radius": radius,
                     }
                 )
         return out
@@ -563,7 +579,11 @@ class StateSaverMixin:
             if use_new_system:
                 # Use new ZonePointsRenderer system
                 # Create point using the new renderer
-                if pt_type == "user":
+                # Restore saved radius if available, otherwise use default
+                saved_radius = pt.get("radius")
+                if saved_radius is not None and saved_radius > 0:
+                    radius = saved_radius
+                elif pt_type == "user":
                     radius = 10  # Default radius for user points
                 else:
                     radius = 5  # Default radius for generated points

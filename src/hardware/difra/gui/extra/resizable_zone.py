@@ -83,6 +83,9 @@ class ResizableZoneItem(QGraphicsEllipseItem):
         self._handles = {}
         self._handles_visible = False
 
+        # Store radius in Qt's data system for persistence (key = 99)
+        self.setData(99, radius)
+
         # Make zone selectable and movable
         self.setFlags(
             QGraphicsItem.ItemIsSelectable |
@@ -165,6 +168,9 @@ class ResizableZoneItem(QGraphicsEllipseItem):
             2 * new_radius
         )
 
+        # Store updated radius persistently in Qt data (key = 99)
+        self.setData(99, new_radius)
+
         # Update handle positions
         self._update_handle_positions()
 
@@ -190,6 +196,8 @@ class ResizableZoneItem(QGraphicsEllipseItem):
             2 * self._radius,
             2 * self._radius
         )
+        # Store updated radius persistently in Qt data (key = 99)
+        self.setData(99, self._radius)
         self._update_handle_positions()
 
     def hoverEnterEvent(self, event):
