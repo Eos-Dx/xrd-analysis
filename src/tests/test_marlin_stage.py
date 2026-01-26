@@ -12,7 +12,7 @@ import sys
 import os
 
 # Add hardware directory to path
-hardware_path = os.path.join(os.path.dirname(__file__), '..', 'hardware', 'eosdxdc', 'hardware')
+hardware_path = os.path.join(os.path.dirname(__file__), '..', 'hardware', 'difra', 'hardware')
 sys.path.insert(0, hardware_path)
 
 # Mock serial module before importing xystages

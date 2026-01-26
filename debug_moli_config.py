@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'hardware'))
 
 # Load Moli config
-config_path = r"C:\dev\xrd-analysis\src\hardware\eosdxdc\resources\config\setups\Ulster (Moli).json"
+config_path = r"C:\dev\xrd-analysis\src\hardware\difra\resources\config\setups\Ulster (Moli).json"
 
 print("=" * 70)
 print("MOLI MACHINE CONFIGURATION DEBUG")

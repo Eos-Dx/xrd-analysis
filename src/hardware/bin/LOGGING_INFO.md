@@ -1,8 +1,8 @@
-# EOSDxDc Launcher and Application Logging
+# DiFRA Launcher and Application Logging
 
 ## Overview
 
-The EOSDxDc application now has comprehensive logging enabled at both the launcher and application levels. This helps with troubleshooting and debugging any issues that may occur.
+The DiFRA application now has comprehensive logging enabled at both the launcher and application levels. This helps with troubleshooting and debugging any issues that may occur.
 
 ## Log File Locations
 
@@ -127,7 +127,7 @@ If you experience an error:
 ### Successful Launch
 ```
 11:45:00 | INFO     | Launcher logging initialized. Log file: C:\Users\...\launcher_20251120_114500.log
-11:45:00 | INFO     | EOSDxDc Launcher Starting
+11:45:00 | INFO     | DiFRA Launcher Starting
 11:45:00 | INFO     | Python version: 3.9.7 ...
 11:45:00 | INFO     | Platform: win32
 11:45:01 | INFO     | Conda version: conda 23.1.0

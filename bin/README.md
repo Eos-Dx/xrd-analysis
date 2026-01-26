@@ -31,7 +31,7 @@ This directory contains launcher scripts for the D2XC software. These scripts au
 ## Requirements
 
 1. **Anaconda/Miniconda**: All launchers require conda to be installed and available in PATH
-2. **Configuration**: The conda environment name is read from `src/hardware/eosdxdc/resources/config/global.json`
+2. **Configuration**: The conda environment name is read from `src/hardware/difra/resources/config/global.json`
 3. **Python Environment**: The specified conda environment must exist and contain all required dependencies
 
 ## Usage Examples
@@ -53,7 +53,7 @@ python run_d2xc.py --debug
 
 The launchers automatically read the conda environment name from the configuration file:
 ```
-src/hardware/eosdxdc/resources/config/global.json
+src/hardware/difra/resources/config/global.json
 ```
 
 Make sure this file contains a `conda` field with the correct environment name:

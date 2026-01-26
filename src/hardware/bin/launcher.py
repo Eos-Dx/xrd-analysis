@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple D2XC/EOSDxDc Launcher
+Simple D2XC/DiFRA Launcher
 This script launches the D2XC GUI application.
 Can be compiled to an executable using PyInstaller or similar tools.
 """
@@ -99,7 +99,7 @@ def main():
         # Setup logging first
         logger, log_file = setup_launcher_logging()
         logger.info("="*80)
-        logger.info("EOSDxDc Launcher Starting")
+        logger.info("DiFRA Launcher Starting")
         logger.info("="*80)
         logger.info(f"Python version: {sys.version}")
         logger.info(f"Platform: {sys.platform}")
@@ -117,7 +117,7 @@ def main():
             repo_root
             / "src"
             / "hardware"
-            / "eosdxdc"
+            / "difra"
             / "resources"
             / "config"
             / "global.json"
@@ -250,7 +250,7 @@ def main():
             return 1
 
         # Path to main application
-        app_path = repo_root / "src" / "hardware" / "eosdxdc" / "gui" / "main_app.py"
+        app_path = repo_root / "src" / "hardware" / "difra" / "gui" / "main_app.py"
         logger.info(f"Application path: {app_path}")
 
         if not app_path.exists():

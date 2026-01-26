@@ -1,8 +1,8 @@
 workflows:
-  - name: Launch EOSDxDc GUI (Windows)
+  - name: Launch DiFRA GUI (Windows)
     description: Start the hardware GUI using the launcher script (reads conda env from config)
     tags: [gui, windows]
-    command: src\\hardware\\bin\\run_eosdxdc.bat
+    command: src\\hardware\\bin\\run_difra.bat
 
   - name: Git: commit and push
     description: Stage all changes, commit with a message, and push to the current branch
@@ -26,9 +26,9 @@ workflows:
     command: pytest -q
 
   - name: Tests (hardware GUI only)
-    description: Run only the EOSDxDc hardware GUI tests (headless)
+    description: Run only the DiFRA hardware GUI tests (headless)
     tags: [test, gui]
-    command: pytest src/hardware/eosdxdc/tests -q
+    command: pytest src/hardware/difra/tests -q
 
   - name: Env: conda update from environment.yml
     description: Update an existing Conda environment from environment.yml

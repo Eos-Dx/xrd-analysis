@@ -1,9 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM Determine repository root from this script directory
-set SCRIPT_DIR=%~dp0
-for %%I in ("%SCRIPT_DIR%..") do set REPO_ROOT=%%~fI
+REM Embedded repository root path (will be extracted to temp directory)
+set REPO_ROOT=C:\dev\xrd-analysis
 
 set CONFIG_PATH=%REPO_ROOT%\src\hardware\difra\resources\config\global.json
 
@@ -23,28 +22,11 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Starting D2XC software...
+echo Starting D2XC/DiFRA software...
 echo Using conda environment: %CONDA_ENV%
 echo Repository root: %REPO_ROOT%
 
-REM Initialize conda for batch file usage
-call conda activate base
-if errorlevel 1 (
-  echo [ERROR] Failed to initialize conda
-  pause
-  exit /b 1
-)
-
-REM Activate the specified environment and run the application
-call conda activate %CONDA_ENV%
-if errorlevel 1 (
-  echo [ERROR] Failed to activate conda environment: %CONDA_ENV%
-  pause
-  exit /b 1
-)
-
-REM Change to repository root and launch the D2XC GUI
-cd /d "%REPO_ROOT%"
-python "%REPO_ROOT%\src\hardware\difra\gui\main_app.py" %*
+REM Launch the GUI using the specified conda environment
+conda run -n %CONDA_ENV% python "%REPO_ROOT%\src\hardware\difra\gui\main_app.py" %*
 
 endlocal

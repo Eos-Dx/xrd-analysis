@@ -22,7 +22,7 @@ def main():
         repo_root
         / "src"
         / "hardware"
-        / "eosdxdc"
+        / "difra"
         / "resources"
         / "config"
         / "global.json"
@@ -54,7 +54,7 @@ def main():
         return 1
 
     # Path to main application
-    app_path = repo_root / "src" / "hardware" / "eosdxdc" / "gui" / "main_app.py"
+    app_path = repo_root / "src" / "hardware" / "difra" / "gui" / "main_app.py"
 
     if not app_path.exists():
         print(f"[ERROR] Application file not found: {app_path}")

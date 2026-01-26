@@ -4,7 +4,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
-CONFIG_PATH="$REPO_ROOT/src/hardware/eosdxdc/resources/config/global.json"
+CONFIG_PATH="$REPO_ROOT/src/hardware/difra/resources/config/global.json"
 
 # Read conda env name from JSON using Python
 CONDA_ENV=$(python3 -c "import json; print(json.load(open('$CONFIG_PATH'))['conda'])" 2>/dev/null)
@@ -24,4 +24,4 @@ echo "Using conda environment: $CONDA_ENV"
 echo "Repository root: $REPO_ROOT"
 
 # Launch the D2XC GUI using the specified conda environment
-conda run -n "$CONDA_ENV" python "$REPO_ROOT/src/hardware/eosdxdc/gui/main_app.py" "$@"
+conda run -n "$CONDA_ENV" python "$REPO_ROOT/src/hardware/difra/gui/main_app.py" "$@"

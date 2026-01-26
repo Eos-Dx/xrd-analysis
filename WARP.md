@@ -6,7 +6,7 @@ Overview
 - Python monorepo layout under `src/` with major areas:
   - `xrdanalysis`: core analysis library for X-ray scattering
   - `quality_control`: PyQt5 quality-control GUI (independent package)
-  - `hardware/eosdxdc`: EOSDxDc hardware control and PyQt5 GUI (replaces legacy `Ulster`)
+  - `hardware/difra`: DiFRA hardware control and PyQt5 GUI (replaces legacy `Ulster`)
 - Tests live under `src/**/tests`, including headless tests for the hardware GUI.
 
 Environment setup
@@ -32,7 +32,7 @@ Common tasks
   ```
 - Run hardware GUI tests only:
   ```pwsh
-  pytest src/hardware/eosdxdc/tests -q
+  pytest src/hardware/difra/tests -q
   ```
 - Build docs:
   ```pwsh
@@ -41,15 +41,15 @@ Common tasks
   make -C docs html
   ```
 
-Hardware GUI (EOSDxDc)
+Hardware GUI (DiFRA)
 - Launcher (Windows):
-- `src\\hardware\\bin\\run_eosdxdc.bat`
-  - The launcher reads the conda env name from `src/hardware/eosdxdc/resources/config/global.json` (`"conda"`) and executes:
-    - `conda run -n <env> python src/hardware/eosdxdc/gui/main_app.py`
+- `src\\hardware\\bin\\run_difra.bat`
+  - The launcher reads the conda env name from `src/hardware/difra/resources/config/global.json` (`"conda"`) and executes:
+    - `conda run -n <env> python src/hardware/difra/gui/main_app.py`
 - Config:
-  - `src/hardware/eosdxdc/resources/config/global.json` (global defaults, `conda`, `default_setup`)
-  - `src/hardware/eosdxdc/resources/config/setups/*.json` (per-setup detectors/stages)
+  - `src/hardware/difra/resources/config/global.json` (global defaults, `conda`, `default_setup`)
+  - `src/hardware/difra/resources/config/setups/*.json` (per-setup detectors/stages)
 
 Notes
-- Legacy `src/hardware/Ulster` has been retired in favor of `src/hardware/eosdxdc`.
+- Legacy `src/hardware/Ulster` has been retired in favor of `src/hardware/difra`.
 - pytest is configured for importlib mode to avoid src layout conflicts.

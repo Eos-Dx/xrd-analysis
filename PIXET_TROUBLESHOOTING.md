@@ -5,7 +5,7 @@
 ### Symptom
 When initializing hardware, you see:
 ```
-ERROR | hardware.eosdxdc.hardware.detectors | No Pixet devices connected
+ERROR | hardware.difra.hardware.detectors | No Pixet devices connected
 RuntimeError: Failed to initialize detector W0308
 ```
 
@@ -79,7 +79,7 @@ If diagnostic shows a different device name (e.g., `'MiniPIX G08-W0299'` instead
 
 **Solution:** Update the config file:
 
-Edit: `src/hardware/eosdxdc/resources/config/setups/Ulster (Moli).json`
+Edit: `src/hardware/difra/resources/config/setups/Ulster (Moli).json`
 
 ```json
 {

@@ -1,13 +1,13 @@
-# D2XC/EOSDxDc Launchers (Hardware/Bin)
+# D2XC/DiFRA Launchers (Hardware/Bin)
 
-This directory contains launcher scripts for the D2XC (EOSDxDc) software from within the hardware source tree.
+This directory contains launcher scripts for the D2XC (DiFRA) software from within the hardware source tree.
 
 ## Available Launchers
 
-### `run_eosdxdc.bat` (Original Batch Launcher)
+### `run_difra.bat` (Original Batch Launcher)
 - **Platform**: Windows
 - **Usage**: Double-click or run from Command Prompt
-- **Purpose**: Original EOSDxDc batch launcher
+- **Purpose**: Original DiFRA batch launcher
 - **Status**: ✅ Working
 
 ### `run_d2xc.bat` (Updated Batch Launcher)
@@ -37,14 +37,14 @@ The launchers in this directory (`src/hardware/bin/`) are located within the har
 
 All launchers read the conda environment name from:
 ```
-src/hardware/eosdxdc/resources/config/global.json
+src/hardware/difra/resources/config/global.json
 ```
 
 ## Usage Examples
 
 ```batch
 # Windows batch launchers
-run_eosdxdc.bat
+run_difra.bat
 run_d2xc.bat
 
 # Python launcher
@@ -53,10 +53,10 @@ python launcher.py
 
 ## Notes
 
-- The `run_eosdxdc.exe` is a working IExpress self-extracting executable
+- The `run_difra.exe` is a working IExpress self-extracting executable
 - Uses embedded batch file with hardcoded repository path for proper temp directory execution
 - The batch and Python launchers provide better reliability and error reporting
-- All launchers launch the same application: `src/hardware/eosdxdc/gui/main_app.py`
+- All launchers launch the same application: `src/hardware/difra/gui/main_app.py`
 
 ## For Developers
 
