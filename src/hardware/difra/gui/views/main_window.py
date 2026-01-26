@@ -6,6 +6,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
+    QDockWidget,
     QFileDialog,
     QTabWidget,
     QVBoxLayout,
@@ -131,18 +132,23 @@ class MainWindow(
     def setup_main_layout(self):
         try:
             logger.debug("Creating central widget...")
+            # Don't use a central widget - make ImageView a dock instead
+            # This allows it to be resized like other panels
             central = QWidget()
             self.setCentralWidget(central)
             self.main_layout = QVBoxLayout(central)
             logger.debug("Central widget and layout created")
 
-            # Create the image view and keep a reference
+            # Create the image view as a dock widget
             logger.debug("Creating ImageView...")
             self.image_view = ImageView(self)
             logger.debug("ImageView created")
             
-            self.main_layout.addWidget(self.image_view)
-            logger.debug("ImageView added to layout")
+            # Create a dock widget for the image view
+            self.imageViewDock = QDockWidget("Image View", self)
+            self.imageViewDock.setWidget(self.image_view)
+            self.addDockWidget(Qt.TopDockWidgetArea, self.imageViewDock)
+            logger.debug("ImageView added as dock widget")
 
             logger.debug("Creating tabs widget...")
             self.tabs = QTabWidget()
