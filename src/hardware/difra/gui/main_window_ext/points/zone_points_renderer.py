@@ -8,6 +8,7 @@ from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtWidgets import QGraphicsEllipseItem, QTableWidgetItem
 
 from hardware.difra.gui.extra.elements import HoverableEllipseItem
+from hardware.difra.gui.extra.resizable_zone import ResizableZoneItem
 from hardware.difra.utils.logger import get_module_logger
 
 from .zone_points_constants import ZonePointsConstants
@@ -19,9 +20,9 @@ class ZonePointsRenderer:
     """Handles rendering of zone points and zones."""
 
     @staticmethod
-    def create_zone_item(x: float, y: float, radius: float) -> QGraphicsEllipseItem:
-        """Create a zone (cyan circle) item."""
-        item = QGraphicsEllipseItem(x - radius, y - radius, 2 * radius, 2 * radius)
+    def create_zone_item(x: float, y: float, radius: float) -> ResizableZoneItem:
+        """Create a resizable zone (cyan circle) item with drag handles."""
+        item = ResizableZoneItem(x, y, radius)
         cyan_color = QColor(ZonePointsConstants.ZONE_COLOR)
         cyan_color.setAlphaF(ZonePointsConstants.ZONE_ALPHA)
         item.setBrush(cyan_color)
