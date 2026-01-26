@@ -103,6 +103,11 @@ class StateSaverMixin:
                 self.restore_technical_aux_rows(state.get("technical_aux", []))
         except Exception as e:
             print(f"Warning: failed to restore technical aux rows: {e}")
+        # Restore dock widget layout and sizes
+        try:
+            self._restore_dock_geometry(state.get("dock_geometry"))
+        except Exception as e:
+            print(f"Warning: failed to restore dock geometry: {e}")
         self._refresh_id_counter()
         # Update UI while suppressing widget creation in the points table
         try:
@@ -177,6 +182,7 @@ class StateSaverMixin:
             "crop_rect": self._get_crop_rect(),
             "shapes": self._get_shapes(),
             "zone_points": self._get_zone_points(),
+            "dock_geometry": self._get_dock_geometry(),
         }
         if not is_auto:
             rx = getattr(self, "real_x_pos_mm", None)
@@ -313,6 +319,35 @@ class StateSaverMixin:
                     }
                 )
         return out
+
+    def _get_dock_geometry(self):
+        """Save dock widget layout and sizes."""
+        try:
+            # Save QMainWindow state (includes all dock positions and sizes)
+            return {
+                "window_geometry": self.saveGeometry().toBase64().data().decode('ascii'),
+                "window_state": self.saveState().toBase64().data().decode('ascii'),
+            }
+        except Exception as e:
+            print(f"Error saving dock geometry: {e}")
+            return None
+
+    def _restore_dock_geometry(self, dock_geometry):
+        """Restore dock widget layout and sizes."""
+        if not dock_geometry:
+            return
+        try:
+            from PyQt5.QtCore import QByteArray
+            # Restore window geometry (size and position)
+            if "window_geometry" in dock_geometry:
+                geom_bytes = dock_geometry["window_geometry"].encode('ascii')
+                self.restoreGeometry(QByteArray.fromBase64(geom_bytes))
+            # Restore dock widget state (positions and sizes)
+            if "window_state" in dock_geometry:
+                state_bytes = dock_geometry["window_state"].encode('ascii')
+                self.restoreState(QByteArray.fromBase64(state_bytes))
+        except Exception as e:
+            print(f"Error restoring dock geometry: {e}")
 
     def _restore_image(self, image_path, state_dir: Path = None):
         # Normalize/convert path-like inputs, handle file:// URIs

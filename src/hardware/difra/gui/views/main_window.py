@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QApplication,
     QDockWidget,
     QFileDialog,
+    QMainWindow,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -48,6 +49,31 @@ class MainWindow(
             logger.debug("MainWindow parent class initialized")
             
             self.state = {}
+            
+            # Enable animated dock widgets and make dividers more visible
+            self.setDockOptions(
+                QMainWindow.AnimatedDocks |
+                QMainWindow.AllowTabbedDocks |
+                QMainWindow.AllowNestedDocks
+            )
+            
+            # Style the dock widget separators to be more visible and draggable
+            self.setStyleSheet("""
+                QMainWindow::separator {
+                    background: #3daee9;
+                    width: 6px;
+                    height: 6px;
+                }
+                QMainWindow::separator:hover {
+                    background: #2196F3;
+                }
+                QMainWindow::separator:horizontal {
+                    width: 6px;
+                }
+                QMainWindow::separator:vertical {
+                    height: 6px;
+                }
+            """)
             
             logger.debug("Setting up main layout...")
             self.setup_main_layout()
