@@ -309,7 +309,13 @@ class PoniFileSelectionDialog(QDialog):
 class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
 
     NO_SELECTION_LABEL = "— Select —"
-    TYPE_OPTIONS = ["AGBH", "DARK", "EMPTY", "BACKGROUND"]
+
+    # Types that can be assigned to a technical measurement file in the UI.
+    # NOTE: "SPECIAL" is optional and should not be required for completeness checks.
+    TYPE_OPTIONS = ["AGBH", "DARK", "EMPTY", "BACKGROUND", "SPECIAL"]
+
+    # Types required to generate a complete technical_meta_*.json (per alias).
+    REQUIRED_TYPE_OPTIONS = ["AGBH", "DARK", "EMPTY", "BACKGROUND"]
 
     def _log_technical_event(self, message: str):
         """Log technical measurement events to the Zone Measurements log window."""
@@ -342,14 +348,26 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         # Note: We don't show import warnings at startup to avoid triggering crashes
         # Warnings will be displayed when the user first tries to use technical features
 
-        # Integration time control
+        # Integration time + frames control
         it_layout = QHBoxLayout()
         it_layout.addWidget(QLabel("Integration Time (s):"))
         self.integrationTimeSpin = QDoubleSpinBox()
-        self.integrationTimeSpin.setRange(0.1, 1e4)
-        self.integrationTimeSpin.setSingleStep(0.1)
+        # Pixet minimum integration time tested: 1 µs
+        self.integrationTimeSpin.setDecimals(6)
+        self.integrationTimeSpin.setRange(1e-6, 1e4)
+        self.integrationTimeSpin.setSingleStep(1e-6)
         self.integrationTimeSpin.setValue(1.0)
         it_layout.addWidget(self.integrationTimeSpin)
+
+        it_layout.addWidget(QLabel("Frames:"))
+        self.captureFramesSpin = QSpinBox()
+        self.captureFramesSpin.setRange(1, 1_000_000)
+        self.captureFramesSpin.setValue(1)
+        self.captureFramesSpin.setToolTip(
+            "Capture N frames at the given integration time; frames will be averaged into a single final image"
+        )
+        it_layout.addWidget(self.captureFramesSpin)
+
         outer.addLayout(it_layout)
 
         # Continuous movement controls for AgBH measurements
@@ -509,6 +527,7 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         self._log_technical_event(f"Technical measurement controls {status}")
         widgets = [
             self.integrationTimeSpin,
+            self.captureFramesSpin,
             self.moveContinuousCheck,
             self.movementRadiusSpin,
             self.folderLE,
@@ -562,22 +581,32 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
 
     def _start_capture(self, typ: str):
         if not _get_technical_imports():
-            self._log_technical_event(f"Cannot start {typ} capture - technical imports not available")
-            print(f"❌ Cannot start {typ} capture - technical measurements disabled due to import errors")
+            self._log_technical_event(
+                f"Cannot start {typ} capture - technical imports not available"
+            )
+            print(
+                f"❌ Cannot start {typ} capture - technical measurements disabled due to import errors"
+            )
             return
-            
+
         counter_attr = f"{typ.lower()}_counter"
         count = getattr(self, counter_attr, 0) + 1
         setattr(self, counter_attr, count)
 
-        validate_folder = _get_technical_module('validate_folder')
+        validate_folder = _get_technical_module("validate_folder")
         folder = validate_folder(self.folderLE.text())
         base = self._file_base(typ)
         base_with_count = f"{base}_{count:03d}"
         ts = time.strftime("%Y%m%d_%H%M%S")
+
+        integration_time_s = float(self.integrationTimeSpin.value())
+        frames = int(self.captureFramesSpin.value())
+
+        # Keep filenames stable/readable at microsecond times and include frames.
+        t_token = f"{integration_time_s:.6f}s"
         txt_filename_base = os.path.join(
             folder,
-            f"{base_with_count}_{ts}_{int(self.integrationTimeSpin.value())}s",
+            f"{base_with_count}_{ts}_{t_token}_{frames}frames",
         )
 
         # Get stage controller for continuous movement
@@ -601,8 +630,11 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         CaptureWorker = _get_technical_module('CaptureWorker')
         worker = CaptureWorker(
             detector_controller=self.detector_controller,
-            integration_time=self.integrationTimeSpin.value(),
+            integration_time=integration_time_s,
             txt_filename_base=txt_filename_base,
+            frames=frames,
+            # Average frames into a single final image (post-conversion)
+            naming_mode="normal",
             continuous_movement_controller=self.continuous_movement_controller,
             stage_controller=stage_controller,
             enable_continuous_movement=enable_continuous_movement,
@@ -647,14 +679,20 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
 
         # --- Set up worker
         if not _get_technical_imports():
-            self._log_technical_event("Cannot process files - technical imports not available")
+            self._log_technical_event(
+                "Cannot process files - technical imports not available"
+            )
             self._aux_status.setText("Import error")
             return
-            
+
         self._log_technical_event("Processing measurement files...")
-        MeasurementWorker = _get_technical_module('MeasurementWorker')
+        MeasurementWorker = _get_technical_module("MeasurementWorker")
+        # Match attenuation semantics: multiple frames averaged into one final image.
+        frames = int(self.captureFramesSpin.value())
         worker = MeasurementWorker(
             filenames=result_files,
+            frames=frames,
+            average_frames=True,
         )
         worker.add_aux_item.connect(self._add_aux_item_to_list)
         worker.run()
@@ -758,16 +796,19 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
     def _infer_type_from_filename(self, file_path: str) -> str:
         """Infer measurement type from filename patterns."""
         base = os.path.basename(file_path).lower()
-        # Check for common patterns in filename
+        # Check for explicit type tokens first
         for type_option in self.TYPE_OPTIONS:
             if type_option.lower() in base:
                 return type_option
-        # Check for common variations
-        if "dark" in base or "background" in base:
+
+        # Variations / legacy naming
+        if "background" in base:
+            return "BACKGROUND"
+        if "dark" in base:
             return "DARK"
         if "empty" in base:
             return "EMPTY"
-        if "agbh" in base or "ag" in base:
+        if "agbh" in base:
             return "AGBH"
         return None  # No match found
 
@@ -1185,8 +1226,6 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
     def generate_technical_meta(self):
         from pathlib import Path
 
-        from PyQt5.QtWidgets import QMessageBox
-
         self._log_technical_event("Generating technical metadata...")
 
         # Validate selection
@@ -1211,10 +1250,18 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             )
             return
         safe_name = name.replace(" ", "_")
-        validate_folder = _get_technical_module('validate_folder')
-        folder = validate_folder(self.folderLE.text())
-        if not os.path.isdir(folder):
+        # Use the explicit folder path for meta generation.
+        # (Do not auto-fallback to CWD; if the folder is invalid/unwritable we should stop.)
+        folder = (self.folderLE.text() or "").strip()
+        if not folder or not os.path.isdir(folder):
             QMessageBox.warning(self, "Invalid Folder", "Select a valid save folder.")
+            return
+        if not os.access(folder, os.W_OK):
+            QMessageBox.warning(
+                self,
+                "Folder Not Writable",
+                "Selected save folder is not writable. Choose a different folder.",
+            )
             return
 
         out_path = os.path.join(folder, f"technical_meta_{safe_name}.json")
@@ -1286,10 +1333,10 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             dst[al] = base
             seen_pairs.add(pair)
 
-        # Enforce completeness: all measurement types must be present, and for each alias
-        # Determine required types
+        # Enforce completeness: all REQUIRED measurement types must be present, and for each alias
         required_types = set(
-            getattr(self, "TYPE_OPTIONS", []) or ["AGBH", "DARK", "EMPTY", "BACKGROUND"]
+            getattr(self, "REQUIRED_TYPE_OPTIONS", None)
+            or ["AGBH", "DARK", "EMPTY", "BACKGROUND"]
         )
 
         # 1) Ensure at least one row selected for each required type

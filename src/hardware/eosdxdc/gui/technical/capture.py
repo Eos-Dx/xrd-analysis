@@ -63,9 +63,10 @@ class CaptureWorker(QObject):
                 # Get current stage position as center
                 center_x, center_y = self.stage_controller.get_xy_position()
 
-                # Configure and start movement
+                # Configure movement for the full acquisition duration (frames × integration time)
+                total_duration = float(self.integration_time) * max(int(self.frames), 1)
                 self.continuous_movement_controller.configure(
-                    self.movement_radius, self.integration_time
+                    self.movement_radius, total_duration
                 )
 
                 movement_started = self.continuous_movement_controller.start_movement(
@@ -162,14 +163,28 @@ from pathlib import Path
 import numpy as np
 
 
-def move_and_convert_measurement_file(src_file, alias_folder):
-    """
-    Move associated files into the target folder (no subfolders) and convert .txt to .npy.
-    Args:
-        src_file: str or Path, path to the original .txt file
-        alias_folder: str or Path, target directory where files should reside (created if needed)
-    Returns:
-        str: Path to the saved .npy file (in the target folder)
+def move_and_convert_measurement_file(
+    src_file,
+    alias_folder,
+    *,
+    frames: int = 1,
+    average_frames: bool = False,
+):
+    """Move associated files into the target folder (no subfolders) and convert .txt to .npy.
+
+    Parameters
+    src_file
+        Path to the original .txt file.
+    alias_folder
+        Target directory where files should reside (created if needed).
+    frames
+        Number of frames used during acquisition.
+    average_frames
+        If True and frames > 1, divide the integrated image by frames to get a per-frame average.
+
+    Returns
+    str
+        Path to the saved .npy file (in the target folder).
     """
     src_file = Path(src_file)
     alias_folder = Path(alias_folder)
@@ -206,6 +221,8 @@ def move_and_convert_measurement_file(src_file, alias_folder):
     # Convert to .npy in target folder
     try:
         data = np.loadtxt(dest_txt)
+        if average_frames and int(frames) > 1:
+            data = data / float(frames)
         npy_file = dest_txt.with_suffix(".npy")
         np.save(npy_file, data)
     except Exception as e:

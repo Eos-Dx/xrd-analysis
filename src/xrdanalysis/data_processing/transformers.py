@@ -573,24 +573,46 @@ class ColumnNormalizer(TransformerMixin):
 
     :param column: The name of the column containing arrays to be normalized.
     :type column: str
-    :param norm: The type of norm to use for normalization \
-    ('l1', 'l2', or 'max'). Defaults to 'l1'.
+    :param norm: The type of norm to use for normalization. Can be 'l1', 'l2', \
+    'max', or 'integral'. Defaults to 'l1'.
     :type norm: str
+    :param mode: The mode for normalization ('1D' or '2D'). Defaults to '1D'.
+    :type mode: str
+    :param q_column: The name of the column containing q-values (for integral norm). \
+    Defaults to 'q_range'.
+    :type q_column: str
+    :param q_min: Minimum q value for integral range (for integral norm). Defaults to 6.0.
+    :type q_min: float
+    :param q_max: Maximum q value for integral range (for integral norm). Defaults to 8.0.
+    :type q_max: float
     """
 
-    def __init__(self, column, norm="l1", mode="1D"):
+    def __init__(self, column, norm="l1", mode="1D", q_column="q_range", q_min=6.0, q_max=8.0):
         """
         Initializes the ColumnNormalizer with the specified column name and
         normalization method.
 
         :param column: The name of the column containing arrays to normalize.
         :type column: str
-        :param norm: The type of norm to use for normalization. Can be 'l1', \
-        'l2', or 'max'. Defaults to 'l2'.
+        :param norm: The type of norm to use for normalization. Can be 'l1', 'l2', \
+        'max', or 'integral'. Defaults to 'l1'.
         :type norm: str
+        :param mode: The mode for normalization ('1D' or '2D'). Defaults to '1D'.
+        :type mode: str
+        :param q_column: The name of the column containing q-values (for integral norm).
+        :type q_column: str
+        :param q_min: Minimum q value for integral range (for integral norm).
+        :type q_min: float
+        :param q_max: Maximum q value for integral range (for integral norm).
+        :type q_max: float
         """
         self.column = column
-        self.normalizer = Normalizer(norm=norm)
+        self.norm = norm
+        self.q_column = q_column
+        self.q_min = float(q_min)
+        self.q_max = float(q_max)
+        if norm != "integral":
+            self.normalizer = Normalizer(norm=norm)
         self.mode = mode
 
     def fit(self, X, y=None):
@@ -619,7 +641,31 @@ class ColumnNormalizer(TransformerMixin):
         :rtype: pd.DataFrame
         """
         X_copy = X.copy()
-        if self.mode == "1D":
+        
+        if self.norm == "integral":
+            # Integral normalization
+            def normalize_by_integral(row):
+                q = np.asarray(row[self.q_column], dtype=float)
+                I = np.asarray(row[self.column], dtype=float)
+                
+                q_lo = float(min(self.q_min, self.q_max))
+                q_hi = float(max(self.q_min, self.q_max))
+                
+                # Create mask for q-range
+                mask = (q >= q_lo) & (q <= q_hi)
+                if mask.sum() < 2:
+                    return I  # Return unchanged if insufficient points
+                
+                # Calculate integral using trapezoidal rule
+                area = float(np.trapz(I[mask], q[mask]))
+                if area == 0 or not np.isfinite(area):
+                    return I  # Return unchanged if integral is invalid
+                
+                return I / area
+            
+            X_copy[self.column] = X_copy.apply(normalize_by_integral, axis=1)
+        
+        elif self.mode == "1D":
             X_copy[self.column] = X_copy[self.column].apply(
                 lambda arr: self.normalizer.transform([arr])[0]
             )
@@ -638,7 +684,6 @@ class ColumnNormalizer(TransformerMixin):
 
             X_copy[self.column] = X_copy[self.column].apply(normalize_image)
         return X_copy
-
 
 class ColumnExtractor(TransformerMixin):
     """

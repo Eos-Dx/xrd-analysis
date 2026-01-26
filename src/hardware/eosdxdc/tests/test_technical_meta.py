@@ -181,7 +181,7 @@ if "hardware.eosdxdc.gui.technical.capture" not in sys.modules:
     def _compute_hf_score_from_cake(*args, **kwargs):
         return 0.0
 
-    def _move_and_convert_measurement_file(src_path, alias_folder):
+    def _move_and_convert_measurement_file(src_path, alias_folder, *args, **kwargs):
         return str(src_path)
 
     def _show_measurement_window(*args, **kwargs):
@@ -210,10 +210,40 @@ if "hardware.eosdxdc.gui.technical.widgets" not in sys.modules:
 
 class TestTechnicalMetaGeneration(unittest.TestCase):
     def setUp(self):
-        # Import module under test after stubbing PyQt5
+        # Import module under test (PyQt5 may already be imported by other tests)
         from hardware.eosdxdc.gui.main_window_ext import technical_measurements as tm
 
         self.tm = tm
+
+        # Ensure QMessageBox and QComboBox are always stubbed (even if real PyQt5 is present)
+        # This avoids needing a QApplication in unit tests.
+        class _StubComboBox:
+            def __init__(self, *a, **k):
+                pass
+
+        self.tm.QComboBox = _StubComboBox
+
+        class _StubMsgBox:
+            Yes = 1
+            No = 0
+
+            @staticmethod
+            def warning(*args, **kwargs):
+                return None
+
+            @staticmethod
+            def question(*args, **kwargs):
+                return _StubMsgBox.Yes
+
+            @staticmethod
+            def critical(*args, **kwargs):
+                return None
+
+            @staticmethod
+            def information(*args, **kwargs):
+                return None
+
+        self.tm.QMessageBox = _StubMsgBox
 
         # Monkeypatch validate_folder to be identity
         self.tm.validate_folder = lambda p: p

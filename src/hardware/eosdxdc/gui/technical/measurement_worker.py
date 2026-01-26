@@ -31,6 +31,8 @@ class MeasurementWorker(QObject):
         parent=None,
         hf_cutoff_fraction=0.2,
         columns_to_remove=30,
+        frames: int = 1,
+        average_frames: bool = False,
     ):
         super().__init__(parent)
         logger.debug(
@@ -42,6 +44,8 @@ class MeasurementWorker(QObject):
         self.ponis = ponis or {}
         self.hf_cutoff_fraction = hf_cutoff_fraction
         self.columns_to_remove = columns_to_remove
+        self.frames = int(frames) if frames is not None else 1
+        self.average_frames = bool(average_frames)
 
     @pyqtSlot()
     def run(self):
@@ -55,7 +59,12 @@ class MeasurementWorker(QObject):
             alias_folder = (
                 src_path.parent
             )  # Save directly in the parent folder (no subfolders)
-            npy_path = move_and_convert_measurement_file(src_path, alias_folder)
+            npy_path = move_and_convert_measurement_file(
+                src_path,
+                alias_folder,
+                frames=self.frames,
+                average_frames=self.average_frames,
+            )
             self.add_aux_item.emit(alias, str(npy_path))
             mask = self.masks.get(alias)
             poni = self.ponis.get(alias)

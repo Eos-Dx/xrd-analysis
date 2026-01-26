@@ -63,25 +63,31 @@ class DummyDetectorController:
         return True
 
     def capture_point(self, Nframes, Nseconds, filename_base):
-        # Simulate acquisition delay for this dummy detector
+        # Simulate Pixet-style integrated acquisition across Nframes.
         filename = f"{filename_base}.txt"
-        t = threading.Thread(target=self._dummy_acquire, args=(filename, Nseconds))
+        t = threading.Thread(target=self._dummy_acquire, args=(filename, Nseconds, Nframes))
         t.start()
         t.join()
         return True
 
     def _dummy_acquire(self, filename, Nseconds, Nframes=1):
-        time.sleep(Nseconds * Nframes)  # Simulate integration time
+        # Simulate total acquisition duration
+        time.sleep(float(Nseconds) * max(int(Nframes), 1))
         width, height = self.size
-        # Generate a random 2D Gaussian blob
-        x, y = np.arange(width), np.arange(height)
-        X, Y = np.meshgrid(x, y)
-        x0, y0 = np.random.uniform(0, width), np.random.uniform(0, height)
-        sigma = np.random.uniform(5, min(width, height) / 4)
-        amp = np.random.uniform(1e5, 2e6)
-        frame = amp * np.exp(-(((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma**2)))
-        frame += np.random.normal(scale=amp * 0.1, size=frame.shape)
-        np.savetxt(filename, frame, fmt="%.6f")
+
+        # Sum frames to emulate an integrated image (caller may divide by Nframes to average)
+        integrated = np.zeros((height, width), dtype=float)
+        for _ in range(max(int(Nframes), 1)):
+            x, y = np.arange(width), np.arange(height)
+            X, Y = np.meshgrid(x, y)
+            x0, y0 = np.random.uniform(0, width), np.random.uniform(0, height)
+            sigma = np.random.uniform(5, min(width, height) / 4)
+            amp = np.random.uniform(1e5, 2e6)
+            frame = amp * np.exp(-(((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma**2)))
+            frame += np.random.normal(scale=amp * 0.1, size=frame.shape)
+            integrated += frame
+
+        np.savetxt(filename, integrated, fmt="%.6f")
         logger.file_operation(
             "save",
             filename,
