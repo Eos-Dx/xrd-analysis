@@ -1,10 +1,14 @@
 {
     "measurement_points": [],
-    "image": null,
+    "image": "/Users/sad/Downloads/tissue_types_all_samples (1).png",
     "rotation_angle": 0,
     "crop_rect": null,
     "shapes": [],
     "zone_points": [],
+    "dock_geometry": {
+        "window_geometry": "AdnQywADAAAAAAAAAAAAIQAABr8AAAQCAAAAAAAAAD0AAAa/AAAEAgAAAAACAAAABsAAAAAAAAAAPQAABr8AAAQC",
+        "window_state": "AAAA/wAAAAD9AAAAAwAAAAAAAAGAAAABefwCAAAAAfv/////AQAAABgAAAF5AAAAYAD///8AAAABAAABAAAAAXn8AgAAAAH7/////wEAAAAYAAABeQAAAGAA////AAAAAwAABsAAAAI0/AEAAAAC+/////8BAAAAAAAABCcAAAQeAP////v/////AQAABCgAAAKYAAACmAD///8AAAQ+AAABeQAAAAQAAAAEAAAACAAAAAj8AAAAAQAAAAIAAAAB/////wEAAAAA/////wAAAAAAAAAA"
+    },
     "active_detectors_aliases": [
         "SAXS",
         "WAXS"
@@ -13,12 +17,12 @@
         "SAXS": {
             "poni_filename": null,
             "poni_path": null,
-            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Mon Jan 26 14:30:44 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.215049\nPoni1: 0.007772\nPoni2: 0.001441\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: SAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_saxs.npy\n"
+            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Mon Jan 26 14:47:34 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.202013\nPoni1: 0.006663\nPoni2: 0.002671\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: SAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_saxs.npy\n"
         },
         "WAXS": {
             "poni_filename": null,
             "poni_path": null,
-            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Mon Jan 26 14:30:44 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.083041\nPoni1: 0.006064\nPoni2: 0.002461\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: WAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_waxs.npy\n"
+            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Mon Jan 26 14:47:34 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.089437\nPoni1: 0.00635\nPoni2: 0.002051\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: WAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_waxs.npy\n"
         }
     },
     "technical_aux": []

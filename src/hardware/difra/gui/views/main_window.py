@@ -6,7 +6,6 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
-    QDockWidget,
     QFileDialog,
     QMainWindow,
     QTabWidget,
@@ -87,7 +86,7 @@ class MainWindow(
 
             # 1. Create the Zone Measurements dock (right bottom)
             logger.debug("Creating technical panel...")
-            self.create_technical_panel()  # this defines self.zoneMeasurementsDock
+            self.create_technical_panel()  # this defines self.measDock
             logger.debug("Technical panel created")
 
             # 2. Create the Zone Points dock (left bottom)
@@ -158,23 +157,18 @@ class MainWindow(
     def setup_main_layout(self):
         try:
             logger.debug("Creating central widget...")
-            # Don't use a central widget - make ImageView a dock instead
-            # This allows it to be resized like other panels
             central = QWidget()
             self.setCentralWidget(central)
             self.main_layout = QVBoxLayout(central)
             logger.debug("Central widget and layout created")
 
-            # Create the image view as a dock widget
+            # Create the image view and add it to central widget
             logger.debug("Creating ImageView...")
             self.image_view = ImageView(self)
             logger.debug("ImageView created")
             
-            # Create a dock widget for the image view
-            self.imageViewDock = QDockWidget("Image View", self)
-            self.imageViewDock.setWidget(self.image_view)
-            self.addDockWidget(Qt.TopDockWidgetArea, self.imageViewDock)
-            logger.debug("ImageView added as dock widget")
+            self.main_layout.addWidget(self.image_view)
+            logger.debug("ImageView added to layout")
 
             logger.debug("Creating tabs widget...")
             self.tabs = QTabWidget()

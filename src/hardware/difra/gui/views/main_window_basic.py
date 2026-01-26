@@ -133,16 +133,16 @@ class MainWindowBasic(QMainWindow):
             "Capture from Camera", self, triggered=self.capture_from_camera
         )
         # Edit config dialog
-        self.editConfigAct = QAction("Edit Config…", self, triggered=self.edit_config)
+        self.edit_config_act = QAction("Edit Config…", self, triggered=self.edit_config)
         # Toggle DEV/demo mode
-        self.toggleDevAct = QAction("", self, triggered=self.toggle_dev_mode)
+        self.toggle_dev_act = QAction("", self, triggered=self.toggle_dev_mode)
 
     def create_menus(self):
-        fileMenu = self.menuBar().addMenu("File")
-        fileMenu.addAction(self.open_act)
-        fileMenu.addAction(self.capture_camera_act)
-        settingsMenu = self.menuBar().addMenu("Settings")
-        settingsMenu.addAction(self.editConfigAct)
+        file_menu = self.menuBar().addMenu("File")
+        file_menu.addAction(self.open_act)
+        file_menu.addAction(self.capture_camera_act)
+        settings_menu = self.menuBar().addMenu("Settings")
+        settings_menu.addAction(self.edit_config_act)
 
     def create_tool_bar(self):
         self.toolbar = QToolBar("Tools", self)
@@ -150,7 +150,7 @@ class MainWindowBasic(QMainWindow):
         self.toolbar.addAction(self.open_act)
         self.toolbar.addAction(self.capture_camera_act)
         self.toolbar.addSeparator()
-        self.toolbar.addAction(self.toggleDevAct)
+        self.toolbar.addAction(self.toggle_dev_act)
 
     def open_image(self):
         default_folder = self.config.get("default_image_folder", "")
@@ -304,11 +304,11 @@ class MainWindowBasic(QMainWindow):
         if is_dev:
             self.setStyleSheet("background-color: lightgray;")
             self.setWindowTitle(f"{base_title} [DEMO]")
-            self.toggleDevAct.setText("Switch to Production")
+            self.toggle_dev_act.setText("Switch to Production")
         else:
             self.setStyleSheet("")
             self.setWindowTitle(base_title)
-            self.toggleDevAct.setText("Switch to Demo")
+            self.toggle_dev_act.setText("Switch to Demo")
 
     def toggle_dev_mode(self):
         """
