@@ -1,0 +1,1906 @@
+openapi: 3.0.3
+info:
+  title: DiFRA Hardware Server API
+  version: 1.0.0
+  description: |
+    REST API for controlling DiFRA XRD hardware (stage + detector bundle) and running
+    the acquisition workflow used in the legacy PyQt5 desktop application.
+
+    Workflow alignment (high level)
+    - Setup selection from pre-existing setups
+    - Separate initialization: stage controller + detector(s)
+    - Daily technical measurements (Dark → Background → Sample holder → AgBH)
+    - External pyFAI generates PONI files
+    - Generate technical meta JSON once per day
+    - Sample image upload → zones → points (pixels + mm)
+    - Start automated acquisition; data is written to disk (not kept in RAM)
+    - State JSON is created at start and updated incrementally after each point
+
+    Real-time
+    - WebSocket channels exist (not modeled here as OpenAPI paths):
+      - stage_position
+      - detector_stream
+      - measurement_progress
+      - hardware_status
+      - events
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+  - url: http://{server-ip}:8000/api/v1
+    description: Hardware server
+    variables:
+      server-ip:
+        default: '192.168.1.100'
+
+tags:
+  - name: Hardware Management
+    description: Initialize and manage hardware components
+  - name: Configuration
+    description: Manage system configuration and setups
+  - name: Stage Control
+    description: Control the XY translation stage
+  - name: Detector Control
+    description: Control detectors (bundle operation)
+  - name: Technical Measurements
+    description: Daily technical measurements + technical meta generation
+  - name: Images, Zones & Points
+    description: Sample image, zones, and point generation (pixels + mm)
+  - name: Measurements
+    description: Automated acquisition across points
+  - name: File Management
+    description: Access measurement/session files
+
+paths:
+  # ==================== SECTION 1: Hardware Management ====================
+  /hardware/initialize:
+    post:
+      tags: [Hardware Management]
+      summary: Initialize hardware components
+      description: |
+        Granular initialization.
+
+        The legacy UI has separate buttons for stage and detectors; the web client can call
+        this endpoint once with both enabled, or twice with one enabled at a time.
+      operationId: hardwareInitialize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HardwareInitializeRequest'
+      responses:
+        '200':
+          description: Initialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareInitializeResponse'
+        '409':
+          description: Already initialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Initialization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /hardware/deinitialize:
+    post:
+      tags: [Hardware Management]
+      summary: Deinitialize hardware
+      description: |
+        Deinitialize hardware. Cannot deinitialize during an active measurement.
+      operationId: hardwareDeinitialize
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage:
+                  type: boolean
+                  default: true
+                detectors:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Deinitialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '409':
+          description: Measurement active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /hardware/reinitialize:
+    post:
+      tags: [Hardware Management]
+      summary: Reinitialize hardware
+      description: Deinitialize and initialize again (recovery).
+      operationId: hardwareReinitialize
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HardwareInitializeRequest'
+      responses:
+        '200':
+          description: Reinitialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareInitializeResponse'
+        '409':
+          description: Measurement active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /hardware/status:
+    get:
+      tags: [Hardware Management]
+      summary: Get hardware status
+      operationId: hardwareStatus
+      responses:
+        '200':
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareStatusResponse'
+
+  # ==================== SECTION 2: Configuration ====================
+  /config:
+    get:
+      tags: [Configuration]
+      summary: Get current configuration
+      operationId: configGet
+      responses:
+        '200':
+          description: Current config
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+    put:
+      tags: [Configuration]
+      summary: Replace configuration
+      description: Full replacement (not merge).
+      operationId: configPut
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /config/setups:
+    get:
+      tags: [Configuration]
+      summary: List available setups
+      operationId: configListSetups
+      responses:
+        '200':
+          description: Setup list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_setup:
+                    type: string
+                  available_setups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        file:
+                          type: string
+                        description:
+                          type: string
+
+  /config/setup/switch:
+    post:
+      tags: [Configuration]
+      summary: Switch setup
+      description: Requires hardware to be deinitialized.
+      operationId: configSwitchSetup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [setup_name]
+              properties:
+                setup_name:
+                  type: string
+      responses:
+        '200':
+          description: Switched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Hardware initialized (must deinitialize first)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Setup not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /config/backup:
+    post:
+      tags: [Configuration]
+      summary: Backup configuration
+      description: |
+        Folder backup (not ZIP). Includes setups, PONI files, and technical_meta_*.json.
+      operationId: configBackup
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                backup_name:
+                  type: string
+                include_poni:
+                  type: boolean
+                  default: true
+                include_technical_meta:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Backup created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  backup_path:
+                    type: string
+                  backed_up_files:
+                    type: array
+                    items:
+                      type: string
+
+  /config/restore:
+    post:
+      tags: [Configuration]
+      summary: Restore configuration
+      operationId: configRestore
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [backup_path]
+              properties:
+                backup_path:
+                  type: string
+                restore_items:
+                  type: array
+                  items:
+                    type: string
+                    enum: [setup, poni, technical_meta, global_config]
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Backup not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /config/poni:
+    get:
+      tags: [Configuration]
+      summary: List PONI files
+      description: PONI files are generated externally (pyFAI) and then provided to DiFRA.
+      operationId: configGetPoni
+      responses:
+        '200':
+          description: PONI mapping
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  poni_files:
+                    type: object
+                    additionalProperties:
+                      $ref: '#/components/schemas/PoniFileRef'
+
+  /config/poni/upload:
+    post:
+      tags: [Configuration]
+      summary: Upload PONI file
+      description: Upload (or replace) a PONI file for a detector.
+      operationId: configUploadPoni
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, detector_alias]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                detector_alias:
+                  type: string
+                overwrite:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid upload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== SECTION 3: Stage Control ====================
+  /stage/move:
+    post:
+      tags: [Stage Control]
+      summary: Move stage (absolute)
+      operationId: stageMove
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StageMoveRequest'
+      responses:
+        '200':
+          description: Move accepted/completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageMoveResponse'
+        '400':
+          description: Invalid/out of bounds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Not initialized/busy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /stage/position:
+    get:
+      tags: [Stage Control]
+      summary: Get stage position
+      operationId: stagePosition
+      parameters:
+        - name: stage_id
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: Position
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StagePositionResponse'
+
+  /stage/home:
+    post:
+      tags: [Stage Control]
+      summary: Home stage
+      operationId: stageHome
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage_id:
+                  type: string
+                axes:
+                  type: array
+                  items:
+                    type: string
+                    enum: [x, y]
+                wait:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Homed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '409':
+          description: Not initialized/busy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /stage/load:
+    post:
+      tags: [Stage Control]
+      summary: Move to load position
+      operationId: stageLoad
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage_id:
+                  type: string
+      responses:
+        '200':
+          description: Moved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Load position not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /stage/emergency-stop:
+    post:
+      tags: [Stage Control]
+      summary: Emergency stop
+      description: Immediately stop stage and abort active measurement.
+      operationId: stageEmergencyStop
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage_id:
+                  type: string
+      responses:
+        '200':
+          description: Stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  measurement_aborted:
+                    type: boolean
+                  stopped_position:
+                    $ref: '#/components/schemas/XY'
+
+  /stage/validate:
+    post:
+      tags: [Stage Control]
+      summary: Validate position
+      operationId: stageValidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StageValidateRequest'
+      responses:
+        '200':
+          description: Validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageValidateResponse'
+
+  /stage/jog:
+    post:
+      tags: [Stage Control]
+      summary: Jog stage (relative)
+      operationId: stageJog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StageJogRequest'
+      responses:
+        '200':
+          description: Jog accepted/completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageMoveResponse'
+
+  /stage/set-motion-params:
+    post:
+      tags: [Stage Control]
+      summary: Set motion parameters
+      operationId: stageSetMotionParams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StageMotionParamsRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  # ==================== SECTION 4: Detector Control ====================
+  /detectors:
+    get:
+      tags: [Detector Control]
+      summary: List detectors
+      operationId: detectorsList
+      responses:
+        '200':
+          description: Detectors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detectors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DetectorStatus'
+
+  /detectors/stream/start:
+    post:
+      tags: [Detector Control]
+      summary: Start detector streaming (bundle)
+      operationId: detectorsStreamStart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                integration_time:
+                  type: number
+                frame_rate:
+                  type: number
+      responses:
+        '200':
+          description: Streaming started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /detectors/stream/stop:
+    post:
+      tags: [Detector Control]
+      summary: Stop detector streaming (bundle)
+      operationId: detectorsStreamStop
+      responses:
+        '200':
+          description: Streaming stopped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /detectors/capture:
+    post:
+      tags: [Detector Control]
+      summary: Capture (bundle) and write to disk
+      description: |
+        Synchronized capture for ALL active detectors. The primary output is one raw file
+        per detector (e.g. TXT). The server should not retain full data in RAM.
+      operationId: detectorsCapture
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [frames, integration_time, output]
+              properties:
+                frames:
+                  type: integer
+                integration_time:
+                  type: number
+                output:
+                  $ref: '#/components/schemas/OutputLocation'
+                filename_prefix:
+                  type: string
+      responses:
+        '200':
+          description: Capture complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureFilesResponse'
+
+  /detectors/{alias}/configure:
+    post:
+      tags: [Detector Control]
+      summary: Configure detector (placeholder)
+      operationId: detectorsConfigure
+      parameters:
+        - name: alias
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== Technical Measurements ====================
+  /technical/capture:
+    post:
+      tags: [Technical Measurements]
+      summary: Capture a technical measurement
+      description: |
+        Captures one technical measurement and writes raw output files to disk.
+
+        Note: X-ray beam state (ON/OFF) and physical actions (insert sample holder/AgBH)
+        are performed by the user outside the software.
+
+        For multi-detector setups, one file per detector is generated.
+      operationId: technicalCapture
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, frames, integration_time, output]
+              properties:
+                type:
+                  $ref: '#/components/schemas/TechnicalMeasurementType'
+                frames:
+                  type: integer
+                integration_time:
+                  type: number
+                output:
+                  $ref: '#/components/schemas/OutputLocation'
+                filename_prefix:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Captured
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry_id:
+                    type: string
+                    description: Row ID for the technical-measurements table
+                  type:
+                    $ref: '#/components/schemas/TechnicalMeasurementType'
+                  files:
+                    $ref: '#/components/schemas/DetectorFileMap'
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /technical/measurements:
+    get:
+      tags: [Technical Measurements]
+      summary: List technical measurements
+      description: |
+        Lists captured technical measurements for a date (default: today).
+      operationId: technicalList
+      parameters:
+        - name: date
+          in: query
+          description: ISO date (YYYY-MM-DD). If omitted, server uses local "today".
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Technical measurements
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TechnicalMeasurementEntry'
+                  meta_file:
+                    $ref: '#/components/schemas/NullablePoniMetaFileRef'
+
+  /technical/measurements/{entry_id}:
+    patch:
+      tags: [Technical Measurements]
+      summary: Update a technical measurement entry
+      description: |
+        Supports the UI dropdown/table behavior: change the assigned type or adjust file paths.
+        This is used when the user explicitly associates raw files to their correct roles.
+      operationId: technicalUpdateEntry
+      parameters:
+        - name: entry_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  $ref: '#/components/schemas/TechnicalMeasurementType'
+                files:
+                  $ref: '#/components/schemas/DetectorFileMap'
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /technical/meta/generate:
+    post:
+      tags: [Technical Measurements]
+      summary: Generate daily technical meta JSON
+      description: |
+        Validates that required technical measurements exist for the day (Dark, Background,
+        Sample holder, AgBH) and that required PONI files are present for active detector(s).
+
+        Produces a technical_meta_*.json file encoding explicit file-to-role associations.
+      operationId: technicalGenerateMeta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, poni_files]
+              properties:
+                date:
+                  type: string
+                  format: date
+                poni_files:
+                  type: object
+                  description: Mapping detector_alias -> PONI file reference
+                  additionalProperties:
+                    $ref: '#/components/schemas/PoniFileRef'
+                output:
+                  $ref: '#/components/schemas/OutputLocation'
+      responses:
+        '200':
+          description: Meta generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  meta_path:
+                    type: string
+                  date:
+                    type: string
+                    format: date
+        '400':
+          description: Missing prerequisites
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== SECTION 5: Images, Zones & Points ====================
+  /images/upload:
+    post:
+      tags: [Images, Zones & Points]
+      summary: Upload sample image
+      operationId: imagesUpload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                metadata:
+                  type: string
+                  description: Optional JSON string metadata
+      responses:
+        '200':
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  image_id:
+                    type: string
+                  filename:
+                    type: string
+                  size_bytes:
+                    type: integer
+                  dimensions:
+                    type: object
+                    properties:
+                      width: {type: integer}
+                      height: {type: integer}
+
+  /images/{image_id}/calibrate:
+    post:
+      tags: [Images, Zones & Points]
+      summary: Calibrate pixel-to-mm conversion
+      description: |
+        The legacy workflow derives pixel-to-mm from a known physical sample-holder shape.
+
+        The server stores both:
+        - calibration inputs (shape in pixels + known physical size)
+        - derived pixel_to_mm_ratio
+      operationId: imagesCalibrate
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageCalibrationRequest'
+      responses:
+        '200':
+          description: Calibration saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  calibration:
+                    $ref: '#/components/schemas/ImageCalibration'
+        '404':
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /images/{image_id}/zones/define:
+    post:
+      tags: [Images, Zones & Points]
+      summary: Define zones (include/exclude)
+      operationId: imagesDefineZones
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ZonesDefineRequest'
+      responses:
+        '200':
+          description: Zones saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /images/{image_id}/points/generate:
+    post:
+      tags: [Images, Zones & Points]
+      summary: Generate points from zones
+      description: |
+        Generates points in pixel coordinates and converts them to mm coordinates.
+        Both pixel and mm coordinates are stored.
+      operationId: imagesGeneratePoints
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [num_points]
+              properties:
+                num_points:
+                  type: integer
+                algorithm:
+                  type: string
+                  enum: [farthest_point]
+                  default: farthest_point
+      responses:
+        '200':
+          description: Points generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  points_generated:
+                    type: integer
+                  points:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ImagePoint'
+        '400':
+          description: Missing zones or calibration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /images/{image_id}/points/add:
+    post:
+      tags: [Images, Zones & Points]
+      summary: Add manual point
+      operationId: imagesAddPoint
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [x, y]
+              properties:
+                x:
+                  type: integer
+                y:
+                  type: integer
+      responses:
+        '200':
+          description: Added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  point:
+                    $ref: '#/components/schemas/ImagePoint'
+
+  /images/{image_id}/points/{point_id}:
+    delete:
+      tags: [Images, Zones & Points]
+      summary: Delete point
+      operationId: imagesDeletePoint
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema: {type: string}
+        - name: point_id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /images/{image_id}:
+    get:
+      tags: [Images, Zones & Points]
+      summary: Get image state
+      operationId: imagesGet
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Image state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageState'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /images/{image_id}/points:
+    get:
+      tags: [Images, Zones & Points]
+      summary: List points for image
+      operationId: imagesListPoints
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Points
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  image_id:
+                    type: string
+                  total_points:
+                    type: integer
+                  points:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ImagePoint'
+
+  # ==================== SECTION 6: Measurements ====================
+  /measurements/start:
+    post:
+      tags: [Measurements]
+      summary: Start automated measurement
+      description: |
+        Creates a per-run state JSON file named "{base_name}_state.json" in the output folder
+        and updates it incrementally after each completed point.
+
+        Raw detector outputs are written to disk at each point.
+      operationId: measurementsStart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasurementStartRequest'
+      responses:
+        '200':
+          description: Started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  measurement_id:
+                    type: string
+                  state_path:
+                    type: string
+                    description: Path to "{base_name}_state.json"
+                  total_points:
+                    type: integer
+        '400':
+          description: Invalid prerequisites
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Measurement already active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /measurements/pause:
+    post:
+      tags: [Measurements]
+      summary: Pause measurement
+      operationId: measurementsPause
+      responses:
+        '200':
+          description: Paused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: No active measurement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /measurements/resume:
+    post:
+      tags: [Measurements]
+      summary: Resume measurement
+      operationId: measurementsResume
+      responses:
+        '200':
+          description: Resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: No paused measurement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /measurements/stop:
+    post:
+      tags: [Measurements]
+      summary: Stop measurement
+      operationId: measurementsStop
+      responses:
+        '200':
+          description: Stopped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: No active measurement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /measurements/skip-point:
+    post:
+      tags: [Measurements]
+      summary: Skip current point
+      operationId: measurementsSkipPoint
+      responses:
+        '200':
+          description: Skipped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: No active measurement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /measurements/status:
+    get:
+      tags: [Measurements]
+      summary: Get measurement status
+      operationId: measurementsStatus
+      responses:
+        '200':
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementStatusResponse'
+
+  /measurements/{measurement_id}:
+    get:
+      tags: [Measurements]
+      summary: Get measurement details
+      operationId: measurementsGet
+      parameters:
+        - name: measurement_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /measurements:
+    get:
+      tags: [Measurements]
+      summary: List measurements
+      operationId: measurementsList
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [running, paused, completed, stopped, error]
+        - name: limit
+          in: query
+          schema: {type: integer, default: 50}
+        - name: offset
+          in: query
+          schema: {type: integer, default: 0}
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_count:
+                    type: integer
+                  measurements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        measurement_id:
+                          type: string
+                        measurement_name:
+                          type: string
+                        status:
+                          type: string
+                        start_time:
+                          type: string
+                          format: date-time
+
+  # ==================== SECTION 7: File Management ====================
+  /files/measurements:
+    get:
+      tags: [File Management]
+      summary: List measurement files
+      operationId: filesList
+      parameters:
+        - name: folder
+          in: query
+          schema: {type: string}
+        - name: pattern
+          in: query
+          schema: {type: string}
+        - name: recursive
+          in: query
+          schema: {type: boolean, default: false}
+        - name: measurement_id
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: Files
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folder:
+                    type: string
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FileEntry'
+                  total_count:
+                    type: integer
+                  total_size_bytes:
+                    type: integer
+
+  /files/download:
+    get:
+      tags: [File Management]
+      summary: Download file
+      operationId: filesDownload
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: File
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /files/session/{measurement_id}:
+    get:
+      tags: [File Management]
+      summary: Get measurement state JSON
+      description: |
+        Returns the measurement state JSON ("{base_name}_state.json").
+        This file is created at start and updated incrementally.
+      operationId: filesGetSession
+      parameters:
+        - name: measurement_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: State JSON
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /files/upload-to-cloud:
+    post:
+      tags: [File Management]
+      summary: Upload measurement to cloud (Matador)
+      description: Placeholder for Matador integration.
+      operationId: filesUploadToCloud
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [measurement_id]
+              properties:
+                measurement_id:
+                  type: string
+                cloud_endpoint:
+                  type: string
+                include_raw_files:
+                  type: boolean
+                  default: true
+                include_technical_meta:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+
+    XY:
+      type: object
+      properties:
+        x: {type: number}
+        y: {type: number}
+
+    OutputLocation:
+      type: object
+      description: Output folder selection for file-based workflows.
+      properties:
+        folder:
+          type: string
+          description: Output folder path on the server
+
+    DetectorStatus:
+      type: object
+      properties:
+        alias: {type: string}
+        serial: {type: string}
+        type: {type: string}
+        active: {type: boolean}
+        connected: {type: boolean}
+        streaming: {type: boolean}
+
+    DetectorFileMap:
+      type: object
+      description: Mapping detector_alias -> file path
+      additionalProperties:
+        type: string
+
+    CaptureFilesResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        files:
+          $ref: '#/components/schemas/DetectorFileMap'
+        created_files_count:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    PoniFileRef:
+      type: object
+      description: Reference to a PONI file.
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+
+    NullablePoniMetaFileRef:
+      type: object
+      nullable: true
+      properties:
+        path:
+          type: string
+
+    TechnicalMeasurementType:
+      type: string
+      enum: [dark, background, sample_holder, agbh]
+
+    TechnicalMeasurementEntry:
+      type: object
+      properties:
+        entry_id:
+          type: string
+        type:
+          $ref: '#/components/schemas/TechnicalMeasurementType'
+        files:
+          $ref: '#/components/schemas/DetectorFileMap'
+        notes:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    HardwareInitializeRequest:
+      type: object
+      properties:
+        stage:
+          type: object
+          properties:
+            enabled: {type: boolean, default: true}
+            stage_id: {type: string}
+            auto_home: {type: boolean, default: false}
+        detectors:
+          type: object
+          properties:
+            enabled: {type: boolean, default: true}
+            detector_ids:
+              type: array
+              items: {type: string}
+
+    HardwareInitializeResponse:
+      type: object
+      properties:
+        status: {type: string}
+        initialized_components:
+          type: object
+          properties:
+            stage:
+              type: object
+              properties:
+                initialized: {type: boolean}
+                stage_id: {type: string}
+                type: {type: string}
+                homed: {type: boolean}
+            detectors:
+              type: array
+              items:
+                type: object
+                properties:
+                  alias: {type: string}
+                  initialized: {type: boolean}
+
+    HardwareStatusResponse:
+      type: object
+      properties:
+        initialized: {type: boolean}
+        stages:
+          type: array
+          items:
+            type: object
+            properties:
+              stage_id: {type: string}
+              type: {type: string}
+              connected: {type: boolean}
+              homed: {type: boolean}
+              position:
+                $ref: '#/components/schemas/XY'
+              limits:
+                type: object
+                additionalProperties: true
+        detectors:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectorStatus'
+        measurement_active: {type: boolean}
+
+    StageMoveRequest:
+      type: object
+      required: [x, y]
+      properties:
+        x: {type: number}
+        y: {type: number}
+        stage_id: {type: string}
+        speed: {type: number}
+        wait: {type: boolean, default: true}
+
+    StageJogRequest:
+      type: object
+      required: [dx, dy]
+      properties:
+        dx: {type: number}
+        dy: {type: number}
+        stage_id: {type: string}
+        speed: {type: number}
+
+    StageMoveResponse:
+      type: object
+      properties:
+        status: {type: string}
+        target_position:
+          $ref: '#/components/schemas/XY'
+        current_position:
+          $ref: '#/components/schemas/XY'
+
+    StagePositionResponse:
+      type: object
+      properties:
+        stage_id: {type: string}
+        position:
+          $ref: '#/components/schemas/XY'
+        homed: {type: boolean}
+        timestamp:
+          type: string
+          format: date-time
+
+    StageValidateRequest:
+      type: object
+      required: [x, y]
+      properties:
+        x: {type: number}
+        y: {type: number}
+        stage_id: {type: string}
+
+    StageValidateResponse:
+      type: object
+      properties:
+        valid: {type: boolean}
+        position:
+          $ref: '#/components/schemas/XY'
+        limits:
+          type: object
+          additionalProperties: true
+        violations:
+          type: array
+          items: {type: string}
+
+    StageMotionParamsRequest:
+      type: object
+      properties:
+        stage_id: {type: string}
+        speed: {type: number}
+        acceleration: {type: number}
+
+    ShapeCircle:
+      type: object
+      required: [type, center, radius]
+      properties:
+        type:
+          type: string
+          enum: [circle]
+        center:
+          type: object
+          required: [x, y]
+          properties:
+            x: {type: integer}
+            y: {type: integer}
+        radius:
+          type: integer
+
+    ShapeRectangle:
+      type: object
+      required: [type, x, y, width, height]
+      properties:
+        type:
+          type: string
+          enum: [rectangle]
+        x: {type: integer}
+        y: {type: integer}
+        width: {type: integer}
+        height: {type: integer}
+
+    ImageCalibrationRequest:
+      type: object
+      required: [reference_shape_pixels, reference_shape_mm]
+      properties:
+        reference_shape_pixels:
+          oneOf:
+            - $ref: '#/components/schemas/ShapeCircle'
+            - $ref: '#/components/schemas/ShapeRectangle'
+        reference_shape_mm:
+          type: object
+          description: Known physical size of the reference shape.
+          properties:
+            diameter:
+              type: number
+              description: For circle
+            width:
+              type: number
+              description: For rectangle
+            height:
+              type: number
+              description: For rectangle
+        origin_pixels:
+          type: object
+          description: Optional reference point used as (0,0) mapping.
+          properties:
+            x: {type: integer}
+            y: {type: integer}
+        origin_mm:
+          type: object
+          properties:
+            x: {type: number}
+            y: {type: number}
+
+    ImageCalibration:
+      type: object
+      properties:
+        pixel_to_mm_ratio:
+          type: number
+          description: Pixels per mm
+        reference_shape_pixels:
+          type: object
+        reference_shape_mm:
+          type: object
+        origin_pixels:
+          type: object
+        origin_mm:
+          type: object
+
+    ZonesDefineRequest:
+      type: object
+      properties:
+        sample_holder:
+          description: Optional sample holder boundary (often a circle).
+          oneOf:
+            - $ref: '#/components/schemas/ShapeCircle'
+            - $ref: '#/components/schemas/ShapeRectangle'
+        include:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/ShapeCircle'
+              - $ref: '#/components/schemas/ShapeRectangle'
+        exclude:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/ShapeCircle'
+              - $ref: '#/components/schemas/ShapeRectangle'
+
+    ImagePoint:
+      type: object
+      properties:
+        index: {type: integer}
+        type:
+          type: string
+          enum: [generated, manual]
+        pixel_coords:
+          type: object
+          properties:
+            x: {type: number}
+            y: {type: number}
+        mm_coords:
+          $ref: '#/components/schemas/XY'
+
+    ImageState:
+      type: object
+      properties:
+        image_id: {type: string}
+        image_base64: {type: string}
+        dimensions:
+          type: object
+          properties:
+            width: {type: integer}
+            height: {type: integer}
+        calibration:
+          $ref: '#/components/schemas/ImageCalibration'
+        zones:
+          type: object
+          additionalProperties: true
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImagePoint'
+        metadata:
+          type: object
+          additionalProperties: true
+
+    MeasurementStartRequest:
+      type: object
+      required: [image_id, measurement_name, detector_params, output]
+      properties:
+        image_id:
+          type: string
+        measurement_name:
+          type: string
+          description: Base filename for output and "{base_name}_state.json"
+        detector_params:
+          type: object
+          required: [frames, integration_time]
+          properties:
+            frames: {type: integer}
+            integration_time: {type: number}
+        output:
+          $ref: '#/components/schemas/OutputLocation'
+        stage_id:
+          type: string
+        technical_meta_path:
+          type: string
+          description: Optional explicit technical_meta_*.json to use; if omitted, server uses latest for the day.
+        metadata:
+          type: object
+          additionalProperties: true
+
+    MeasurementStatusResponse:
+      type: object
+      properties:
+        active: {type: boolean}
+        measurement_id: {type: string}
+        status:
+          type: string
+          enum: [running, paused, completed, stopped, error]
+        current_point: {type: integer}
+        total_points: {type: integer}
+        completed_points: {type: integer}
+        skipped_points:
+          type: array
+          items: {type: integer}
+
+    MeasurementDetails:
+      type: object
+      properties:
+        measurement_id: {type: string}
+        measurement_name: {type: string}
+        status: {type: string}
+        start_time: {type: string, format: date-time}
+        end_time: {type: string, format: date-time}
+        state_path: {type: string}
+        output_folder: {type: string}
+
+    FileEntry:
+      type: object
+      properties:
+        name: {type: string}
+        path: {type: string}
+        size_bytes: {type: integer}
+        created: {type: string, format: date-time}
+        type:
+          type: string
+          enum: [detector_data, session_file, technical_meta, other]
+        detector_alias:
+          type: string
+          nullable: true
