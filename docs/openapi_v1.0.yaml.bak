@@ -1,0 +1,2024 @@
+openapi: 3.0.3
+info:
+  title: DiFRA Hardware Server API
+  version: 1.0.0
+  description: |
+    RESTful API for controlling X-ray diffraction hardware including XY translation stages,
+    CCD detectors, and automated measurement workflows.
+    
+    ## Features
+    - Granular hardware initialization (per-component control)
+    - Real-time updates via WebSocket (5 channels)
+    - Image-based measurement workflows (zones → points → coordinates)
+    - Detector bundle operation (synchronized multi-detector)
+    - Configuration management with hot-swapping
+    - File-based storage with Matador cloud integration
+    
+    ## WebSocket Channels
+    Connect to `ws://<server>/api/v1/ws/{channel}` for real-time updates:
+    - `stage_position` - Real-time XY position updates
+    - `detector_stream` - Live detector frames from all active detectors
+    - `measurement_progress` - Measurement progress and status
+    - `hardware_status` - Hardware connection changes
+    - `events` - System logs and notifications
+    
+  contact:
+    name: DiFRA Development Team
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+  - url: http://{server-ip}:8000/api/v1
+    description: Production server
+    variables:
+      server-ip:
+        default: '192.168.1.100'
+        description: Hardware server IP address
+
+tags:
+  - name: Hardware Management
+    description: Initialize and manage hardware components
+  - name: Configuration
+    description: Manage system configuration and setups
+  - name: Stage Control
+    description: Control XY translation stage
+  - name: Detector Control
+    description: Control CCD detectors (bundle operation)
+  - name: Images, Zones & Points
+    description: Image-based zone and point management
+  - name: Measurements
+    description: Automated coordinate-based measurements
+  - name: File Management
+    description: Access measurement files and session data
+
+paths:
+  # ==================== SECTION 1: Hardware Management ====================
+  /hardware/initialize:
+    post:
+      tags:
+        - Hardware Management
+      summary: Initialize hardware components
+      description: |
+        Granular initialization of hardware components. Can initialize stage and/or detectors
+        with per-component configuration. Hardware must be deinitialized before re-initializing.
+      operationId: initializeHardware
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: true
+                    stage_id:
+                      type: string
+                      description: Stage serial number (for multi-stage support)
+                      example: "101370874"
+                    auto_home:
+                      type: boolean
+                      default: false
+                      description: Auto-home after initialization
+                    config_override:
+                      type: object
+                      description: Optional per-session config overrides
+                detectors:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: true
+                    detector_ids:
+                      type: array
+                      items:
+                        type: string
+                      description: List of detector aliases or serial numbers
+                      example: ["MiniPIX G08-W0299", "Advacam Timepix3"]
+                    config_override:
+                      type: object
+              example:
+                stage:
+                  enabled: true
+                  stage_id: "101370874"
+                  auto_home: false
+                detectors:
+                  enabled: true
+                  detector_ids: ["MiniPIX G08-W0299"]
+      responses:
+        '200':
+          description: Hardware initialized successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Hardware initialized successfully"
+                  initialized_components:
+                    type: object
+                    properties:
+                      stage:
+                        type: object
+                        properties:
+                          initialized:
+                            type: boolean
+                          stage_id:
+                            type: string
+                          type:
+                            type: string
+                            example: "Kinesis"
+                          homed:
+                            type: boolean
+                      detectors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            alias:
+                              type: string
+                            serial:
+                              type: string
+                            type:
+                              type: string
+                            initialized:
+                              type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+        '409':
+          description: Hardware already initialized
+        '500':
+          description: Initialization failed
+
+  /hardware/deinitialize:
+    post:
+      tags:
+        - Hardware Management
+      summary: Deinitialize hardware components
+      description: |
+        Safely deinitialize hardware and release resources. Cannot deinitialize during
+        active measurements (returns 409 error).
+      operationId: deinitializeHardware
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage:
+                  type: boolean
+                  default: true
+                detectors:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Hardware deinitialized successfully
+        '409':
+          description: Cannot deinitialize during active measurement
+        '500':
+          description: Deinitialization failed
+
+  /hardware/reinitialize:
+    post:
+      tags:
+        - Hardware Management
+      summary: Reinitialize hardware
+      description: Deinitialize and reinitialize hardware (useful for error recovery)
+      operationId: reinitializeHardware
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    stage_id:
+                      type: string
+                    auto_home:
+                      type: boolean
+                detectors:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    detector_ids:
+                      type: array
+                      items:
+                        type: string
+      responses:
+        '200':
+          description: Hardware reinitialized successfully
+        '409':
+          description: Cannot reinitialize during active measurement
+
+  /hardware/status:
+    get:
+      tags:
+        - Hardware Management
+      summary: Get hardware status
+      description: Get current hardware initialization and connection status
+      operationId: getHardwareStatus
+      responses:
+        '200':
+          description: Hardware status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  initialized:
+                    type: boolean
+                  stages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        stage_id:
+                          type: string
+                        type:
+                          type: string
+                        connected:
+                          type: boolean
+                        homed:
+                          type: boolean
+                        position:
+                          type: object
+                          properties:
+                            x:
+                              type: number
+                            y:
+                              type: number
+                        limits:
+                          type: object
+                  detectors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        alias:
+                          type: string
+                        serial:
+                          type: string
+                        type:
+                          type: string
+                        connected:
+                          type: boolean
+                        streaming:
+                          type: boolean
+                  measurement_active:
+                    type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  # ==================== SECTION 2: Configuration ====================
+  /config:
+    get:
+      tags:
+        - Configuration
+      summary: Get current configuration
+      description: Retrieve the currently active configuration
+      operationId: getConfiguration
+      responses:
+        '200':
+          description: Configuration retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+    
+    put:
+      tags:
+        - Configuration
+      summary: Update configuration (full replacement)
+      description: |
+        Replace entire configuration with new values (not a merge).
+        Changes are written to disk immediately.
+      operationId: updateConfiguration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              example:
+                DEV: false
+                active_detectors: ["MiniPIX G08-W0299"]
+                default_folder: "D:\\measurements\\2026-01"
+                conda: "eosdx"
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  config:
+                    type: object
+        '400':
+          description: Invalid configuration
+
+  /config/setups:
+    get:
+      tags:
+        - Configuration
+      summary: List available setups
+      description: List all available setup configuration files
+      operationId: listSetups
+      responses:
+        '200':
+          description: Setup list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_setup:
+                    type: string
+                    example: "Ulster (Xena)"
+                  available_setups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        file:
+                          type: string
+                        description:
+                          type: string
+
+  /config/setup/switch:
+    post:
+      tags:
+        - Configuration
+      summary: Switch to a different setup
+      description: |
+        Change to a different setup configuration. Requires hardware to be deinitialized first.
+        Returns 400 error if hardware is initialized.
+      operationId: switchSetup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - setup_name
+              properties:
+                setup_name:
+                  type: string
+                  example: "Ulster (Xena)"
+      responses:
+        '200':
+          description: Setup switched successfully
+        '400':
+          description: Cannot switch setup while hardware is initialized
+        '404':
+          description: Setup not found
+
+  /config/backup:
+    post:
+      tags:
+        - Configuration
+      summary: Backup current configuration
+      description: |
+        Create a backup of current configuration in folder structure (not ZIP).
+        Includes setup files, PONI files, and technical_meta_*.json files.
+      operationId: backupConfiguration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                backup_name:
+                  type: string
+                  description: Optional backup name (auto-generated if not provided)
+                  example: "backup_20260128_125500"
+                include_poni:
+                  type: boolean
+                  default: true
+                include_technical_meta:
+                  type: boolean
+                  default: true
+                  description: Include technical_meta_*.json files
+      responses:
+        '200':
+          description: Backup created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  backup_path:
+                    type: string
+                  backed_up_files:
+                    type: array
+                    items:
+                      type: string
+                  timestamp:
+                    type: string
+
+  /config/restore:
+    post:
+      tags:
+        - Configuration
+      summary: Restore configuration from backup
+      description: |
+        Restore configuration from a backup folder. Supports selective restore.
+        Use restore_items to specify what to restore (all by default).
+      operationId: restoreConfiguration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - backup_path
+              properties:
+                backup_path:
+                  type: string
+                  example: "D:\\backups\\backup_20260128_125500"
+                restore_items:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - setup
+                      - poni
+                      - technical_meta
+                      - global_config
+                  description: Items to restore (all if not specified)
+                  example: ["setup", "poni", "technical_meta"]
+      responses:
+        '200':
+          description: Configuration restored successfully
+        '404':
+          description: Backup not found
+
+  /config/poni:
+    get:
+      tags:
+        - Configuration
+      summary: Get current PONI files
+      description: List currently configured PONI files for all detectors
+      operationId: getPoniFiles
+      responses:
+        '200':
+          description: PONI files retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  poni_files:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    example:
+                      "MiniPIX G08-W0299": "primary_detector_20250115.poni"
+                      "Advacam Timepix3": "secondary_detector_20250115.poni"
+
+  /config/poni/upload:
+    post:
+      tags:
+        - Configuration
+      summary: Upload PONI file
+      description: |
+        Upload a PONI file for a specific detector. Overwrites by default.
+        PONI files are generated by pyFAI and loaded from configured folder.
+      operationId: uploadPoniFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - detector_alias
+              properties:
+                file:
+                  type: string
+                  format: binary
+                detector_alias:
+                  type: string
+                  example: "MiniPIX G08-W0299"
+                overwrite:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: PONI file uploaded successfully
+        '400':
+          description: Invalid file or detector not found
+
+  # ==================== SECTION 3: Stage Control ====================
+  /stage/move:
+    post:
+      tags:
+        - Stage Control
+      summary: Move stage to absolute position
+      description: |
+        Move stage to specified absolute coordinates. Validates against limits.
+        Supports multi-stage with stage_id parameter.
+      operationId: moveStage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - x
+                - y
+              properties:
+                x:
+                  type: number
+                  format: float
+                  description: X coordinate in mm
+                y:
+                  type: number
+                  format: float
+                  description: Y coordinate in mm
+                stage_id:
+                  type: string
+                  description: Stage identifier (for multi-stage setups)
+                speed:
+                  type: number
+                  description: Movement speed override (mm/min for Marlin, device units for Kinesis)
+                wait:
+                  type: boolean
+                  default: true
+                  description: Wait for movement to complete
+      responses:
+        '200':
+          description: Stage movement completed or initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  target_position:
+                    type: object
+                    properties:
+                      x:
+                        type: number
+                      y:
+                        type: number
+                  current_position:
+                    type: object
+                  duration_seconds:
+                    type: number
+        '400':
+          description: Position out of range or invalid parameters
+        '409':
+          description: Stage not initialized or busy
+
+  /stage/position:
+    get:
+      tags:
+        - Stage Control
+      summary: Get current stage position
+      description: Get current XY position of the stage
+      operationId: getStagePosition
+      parameters:
+        - name: stage_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Position retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stage_id:
+                    type: string
+                  position:
+                    type: object
+                    properties:
+                      x:
+                        type: number
+                      y:
+                        type: number
+                  homed:
+                    type: boolean
+                  timestamp:
+                    type: string
+
+  /stage/home:
+    post:
+      tags:
+        - Stage Control
+      summary: Home the stage
+      description: |
+        Home the stage to establish coordinate reference. Supports flexible homing
+        (X-only, Y-only, or both axes).
+      operationId: homeStage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage_id:
+                  type: string
+                axes:
+                  type: array
+                  items:
+                    type: string
+                    enum: [x, y]
+                  description: Axes to home (both if not specified)
+                  example: ["x", "y"]
+                wait:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Homing completed
+        '409':
+          description: Stage not initialized or busy
+
+  /stage/load:
+    post:
+      tags:
+        - Stage Control
+      summary: Move stage to load position
+      description: |
+        Convenience endpoint to move stage to predefined load position from config.
+        Uses config.load_position coordinates.
+      operationId: loadStage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage_id:
+                  type: string
+      responses:
+        '200':
+          description: Stage moved to load position
+        '400':
+          description: Load position not configured
+
+  /stage/emergency-stop:
+    post:
+      tags:
+        - Stage Control
+      summary: Emergency stop
+      description: |
+        Immediately stop stage movement AND abort any active measurements.
+        This is a destructive operation.
+      operationId: emergencyStopStage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage_id:
+                  type: string
+      responses:
+        '200':
+          description: Emergency stop executed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  stopped_position:
+                    type: object
+                  measurement_aborted:
+                    type: boolean
+
+  /stage/validate:
+    post:
+      tags:
+        - Stage Control
+      summary: Validate stage position
+      description: Check if a position is within stage limits without moving
+      operationId: validateStagePosition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - x
+                - y
+              properties:
+                x:
+                  type: number
+                y:
+                  type: number
+                stage_id:
+                  type: string
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  position:
+                    type: object
+                  limits:
+                    type: object
+                  violations:
+                    type: array
+                    items:
+                      type: string
+
+  /stage/jog:
+    post:
+      tags:
+        - Stage Control
+      summary: Jog stage (relative movement)
+      description: Move stage by a relative amount from current position
+      operationId: jogStage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dx
+                - dy
+              properties:
+                dx:
+                  type: number
+                  description: Relative X movement in mm
+                dy:
+                  type: number
+                  description: Relative Y movement in mm
+                stage_id:
+                  type: string
+                speed:
+                  type: number
+      responses:
+        '200':
+          description: Jog completed
+        '400':
+          description: Resulting position out of range
+
+  /stage/set-motion-params:
+    post:
+      tags:
+        - Stage Control
+      summary: Set motion parameters
+      description: |
+        Set speed and acceleration for stage movement.
+        Units depend on stage type (mm/min for Marlin, device units for Kinesis).
+      operationId: setStageMotionParams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stage_id:
+                  type: string
+                speed:
+                  type: number
+                  description: Movement speed (units depend on stage type)
+                acceleration:
+                  type: number
+                  description: Acceleration (units depend on stage type)
+      responses:
+        '200':
+          description: Motion parameters updated
+        '400':
+          description: Invalid parameters
+
+  # ==================== SECTION 4: Detector Control ====================
+  /detectors:
+    get:
+      tags:
+        - Detector Control
+      summary: List detectors
+      description: Get list of all configured detectors with their status
+      operationId: listDetectors
+      responses:
+        '200':
+          description: Detector list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detectors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        alias:
+                          type: string
+                        serial:
+                          type: string
+                        type:
+                          type: string
+                        active:
+                          type: boolean
+                        connected:
+                          type: boolean
+                        streaming:
+                          type: boolean
+                        last_frame_time:
+                          type: string
+
+  /detectors/stream/start:
+    post:
+      tags:
+        - Detector Control
+      summary: Start detector streaming (bundle)
+      description: |
+        Start streaming for ALL active detectors simultaneously (bundle operation).
+        All detectors receive the same parameters. Cannot control detectors individually.
+      operationId: startDetectorStream
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                integration_time:
+                  type: number
+                  description: Integration time in seconds (applied to all detectors)
+                  example: 1.0
+                frame_rate:
+                  type: number
+                  description: Target frame rate in Hz
+                  example: 10
+      responses:
+        '200':
+          description: Streaming started for all active detectors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  streaming_detectors:
+                    type: array
+                    items:
+                      type: string
+                    example: ["MiniPIX G08-W0299", "Advacam Timepix3"]
+                  websocket_channel:
+                    type: string
+                    example: "ws://server:8000/api/v1/ws/detector_stream"
+        '409':
+          description: Detectors not initialized or already streaming
+
+  /detectors/stream/stop:
+    post:
+      tags:
+        - Detector Control
+      summary: Stop detector streaming (bundle)
+      description: |
+        Stop streaming for ALL active detectors (bundle operation).
+        Cannot stop individual detectors.
+      operationId: stopDetectorStream
+      responses:
+        '200':
+          description: Streaming stopped for all detectors
+
+  /detectors/capture:
+    post:
+      tags:
+        - Detector Control
+      summary: Capture frames (bundle)
+      description: |
+        Capture specified number of frames from ALL active detectors simultaneously.
+        All detectors receive the same parameters and start/stop together.
+        Returns dictionary with detector aliases as keys.
+      operationId: captureDetectorFrames
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - frames
+              properties:
+                frames:
+                  type: integer
+                  description: Number of frames to capture (applied to all detectors)
+                  example: 10
+                integration_time:
+                  type: number
+                  description: Integration time per frame in seconds
+                  example: 1.0
+                save:
+                  type: boolean
+                  default: false
+                  description: Save frames to disk
+                filename_prefix:
+                  type: string
+                  description: Filename prefix (if save=true)
+      responses:
+        '200':
+          description: Frames captured successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  frames_captured:
+                    type: integer
+                  data:
+                    type: object
+                    description: Dictionary with detector aliases as keys, numpy arrays as values
+                    additionalProperties:
+                      type: object
+                      properties:
+                        shape:
+                          type: array
+                          items:
+                            type: integer
+                        dtype:
+                          type: string
+                        data:
+                          type: string
+                          description: Base64-encoded numpy array
+                    example:
+                      "MiniPIX G08-W0299":
+                        shape: [10, 256, 256]
+                        dtype: "uint16"
+                        data: "base64_encoded_data..."
+                      "Advacam Timepix3":
+                        shape: [10, 512, 512]
+                        dtype: "uint16"
+                        data: "base64_encoded_data..."
+                  duration_seconds:
+                    type: number
+                  timestamp:
+                    type: string
+        '409':
+          description: Detectors not initialized or busy
+
+  /detectors/{alias}/configure:
+    post:
+      tags:
+        - Detector Control
+      summary: Configure individual detector (placeholder)
+      description: |
+        Configure individual detector parameters. This is a placeholder for future
+        per-detector configuration needs.
+      operationId: configureDetector
+      parameters:
+        - name: alias
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Detector configured
+        '501':
+          description: Not implemented in v1.0
+
+  # ==================== SECTION 5: Images, Zones & Points ====================
+  /images/upload:
+    post:
+      tags:
+        - Images, Zones & Points
+      summary: Upload sample image
+      description: |
+        Upload an image of the sample holder for zone and point definition.
+        Image is stored with session data and encoded as base64 in session JSON.
+      operationId: uploadImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file (JPEG, PNG, etc.)
+                metadata:
+                  type: object
+                  description: Optional metadata (sample ID, operator, etc.)
+      responses:
+        '200':
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  image_id:
+                    type: string
+                    example: "img_20260128_124821"
+                  filename:
+                    type: string
+                  size_bytes:
+                    type: integer
+                  dimensions:
+                    type: object
+                    properties:
+                      width:
+                        type: integer
+                      height:
+                        type: integer
+                  timestamp:
+                    type: string
+
+  /images/{image_id}/calibrate:
+    post:
+      tags:
+        - Images, Zones & Points
+      summary: Calibrate pixel-to-mm conversion
+      description: |
+        Calibrate the pixel-to-mm ratio using reference points on the image.
+        This enables conversion from pixel coordinates to stage coordinates (mm).
+      operationId: calibrateImage
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - pixel_to_mm_ratio
+                - reference_point_pixels
+                - reference_point_mm
+              properties:
+                pixel_to_mm_ratio:
+                  type: number
+                  description: Pixels per millimeter conversion factor
+                  example: 10.5
+                reference_point_pixels:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    y:
+                      type: integer
+                  example: {"x": 960, "y": 540}
+                reference_point_mm:
+                  type: object
+                  properties:
+                    x:
+                      type: number
+                    y:
+                      type: number
+                  example: {"x": 0.0, "y": 0.0}
+      responses:
+        '200':
+          description: Calibration saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  calibration:
+                    type: object
+        '404':
+          description: Image not found
+
+  /images/{image_id}/zones/define:
+    post:
+      tags:
+        - Images, Zones & Points
+      summary: Define measurement zones
+      description: |
+        Define zones (circles or rectangles) on the image in pixel coordinates.
+        These zones are used to generate measurement points via farthest-point sampling.
+      operationId: defineZones
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                include:
+                  type: object
+                  description: Inclusion zone (single)
+                  properties:
+                    type:
+                      type: string
+                      enum: [circle, rectangle]
+                    center:
+                      type: object
+                      properties:
+                        x:
+                          type: integer
+                        y:
+                          type: integer
+                    radius:
+                      type: integer
+                      description: For circle type
+                    width:
+                      type: integer
+                      description: For rectangle type
+                    height:
+                      type: integer
+                      description: For rectangle type
+                exclude:
+                  type: array
+                  description: Exclusion zones (multiple)
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      center:
+                        type: object
+                      radius:
+                        type: integer
+              example:
+                include:
+                  type: "circle"
+                  center: {"x": 960, "y": 540}
+                  radius: 400
+                exclude:
+                  - type: "circle"
+                    center: {"x": 960, "y": 540}
+                    radius: 50
+      responses:
+        '200':
+          description: Zones defined successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  zones:
+                    type: object
+
+  /images/{image_id}/points/generate:
+    post:
+      tags:
+        - Images, Zones & Points
+      summary: Generate measurement points from zones
+      description: |
+        Generate measurement points within defined zones using farthest-point sampling algorithm.
+        Points are in pixel coordinates and converted to mm using calibration.
+      operationId: generatePoints
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - num_points
+              properties:
+                num_points:
+                  type: integer
+                  description: Number of points to generate
+                  example: 20
+                algorithm:
+                  type: string
+                  enum: [farthest_point]
+                  default: farthest_point
+      responses:
+        '200':
+          description: Points generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  points_generated:
+                    type: integer
+                  points:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        pixel_coords:
+                          type: object
+                        mm_coords:
+                          type: object
+                        type:
+                          type: string
+                          example: "generated"
+        '400':
+          description: Zones not defined or calibration missing
+
+  /images/{image_id}/points/add:
+    post:
+      tags:
+        - Images, Zones & Points
+      summary: Add manual measurement point
+      description: Add a manually specified point in pixel coordinates
+      operationId: addManualPoint
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - x
+                - y
+              properties:
+                x:
+                  type: integer
+                  description: X coordinate in pixels
+                y:
+                  type: integer
+                  description: Y coordinate in pixels
+      responses:
+        '200':
+          description: Point added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  point:
+                    type: object
+                    properties:
+                      index:
+                        type: integer
+                      pixel_coords:
+                        type: object
+                      mm_coords:
+                        type: object
+                      type:
+                        type: string
+                        example: "manual"
+
+  /images/{image_id}/points/{point_id}:
+    delete:
+      tags:
+        - Images, Zones & Points
+      summary: Delete measurement point
+      description: Remove a specific point from the image
+      operationId: deletePoint
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: point_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Point deleted successfully
+        '404':
+          description: Point not found
+
+  /images/{image_id}:
+    get:
+      tags:
+        - Images, Zones & Points
+      summary: Get image with zones and points
+      description: |
+        Retrieve full image data including zones, points, and calibration.
+        Image is returned as base64-encoded data.
+      operationId: getImage
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Image data retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  image_id:
+                    type: string
+                  image_base64:
+                    type: string
+                    description: Base64-encoded image data
+                  dimensions:
+                    type: object
+                  calibration:
+                    type: object
+                  zones:
+                    type: object
+                  points:
+                    type: array
+                  metadata:
+                    type: object
+        '404':
+          description: Image not found
+
+  /images/{image_id}/points:
+    get:
+      tags:
+        - Images, Zones & Points
+      summary: Get measurement points list
+      description: Get list of all points for an image
+      operationId: getImagePoints
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Points list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  image_id:
+                    type: string
+                  total_points:
+                    type: integer
+                  points:
+                    type: array
+                    items:
+                      type: object
+
+  # ==================== SECTION 6: Measurements ====================
+  /measurements/start:
+    post:
+      tags:
+        - Measurements
+      summary: Start measurement sequence
+      description: |
+        Start automated measurement sequence using coordinates (mm) from image points.
+        Creates session JSON file containing image, zones, points, calibration, and parameters.
+        Session file is uploaded to Matador cloud upon completion.
+      operationId: startMeasurement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - image_id
+                - measurement_name
+                - detector_params
+              properties:
+                image_id:
+                  type: string
+                  description: Image ID containing points and calibration
+                measurement_name:
+                  type: string
+                  example: "sample_P1_scan"
+                measurement_type:
+                  type: string
+                  enum: [zone, manual]
+                  default: zone
+                detector_params:
+                  type: object
+                  required:
+                    - frames
+                    - integration_time
+                  properties:
+                    frames:
+                      type: integer
+                      example: 10
+                    integration_time:
+                      type: number
+                      example: 1.0
+                stage_id:
+                  type: string
+                  description: Stage to use (for multi-stage setups)
+                metadata:
+                  type: object
+                  description: Additional metadata (sample_id, operator, etc.)
+      responses:
+        '200':
+          description: Measurement started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  measurement_id:
+                    type: string
+                    example: "meas_20260128_124930_abc123"
+                  total_points:
+                    type: integer
+                  estimated_duration_seconds:
+                    type: number
+                  websocket_channel:
+                    type: string
+                    example: "ws://server:8000/api/v1/ws/measurement_progress"
+                  timestamp:
+                    type: string
+        '400':
+          description: Image not found or no points defined
+        '409':
+          description: Measurement already active
+
+  /measurements/pause:
+    post:
+      tags:
+        - Measurements
+      summary: Pause active measurement
+      description: |
+        Pause the current measurement. Completes current point before pausing.
+        Maintains persistent state for resume.
+      operationId: pauseMeasurement
+      responses:
+        '200':
+          description: Measurement paused
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  measurement_id:
+                    type: string
+                  current_point:
+                    type: integer
+                  timestamp:
+                    type: string
+        '404':
+          description: No active measurement
+
+  /measurements/resume:
+    post:
+      tags:
+        - Measurements
+      summary: Resume paused measurement
+      description: Resume a paused measurement from current point
+      operationId: resumeMeasurement
+      responses:
+        '200':
+          description: Measurement resumed
+        '404':
+          description: No paused measurement
+
+  /measurements/stop:
+    post:
+      tags:
+        - Measurements
+      summary: Stop active measurement
+      description: |
+        Stop the current measurement. Completes current point before stopping.
+        Session file is saved with partial results.
+      operationId: stopMeasurement
+      responses:
+        '200':
+          description: Measurement stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  measurement_id:
+                    type: string
+                  completed_points:
+                    type: integer
+                  total_points:
+                    type: integer
+                  timestamp:
+                    type: string
+        '404':
+          description: No active measurement
+
+  /measurements/skip-point:
+    post:
+      tags:
+        - Measurements
+      summary: Skip current measurement point
+      description: |
+        Skip the current point and move to the next. Skipped points are recorded
+        in session file.
+      operationId: skipMeasurementPoint
+      responses:
+        '200':
+          description: Point skipped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  skipped_point:
+                    type: integer
+                  next_point:
+                    type: integer
+        '404':
+          description: No active measurement
+
+  /measurements/status:
+    get:
+      tags:
+        - Measurements
+      summary: Get measurement status
+      description: Get real-time status of active measurement
+      operationId: getMeasurementStatus
+      responses:
+        '200':
+          description: Measurement status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active:
+                    type: boolean
+                  measurement_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [running, paused, completed, stopped, error]
+                  current_point:
+                    type: integer
+                  total_points:
+                    type: integer
+                  completed_points:
+                    type: integer
+                  skipped_points:
+                    type: array
+                    items:
+                      type: integer
+                  progress_percent:
+                    type: number
+                  elapsed_seconds:
+                    type: number
+                  estimated_remaining_seconds:
+                    type: number
+                  current_detector_frame:
+                    type: integer
+                  total_detector_frames:
+                    type: integer
+                  timestamp:
+                    type: string
+
+  /measurements/{measurement_id}:
+    get:
+      tags:
+        - Measurements
+      summary: Get measurement details
+      description: Get detailed information about a specific measurement
+      operationId: getMeasurementDetails
+      parameters:
+        - name: measurement_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Measurement details retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  measurement_id:
+                    type: string
+                  measurement_name:
+                    type: string
+                  status:
+                    type: string
+                  start_time:
+                    type: string
+                  end_time:
+                    type: string
+                  total_points:
+                    type: integer
+                  completed_points:
+                    type: integer
+                  skipped_points:
+                    type: array
+                  detector_params:
+                    type: object
+                  files:
+                    type: array
+                    items:
+                      type: string
+                  metadata:
+                    type: object
+        '404':
+          description: Measurement not found
+
+  /measurements:
+    get:
+      tags:
+        - Measurements
+      summary: List measurements
+      description: Get list of all measurements with optional filtering
+      operationId: listMeasurements
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [running, paused, completed, stopped, error]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Measurement list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_count:
+                    type: integer
+                  measurements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        measurement_id:
+                          type: string
+                        measurement_name:
+                          type: string
+                        status:
+                          type: string
+                        start_time:
+                          type: string
+                        completed_points:
+                          type: integer
+                        total_points:
+                          type: integer
+
+  # ==================== SECTION 7: File Management ====================
+  /files/measurements:
+    get:
+      tags:
+        - File Management
+      summary: List measurement files
+      description: List all measurement files in configured directory
+      operationId: listMeasurementFiles
+      parameters:
+        - name: folder
+          in: query
+          schema:
+            type: string
+          description: Optional folder path (uses config default if not provided)
+        - name: pattern
+          in: query
+          schema:
+            type: string
+          description: File pattern filter (e.g., "*.txt", "*.json")
+        - name: recursive
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: measurement_id
+          in: query
+          schema:
+            type: string
+          description: Filter by specific measurement
+      responses:
+        '200':
+          description: File list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folder:
+                    type: string
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        path:
+                          type: string
+                        size_bytes:
+                          type: integer
+                        created:
+                          type: string
+                        type:
+                          type: string
+                          enum: [detector_data, session_file, technical_meta]
+                        detector_alias:
+                          type: string
+                          description: For detector_data type
+                  total_count:
+                    type: integer
+                  total_size_bytes:
+                    type: integer
+
+  /files/download:
+    get:
+      tags:
+        - File Management
+      summary: Download a file
+      description: Download a specific measurement file
+      operationId: downloadFile
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Full file path
+      responses:
+        '200':
+          description: File download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
+        '403':
+          description: Access denied
+
+  /files/session/{measurement_id}:
+    get:
+      tags:
+        - File Management
+      summary: Get session JSON file
+      description: |
+        Get the session JSON file containing image (base64), zones, points, calibration,
+        measurement parameters, and results. This file is uploaded to Matador cloud.
+      operationId: getSessionFile
+      parameters:
+        - name: measurement_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session file retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  measurement_id:
+                    type: string
+                  measurement_name:
+                    type: string
+                  measurement_type:
+                    type: string
+                  start_time:
+                    type: string
+                  end_time:
+                    type: string
+                  total_time_seconds:
+                    type: number
+                  image_base64:
+                    type: string
+                    description: Base64-encoded image
+                  image_id:
+                    type: string
+                  calibration:
+                    type: object
+                    properties:
+                      pixel_to_mm_ratio:
+                        type: number
+                      reference_point_pixels:
+                        type: object
+                      reference_point_mm:
+                        type: object
+                  zones:
+                    type: object
+                  points:
+                    type: array
+                  coordinates:
+                    type: array
+                    description: Measurement coordinates in mm
+                    items:
+                      type: object
+                      properties:
+                        x:
+                          type: number
+                        y:
+                          type: number
+                  measurement_points:
+                    type: array
+                    description: Measurement execution details per point
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        coordinates:
+                          type: object
+                        completed:
+                          type: boolean
+                        files:
+                          type: array
+                          items:
+                            type: string
+                  skipped_points:
+                    type: array
+                    items:
+                      type: integer
+                  detector_params:
+                    type: object
+                  stage_config:
+                    type: object
+                  poni_files:
+                    type: object
+                    description: PONI files used for each detector
+                  metadata:
+                    type: object
+                  CALIBRATION_GROUP_HASH:
+                    type: string
+                    description: Unique hash for calibration group
+        '404':
+          description: Session file not found
+
+  /files/upload-to-cloud:
+    post:
+      tags:
+        - File Management
+      summary: Upload measurement to cloud (Matador)
+      description: |
+        Upload measurement data to Matador cloud. Includes session JSON, detector data files,
+        and technical_meta files. Implementation details TBD.
+      operationId: uploadToCloud
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - measurement_id
+              properties:
+                measurement_id:
+                  type: string
+                cloud_endpoint:
+                  type: string
+                  description: Optional cloud endpoint (uses config default if not provided)
+                  example: "https://matador.cloud/api/v1/upload"
+                include_raw_files:
+                  type: boolean
+                  default: true
+                  description: Include raw detector data files (.txt)
+                include_technical_meta:
+                  type: boolean
+                  default: true
+                  description: Include technical_meta_*.json files
+      responses:
+        '200':
+          description: Upload completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  cloud_measurement_id:
+                    type: string
+                    example: "matador_xyz789abc"
+                  upload_time_seconds:
+                    type: number
+                  uploaded_files:
+                    type: array
+                    items:
+                      type: string
+                  uploaded_files_count:
+                    type: integer
+                  total_size_bytes:
+                    type: integer
+                  timestamp:
+                    type: string
+        '404':
+          description: Measurement not found
+        '500':
+          description: Upload failed
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time

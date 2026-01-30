@@ -106,6 +106,7 @@ def perform_azimuthal_integration(
     calc_cake_stats=False,
     angles=None,
     poni_dir: str = None,
+    error_model=None,
 ):
     """
     Perform azimuthal integration on a single row of a DataFrame.
@@ -167,14 +168,19 @@ def perform_azimuthal_integration(
     :param angles: List of angle ranges for integration in "rotating_angles" \
     mode. Defaults to None.
     :type angles: list of tuples or None
+    :param error_model: Error model for pyFAI integration. Common values are \
+    "poisson" or "azimuthal". If None, pyFAI uses its default. Defaults to None.
+    :type error_model: str or None
 
     :returns:
         - **numpy.ndarray**: The array of radial q values (momentum transfer)\
             resulting from the integration.
         - **numpy.ndarray**: The intensity values resulting from the\
             integration.
-        - **numpy.ndarray, optional**: The array of azimuthal angles (radians)\
-            for 2D integration, returned only if mode is '2D'.
+        - **numpy.ndarray or None**: The sigma (uncertainty/error) values for \
+            1D and sigma_clip modes. None if error_model is not specified or \
+            unavailable. For 2D mode, returns azimuthal angles instead.
+        - **float**: The calculated sample-to-detector distance.
     """
 
     interpolation_q_range = row.get("interpolation_q_range")
@@ -260,13 +266,16 @@ def perform_azimuthal_integration(
             radial_range=interpolation_q_range,
             azimuth_range=azimuthal_range,
             mask=mask,
+            error_model=error_model,
         )
-        # Minimal return signature for tests: radial, intensity, dist
+        # Extract radial, intensity, and sigma from result
         if isinstance(result, tuple):
             radial, intensity = result[0], result[1]
+            sigma = result[2] if len(result) > 2 else None
         else:
             radial, intensity = result.radial, result.intensity
-        return (radial, intensity, ai_cached.dist)
+            sigma = getattr(result, 'sigma', None)
+        return (radial, intensity, sigma, ai_cached.dist)
     elif mode == "2D":
         result = ai_cached.integrate2d(
             data,
@@ -275,6 +284,7 @@ def perform_azimuthal_integration(
             radial_range=interpolation_q_range,
             azimuth_range=azimuthal_range,
             mask=mask,
+            error_model=error_model,
         )
         if isinstance(result, tuple):
             intensity, radial, azimuthal = result[0], result[1], result[2]
@@ -316,9 +326,11 @@ def perform_azimuthal_integration(
             radial_range=interpolation_q_range,
             azimuth_range=azimuthal_range,
             mask=mask,
+            error_model=error_model,
         )
-        # Minimal return signature similar to 1D
-        return (result.radial, result.intensity, ai_cached.dist)
+        # Extract sigma if available
+        sigma = getattr(result, 'sigma', None)
+        return (result.radial, result.intensity, sigma, ai_cached.dist)
     elif mode == "rotating_angles":
         results = []
         for start_angle, end_angle in angles:

@@ -92,6 +92,9 @@ class AzimuthalIntegration(TransformerMixin):
     :type q_range_column: str
     :param angles: List of angle ranges for integration. Defaults to None.
     :type angles: List[Tuple[int]], optional
+    :param error_model: Error model for pyFAI integration. Common values are \
+    "poisson" or "azimuthal". If None, pyFAI uses its default. Defaults to None.
+    :type error_model: str, optional
     """
 
     max_iter: int = 5
@@ -109,6 +112,7 @@ class AzimuthalIntegration(TransformerMixin):
     output_column: str = "radial_profile_data"
     q_range_column: str = "q_range"
     angles: List[Tuple[int]] = None
+    error_model: str = None
 
     def fit(self, x: pd.DataFrame, y=None):
         """
@@ -178,27 +182,42 @@ class AzimuthalIntegration(TransformerMixin):
                 calc_cake_stats=self.calc_cake_stats,
                 angles=self.angles,
                 poni_dir=poni_dir,
+                error_model=self.error_model,
             ),
             axis=1,
         )
 
         if self.integration_mode in ["1D", "sigma_clip"]:
-            # Extract minimal results depending on tuple length
+            # Extract results including sigma (uncertainty) values
             def _map_1d(x):
-                if len(x) >= 3:
+                if len(x) >= 4:
+                    # New format: (radial, intensity, sigma, distance)
                     return pd.Series(
-                        [x[0], x[1], x[2]],
+                        [x[0], x[1], x[2], x[3]],
                         index=[
                             self.q_range_column,
                             self.output_column,
+                            "radial_profile_sigma",
+                            "calculated_distance",
+                        ],
+                    )
+                elif len(x) >= 3:
+                    # Legacy format: (radial, intensity, distance)
+                    return pd.Series(
+                        [x[0], x[1], None, x[2]],
+                        index=[
+                            self.q_range_column,
+                            self.output_column,
+                            "radial_profile_sigma",
                             "calculated_distance",
                         ],
                     )
                 return pd.Series(
-                    [None, None, None],
+                    [None, None, None, None],
                     index=[
                         self.q_range_column,
                         self.output_column,
+                        "radial_profile_sigma",
                         "calculated_distance",
                     ],
                 )
