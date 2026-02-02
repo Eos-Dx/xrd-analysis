@@ -133,9 +133,13 @@ class MainWindowBasic(QMainWindow):
             "Capture from Camera", self, triggered=self.capture_from_camera
         )
         # Edit config dialog
-        self.edit_config_act = QAction("Edit Config…", self, triggered=self.edit_config)
+        self.edit_config_act = QAction("Edit Setup Config…", self, triggered=self.edit_config)
+        # Edit global settings
+        self.edit_global_act = QAction("Edit Global Settings…", self, triggered=self.edit_global_settings)
         # Toggle DEV/demo mode
         self.toggle_dev_act = QAction("", self, triggered=self.toggle_dev_mode)
+        # Help - README
+        self.readme_act = QAction("Documentation (README)", self, triggered=self.open_readme)
 
     def create_menus(self):
         file_menu = self.menuBar().addMenu("File")
@@ -143,6 +147,9 @@ class MainWindowBasic(QMainWindow):
         file_menu.addAction(self.capture_camera_act)
         settings_menu = self.menuBar().addMenu("Settings")
         settings_menu.addAction(self.edit_config_act)
+        settings_menu.addAction(self.edit_global_act)
+        settings_menu.addSeparator()
+        settings_menu.addAction(self.readme_act)
 
     def create_tool_bar(self):
         self.toolbar = QToolBar("Tools", self)
@@ -208,7 +215,7 @@ class MainWindowBasic(QMainWindow):
 
     def edit_config(self):
         """
-        Open a JSON editor for the currently active config file (setup or legacy), save and reload config.
+        Open a JSON editor for the currently active setup config file (setup or legacy), save and reload config.
         """
         target_path = getattr(self, "_active_config_path", self._legacy_main_path)
         try:
@@ -218,7 +225,7 @@ class MainWindowBasic(QMainWindow):
             return
 
         dlg = QDialog(self)
-        dlg.setWindowTitle("Edit Config")
+        dlg.setWindowTitle(f"Edit Setup Config - {target_path.name}")
         layout = QVBoxLayout(dlg)
 
         editor = QPlainTextEdit(dlg)
@@ -258,6 +265,84 @@ class MainWindowBasic(QMainWindow):
 
         dlg.resize(600, 400)
         dlg.exec_()
+
+    def edit_global_settings(self):
+        """
+        Open a JSON editor for the global.json file, save and reload config.
+        """
+        target_path = self._global_path
+        try:
+            text = target_path.read_text()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Cannot open global settings:\n{e}")
+            return
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Edit Global Settings - global.json")
+        layout = QVBoxLayout(dlg)
+
+        editor = QPlainTextEdit(dlg)
+        editor.setPlainText(text)
+        layout.addWidget(editor)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel, dlg)
+        layout.addWidget(buttons)
+
+        def on_save():
+            new_text = editor.toPlainText()
+            try:
+                parsed = json.loads(new_text)
+            except Exception as parse_e:
+                QMessageBox.warning(dlg, "JSON Error", f"Invalid JSON:\n{parse_e}")
+                return
+            try:
+                target_path.write_text(json.dumps(parsed, indent=4))
+            except Exception as write_e:
+                QMessageBox.critical(self, "Error", f"Cannot write global settings:\n{write_e}")
+                return
+            # Reload merged config (global + current setup)
+            self.config = self.load_config()
+            self.update_dev_visuals()
+            QMessageBox.information(self, "Settings Saved", "Global settings reloaded.")
+            dlg.accept()
+
+        buttons.accepted.connect(on_save)
+        buttons.rejected.connect(dlg.reject)
+
+        dlg.resize(600, 400)
+        dlg.exec_()
+
+    def open_readme(self):
+        """Open README.md file with system default application."""
+        readme_path = (
+            Path(__file__).resolve().parent.parent.parent / "README.md"
+        )
+        if not readme_path.exists():
+            QMessageBox.warning(
+                self,
+                "README Not Found",
+                f"README file not found at:\n{readme_path}"
+            )
+            return
+        
+        try:
+            import subprocess
+            import sys
+            
+            if sys.platform == 'darwin':  # macOS
+                subprocess.Popen(['open', str(readme_path)])
+            elif sys.platform == 'win32':  # Windows
+                subprocess.Popen(['start', str(readme_path)], shell=True)
+            else:  # Linux
+                subprocess.Popen(['xdg-open', str(readme_path)])
+            logger.info("Opened README", path=str(readme_path))
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Error Opening README",
+                f"Could not open README file:\n{e}\n\nPath: {readme_path}"
+            )
+            logger.error("Failed to open README", error=str(e), path=str(readme_path))
 
     def _prompt_for_setup(self):
         """Prompt user to choose a setup JSON from the setups directory.

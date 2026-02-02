@@ -3,6 +3,7 @@ import os
 import queue
 import re
 import subprocess
+import sys
 import time
 import uuid
 
@@ -1024,17 +1025,61 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
                 self._log_technical_event(f"Failed to launch PyFAI on Windows: {e}")
                 print("❌ Failed to launch PyFai on Windows:", e)
         else:
-            bash_cmd = (
-                f'cd "{folder}" && '
-                f"conda activate {env} && "
-                "pyfai-calib2; exec bash"
-            )
+            # Use conda run instead of conda activate for better compatibility
             try:
-                subprocess.Popen(["bash", "-lc", bash_cmd])
+                # Try to open in a new terminal window (macOS)
+                if sys.platform == 'darwin':
+                    # macOS: Create a temporary shell script and open it with Terminal
+                    # This avoids needing AppleScript permissions
+                    import tempfile
+                    
+                    script_content = f'''#!/bin/bash
+cd "{folder}"
+echo "Starting PyFAI calibration in conda environment: {env}"
+echo "Folder: {folder}"
+echo ""
+conda run -n {env} pyfai-calib2
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "Error: Failed to launch PyFAI. Check that:"
+    echo "  1. Conda environment '{env}' exists (run: conda env list)"
+    echo "  2. pyfai-calib2 is installed (run: conda run -n {env} which pyfai-calib2)"
+    echo ""
+    echo "Press any key to close..."
+    read -n 1
+fi
+'''
+                    
+                    # Create temporary script file
+                    with tempfile.NamedTemporaryFile(mode='w', suffix='.command', delete=False) as f:
+                        f.write(script_content)
+                        script_path = f.name
+                    
+                    # Make it executable
+                    import os as os_module
+                    os_module.chmod(script_path, 0o755)
+                    
+                    # Open with Terminal using 'open' command (doesn't require permissions)
+                    subprocess.Popen(['open', '-a', 'Terminal', script_path])
+                    self._log_technical_event(f"PyFAI calibration script created: {script_path}")
+                else:
+                    # Linux: try common terminal emulators
+                    bash_cmd = (
+                        f'cd "{folder}" && '
+                        f'echo "Starting PyFAI in environment: {env}" && '
+                        f'conda run -n {env} pyfai-calib2 || '
+                        f'(echo "\\nError: Failed to launch PyFAI"; read -p "Press Enter to close...")'
+                    )
+                    for terminal in ['gnome-terminal', 'konsole', 'xterm']:
+                        try:
+                            subprocess.Popen([terminal, '--', 'bash', '-c', bash_cmd])
+                            break
+                        except FileNotFoundError:
+                            continue
                 self._log_technical_event(
-                    "PyFAI calibration launched in new bash window"
+                    "PyFAI calibration launched in new terminal window"
                 )
-                print("▶️ Launched PyFai in new bash window.")
+                print("▶️ Launched PyFai in new terminal window.")
             except Exception as e:
                 self._log_technical_event(f"Failed to launch PyFAI on Unix: {e}")
                 print("❌ Failed to launch PyFai on Unix:", e)

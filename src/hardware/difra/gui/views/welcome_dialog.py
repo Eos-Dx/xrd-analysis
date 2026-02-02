@@ -44,21 +44,10 @@ class WelcomeDialog(QDialog):
 
         # QSettings
         self.settings = QSettings("EOSDx", "DiFRA")
-        last_setup = self.settings.value("lastSetup", type=str)
-        default_setup = None
-        try:
-            if global_path.exists():
-                import json
 
-                g = json.loads(global_path.read_text())
-                default_setup = g.get("default_setup")
-        except Exception:
-            default_setup = None
-
-        # Collect setup names
-        self._setup_names = [p.stem for p in sorted(self.setups_dir.glob("*.json"))]
-        # Preferred preselection (not strictly needed since each setup is a button)
-        self._preferred = last_setup or default_setup
+        # Only show Xena and Moli setups - no default, user must choose
+        self._setup_names = ["Ulster (Xena)", "Ulster (Moli)"]
+        self._preferred = None  # No default selection
 
         # --- Dialog-wide colorful style ---
         self.setStyleSheet(
@@ -147,26 +136,18 @@ class WelcomeDialog(QDialog):
         inner_layout = QVBoxLayout(inner)
         inner_layout.setSpacing(8)
 
-        if not self._setup_names:
-            inner_layout.addWidget(
-                QLabel("No setups found under resources/config/setups/", inner)
-            )
-        else:
-            for name in self._setup_names:
-                btn = QPushButton(name, inner)
-                btn.setProperty("class", "SetupButton")
-                btn.setObjectName(f"btn_{name}")
-                btn.setCursor(Qt.PointingHandCursor)
-                btn.setMinimumHeight(36)
-                btn.setStyleSheet("QPushButton { margin: 2px 8px; }")
-                # Highlight preferred default
-                if self._preferred and name == self._preferred:
-                    btn.setText(f"{name} (default)")
-                btn.setProperty("cssClass", "SetupButton")
-                btn.setAccessibleName("SetupButton")
-                btn.setAccessibleDescription(f"Select setup {name}")
-                btn.clicked.connect(lambda _c=False, n=name: self._choose_setup(n))
-                inner_layout.addWidget(btn)
+        for name in self._setup_names:
+            btn = QPushButton(name, inner)
+            btn.setProperty("class", "SetupButton")
+            btn.setObjectName(f"btn_{name}")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setMinimumHeight(36)
+            btn.setStyleSheet("QPushButton { margin: 2px 8px; }")
+            btn.setProperty("cssClass", "SetupButton")
+            btn.setAccessibleName("SetupButton")
+            btn.setAccessibleDescription(f"Select setup {name}")
+            btn.clicked.connect(lambda _c=False, n=name: self._choose_setup(n))
+            inner_layout.addWidget(btn)
 
         inner_layout.addStretch(1)
         inner.setLayout(inner_layout)

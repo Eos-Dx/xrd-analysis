@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM Determine repository root (one level up from this script directory)
+REM Determine repository root (four levels up: bin -> difra -> hardware -> src -> root)
 set SCRIPT_DIR=%~dp0
-for %%I in ("%SCRIPT_DIR%..\..\..") do set REPO_ROOT=%%~fI
+for %%I in ("%SCRIPT_DIR%..\..\..\..") do set REPO_ROOT=%%~fI
 
 set CONFIG_PATH=%REPO_ROOT%\src\hardware\difra\resources\config\global.json
 

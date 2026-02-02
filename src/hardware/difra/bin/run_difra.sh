@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Determine repository root from this script directory (3 levels up: bin -> hardware -> src -> root)
+# Determine repository root (four levels up: bin -> difra -> hardware -> src -> root)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 CONFIG_PATH="$REPO_ROOT/src/hardware/difra/resources/config/global.json"
 
@@ -19,9 +19,8 @@ if ! command -v conda &> /dev/null; then
   exit 1
 fi
 
-echo "Starting D2XC software..."
-echo "Using conda environment: $CONDA_ENV"
+echo "[INFO] Starting DiFRA GUI with environment: $CONDA_ENV"
 echo "Repository root: $REPO_ROOT"
 
-# Launch the D2XC GUI using the specified conda environment
+# Launch the GUI using the specified conda environment
 conda run -n "$CONDA_ENV" python "$REPO_ROOT/src/hardware/difra/gui/main_app.py" "$@"
