@@ -256,6 +256,7 @@ def generate_from_aux_table(
     detector_config: List[Dict],
     active_detector_ids: List[str],
     distance_cm: float,
+    poni_distance_cm: Optional[float] = None,
     container_id: Optional[str] = None
 ) -> Tuple[str, str]:
     """Generate technical container from DIFRA Aux table selections.
@@ -274,7 +275,8 @@ def generate_from_aux_table(
         pony_data: Dict mapping alias to (pony_content, pony_filename)
         detector_config: List of detector config dicts from DIFRA config
         active_detector_ids: List of active detector IDs
-        distance_cm: Sample-detector distance in cm
+        distance_cm: User-defined sample-detector distance in cm
+        poni_distance_cm: Distance from PONI file in cm (optional)
         container_id: Optional container ID (generated if not provided)
     
     Returns:
@@ -282,6 +284,13 @@ def generate_from_aux_table(
     """
     # Create container
     container_id, file_path = create_technical_container(folder, distance_cm, container_id)
+    
+    # Store poni_distance_cm in root attributes if provided
+    if poni_distance_cm is not None:
+        with io.open_h5_append(file_path) as f:
+            f.attrs["poni_distance_cm"] = poni_distance_cm
+            # Check if distances match within tolerance (1mm)
+            f.attrs["distance_verified"] = abs(distance_cm - poni_distance_cm) < 0.1
     
     # Write detector configuration
     write_detector_config(file_path, detector_config, active_detector_ids)

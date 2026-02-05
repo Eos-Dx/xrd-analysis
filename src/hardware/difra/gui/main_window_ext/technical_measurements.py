@@ -1900,29 +1900,50 @@ fi
             if res != QMessageBox.Yes:
                 return
 
-        # Determine distance_cm from PONI content (meters -> cm)
+        # Determine distance from PONI content (meters -> cm)
         distances_m = []
+        poni_distance_cm = None  # Real distance from PONI file
+        
         for content, _fname in pony_data.values():
             d = self._parse_poni_distance_m(content)
             if d is not None:
                 distances_m.append(d)
 
-        distance_cm = None
+        # Check if all PONI files have consistent distance
         if distances_m:
             ref = distances_m[0]
+            poni_distance_cm = ref * 100.0  # Convert meters to cm
+            
             if any(abs(d - ref) > 1e-4 for d in distances_m[1:]):
                 QMessageBox.warning(
                     self,
-                    "Distance Mismatch",
-                    "PONI files report different distances. Please enter the correct distance manually.",
+                    "Distance Mismatch Between PONIs",
+                    f"Different distances detected in PONI files:\n"
+                    + "\n".join([f"  {d*100:.2f} cm" for d in distances_m[:5]])
+                    + ("\n  ..." if len(distances_m) > 5 else "")
+                    + "\n\nPlease verify and enter the correct distance.",
                 )
-                distance_cm = self._prompt_distance_cm(default_cm=ref * 100.0)
+        
+        # Always prompt user to confirm/override distance
+        if poni_distance_cm is not None:
+            # Show dialog with PONI distance for user confirmation
+            res = QMessageBox.question(
+                self,
+                "Confirm Distance from PONI",
+                f"Distance from PONI file: {poni_distance_cm:.2f} cm\n\n"
+                f"Use this distance, or enter a different value?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
+            if res == QMessageBox.Yes:
+                user_distance_cm = poni_distance_cm
             else:
-                distance_cm = ref * 100.0
+                user_distance_cm = self._prompt_distance_cm(default_cm=poni_distance_cm)
         else:
-            distance_cm = self._prompt_distance_cm()
+            # No PONI distance available, must enter manually
+            user_distance_cm = self._prompt_distance_cm()
 
-        if distance_cm is None:
+        if user_distance_cm is None:
             return
 
         # Generate HDF5 container
@@ -1933,7 +1954,8 @@ fi
                 pony_data=pony_data,
                 detector_config=self.config.get("detectors", []),
                 active_detector_ids=self._get_active_detector_ids(),
-                distance_cm=distance_cm,
+                distance_cm=user_distance_cm,
+                poni_distance_cm=poni_distance_cm,  # Real distance from PONI file
             )
         except Exception as e:
             QMessageBox.critical(
