@@ -1234,6 +1234,45 @@ fi
             if d.get("id") in ids
         ]
 
+    def _get_active_detector_ids(self):
+        """Return active detector IDs from config (main.json), honoring DEV/dev_active_detectors."""
+        dev_mode = self.config.get("DEV", False)
+        return (
+            self.config.get("dev_active_detectors", [])
+            if dev_mode
+            else self.config.get("active_detectors", [])
+        )
+
+    def _parse_poni_distance_m(self, poni_text: str):
+        """Parse Distance from PONI text in meters. Returns None if not found/invalid."""
+        if not poni_text:
+            return None
+        try:
+            m = re.search(r"^Distance:\s*([0-9.eE+-]+)", poni_text, flags=re.MULTILINE)
+            return float(m.group(1)) if m else None
+        except Exception:
+            return None
+
+    def _prompt_distance_cm(self, default_cm: float = None):
+        """Prompt user for sample-detector distance in cm. Returns None if canceled."""
+        default_val = 17.0 if default_cm is None else float(default_cm)
+        dist_cm, ok = QInputDialog.getDouble(
+            self,
+            "Sample-Detector Distance",
+            "Enter sample-detector distance (cm):",
+            default_val,
+            0.01,
+            100000.0,
+            3,
+        )
+        return float(dist_cm) if ok else None
+
+    def _normalize_technical_type(self, typ: str) -> str:
+        """Normalize UI type labels to schema technical types."""
+        if typ == "SPECIAL":
+            return "WATER"
+        return typ
+
     def _make_type_combobox(self):
         cb = QComboBox()
         cb.addItem(self.NO_SELECTION_LABEL, None)
@@ -1522,75 +1561,11 @@ fi
             )
             return
         
-        # Generate HDF5 technical container
-        h5_container_id = None
-        h5_file_path = None
-        h5_error = None
-        try:
-            from hardware.difra.data.hdf5 import technical_container
-            
-            # Build aux_measurements dict: {"DARK": {"PRIMARY": "/path/file.npy", ...}, ...}
-            aux_measurements = {}
-            for row in rows:
-                file_item = self.auxTable.item(row, 0)
-                if not file_item:
-                    continue
-                file_path = file_item.data(Qt.UserRole)
-                
-                type_cb = self.auxTable.cellWidget(row, 1)
-                typ = type_cb.currentText() if isinstance(type_cb, QComboBox) else None
-                
-                alias_cb = self.auxTable.cellWidget(row, 2)
-                alias = alias_cb.currentText() if isinstance(alias_cb, QComboBox) else None
-                
-                if typ and alias and typ != self.NO_SELECTION_LABEL and alias != self.NO_SELECTION_LABEL:
-                    aux_measurements.setdefault(typ, {})[alias] = file_path
-            
-            # Build pony_data dict: {"PRIMARY": (content_string, "filename.poni"), ...}
-            pony_data = {}
-            if hasattr(self, "_temp_poni_lab_values") and hasattr(self, "_temp_poni_lab_path"):
-                for alias, content in self._temp_poni_lab_values.items():
-                    poni_path = self._temp_poni_lab_path.get(alias, "")
-                    filename = os.path.basename(poni_path) if poni_path else "unknown.poni"
-                    pony_data[alias] = (content, filename)
-            
-            # Get detector config and active aliases
-            detector_config = getattr(self, "config", {}).get("detectors", {})
-            active_detector_ids = active_aliases if active_aliases else list(unique_aliases)
-            
-            # Distance: extract from config or use placeholder
-            # For now, use a default value; can be enhanced later with user input
-            distance_cm = 2.0  # Default placeholder
-            distance_buttons_config = getattr(self, "config", {}).get("distance_buttons", [])
-            if distance_buttons_config:
-                # Try to extract numeric value from first button config
-                first_button_text = distance_buttons_config[0].get("text", "+2cm")
-                import re
-                match = re.search(r'(\d+)', first_button_text)
-                if match:
-                    distance_cm = float(match.group(1))
-            
-            # Generate HDF5 container
-            h5_container_id, h5_file_path = technical_container.generate_from_aux_table(
-                folder=folder,
-                aux_measurements=aux_measurements,
-                pony_data=pony_data,
-                detector_config=detector_config,
-                active_detector_ids=active_detector_ids,
-                distance_cm=distance_cm
-            )
-            self._log_technical_event(
-                f"HDF5 technical container generated: {os.path.basename(h5_file_path)} (ID: {h5_container_id})"
-            )
-        except Exception as e:
-            h5_error = str(e)
-            self._log_technical_event(f"Warning: HDF5 container generation failed: {e}")
-        finally:
-            # Clean up temporary PONI data variables
-            if hasattr(self, "_temp_poni_lab_path"):
-                delattr(self, "_temp_poni_lab_path")
-            if hasattr(self, "_temp_poni_lab_values"):
-                delattr(self, "_temp_poni_lab_values")
+        # Clean up temporary PONI data variables
+        if hasattr(self, "_temp_poni_lab_path"):
+            delattr(self, "_temp_poni_lab_path")
+        if hasattr(self, "_temp_poni_lab_values"):
+            delattr(self, "_temp_poni_lab_values")
 
         # Summary
         try:
@@ -1608,13 +1583,274 @@ fi
             f"Technical metadata generated: {os.path.basename(out_path)}"
         )
         
-        # Build complete summary including HDF5 info
-        message_parts = [f"JSON saved to:\n{out_path}\n\nSummary:\n{summary}"]
-        if h5_file_path and h5_container_id:
-            message_parts.append(f"\n\nHDF5 container:\n{h5_file_path}\nID: {h5_container_id}")
-        elif h5_error:
-            message_parts.append(f"\n\nHDF5 generation failed:\n{h5_error}")
-        
         QMessageBox.information(
-            self, "Meta/H5 Generated", "".join(message_parts)
+            self, "Meta Generated", f"Saved to:\n{out_path}\n\nSummary:\n{summary}"
+        )
+        
+        # Now generate HDF5 container
+        self.generate_technical_h5()
+
+    # -------------------- Generate Technical HDF5 --------------------
+    def generate_technical_h5(self):
+        from hardware.difra.data.hdf5 import schema_v1, technical_container
+
+        self._log_technical_event("Generating technical HDF5 container...")
+
+        # Validate selection
+        sel = (
+            self.auxTable.selectionModel().selectedRows()
+            if self.auxTable.selectionModel()
+            else []
+        )
+        rows = [idx.row() for idx in sel]
+        if not rows:
+            self._log_technical_event("Error: No rows selected for HDF5 generation")
+            QMessageBox.warning(
+                self, "No Selection", "Select one or more rows in the Aux table."
+            )
+            return
+
+        # Validate folder
+        folder = (self.folderLE.text() or "").strip()
+        if not folder or not os.path.isdir(folder):
+            QMessageBox.warning(self, "Invalid Folder", "Select a valid save folder.")
+            return
+        if not os.access(folder, os.W_OK):
+            QMessageBox.warning(
+                self,
+                "Folder Not Writable",
+                "Selected save folder is not writable. Choose a different folder.",
+            )
+            return
+
+        aux_measurements = {}
+        seen_pairs = set()
+
+        # Get active detector aliases for validation
+        try:
+            active_aliases = self._get_active_detector_aliases()
+        except Exception:
+            active_aliases = []
+
+        for row in rows:
+            file_item = self.auxTable.item(row, 0)
+            if not file_item:
+                continue
+            file_path = file_item.data(Qt.UserRole)
+            if not file_path or not os.path.exists(file_path):
+                QMessageBox.warning(
+                    self, "Missing File", f"Row {row+1}: file path does not exist."
+                )
+                return
+
+            # Type
+            type_cb = self.auxTable.cellWidget(row, 1)
+            if (
+                not isinstance(type_cb, QComboBox)
+                or type_cb.currentText() == self.NO_SELECTION_LABEL
+            ):
+                QMessageBox.warning(
+                    self, "Missing Type", f"Row {row+1}: select measurement type."
+                )
+                return
+            typ_ui = type_cb.currentText()
+            typ = self._normalize_technical_type(typ_ui)
+
+            # Alias (must be selected)
+            cb = self.auxTable.cellWidget(row, 2)
+            if (
+                not isinstance(cb, QComboBox)
+                or cb.currentText() == self.NO_SELECTION_LABEL
+            ):
+                QMessageBox.warning(
+                    self, "Missing Alias", f"Row {row+1}: select an alias."
+                )
+                return
+            alias = cb.currentText()
+
+            if typ not in schema_v1.ALL_TECHNICAL_TYPES:
+                QMessageBox.warning(
+                    self,
+                    "Invalid Type",
+                    f"Type '{typ_ui}' is not supported for HDF5.\n"
+                    f"Supported: {', '.join(schema_v1.ALL_TECHNICAL_TYPES)}",
+                )
+                return
+
+            if typ_ui == "SPECIAL":
+                self._log_technical_event("Mapping type SPECIAL → WATER for HDF5")
+
+            # Ensure unique (type, alias)
+            pair = (typ, alias)
+            if pair in seen_pairs:
+                QMessageBox.warning(
+                    self,
+                    "Duplicate Assignment",
+                    f"Measurement for type '{typ_ui}' and alias '{alias}' is already assigned.",
+                )
+                return
+
+            aux_measurements.setdefault(typ, {})[alias] = file_path
+            seen_pairs.add(pair)
+
+        # Enforce completeness: all REQUIRED measurement types must be present, and for each alias
+        required_types = set(
+            getattr(self, "REQUIRED_TYPE_OPTIONS", None)
+            or ["AGBH", "DARK", "EMPTY", "BACKGROUND"]
+        )
+
+        # 1) Ensure at least one row selected for each required type
+        types_in_meta = {t for t in aux_measurements.keys() if t in required_types}
+        missing_types = sorted(required_types - types_in_meta)
+        if missing_types:
+            QMessageBox.warning(
+                self,
+                "Missing Measurement Types",
+                "The following measurement types are missing from your selection:\n\n"
+                + ", ".join(missing_types)
+                + "\n\nPlease include at least one measurement for each required type before generating HDF5.",
+            )
+            return
+
+        # 2) Ensure per-alias coverage for each required type
+        aliases_in_selection = set()
+        for type_map in aux_measurements.values():
+            if isinstance(type_map, dict):
+                aliases_in_selection.update(type_map.keys())
+        aliases_to_check = active_aliases or sorted(aliases_in_selection)
+
+        missing_pairs = []
+        for t in sorted(required_types):
+            type_map = aux_measurements.get(t, {})
+            for a in aliases_to_check:
+                if a not in type_map:
+                    missing_pairs.append(f"{t} → {a}")
+
+        if missing_pairs:
+            QMessageBox.warning(
+                self,
+                "Incomplete Technical Set",
+                "All measurement types must be provided for each detector alias.\n\nMissing combinations:\n"
+                + "\n".join(missing_pairs),
+            )
+            return
+
+        # Collect PONI data (prefer file selection, fallback to in-memory PONI)
+        pony_data = {}
+        missing_pony = []
+        selected_poni_files = {}
+
+        if aliases_to_check:
+            current_poni_files = getattr(self, "poni_files", {})
+            poni_dialog = PoniFileSelectionDialog(
+                aliases=sorted(aliases_to_check),
+                current_poni_files=current_poni_files,
+                parent=self,
+            )
+
+            if poni_dialog.exec_() == QDialog.Accepted:
+                selected_poni_files = poni_dialog.get_poni_files() or {}
+            else:
+                res = QMessageBox.question(
+                    self,
+                    "PONI Files",
+                    "Use currently loaded PONI values instead of selecting files?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes,
+                )
+                if res != QMessageBox.Yes:
+                    return
+
+        for alias in aliases_to_check:
+            poni_content = None
+            poni_filename = None
+
+            file_path = selected_poni_files.get(alias)
+            if file_path and os.path.exists(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        poni_content = f.read()
+                    poni_filename = os.path.basename(file_path)
+                except Exception as e:
+                    QMessageBox.warning(
+                        self,
+                        "PONI File Read Error",
+                        f"Failed to read PONI file for {alias}:\n{file_path}\n\nError: {e}\n\n"
+                        "Falling back to current PONI values if available.",
+                    )
+
+            if not poni_content:
+                try:
+                    poni_content = (getattr(self, "ponis", {}) or {}).get(alias)
+                    poni_meta = (getattr(self, "poni_files", {}) or {}).get(alias, {})
+                    poni_filename = poni_meta.get("name") or f"{alias}.poni"
+                except Exception:
+                    poni_content = None
+
+            if poni_content:
+                pony_data[alias] = (poni_content, poni_filename or f"{alias}.poni")
+            else:
+                missing_pony.append(alias)
+
+        if missing_pony:
+            res = QMessageBox.question(
+                self,
+                "Missing PONI Data",
+                "No PONI data found for:\n"
+                + ", ".join(missing_pony)
+                + "\n\nContinue without these PONI datasets?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if res != QMessageBox.Yes:
+                return
+
+        # Determine distance_cm from PONI content (meters -> cm)
+        distances_m = []
+        for content, _fname in pony_data.values():
+            d = self._parse_poni_distance_m(content)
+            if d is not None:
+                distances_m.append(d)
+
+        distance_cm = None
+        if distances_m:
+            ref = distances_m[0]
+            if any(abs(d - ref) > 1e-4 for d in distances_m[1:]):
+                QMessageBox.warning(
+                    self,
+                    "Distance Mismatch",
+                    "PONI files report different distances. Please enter the correct distance manually.",
+                )
+                distance_cm = self._prompt_distance_cm(default_cm=ref * 100.0)
+            else:
+                distance_cm = ref * 100.0
+        else:
+            distance_cm = self._prompt_distance_cm()
+
+        if distance_cm is None:
+            return
+
+        # Generate HDF5 container
+        try:
+            container_id, file_path = technical_container.generate_from_aux_table(
+                folder=folder,
+                aux_measurements=aux_measurements,
+                pony_data=pony_data,
+                detector_config=self.config.get("detectors", []),
+                active_detector_ids=self._get_active_detector_ids(),
+                distance_cm=distance_cm,
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "HDF5 Write Error", f"Failed to generate HDF5 container:\n{e}"
+            )
+            return
+
+        self._log_technical_event(
+            f"Technical HDF5 generated: {os.path.basename(file_path)}"
+        )
+        QMessageBox.information(
+            self,
+            "HDF5 Generated",
+            f"Saved to:\n{file_path}\n\nContainer ID:\n{container_id}",
         )
