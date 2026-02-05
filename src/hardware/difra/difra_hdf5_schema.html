@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DIFRA HDF5 Schema</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+            --green: #3fb950;
+            --purple: #a371f7;
+            --orange: #d29922;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .subtitle {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+        
+        .tree {
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+            white-space: pre;
+            line-height: 1.5;
+        }
+        
+        .group { color: var(--accent); }
+        .dataset { color: var(--green); }
+        .attr { color: var(--purple); }
+        .comment { color: var(--text-muted); font-style: italic; }
+        .ref { color: var(--orange); }
+        
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        
+        .ref-table {
+            margin-top: 1.5rem;
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        
+        .ref-table th {
+            text-align: left;
+            padding: 0.5rem;
+            border-bottom: 2px solid var(--border);
+            color: var(--text-muted);
+        }
+        
+        .ref-table td {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+        }
+        
+        .ref-table .from { color: var(--accent); }
+        .ref-table .to { color: var(--green); }
+        .ref-table .via { color: var(--orange); }
+    </style>
+</head>
+<body>
+    <h1>DIFRA HDF5 Session Container Schema</h1>
+    <p class="subtitle">Version 1.0</p>
+    
+    <div class="container">
+        <div class="tree"><span class="group">session_&lt;id&gt;.h5</span>
+│
+├── <span class="attr">@sample_id</span>                              <span class="comment"># Required root attributes</span>
+├── <span class="attr">@session_id</span>
+├── <span class="attr">@creation_timestamp</span>
+├── <span class="attr">@acquisition_date</span>
+├── <span class="attr">@operator_id</span>
+├── <span class="attr">@site_id</span>
+├── <span class="attr">@machine_name</span>
+├── <span class="attr">@beam_energy_keV</span>
+├── <span class="attr">@patient_id</span>                             <span class="comment"># Optional</span>
+│
+├── <span class="group">/technical</span>                              <span class="comment"># Copied from technical.h5</span>
+│   │
+│   ├── <span class="group">/detectors</span>                          <span class="comment"># Detector definitions (referenced by measurements)</span>
+│   │   │
+│   │   ├── <span class="group">/det_primary</span>
+│   │   │   ├── <span class="attr">@detector_id</span>
+│   │   │   ├── <span class="attr">@role</span>
+│   │   │   └── <span class="attr">@bad_pixel_mask</span>             <span class="comment"># Optional</span>
+│   │   │
+│   │   └── <span class="group">/det_secondary</span>
+│   │       └── ...
+│   │
+│   ├── <span class="group">/config</span>
+│   │   ├── <span class="dataset">spatial_arrangement_matrix</span>
+│   │   └── <span class="dataset">detector_ids[]</span>                  <span class="comment"># Ordered list</span>
+│   │
+│   ├── <span class="group">/poni</span>                               <span class="comment"># Geometry (required for measurements)</span>
+│   │   │
+│   │   ├── <span class="dataset">poni_primary</span>
+│   │   │   ├── <span class="ref">@detector_ref</span>               <span class="comment"># → /technical/detectors/*</span>
+│   │   │   ├── <span class="attr">@distance_cm</span>
+│   │   │   ├── <span class="attr">@derived_from</span>
+│   │   │   └── <span class="attr">@operator_confirmed</span>
+│   │   │
+│   │   └── <span class="dataset">poni_secondary</span>
+│   │       └── ...
+│   │
+│   └── <span class="group">/tech_evt_*</span>                         <span class="comment"># Technical measurements</span>
+│       ├── <span class="attr">@technical_type</span>                 <span class="comment"># DARK | EMPTY | BACKGROUND | AGBH | WATER</span>
+│       ├── <span class="attr">@distance_cm</span>
+│       ├── <span class="attr">@timestamp</span>
+│       ├── <span class="ref">@detector_ref</span>                   <span class="comment"># → /technical/detectors/*</span>
+│       └── <span class="dataset">[detector data]</span>
+│
+├── <span class="group">/images</span>
+│   │
+│   ├── <span class="dataset">img_*</span>
+│   │   ├── <span class="attr">@timestamp</span>
+│   │   └── <span class="attr">@image_type</span>
+│   │
+│   ├── <span class="group">/zones</span>
+│   │   │
+│   │   └── <span class="dataset">zone_*</span>
+│   │       ├── <span class="attr">@zone_role</span>                  <span class="comment"># sample_holder (exactly 1) | include | exclude</span>
+│   │       ├── <span class="attr">@shape</span>
+│   │       ├── <span class="attr">@geometry_px</span>
+│   │       └── <span class="attr">@holder_diameter_mm</span>         <span class="comment"># Only for sample_holder</span>
+│   │
+│   └── <span class="dataset">mapping</span>                             <span class="comment"># JSON dataset</span>
+│       ├── sample_holder_zone_id
+│       ├── px_to_mm
+│       ├── orientation
+│       └── version
+│
+├── <span class="group">/measurements</span>                           <span class="comment"># Point-centric (points stored here)</span>
+│   │
+│   └── <span class="group">/pt_*</span>                               <span class="comment"># Point group</span>
+│       ├── <span class="attr">@pixel_coordinates</span>
+│       ├── <span class="attr">@physical_coordinates_mm</span>
+│       ├── <span class="attr">@point_status</span>
+│       ├── <span class="ref">@analytical_measurement_refs[]</span>  <span class="comment"># → /analytical_measurements/ana_*</span>
+│       │
+│       └── <span class="group">/meas_*</span>                         <span class="comment"># Measurement event</span>
+│           ├── <span class="attr">@measurement_counter</span>        <span class="comment"># Global monotonic (shared with analytical)</span>
+│           ├── <span class="attr">@timestamp_start</span>
+│           ├── <span class="attr">@timestamp_end</span>              <span class="comment"># Optional</span>
+│           ├── <span class="attr">@measurement_status</span>
+│           ├── <span class="ref">@poni_ref</span>                   <span class="comment"># → /technical/poni/*</span>
+│           │
+│           └── <span class="group">/det_*</span>                      <span class="comment"># Per-detector acquisition data</span>
+│               ├── <span class="ref">@detector_ref</span>           <span class="comment"># → /technical/detectors/*</span>
+│               ├── <span class="attr">@integration_time_ms</span>    <span class="comment"># Acquisition-specific</span>
+│               ├── <span class="attr">@beam_energy_keV</span>        <span class="comment"># Acquisition-specific</span>
+│               ├── <span class="group">/raw_files</span>              <span class="comment"># TXT, DSC (max compression)</span>
+│               └── <span class="dataset">raw_signal</span>              <span class="comment"># Parsed numeric (medium compression)</span>
+│
+└── <span class="group">/analytical_measurements</span>                <span class="comment"># Flat (not grouped by points)</span>
+    │
+    └── <span class="group">/ana_*</span>
+        ├── <span class="attr">@measurement_counter</span>            <span class="comment"># Shared counter with /measurements</span>
+        ├── <span class="attr">@timestamp_start</span>
+        ├── <span class="attr">@timestamp_end</span>                  <span class="comment"># Optional</span>
+        ├── <span class="attr">@measurement_status</span>
+        ├── <span class="ref">@poni_ref</span>                       <span class="comment"># → /technical/poni/*</span>
+        ├── <span class="attr">@analysis_type</span>                  <span class="comment"># e.g., "attenuation"</span>
+        │
+        └── <span class="group">/det_*</span>
+            ├── <span class="ref">@detector_ref</span>               <span class="comment"># → /technical/detectors/*</span>
+            ├── <span class="attr">@integration_time_ms</span>
+            ├── <span class="attr">@beam_energy_keV</span>
+            ├── <span class="group">/raw_files</span>
+            └── <span class="dataset">raw_signal</span></div>
+    </div>
+    
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background: var(--accent);"></div>
+            <span>Group</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: var(--green);"></div>
+            <span>Dataset</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: var(--purple);"></div>
+            <span>@Attribute</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: var(--orange);"></div>
+            <span>HDF5 Reference</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: var(--text-muted);"></div>
+            <span># Comment</span>
+        </div>
+    </div>
+    
+    <table class="ref-table">
+        <thead>
+            <tr>
+                <th>From</th>
+                <th>To</th>
+                <th>Via</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="from">/measurements/pt_*/meas_*/det_*</td>
+                <td class="to">/technical/detectors/*</td>
+                <td class="via">@detector_ref</td>
+            </tr>
+            <tr>
+                <td class="from">/measurements/pt_*/meas_*</td>
+                <td class="to">/technical/poni/*</td>
+                <td class="via">@poni_ref</td>
+            </tr>
+            <tr>
+                <td class="from">/measurements/pt_*</td>
+                <td class="to">/analytical_measurements/ana_*</td>
+                <td class="via">@analytical_measurement_refs[]</td>
+            </tr>
+            <tr>
+                <td class="from">/analytical_measurements/ana_*/det_*</td>
+                <td class="to">/technical/detectors/*</td>
+                <td class="via">@detector_ref</td>
+            </tr>
+            <tr>
+                <td class="from">/analytical_measurements/ana_*</td>
+                <td class="to">/technical/poni/*</td>
+                <td class="via">@poni_ref</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

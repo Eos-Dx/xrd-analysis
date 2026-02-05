@@ -184,6 +184,46 @@ def _get_technical_imports():
         _TECHNICAL_IMPORTS_AVAILABLE = False
         return False
 
+def _get_technical_temp_folder(config=None):
+    """Get the technical temp folder path with platform-specific defaults.
+    
+    Args:
+        config: Optional config dict from global.json
+    
+    Returns:
+        Path to technical temp folder (created if it doesn't exist)
+    """
+    from pathlib import Path
+    import platform
+    import tempfile
+    
+    # Check config first
+    if config and config.get("technical_temp_folder"):
+        temp_path = Path(config["technical_temp_folder"])
+    else:
+        # Platform-specific defaults
+        system = platform.system()
+        if system == "Darwin":  # macOS
+            temp_path = Path.home() / "dev" / "Data" / "tech_temp"
+        elif system == "Windows":
+            temp_path = Path("C:/dev/Data/tech_temp")
+        else:  # Linux or other
+            temp_path = Path.home() / "dev" / "Data" / "tech_temp"
+    
+    # Create directory if it doesn't exist
+    try:
+        temp_path.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Technical temp folder: {temp_path}")
+        return str(temp_path)
+    except Exception as e:
+        # Fallback to system temp if creation fails
+        logger.warning(f"Failed to create technical temp folder {temp_path}: {e}")
+        fallback = Path(tempfile.gettempdir()) / "difra_technical"
+        fallback.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Using fallback temp folder: {fallback}")
+        return str(fallback)
+
+
 def _get_technical_module(name):
     """Get a technical module by name, with fallback stubs."""
     if _get_technical_imports():
@@ -1946,10 +1986,13 @@ fi
         if user_distance_cm is None:
             return
 
-        # Generate HDF5 container
+        # Get technical temp folder for HDF5 generation
+        tech_temp_folder = _get_technical_temp_folder(self.config if hasattr(self, "config") else None)
+        
+        # Generate HDF5 container in temp folder
         try:
-            container_id, file_path = technical_container.generate_from_aux_table(
-                folder=folder,
+            container_id, temp_file_path = technical_container.generate_from_aux_table(
+                folder=tech_temp_folder,
                 aux_measurements=aux_measurements,
                 pony_data=pony_data,
                 detector_config=self.config.get("detectors", []),
@@ -1964,10 +2007,27 @@ fi
             return
 
         self._log_technical_event(
-            f"Technical HDF5 generated: {os.path.basename(file_path)}"
+            f"Technical HDF5 generated in temp: {os.path.basename(temp_file_path)}"
         )
+        
+        # Copy to user-specified storage folder
+        import shutil
+        try:
+            storage_file_path = os.path.join(folder, os.path.basename(temp_file_path))
+            shutil.copy2(temp_file_path, storage_file_path)
+            self._log_technical_event(
+                f"Copied to storage: {os.path.basename(storage_file_path)}"
+            )
+            final_path = storage_file_path
+        except Exception as e:
+            logger.warning(f"Failed to copy to storage folder: {e}")
+            self._log_technical_event(
+                f"Warning: Could not copy to storage folder, file remains in temp: {temp_file_path}"
+            )
+            final_path = temp_file_path
+
         QMessageBox.information(
             self,
             "HDF5 Generated",
-            f"Saved to:\n{file_path}\n\nContainer ID:\n{container_id}",
+            f"Temp location:\n{temp_file_path}\n\nStorage location:\n{final_path}\n\nContainer ID:\n{container_id}",
         )
