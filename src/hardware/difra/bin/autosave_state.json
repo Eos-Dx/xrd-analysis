@@ -1,0 +1,29 @@
+{
+    "measurement_points": [],
+    "image": null,
+    "rotation_angle": 0,
+    "crop_rect": null,
+    "shapes": [],
+    "zone_points": [],
+    "dock_geometry": {
+        "window_geometry": "AdnQywADAAAAAAAJAAAAygAABr8AAAOUAAAACQAAAOYAAAa/AAADlAAAAAAAAAAABsAAAAAJAAAA5gAABr8AAAOU",
+        "window_state": "AAAA/wAAAAD9AAAAAwAAAAAAAAGAAAAAYvwCAAAAAfv/////AQAAABgAAABiAAAAYAD///8AAAABAAABAAAAAGL8AgAAAAH7/////wEAAAAYAAAAYgAAAGAA////AAAAAwAABrcAAAI0/AEAAAAC+/////8BAAAAAAAABB4AAAQeAP////v/////AQAABB8AAAKYAAACmAD///8AAAQ1AAAAYgAAAAQAAAAEAAAACAAAAAj8AAAAAQAAAAIAAAAB/////wEAAAAA/////wAAAAAAAAAA"
+    },
+    "active_detectors_aliases": [
+        "SAXS",
+        "WAXS"
+    ],
+    "detector_poni": {
+        "SAXS": {
+            "poni_filename": null,
+            "poni_path": null,
+            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Mon Feb 02 10:39:44 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.192246\nPoni1: 0.007535\nPoni2: 0.001188\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: SAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_saxs.npy\n"
+        },
+        "WAXS": {
+            "poni_filename": null,
+            "poni_path": null,
+            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Mon Feb 02 10:39:44 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.098465\nPoni1: 0.00637\nPoni2: 0.001338\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: WAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_waxs.npy\n"
+        }
+    },
+    "technical_aux": []
+}

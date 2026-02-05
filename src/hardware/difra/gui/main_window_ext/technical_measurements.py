@@ -975,6 +975,80 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             )
             return
         
+        # Check for existing HDF5 containers before starting new measurements
+        folder = (self.folderLE.text() or "").strip()
+        if folder and os.path.isdir(folder):
+            try:
+                from hardware.difra.utils.technical_h5_archival import (
+                    TechnicalH5Archival,
+                    format_archival_summary,
+                )
+                
+                containers = TechnicalH5Archival.find_h5_containers(folder)
+                if containers:
+                    # Found existing containers - prompt user
+                    container_list = "\n".join([f"  • {c.name}" for c in containers[:5]])
+                    if len(containers) > 5:
+                        container_list += f"\n  ... and {len(containers) - 5} more"
+                    
+                    message = (
+                        f"Found {len(containers)} existing HDF5 container(s) in:\n"
+                        f"{folder}\n\n"
+                        f"{container_list}\n\n"
+                        f"These will be moved to '{TechnicalH5Archival.STORAGE_SUBFOLDER}' "
+                        f"folder and associated .npy files will be cleaned up.\n\n"
+                        f"Do you want to archive them before starting new measurements?"
+                    )
+                    
+                    reply = QMessageBox.question(
+                        self,
+                        "Archive Existing Containers?",
+                        message,
+                        QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+                        QMessageBox.Yes,
+                    )
+                    
+                    if reply == QMessageBox.Cancel:
+                        self._log_technical_event("Aux measurement cancelled by user")
+                        return
+                    elif reply == QMessageBox.Yes:
+                        # Archive containers and clean up files
+                        self._log_technical_event(
+                            f"Archiving {len(containers)} HDF5 container(s)..."
+                        )
+                        
+                        # Get active detector aliases for cleanup
+                        try:
+                            aliases = self._get_active_detector_aliases()
+                        except Exception:
+                            aliases = ["PRIMARY", "SECONDARY"]  # Fallback
+                        
+                        measurement_types = ["DARK", "EMPTY", "BACKGROUND", "AGBH", "WATER", "SPECIAL"]
+                        
+                        archived, cleaned, errors = TechnicalH5Archival.archive_all_and_cleanup(
+                            folder,
+                            measurement_types=measurement_types,
+                            aliases=aliases,
+                            add_timestamp=True,
+                        )
+                        
+                        summary = format_archival_summary(archived, cleaned, errors)
+                        self._log_technical_event(f"Archival complete: {archived} archived, {cleaned} cleaned")
+                        
+                        QMessageBox.information(
+                            self,
+                            "Archival Complete",
+                            f"Archival Summary:\n\n{summary}",
+                        )
+                    else:  # QMessageBox.No
+                        self._log_technical_event("User chose to skip archival")
+                        logger.info("User skipped HDF5 container archival")
+                        
+            except Exception as e:
+                logger.error(f"Error checking for existing containers: {e}", exc_info=True)
+                # Non-fatal - continue with measurement
+                self._log_technical_event(f"Warning: Failed to check for existing containers: {e}")
+        
         self._log_technical_event("Starting auxiliary measurement...")
         self._aux_start = time.time()
         self._aux_spinner_state = 0
