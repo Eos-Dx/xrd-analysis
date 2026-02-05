@@ -23,6 +23,7 @@ try:
         QFormLayout,
         QGroupBox,
         QHBoxLayout,
+        QInputDialog,
         QLabel,
         QLineEdit,
         QMessageBox,
@@ -97,6 +98,7 @@ except Exception:  # pragma: no cover - test stubs
     QFormLayout = _Stub
     QGroupBox = _Stub
     QHBoxLayout = _Stub
+    QInputDialog = _Stub
     QLabel = _Stub
     QLineEdit = _Stub
     QPushButton = _Stub
@@ -483,8 +485,8 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         pyfai_btn.clicked.connect(self.run_pyfai)
         actions_layout.addWidget(pyfai_btn)
 
-        gen_btn = QPushButton("Gen Meta")
-        gen_btn.setToolTip("Generate technical_meta_*.json from selected rows")
+        gen_btn = QPushButton("Gen Meta/H5")
+        gen_btn.setToolTip("Generate technical_meta_*.json and technical_<id>.h5 from selected rows")
         gen_btn.clicked.connect(self.generate_technical_meta)
         actions_layout.addWidget(gen_btn)
 
@@ -1519,6 +1521,70 @@ fi
                 self, "Write Error", f"Failed to write meta file:\n{e}"
             )
             return
+        
+        # Generate HDF5 technical container
+        h5_container_id = None
+        h5_file_path = None
+        h5_error = None
+        try:
+            from hardware.difra.data.hdf5 import technical_container
+            
+            # Build aux_measurements dict: {"DARK": {"PRIMARY": "/path/file.npy", ...}, ...}
+            aux_measurements = {}
+            for row in rows:
+                file_item = self.auxTable.item(row, 0)
+                if not file_item:
+                    continue
+                file_path = file_item.data(Qt.UserRole)
+                
+                type_cb = self.auxTable.cellWidget(row, 1)
+                typ = type_cb.currentText() if isinstance(type_cb, QComboBox) else None
+                
+                alias_cb = self.auxTable.cellWidget(row, 2)
+                alias = alias_cb.currentText() if isinstance(alias_cb, QComboBox) else None
+                
+                if typ and alias and typ != self.NO_SELECTION_LABEL and alias != self.NO_SELECTION_LABEL:
+                    aux_measurements.setdefault(typ, {})[alias] = file_path
+            
+            # Build pony_data dict: {"PRIMARY": (content_string, "filename.poni"), ...}
+            pony_data = {}
+            if hasattr(self, "_temp_poni_lab_values") and hasattr(self, "_temp_poni_lab_path"):
+                for alias, content in self._temp_poni_lab_values.items():
+                    poni_path = self._temp_poni_lab_path.get(alias, "")
+                    filename = os.path.basename(poni_path) if poni_path else "unknown.poni"
+                    pony_data[alias] = (content, filename)
+            
+            # Get detector config and active aliases
+            detector_config = getattr(self, "config", {}).get("detectors", {})
+            active_detector_ids = active_aliases if active_aliases else list(unique_aliases)
+            
+            # Distance: extract from config or use placeholder
+            # For now, use a default value; can be enhanced later with user input
+            distance_cm = 2.0  # Default placeholder
+            distance_buttons_config = getattr(self, "config", {}).get("distance_buttons", [])
+            if distance_buttons_config:
+                # Try to extract numeric value from first button config
+                first_button_text = distance_buttons_config[0].get("text", "+2cm")
+                import re
+                match = re.search(r'(\d+)', first_button_text)
+                if match:
+                    distance_cm = float(match.group(1))
+            
+            # Generate HDF5 container
+            h5_container_id, h5_file_path = technical_container.generate_from_aux_table(
+                folder=folder,
+                aux_measurements=aux_measurements,
+                pony_data=pony_data,
+                detector_config=detector_config,
+                active_detector_ids=active_detector_ids,
+                distance_cm=distance_cm
+            )
+            self._log_technical_event(
+                f"HDF5 technical container generated: {os.path.basename(h5_file_path)} (ID: {h5_container_id})"
+            )
+        except Exception as e:
+            h5_error = str(e)
+            self._log_technical_event(f"Warning: HDF5 container generation failed: {e}")
         finally:
             # Clean up temporary PONI data variables
             if hasattr(self, "_temp_poni_lab_path"):
@@ -1537,9 +1603,18 @@ fi
             summary = "\n".join(summary_lines) or "(empty)"
         except Exception:
             summary = "(summary unavailable)"
+        
         self._log_technical_event(
             f"Technical metadata generated: {os.path.basename(out_path)}"
         )
+        
+        # Build complete summary including HDF5 info
+        message_parts = [f"JSON saved to:\n{out_path}\n\nSummary:\n{summary}"]
+        if h5_file_path and h5_container_id:
+            message_parts.append(f"\n\nHDF5 container:\n{h5_file_path}\nID: {h5_container_id}")
+        elif h5_error:
+            message_parts.append(f"\n\nHDF5 generation failed:\n{h5_error}")
+        
         QMessageBox.information(
-            self, "Meta Generated", f"Saved to:\n{out_path}\n\nSummary:\n{summary}"
+            self, "Meta/H5 Generated", "".join(message_parts)
         )
