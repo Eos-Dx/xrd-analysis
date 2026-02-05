@@ -224,6 +224,149 @@ def _get_technical_temp_folder(config=None):
         return str(fallback)
 
 
+def _get_archive_base_folder(config=None):
+    """Get the base archive folder path with platform-specific defaults.
+    
+    Args:
+        config: Optional config dict from global.json
+    
+    Returns:
+        Path to archive base folder (created if it doesn't exist)
+    """
+    from pathlib import Path
+    import platform
+    
+    # Check config first
+    if config and config.get("archive_base_folder"):
+        archive_path = Path(config["archive_base_folder"])
+    else:
+        # Platform-specific defaults: ~/dev/Data/archive
+        system = platform.system()
+        if system == "Darwin":  # macOS
+            archive_path = Path.home() / "dev" / "Data" / "archive"
+        elif system == "Windows":
+            archive_path = Path("C:/dev/Data/archive")
+        else:  # Linux or other
+            archive_path = Path.home() / "dev" / "Data" / "archive"
+    
+    # Create directory if it doesn't exist
+    try:
+        archive_path.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Archive base folder: {archive_path}")
+        return str(archive_path)
+    except Exception as e:
+        logger.warning(f"Failed to create archive base folder {archive_path}: {e}")
+        # Fallback to home directory
+        return str(Path.home())
+
+
+def _get_technical_storage_folder(config=None):
+    """Get the technical storage folder path (archive/technical).
+    
+    Args:
+        config: Optional config dict from global.json
+    
+    Returns:
+        Path to technical storage folder (created if it doesn't exist)
+    """
+    from pathlib import Path
+    
+    # Get base archive folder and append 'technical' subfolder
+    archive_base = _get_archive_base_folder(config)
+    storage_path = Path(archive_base) / "technical"
+    
+    # Create directory if it doesn't exist
+    try:
+        storage_path.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Technical storage folder: {storage_path}")
+        return str(storage_path)
+    except Exception as e:
+        logger.warning(f"Failed to create technical storage folder {storage_path}: {e}")
+        # Fallback to temp folder
+        return _get_technical_temp_folder(config)
+
+
+def _get_measurements_archive_folder(config=None):
+    """Get the measurements archive folder path (archive/measurements).
+    
+    Args:
+        config: Optional config dict from global.json
+    
+    Returns:
+        Path to measurements archive folder (created if it doesn't exist)
+    """
+    from pathlib import Path
+    
+    # Get base archive folder and append 'measurements' subfolder
+    archive_base = _get_archive_base_folder(config)
+    archive_path = Path(archive_base) / "measurements"
+    
+    # Create directory if it doesn't exist
+    try:
+        archive_path.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Measurements archive folder: {archive_path}")
+        return str(archive_path)
+    except Exception as e:
+        logger.warning(f"Failed to create measurements archive folder {archive_path}: {e}")
+        # Fallback to home directory
+        return str(Path.home())
+
+
+def _get_measurement_default_folder(config=None):
+    """Get the measurement default folder path with platform-specific defaults.
+    
+    Args:
+        config: Optional config dict from global.json
+    
+    Returns:
+        Path to measurement default folder (created if it doesn't exist)
+    """
+    from pathlib import Path
+    import platform
+    
+    # Check config first
+    if config and config.get("measurement_default_folder"):
+        meas_path = Path(config["measurement_default_folder"])
+    else:
+        # Platform-specific defaults
+        system = platform.system()
+        if system == "Darwin":  # macOS
+            meas_path = Path.home() / "dev" / "Data" / "measurements"
+        elif system == "Windows":
+            meas_path = Path("C:/dev/Data/measurements")
+        else:  # Linux or other
+            meas_path = Path.home() / "dev" / "Data" / "measurements"
+    
+    # Create directory if it doesn't exist
+    try:
+        meas_path.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Measurement default folder: {meas_path}")
+        return str(meas_path)
+    except Exception as e:
+        logger.warning(f"Failed to create measurement default folder {meas_path}: {e}")
+        # Fallback to home directory
+        return str(Path.home())
+
+
+def _get_default_folder(config=None):
+    """Get the default folder for technical measurements UI.
+    
+    Returns the technical storage folder as the default.
+    
+    Args:
+        config: Optional config dict from global.json
+    
+    Returns:
+        Path to default folder
+    """
+    # Check explicit default_folder in config
+    if config and config.get("default_folder"):
+        return config["default_folder"]
+    
+    # Otherwise use technical storage folder
+    return _get_technical_storage_folder(config)
+
+
 def _get_technical_module(name):
     """Get a technical module by name, with fallback stubs."""
     if _get_technical_imports():
@@ -448,9 +591,8 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         fld = QHBoxLayout()
         fld.addWidget(QLabel("Save Folder:"))
         self.folderLE = QLineEdit()
-        default_folder = (
-            self.config.get("default_folder", "") if hasattr(self, "config") else ""
-        )
+        # Use new folder helper that respects platform defaults
+        default_folder = _get_default_folder(self.config if hasattr(self, "config") else None)
         self.folderLE.setText(default_folder)
 
         fld.addWidget(self.folderLE, 1)
