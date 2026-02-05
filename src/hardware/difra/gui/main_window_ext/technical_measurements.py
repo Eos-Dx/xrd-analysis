@@ -682,6 +682,11 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         gen_btn.clicked.connect(self.generate_technical_h5)
         actions_layout.addWidget(gen_btn)
 
+        validate_btn = QPushButton("Validate H5")
+        validate_btn.setToolTip("Validate technical HDF5 container against schema v1.0")
+        validate_btn.clicked.connect(self.validate_technical_h5)
+        actions_layout.addWidget(validate_btn)
+
         outer.addLayout(actions_layout)
 
         # Real-time controls
@@ -2173,3 +2178,88 @@ fi
             "HDF5 Generated",
             f"Temp location:\n{temp_file_path}\n\nStorage location:\n{final_path}\n\nContainer ID:\n{container_id}",
         )
+    
+    # -------------------- Validate Technical HDF5 --------------------
+    def validate_technical_h5(self):
+        """Validate a technical HDF5 container against schema v1.0."""
+        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+        
+        self._log_technical_event("Opening file dialog for HDF5 validation...")
+        
+        # Get folder from UI
+        folder = (self.folderLE.text() or "").strip()
+        if not folder:
+            folder = _get_default_folder(self.config if hasattr(self, "config") else None)
+        
+        # Open file dialog to select HDF5 file
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Technical HDF5 Container to Validate",
+            folder,
+            "HDF5 Files (*.h5 *.hdf5);;All Files (*)"
+        )
+        
+        if not file_path:
+            self._log_technical_event("Validation cancelled by user")
+            return
+        
+        self._log_technical_event(f"Validating: {os.path.basename(file_path)}")
+        
+        # Perform validation
+        try:
+            is_valid, errors, warnings = validate_technical_container(file_path, strict=False)
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Validation Error",
+                f"Failed to validate container:\n{e}"
+            )
+            self._log_technical_event(f"Validation error: {e}")
+            return
+        
+        # Format results
+        if is_valid:
+            title = "✅ Container Valid"
+            msg_parts = [
+                f"File: {os.path.basename(file_path)}",
+                "",
+                "Status: ✅ VALID",
+                "",
+                "The container meets all schema v1.0 requirements."
+            ]
+            
+            if warnings:
+                msg_parts.append("")
+                msg_parts.append(f"⚠️  Warnings ({len(warnings)}):")
+                for i, warning in enumerate(warnings[:5], 1):
+                    msg_parts.append(f"  {i}. {warning}")
+                if len(warnings) > 5:
+                    msg_parts.append(f"  ... and {len(warnings) - 5} more")
+            
+            QMessageBox.information(self, title, "\n".join(msg_parts))
+            self._log_technical_event(f"Validation passed: {os.path.basename(file_path)}")
+        else:
+            title = "❌ Container Invalid"
+            msg_parts = [
+                f"File: {os.path.basename(file_path)}",
+                "",
+                "Status: ❌ INVALID",
+                "",
+                f"❌ Errors ({len(errors)}):"
+            ]
+            
+            for i, error in enumerate(errors[:5], 1):
+                msg_parts.append(f"  {i}. {error}")
+            if len(errors) > 5:
+                msg_parts.append(f"  ... and {len(errors) - 5} more")
+            
+            if warnings:
+                msg_parts.append("")
+                msg_parts.append(f"⚠️  Warnings ({len(warnings)}):")
+                for i, warning in enumerate(warnings[:3], 1):
+                    msg_parts.append(f"  {i}. {warning}")
+                if len(warnings) > 3:
+                    msg_parts.append(f"  ... and {len(warnings) - 3} more")
+            
+            QMessageBox.warning(self, title, "\n".join(msg_parts))
+            self._log_technical_event(f"Validation failed: {len(errors)} errors")
