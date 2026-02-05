@@ -170,6 +170,7 @@ def add_technical_event(
                      - 'data': np.ndarray (2D detector image)
                      - 'detector_id': str
                      - 'timestamp': str
+                     - 'source_file': str (optional) - path to original raw file
         timestamp: Event timestamp
         distance_cm: Sample-detector distance
     
@@ -211,6 +212,33 @@ def add_technical_event(
             overwrite=True
         )
         
+        # Write raw data blob if source file is provided
+        source_file = meas_data.get("source_file")
+        if source_file and os.path.exists(source_file):
+            try:
+                with open(source_file, 'rb') as f:
+                    raw_blob = f.read()
+                
+                blob_path = f"{detector_path}/raw_blob"
+                io.write_dataset(
+                    file_path=file_path,
+                    dataset_path=blob_path,
+                    data=np.frombuffer(raw_blob, dtype=np.uint8),
+                    attrs={
+                        "source_filename": os.path.basename(source_file),
+                        "file_format": "npy" if source_file.endswith(".npy") else "txt",
+                        "blob_size_bytes": len(raw_blob)
+                    },
+                    compression="gzip",
+                    compression_opts=9,
+                    overwrite=True
+                )
+            except Exception as e:
+                # Non-fatal: log but continue
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to store raw blob from {source_file}: {e}")
+        
         # Set detector group attributes
         attrs = {
             schema_v1.ATTR_TECHNICAL_TYPE: technical_type,
@@ -218,6 +246,9 @@ def add_technical_event(
             schema_v1.ATTR_TIMESTAMP: meas_data.get("timestamp", timestamp),
             schema_v1.ATTR_DETECTOR_ID: meas_data.get("detector_id", alias),
         }
+        if source_file:
+            attrs["source_file"] = os.path.basename(source_file)
+        
         io.set_attrs(file_path, detector_path, attrs)
     
     return event_path
@@ -300,6 +331,8 @@ def generate_from_aux_table(
     
     # Add technical events
     event_index = 1
+    agbh_event_indices = {}  # Track AGBH event indices by alias for PONI linking
+    
     for tech_type in schema_v1.ALL_TECHNICAL_TYPES:
         if tech_type not in aux_measurements:
             continue
@@ -314,12 +347,13 @@ def generate_from_aux_table(
                     "data": data,
                     "detector_id": alias,
                     "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "source_file": file_path_str,  # Pass source file for blob storage
                 }
             except Exception as e:
                 raise RuntimeError(f"Failed to load measurement file {file_path_str}: {e}")
         
         if measurements:
-            add_technical_event(
+            event_path = add_technical_event(
                 file_path=file_path,
                 event_index=event_index,
                 technical_type=tech_type,
@@ -327,7 +361,45 @@ def generate_from_aux_table(
                 timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
                 distance_cm=distance_cm
             )
+            
+            # Track AGBH events for PONI linking
+            if tech_type == "AGBH":
+                for alias in measurements.keys():
+                    agbh_event_indices[alias] = event_index
+            
             event_index += 1
+    
+    # Add PONI references to AGBH events
+    if agbh_event_indices:
+        for alias, evt_idx in agbh_event_indices.items():
+            role = schema_v1.format_detector_role(alias)
+            pony_path = f"{schema_v1.GROUP_TECHNICAL_PONY}/pony_{role[4:]}"
+            
+            event_id = schema_v1.format_technical_event_id(evt_idx)
+            event_path = f"{schema_v1.GROUP_TECHNICAL}/{event_id}"
+            detector_path = f"{event_path}/{role}"
+            
+            # Add PONI reference to event group
+            try:
+                io.set_reference_attr(
+                    file_path=file_path,
+                    obj_path=event_path,
+                    attr_name=f"poni_{role[4:]}_ref",
+                    target_path=pony_path
+                )
+            except Exception:
+                pass  # PONI may not exist for this alias
+            
+            # Add PONI reference to detector subgroup
+            try:
+                io.set_reference_attr(
+                    file_path=file_path,
+                    obj_path=detector_path,
+                    attr_name="poni_ref",
+                    target_path=pony_path
+                )
+            except Exception:
+                pass  # PONI may not exist for this alias
     
     return container_id, file_path
 
