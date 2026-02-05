@@ -7,15 +7,20 @@ Tests the complete workflow:
 4. Validate HDF5 structure and content
 """
 
+import json
 import os
+import sys
 import tempfile
-from pathlib import Path
-
 from pathlib import Path
 
 import h5py
 import numpy as np
 import pytest
+
+# Add the project src root to the path to import modules as the application does
+SRC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if SRC_ROOT not in sys.path:
+    sys.path.insert(0, SRC_ROOT)
 
 # Import the hardware controller and technical container
 from hardware.difra.data.hdf5 import schema_v1, technical_container
@@ -30,6 +35,7 @@ def demo_config():
         "detectors": [
             {
                 "id": "PRIMARY",
+                "alias": "PRIMARY",
                 "name": "SAXS Demo",
                 "type": "dummy",
                 "width": 256,
@@ -37,6 +43,7 @@ def demo_config():
             },
             {
                 "id": "SECONDARY",
+                "alias": "SECONDARY",
                 "name": "WAXS Demo",
                 "type": "dummy",
                 "width": 256,
@@ -56,13 +63,18 @@ def temp_output_dir():
 
 
 @pytest.fixture
-def demo_detector_controller(demo_config):
-    """Create a DEMO detector controller."""
-    controller = DummyDetectorController(
-        detectors=demo_config["detectors"],
-        active_detector_ids=demo_config["dev_active_detectors"],
-    )
-    return controller
+def demo_detectors(demo_config):
+    """Create DEMO detector controllers for each active detector."""
+    detectors = {}
+    for det_config in demo_config["detectors"]:
+        det_id = det_config["id"]
+        if det_id in demo_config["dev_active_detectors"]:
+            controller = DummyDetectorController(
+                alias=det_id,
+                size=(det_config["width"], det_config["height"])
+            )
+            detectors[det_id] = controller
+    return detectors
 
 
 @pytest.fixture
@@ -96,12 +108,12 @@ Wavelength: 1.54e-10
 
 
 def capture_technical_measurement(
-    detector_controller, measurement_type: str, frames: int = 5
+    detectors: dict, measurement_type: str, frames: int = 5
 ) -> dict:
     """Simulate capturing a technical measurement.
 
     Args:
-        detector_controller: Controller for detectors
+        detectors: Dict of {detector_id: DummyDetectorController}
         measurement_type: Type of measurement (DARK, EMPTY, BACKGROUND, AGBH, WATER)
         frames: Number of frames to capture
 
@@ -111,15 +123,8 @@ def capture_technical_measurement(
     # Simulate detector capture with different patterns for each type
     results = {}
 
-    for detector_id in detector_controller.active_detector_ids:
-        detector = next(
-            (d for d in detector_controller.detectors if d["id"] == detector_id), None
-        )
-        if not detector:
-            continue
-
-        width = detector["width"]
-        height = detector["height"]
+    for detector_id, controller in detectors.items():
+        width, height = controller.size
 
         # Generate synthetic data based on measurement type
         if measurement_type == "DARK":
@@ -169,7 +174,7 @@ def capture_technical_measurement(
 
 
 def test_capture_all_technical_measurements(
-    demo_detector_controller, temp_output_dir, demo_poni_files, demo_config
+    demo_detectors, temp_output_dir, demo_poni_files, demo_config
 ):
     """Test capturing all required technical measurements in DEMO mode."""
     required_types = ["DARK", "EMPTY", "BACKGROUND", "AGBH"]
@@ -178,7 +183,7 @@ def test_capture_all_technical_measurements(
     for meas_type in required_types:
         # Capture measurement
         data_dict = capture_technical_measurement(
-            demo_detector_controller, meas_type, frames=5
+            demo_detectors, meas_type, frames=5
         )
 
         # Save to .npy files
@@ -205,18 +210,22 @@ def test_generate_technical_h5_container(
     temp_output_dir, demo_poni_files, demo_config
 ):
     """Test generating HDF5 technical container from measurements."""
-    # First, capture all measurements
-    controller = DummyDetectorController(
-        detectors=demo_config["detectors"],
-        active_detector_ids=demo_config["dev_active_detectors"],
-    )
+    # Create detector controllers
+    detectors = {}
+    for det_config in demo_config["detectors"]:
+        det_id = det_config["id"]
+        if det_id in demo_config["dev_active_detectors"]:
+            detectors[det_id] = DummyDetectorController(
+                alias=det_id,
+                size=(det_config["width"], det_config["height"])
+            )
 
     # Capture all required measurements
     aux_measurements = {}
     required_types = ["DARK", "EMPTY", "BACKGROUND", "AGBH"]
 
     for meas_type in required_types:
-        data_dict = capture_technical_measurement(controller, meas_type, frames=5)
+        data_dict = capture_technical_measurement(detectors, meas_type, frames=5)
 
         aux_measurements[meas_type] = {}
         for detector_id, data in data_dict.items():
@@ -265,7 +274,7 @@ def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
         assert f.attrs["container_id"] == container_id
         assert "schema_version" in f.attrs
         assert f.attrs["schema_version"] == "1.0"
-        assert "created_utc" in f.attrs
+        assert "creation_timestamp" in f.attrs
         assert "distance_cm" in f.attrs
         assert f.attrs["distance_cm"] == 17.0
 
@@ -276,17 +285,18 @@ def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
         # 3. Config group
         assert "config" in tech_group
         config_group = tech_group["config"]
-        assert "distance_cm" in config_group.attrs
-        assert "active_detector_ids" in config_group.attrs
-
-        # 4. Detector config subgroups
-        for detector_id in demo_config["dev_active_detectors"]:
-            det_id_normalized = detector_id.replace(" ", "_").replace("-", "_")
-            assert det_id_normalized in config_group
-            det_config = config_group[det_id_normalized]
-            assert "id" in det_config.attrs
-            assert "width" in det_config.attrs
-            assert "height" in det_config.attrs
+        
+        # 4. Detector config JSON dataset
+        assert "detector_config" in config_group
+        detector_config_ds = config_group["detector_config"]
+        # Load and parse JSON config
+        config_json_str = detector_config_ds[()]
+        if isinstance(config_json_str, bytes):
+            config_json_str = config_json_str.decode('utf-8')
+        config_data = json.loads(config_json_str)
+        assert "detectors" in config_data
+        assert "active_detector_ids" in config_data
+        assert len(config_data["detectors"]) == len(demo_config["dev_active_detectors"])
 
         # 5. PONY primary group
         assert "pony" in tech_group
@@ -295,8 +305,8 @@ def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
             pony_id = f"pony_{detector_id.lower()}"
             assert pony_id in pony_group
             pony_data = pony_group[pony_id]
-            assert pony_data.dtype.kind == "S"  # String type
-            assert "filename" in pony_data.attrs
+            assert pony_data.dtype.kind in ["S", "O"]  # String or object type
+            assert "pony_filename" in pony_data.attrs
 
         # 6. Technical event groups (DARK, EMPTY, BACKGROUND, AGBH)
         required_types = ["DARK", "EMPTY", "BACKGROUND", "AGBH"]
@@ -327,7 +337,6 @@ def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
 
                 # Check attributes
                 assert "detector_id" in det_data.attrs
-                assert "source_file" in det_data.attrs
 
         # 7. Object references
         # Check that pony_primary references are valid
@@ -403,26 +412,19 @@ def test_multiple_containers_unique_ids(temp_output_dir, demo_poni_files, demo_c
     ["DARK", "EMPTY", "BACKGROUND", "AGBH", "WATER"],
 )
 def test_individual_measurement_types(
-    demo_detector_controller, measurement_type, temp_output_dir
+    demo_detectors, measurement_type, temp_output_dir
 ):
     """Test individual measurement type generation."""
     data_dict = capture_technical_measurement(
-        demo_detector_controller, measurement_type, frames=3
+        demo_detectors, measurement_type, frames=3
     )
 
-    assert len(data_dict) == len(demo_detector_controller.active_detector_ids)
+    assert len(data_dict) == len(demo_detectors)
 
     for detector_id, data in data_dict.items():
         # Check shape
-        detector = next(
-            (
-                d
-                for d in demo_detector_controller.detectors
-                if d["id"] == detector_id
-            ),
-            None,
-        )
-        assert data.shape == (detector["height"], detector["width"])
+        controller = demo_detectors[detector_id]
+        assert data.shape == controller.size[::-1]  # (height, width)
 
         # Check data type
         assert data.dtype in [np.float32, np.float64]

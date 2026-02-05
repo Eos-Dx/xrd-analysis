@@ -185,6 +185,14 @@ def add_technical_event(
     # Create event group
     io.create_group_if_missing(file_path, event_path)
     
+    # Set event-level attributes
+    event_attrs = {
+        "type": technical_type,
+        "timestamp_utc": timestamp,
+        schema_v1.ATTR_DISTANCE_CM: distance_cm,
+    }
+    io.set_attrs(file_path, event_path, event_attrs)
+    
     # Write per-detector measurements
     for alias, meas_data in measurements.items():
         role = schema_v1.format_detector_role(alias)

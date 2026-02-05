@@ -1,9 +1,16 @@
 """Tests for technical HDF5 container archival system."""
 
+import os
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
+
+# Add the project src root to the path
+SRC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if SRC_ROOT not in sys.path:
+    sys.path.insert(0, SRC_ROOT)
 
 from hardware.difra.utils.technical_h5_archival import (
     TechnicalH5Archival,
