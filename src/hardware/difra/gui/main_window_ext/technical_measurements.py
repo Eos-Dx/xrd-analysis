@@ -495,9 +495,9 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         pyfai_btn.clicked.connect(self.run_pyfai)
         actions_layout.addWidget(pyfai_btn)
 
-        gen_btn = QPushButton("Gen Meta/H5")
-        gen_btn.setToolTip("Generate technical_meta_*.json and technical_<id>.h5 from selected rows")
-        gen_btn.clicked.connect(self.generate_technical_meta)
+        gen_btn = QPushButton("Gen H5")
+        gen_btn.setToolTip("Generate technical_<id>.h5 HDF5 container from selected rows")
+        gen_btn.clicked.connect(self.generate_technical_h5)
         actions_layout.addWidget(gen_btn)
 
         outer.addLayout(actions_layout)

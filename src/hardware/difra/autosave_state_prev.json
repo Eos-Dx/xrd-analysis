@@ -7,7 +7,7 @@
     "zone_points": [],
     "dock_geometry": {
         "window_geometry": "AdnQywADAAAAAAAAAAAAIQAABsUAAAQCAAAAAAAAAAD////+/////gAAAAACAAAABsAAAAAAAAAAPQAABsUAAAQC",
-        "window_state": "AAAA/wAAAAD9AAAAAwAAAAAAAAJbAAABefwCAAAAAfv/////AQAAABgAAAF5AAAAYAD///8AAAABAAABAAAAAXn8AgAAAAH7/////wEAAAAYAAABeQAAAGAA////AAAAAwAABsYAAAI0/AEAAAAC+/////8BAAAAAAAABC0AAAQtAP////v/////AQAABC4AAAKYAAACmAD///8AAANpAAABeQAAAAQAAAAEAAAACAAAAAj8AAAAAQAAAAIAAAAB/////wEAAAAA/////wAAAAAAAAAA"
+        "window_state": "AAAA/wAAAAD9AAAAAwAAAAAAAAGAAAADrvwCAAAAAfv/////AQAAABgAAAOuAAAAYAD///8AAAABAAAEeAAAA678AgAAAAH8AAAAGAAAA64AAACMAP////wBAAAAAvv/////AQAAAk4AAABKAAAASgD////7/////wEAAAKZAAAELQAABC0A////AAAAAwAABsYAAAI0/AEAAAAB+/////8DAAAF7gAAAWkAAAbAAAACNAAAAMwAAAOuAAAABAAAAAQAAAAIAAAACPwAAAABAAAAAgAAAAH/////AQAAAAD/////AAAAAAAAAAA="
     },
     "active_detectors_aliases": [
         "SAXS",
@@ -17,13 +17,54 @@
         "SAXS": {
             "poni_filename": "saxs_demo.poni",
             "poni_path": "/Users/sad/dev/xrd-analysis/src/hardware/difra/resources/demo_poni_files/saxs_demo.poni",
-            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Thu Feb 05 10:31:08 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.156899\nPoni1: 0.006988\nPoni2: 0.001246\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: SAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_saxs.npy\n"
+            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Thu Feb 05 12:51:03 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.239666\nPoni1: 0.007072\nPoni2: 0.002114\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: SAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_saxs.npy\n"
         },
         "WAXS": {
             "poni_filename": "waxs_demo.poni",
             "poni_path": "/Users/sad/dev/xrd-analysis/src/hardware/difra/resources/demo_poni_files/waxs_demo.poni",
-            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Thu Feb 05 10:31:08 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.113063\nPoni1: 0.008726\nPoni2: 0.002224\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: WAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_waxs.npy\n"
+            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Thu Feb 05 12:51:03 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.10455\nPoni1: 0.008291\nPoni2: 0.002096\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: WAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_waxs.npy\n"
         }
     },
-    "technical_aux": []
+    "technical_aux": [
+        {
+            "file_path": "/Users/sad/dev/Data/tests/agbg_001_20260205_125120_1.000000s_1frames_SAXS.npy",
+            "type": "AGBH",
+            "alias": "SAXS"
+        },
+        {
+            "file_path": "/Users/sad/dev/Data/tests/agbg_001_20260205_125120_1.000000s_1frames_WAXS.npy",
+            "type": "AGBH",
+            "alias": "WAXS"
+        },
+        {
+            "file_path": "/Users/sad/dev/Data/tests/agbg_002_20260205_125147_1.000000s_1frames_SAXS.npy",
+            "type": "DARK",
+            "alias": "SAXS"
+        },
+        {
+            "file_path": "/Users/sad/dev/Data/tests/agbg_002_20260205_125147_1.000000s_1frames_WAXS.npy",
+            "type": "DARK",
+            "alias": "WAXS"
+        },
+        {
+            "file_path": "/Users/sad/dev/Data/tests/agbg_003_20260205_125203_0.100000s_1frames_SAXS.npy",
+            "type": "EMPTY",
+            "alias": "SAXS"
+        },
+        {
+            "file_path": "/Users/sad/dev/Data/tests/agbg_003_20260205_125203_0.100000s_1frames_WAXS.npy",
+            "type": "EMPTY",
+            "alias": "WAXS"
+        },
+        {
+            "file_path": "/Users/sad/dev/Data/tests/agbg_004_20260205_125212_0.100000s_1frames_WAXS.npy",
+            "type": "BACKGROUND",
+            "alias": "WAXS"
+        },
+        {
+            "file_path": "/Users/sad/dev/Data/tests/agbg_004_20260205_125212_0.100000s_1frames_SAXS.npy",
+            "type": "BACKGROUND",
+            "alias": "SAXS"
+        }
+    ]
 }
