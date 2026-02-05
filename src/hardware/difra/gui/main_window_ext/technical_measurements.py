@@ -1,14 +1,19 @@
 import json
+import logging
 import os
 import queue
 import re
 import subprocess
 import sys
 import time
+import traceback
 import uuid
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+# Module logger
+logger = logging.getLogger(__name__)
 
 # Robust Qt imports to allow tests to run without a full PyQt5 installation
 try:
@@ -167,10 +172,15 @@ def _get_technical_imports():
             'MeasurementWorker': MeasurementWorker,
         })
         _TECHNICAL_IMPORTS_AVAILABLE = True
+        logger.info("Technical measurement imports successful")
         return True
     except Exception as e:
-        print(f"Warning: Technical measurement imports failed: {e}")
-        print("Technical measurements will be disabled.")
+        # Get detailed traceback for debugging
+        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        logger.error(
+            f"Technical measurement imports failed: {type(e).__name__}: {e}\n{tb_str}",
+            exc_info=True
+        )
         _TECHNICAL_IMPORTS_AVAILABLE = False
         return False
 
@@ -566,16 +576,16 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
                     lambda msg: self._log_technical_event(f"Movement error: {msg}")
                 )
                 self._log_technical_event("Continuous movement controller initialized")
-                print("Continuous movement controller initialized")
+                logger.info("Continuous movement controller initialized")
             else:
                 self._log_technical_event(
                     "No stage controller available for continuous movement"
                 )
-                print("No stage controller available for continuous movement")
+                logger.debug("No stage controller available for continuous movement")
         except ImportError as e:
-            print(f"Failed to import continuous movement controller: {e}")
+            logger.warning(f"Failed to import continuous movement controller: {e}")
         except Exception as e:
-            print(f"Error initializing continuous movement controller: {e}")
+            logger.error(f"Error initializing continuous movement controller: {e}", exc_info=True)
 
     def _browse_folder(self):
         f = QFileDialog.getExistingDirectory(self, "Select Folder")
@@ -584,11 +594,17 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
 
     def _start_capture(self, typ: str):
         if not _get_technical_imports():
-            self._log_technical_event(
-                f"Cannot start {typ} capture - technical imports not available"
+            error_msg = (
+                f"Cannot start {typ} capture - technical measurement modules failed to import. "
+                "Check application logs for detailed error information. "
+                "Common causes: missing pyFAI or fabio dependencies."
             )
-            print(
-                f"❌ Cannot start {typ} capture - technical measurements disabled due to import errors"
+            self._log_technical_event(error_msg)
+            logger.error(error_msg)
+            QMessageBox.warning(
+                self,
+                "Import Error",
+                error_msg + "\n\nPlease check the application log file for detailed traceback."
             )
             return
 
@@ -629,6 +645,11 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             if getattr(self, "movementRadiusSpin", None) is not None
             else 2.0
         )
+        
+        logger.debug(
+            f"Starting {typ} capture: integration_time={integration_time_s}s, frames={frames}, "
+            f"continuous_movement={enable_continuous_movement}, radius={movement_radius}mm"
+        )
 
         CaptureWorker = _get_technical_module('CaptureWorker')
         worker = CaptureWorker(
@@ -651,7 +672,7 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             try:
                 self._on_capture_done(success, result_files, t)
             except Exception as e:
-                print(f"Error in _on_capture_done for {t}: {e}")
+                logger.error(f"Error in _on_capture_done for {t}: {e}", exc_info=True)
             finally:
                 worker.deleteLater()
                 thread.quit()
@@ -668,7 +689,7 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
     def _on_capture_done(self, success: bool, result_files: dict, typ: str):
         if not success:
             self._log_technical_event(f"{typ} capture failed")
-            print(f"[{typ}] capture failed.")
+            logger.warning(f"[{typ}] capture failed")
             self._aux_timer.stop()
             self._aux_status.setText("")
             return
@@ -676,15 +697,15 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         self._log_technical_event(
             f"{typ} capture successful: {len(result_files)} files"
         )
-        print(f"[{typ}] capture successful: {result_files}")
+        logger.info(f"[{typ}] capture successful: {list(result_files.keys())}")
         self._aux_timer.stop()
         self._aux_status.setText("Processing...")
 
         # --- Set up worker
         if not _get_technical_imports():
-            self._log_technical_event(
-                "Cannot process files - technical imports not available"
-            )
+            error_msg = "Cannot process files - technical imports not available"
+            self._log_technical_event(error_msg)
+            logger.error(error_msg)
             self._aux_status.setText("Import error")
             return
 
