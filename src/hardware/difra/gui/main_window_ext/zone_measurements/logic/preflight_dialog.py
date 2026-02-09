@@ -52,6 +52,7 @@ class PreflightDialog(QDialog):
         self.state_file = Path(state_file or "state.json")
         self.ponis = ponis or {}
         self.attenuation_on = bool(attenuation_on)
+        self.technical_h5_path = None
 
         self._setup_ui()
         self._revalidate()
@@ -66,6 +67,19 @@ class PreflightDialog(QDialog):
         )
         layout.addWidget(self.state_label)
         layout.addWidget(self.state_confirm)
+
+        # Technical HDF5 container
+        row_h5 = QHBoxLayout()
+        self.h5_label = QLabel("")
+        self.h5_browse_btn = QPushButton("Browse…")
+        self.h5_browse_btn.clicked.connect(self._browse_h5)
+        row_h5.addWidget(self.h5_label, 1)
+        row_h5.addWidget(self.h5_browse_btn)
+        layout.addLayout(row_h5)
+        self.h5_confirm = QCheckBox(
+            "I confirm the technical HDF5 container (technical_*.h5) exists and is valid."
+        )
+        layout.addWidget(self.h5_confirm)
 
         # Meta file
         row = QHBoxLayout()
@@ -98,6 +112,7 @@ class PreflightDialog(QDialog):
 
         # Wire checkboxes to revalidate
         self.state_confirm.toggled.connect(self._revalidate)
+        self.h5_confirm.toggled.connect(self._revalidate)
         self.meta_confirm.toggled.connect(self._revalidate)
         self.atten_confirm.toggled.connect(self._revalidate)
 
@@ -112,6 +127,17 @@ class PreflightDialog(QDialog):
 
     def _expected_state_path(self):
         return self.measurement_folder / self.state_file.name
+
+    def _detect_h5(self):
+        """Detect technical HDF5 container in measurement folder."""
+        try:
+            for p in self.measurement_folder.glob("technical_*.h5"):
+                self.technical_h5_path = p
+                return p
+        except Exception:
+            pass
+        self.technical_h5_path = None
+        return None
 
     def _detect_meta(self):
         try:
@@ -130,11 +156,18 @@ class PreflightDialog(QDialog):
         icon = "✅" if ok_folder else "⚠️"
         self.state_label.setText(f"{icon} {state_txt}")
 
+        # Technical HDF5 container
+        h5 = self._detect_h5()
+        icon_h5 = "✅" if h5 else "⚠️"
+        self.h5_label.setText(
+            f"{icon_h5} Technical H5: {str(h5.name) if h5 else 'technical_*.h5 not found'}"
+        )
+
         # Meta
         meta = self._detect_meta()
         icon_meta = "✅" if meta else "⚠️"
         self.meta_label.setText(
-            f"{icon_meta} Meta: {str(meta) if meta else 'technical_meta_*.json not found'}"
+            f"{icon_meta} Meta: {str(meta.name) if meta else 'technical_meta_*.json not found'}"
         )
 
         # Attenuation
@@ -146,14 +179,27 @@ class PreflightDialog(QDialog):
         # Enable Continue only if all confirms checked and basic validations are OK
         all_confirmed = (
             self.state_confirm.isChecked()
+            and self.h5_confirm.isChecked()
             and self.meta_confirm.isChecked()
             and self.atten_confirm.isChecked()
         )
         ok_basic = (
-            ok_folder and True
-        )  # meta presence not strictly mandatory, but confirmation is
+            ok_folder and h5 is not None
+        )  # H5 container is required, meta/confirmations are mandatory
         enable = all_confirmed and ok_basic
         self.buttons.button(QDialogButtonBox.Ok).setEnabled(enable)
+
+    def _browse_h5(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select technical HDF5 container",
+            str(self.measurement_folder),
+            "HDF5 Files (*.h5 *.hdf5);;All Files (*)",
+        )
+        if path:
+            self.technical_h5_path = Path(path)
+            self.h5_label.setText(f"✅ Technical H5: {Path(path).name}")
+        self._revalidate()
 
     def _browse_meta(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -161,7 +207,7 @@ class PreflightDialog(QDialog):
         )
         if path:
             # Update label; validation relies on presence/confirmation
-            self.meta_label.setText(f"✅ Meta: {path}")
+            self.meta_label.setText(f"✅ Meta: {Path(path).name}")
             # auto-check confirm to save clicks? leave to user.
         self._revalidate()
 

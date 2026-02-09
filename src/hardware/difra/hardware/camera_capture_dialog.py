@@ -1,4 +1,5 @@
 import os
+import platform
 import sys
 
 import cv2
@@ -92,11 +93,11 @@ class CameraCaptureDialog(QDialog):
     @staticmethod
     def get_available_cameras(max_tested=5):
         """Returns a list of available camera indices (0, 1, ...)."""
+        # Use DirectShow on Windows to avoid obsensor errors, default backend on other platforms
+        backend = cv2.CAP_DSHOW if platform.system() == "Windows" else cv2.CAP_ANY
         available = []
         for idx in range(max_tested):
-            cap = cv2.VideoCapture(
-                idx, cv2.CAP_DSHOW
-            )  # Use DirectShow on Windows to avoid obsensor errors
+            cap = cv2.VideoCapture(idx, backend)
             if cap is not None and cap.isOpened():
                 available.append(idx)
                 cap.release()
@@ -106,7 +107,9 @@ class CameraCaptureDialog(QDialog):
         idx = self.camera_select.currentData()
         if self.camera is not None:
             self.camera.release()
-        self.camera = cv2.VideoCapture(idx, cv2.CAP_DSHOW)  # Use DirectShow on Windows
+        # Use DirectShow on Windows to avoid obsensor errors, default backend on other platforms
+        backend = cv2.CAP_DSHOW if platform.system() == "Windows" else cv2.CAP_ANY
+        self.camera = cv2.VideoCapture(idx, backend)
         if not self.camera.isOpened():
             QMessageBox.critical(self, "Error", f"Could not open camera {idx}.")
             self.reject()

@@ -682,10 +682,10 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         gen_btn.clicked.connect(self.generate_technical_h5)
         actions_layout.addWidget(gen_btn)
 
-        validate_btn = QPushButton("Validate H5")
-        validate_btn.setToolTip("Validate technical HDF5 container against schema v1.0")
-        validate_btn.clicked.connect(self.validate_technical_h5)
-        actions_layout.addWidget(validate_btn)
+        load_btn = QPushButton("Load H5")
+        load_btn.setToolTip("Load and validate existing technical HDF5 container")
+        load_btn.clicked.connect(self.load_technical_h5)
+        actions_layout.addWidget(load_btn)
 
         outer.addLayout(actions_layout)
 
@@ -737,6 +737,9 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             self.framesSpin,
             self.rtBtn,
         ]
+        # Add Load H5 button if it exists
+        if hasattr(self, 'load_h5_btn'):
+            widgets.append(self.load_h5_btn)
         for w in widgets:
             w.setEnabled(enable)
 
@@ -2179,12 +2182,16 @@ fi
             f"Temp location:\n{temp_file_path}\n\nStorage location:\n{final_path}\n\nContainer ID:\n{container_id}",
         )
     
-    # -------------------- Validate Technical HDF5 --------------------
-    def validate_technical_h5(self):
-        """Validate a technical HDF5 container against schema v1.0."""
-        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+    # -------------------- Load Technical HDF5 --------------------
+    def load_technical_h5(self):
+        """Load and validate an existing technical HDF5 container.
         
-        self._log_technical_event("Opening file dialog for HDF5 validation...")
+        Automatically validates the container and displays its contents in the aux table.
+        """
+        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+        import h5py
+        
+        self._log_technical_event("Opening file dialog to load HDF5 container...")
         
         # Get folder from UI
         folder = (self.folderLE.text() or "").strip()
@@ -2194,18 +2201,18 @@ fi
         # Open file dialog to select HDF5 file
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Select Technical HDF5 Container to Validate",
+            "Load Technical HDF5 Container",
             folder,
             "HDF5 Files (*.h5 *.hdf5);;All Files (*)"
         )
         
         if not file_path:
-            self._log_technical_event("Validation cancelled by user")
+            self._log_technical_event("Load cancelled by user")
             return
         
-        self._log_technical_event(f"Validating: {os.path.basename(file_path)}")
+        self._log_technical_event(f"Loading and validating: {os.path.basename(file_path)}")
         
-        # Perform validation
+        # Perform automatic validation
         try:
             is_valid, errors, warnings = validate_technical_container(file_path, strict=False)
         except Exception as e:
@@ -2217,49 +2224,117 @@ fi
             self._log_technical_event(f"Validation error: {e}")
             return
         
-        # Format results
-        if is_valid:
-            title = "✅ Container Valid"
+        # Show validation results
+        if not is_valid:
             msg_parts = [
-                f"File: {os.path.basename(file_path)}",
+                f"Container validation failed with {len(errors)} error(s).",
                 "",
-                "Status: ✅ VALID",
-                "",
-                "The container meets all schema v1.0 requirements."
+                "Errors:"
             ]
-            
-            if warnings:
-                msg_parts.append("")
-                msg_parts.append(f"⚠️  Warnings ({len(warnings)}):")
-                for i, warning in enumerate(warnings[:5], 1):
-                    msg_parts.append(f"  {i}. {warning}")
-                if len(warnings) > 5:
-                    msg_parts.append(f"  ... and {len(warnings) - 5} more")
-            
-            QMessageBox.information(self, title, "\n".join(msg_parts))
-            self._log_technical_event(f"Validation passed: {os.path.basename(file_path)}")
-        else:
-            title = "❌ Container Invalid"
-            msg_parts = [
-                f"File: {os.path.basename(file_path)}",
-                "",
-                "Status: ❌ INVALID",
-                "",
-                f"❌ Errors ({len(errors)}):"
-            ]
-            
             for i, error in enumerate(errors[:5], 1):
                 msg_parts.append(f"  {i}. {error}")
             if len(errors) > 5:
                 msg_parts.append(f"  ... and {len(errors) - 5} more")
             
+            msg_parts.append("")
+            msg_parts.append("Do you want to load this container anyway?")
+            
+            reply = QMessageBox.question(
+                self,
+                "⚠️ Container Validation Failed",
+                "\n".join(msg_parts),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            
+            if reply != QMessageBox.Yes:
+                self._log_technical_event("Load cancelled due to validation errors")
+                return
+        
+        # Load container and populate aux table
+        try:
+            self._populate_aux_table_from_h5(file_path)
+            
+            # Show success message
+            status_icon = "✅" if is_valid else "⚠️"
+            msg_parts = [
+                f"{status_icon} Container loaded: {os.path.basename(file_path)}",
+                "",
+            ]
+            
             if warnings:
-                msg_parts.append("")
-                msg_parts.append(f"⚠️  Warnings ({len(warnings)}):")
+                msg_parts.append(f"⚠️  {len(warnings)} warning(s):")
                 for i, warning in enumerate(warnings[:3], 1):
                     msg_parts.append(f"  {i}. {warning}")
                 if len(warnings) > 3:
                     msg_parts.append(f"  ... and {len(warnings) - 3} more")
+            else:
+                msg_parts.append("Status: ✅ VALID")
             
-            QMessageBox.warning(self, title, "\n".join(msg_parts))
-            self._log_technical_event(f"Validation failed: {len(errors)} errors")
+            QMessageBox.information(self, "Container Loaded", "\n".join(msg_parts))
+            self._log_technical_event(f"Container loaded successfully: {os.path.basename(file_path)}")
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Load Error",
+                f"Failed to load container contents:\n{e}"
+            )
+            self._log_technical_event(f"Load error: {e}")
+            logger.error(f"Error loading container: {e}", exc_info=True)
+    
+    def _populate_aux_table_from_h5(self, h5_path: str):
+        """Populate aux table from a technical HDF5 container.
+        
+        Args:
+            h5_path: Path to the technical HDF5 container
+        """
+        import h5py
+        from hardware.difra.data.hdf5 import schema_v1
+        
+        # Clear existing table
+        self.auxTable.setRowCount(0)
+        
+        with h5py.File(h5_path, "r") as f:
+            tech_group = f.get("technical")
+            if not tech_group:
+                raise ValueError("No /technical group found in container")
+            
+            # Iterate through technical events
+            for evt_name in sorted(tech_group.keys()):
+                if not evt_name.startswith("tech_evt_"):
+                    continue
+                
+                evt_group = tech_group[evt_name]
+                tech_type = evt_group.attrs.get("technical_type", "UNKNOWN")
+                
+                # Iterate through detectors in this event
+                for det_name in evt_group.keys():
+                    if not det_name.startswith("det_"):
+                        continue
+                    
+                    det_group = evt_group[det_name]
+                    
+                    # Get detector alias from attributes
+                    detector_id = det_group.attrs.get("detector_id", det_name.replace("det_", ""))
+                    
+                    # Get measurement file path if stored
+                    file_path = det_group.attrs.get("source_file", "")
+                    if not file_path:
+                        file_path = f"[H5: {evt_name}/{det_name}]"
+                    
+                    # Add to table
+                    alias = detector_id.upper() if detector_id else "UNKNOWN"
+                    self._add_aux_item_to_list(alias, file_path)
+                    
+                    # Set type in the newly added row
+                    row_idx = self.auxTable.rowCount() - 1
+                    type_cb = self.auxTable.cellWidget(row_idx, 1)
+                    if type_cb and isinstance(type_cb, QComboBox):
+                        idx = type_cb.findText(tech_type)
+                        if idx >= 0:
+                            type_cb.setCurrentIndex(idx)
+        
+        self._log_technical_event(
+            f"Loaded {self.auxTable.rowCount()} measurements from container"
+        )
