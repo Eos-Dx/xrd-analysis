@@ -22,8 +22,8 @@ SRC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "
 if SRC_ROOT not in sys.path:
     sys.path.insert(0, SRC_ROOT)
 
-from hardware.difra.data.hdf5 import (
-    schema_v1,
+from hardware.container.v0_1 import (
+    schema,
     session_container,
     session_validator,
     technical_container,
@@ -146,7 +146,7 @@ def test_session_handler_complete_workflow(temp_output_dir, technical_container_
     # Add zones
     handler.add_zone(
         zone_index=1,
-        zone_role=schema_v1.ZONE_ROLE_SAMPLE_HOLDER,
+        zone_role=schema.ZONE_ROLE_SAMPLE_HOLDER,
         geometry_px=[[100, 100], [400, 100], [400, 400], [100, 400]],
         holder_diameter_mm=25.0,
     )
@@ -186,7 +186,7 @@ def test_session_handler_complete_workflow(temp_output_dir, technical_container_
         )
 
         handler.update_point_status(
-            point_index=pt_idx, point_status=schema_v1.POINT_STATUS_MEASURED
+            point_index=pt_idx, point_status=schema.POINT_STATUS_MEASURED
         )
 
     # Verify complete structure
@@ -318,9 +318,9 @@ def test_session_validator_detects_missing_raw_signal():
         )
 
         # Create measurement group without raw_signal
-        from hardware.difra.data.hdf5 import io
+        from hardware.container.v0_1 import utils
 
-        io.create_group_if_missing(
+        utils.create_group_if_missing(
             file_path=session_file,
             group_path="/measurements/pt_001/meas_000000001/det_primary",
         )
@@ -358,11 +358,11 @@ def test_session_multiple_images_zones(temp_output_dir, technical_container_file
     # Add multiple zones
     for i in range(1, 4):
         if i == 1:
-            role = schema_v1.ZONE_ROLE_SAMPLE_HOLDER
+            role = schema.ZONE_ROLE_SAMPLE_HOLDER
         elif i == 2:
-            role = schema_v1.ZONE_ROLE_INCLUDE
+            role = schema.ZONE_ROLE_INCLUDE
         else:
-            role = schema_v1.ZONE_ROLE_EXCLUDE
+            role = schema.ZONE_ROLE_EXCLUDE
 
         handler.add_zone(
             zone_index=i,
@@ -382,11 +382,11 @@ def test_session_multiple_images_zones(temp_output_dir, technical_container_file
 
         assert (
             f["/images/zones/zone_001"].attrs["zone_role"]
-            == schema_v1.ZONE_ROLE_SAMPLE_HOLDER
+            == schema.ZONE_ROLE_SAMPLE_HOLDER
         )
         assert (
             f["/images/zones/zone_002"].attrs["zone_role"]
-            == schema_v1.ZONE_ROLE_INCLUDE
+            == schema.ZONE_ROLE_INCLUDE
         )
 
 
@@ -422,7 +422,7 @@ def test_session_analytical_measurement_workflow(
         measurement_data=ana_data,
         detector_metadata=ana_meta,
         pony_alias_map=pony_map,
-        analysis_type=schema_v1.ANALYSIS_TYPE_ATTENUATION,
+        analysis_type=schema.ANALYSIS_TYPE_ATTENUATION,
     )
 
     # Link to point
@@ -434,8 +434,8 @@ def test_session_analytical_measurement_workflow(
     with h5py.File(session_file, "r") as f:
         assert "/analytical_measurements/ana_000000001" in f
         ana = f["/analytical_measurements/ana_000000001"]
-        assert ana.attrs["analysis_type"] == schema_v1.ANALYSIS_TYPE_ATTENUATION
+        assert ana.attrs["analysis_type"] == schema.ANALYSIS_TYPE_ATTENUATION
 
         # Check reference link
         point = f["/points/pt_001"]
-        assert schema_v1.ATTR_ANALYTICAL_MEASUREMENT_REFS in point.attrs
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS in point.attrs

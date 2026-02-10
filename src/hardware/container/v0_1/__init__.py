@@ -20,6 +20,14 @@ from . import technical_container
 from . import measurement_counter
 from .reader import SessionContainer, TechnicalContainer
 
+# Compatibility layer: old code expects session_container as a module
+# Map writer functions to session_container namespace
+session_container = writer
+
+# Compatibility layer: old code expects session_validator as a module
+# Map validator functions to session_validator namespace  
+session_validator = validator
+
 __all__ = [
     "schema",
     "utils", 
@@ -27,6 +35,8 @@ __all__ = [
     "validator",
     "technical_container",
     "measurement_counter",
+    "session_container",  # Compatibility alias
+    "session_validator",   # Compatibility alias
     "SessionContainer",
     "TechnicalContainer",
     "__version__",

@@ -18,7 +18,7 @@ SRC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "
 if SRC_ROOT not in sys.path:
     sys.path.insert(0, SRC_ROOT)
 
-from hardware.difra.data.hdf5 import technical_container
+from hardware.container.v0_1 import technical_container
 from hardware.difra.hardware.detectors import DummyDetectorController
 
 

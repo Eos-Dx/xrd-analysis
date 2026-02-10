@@ -24,7 +24,7 @@ SRC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "
 if SRC_ROOT not in sys.path:
     sys.path.insert(0, SRC_ROOT)
 
-from hardware.difra.data.hdf5 import schema_v1, session_container, technical_container
+from hardware.container.v0_1 import schema, session_container, technical_container
 from hardware.difra.hardware.detectors import DummyDetectorController
 
 
@@ -156,11 +156,11 @@ def test_create_session_container(temp_output_dir):
     )
 
     assert Path(file_path).exists()
-    assert schema_v1.validate_container_id(container_id)
+    assert schema.validate_container_id(container_id)
 
     with h5py.File(file_path, "r") as f:
         assert f.attrs["container_id"] == container_id
-        assert f.attrs["container_type"] == schema_v1.CONTAINER_TYPE_SESSION
+        assert f.attrs["container_type"] == schema.CONTAINER_TYPE_SESSION
         assert f.attrs["sample_id"] == "SAMPLE_001"
         assert f.attrs["operator_id"] == "operator_1"
         assert f.attrs["machine_name"] == "DIFRA_01"
@@ -225,12 +225,12 @@ def test_add_image(temp_output_dir, technical_container_file):
         file_path=session_file,
         image_index=1,
         image_data=image_data,
-        image_type=schema_v1.IMAGE_TYPE_SAMPLE,
+        image_type=schema.IMAGE_TYPE_SAMPLE,
     )
 
     with h5py.File(session_file, "r") as f:
         assert image_path in f
-        assert f[image_path].attrs["image_type"] == schema_v1.IMAGE_TYPE_SAMPLE
+        assert f[image_path].attrs["image_type"] == schema.IMAGE_TYPE_SAMPLE
         assert "data" in f[image_path]
 
 
@@ -251,14 +251,14 @@ def test_add_zone(temp_output_dir, technical_container_file):
     zone_path = session_container.add_zone(
         file_path=session_file,
         zone_index=1,
-        zone_role=schema_v1.ZONE_ROLE_SAMPLE_HOLDER,
+        zone_role=schema.ZONE_ROLE_SAMPLE_HOLDER,
         geometry_px=holder_geometry,
         holder_diameter_mm=25.0,
     )
 
     with h5py.File(session_file, "r") as f:
         assert zone_path in f
-        assert f[zone_path].attrs["zone_role"] == schema_v1.ZONE_ROLE_SAMPLE_HOLDER
+        assert f[zone_path].attrs["zone_role"] == schema.ZONE_ROLE_SAMPLE_HOLDER
         assert f[zone_path].attrs["holder_diameter_mm"] == 25.0
 
 
@@ -361,7 +361,7 @@ def test_add_measurement(temp_output_dir, technical_container_file):
     with h5py.File(session_file, "r") as f:
         assert meas_path in f
         assert f[meas_path].attrs["measurement_counter"] == 1
-        assert f[meas_path].attrs["measurement_status"] == schema_v1.STATUS_COMPLETED
+        assert f[meas_path].attrs["measurement_status"] == schema.STATUS_COMPLETED
         assert "/measurements/pt_001/meas_000000001" in f
 
 
@@ -438,12 +438,12 @@ def test_add_analytical_measurement(temp_output_dir, technical_container_file):
         measurement_data=measurement_data,
         detector_metadata=detector_metadata,
         pony_alias_map=pony_alias_map,
-        analysis_type=schema_v1.ANALYSIS_TYPE_ATTENUATION,
+        analysis_type=schema.ANALYSIS_TYPE_ATTENUATION,
     )
 
     with h5py.File(session_file, "r") as f:
         assert ana_path in f
-        assert f[ana_path].attrs["analysis_type"] == schema_v1.ANALYSIS_TYPE_ATTENUATION
+        assert f[ana_path].attrs["analysis_type"] == schema.ANALYSIS_TYPE_ATTENUATION
 
 
 def test_link_analytical_measurement_to_point(temp_output_dir, technical_container_file):
@@ -482,7 +482,7 @@ def test_link_analytical_measurement_to_point(temp_output_dir, technical_contain
         measurement_data=measurement_data,
         detector_metadata=detector_metadata,
         pony_alias_map=pony_alias_map,
-        analysis_type=schema_v1.ANALYSIS_TYPE_ATTENUATION,
+        analysis_type=schema.ANALYSIS_TYPE_ATTENUATION,
     )
 
     # Link to point
@@ -492,7 +492,7 @@ def test_link_analytical_measurement_to_point(temp_output_dir, technical_contain
 
     with h5py.File(session_file, "r") as f:
         point_path = "/points/pt_001"
-        assert schema_v1.ATTR_ANALYTICAL_MEASUREMENT_REFS in f[point_path].attrs
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS in f[point_path].attrs
 
 
 def test_update_point_status(temp_output_dir):
@@ -512,16 +512,16 @@ def test_update_point_status(temp_output_dir):
         point_index=1,
         pixel_coordinates=[100.0, 100.0],
         physical_coordinates_mm=[10.0, 10.0],
-        point_status=schema_v1.POINT_STATUS_PENDING,
+        point_status=schema.POINT_STATUS_PENDING,
     )
 
     session_container.update_point_status(
-        file_path=session_file, point_index=1, point_status=schema_v1.POINT_STATUS_MEASURED
+        file_path=session_file, point_index=1, point_status=schema.POINT_STATUS_MEASURED
     )
 
     with h5py.File(session_file, "r") as f:
         point_path = "/points/pt_001"
-        assert f[point_path].attrs["point_status"] == schema_v1.POINT_STATUS_MEASURED
+        assert f[point_path].attrs["point_status"] == schema.POINT_STATUS_MEASURED
 
 
 def test_find_active_session_container(temp_output_dir):
@@ -582,14 +582,14 @@ def test_complete_session_workflow(temp_output_dir, technical_container_file):
         file_path=session_file,
         image_index=1,
         image_data=image_data,
-        image_type=schema_v1.IMAGE_TYPE_SAMPLE,
+        image_type=schema.IMAGE_TYPE_SAMPLE,
     )
 
     # Add zones
     session_container.add_zone(
         file_path=session_file,
         zone_index=1,
-        zone_role=schema_v1.ZONE_ROLE_SAMPLE_HOLDER,
+        zone_role=schema.ZONE_ROLE_SAMPLE_HOLDER,
         geometry_px=[[100, 100], [400, 100], [400, 400], [100, 400]],
         holder_diameter_mm=25.0,
     )
@@ -634,7 +634,7 @@ def test_complete_session_workflow(temp_output_dir, technical_container_file):
         session_container.update_point_status(
             file_path=session_file,
             point_index=pt_idx,
-            point_status=schema_v1.POINT_STATUS_MEASURED,
+            point_status=schema.POINT_STATUS_MEASURED,
         )
 
     # Verify complete structure
@@ -661,7 +661,7 @@ def test_complete_session_workflow(temp_output_dir, technical_container_file):
         for pt_idx in range(1, 4):
             point_path = f"/points/pt_{pt_idx:03d}"
             assert point_path in f
-            assert f[point_path].attrs["point_status"] == schema_v1.POINT_STATUS_MEASURED
+            assert f[point_path].attrs["point_status"] == schema.POINT_STATUS_MEASURED
 
         # Measurements
         for pt_idx in range(1, 4):

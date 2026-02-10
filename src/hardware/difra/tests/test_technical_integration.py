@@ -23,7 +23,7 @@ if SRC_ROOT not in sys.path:
     sys.path.insert(0, SRC_ROOT)
 
 # Import the hardware controller and technical container
-from hardware.difra.data.hdf5 import schema_v1, technical_container
+from hardware.container.v0_1 import schema, technical_container
 from hardware.difra.hardware.detectors import DummyDetectorController
 
 
@@ -320,7 +320,7 @@ def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
 
             # Check attributes
             assert "type" in evt_group.attrs
-            assert evt_group.attrs["type"] in schema_v1.ALL_TECHNICAL_TYPES
+            assert evt_group.attrs["type"] in schema.ALL_TECHNICAL_TYPES
             assert "timestamp_utc" in evt_group.attrs
 
             # Check detector data subgroups

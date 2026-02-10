@@ -1877,7 +1877,7 @@ fi
 
     # -------------------- Generate Technical HDF5 --------------------
     def generate_technical_h5(self):
-        from hardware.difra.data.hdf5 import schema_v1, technical_container
+        from hardware.container.v0_1 import schema, technical_container
 
         self._log_technical_event("Generating technical HDF5 container...")
 
@@ -1953,12 +1953,12 @@ fi
                 return
             alias = cb.currentText()
 
-            if typ not in schema_v1.ALL_TECHNICAL_TYPES:
+            if typ not in schema.ALL_TECHNICAL_TYPES:
                 QMessageBox.warning(
                     self,
                     "Invalid Type",
                     f"Type '{typ_ui}' is not supported for HDF5.\n"
-                    f"Supported: {', '.join(schema_v1.ALL_TECHNICAL_TYPES)}",
+                    f"Supported: {', '.join(schema.ALL_TECHNICAL_TYPES)}",
                 )
                 return
 
@@ -2188,7 +2188,7 @@ fi
         
         Automatically validates the container and displays its contents in the aux table.
         """
-        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+        from hardware.container.v0_1.validator import validate_technical_container
         import h5py
         
         self._log_technical_event("Opening file dialog to load HDF5 container...")
@@ -2290,7 +2290,7 @@ fi
             h5_path: Path to the technical HDF5 container
         """
         import h5py
-        from hardware.difra.data.hdf5 import schema_v1
+        from hardware.container.v0_1 import schema
         
         # Clear existing table
         self.auxTable.setRowCount(0)

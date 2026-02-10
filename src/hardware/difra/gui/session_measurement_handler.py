@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 
-from hardware.difra.data.hdf5 import schema_v1, session_container, measurement_counter
+from hardware.container.v0_1 import schema, session_container, measurement_counter
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ class SessionMeasurementHandler:
         self,
         image_data: Union[np.ndarray, str],
         image_index: int = 1,
-        image_type: str = schema_v1.IMAGE_TYPE_SAMPLE,
+        image_type: str = schema.IMAGE_TYPE_SAMPLE,
     ) -> str:
         """Add sample image to session.
 
@@ -200,7 +200,7 @@ class SessionMeasurementHandler:
         point_index: int,
         pixel_coordinates: List[float],
         physical_coordinates_mm: List[float],
-        point_status: str = schema_v1.POINT_STATUS_PENDING,
+        point_status: str = schema.POINT_STATUS_PENDING,
     ) -> str:
         """Add measurement point.
 
@@ -250,7 +250,7 @@ class SessionMeasurementHandler:
         pony_alias_map: Dict[str, str],
         timestamp_start: Optional[str] = None,
         timestamp_end: Optional[str] = None,
-        measurement_status: str = schema_v1.STATUS_COMPLETED,
+        measurement_status: str = schema.STATUS_COMPLETED,
     ) -> str:
         """Add measurement to point.
 

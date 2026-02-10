@@ -13,7 +13,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from hardware.difra.data.hdf5.technical_validator import (
+from hardware.container.v0_1.validator import (
     validate_technical_container,
     print_validation_report,
 )
