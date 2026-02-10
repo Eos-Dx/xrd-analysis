@@ -98,14 +98,64 @@ def create_session_container(
 
 
 def copy_technical_to_session(
-    technical_file: Union[str, Path], session_file: Union[str, Path]
+    technical_file: Union[str, Path],
+    session_file: Union[str, Path],
+    auto_lock: bool = False,
+    user_confirm_lock: Optional[callable] = None,
 ) -> None:
     """Copy /technical group from technical container to session container.
+    
+    If technical container is not locked, will prompt for locking.
+    Locked containers can be reused by multiple sessions.
 
     Args:
         technical_file: Path to technical container
         session_file: Path to session container
+        auto_lock: If True, automatically lock unlocked containers
+        user_confirm_lock: Optional callback function for lock confirmation
+                          Should return True to lock, False to skip
+                          Signature: (tech_file: Path) -> bool
+                          
+    Raises:
+        RuntimeError: If container is not locked and user declines locking
     """
+    from . import container_manager
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    technical_file = Path(technical_file)
+    
+    if not technical_file.exists():
+        raise FileNotFoundError(f"Technical container not found: {technical_file}")
+    
+    # Check if technical container is locked
+    is_locked = container_manager.is_container_locked(technical_file)
+    
+    if not is_locked:
+        logger.warning(
+            f"Technical container is not locked: {technical_file}\n"
+            f"Locked containers can be reused by multiple session containers."
+        )
+        
+        should_lock = False
+        
+        if auto_lock:
+            should_lock = True
+            logger.info("Auto-locking enabled - locking container")
+        elif user_confirm_lock is not None:
+            # Ask user via callback
+            should_lock = user_confirm_lock(technical_file)
+        
+        if should_lock:
+            logger.info(f"Locking technical container: {technical_file}")
+            container_manager.lock_container(technical_file)
+        else:
+            logger.warning(
+                f"Proceeding with unlocked technical container.\n"
+                f"This container may be modified, which could affect this session."
+            )
+    
+    # Copy technical data
     utils.copy_group(
         src_file=technical_file,
         src_group=schema.GROUP_TECHNICAL,
