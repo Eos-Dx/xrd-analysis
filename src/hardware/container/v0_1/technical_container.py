@@ -288,7 +288,9 @@ def generate_from_aux_table(
     active_detector_ids: List[str],
     distance_cm: float,
     poni_distance_cm: Optional[float] = None,
-    container_id: Optional[str] = None
+    container_id: Optional[str] = None,
+    validate_poni: bool = True,
+    poni_tolerance_percent: float = 5.0,
 ) -> Tuple[str, str]:
     """Generate technical container from DIFRA Aux table selections.
     
@@ -307,12 +309,38 @@ def generate_from_aux_table(
         detector_config: List of detector config dicts from DIFRA config
         active_detector_ids: List of active detector IDs
         distance_cm: User-defined sample-detector distance in cm
-        poni_distance_cm: Distance from PONI file in cm (optional)
+        poni_distance_cm: Distance from PONI file in cm (optional, deprecated)
         container_id: Optional container ID (generated if not provided)
+        validate_poni: If True, validate PONI distances (default: True)
+        poni_tolerance_percent: Maximum allowed deviation % (default: 5.0)
     
     Returns:
         Tuple of (container_id, file_path)
+        
+    Raises:
+        ValueError: If PONI distance validation fails
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # STEP 1: Validate PONI distances against user distance
+    if validate_poni and pony_data:
+        logger.info(f"Validating PONI distances against user distance: {distance_cm:.2f} cm...")
+        
+        for alias, (poni_content, poni_filename) in pony_data.items():
+            try:
+                schema.validate_poni_distance(
+                    poni_content, 
+                    distance_cm, 
+                    tolerance_percent=poni_tolerance_percent
+                )
+                logger.info(f"  ✓ {alias}: {poni_filename} - distance OK")
+            except ValueError as e:
+                logger.error(f"  ✗ {alias}: {poni_filename} - {e}")
+                raise ValueError(
+                    f"PONI validation failed for {alias} ({poni_filename}):\n{e}"
+                )
+    
     # Create container
     container_id, file_path = create_technical_container(folder, distance_cm, container_id)
     

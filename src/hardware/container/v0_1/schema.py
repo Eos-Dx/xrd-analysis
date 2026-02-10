@@ -198,6 +198,78 @@ def validate_container_id(container_id: str) -> bool:
     """Validate container ID format (16 hex chars)."""
     return bool(re.match(r"^[0-9a-f]{16}$", container_id))
 
+
+def parse_poni_distance(poni_content: str) -> float:
+    """Parse distance from PONI file content.
+    
+    Args:
+        poni_content: Raw PONI file text content
+        
+    Returns:
+        Distance in meters
+        
+    Raises:
+        ValueError: If Distance field not found
+        
+    Example PONI content:
+        Distance: 0.17
+        PixelSize1: 7.5e-05
+        PixelSize2: 7.5e-05
+        ...
+    """
+    for line in poni_content.split('\n'):
+        stripped = line.strip()
+        if stripped.startswith('Distance:'):
+            distance_str = stripped.split(':', 1)[1].strip()
+            try:
+                return float(distance_str)
+            except ValueError as e:
+                raise ValueError(
+                    f"Cannot parse distance value '{distance_str}' from PONI: {e}"
+                )
+    
+    raise ValueError(
+        "Distance field not found in PONI content. "
+        "Expected line starting with 'Distance:'"
+    )
+
+
+def validate_poni_distance(
+    poni_content: str,
+    user_distance_cm: float,
+    tolerance_percent: float = 5.0
+) -> None:
+    """Validate PONI distance matches user-specified distance.
+    
+    Args:
+        poni_content: Raw PONI file text content
+        user_distance_cm: User-specified distance in cm
+        tolerance_percent: Maximum allowed deviation percentage (default 5%)
+        
+    Raises:
+        ValueError: If deviation exceeds tolerance or distance cannot be parsed
+        
+    Example:
+        >>> poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
+        >>> validate_poni_distance(poni_content, user_distance_cm=17.0)  # OK
+        >>> validate_poni_distance(poni_content, user_distance_cm=20.0)  # Raises ValueError
+    """
+    # Parse PONI distance (in meters)
+    poni_distance_m = parse_poni_distance(poni_content)
+    poni_distance_cm = poni_distance_m * 100.0
+    
+    # Calculate deviation
+    deviation_cm = abs(poni_distance_cm - user_distance_cm)
+    deviation_percent = (deviation_cm / user_distance_cm) * 100.0
+    
+    if deviation_percent > tolerance_percent:
+        raise ValueError(
+            f"PONI distance validation failed:\n"
+            f"  PONI file: {poni_distance_cm:.2f} cm\n"
+            f"  User specified: {user_distance_cm:.2f} cm\n"
+            f"  Deviation: {deviation_percent:.1f}% (max allowed: {tolerance_percent:.1f}%)"
+        )
+
 def format_technical_container_filename(container_id: str, distance_cm: float = None) -> str:
     """Format technical container filename: technical_<id>.h5
     

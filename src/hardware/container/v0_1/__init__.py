@@ -18,6 +18,7 @@ from . import writer
 from . import validator
 from . import technical_container
 from . import measurement_counter
+from . import container_manager
 from .reader import SessionContainer, TechnicalContainer
 
 # Compatibility layer: old code expects session_container as a module
@@ -35,6 +36,7 @@ __all__ = [
     "validator",
     "technical_container",
     "measurement_counter",
+    "container_manager",
     "session_container",  # Compatibility alias
     "session_validator",   # Compatibility alias
     "SessionContainer",
