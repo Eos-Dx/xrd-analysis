@@ -2418,8 +2418,7 @@ Wavelength: {wavelength}
             return
 
         aux_measurements = {}
-        seen_pairs = set()
-        primary_measurements = {}  # Track which measurements are marked as primary
+        primary_measurements = {}  # Track which measurements are marked as primary: {(type, alias): [is_prim1, is_prim2, ...]}
 
         # Get active detector aliases for validation
         try:
@@ -2484,21 +2483,19 @@ Wavelength: {wavelength}
             if typ_ui == "SPECIAL":
                 self._log_technical_event("Mapping type SPECIAL → WATER for HDF5")
 
-            # Ensure unique (type, alias)
-            pair = (typ, alias)
-            if pair in seen_pairs:
-                QMessageBox.warning(
-                    self,
-                    "Duplicate Assignment",
-                    f"Measurement for type '{typ_ui}' and alias '{alias}' is already assigned.",
-                )
-                return
-
-            aux_measurements.setdefault(typ, {})[alias] = file_path
-            seen_pairs.add(pair)
+            # Allow multiple measurements per (type, alias) pair
+            # Only PRIMARY measurements will be used in H5, supplementary are ignored
+            # We validate PRIMARY uniqueness later (lines 2544-2565)
+            # 
+            # If this is a primary measurement, it will be used for H5
+            if is_primary:
+                aux_measurements.setdefault(typ, {})[alias] = file_path
             
-            # Track primary/supplementary status
-            primary_measurements.setdefault(typ, {})[alias] = is_primary
+            # Track primary/supplementary status for this row
+            pair = (typ, alias)
+            if pair not in primary_measurements:
+                primary_measurements[pair] = []
+            primary_measurements[pair].append(is_primary)
             
             self._log_technical_event(
                 f"Row {row+1}: {typ_ui} for {alias} - {'PRIMARY' if is_primary else 'supplementary'}"
@@ -2549,15 +2546,13 @@ Wavelength: {wavelength}
         # 3) Validate primary selections: max one primary per measurement type per detector
         primary_violations = []
         for typ in required_types:
-            primary_map = primary_measurements.get(typ, {})
             for alias in aliases_to_check:
-                # Count how many rows for this (type, alias) pair are marked as primary
-                primary_count = sum(
-                    1 for a, is_prim in primary_map.items() 
-                    if a == alias and is_prim
-                )
-                if primary_count > 1:
-                    primary_violations.append(f"{typ} → {alias}: {primary_count} primary files")
+                pair = (typ, alias)
+                if pair in primary_measurements:
+                    # Count how many rows for this (type, alias) pair are marked as primary
+                    primary_count = sum(1 for is_prim in primary_measurements[pair] if is_prim)
+                    if primary_count > 1:
+                        primary_violations.append(f"{typ} → {alias}: {primary_count} primary files")
         
         if primary_violations:
             QMessageBox.warning(
