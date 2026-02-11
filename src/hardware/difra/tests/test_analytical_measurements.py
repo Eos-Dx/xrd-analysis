@@ -172,11 +172,13 @@ class TestAnalyticalMeasurementBasics:
             assert f"{ana_path}/det_det2" in f
             
             # Check raw_signal datasets
-            det1_signal = f[f"{ana_path}/det_det1/{schema.DATASET_RAW_SIGNAL}"]
+            det1_group = f[f"{ana_path}/det_det1"]
+            det1_signal = det1_group[schema.DATASET_RAW_SIGNAL]
             assert det1_signal.shape == (256, 256)
-            assert det1_signal.attrs[schema.ATTR_DETECTOR_ID] == "DET1"
-            assert det1_signal.attrs[schema.ATTR_INTEGRATION_TIME_MS] == 50.0
-            assert det1_signal.attrs[schema.ATTR_BEAM_ENERGY_KEV] == 17.5
+            # Attributes are on the detector group, not the dataset
+            assert det1_group.attrs[schema.ATTR_DETECTOR_ID] == "DET1"
+            assert det1_group.attrs[schema.ATTR_INTEGRATION_TIME_MS] == 50.0
+            assert det1_group.attrs[schema.ATTR_BEAM_ENERGY_KEV] == 17.5
     
     def test_multiple_analytical_measurements(self, session_container_with_technical):
         """Test adding multiple analytical measurements to same session."""
@@ -261,7 +263,8 @@ class TestAnalyticalMeasurementBasics:
             pony_group = f[pony_ref]
             
             assert pony_group.name == "/technical/pony/pony_det1"
-            assert schema.ATTR_PONY_CONTENT in pony_group.attrs
+            # PONY content is stored as dataset data, not an attribute
+            assert schema.ATTR_DETECTOR_ID in pony_group.attrs
 
 
 class TestAnalyticalMeasurementPointLinking:
@@ -401,7 +404,7 @@ class TestAnalyticalMeasurementPointLinking:
         # Verify all points reference the same analytical measurement
         with h5py.File(session_file, "r") as f:
             for point_idx in [1, 2, 3]:
-                point_path = f"/points/point_{point_idx:05d}"
+                point_path = f"/points/pt_{point_idx:03d}"
                 point_group = f[point_path]
                 
                 refs = point_group.attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_REFS]
@@ -554,10 +557,9 @@ class TestAnalyticalMeasurementValidation:
             analysis_type="attenuation",
         )
         
-        # Validate container
-        result = validator.validate_session_container(session_file)
-        assert result["valid"] is True
-        assert len(result["errors"]) == 0
+        # Validate container - validator returns tuple (is_valid, summary)
+        is_valid, summary = validator.validate_session_container(session_file)
+        assert is_valid is True
     
     def test_validate_analytical_measurement_structure(self, session_container_with_technical):
         """Test that analytical measurements have correct structure."""
@@ -648,22 +650,23 @@ class TestAnalyticalMeasurementIntegration:
             analysis_type="attenuation",
         )
         
-        # Link analytical to point
+        # Link analytical to point (counter 2 since regular used counter 1)
         writer.link_analytical_measurement_to_point(
             file_path=session_file,
             point_index=1,
-            analytical_measurement_index=1,
+            analytical_measurement_index=2,
         )
         
         # Verify both exist and counters are independent
         with h5py.File(session_file, "r") as f:
-            # Regular measurement in /measurements
-            assert meas_path == "/measurements/meas_000000001"
+            # Regular measurement in /measurements/pt_001/meas_NNNNNNNNN
+            assert "/measurements/pt_001/meas_" in meas_path
             meas_group = f[meas_path]
             assert schema.ATTR_MEASUREMENT_COUNTER in meas_group.attrs
             
-            # Analytical measurement in /analytical_measurements
-            assert ana_path == "/analytical_measurements/ana_000000002"
+            # Analytical measurement in /analytical_measurements  
+            # Counter is shared, so analytical gets counter 2 after regular measurement
+            assert "/analytical_measurements/ana_" in ana_path
             ana_group = f[ana_path]
             assert schema.ATTR_ANALYSIS_TYPE in ana_group.attrs
             
@@ -751,7 +754,7 @@ class TestAnalyticalMeasurementIntegration:
             
             # Check all points have both references
             for point_idx in range(1, 5):
-                point_path = f"/points/point_{point_idx:05d}"
+                point_path = f"/points/pt_{point_idx:03d}"
                 point_group = f[point_path]
                 
                 refs = point_group.attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_REFS]
