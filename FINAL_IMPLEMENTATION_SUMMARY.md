@@ -51,7 +51,7 @@ Successfully completed all requested features and fixes for the DIFRA technical 
 **Process**:
 1. Container locked successfully
 2. Create timestamped archive folder: `<container_id>_<timestamp>/`
-3. Move all .npy files from container directory to archive
+3. Move all .npy and .txt files from container directory to archive
 4. H5 container remains in `difra/technical/`
 5. User notified of archived file count
 
@@ -185,7 +185,7 @@ Successfully completed all requested features and fixes for the DIFRA technical 
 ### Verified Behaviors
 - ✅ Folders auto-created with correct structure
 - ✅ Config paths properly applied
-- ✅ Raw .npy files archived after locking
+- ✅ Raw .npy and .txt files archived after locking
 - ✅ H5 containers remain in technical folder
 - ✅ Archive organized by container ID + timestamp
 - ✅ Load H5 validates before loading
@@ -229,8 +229,11 @@ difra/technical/
 
 difra/archive/technical/abc123_20260211_150000/
   ├── DARK_PRIMARY.npy
+  ├── DARK_PRIMARY.txt
   ├── DARK_SECONDARY.npy
+  ├── DARK_SECONDARY.txt
   ├── EMPTY_PRIMARY.npy
+  ├── EMPTY_PRIMARY.txt
   └── ...
 ```
 
