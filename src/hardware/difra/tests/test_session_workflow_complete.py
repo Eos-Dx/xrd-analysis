@@ -817,7 +817,7 @@ def test_step8_lock_container(temp_dir, technical_container_path):
     print(f"  ✓ Session populated with data")
 
     # Check container is not locked
-    assert not container_manager.is_locked(session_path)
+    assert not container_manager.is_container_locked(session_path)
     print(f"  ✓ Container is unlocked (editable)")
 
     # Lock the container
@@ -826,7 +826,7 @@ def test_step8_lock_container(temp_dir, technical_container_path):
     print(f"  ✓ Container locked")
 
     # Verify locked status
-    assert container_manager.is_locked(session_path)
+    assert container_manager.is_container_locked(session_path)
 
     with h5py.File(session_path, "r") as f:
         assert f.attrs["locked"] == True
@@ -963,7 +963,8 @@ def test_step9_complete_workflow(temp_dir, technical_container_path):
         assert "/measurements/pt_001/meas_000000001" in f
         assert "/measurements/pt_002/meas_000000002" in f
         assert "/measurements/pt_003/meas_000000003" in f
-        assert "/analytical_measurements/ana_000000001" in f
+        # Analytical measurement uses shared counter (after 3 regular measurements)
+        assert "/analytical_measurements/ana_000000004" in f
         assert f.attrs["locked"] == True
 
     print(f"  ✓ Step 9: Complete structure verified")
