@@ -51,7 +51,7 @@ Successfully completed all requested features and fixes for the DIFRA technical 
 **Process**:
 1. Container locked successfully
 2. Create timestamped archive folder: `<container_id>_<timestamp>/`
-3. Move all .npy and .txt files from container directory to archive
+3. Move all .npy, .txt, and .dsc files from container directory to archive
 4. H5 container remains in `difra/technical/`
 5. User notified of archived file count
 
@@ -61,7 +61,29 @@ Successfully completed all requested features and fixes for the DIFRA technical 
 - Organized by container ID and timestamp
 - Easy to locate source data for any container
 
-### 4. Business Logic Validations
+### 4. Demo Detector .dsc File Generation
+**Implementation**: DummyDetectorController now generates fake `.dsc` descriptor files alongside `.txt` data files to mimic real Advacam/Pixet detector behavior.
+
+**.dsc File Content**:
+- Acquisition metadata (mode, time, frames)
+- Detector dimensions (width, height)
+- Chipboard ID and interface info
+- Pixel size and layout
+- Data statistics (total counts, max, mean)
+- Demo mode indicator
+
+**Purpose**:
+- Realistic simulation of real detector output
+- Both `.txt` (ASCII data) and `.dsc` (metadata) files are generated
+- Both file types are archived after container locking
+- Allows testing of complete file handling workflow
+
+**Test Coverage**: 3 dedicated tests for .dsc generation
+- Basic .dsc file creation
+- Metadata accuracy verification
+- Multiple captures with unique files
+
+### 5. Business Logic Validations
 
 #### Max One Primary Per Type+Detector
 **Rule**: Each measurement type can have at most ONE primary file per detector.
@@ -87,10 +109,10 @@ Successfully completed all requested features and fixes for the DIFRA technical 
 ## 📊 Test Coverage
 
 ### Test Statistics
-- **Total Tests**: 41 (10 integration + 31 workflow)
-- **Passing**: 41 (100%)
-- **Execution Time**: ~25 seconds
-- **Coverage Areas**: 13 major feature areas
+- **Total Tests**: 44 (10 integration + 31 workflow + 3 .dsc generation)
+- **Passing**: 44 (100%)
+- **Execution Time**: ~36 seconds
+- **Coverage Areas**: 14 major feature areas
 
 ### New Tests Added (7 tests)
 
@@ -107,9 +129,15 @@ Successfully completed all requested features and fixes for the DIFRA technical 
 6. `test_load_h5_with_valid_container` - Valid containers load successfully
 7. `test_load_h5_with_invalid_container` - Invalid containers properly rejected
 
+#### .dsc Generation (3 tests)
+8. `test_dummy_detector_generates_dsc_file` - .dsc file creation with .txt
+9. `test_dsc_file_metadata_accuracy` - Metadata accuracy verification
+10. `test_multiple_captures_unique_dsc_files` - Multiple unique .dsc files
+
 ### Test Files
 - `test_technical_integration.py` - 10 tests (core data pipeline)
 - `test_technical_workflow.py` - 31 tests (validation, locking, archiving, business logic)
+- `test_dummy_detector_dsc.py` - 3 tests (.dsc file generation and metadata)
 
 ## 📁 Files Modified
 
@@ -185,12 +213,13 @@ Successfully completed all requested features and fixes for the DIFRA technical 
 ### Verified Behaviors
 - ✅ Folders auto-created with correct structure
 - ✅ Config paths properly applied
-- ✅ Raw .npy and .txt files archived after locking
+- ✅ Raw .npy, .txt, and .dsc files archived after locking
 - ✅ H5 containers remain in technical folder
 - ✅ Archive organized by container ID + timestamp
 - ✅ Load H5 validates before loading
 - ✅ Primary selection limits enforced
 - ✅ Distance requirements validated
+- ✅ Demo detector generates .dsc descriptor files
 
 ## 📝 Usage Examples
 
@@ -230,10 +259,13 @@ difra/technical/
 difra/archive/technical/abc123_20260211_150000/
   ├── DARK_PRIMARY.npy
   ├── DARK_PRIMARY.txt
+  ├── DARK_PRIMARY.dsc
   ├── DARK_SECONDARY.npy
   ├── DARK_SECONDARY.txt
+  ├── DARK_SECONDARY.dsc
   ├── EMPTY_PRIMARY.npy
   ├── EMPTY_PRIMARY.txt
+  ├── EMPTY_PRIMARY.dsc
   └── ...
 ```
 
