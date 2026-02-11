@@ -187,8 +187,15 @@ ATTR_GEOMETRY_PX = "geometry_px"  # JSON or array depending on shape
 ATTR_HOLDER_DIAMETER_MM = "holder_diameter_mm"
 
 # ================== Dataset Names ==========================
-DATASET_RAW_SIGNAL = "raw_signal"
-DATASET_RAW_FILES = "raw_files"
+DATASET_RAW_SIGNAL = "raw_signal"  # Alias for processed_signal (backward compat)
+DATASET_PROCESSED_SIGNAL = "processed_signal"  # Mandatory numpy array
+DATASET_RAW_FILES = "raw_files"  # Group containing raw file blobs
+DATASET_METADATA = "metadata"  # Optional JSON metadata
+
+# ================== Compression Levels =====================
+COMPRESSION_BLOB_MAX = 9  # Maximum compression for raw file blobs
+COMPRESSION_PROCESSED = 4  # Medium compression for processed numpy arrays
+COMPRESSION_IMAGE = 4  # Medium compression for images
 
 # ================== Helper Functions =======================
 def generate_container_id() -> str:
@@ -304,5 +311,18 @@ def validate_technical_type(tech_type: str) -> bool:
     return tech_type in ALL_TECHNICAL_TYPES
 
 def validate_zone_role(role: str) -> bool:
-    """Validate zone role is in allowed set."""
+    """Validate zone role value."""
     return role in [ZONE_ROLE_SAMPLE_HOLDER, ZONE_ROLE_INCLUDE, ZONE_ROLE_EXCLUDE]
+
+def validate_detector_data(detector_group) -> tuple:
+    """Validate detector data has mandatory processed_signal.
+    
+    Args:
+        detector_group: HDF5 group object for detector
+        
+    Returns:
+        (is_valid: bool, error_message: str or None)
+    """
+    if DATASET_PROCESSED_SIGNAL not in detector_group:
+        return False, f"Missing mandatory {DATASET_PROCESSED_SIGNAL} dataset"
+    return True, None

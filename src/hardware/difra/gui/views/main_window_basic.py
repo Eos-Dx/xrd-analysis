@@ -177,6 +177,10 @@ class MainWindowBasic(QMainWindow):
                 logger.warning(
                     "Error clearing shapes/points after image load", error=str(e)
                 )
+            
+            # Auto-create session when new sample image is loaded
+            if hasattr(self, '_handle_new_sample_image'):
+                self._handle_new_sample_image(path)
 
     def capture_from_camera(self):
         default_folder = self.config.get("default_folder", "")
@@ -194,6 +198,10 @@ class MainWindowBasic(QMainWindow):
                         "Error clearing shapes/points after camera capture",
                         error=str(e),
                     )
+                
+                # Auto-create session when new sample image is captured
+                if hasattr(self, '_handle_new_sample_image'):
+                    self._handle_new_sample_image(image_path)
             else:
                 QMessageBox.warning(
                     self,

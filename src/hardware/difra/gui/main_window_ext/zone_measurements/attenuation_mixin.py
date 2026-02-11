@@ -29,6 +29,19 @@ logger = get_module_logger(__name__)
 
 class AttenuationMixin:
     """Handles 'Attenuation' tab and measurement logic."""
+    
+    def get_poni_file(self, alias):
+        """Get PONI file path for a detector alias.
+        
+        Args:
+            alias: Detector alias (e.g. 'SAXS', 'WAXS')
+            
+        Returns:
+            Path to PONI file, or None if not found
+        """
+        if hasattr(self, 'poni_files') and alias in self.poni_files:
+            return self.poni_files[alias].get('path')
+        return None
 
     def create_attenuation_tab(self):
         """Creates attenuation tab UI and connects signals."""
@@ -104,6 +117,17 @@ class AttenuationMixin:
 
     def _attenuation_measure(self, mode):
         """Core logic for performing attenuation measurement."""
+        # Check if session is active
+        if not self.session_manager.is_session_active():
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "No Active Session",
+                "Please create a session before measuring attenuation.\n\n"
+                "Go to File → New Session...",
+            )
+            return
+        
         N = self.n_repeat_spin.value()
         t_exp = self.integration_time_spin.value()
         save_folder = self.folderLineEdit.text().strip()
@@ -114,6 +138,8 @@ class AttenuationMixin:
         )
 
         results = {}
+        all_data = {}  # Collect data for all detectors
+        
         for alias, detector in self.hardware_controller.detectors.items():
             center_x, center_y = self.get_beam_center(alias)
             size = detector.size if hasattr(detector, "size") else (256, 256)
@@ -155,6 +181,10 @@ class AttenuationMixin:
                     frame, center_x, center_y, size=radius
                 )
                 results[alias] = value
+                
+                # Store data for session container
+                all_data[alias] = frame
+                
                 logger.info(
                     "Attenuation measurement completed",
                     mode=mode,
@@ -187,6 +217,47 @@ class AttenuationMixin:
                 },
             )
             self.attenuationList.addItem(item)
+
+        # Add to session container
+        if all_data:
+            try:
+                # Build metadata
+                metadata = {
+                    "n_frames": N,
+                    "integration_time_s": t_exp,
+                    "timestamp": timestamp,
+                    "integration_radius_px": radius,
+                }
+                
+                # Get PONI map (assuming all detectors share same PONI)
+                pony_map = {}
+                for alias in all_data.keys():
+                    poni_file = self.get_poni_file(alias)
+                    if poni_file:
+                        pony_map[alias] = poni_file
+                
+                # Add to session container
+                self.session_manager.add_attenuation_measurement(
+                    data=all_data,
+                    metadata=metadata,
+                    pony_map=pony_map,
+                    mode=mode,
+                )
+                
+                logger.info(
+                    f"Added {mode} attenuation to session container",
+                    detectors=list(all_data.keys()),
+                )
+                
+                # Update session status in UI
+                if hasattr(self, 'update_session_status'):
+                    self.update_session_status()
+                    
+            except Exception as e:
+                logger.error(
+                    f"Failed to add attenuation to session container: {e}",
+                    exc_info=True,
+                )
 
         setattr(self, f"atten_{mode}_results", results)
         self.display_attenuation_result()

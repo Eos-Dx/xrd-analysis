@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 from hardware.difra.gui.main_window_ext.drawing_extension import DrawingMixin
 from hardware.difra.gui.main_window_ext.rotation_extension import RotationMixin
+from hardware.difra.gui.main_window_ext.session_mixin import SessionMixin
 from hardware.difra.gui.main_window_ext.shape_table_extension import ShapeTableMixin
 from hardware.difra.gui.main_window_ext.state_saver_extension import StateSaverMixin
 from hardware.difra.gui.main_window_ext.technical_measurements import (
@@ -31,6 +32,7 @@ from hardware.difra.hardware.hardware_control import HardwareController
 
 
 class MainWindow(
+    SessionMixin,
     RotationMixin,
     ShapeTableMixin,
     DrawingMixin,
@@ -177,6 +179,11 @@ class MainWindow(
             logger.debug(f"Initializing HardwareController with config: {self.config}")
             self.hardware_controller = HardwareController(self.config)
             logger.debug("HardwareController initialized")
+            
+            # Initialize SessionManager
+            logger.debug("Initializing SessionManager...")
+            self.init_session_manager()
+            logger.debug("SessionManager initialized")
             
         except Exception as e:
             logger.error(f"Error in setup_main_layout: {e}", exc_info=True)

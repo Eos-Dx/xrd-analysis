@@ -24,7 +24,13 @@ logger = get_module_logger(__name__)
 class SessionManager:
     """Manages HDF5 session containers for DIFRA measurements."""
     
-    def __init__(self):
+    def __init__(self, config: Optional[Dict] = None):
+        """Initialize SessionManager.
+        
+        Args:
+            config: Optional configuration dict from global.json
+                   If provided, beam_energy_kev will be read from config
+        """
         self.session_path: Optional[Path] = None
         self.session_id: Optional[str] = None
         self.sample_id: Optional[str] = None
@@ -33,11 +39,17 @@ class SessionManager:
         self.i0_counter: Optional[int] = None  # Attenuation without sample
         self.i_counter: Optional[int] = None   # Attenuation with sample
         
-        # Configuration
-        self.operator_id: str = "operator"
-        self.site_id: str = "DIFRA_LAB"
-        self.machine_name: str = "DIFRA-01"
-        self.beam_energy_kev: float = 17.5
+        # Configuration - read from config or use defaults
+        if config:
+            self.operator_id: str = config.get('operator_id', 'operator')
+            self.site_id: str = config.get('site_id', 'DIFRA_LAB')
+            self.machine_name: str = config.get('machine_name', 'DIFRA-01')
+            self.beam_energy_kev: float = config.get('beam_energy_kev', 17.5)
+        else:
+            self.operator_id: str = "operator"
+            self.site_id: str = "DIFRA_LAB"
+            self.machine_name: str = "DIFRA-01"
+            self.beam_energy_kev: float = 17.5
     
     def is_session_active(self) -> bool:
         """Check if a session is currently active."""
@@ -49,7 +61,6 @@ class SessionManager:
         sample_id: str,
         distance_cm: float,
         operator_id: Optional[str] = None,
-        beam_energy_kev: Optional[float] = None,
     ) -> Tuple[str, Path]:
         """Create a new session container.
         
@@ -57,14 +68,17 @@ class SessionManager:
             folder: Directory for session container
             sample_id: Unique sample identifier
             distance_cm: Sample-detector distance
-            operator_id: Operator name (optional)
-            beam_energy_kev: Beam energy in keV (optional)
+            operator_id: Operator name (optional, overrides config)
             
         Returns:
             Tuple of (session_id, session_path)
             
         Raises:
             RuntimeError: If no valid technical container found
+            
+        Notes:
+            - beam_energy_kev is read from config (global.json)
+            - Cannot be changed per session (requires service engineer)
         """
         # Find active technical container for this distance
         tech_path = find_active_technical_container(
@@ -89,13 +103,12 @@ class SessionManager:
             sample_id=sample_id,
             distance_cm=distance_cm,
             technical_container=str(tech_path),
+            beam_energy_kev=self.beam_energy_kev,
         )
         
-        # Use provided values or defaults
+        # Use provided operator_id or default
         if operator_id:
             self.operator_id = operator_id
-        if beam_energy_kev:
-            self.beam_energy_kev = beam_energy_kev
         
         # Create session container
         self.session_id, session_path_str = writer.create_session_container(

@@ -328,6 +328,52 @@ class ZoneMeasurementsProcessMixin:
         if gh:
             self.state_measurements["CALIBRATION_GROUP_HASH"] = gh
         self.manual_save_state()
+        
+        # Add points to session container if session is active
+        if hasattr(self, 'session_manager') and self.session_manager.is_session_active():
+            try:
+                # Convert measurement_points to session container format
+                points_for_session = []
+                for pt in measurement_points:
+                    # Get pixel coordinates from point item
+                    pt_idx = pt['point_index']
+                    gp = self.image_view.points_dict["generated"]["points"]
+                    up = self.image_view.points_dict["user"]["points"]
+                    
+                    if pt_idx < len(gp):
+                        point_item = gp[pt_idx]
+                    else:
+                        user_idx = pt_idx - len(gp)
+                        point_item = up[user_idx]
+                    
+                    center = point_item.sceneBoundingRect().center()
+                    pixel_x = center.x()
+                    pixel_y = center.y()
+                    
+                    points_for_session.append({
+                        "pixel_coordinates": [float(pixel_x), float(pixel_y)],
+                        "physical_coordinates_mm": [pt['x'], pt['y']],
+                    })
+                
+                # Add all points to session
+                self.session_manager.add_points(points_for_session)
+                
+                logger.info(
+                    f"Added {len(points_for_session)} points to session container"
+                )
+                
+                # Add zones to session if available
+                if hasattr(self, '_add_zones_to_session'):
+                    self._add_zones_to_session()
+                
+                # Note: Attenuation linking happens per-point during automatic attenuation workflow
+                
+            except Exception as e:
+                logger.error(
+                    f"Failed to add points to session container: {e}",
+                    exc_info=True,
+                )
+        
         self.measure_next_point()
 
     def measure_next_point(self):
@@ -542,6 +588,48 @@ class ZoneMeasurementsProcessMixin:
             )
         except Exception:
             pass
+        
+        # Add I₀ (without sample) to session container
+        if hasattr(self, 'session_manager') and self.session_manager.is_session_active():
+            try:
+                all_data = {}
+                for alias, npy_file in results.items():
+                    if npy_file:
+                        import numpy as np
+                        all_data[alias] = np.load(npy_file)
+                
+                if all_data:
+                    metadata = {
+                        "n_frames": frames,
+                        "integration_time_s": short_t,
+                        "timestamp": group_ts,
+                        "loading_position_mm": [load_x, load_y],
+                    }
+                    
+                    # Get PONI map
+                    pony_map = {}
+                    for alias in all_data.keys():
+                        if hasattr(self, 'get_poni_file'):
+                            poni_file = self.get_poni_file(alias)
+                            if poni_file:
+                                pony_map[alias] = poni_file
+                    
+                    self.session_manager.add_attenuation_measurement(
+                        data=all_data,
+                        metadata=metadata,
+                        pony_map=pony_map,
+                        mode="without",
+                    )
+                    
+                    logger.info(
+                        "Added I₀ (without sample) to session container",
+                        detectors=list(all_data.keys()),
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Failed to add I₀ to session container: {e}",
+                    exc_info=True,
+                )
 
     def _record_attenuation_files(self, key: str, files: dict):
         """Record attenuation files in the measurement state under current point unique_id.
@@ -665,6 +753,65 @@ class ZoneMeasurementsProcessMixin:
                 self._record_attenuation_files("with_sample", moved_map)
             except Exception:
                 pass
+            
+            # Add I (with sample) to session container
+            if hasattr(self, 'session_manager') and self.session_manager.is_session_active():
+                try:
+                    all_data = {}
+                    for alias, npy_file in moved_map.items():
+                        if npy_file:
+                            import numpy as np
+                            all_data[alias] = np.load(npy_file)
+                    
+                    if all_data:
+                        metadata = {
+                            "n_frames": frames,
+                            "integration_time_s": short_t,
+                            "timestamp": self._timestamp,
+                            "point_position_mm": [self._x_mm, self._y_mm],
+                        }
+                        
+                        # Get PONI map
+                        pony_map = {}
+                        for alias in all_data.keys():
+                            if hasattr(self, 'get_poni_file'):
+                                poni_file = self.get_poni_file(alias)
+                                if poni_file:
+                                    pony_map[alias] = poni_file
+                        
+                        self.session_manager.add_attenuation_measurement(
+                            data=all_data,
+                            metadata=metadata,
+                            pony_map=pony_map,
+                            mode="with",
+                        )
+                        
+                        # Now link this point to the attenuation measurements
+                        # (Link I₀ and I to current point)
+                        try:
+                            self.session_manager.link_attenuation_to_points(
+                                num_points=1,
+                                start_point_idx=self.current_measurement_sorted_index,
+                            )
+                            logger.info(
+                                f"Linked attenuation to point {self.current_measurement_sorted_index}"
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to link attenuation to point: {e}",
+                                exc_info=True,
+                            )
+                        
+                        logger.info(
+                            f"Added I (with sample) to session container at point {self.current_measurement_sorted_index}",
+                            detectors=list(all_data.keys()),
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to add I to session container: {e}",
+                        exc_info=True,
+                    )
+            
             # Proceed with normal capture
             self._start_normal_capture(txt_filename_base)
 
@@ -729,6 +876,61 @@ class ZoneMeasurementsProcessMixin:
         # Save updated state
         with open(self.state_path_measurements, "w") as f:
             json.dump(self.state_measurements, f, indent=4)
+        
+        # Add to session container if session is active
+        if hasattr(self, 'session_manager') and self.session_manager.is_session_active():
+            try:
+                # Convert txt files to npy and load data
+                from hardware.difra.gui.technical.capture import (
+                    move_and_convert_measurement_file,
+                )
+                
+                all_data = {}
+                for alias, txt_filename in result_files.items():
+                    # Convert to .npy
+                    npy_file = move_and_convert_measurement_file(
+                        txt_filename, self.measurement_folder
+                    )
+                    # Load data
+                    import numpy as np
+                    all_data[alias] = np.load(npy_file)
+                
+                # Build metadata
+                metadata = {
+                    "x_mm": x,
+                    "y_mm": y,
+                    "integration_time_s": self.integration_time,
+                    "timestamp": self._timestamp,
+                    "unique_id": point_unique_id,
+                }
+                
+                # Get PONI map
+                pony_map = {}
+                for alias in all_data.keys():
+                    if hasattr(self, 'get_poni_file'):
+                        poni_file = self.get_poni_file(alias)
+                        if poni_file:
+                            pony_map[alias] = poni_file
+                
+                # Add measurement to session container
+                self.session_manager.add_measurement(
+                    point_idx=current_index,
+                    data=all_data,
+                    metadata=metadata,
+                    pony_map=pony_map,
+                )
+                
+                logger.info(
+                    f"Added measurement to session container",
+                    point_idx=current_index,
+                    detectors=list(all_data.keys()),
+                )
+                
+            except Exception as e:
+                logger.error(
+                    f"Failed to add measurement to session container: {e}",
+                    exc_info=True,
+                )
 
         # === The rest is unchanged (your logic) ===
         current_row = self.sorted_indices[self.current_measurement_sorted_index]
