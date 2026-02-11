@@ -169,9 +169,9 @@ class ZoneMeasurementsUIMixin:
         folderLayout.addWidget(self.browseBtn)
         meas_layout.addLayout(folderLayout)
 
-        # --- File name ---
+        # --- Sample ID ---
         fileNameLayout = QHBoxLayout()
-        fileNameLabel = QLabel("File Name:")
+        fileNameLabel = QLabel("Sample ID:")
         self.fileNameLineEdit = QLineEdit()
         fileNameLayout.addWidget(fileNameLabel)
         fileNameLayout.addWidget(self.fileNameLineEdit)
@@ -260,7 +260,7 @@ class ZoneMeasurementsUIMixin:
 
     def _handle_distance_button_click(self, append_text):
         """
-        Handle distance button click by appending text to filename.
+        Handle distance button click by appending text to sample ID.
         """
         current_filename = self.fileNameLineEdit.text()
         self.fileNameLineEdit.setText(current_filename + append_text)

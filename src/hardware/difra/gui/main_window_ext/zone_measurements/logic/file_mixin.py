@@ -66,7 +66,7 @@ class ZoneMeasurementsFileMixin:
 
     def handle_add_count(self):
         """
-        Appends the count value to the current file name in the UI.
+        Appends the count value to the current sample ID in the UI.
         """
         current_filename = self.fileNameLineEdit.text()
         appended_value = "_" + str(self.addCountSpinBox.value())

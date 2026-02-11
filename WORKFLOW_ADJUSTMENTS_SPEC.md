@@ -441,7 +441,11 @@ session_<session_id>.h5
 ## 8. Implementation Priority
 
 ### Phase 1: Core Changes (High Priority)
-1. ⏳ Rename "file name" → "Sample ID" in UI (TODO)
+1. ✅ **Rename "file name" → "Sample ID" in UI (COMPLETED)**
+   - Updated zone_measurements/logic/ui_mixin.py: QLabel text changed
+   - Updated docstrings in ui_mixin.py and file_mixin.py
+   - Field now displays "Sample ID:" instead of "File Name:"
+   - Internal variable name (fileNameLineEdit) preserved for compatibility
 2. ⏳ Implement session replacement workflow with dialog (TODO)
 3. ⏳ Add session archiving with upload status (TODO)
 4. ⏳ Add error session handling (TODO)
