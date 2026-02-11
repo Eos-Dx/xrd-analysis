@@ -669,6 +669,12 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         actions_layout.setSpacing(4)
         actions_layout.addWidget(QLabel("Actions:"))  # Simple label instead of groupbox
 
+        # Configure distances button
+        dist_btn = QPushButton("Distances...")
+        dist_btn.setToolTip("Configure detector distances for technical measurements")
+        dist_btn.clicked.connect(self.configure_detector_distances)
+        actions_layout.addWidget(dist_btn)
+        
         load_btn = QPushButton("Load Files…")
         load_btn.setToolTip("Load existing technical measurement files into the table")
         load_btn.clicked.connect(self.load_technical_files)
@@ -680,7 +686,7 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         actions_layout.addWidget(pyfai_btn)
 
         gen_btn = QPushButton("Gen H5")
-        gen_btn.setToolTip("Generate technical_<id>.h5 HDF5 container from selected rows")
+        gen_btn.setToolTip("Generate technical_<id>.h5 HDF5 container from all table rows")
         gen_btn.clicked.connect(self.generate_technical_h5)
         actions_layout.addWidget(gen_btn)
 
@@ -745,6 +751,60 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         for w in widgets:
             w.setEnabled(enable)
 
+    def configure_detector_distances(self):
+        """Show dialog to configure detector distances."""
+        from hardware.difra.gui.detector_distance_config_dialog import DetectorDistanceConfigDialog
+        
+        detector_configs = self.config.get('detectors', [])
+        if not detector_configs:
+            QMessageBox.warning(
+                self,
+                "No Detectors",
+                "No detector configuration found.",
+            )
+            return
+        
+        # Get active detector configs only
+        active_detector_ids = self._get_active_detector_ids()
+        active_detector_configs = [
+            d for d in detector_configs
+            if d.get('id') in active_detector_ids
+        ]
+        
+        if not active_detector_configs:
+            QMessageBox.warning(
+                self,
+                "No Active Detectors",
+                "No active detectors configured.",
+            )
+            return
+        
+        # Get current distances if set
+        current_distances = getattr(self, '_detector_distances', {})
+        
+        dialog = DetectorDistanceConfigDialog(
+            detector_configs=active_detector_configs,
+            current_distances=current_distances,
+            parent=self
+        )
+        
+        if dialog.exec_() == QDialog.Accepted:
+            distances = dialog.get_distances()
+            self._detector_distances = distances
+            
+            # Log distances
+            dist_str = ", ".join(
+                f"{d.get('alias', d['id'])}: {distances.get(d['id'], 'N/A')} cm"
+                for d in active_detector_configs
+            )
+            self._log_technical_event(f"Configured distances: {dist_str}")
+            
+            QMessageBox.information(
+                self,
+                "Distances Configured",
+                f"Detector distances set:\n\n{dist_str}",
+            )
+    
     def _initialize_continuous_movement_controller(self):
         """Initialize the continuous movement controller if stage is available."""
         try:
