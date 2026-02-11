@@ -1613,6 +1613,82 @@ fi
             return float(m.group(1)) if m else None
         except Exception:
             return None
+    
+    def _generate_fake_poni_data(self, aliases, user_distance_cm):
+        """Generate fake PONI data for dev mode with distances within ±3% of user value.
+        
+        Args:
+            aliases: List of detector aliases
+            user_distance_cm: User-specified distance in cm
+        
+        Returns:
+            Dict mapping alias to tuple of (poni_content, poni_filename)
+        """
+        import random
+        import time
+        
+        pony_data = {}
+        
+        for alias in aliases:
+            # Get detector config
+            detector_config = None
+            for d in self.config.get("detectors", []):
+                if d.get("alias") == alias:
+                    detector_config = d
+                    break
+            
+            if not detector_config:
+                detector_config = {"alias": alias}
+            
+            # Generate distance within ±3% margin (inside the 5% validation tolerance)
+            random.seed(hash(alias))  # Consistent values for same detector
+            margin = random.uniform(-0.03, 0.03)
+            fake_distance_m = (user_distance_cm / 100.0) * (1 + margin)
+            
+            # Get detector size or use defaults
+            size = detector_config.get("size", {"width": 256, "height": 256})
+            width = size.get("width", 256)
+            height = size.get("height", 256)
+            
+            # Generate slightly different parameters for each detector
+            poni1 = round(random.uniform(0.005, 0.010), 6)
+            poni2 = round(random.uniform(0.0008, 0.0030), 6)
+            
+            # Generate pixel sizes (typically 55um or 100um)
+            pixel_size = detector_config.get("pixel_size_um", [55, 55])
+            pixel1 = pixel_size[0] * 1e-6 if len(pixel_size) > 0 else 5.5e-05
+            pixel2 = pixel_size[1] * 1e-6 if len(pixel_size) > 1 else 5.5e-05
+            
+            wavelength = 1.5406e-10  # Typical Cu Kα wavelength
+            
+            current_time = time.strftime("%a %b %d %H:%M:%S %Y")
+            
+            poni_content = f"""# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis
+# Calibration done on {current_time} (DEV MODE - FAKE DATA)
+poni_version: 2.1
+Detector: Detector
+Detector_config: {{"pixel1": {pixel1}, "pixel2": {pixel2}, "max_shape": [{height}, {width}], "orientation": 3}}
+Distance: {fake_distance_m}
+Poni1: {poni1}
+Poni2: {poni2}
+Rot1: 0
+Rot2: 0
+Rot3: 0
+Wavelength: {wavelength}
+# Calibrant: AgBh (DEV MODE)
+# Detector: {alias} (DEV MODE - FAKE DATA)
+# User specified: {user_distance_cm:.2f} cm, Generated: {fake_distance_m*100:.2f} cm (margin: {margin*100:.1f}%)
+"""
+            
+            poni_filename = f"{alias.lower()}_fake_h5gen.poni"
+            pony_data[alias] = (poni_content, poni_filename)
+            
+            logger.info(
+                f"Generated fake PONI for {alias}: distance={fake_distance_m*100:.2f} cm "
+                f"(user: {user_distance_cm:.2f} cm, margin: {margin*100:.1f}%)"
+            )
+        
+        return pony_data
 
     def _prompt_distance_cm(self, default_cm: float = None):
         """Prompt user for sample-detector distance in cm. Returns None if canceled."""
@@ -2194,6 +2270,9 @@ fi
         pony_data = {}
         missing_pony = []
         selected_poni_files = {}
+        
+        # Check if dev mode is enabled
+        dev_mode = self.config.get("DEV", False) if hasattr(self, "config") else False
 
         if aliases_to_check:
             current_poni_files = getattr(self, "poni_files", {})
@@ -2305,6 +2384,13 @@ fi
 
         if user_distance_cm is None:
             return
+        
+        # In dev mode, generate fake PONI files matching user distance (within 3%)
+        if dev_mode:
+            self._log_technical_event(
+                f"Dev mode: generating fake PONI files with distance within ±3% of {user_distance_cm:.2f} cm"
+            )
+            pony_data = self._generate_fake_poni_data(aliases_to_check, user_distance_cm)
 
         # Get technical temp folder for HDF5 generation
         tech_temp_folder = _get_technical_temp_folder(self.config if hasattr(self, "config") else None)
@@ -2318,7 +2404,7 @@ fi
                 detector_config=self.config.get("detectors", []),
                 active_detector_ids=self._get_active_detector_ids(),
                 distance_cm=user_distance_cm,
-                poni_distance_cm=poni_distance_cm,  # Real distance from PONI file
+                poni_distance_cm=poni_distance_cm if not dev_mode else user_distance_cm,  # Use user distance in dev mode
             )
         except Exception as e:
             QMessageBox.critical(

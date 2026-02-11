@@ -5,6 +5,10 @@ a technical HDF5 container from auxiliary measurements.
 """
 
 import logging
+import os
+import random
+import time
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from PyQt5.QtCore import Qt
@@ -42,6 +46,7 @@ class TechnicalContainerDialog(QDialog):
         operator_manager: OperatorManager,
         detector_configs: List[Dict],
         poni_distances: Optional[Dict[str, float]] = None,
+        dev_mode: bool = False,
         parent=None
     ):
         """Initialize dialog.
@@ -50,6 +55,7 @@ class TechnicalContainerDialog(QDialog):
             operator_manager: Operator manager instance
             detector_configs: List of detector config dicts with 'id', 'alias', etc.
             poni_distances: Dict mapping detector_id to distance from PONI (if available)
+            dev_mode: If True, generate fake PONI files matching user distances (within 3%)
             parent: Parent widget
         """
         super().__init__(parent)
@@ -57,6 +63,7 @@ class TechnicalContainerDialog(QDialog):
         self.operator_manager = operator_manager
         self.detector_configs = detector_configs
         self.poni_distances = poni_distances or {}
+        self.dev_mode = dev_mode
         self.selected_operator_id: Optional[str] = None
         self.distance_edits: Dict[str, QLineEdit] = {}
         self.apply_to_all_checkbox: Optional[QCheckBox] = None
@@ -256,6 +263,109 @@ class TechnicalContainerDialog(QDialog):
                 if i > 0:
                     edit.setEnabled(True)
     
+    def _generate_fake_poni_file(self, detector_id: str, distance_cm: float) -> str:
+        """Generate fake PONI file content with distance within 3% of specified.
+        
+        Args:
+            detector_id: Detector ID
+            distance_cm: User-specified distance in cm
+        
+        Returns:
+            PONI file content as string
+        """
+        # Get detector config
+        detector_config = next(
+            (d for d in self.detector_configs if d.get('id') == detector_id),
+            {}
+        )
+        
+        alias = detector_config.get('alias', detector_id)
+        
+        # Generate distance within ±3% margin (inside the 5% validation tolerance)
+        random.seed(hash(detector_id))  # Consistent values for same detector
+        margin = random.uniform(-0.03, 0.03)
+        fake_distance_m = (distance_cm / 100.0) * (1 + margin)
+        
+        # Get detector size or use defaults
+        size = detector_config.get("size", {"width": 256, "height": 256})
+        width = size.get("width", 256)
+        height = size.get("height", 256)
+        
+        # Generate slightly different parameters for each detector
+        poni1 = round(random.uniform(0.005, 0.010), 6)
+        poni2 = round(random.uniform(0.0008, 0.0030), 6)
+        
+        # Generate pixel sizes (typically 55um or 100um)
+        pixel_size = detector_config.get("pixel_size_um", [55, 55])
+        pixel1 = pixel_size[0] * 1e-6 if len(pixel_size) > 0 else 5.5e-05
+        pixel2 = pixel_size[1] * 1e-6 if len(pixel_size) > 1 else 5.5e-05
+        
+        wavelength = 1.5406e-10  # Typical Cu Kα wavelength
+        
+        current_time = time.strftime("%a %b %d %H:%M:%S %Y")
+        
+        poni_content = f"""# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis
+# Calibration done on {current_time} (DEV MODE - FAKE DATA)
+poni_version: 2.1
+Detector: Detector
+Detector_config: {{"pixel1": {pixel1}, "pixel2": {pixel2}, "max_shape": [{height}, {width}], "orientation": 3}}
+Distance: {fake_distance_m}
+Poni1: {poni1}
+Poni2: {poni2}
+Rot1: 0
+Rot2: 0
+Rot3: 0
+Wavelength: {wavelength}
+# Calibrant: AgBh (DEV MODE)
+# Detector: {alias} (DEV MODE - FAKE DATA)
+# User specified: {distance_cm:.2f} cm, Generated: {fake_distance_m*100:.2f} cm (margin: {margin*100:.1f}%)
+"""
+        logger.info(
+            f"Generated fake PONI for {alias}: distance={fake_distance_m*100:.2f} cm "
+            f"(user: {distance_cm:.2f} cm, margin: {margin*100:.1f}%)"
+        )
+        return poni_content
+    
+    def _save_fake_poni_files(self, distances: Dict[str, float]) -> Dict[str, str]:
+        """Save fake PONI files to temp directory and return paths.
+        
+        Args:
+            distances: Dict mapping detector_id to distance_cm
+        
+        Returns:
+            Dict mapping detector_id to fake PONI file path
+        """
+        # Get resource directory
+        resource_dir = Path(__file__).resolve().parent.parent.parent / "resources"
+        fake_poni_dir = resource_dir / "fake_poni_files"
+        fake_poni_dir.mkdir(exist_ok=True)
+        
+        fake_poni_paths = {}
+        
+        for detector_id, distance_cm in distances.items():
+            detector_config = next(
+                (d for d in self.detector_configs if d.get('id') == detector_id),
+                {}
+            )
+            alias = detector_config.get('alias', detector_id)
+            
+            # Generate fake PONI content
+            poni_content = self._generate_fake_poni_file(detector_id, distance_cm)
+            
+            # Save to file
+            poni_filename = f"{alias.lower()}_fake.poni"
+            poni_path = fake_poni_dir / poni_filename
+            
+            try:
+                with open(poni_path, "w") as f:
+                    f.write(poni_content)
+                fake_poni_paths[detector_id] = str(poni_path)
+                logger.info(f"Saved fake PONI file: {poni_path}")
+            except Exception as e:
+                logger.error(f"Failed to save fake PONI file for {alias}: {e}")
+        
+        return fake_poni_paths
+    
     def _validate_and_accept(self):
         """Validate inputs before accepting."""
         # Validate all detector distances
@@ -310,8 +420,30 @@ class TechnicalContainerDialog(QDialog):
                         f"expected: {min_dist:.2f}-{max_dist:.2f} cm)"
                     )
         
-        # Show warnings if any distances mismatch PONI
-        if warnings:
+        # In dev mode, generate fake PONI files matching user distances
+        if self.dev_mode and warnings:
+            logger.info("Dev mode enabled: generating fake PONI files to match user distances")
+            
+            # Inform user
+            info_msg = (
+                "<b>Dev Mode:</b> Generating fake PONI files to match your specified distances.\n\n"
+                "Fake PONI distances will be within ±3% of your values to pass validation.\n\n"
+                "Original PONI distances:\n" + "\n".join(warnings)
+            )
+            QMessageBox.information(
+                self,
+                "Dev Mode - Fake PONI Generation",
+                info_msg
+            )
+            
+            # Generate and save fake PONI files
+            self.fake_poni_paths = self._save_fake_poni_files(distances)
+            
+            # Clear warnings since fake PONIs will pass validation
+            warnings.clear()
+        
+        # Show warnings if any distances mismatch PONI (non-dev mode)
+        if warnings and not self.dev_mode:
             warning_msg = "The following distances differ from PONI by more than 5%:\n\n"
             warning_msg += "\n".join(warnings)
             warning_msg += "\n\nContinue anyway?"
@@ -350,3 +482,11 @@ class TechnicalContainerDialog(QDialog):
             - operator_id: Selected operator ID
         """
         return self.detector_distances, self.selected_operator_id
+    
+    def get_fake_poni_paths(self) -> Optional[Dict[str, str]]:
+        """Get fake PONI file paths if generated in dev mode.
+        
+        Returns:
+            Dict mapping detector_id to fake PONI file path, or None if not in dev mode
+        """
+        return getattr(self, 'fake_poni_paths', None)

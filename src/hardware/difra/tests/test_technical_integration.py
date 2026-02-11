@@ -98,7 +98,10 @@ Wavelength: 1.54e-10
 """
 
     poni_files = {}
-    for detector, distance in [("PRIMARY", 0.17), ("SECONDARY", 0.02)]:
+    # TODO: Update when container generation supports per-detector distances
+    # Currently all PONIs must have same distance (validated with 5% tolerance)
+    # In the future, SAXS and WAXS will support different distances
+    for detector, distance in [("PRIMARY", 0.17), ("SECONDARY", 0.17)]:
         poni_path = poni_dir / f"{detector.lower()}_demo.poni"
         content = poni_content_template.format(detector=detector, distance=distance)
         poni_path.write_text(content)
@@ -241,6 +244,7 @@ def test_generate_technical_h5_container(
 
     # Extract distance from PONI (should be 17cm for PRIMARY)
     distance_cm = 17.0
+    poni_distance_cm = 17.0  # Distance from PONI file (matches user distance)
 
     # Generate HDF5 container
     container_id, file_path = technical_container.generate_from_aux_table(
@@ -250,6 +254,7 @@ def test_generate_technical_h5_container(
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
         distance_cm=distance_cm,
+        poni_distance_cm=poni_distance_cm,
     )
 
     # Verify file created
