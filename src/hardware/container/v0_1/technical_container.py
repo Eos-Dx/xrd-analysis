@@ -245,7 +245,12 @@ def add_technical_event(
                 if candidate.exists():
                     associated_files.append(candidate)
             
-            # Store each raw file as a separate blob
+            # Store each raw file in blob/ subfolder
+            # Create blob group if we have files to store
+            if associated_files:
+                blob_group_path = f"{detector_path}/blob"
+                utils.create_group_if_missing(file_path, blob_group_path)
+            
             for file_to_store in associated_files:
                 try:
                     with open(file_to_store, 'rb') as f:
@@ -255,11 +260,11 @@ def add_technical_event(
                     ext = file_to_store.suffix.lower()
                     file_format = ext[1:] if ext else "unknown"  # Remove leading dot
                     
-                    # Create blob dataset with format-specific name
-                    blob_path = f"{detector_path}/raw_blob_{file_format}"
+                    # Create blob dataset inside blob/ group
+                    blob_dataset_path = f"{blob_group_path}/raw_{file_format}"
                     utils.write_dataset(
                         file_path=file_path,
-                        dataset_path=blob_path,
+                        dataset_path=blob_dataset_path,
                         data=np.frombuffer(raw_blob, dtype=np.uint8),
                         attrs={
                             "source_filename": file_to_store.name,
@@ -270,7 +275,7 @@ def add_technical_event(
                         compression_opts=9,
                         overwrite=True
                     )
-                    logger.info(f"Stored {file_format} blob: {file_to_store.name} ({len(raw_blob)} bytes)")
+                    logger.info(f"Stored {file_format} blob in blob/: {file_to_store.name} ({len(raw_blob)} bytes)")
                 except Exception as e:
                     # Non-fatal: log but continue
                     logger.warning(f"Failed to store {file_format} blob from {file_to_store}: {e}")

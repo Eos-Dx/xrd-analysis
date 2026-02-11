@@ -190,7 +190,7 @@ ATTR_HOLDER_DIAMETER_MM = "holder_diameter_mm"
 # ================== Dataset Names ==========================
 DATASET_RAW_SIGNAL = "raw_signal"  # Alias for processed_signal (backward compat)
 DATASET_PROCESSED_SIGNAL = "processed_signal"  # Mandatory numpy array
-DATASET_RAW_FILES = "raw_files"  # Group containing raw file blobs
+DATASET_BLOB = "blob"  # Group containing raw file blobs
 DATASET_METADATA = "metadata"  # Optional JSON metadata
 
 # ================== Compression Levels =====================

@@ -6,8 +6,8 @@
     "shapes": [],
     "zone_points": [],
     "dock_geometry": {
-        "window_geometry": "AdnQywADAAAAAAAAAAAAIQAABr8AAAQCAAAAAAAAAD0AAAa/AAAEAgAAAAACAAAABsAAAAAAAAAAPQAABr8AAAQC",
-        "window_state": "AAAA/wAAAAD9AAAAAwAAAAAAAAH/AAADrvwCAAAAAfv/////AQAAABgAAAOuAAAAYAD///8AAAABAAABAAAAA678AgAAAAH7/////wEAAAAYAAADrgAAAGAA////AAAAAwAABsAAAAKy/AEAAAAC+/////8D///6egAAAZwAAARxAAACnPv/////A///+0YAAAJOAAAEsAAAApwAAAO/AAADrgAAAAQAAAAEAAAACAAAAAj8AAAAAQAAAAIAAAAB/////wEAAAAA/////wAAAAAAAAAA"
+        "window_geometry": "AdnQywADAAAAAAAAAAAAygAABvoAAAOcAAAAAAAAAOYAAAb6AAADnAAAAAAAAAAABsAAAAAAAAAA5gAABvoAAAOc",
+        "window_state": "AAAA/wAAAAD9AAAAAwAAAAAAAAH/AAAAYvwCAAAAAfv/////AQAAABgAAABiAAAAYAD///8AAAABAAABAAAAAGL8AgAAAAH7/////wEAAAAYAAAAYgAAAGAA////AAAAAwAABvsAAAI8/AEAAAAC+/////8BAAAAAAAABGIAAARiAP////v/////AQAABGMAAAKYAAACmAD///8AAAP6AAAAYgAAAAQAAAAEAAAACAAAAAj8AAAAAQAAAAIAAAAB/////wEAAAAA/////wAAAAAAAAAA"
     },
     "active_detectors_aliases": [
         "SAXS",
@@ -15,66 +15,15 @@
     ],
     "detector_poni": {
         "SAXS": {
-            "poni_filename": "saxs_demo.poni",
-            "poni_path": "/Users/sad/dev/xrd-analysis/src/hardware/difra/resources/demo_poni_files/saxs_demo.poni",
-            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Wed Feb 11 16:47:11 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.21926\nPoni1: 0.007329\nPoni2: 0.001554\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: SAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_saxs.npy\n"
+            "poni_filename": null,
+            "poni_path": null,
+            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Wed Feb 11 19:40:14 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.168191\nPoni1: 0.007238\nPoni2: 0.002858\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: SAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_saxs.npy\n"
         },
         "WAXS": {
-            "poni_filename": "waxs_demo.poni",
-            "poni_path": "/Users/sad/dev/xrd-analysis/src/hardware/difra/resources/demo_poni_files/waxs_demo.poni",
-            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Wed Feb 11 16:47:11 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.115367\nPoni1: 0.007707\nPoni2: 0.00096\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: WAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_waxs.npy\n"
+            "poni_filename": null,
+            "poni_path": null,
+            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Wed Feb 11 19:40:14 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.087538\nPoni1: 0.00504\nPoni2: 0.001887\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: WAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_waxs.npy\n"
         }
     },
-    "technical_aux": [
-        {
-            "file_path": null,
-            "type": null,
-            "alias": "AGBH"
-        },
-        {
-            "file_path": null,
-            "type": null,
-            "alias": "AGBH"
-        },
-        {
-            "file_path": null,
-            "type": null,
-            "alias": "DARK"
-        },
-        {
-            "file_path": null,
-            "type": null,
-            "alias": "DARK"
-        },
-        {
-            "file_path": null,
-            "type": null,
-            "alias": "EMPTY"
-        },
-        {
-            "file_path": null,
-            "type": null,
-            "alias": "EMPTY"
-        },
-        {
-            "file_path": null,
-            "type": null,
-            "alias": "BACKGROUND"
-        },
-        {
-            "file_path": null,
-            "type": null,
-            "alias": "BACKGROUND"
-        },
-        {
-            "file_path": null,
-            "type": null,
-            "alias": "AGBH"
-        },
-        {
-            "file_path": null,
-            "type": null,
-            "alias": "AGBH"
-        }
-    ]
+    "technical_aux": []
 }

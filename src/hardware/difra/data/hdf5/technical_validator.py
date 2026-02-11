@@ -207,9 +207,14 @@ class TechnicalContainerValidator:
         if schema_v1.DATASET_RAW_SIGNAL not in det_group:
             self._add_error(f"{det_path}: Missing 'raw_signal' dataset")
         
-        # Check for raw_blob (optional but recommended)
-        if 'raw_blob' not in det_group:
-            self._add_warning(f"{det_path}: Missing 'raw_blob' dataset (optional)")
+        # Check for raw data storage (optional but recommended)
+        # New schema: blob/ group with raw_txt, raw_dsc, etc.
+        # Legacy schema: raw_blob_txt, raw_blob_dsc, or raw_blob datasets
+        has_blob_group = 'blob' in det_group
+        has_legacy_blobs = any(k.startswith('raw_blob') for k in det_group.keys())
+        
+        if not has_blob_group and not has_legacy_blobs:
+            self._add_warning(f"{det_path}: No raw data blobs found (blob/ group or raw_blob_* datasets) - optional")
         
         # Check required attributes
         required_attrs = [

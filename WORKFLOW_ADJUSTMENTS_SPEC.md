@@ -441,15 +441,20 @@ session_<session_id>.h5
 ## 8. Implementation Priority
 
 ### Phase 1: Core Changes (High Priority)
-1. ✅ Rename "file name" → "Sample ID" in UI
-2. ✅ Implement session replacement workflow with dialog
-3. ✅ Add session archiving with upload status
-4. ✅ Add error session handling
+1. ⏳ Rename "file name" → "Sample ID" in UI (TODO)
+2. ⏳ Implement session replacement workflow with dialog (TODO)
+3. ⏳ Add session archiving with upload status (TODO)
+4. ⏳ Add error session handling (TODO)
 
 ### Phase 2: Storage Changes (Medium Priority)
-5. ✅ Reorganize raw data to blob/ structure
-6. ✅ Update schema with new attributes
-7. ✅ Document pixel-to-mm calculation
+5. ✅ **Reorganize raw data to blob/ structure (COMPLETED)**
+   - Technical containers: blob/ with raw_txt, raw_dsc datasets
+   - Session measurements: blob/ group for optional raw files
+   - Legacy technical containers: blob/ structure implemented
+   - v0_1 schema updated: DATASET_BLOB replaces DATASET_RAW_FILES
+   - All tests passing (session container tests verified)
+6. ⏳ Update schema with new attributes (Partial - attributes defined in spec)
+7. ⏳ Document pixel-to-mm calculation (TODO)
 
 ### Phase 3: Enhancement (Lower Priority)
 8. Add session status dashboard

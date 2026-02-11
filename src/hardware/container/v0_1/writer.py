@@ -214,12 +214,12 @@ def add_detector_data_with_blobs(
     
     # 2. Write raw file blobs if provided (compression=9)
     if raw_files:
-        raw_files_group = f"{detector_path}/{schema.DATASET_RAW_FILES}"
-        utils.create_group_if_missing(file_path, raw_files_group)
+        blob_group = f"{detector_path}/{schema.DATASET_BLOB}"
+        utils.create_group_if_missing(file_path, blob_group)
         
         for filename, content in raw_files.items():
             # Store as blob with max compression
-            blob_path = f"{raw_files_group}/{filename}"
+            blob_path = f"{blob_group}/{filename}"
             
             # Convert bytes to numpy array for HDF5 storage
             if isinstance(content, bytes):

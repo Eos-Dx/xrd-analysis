@@ -213,20 +213,28 @@ def add_technical_event(
         )
         
         # Write raw data blob if source file is provided
+        # Store in blob/ subfolder for better organization
         source_file = meas_data.get("source_file")
         if source_file and os.path.exists(source_file):
             try:
+                # Create blob group
+                blob_group_path = f"{detector_path}/blob"
+                io.create_group_if_missing(file_path, blob_group_path)
+                
                 with open(source_file, 'rb') as f:
                     raw_blob = f.read()
                 
-                blob_path = f"{detector_path}/raw_blob"
+                # Determine format and create appropriately named dataset
+                file_format = "npy" if source_file.endswith(".npy") else "txt"
+                blob_dataset_path = f"{blob_group_path}/raw_{file_format}"
+                
                 io.write_dataset(
                     file_path=file_path,
-                    dataset_path=blob_path,
+                    dataset_path=blob_dataset_path,
                     data=np.frombuffer(raw_blob, dtype=np.uint8),
                     attrs={
                         "source_filename": os.path.basename(source_file),
-                        "file_format": "npy" if source_file.endswith(".npy") else "txt",
+                        "file_format": file_format,
                         "blob_size_bytes": len(raw_blob)
                     },
                     compression="gzip",
