@@ -8,17 +8,21 @@ from pathlib import Path
 
 from PyQt5.QtWidgets import (
     QAction,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
     QFormLayout,
+    QGroupBox,
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPushButton,
     QVBoxLayout,
 )
 
 from hardware.difra.gui.session_manager import SessionManager
+from hardware.difra.gui.operator_manager import OperatorManager, OperatorSelectionDialog
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +34,19 @@ class SessionMixin:
         """Initialize SessionManager and add UI actions."""
         logger.info("Initializing SessionManager")
         
-        # Create SessionManager instance with config
-        config = self.config if hasattr(self, 'config') else None
+        # Initialize operator manager first
+        self.operator_manager = OperatorManager()
+        
+        # Show operator selection dialog on startup
+        self.show_operator_selection_dialog()
+        
+        # Create SessionManager instance with config (including operator)
+        config = self.config if hasattr(self, 'config') else {}
+        
+        # Add current operator to config
+        if self.operator_manager.get_current_operator_id():
+            config['operator_id'] = self.operator_manager.get_current_operator_id()
+        
         self.session_manager = SessionManager(config=config)
         
         # Add session menu actions
@@ -94,6 +109,23 @@ class SessionMixin:
         
         logger.debug("Session menu actions added")
     
+    def show_operator_selection_dialog(self):
+        """Show operator selection dialog on startup."""
+        dialog = OperatorSelectionDialog(self.operator_manager, self)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            operator_id = dialog.get_selected_operator_id()
+            logger.info(f"Operator selected: {operator_id}")
+        else:
+            # User cancelled - use default or show warning
+            logger.warning("Operator selection cancelled")
+            QMessageBox.warning(
+                self,
+                "No Operator Selected",
+                "No operator selected. Using default operator.\n\n"
+                "You can change this later from File → Operator Settings...",
+            )
+    
     def on_new_session(self):
         """Handle New Session action."""
         # Check if session already active
@@ -112,7 +144,7 @@ class SessionMixin:
             self.session_manager.close_session()
         
         # Show dialog to get session parameters
-        dialog = NewSessionDialog(self)
+        dialog = NewSessionDialog(self.operator_manager, self)
         
         if dialog.exec_() == QDialog.Accepted:
             params = dialog.get_parameters()
@@ -290,7 +322,7 @@ class SessionMixin:
             self.session_manager.close_session()
         
         # Show dialog to get sample information
-        dialog = NewSessionDialog(self)
+        dialog = NewSessionDialog(self.operator_manager, self)
         
         if dialog.exec_() == QDialog.Accepted:
             params = dialog.get_parameters()
@@ -666,13 +698,25 @@ class SessionMixin:
 
 
 class NewSessionDialog(QDialog):
-    """Dialog for creating a new session."""
+    """Dialog for creating a new session.
     
-    def __init__(self, parent=None):
+    Prompts user for:
+    - Sample ID (required)
+    - Distance in cm (required)
+    - Operator (with option to use current or select different)
+    
+    Beam energy is read from global config.
+    """
+    
+    def __init__(self, operator_manager: OperatorManager, parent=None, default_distance: float = None):
         super().__init__(parent)
+        
+        self.operator_manager = operator_manager
+        self.selected_operator_id = None
         
         self.setWindowTitle("New Session")
         self.setModal(True)
+        self.setMinimumWidth(500)
         
         layout = QVBoxLayout(self)
         
@@ -684,22 +728,55 @@ class NewSessionDialog(QDialog):
         self.sample_id_edit.setPlaceholderText("e.g. SAMPLE_001")
         form_layout.addRow("Sample ID*:", self.sample_id_edit)
         
-        # Distance (required)
+        # Distance (required) - with explicit prompt
+        distance_label = QLabel(
+            "<b>Distance (cm)*:</b><br>"
+            "<span style='color: #555; font-size: 10px;'>"
+            "Sample-to-detector distance (must match technical container)"
+            "</span>"
+        )
         self.distance_edit = QLineEdit()
-        self.distance_edit.setText("17.0")
-        self.distance_edit.setPlaceholderText("e.g. 17.0")
-        form_layout.addRow("Distance (cm)*:", self.distance_edit)
-        
-        # Operator (optional)
-        self.operator_edit = QLineEdit()
-        self.operator_edit.setPlaceholderText("Optional - uses default if empty")
-        form_layout.addRow("Operator ID:", self.operator_edit)
+        if default_distance:
+            self.distance_edit.setText(str(default_distance))
+        else:
+            self.distance_edit.setText("17.0")
+        self.distance_edit.setPlaceholderText("e.g. 17.0, 25.0, 50.0")
+        form_layout.addRow(distance_label, self.distance_edit)
         
         layout.addLayout(form_layout)
         
+        # Operator selection group
+        operator_group = QGroupBox("Operator Selection")
+        operator_layout = QFormLayout(operator_group)
+        
+        self.operator_combo = QComboBox()
+        self.operator_combo.currentIndexChanged.connect(self._on_operator_changed)
+        self._populate_operator_combo()
+        operator_layout.addRow("Operator*:", self.operator_combo)
+        
+        # Operator details display
+        self.operator_details_label = QLabel()
+        self.operator_details_label.setWordWrap(True)
+        self.operator_details_label.setStyleSheet(
+            "color: #555; background-color: #f0f0f0; padding: 5px; border-radius: 3px; font-size: 10px;"
+        )
+        operator_layout.addRow("Details:", self.operator_details_label)
+        
+        # Add new operator button
+        new_operator_btn = QPushButton("Add New Operator...")
+        new_operator_btn.clicked.connect(self._on_add_new_operator)
+        operator_layout.addRow("", new_operator_btn)
+        
+        layout.addWidget(operator_group)
+        
         # Info label
-        info_label = QLabel("* Required fields\nBeam energy read from global config")
+        info_label = QLabel(
+            "* Required fields\n\n"
+            "Beam energy: Read from global config\n"
+            "<b>Note:</b> Distance must match technical container distance."
+        )
         info_label.setStyleSheet("color: gray; font-style: italic;")
+        info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
         # Buttons
@@ -709,6 +786,75 @@ class NewSessionDialog(QDialog):
         buttons.accepted.connect(self.validate_and_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        
+        # Update operator details for initial selection
+        self._update_operator_details()
+    
+    def _populate_operator_combo(self):
+        """Populate operator combo box."""
+        self.operator_combo.clear()
+        
+        operators = self.operator_manager.get_all_operators()
+        
+        if not operators:
+            self.operator_combo.addItem("No operators defined", None)
+            return
+        
+        # Add operators
+        current_id = self.operator_manager.get_current_operator_id()
+        current_index = 0
+        
+        for i, (op_id, op_info) in enumerate(sorted(operators.items())):
+            display_name = self.operator_manager.get_operator_display_name(op_id)
+            self.operator_combo.addItem(display_name, op_id)
+            
+            # Pre-select current operator
+            if op_id == current_id:
+                current_index = i
+        
+        if current_id and current_index < self.operator_combo.count():
+            self.operator_combo.setCurrentIndex(current_index)
+    
+    def _update_operator_details(self):
+        """Update operator details display."""
+        operator_id = self.operator_combo.currentData()
+        
+        if not operator_id:
+            self.operator_details_label.setText("No operator selected")
+            return
+        
+        operator = self.operator_manager.get_operator(operator_id)
+        if not operator:
+            self.operator_details_label.setText("Operator not found")
+            return
+        
+        details = f"{operator['name']} {operator['surname']} | {operator.get('email', 'N/A')}"
+        if operator.get('institution'):
+            details += f" | {operator['institution']}"
+        
+        self.operator_details_label.setText(details)
+    
+    def _on_operator_changed(self):
+        """Handle operator selection change."""
+        self._update_operator_details()
+    
+    def _on_add_new_operator(self):
+        """Handle add new operator button."""
+        from hardware.difra.gui.operator_manager import NewOperatorDialog
+        
+        dialog = NewOperatorDialog(self.operator_manager, self)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            new_operator_id = dialog.get_operator_id()
+            
+            # Refresh combo box
+            self._populate_operator_combo()
+            
+            # Select the new operator
+            for i in range(self.operator_combo.count()):
+                if self.operator_combo.itemData(i) == new_operator_id:
+                    self.operator_combo.setCurrentIndex(i)
+                    break
     
     def validate_and_accept(self):
         """Validate inputs before accepting."""
@@ -738,6 +884,17 @@ class NewSessionDialog(QDialog):
             )
             return
         
+        # Validate operator selection
+        operator_id = self.operator_combo.currentData()
+        if not operator_id:
+            QMessageBox.warning(
+                self,
+                "No Operator Selected",
+                "Please select an operator or add a new one.",
+            )
+            return
+        
+        self.selected_operator_id = operator_id
         self.accept()
     
     def get_parameters(self):
@@ -745,9 +902,7 @@ class NewSessionDialog(QDialog):
         params = {
             'sample_id': self.sample_id_edit.text().strip(),
             'distance_cm': float(self.distance_edit.text()),
+            'operator_id': self.selected_operator_id,
         }
-        
-        if self.operator_edit.text().strip():
-            params['operator_id'] = self.operator_edit.text().strip()
         
         return params
