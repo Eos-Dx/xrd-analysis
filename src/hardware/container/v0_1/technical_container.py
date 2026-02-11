@@ -224,32 +224,56 @@ def add_technical_event(
             overwrite=True
         )
         
-        # Write raw data blob if source file is provided
+        # Write raw data blobs if source file is provided
+        # Store only .txt (ASCII data) and .dsc (descriptor) as raw blobs
+        # (.npy is processed data and already stored in raw_signal dataset)
         source_file = meas_data.get("source_file")
         if source_file and os.path.exists(source_file):
-            try:
-                with open(source_file, 'rb') as f:
-                    raw_blob = f.read()
-                
-                blob_path = f"{detector_path}/raw_blob"
-                utils.write_dataset(
-                    file_path=file_path,
-                    dataset_path=blob_path,
-                    data=np.frombuffer(raw_blob, dtype=np.uint8),
-                    attrs={
-                        "source_filename": os.path.basename(source_file),
-                        "file_format": "npy" if source_file.endswith(".npy") else "txt",
-                        "blob_size_bytes": len(raw_blob)
-                    },
-                    compression="gzip",
-                    compression_opts=9,
-                    overwrite=True
-                )
-            except Exception as e:
-                # Non-fatal: log but continue
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Failed to store raw blob from {source_file}: {e}")
+            from pathlib import Path
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            source_path = Path(source_file)
+            base_name = source_path.stem  # Remove extension
+            source_dir = source_path.parent
+            
+            # Find associated RAW files: .txt (ASCII data) and .dsc (descriptor)
+            # Skip .npy as it's processed data already in raw_signal dataset
+            associated_files = []
+            for ext in [".txt", ".dsc"]:
+                candidate = source_dir / f"{base_name}{ext}"
+                if candidate.exists():
+                    associated_files.append(candidate)
+            
+            # Store each raw file as a separate blob
+            for file_to_store in associated_files:
+                try:
+                    with open(file_to_store, 'rb') as f:
+                        raw_blob = f.read()
+                    
+                    # Determine file format
+                    ext = file_to_store.suffix.lower()
+                    file_format = ext[1:] if ext else "unknown"  # Remove leading dot
+                    
+                    # Create blob dataset with format-specific name
+                    blob_path = f"{detector_path}/raw_blob_{file_format}"
+                    utils.write_dataset(
+                        file_path=file_path,
+                        dataset_path=blob_path,
+                        data=np.frombuffer(raw_blob, dtype=np.uint8),
+                        attrs={
+                            "source_filename": file_to_store.name,
+                            "file_format": file_format,
+                            "blob_size_bytes": len(raw_blob)
+                        },
+                        compression="gzip",
+                        compression_opts=9,
+                        overwrite=True
+                    )
+                    logger.info(f"Stored {file_format} blob: {file_to_store.name} ({len(raw_blob)} bytes)")
+                except Exception as e:
+                    # Non-fatal: log but continue
+                    logger.warning(f"Failed to store {file_format} blob from {file_to_store}: {e}")
         
         # Get distance for this specific detector
         if isinstance(distances_cm, dict):

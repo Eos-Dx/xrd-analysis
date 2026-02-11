@@ -917,27 +917,26 @@ def test_folder_structure_matches_config(temp_dir):
 def test_raw_data_archiving_after_lock(
     temp_dir, valid_poni_files, sample_measurements, demo_config
 ):
-    """Test that raw .npy, .txt, and .dsc files are archived after container locking."""
+    """Test that raw .txt and .dsc files are archived after container locking.
+    
+    Note: .npy files are NOT archived as they contain processed data that's
+    already stored in the H5 container's raw_signal dataset.
+    """
     # Create container
     container_path = create_valid_container(
         temp_dir, valid_poni_files, sample_measurements, demo_config
     )
     
-    # Create some dummy .npy, .txt, and .dsc files in the same directory as container
+    # Create dummy .txt and .dsc files (RAW data) in the same directory as container
     container_dir = container_path.parent
     raw_files = []
     for i in range(3):
-        # Add .npy file
-        npy_file = container_dir / f"raw_data_{i}.npy"
-        np.save(npy_file, np.random.rand(10, 10))
-        raw_files.append(npy_file)
-        
-        # Add corresponding .txt file (ASCII data)
+        # Add .txt file (ASCII raw data from detector)
         txt_file = container_dir / f"raw_data_{i}.txt"
         txt_file.write_text(f"# ASCII export of raw_data_{i}\n1 2 3\n4 5 6\n")
         raw_files.append(txt_file)
         
-        # Add corresponding .dsc file (descriptor metadata)
+        # Add .dsc file (descriptor metadata from detector)
         dsc_file = container_dir / f"raw_data_{i}.dsc"
         dsc_file.write_text(f"[F0]\nType=i16\nFrames=1\n# Fake descriptor for raw_data_{i}\n")
         raw_files.append(dsc_file)
@@ -948,12 +947,12 @@ def test_raw_data_archiving_after_lock(
     
     # Note: We can't easily test the full UI archiving flow without mocking,
     # but we can test the archiving logic separately
-    # This test verifies the setup and that we can detect .npy, .txt, and .dsc files
+    # This test verifies that we detect .txt and .dsc files (not .npy)
     
-    npy_count = len([f for f in raw_files if f.suffix == ".npy"])
     txt_count = len([f for f in raw_files if f.suffix == ".txt"])
     dsc_count = len([f for f in raw_files if f.suffix == ".dsc"])
-    print(f"✅ Raw data files detected: {npy_count} .npy + {txt_count} .txt + {dsc_count} .dsc = {len(raw_files)} total")
+    print(f"✅ Raw data files detected: {txt_count} .txt + {dsc_count} .dsc = {len(raw_files)} total")
+    print(f"   Note: .npy files not archived (processed data in H5)")
     print(f"   Container dir: {container_dir}")
 
 

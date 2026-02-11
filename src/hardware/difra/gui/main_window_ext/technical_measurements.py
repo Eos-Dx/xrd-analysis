@@ -1821,6 +1821,83 @@ Wavelength: {wavelength}
                     f"Container saved with errors.\n\nLocation: {container_path}",
                 )
     
+    def _archive_existing_containers(self, storage_folder: str) -> int:
+        """Archive any existing .h5 containers in storage folder before creating new one.
+        
+        Archives both the .h5 container and any raw data files (.npy, .txt, .dsc) to:
+        difra/archive/technical/<container_id>_<timestamp>/
+        
+        Args:
+            storage_folder: Technical storage folder path
+            
+        Returns:
+            Number of containers archived
+        """
+        from pathlib import Path
+        import shutil
+        import time
+        
+        storage_path = Path(storage_folder)
+        if not storage_path.exists():
+            return 0
+        
+        # Find all .h5 files in storage folder
+        h5_files = list(storage_path.glob("*.h5"))
+        if not h5_files:
+            return 0
+        
+        archive_base = Path(_get_technical_archive_folder(
+            self.config if hasattr(self, "config") else None
+        ))
+        
+        archived_count = 0
+        for h5_file in h5_files:
+            try:
+                # Extract container ID from filename (format: technical_<id>_<distance>.h5)
+                filename = h5_file.stem  # Remove .h5 extension
+                parts = filename.split('_')
+                if len(parts) >= 2:
+                    container_id = parts[1]  # Extract ID from technical_<id>_...
+                else:
+                    container_id = filename  # Fallback to full name
+                
+                # Create timestamped archive folder
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                archive_folder = archive_base / f"{container_id}_{timestamp}"
+                archive_folder.mkdir(parents=True, exist_ok=True)
+                
+                # Move .h5 container to archive
+                dest_h5 = archive_folder / h5_file.name
+                shutil.move(str(h5_file), str(dest_h5))
+                self._log_technical_event(
+                    f"Archived H5 container: {h5_file.name} -> {archive_folder.name}/"
+                )
+                
+                # Move any associated RAW data files (.txt, .dsc) from same folder
+                # Skip .npy as it's processed data already stored in H5 container
+                raw_file_count = 0
+                for pattern in ["*.txt", "*.dsc"]:
+                    for raw_file in storage_path.glob(pattern):
+                        try:
+                            dest_raw = archive_folder / raw_file.name
+                            shutil.move(str(raw_file), str(dest_raw))
+                            raw_file_count += 1
+                        except Exception as e:
+                            logger.warning(f"Failed to archive {raw_file.name}: {e}")
+                
+                if raw_file_count > 0:
+                    self._log_technical_event(
+                        f"Archived {raw_file_count} raw data file(s) with container"
+                    )
+                
+                archived_count += 1
+                
+            except Exception as e:
+                logger.warning(f"Failed to archive {h5_file.name}: {e}")
+                self._log_technical_event(f"Warning: Could not archive {h5_file.name}: {e}")
+        
+        return archived_count
+    
     def _lock_container(self, container_path: str, container_id: str):
         """Lock the technical container and archive raw data.
         
@@ -1866,8 +1943,9 @@ Wavelength: {wavelength}
                 archive_subdir = archive_folder / f"{container_id}_{timestamp}"
                 archive_subdir.mkdir(parents=True, exist_ok=True)
                 
-                # Find and move all .npy, .txt, and .dsc files from the container directory
-                for pattern in ["*.npy", "*.txt", "*.dsc"]:
+                # Find and move all RAW data files (.txt, .dsc) from the container directory
+                # Skip .npy as it's processed data already stored in H5 container
+                for pattern in ["*.txt", "*.dsc"]:
                     for data_file in container_dir.glob(pattern):
                         try:
                             dest = archive_subdir / data_file.name
@@ -2659,6 +2737,13 @@ Wavelength: {wavelength}
         self._log_technical_event(
             f"Technical HDF5 generated in temp: {os.path.basename(temp_file_path)}"
         )
+        
+        # Archive any existing containers in storage folder before copying new one
+        archived_count = self._archive_existing_containers(folder)
+        if archived_count > 0:
+            self._log_technical_event(
+                f"Archived {archived_count} existing container(s) to make room for new one"
+            )
         
         # Copy to user-specified storage folder
         import shutil
