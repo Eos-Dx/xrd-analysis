@@ -9,13 +9,18 @@ logger = logging.getLogger(__name__)
 
 # Import Qt for type hints and usage
 try:
-    from PyQt5.QtWidgets import QFileDialog, QMessageBox
+    from PyQt5.QtWidgets import QFileDialog, QInputDialog, QMessageBox
 except ImportError:
     # Test stubs
     class QFileDialog:
         @staticmethod
         def getOpenFileName(*args, **kwargs):
             return "", ""
+    
+    class QInputDialog:
+        @staticmethod
+        def getText(*args, **kwargs):
+            return "", False
     
     class QMessageBox:
         Yes, No = 1, 0
@@ -163,6 +168,9 @@ class H5ManagementMixin:
     def _archive_existing_containers(self, storage_folder: str) -> int:
         """Archive any existing .h5 containers in storage folder before creating new one.
         
+        Prompts user about unvalidated/unlocked containers to determine if they were
+        created by error, then archives with appropriate metadata.
+        
         Archives both the .h5 container and any raw data files (.txt, .dsc) to:
         difra/archive/technical/<container_id>_<timestamp>/
         
@@ -173,6 +181,7 @@ class H5ManagementMixin:
             Number of containers archived
         """
         from .helpers import _get_technical_archive_folder
+        from hardware.container.v0_1.container_manager import is_container_locked
         
         storage_path = Path(storage_folder)
         if not storage_path.exists():
@@ -198,6 +207,48 @@ class H5ManagementMixin:
                 else:
                     container_id = filename  # Fallback to full name
                 
+                # Check if container is locked
+                is_locked = is_container_locked(h5_file)
+                
+                # If unlocked, prompt user about error status
+                created_by_error = False
+                error_reason = ""
+                
+                if not is_locked:
+                    # Show dialog asking if this container was created by error
+                    reply = QMessageBox.question(
+                        self,
+                        "Unvalidated Technical Container",
+                        f"Found unvalidated technical container:\n\n"
+                        f"Container ID: {container_id}\n"
+                        f"File: {h5_file.name}\n\n"
+                        f"You are about to create a new technical container.\n"
+                        f"The existing container will be archived.\n\n"
+                        f"Was this container created by error?\n\n"
+                        f"Select 'Yes' to mark as error (you can provide a reason).\n"
+                        f"Select 'No' to archive without error marking.",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No,
+                    )
+                    
+                    if reply == QMessageBox.Yes:
+                        created_by_error = True
+                        # Prompt for error reason
+                        reason, ok = QInputDialog.getText(
+                            self,
+                            "Error Reason",
+                            f"Why was container {container_id} created by error?\n\n"
+                            f"(Optional - provide brief description)",
+                        )
+                        if ok and reason.strip():
+                            error_reason = reason.strip()
+                        else:
+                            error_reason = "User marked as error without specifying reason"
+                        
+                        self._log_technical_event(
+                            f"Container {container_id} marked as created_by_error: {error_reason}"
+                        )
+                
                 # Create timestamped archive folder
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
                 archive_folder = archive_base / f"{container_id}_{timestamp}"
@@ -206,8 +257,24 @@ class H5ManagementMixin:
                 # Move .h5 container to archive
                 dest_h5 = archive_folder / h5_file.name
                 shutil.move(str(h5_file), str(dest_h5))
+                
+                # Write error metadata if applicable
+                if created_by_error:
+                    import h5py
+                    try:
+                        with h5py.File(dest_h5, 'a') as f:
+                            f.attrs['created_by_error'] = True
+                            f.attrs['error_reason'] = error_reason
+                            f.attrs['archived_timestamp'] = timestamp
+                        self._log_technical_event(
+                            f"Added error attributes to archived container: {h5_file.name}"
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to add error attributes to {h5_file.name}: {e}")
+                
                 self._log_technical_event(
-                    f"Archived H5 container: {h5_file.name} -> {archive_folder.name}/"
+                    f"Archived H5 container: {h5_file.name} -> {archive_folder.name}/" +
+                    (f" [ERROR: {error_reason}]" if created_by_error else "")
                 )
                 
                 # Move any associated RAW data files (.txt, .dsc) from same folder

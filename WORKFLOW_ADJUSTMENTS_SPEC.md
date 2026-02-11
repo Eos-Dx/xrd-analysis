@@ -446,9 +446,15 @@ session_<session_id>.h5
    - Updated docstrings in ui_mixin.py and file_mixin.py
    - Field now displays "Sample ID:" instead of "File Name:"
    - Internal variable name (fileNameLineEdit) preserved for compatibility
-2. ⏳ Implement session replacement workflow with dialog (TODO)
-3. ⏳ Add session archiving with upload status (TODO)
-4. ⏳ Add error session handling (TODO)
+2. ⏳ Implement session replacement workflow with dialog (TODO - for sessions)
+3. ⏳ Add session archiving with upload status (TODO - for sessions)
+4. ✅ **Add error technical container handling (COMPLETED)**
+   - When creating new technical container while unlocked one exists, prompts user
+   - Dialog asks: "Was this container created by error?"
+   - If yes, prompts for error_reason (optional text input)
+   - Archives container with HDF5 attributes: created_by_error, error_reason, archived_timestamp
+   - Logged in technical measurement log with [ERROR: reason] suffix
+   - Applies to technical containers (session container error handling TODO)
 
 ### Phase 2: Storage Changes (Medium Priority)
 5. ✅ **Reorganize raw data to blob/ structure (COMPLETED)**
