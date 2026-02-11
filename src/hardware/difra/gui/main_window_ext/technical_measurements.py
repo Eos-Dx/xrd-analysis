@@ -623,9 +623,9 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
 
         # Aux measurements table (compact layout for small screens)
         self.auxTable = QTableWidget()
-        self.auxTable.setColumnCount(3)
+        self.auxTable.setColumnCount(4)
         self.auxTable.installEventFilter(self)  # Delete key support
-        self.auxTable.setHorizontalHeaderLabels(["File", "Type", "Alias"])
+        self.auxTable.setHorizontalHeaderLabels(["Primary", "File", "Type", "Alias"])
 
         # Make table more compact for small screens
         self.auxTable.verticalHeader().setVisible(False)  # Hide row numbers
@@ -636,14 +636,16 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
             from PyQt5.QtWidgets import QHeaderView
 
             header = self.auxTable.horizontalHeader()
-            # File column takes most space, Type and Alias are compact
-            header.setSectionResizeMode(0, QHeaderView.Stretch)  # File column
-            header.setSectionResizeMode(1, QHeaderView.Fixed)  # Type column
-            header.setSectionResizeMode(2, QHeaderView.Fixed)  # Alias column
+            # Primary checkbox column, File column takes most space, Type and Alias are compact
+            header.setSectionResizeMode(0, QHeaderView.Fixed)  # Primary column
+            header.setSectionResizeMode(1, QHeaderView.Stretch)  # File column
+            header.setSectionResizeMode(2, QHeaderView.Fixed)  # Type column
+            header.setSectionResizeMode(3, QHeaderView.Fixed)  # Alias column
 
-            # Set fixed widths for Type and Alias (about 5 chars + padding)
-            self.auxTable.setColumnWidth(1, 60)  # Type column
-            self.auxTable.setColumnWidth(2, 60)  # Alias column
+            # Set fixed widths
+            self.auxTable.setColumnWidth(0, 60)  # Primary checkbox
+            self.auxTable.setColumnWidth(2, 60)  # Type column
+            self.auxTable.setColumnWidth(3, 60)  # Alias column
 
             # Optimize font and row height for small screens
             font = QFont()
@@ -936,26 +938,40 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
         row = self.auxTable.rowCount()
         self.auxTable.insertRow(row)
 
+        # Primary checkbox (default unchecked)
+        primary_checkbox = QCheckBox()
+        primary_checkbox.setChecked(False)
+        primary_checkbox.setToolTip(
+            "Mark as primary measurement (unchecked = supplementary)"
+        )
+        # Center the checkbox in the cell
+        checkbox_widget = QWidget()
+        checkbox_layout = QHBoxLayout(checkbox_widget)
+        checkbox_layout.addWidget(primary_checkbox)
+        checkbox_layout.setAlignment(Qt.AlignCenter)
+        checkbox_layout.setContentsMargins(0, 0, 0, 0)
+        self.auxTable.setCellWidget(row, 0, checkbox_widget)
+
         # File column (read-only, store full path in UserRole)
         display = f"{alias}: {Path(npy_path).name}"
         file_item = QTableWidgetItem(display)
         file_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
         file_item.setData(Qt.UserRole, str(npy_path))
-        self.auxTable.setItem(row, 0, file_item)
+        self.auxTable.setItem(row, 1, file_item)
 
         # Type combobox (blank by default)
         type_cb = self._make_type_combobox()
-        self.auxTable.setCellWidget(row, 1, type_cb)
+        self.auxTable.setCellWidget(row, 2, type_cb)
 
         # Alias combobox (preselect the source alias)
         alias_cb = self._make_alias_combobox(preselect=alias)
-        self.auxTable.setCellWidget(row, 2, alias_cb)
+        self.auxTable.setCellWidget(row, 3, alias_cb)
 
         # Auto-set type if we can infer it from filename
         try:
             inferred_type = self._infer_type_from_filename(npy_path)
             if inferred_type:
-                type_cb = self.auxTable.cellWidget(row, 1)
+                type_cb = self.auxTable.cellWidget(row, 2)
                 if type_cb and hasattr(type_cb, "findText"):
                     idx = type_cb.findText(inferred_type)
                     if idx >= 0:
@@ -1583,7 +1599,7 @@ fi
         
         trigger_row = None
         for row in range(self.auxTable.rowCount()):
-            if self.auxTable.cellWidget(row, 1) is sender:
+            if self.auxTable.cellWidget(row, 2) is sender:
                 trigger_row = row
                 break
         
@@ -1591,7 +1607,7 @@ fi
             return
         
         # Get the measurement name (base name without detector alias)
-        file_item = self.auxTable.item(trigger_row, 0)
+        file_item = self.auxTable.item(trigger_row, 1)
         if not file_item:
             return
         
@@ -1618,7 +1634,7 @@ fi
             if row == trigger_row:
                 continue
             
-            row_file_item = self.auxTable.item(row, 0)
+            row_file_item = self.auxTable.item(row, 1)
             if not row_file_item:
                 continue
             
@@ -1635,7 +1651,7 @@ fi
             
             # If same measurement (ignoring detector alias), sync the type
             if row_measurement_name == measurement_name:
-                type_cb = self.auxTable.cellWidget(row, 1)
+                type_cb = self.auxTable.cellWidget(row, 2)
                 if isinstance(type_cb, QComboBox):
                     # Block signals to avoid recursive updates
                     type_cb.blockSignals(True)
@@ -1660,7 +1676,7 @@ fi
     def refresh_aux_table_alias_models(self):
         aliases = self._get_active_detector_aliases()
         for row in range(self.auxTable.rowCount()):
-            cb = self.auxTable.cellWidget(row, 2)
+            cb = self.auxTable.cellWidget(row, 3)
             if not isinstance(cb, QComboBox):
                 continue
             current = cb.currentText()
@@ -1738,7 +1754,7 @@ fi
             active_aliases = []
 
         for row in rows:
-            file_item = self.auxTable.item(row, 0)
+            file_item = self.auxTable.item(row, 1)
             if not file_item:
                 continue
             file_path = file_item.data(Qt.UserRole)
@@ -1749,7 +1765,7 @@ fi
                 return
 
             # Type
-            type_cb = self.auxTable.cellWidget(row, 1)
+            type_cb = self.auxTable.cellWidget(row, 2)
             if (
                 not isinstance(type_cb, QComboBox)
                 or type_cb.currentText() == self.NO_SELECTION_LABEL
@@ -1761,7 +1777,7 @@ fi
             typ = type_cb.currentText()
 
             # Alias (must be selected)
-            cb = self.auxTable.cellWidget(row, 2)
+            cb = self.auxTable.cellWidget(row, 3)
             if (
                 not isinstance(cb, QComboBox)
                 or cb.currentText() == self.NO_SELECTION_LABEL
@@ -1831,7 +1847,7 @@ fi
         # Get unique aliases from selected measurements for PONI file selection
         unique_aliases = set()
         for row in rows:
-            cb = self.auxTable.cellWidget(row, 2)
+            cb = self.auxTable.cellWidget(row, 3)
             if (
                 isinstance(cb, QComboBox)
                 and cb.currentText() != self.NO_SELECTION_LABEL
@@ -1962,17 +1978,13 @@ fi
 
         self._log_technical_event("Generating technical HDF5 container...")
 
-        # Validate selection
-        sel = (
-            self.auxTable.selectionModel().selectedRows()
-            if self.auxTable.selectionModel()
-            else []
-        )
-        rows = [idx.row() for idx in sel]
+        # Use ALL rows in table (no selection required)
+        # User marks which are primary via the checkbox column
+        rows = list(range(self.auxTable.rowCount()))
         if not rows:
-            self._log_technical_event("Error: No rows selected for HDF5 generation")
+            self._log_technical_event("Error: No rows in table for HDF5 generation")
             QMessageBox.warning(
-                self, "No Selection", "Select one or more rows in the Aux table."
+                self, "No Data", "No measurements in the Aux table."
             )
             return
 
@@ -1991,6 +2003,7 @@ fi
 
         aux_measurements = {}
         seen_pairs = set()
+        primary_measurements = {}  # Track which measurements are marked as primary
 
         # Get active detector aliases for validation
         try:
@@ -1999,7 +2012,16 @@ fi
             active_aliases = []
 
         for row in rows:
-            file_item = self.auxTable.item(row, 0)
+            # Check if primary checkbox is checked
+            checkbox_widget = self.auxTable.cellWidget(row, 0)
+            is_primary = False
+            if checkbox_widget:
+                # Find the QCheckBox within the widget
+                checkbox = checkbox_widget.findChild(QCheckBox)
+                if checkbox:
+                    is_primary = checkbox.isChecked()
+            
+            file_item = self.auxTable.item(row, 1)
             if not file_item:
                 continue
             file_path = file_item.data(Qt.UserRole)
@@ -2010,7 +2032,7 @@ fi
                 return
 
             # Type
-            type_cb = self.auxTable.cellWidget(row, 1)
+            type_cb = self.auxTable.cellWidget(row, 2)
             if (
                 not isinstance(type_cb, QComboBox)
                 or type_cb.currentText() == self.NO_SELECTION_LABEL
@@ -2023,7 +2045,7 @@ fi
             typ = self._normalize_technical_type(typ_ui)
 
             # Alias (must be selected)
-            cb = self.auxTable.cellWidget(row, 2)
+            cb = self.auxTable.cellWidget(row, 3)
             if (
                 not isinstance(cb, QComboBox)
                 or cb.currentText() == self.NO_SELECTION_LABEL
@@ -2058,6 +2080,13 @@ fi
 
             aux_measurements.setdefault(typ, {})[alias] = file_path
             seen_pairs.add(pair)
+            
+            # Track primary/supplementary status
+            primary_measurements.setdefault(typ, {})[alias] = is_primary
+            
+            self._log_technical_event(
+                f"Row {row+1}: {typ_ui} for {alias} - {'PRIMARY' if is_primary else 'supplementary'}"
+            )
 
         # Enforce completeness: all REQUIRED measurement types must be present, and for each alias
         required_types = set(
