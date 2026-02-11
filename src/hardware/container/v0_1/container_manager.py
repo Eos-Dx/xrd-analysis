@@ -371,15 +371,35 @@ def lock_technical_container(
     Raises:
         RuntimeError: If container already locked
     """
-    lock_container(tech_file, user_id=locked_by)
+    tech_file = Path(tech_file)
     
-    # Add notes if provided
-    if notes:
-        try:
-            with h5py.File(tech_file, 'a') as f:
+    if not tech_file.exists():
+        raise FileNotFoundError(f"Container not found: {tech_file}")
+    
+    if is_container_locked(tech_file):
+        raise RuntimeError(f"Container already locked: {tech_file}")
+    
+    # Step 1: Set all HDF5 attributes (including notes) BEFORE read-only
+    try:
+        with h5py.File(tech_file, 'a') as f:
+            f.attrs['locked'] = True
+            f.attrs['locked_timestamp'] = time.strftime("%Y-%m-%d %H:%M:%S")
+            f.attrs['locked_by'] = locked_by
+            if notes:
                 f.attrs['locked_notes'] = notes
-        except Exception as e:
-            logger.warning(f"Could not add lock notes: {e}")
+        
+        logger.info(f"Set locked attributes for: {tech_file}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to set locked attributes: {e}")
+    
+    # Step 2: Set OS read-only permissions
+    try:
+        current_perms = tech_file.stat().st_mode
+        read_only_perms = current_perms & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
+        os.chmod(tech_file, read_only_perms)
+        logger.info(f"Set OS read-only permissions for: {tech_file}")
+    except Exception as e:
+        logger.warning(f"Could not set OS read-only permissions: {e}")
     
     logger.info(f"Locked container for production: {tech_file} by {locked_by}")
 

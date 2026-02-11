@@ -4,12 +4,14 @@
     "DEV": true,
     "expected_technical_schema_version": "1.0",
     "validate_containers_before_locking": true,
+    "difra_base_folder": "/Users/sad/dev/Data/difra",
+    "technical_folder": "/Users/sad/dev/Data/difra/technical",
+    "technical_archive_folder": "/Users/sad/dev/Data/difra/archive/technical",
+    "measurements_folder": "/Users/sad/dev/Data/difra/measurements",
     "default_folder": null,
     "default_image_folder": "C:\\dev\\eos_play\\unzipped_data\\Ulster\\pancreas\\sheep_pancreas\\U2\\Xena_Cu\\20250313",
     "default_image": "C:\\dev\\eos_play\\unzipped_data\\Ulster\\pancreas\\sheep_pancreas\\U2\\Xena_Cu\\20250313\\P1a_L4_20250218.jpg",
     "technical_temp_folder": null,
-    "archive_base_folder": null,
-    "measurement_default_folder": null,
     "distance_buttons": [
         {
             "text": "+2cm",

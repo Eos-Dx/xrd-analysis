@@ -224,44 +224,44 @@ def _get_technical_temp_folder(config=None):
         return str(fallback)
 
 
-def _get_archive_base_folder(config=None):
-    """Get the base archive folder path with platform-specific defaults.
+def _get_difra_base_folder(config=None):
+    """Get the DIFRA base folder path.
     
     Args:
         config: Optional config dict from global.json
     
     Returns:
-        Path to archive base folder (created if it doesn't exist)
+        Path to difra base folder (created if it doesn't exist)
     """
     from pathlib import Path
     import platform
     
     # Check config first
-    if config and config.get("archive_base_folder"):
-        archive_path = Path(config["archive_base_folder"])
+    if config and config.get("difra_base_folder"):
+        difra_path = Path(config["difra_base_folder"])
     else:
-        # Platform-specific defaults: ~/dev/Data/archive
+        # Platform-specific defaults: ~/dev/Data/difra
         system = platform.system()
         if system == "Darwin":  # macOS
-            archive_path = Path.home() / "dev" / "Data" / "archive"
+            difra_path = Path.home() / "dev" / "Data" / "difra"
         elif system == "Windows":
-            archive_path = Path("C:/dev/Data/archive")
+            difra_path = Path("C:/dev/Data/difra")
         else:  # Linux or other
-            archive_path = Path.home() / "dev" / "Data" / "archive"
+            difra_path = Path.home() / "dev" / "Data" / "difra"
     
     # Create directory if it doesn't exist
     try:
-        archive_path.mkdir(parents=True, exist_ok=True)
-        logger.debug(f"Archive base folder: {archive_path}")
-        return str(archive_path)
+        difra_path.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"DIFRA base folder: {difra_path}")
+        return str(difra_path)
     except Exception as e:
-        logger.warning(f"Failed to create archive base folder {archive_path}: {e}")
+        logger.warning(f"Failed to create DIFRA base folder {difra_path}: {e}")
         # Fallback to home directory
         return str(Path.home())
 
 
 def _get_technical_storage_folder(config=None):
-    """Get the technical storage folder path (archive/technical).
+    """Get the technical storage folder path (difra/technical).
     
     Args:
         config: Optional config dict from global.json
@@ -271,9 +271,13 @@ def _get_technical_storage_folder(config=None):
     """
     from pathlib import Path
     
-    # Get base archive folder and append 'technical' subfolder
-    archive_base = _get_archive_base_folder(config)
-    storage_path = Path(archive_base) / "technical"
+    # Check config first
+    if config and config.get("technical_folder"):
+        storage_path = Path(config["technical_folder"])
+    else:
+        # Get base difra folder and append 'technical' subfolder
+        difra_base = _get_difra_base_folder(config)
+        storage_path = Path(difra_base) / "technical"
     
     # Create directory if it doesn't exist
     try:
@@ -286,34 +290,40 @@ def _get_technical_storage_folder(config=None):
         return _get_technical_temp_folder(config)
 
 
-def _get_measurements_archive_folder(config=None):
-    """Get the measurements archive folder path (archive/measurements).
+def _get_technical_archive_folder(config=None):
+    """Get the technical archive folder path (difra/archive/technical).
+    
+    For archiving raw measurement data after container locking.
     
     Args:
         config: Optional config dict from global.json
     
     Returns:
-        Path to measurements archive folder (created if it doesn't exist)
+        Path to technical archive folder (created if it doesn't exist)
     """
     from pathlib import Path
     
-    # Get base archive folder and append 'measurements' subfolder
-    archive_base = _get_archive_base_folder(config)
-    archive_path = Path(archive_base) / "measurements"
+    # Check config first
+    if config and config.get("technical_archive_folder"):
+        archive_path = Path(config["technical_archive_folder"])
+    else:
+        # Get base difra folder and append 'archive/technical' subfolder
+        difra_base = _get_difra_base_folder(config)
+        archive_path = Path(difra_base) / "archive" / "technical"
     
     # Create directory if it doesn't exist
     try:
         archive_path.mkdir(parents=True, exist_ok=True)
-        logger.debug(f"Measurements archive folder: {archive_path}")
+        logger.debug(f"Technical archive folder: {archive_path}")
         return str(archive_path)
     except Exception as e:
-        logger.warning(f"Failed to create measurements archive folder {archive_path}: {e}")
+        logger.warning(f"Failed to create technical archive folder {archive_path}: {e}")
         # Fallback to home directory
         return str(Path.home())
 
 
 def _get_measurement_default_folder(config=None):
-    """Get the measurement default folder path with platform-specific defaults.
+    """Get the measurement default folder path (difra/measurements).
     
     Args:
         config: Optional config dict from global.json
@@ -322,20 +332,14 @@ def _get_measurement_default_folder(config=None):
         Path to measurement default folder (created if it doesn't exist)
     """
     from pathlib import Path
-    import platform
     
     # Check config first
-    if config and config.get("measurement_default_folder"):
-        meas_path = Path(config["measurement_default_folder"])
+    if config and config.get("measurements_folder"):
+        meas_path = Path(config["measurements_folder"])
     else:
-        # Platform-specific defaults
-        system = platform.system()
-        if system == "Darwin":  # macOS
-            meas_path = Path.home() / "dev" / "Data" / "measurements"
-        elif system == "Windows":
-            meas_path = Path("C:/dev/Data/measurements")
-        else:  # Linux or other
-            meas_path = Path.home() / "dev" / "Data" / "measurements"
+        # Get base difra folder and append 'measurements' subfolder
+        difra_base = _get_difra_base_folder(config)
+        meas_path = Path(difra_base) / "measurements"
     
     # Create directory if it doesn't exist
     try:
@@ -1818,12 +1822,14 @@ Wavelength: {wavelength}
                 )
     
     def _lock_container(self, container_path: str, container_id: str):
-        """Lock the technical container.
+        """Lock the technical container and archive raw data.
         
         Args:
             container_path: Path to container
             container_id: Container ID
         """
+        from pathlib import Path
+        import shutil
         from hardware.container.v0_1.container_manager import lock_technical_container
         from hardware.difra.gui.operator_manager import OperatorManager
         
@@ -1846,13 +1852,49 @@ Wavelength: {wavelength}
                 f"Container {container_id} locked by {operator_id}"
             )
             
+            # After successful locking, archive raw .npy files
+            archived_count = 0
+            try:
+                container_dir = Path(container_path).parent
+                archive_folder = Path(_get_technical_archive_folder(
+                    self.config if hasattr(self, "config") else None
+                ))
+                
+                # Create timestamped subfolder in archive for this container
+                import time
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                archive_subdir = archive_folder / f"{container_id}_{timestamp}"
+                archive_subdir.mkdir(parents=True, exist_ok=True)
+                
+                # Find and move all .npy files from the container directory
+                for npy_file in container_dir.glob("*.npy"):
+                    try:
+                        dest = archive_subdir / npy_file.name
+                        shutil.move(str(npy_file), str(dest))
+                        archived_count += 1
+                        self._log_technical_event(
+                            f"Archived raw data: {npy_file.name} -> {archive_subdir.name}"
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to archive {npy_file.name}: {e}")
+                
+                if archived_count > 0:
+                    self._log_technical_event(
+                        f"Archived {archived_count} raw measurement file(s) to {archive_subdir}"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to archive raw data files: {e}")
+                self._log_technical_event(f"Warning: Could not archive raw data: {e}")
+                # Non-fatal - container is still locked
+            
             QMessageBox.information(
                 self,
                 "Container Locked",
                 f"✅ Container locked successfully!\n\n"
                 f"Container ID: {container_id}\n"
                 f"Locked by: {operator_id}\n"
-                f"Location: {container_path}\n\n"
+                f"Location: {container_path}\n"
+                f"Raw data archived: {archived_count} file(s)\n\n"
                 f"This container is now ready for session measurements.",
             )
         except Exception as e:
@@ -2424,6 +2466,29 @@ Wavelength: {wavelength}
                 + "\n".join(missing_pairs),
             )
             return
+        
+        # 3) Validate primary selections: max one primary per measurement type per detector
+        primary_violations = []
+        for typ in required_types:
+            primary_map = primary_measurements.get(typ, {})
+            for alias in aliases_to_check:
+                # Count how many rows for this (type, alias) pair are marked as primary
+                primary_count = sum(
+                    1 for a, is_prim in primary_map.items() 
+                    if a == alias and is_prim
+                )
+                if primary_count > 1:
+                    primary_violations.append(f"{typ} → {alias}: {primary_count} primary files")
+        
+        if primary_violations:
+            QMessageBox.warning(
+                self,
+                "Primary Selection Error",
+                "Each measurement type can have at most ONE primary file per detector.\n\n"
+                "Violations found:\n" + "\n".join(primary_violations) +
+                "\n\nPlease uncheck some primary selections before generating H5.",
+            )
+            return
 
         # Collect PONI data (prefer file selection, fallback to in-memory PONI)
         pony_data = {}
@@ -2500,11 +2565,34 @@ Wavelength: {wavelength}
 
         # Check if per-detector distances have been configured
         if hasattr(self, '_detector_distances') and self._detector_distances:
-            # Use pre-configured per-detector distances
-            user_distances_cm = self._detector_distances.copy()
+            # Use pre-configured per-detector distances (keyed by detector ID)
+            # Convert to alias-keyed dict for use in container generation
+            user_distances_cm = {}
+            for detector_id, distance_cm in self._detector_distances.items():
+                # Find detector config by ID to get alias
+                detector_config = next(
+                    (d for d in self.config.get('detectors', []) if d.get('id') == detector_id),
+                    None
+                )
+                if detector_config:
+                    alias = detector_config.get('alias', detector_id)
+                    user_distances_cm[alias] = distance_cm
+            
             self._log_technical_event(
                 f"Using pre-configured per-detector distances: {user_distances_cm}"
             )
+            
+            # Validate that distances are set for ALL active detectors
+            missing_distance_aliases = [a for a in aliases_to_check if a not in user_distances_cm]
+            if missing_distance_aliases:
+                QMessageBox.warning(
+                    self,
+                    "Incomplete Distance Configuration",
+                    f"Distances must be configured for ALL active detectors.\n\n"
+                    f"Missing distances for: {', '.join(missing_distance_aliases)}\n\n"
+                    f"Please click 'Distances...' to configure all detector distances.",
+                )
+                return
         else:
             # No distances configured - require user to configure them first
             if not dev_mode:
@@ -2605,7 +2693,7 @@ Wavelength: {wavelength}
         
         Automatically validates the container and displays its contents in the aux table.
         """
-        from hardware.container.v0_1.validator import validate_technical_container
+        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
         import h5py
         
         self._log_technical_event("Opening file dialog to load HDF5 container...")
