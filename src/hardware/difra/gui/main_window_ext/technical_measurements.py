@@ -1563,8 +1563,89 @@ fi
         cb.addItem(self.NO_SELECTION_LABEL, None)
         for t in self.TYPE_OPTIONS:
             cb.addItem(t, t)
+        # Connect signal to sync type across detectors
+        cb.currentTextChanged.connect(self._on_type_changed)
         return cb
 
+    def _on_type_changed(self, new_type):
+        """Sync type selection across all rows with the same measurement name.
+        
+        When user selects AgBH/DARK/etc for one detector, automatically select
+        the same type for all other detectors from the same measurement batch.
+        """
+        if new_type == self.NO_SELECTION_LABEL:
+            return
+        
+        # Find which row triggered this change
+        sender = self.sender()
+        if not isinstance(sender, QComboBox):
+            return
+        
+        trigger_row = None
+        for row in range(self.auxTable.rowCount()):
+            if self.auxTable.cellWidget(row, 1) is sender:
+                trigger_row = row
+                break
+        
+        if trigger_row is None:
+            return
+        
+        # Get the measurement name (base name without detector alias)
+        file_item = self.auxTable.item(trigger_row, 0)
+        if not file_item:
+            return
+        
+        file_path = file_item.data(Qt.UserRole)
+        if not file_path:
+            return
+        
+        # Extract measurement name without alias and timestamp
+        # Expected format: name_YYYYMMDD_HHMMSS_..._ALIAS.ext
+        import re
+        from pathlib import Path
+        
+        base_name = Path(file_path).stem
+        # Remove alias (last token after underscore)
+        parts = base_name.split('_')
+        if len(parts) < 2:
+            return
+        
+        # Remove the alias (last part) to get measurement identifier
+        measurement_name = '_'.join(parts[:-1])
+        
+        # Find all rows with the same measurement name and sync their type
+        for row in range(self.auxTable.rowCount()):
+            if row == trigger_row:
+                continue
+            
+            row_file_item = self.auxTable.item(row, 0)
+            if not row_file_item:
+                continue
+            
+            row_file_path = row_file_item.data(Qt.UserRole)
+            if not row_file_path:
+                continue
+            
+            row_base_name = Path(row_file_path).stem
+            row_parts = row_base_name.split('_')
+            if len(row_parts) < 2:
+                continue
+            
+            row_measurement_name = '_'.join(row_parts[:-1])
+            
+            # If same measurement (ignoring detector alias), sync the type
+            if row_measurement_name == measurement_name:
+                type_cb = self.auxTable.cellWidget(row, 1)
+                if isinstance(type_cb, QComboBox):
+                    # Block signals to avoid recursive updates
+                    type_cb.blockSignals(True)
+                    type_cb.setCurrentText(new_type)
+                    type_cb.blockSignals(False)
+                    
+                    self._log_technical_event(
+                        f"Auto-synced type to {new_type} for row {row + 1}"
+                    )
+    
     def _make_alias_combobox(self, preselect=None):
         cb = QComboBox()
         cb.addItem(self.NO_SELECTION_LABEL, None)
