@@ -626,7 +626,11 @@ def link_analytical_measurement_to_point(
     point_index: int,
     analytical_measurement_index: int,
 ) -> None:
-    """Link an analytical measurement to a point via reference list.
+    """Link an analytical measurement to a point via bidirectional references.
+    
+    Creates two references:
+    - Point → Analytical measurement (in point's analytical_measurement_refs)
+    - Analytical measurement → Point (in analytical measurement's point_refs)
 
     Args:
         file_path: Session container path
@@ -639,11 +643,20 @@ def link_analytical_measurement_to_point(
     ana_id = schema.format_analytical_measurement_id(analytical_measurement_index)
     ana_path = f"{schema.GROUP_ANALYTICAL_MEASUREMENTS}/{ana_id}"
 
+    # Reference 1: Point → Analytical measurement
     utils.append_reference_to_list_attr(
         file_path=file_path,
         obj_path=point_path,
         attr_name=schema.ATTR_ANALYTICAL_MEASUREMENT_REFS,
         target_path=ana_path,
+    )
+    
+    # Reference 2: Analytical measurement → Point (bidirectional)
+    utils.append_reference_to_list_attr(
+        file_path=file_path,
+        obj_path=ana_path,
+        attr_name=schema.ATTR_POINT_REFS,
+        target_path=point_path,
     )
 
 

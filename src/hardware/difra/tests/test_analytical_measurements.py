@@ -300,19 +300,22 @@ class TestAnalyticalMeasurementPointLinking:
             analytical_measurement_index=1,
         )
         
-        # Verify link
+        # Verify bidirectional link
         with h5py.File(session_file, "r") as f:
             point_group = f["/points/pt_001"]
+            ana_group = f["/analytical_measurements/ana_000000001"]
             
-            # Check reference list attribute exists
+            # Check Point → Analytical measurement reference
             assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS in point_group.attrs
+            point_refs = point_group.attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_REFS]
+            assert len(point_refs) == 1
+            assert f[point_refs[0]].name == "/analytical_measurements/ana_000000001"
             
-            # Dereference and verify
-            refs = point_group.attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_REFS]
-            assert len(refs) == 1
-            
-            ana_group = f[refs[0]]
-            assert ana_group.name == "/analytical_measurements/ana_000000001"
+            # Check Analytical measurement → Point reference (bidirectional)
+            assert schema.ATTR_POINT_REFS in ana_group.attrs
+            ana_refs = ana_group.attrs[schema.ATTR_POINT_REFS]
+            assert len(ana_refs) == 1
+            assert f[ana_refs[0]].name == "/points/pt_001"
     
     def test_link_multiple_analytical_measurements_to_point(self, session_container_with_technical):
         """Test linking multiple analytical measurements to same point."""

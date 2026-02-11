@@ -154,6 +154,7 @@ STATUS_ABORTED = "aborted"
 
 # ================== Analytical Measurement Attrs ===========
 ATTR_ANALYSIS_TYPE = "analysis_type"
+ATTR_POINT_REFS = "point_refs"  # HDF5 ref array to points using this analytical measurement
 
 # Analysis types
 ANALYSIS_TYPE_ATTENUATION = "attenuation"
