@@ -117,7 +117,7 @@ Wavelength: 1.54e-10
         pony_data=pony_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
-        distance_cm=17.0,
+        distances_cm=17.0,
     )
 
     return file_path

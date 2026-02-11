@@ -52,7 +52,7 @@ Poni2: 0.014025
             "pixel_size_um": 55.0,
         }],
         active_detector_ids=["DET1"],
-        distance_cm=17.0,
+        distances_cm=17.0,
         validate_poni=True,
     )
     
@@ -73,7 +73,7 @@ def test_session_manager_create_session(temp_dir, technical_container):
     session_id, session_path = manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distance_cm=17.0,
+        distances_cm=17.0,
         operator_id="test_operator",
     )
     
@@ -90,7 +90,7 @@ def test_session_manager_add_points(temp_dir, technical_container):
     manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distance_cm=17.0,
+        distances_cm=17.0,
     )
     
     # Add points
@@ -115,7 +115,7 @@ def test_session_manager_attenuation_workflow(temp_dir, technical_container):
     manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distance_cm=17.0,
+        distances_cm=17.0,
     )
     
     # Add points
@@ -169,7 +169,7 @@ def test_session_manager_add_measurement(temp_dir, technical_container):
     manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distance_cm=17.0,
+        distances_cm=17.0,
     )
     
     # Add point
@@ -196,7 +196,7 @@ def test_session_manager_close_session(temp_dir, technical_container):
     manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distance_cm=17.0,
+        distances_cm=17.0,
     )
     
     assert manager.is_session_active()
@@ -232,7 +232,7 @@ def test_session_manager_get_session_info(temp_dir, technical_container):
     manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distance_cm=17.0,
+        distances_cm=17.0,
     )
     
     info = manager.get_session_info()

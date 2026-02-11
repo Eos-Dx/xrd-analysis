@@ -62,7 +62,7 @@ def test_validate_poni_distance_exact_match():
     poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
     
     # Should not raise
-    schema.validate_poni_distance(poni_content, user_distance_cm=17.0)
+    schema.validate_poni_distance(poni_content, user_distances_cm=17.0)
 
 
 def test_validate_poni_distance_within_tolerance():
@@ -70,10 +70,10 @@ def test_validate_poni_distance_within_tolerance():
     poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
     
     # 17.5 cm is 2.9% deviation - should pass
-    schema.validate_poni_distance(poni_content, user_distance_cm=17.5)
+    schema.validate_poni_distance(poni_content, user_distances_cm=17.5)
     
     # 17.8 cm is 4.7% deviation - should pass
-    schema.validate_poni_distance(poni_content, user_distance_cm=17.8)
+    schema.validate_poni_distance(poni_content, user_distances_cm=17.8)
 
 
 def test_validate_poni_distance_exceeds_tolerance():
@@ -82,7 +82,7 @@ def test_validate_poni_distance_exceeds_tolerance():
     
     # 20 cm is 17.6% deviation - should fail
     with pytest.raises(ValueError, match="validation failed"):
-        schema.validate_poni_distance(poni_content, user_distance_cm=20.0)
+        schema.validate_poni_distance(poni_content, user_distances_cm=20.0)
 
 
 def test_validate_poni_distance_custom_tolerance():
@@ -92,10 +92,10 @@ def test_validate_poni_distance_custom_tolerance():
     # 18 cm is 5.9% deviation
     # Should fail with 5% tolerance
     with pytest.raises(ValueError):
-        schema.validate_poni_distance(poni_content, user_distance_cm=18.0, tolerance_percent=5.0)
+        schema.validate_poni_distance(poni_content, user_distances_cm=18.0, tolerance_percent=5.0)
     
     # Should pass with 10% tolerance
-    schema.validate_poni_distance(poni_content, user_distance_cm=18.0, tolerance_percent=10.0)
+    schema.validate_poni_distance(poni_content, user_distances_cm=18.0, tolerance_percent=10.0)
 
 
 # ==================== Container Locking Tests ====================
@@ -123,7 +123,7 @@ def test_container_initially_unlocked():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         # Should be unlocked initially
@@ -149,7 +149,7 @@ def test_lock_container():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -190,7 +190,7 @@ def test_lock_already_locked_container():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -221,7 +221,7 @@ def test_unlock_container():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -254,7 +254,7 @@ def test_archive_locked_container():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -294,7 +294,7 @@ def test_archive_requires_confirmation():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -325,7 +325,7 @@ def test_archive_unlocked_container_fails():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -358,7 +358,7 @@ def test_find_active_container_by_distance():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         # Create container at 20cm
@@ -372,15 +372,15 @@ def test_find_active_container_by_distance():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=20.0,
+            distances_cm=20.0,
         )
         
         # Find 17cm container
-        found = container_manager.find_active_technical_container(folder, distance_cm=17.0)
+        found = container_manager.find_active_technical_container(folder, distances_cm=17.0)
         assert found == Path(tech_file_17)
         
         # Find 20cm container
-        found = container_manager.find_active_technical_container(folder, distance_cm=20.0)
+        found = container_manager.find_active_technical_container(folder, distances_cm=20.0)
         assert found == Path(tech_file_20)
 
 
@@ -402,13 +402,13 @@ def test_find_active_excludes_archived():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
         
         # Should find it
-        found = container_manager.find_active_technical_container(folder, distance_cm=17.0)
+        found = container_manager.find_active_technical_container(folder, distances_cm=17.0)
         assert found == tech_path
         
         # Lock and archive
@@ -416,7 +416,7 @@ def test_find_active_excludes_archived():
         container_manager.archive_technical_container(folder, tech_path, user_confirmed=True)
         
         # Should NOT find it (archived)
-        found = container_manager.find_active_technical_container(folder, distance_cm=17.0)
+        found = container_manager.find_active_technical_container(folder, distances_cm=17.0)
         assert found is None
 
 
@@ -446,7 +446,7 @@ def test_set_measurement_primary_status():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -484,7 +484,7 @@ def test_cannot_modify_locked_container():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -519,7 +519,7 @@ def test_get_primary_measurements():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -557,7 +557,7 @@ def test_copy_technical_locks_unlocked_container():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -598,7 +598,7 @@ def test_copy_technical_user_confirm_lock():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -641,7 +641,7 @@ def test_copy_technical_already_locked():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)
@@ -690,7 +690,7 @@ def test_poni_validation_in_generate_from_aux_table():
                 pony_data=pony_data,
                 detector_config=detector_config,
                 active_detector_ids=['PRIMARY'],
-                distance_cm=17.0,  # User says 17cm, but PONI says 20cm
+                distances_cm=17.0,  # User says 17cm, but PONI says 20cm
                 validate_poni=True,
             )
 
@@ -715,7 +715,7 @@ def test_poni_validation_can_be_disabled():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
             validate_poni=False,  # Disabled
         )
         
@@ -741,7 +741,7 @@ def test_locked_container_reused_by_multiple_sessions():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
-            distance_cm=17.0,
+            distances_cm=17.0,
         )
         
         tech_path = Path(tech_file)

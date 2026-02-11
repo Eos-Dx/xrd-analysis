@@ -917,19 +917,25 @@ def test_folder_structure_matches_config(temp_dir):
 def test_raw_data_archiving_after_lock(
     temp_dir, valid_poni_files, sample_measurements, demo_config
 ):
-    """Test that raw .npy files are archived after container locking."""
+    """Test that raw .npy and .txt files are archived after container locking."""
     # Create container
     container_path = create_valid_container(
         temp_dir, valid_poni_files, sample_measurements, demo_config
     )
     
-    # Create some dummy .npy files in the same directory as container
+    # Create some dummy .npy and .txt files in the same directory as container
     container_dir = container_path.parent
     raw_files = []
     for i in range(3):
-        raw_file = container_dir / f"raw_data_{i}.npy"
-        np.save(raw_file, np.random.rand(10, 10))
-        raw_files.append(raw_file)
+        # Add .npy file
+        npy_file = container_dir / f"raw_data_{i}.npy"
+        np.save(npy_file, np.random.rand(10, 10))
+        raw_files.append(npy_file)
+        
+        # Add corresponding .txt file
+        txt_file = container_dir / f"raw_data_{i}.txt"
+        txt_file.write_text(f"# ASCII export of raw_data_{i}\n1 2 3\n4 5 6\n")
+        raw_files.append(txt_file)
     
     # Verify raw files exist before locking
     for raw_file in raw_files:
@@ -937,9 +943,11 @@ def test_raw_data_archiving_after_lock(
     
     # Note: We can't easily test the full UI archiving flow without mocking,
     # but we can test the archiving logic separately
-    # This test verifies the setup and that we can detect raw files
+    # This test verifies the setup and that we can detect both .npy and .txt files
     
-    print(f"✅ Raw data files detected: {len(raw_files)} files")
+    npy_count = len([f for f in raw_files if f.suffix == ".npy"])
+    txt_count = len([f for f in raw_files if f.suffix == ".txt"])
+    print(f"✅ Raw data files detected: {npy_count} .npy + {txt_count} .txt = {len(raw_files)} total")
     print(f"   Container dir: {container_dir}")
 
 

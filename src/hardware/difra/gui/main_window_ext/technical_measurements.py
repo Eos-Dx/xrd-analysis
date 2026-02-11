@@ -1866,17 +1866,18 @@ Wavelength: {wavelength}
                 archive_subdir = archive_folder / f"{container_id}_{timestamp}"
                 archive_subdir.mkdir(parents=True, exist_ok=True)
                 
-                # Find and move all .npy files from the container directory
-                for npy_file in container_dir.glob("*.npy"):
-                    try:
-                        dest = archive_subdir / npy_file.name
-                        shutil.move(str(npy_file), str(dest))
-                        archived_count += 1
-                        self._log_technical_event(
-                            f"Archived raw data: {npy_file.name} -> {archive_subdir.name}"
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to archive {npy_file.name}: {e}")
+                # Find and move all .npy and .txt files from the container directory
+                for pattern in ["*.npy", "*.txt"]:
+                    for data_file in container_dir.glob(pattern):
+                        try:
+                            dest = archive_subdir / data_file.name
+                            shutil.move(str(data_file), str(dest))
+                            archived_count += 1
+                            self._log_technical_event(
+                                f"Archived raw data: {data_file.name} -> {archive_subdir.name}"
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to archive {data_file.name}: {e}")
                 
                 if archived_count > 0:
                     self._log_technical_event(

@@ -130,14 +130,14 @@ def technical_container_file(temp_output_dir, demo_config, demo_poni_files):
         content = poni_path.read_text()
         pony_data[alias] = (content, poni_path.name)
 
-    # Generate technical container
+    # Generate technical container with per-detector distances matching PONI files
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=temp_output_dir,
         aux_measurements=aux_measurements,
         pony_data=pony_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
-        distance_cm=17.0,
+        distances_cm={"PRIMARY": 17.0, "SECONDARY": 2.0},  # Match PONI distances
     )
 
     return file_path

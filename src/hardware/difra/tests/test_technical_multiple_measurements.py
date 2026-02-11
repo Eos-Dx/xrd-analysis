@@ -140,7 +140,7 @@ def test_h5_with_multiple_events(temp_folder, demo_poni_content):
         pony_data=pony_data,
         detector_config=detector_config,
         active_detector_ids=["PRIMARY"],
-        distance_cm=17.0,
+        distances_cm=17.0,
     )
     
     # Verify container created
@@ -188,7 +188,7 @@ def test_measurement_selection_for_h5(temp_folder, demo_poni_content):
         pony_data=pony_data,
         detector_config=detector_config,
         active_detector_ids=["PRIMARY"],
-        distance_cm=17.0,
+        distances_cm=17.0,
     )
     
     assert Path(file_path).exists()

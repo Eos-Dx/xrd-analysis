@@ -44,7 +44,7 @@ def session_container_with_technical(temp_dir):
     # Create minimal technical container
     tech_id, tech_path = create_technical_container(
         folder=temp_dir,
-        distance_cm=17.0,
+        distances_cm=17.0,
     )
     
     # Add detector config
