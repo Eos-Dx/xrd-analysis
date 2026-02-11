@@ -1866,8 +1866,8 @@ Wavelength: {wavelength}
                 archive_subdir = archive_folder / f"{container_id}_{timestamp}"
                 archive_subdir.mkdir(parents=True, exist_ok=True)
                 
-                # Find and move all .npy and .txt files from the container directory
-                for pattern in ["*.npy", "*.txt"]:
+                # Find and move all .npy, .txt, and .dsc files from the container directory
+                for pattern in ["*.npy", "*.txt", "*.dsc"]:
                     for data_file in container_dir.glob(pattern):
                         try:
                             dest = archive_subdir / data_file.name
