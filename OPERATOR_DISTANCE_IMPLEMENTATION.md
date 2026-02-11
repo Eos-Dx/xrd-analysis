@@ -41,17 +41,20 @@ Implemented comprehensive operator management and distance selection for DIFRA H
 
 **TechnicalContainerDialog**:
 - Shown when clicking "Generate H5" in Technical Measurements tab
-- **Distance Selection**:
-  - Shows PONI distance if available
-  - Validates ±5% tolerance against PONI
-  - Allows override with warning
-  - Defaults to PONI distance or 17.0 cm
+- **Per-Detector Distance Selection**:
+  - Separate distance input for each detector (SAXS, WAXS, etc.)
+  - Shows PONI distance for each detector if available
+  - "Apply to all detectors" checkbox for convenience
+  - Validates ±5% tolerance against PONI per detector
+  - Allows override with consolidated warning
+  - Defaults to PONI distance or 17.0 cm per detector
+  - Example: SAXS at 100cm, WAXS at 17cm
 - **Operator Selection**:
   - Dropdown of all operators
   - Pre-selects current operator
   - "Add New Operator..." button inline
   - Shows operator details
-- Stores operator info in technical container metadata
+- Returns dict of {detector_id: distance_cm} and operator_id
 
 ### 3. Session Container Dialog (`session_mixin.py`)
 
@@ -258,15 +261,24 @@ operator_manager.set_cloud_url(url)  # Configure cloud endpoint
 # In technical_measurements.py, when generating H5:
 from hardware.difra.gui.technical_container_dialog import TechnicalContainerDialog
 
-# Replace existing distance prompt with:
+# Prepare detector configs and PONI distances
+detector_configs = self.config.get('detectors', [])
+poni_distances = {
+    'SAXS': 100.0,  # From PONI file
+    'WAXS': 17.0,   # From PONI file
+}
+
+# Show dialog
 dialog = TechnicalContainerDialog(
     operator_manager=self.operator_manager,  # From main window
-    poni_distance_cm=poni_distance_cm,  # From PONI file
+    detector_configs=detector_configs,  # List of detector config dicts
+    poni_distances=poni_distances,  # Dict of detector_id -> distance from PONI
     parent=self
 )
 
 if dialog.exec_() == QDialog.Accepted:
-    distance_cm, operator_id = dialog.get_parameters()
+    detector_distances, operator_id = dialog.get_parameters()
+    # detector_distances = {'SAXS': 100.0, 'WAXS': 17.0}
     
     # Use these in generate_from_aux_table():
     container_id, file_path = technical_container.generate_from_aux_table(
@@ -275,7 +287,7 @@ if dialog.exec_() == QDialog.Accepted:
         pony_data=pony_data,
         detector_config=detector_config,
         active_detector_ids=active_detector_ids,
-        distance_cm=distance_cm,
+        detector_distances=detector_distances,  # Dict per detector
         operator_id=operator_id,  # Add to container metadata
     )
 ```

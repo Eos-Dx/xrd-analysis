@@ -1,0 +1,19 @@
+{
+  "operators": {
+    "default_operator": {
+      "name": "Default Operator",
+      "surname": "User",
+      "email": "operator@example.com",
+      "phone": "",
+      "institution": ""
+    },
+    "sad1": {
+      "name": "Sergey",
+      "surname": "DENISOV",
+      "email": "s@m.c",
+      "phone": "",
+      "institution": ""
+    }
+  },
+  "current_operator_id": "sad1"
+}
