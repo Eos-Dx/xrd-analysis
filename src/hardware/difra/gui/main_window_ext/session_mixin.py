@@ -295,8 +295,196 @@ class SessionMixin:
             else:
                 self.statusBar().showMessage("No active session")
     
+    def _handle_session_replacement(self) -> bool:
+        """Handle replacement of existing session with error checking.
+        
+        Returns:
+            True if session was closed/archived, False if user cancelled
+        """
+        from PyQt5.QtWidgets import QInputDialog
+        from hardware.container.v0_1.container_manager import is_container_locked
+        import h5py
+        import time
+        
+        if not self.session_manager.is_session_active():
+            return True
+        
+        info = self.session_manager.get_session_info()
+        session_path = Path(info['session_path'])
+        sample_id = info['sample_id']
+        session_id = info['session_id']
+        
+        # Check if container is locked/finalized
+        is_locked = is_container_locked(session_path)
+        
+        # Check if measurements exist
+        has_measurements = False
+        try:
+            with h5py.File(session_path, 'r') as f:
+                if '/measurements' in f:
+                    meas_group = f['/measurements']
+                    # Check if any point groups exist
+                    has_measurements = any(key.startswith('pt_') for key in meas_group.keys())
+        except Exception:
+            pass
+        
+        # Build status message
+        status_lines = [
+            f"Sample ID: {sample_id}",
+            f"Session ID: {session_id}",
+            f"Status: {'Finalized (locked)' if is_locked else 'Unfinalized (unlocked)'}",
+            f"Measurements: {'Yes' if has_measurements else 'None recorded'}",
+        ]
+        
+        # Check attenuation status
+        if info.get('i0_recorded'):
+            status_lines.append(f"Attenuation: I₀ recorded")
+        if info.get('attenuation_complete'):
+            status_lines.append(f"Attenuation: Complete")
+        
+        status_str = "\n".join(status_lines)
+        
+        # Show different dialogs based on status
+        if is_locked:
+            # Container is locked - simple replacement
+            reply = QMessageBox.question(
+                self,
+                "Replace Finalized Session?",
+                f"Current session is finalized and locked:\n\n{status_str}\n\n"
+                f"Close this session and create new one for new sample?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                self.session_manager.close_session()
+                return True
+            else:
+                return False
+        
+        # Unlocked container - potential error scenario
+        msg = (
+            f"⚠️  Found unfinalized session:\n\n{status_str}\n\n"
+            f"You are about to load a new sample image.\n"
+            f"The current session will be archived.\n\n"
+        )
+        
+        # Warn about incomplete data
+        if not has_measurements:
+            msg += "⚠️  WARNING: No measurements recorded in this session!\n"
+        
+        if not info.get('attenuation_complete'):
+            msg += "⚠️  WARNING: Attenuation not complete!\n"
+        
+        msg += "\nWas this session created by error?"
+        
+        # Create custom dialog with three buttons
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Replace Unfinalized Session?")
+        msg_box.setText(msg)
+        msg_box.setIcon(QMessageBox.Warning)
+        
+        # Add buttons
+        mark_error_btn = msg_box.addButton("Yes - Mark as Error", QMessageBox.YesRole)
+        continue_btn = msg_box.addButton("No - Archive Normally", QMessageBox.NoRole)
+        cancel_btn = msg_box.addButton("Cancel", QMessageBox.RejectRole)
+        msg_box.setDefaultButton(cancel_btn)
+        
+        msg_box.exec_()
+        clicked_button = msg_box.clickedButton()
+        
+        if clicked_button == cancel_btn:
+            logger.info("User cancelled session replacement")
+            return False
+        
+        # Determine error status
+        created_by_error = (clicked_button == mark_error_btn)
+        error_reason = ""
+        
+        if created_by_error:
+            # Prompt for error reason
+            reason, ok = QInputDialog.getText(
+                self,
+                "Error Reason",
+                f"Why was session '{sample_id}' created by error?\n\n"
+                f"(Optional - provide brief description)",
+            )
+            if ok and reason.strip():
+                error_reason = reason.strip()
+            else:
+                error_reason = "User marked as error without specifying reason"
+            
+            logger.info(
+                f"Session {session_id} marked as created_by_error: {error_reason}"
+            )
+        
+        # Close session and archive with metadata
+        try:
+            # Add error attributes before closing if needed
+            if created_by_error:
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                try:
+                    with h5py.File(session_path, 'a') as f:
+                        f.attrs['created_by_error'] = True
+                        f.attrs['error_reason'] = error_reason
+                        f.attrs['archived_timestamp'] = timestamp
+                    logger.info(f"Added error attributes to session container: {session_path.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to add error attributes: {e}")
+            
+            # Close session (this will keep the file in place)
+            self.session_manager.close_session()
+            
+            # Archive the container to session_archive folder
+            self._archive_session_container(session_path, session_id, created_by_error, error_reason)
+            
+            return True
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Archive Failed",
+                f"Failed to archive session:\n{e}",
+            )
+            logger.error(f"Failed to archive session: {e}", exc_info=True)
+            return False
+    
+    def _archive_session_container(self, session_path: Path, session_id: str, 
+                                   created_by_error: bool = False, error_reason: str = ""):
+        """Archive session container to session_archive folder.
+        
+        Args:
+            session_path: Path to session container
+            session_id: Session container ID
+            created_by_error: Whether marked as error
+            error_reason: Optional error reason
+        """
+        import shutil
+        import time
+        
+        # Create archive folder
+        archive_base = session_path.parent / "session_archive"
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        archive_folder = archive_base / f"{session_id}_{timestamp}"
+        archive_folder.mkdir(parents=True, exist_ok=True)
+        
+        # Move container to archive
+        dest_path = archive_folder / session_path.name
+        try:
+            shutil.move(str(session_path), str(dest_path))
+            logger.info(
+                f"Archived session container: {session_path.name} -> {archive_folder.name}/" +
+                (f" [ERROR: {error_reason}]" if created_by_error else "")
+            )
+        except Exception as e:
+            logger.error(f"Failed to move session to archive: {e}")
+            raise
+    
     def _handle_new_sample_image(self, image_path: str):
         """Handle loading/capturing a new sample image - auto-creates session.
+        
+        Prompts user about existing unfinalized sessions and handles archiving
+        with error marking if needed.
         
         Args:
             image_path: Path to the loaded/captured image
@@ -305,21 +493,11 @@ class SessionMixin:
         import numpy as np
         from PyQt5.QtGui import QPixmap
         
-        # Check if session already active - ask user if they want to close it
+        # Check if session already active - show detailed dialog
         if self.session_manager.is_session_active():
-            reply = QMessageBox.question(
-                self,
-                "Close Current Session?",
-                f"Close current session '{self.session_manager.sample_id}' and create new session for this sample?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
-            )
-            
-            if reply == QMessageBox.No:
-                logger.info("User chose to keep existing session")
+            if not self._handle_session_replacement():
+                # User cancelled replacement
                 return
-            
-            self.session_manager.close_session()
         
         # Show dialog to get sample information
         dialog = NewSessionDialog(self.operator_manager, self)
