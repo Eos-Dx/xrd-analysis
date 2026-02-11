@@ -98,10 +98,9 @@ Wavelength: 1.54e-10
 """
 
     poni_files = {}
-    # TODO: Update when container generation supports per-detector distances
-    # Currently all PONIs must have same distance (validated with 5% tolerance)
-    # In the future, SAXS and WAXS will support different distances
-    for detector, distance in [("PRIMARY", 0.17), ("SECONDARY", 0.17)]:
+    # Per-detector distances now supported!
+    # PRIMARY (SAXS): 100 cm, SECONDARY (WAXS): 17 cm
+    for detector, distance in [("PRIMARY", 1.00), ("SECONDARY", 0.17)]:
         poni_path = poni_dir / f"{detector.lower()}_demo.poni"
         content = poni_content_template.format(detector=detector, distance=distance)
         poni_path.write_text(content)
@@ -242,19 +241,19 @@ def test_generate_technical_h5_container(
         content = poni_path.read_text()
         pony_data[detector_id] = (content, poni_path.name)
 
-    # Extract distance from PONI (should be 17cm for PRIMARY)
-    distance_cm = 17.0
-    poni_distance_cm = 17.0  # Distance from PONI file (matches user distance)
+    # Use per-detector distances: PRIMARY (SAXS) 100cm, SECONDARY (WAXS) 17cm
+    distances_cm = {"PRIMARY": 100.0, "SECONDARY": 17.0}
+    poni_distances_cm = {"PRIMARY": 100.0, "SECONDARY": 17.0}  # Matches PONI files
 
-    # Generate HDF5 container
+    # Generate HDF5 container with per-detector distances
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=str(temp_output_dir),
         aux_measurements=aux_measurements,
         pony_data=pony_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
-        distance_cm=distance_cm,
-        poni_distance_cm=poni_distance_cm,
+        distances_cm=distances_cm,
+        poni_distances_cm=poni_distances_cm,
     )
 
     # Verify file created
@@ -281,7 +280,8 @@ def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
         assert f.attrs["schema_version"] == "1.0"
         assert "creation_timestamp" in f.attrs
         assert "distance_cm" in f.attrs
-        assert f.attrs["distance_cm"] == 17.0
+        # Root distance_cm should be from first detector (PRIMARY: 100cm)
+        assert f.attrs["distance_cm"] == 100.0
 
         # 2. Technical group exists
         assert "technical" in f

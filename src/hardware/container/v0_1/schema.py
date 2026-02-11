@@ -116,7 +116,8 @@ ATTR_SCHEMA_VERSION = "schema_version"
 ATTR_CREATION_TIMESTAMP = "creation_timestamp"
 
 # Technical container specific
-ATTR_DISTANCE_CM = "distance_cm"
+ATTR_DISTANCE_CM = "distance_cm"  # Root-level distance (primary detector or single distance)
+ATTR_DETECTOR_DISTANCE_CM = "detector_distance_cm"  # Per-detector distance (stored in detector group attrs)
 
 # Session container specific (required)
 ATTR_SAMPLE_ID = "sample_id"

@@ -120,7 +120,7 @@ def write_detector_config(
 def write_pony_datasets(
     file_path: Union[str, Path],
     pony_data: Dict[str, Tuple[str, str]],
-    distance_cm: float,
+    distances_cm: Union[float, Dict[str, float]],
     operator_confirmed: bool = True
 ) -> None:
     """Write PONY calibration data to /technical/pony.
@@ -128,12 +128,18 @@ def write_pony_datasets(
     Args:
         file_path: Technical container path
         pony_data: Dict mapping alias to (pony_content, pony_filename)
-        distance_cm: Sample-detector distance
+        distances_cm: Sample-detector distance (float for single, dict for per-detector)
         operator_confirmed: Whether PONY is operator-confirmed
     """
     for alias, (pony_content, pony_filename) in pony_data.items():
         role = schema.format_detector_role(alias)
         pony_path = f"{schema.GROUP_TECHNICAL_PONY}/pony_{role[4:]}"  # Remove "det_" prefix
+        
+        # Get distance for this detector
+        if isinstance(distances_cm, dict):
+            distance_cm = distances_cm.get(alias, list(distances_cm.values())[0])
+        else:
+            distance_cm = distances_cm
         
         attrs = {
             schema.ATTR_DETECTOR_ID: alias,
@@ -158,7 +164,7 @@ def add_technical_event(
     technical_type: str,
     measurements: Dict[str, Dict],
     timestamp: str,
-    distance_cm: float
+    distances_cm: Union[float, Dict[str, float]]
 ) -> str:
     """Add a technical measurement event to /technical/tech_evt_###.
     
@@ -172,7 +178,7 @@ def add_technical_event(
                      - 'timestamp': str
                      - 'source_file': str (optional) - path to original raw file
         timestamp: Event timestamp
-        distance_cm: Sample-detector distance
+        distances_cm: Sample-detector distance (float for single, dict for per-detector)
     
     Returns:
         Event group path
@@ -186,11 +192,17 @@ def add_technical_event(
     # Create event group
     utils.create_group_if_missing(file_path, event_path)
     
+    # Get primary distance for event-level attribute (use first detector if dict)
+    if isinstance(distances_cm, dict):
+        event_distance_cm = list(distances_cm.values())[0]  # Primary detector distance
+    else:
+        event_distance_cm = distances_cm
+    
     # Set event-level attributes
     event_attrs = {
         "type": technical_type,
         "timestamp_utc": timestamp,
-        schema.ATTR_DISTANCE_CM: distance_cm,
+        schema.ATTR_DISTANCE_CM: event_distance_cm,
     }
     utils.set_attrs(file_path, event_path, event_attrs)
     
@@ -239,10 +251,17 @@ def add_technical_event(
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Failed to store raw blob from {source_file}: {e}")
         
+        # Get distance for this specific detector
+        if isinstance(distances_cm, dict):
+            detector_distance_cm = distances_cm.get(alias, event_distance_cm)
+        else:
+            detector_distance_cm = distances_cm
+        
         # Set detector group attributes
         attrs = {
             schema.ATTR_TECHNICAL_TYPE: technical_type,
-            schema.ATTR_DISTANCE_CM: distance_cm,
+            schema.ATTR_DISTANCE_CM: detector_distance_cm,  # Per-detector distance
+            schema.ATTR_DETECTOR_DISTANCE_CM: detector_distance_cm,  # Explicit per-detector attr
             schema.ATTR_TIMESTAMP: meas_data.get("timestamp", timestamp),
             schema.ATTR_DETECTOR_ID: meas_data.get("detector_id", alias),
         }
@@ -286,8 +305,8 @@ def generate_from_aux_table(
     pony_data: Dict[str, Tuple[str, str]],
     detector_config: List[Dict],
     active_detector_ids: List[str],
-    distance_cm: float,
-    poni_distance_cm: Optional[float] = None,
+    distances_cm: Union[float, Dict[str, float]],
+    poni_distances_cm: Optional[Union[float, Dict[str, float]]] = None,
     container_id: Optional[str] = None,
     validate_poni: bool = True,
     poni_tolerance_percent: float = 5.0,
@@ -308,8 +327,8 @@ def generate_from_aux_table(
         pony_data: Dict mapping alias to (pony_content, pony_filename)
         detector_config: List of detector config dicts from DIFRA config
         active_detector_ids: List of active detector IDs
-        distance_cm: User-defined sample-detector distance in cm
-        poni_distance_cm: Distance from PONI file in cm (optional, deprecated)
+        distances_cm: User-defined sample-detector distance(s) in cm (float for single, dict for per-detector)
+        poni_distances_cm: Distance(s) from PONI file(s) in cm (optional)
         container_id: Optional container ID (generated if not provided)
         validate_poni: If True, validate PONI distances (default: True)
         poni_tolerance_percent: Maximum allowed deviation % (default: 5.0)
@@ -323,39 +342,70 @@ def generate_from_aux_table(
     import logging
     logger = logging.getLogger(__name__)
     
-    # STEP 1: Validate PONI distances against user distance
+    # STEP 1: Validate PONI distances against user distance(s)
     if validate_poni and pony_data:
-        logger.info(f"Validating PONI distances against user distance: {distance_cm:.2f} cm...")
+        # Convert single distance to dict for uniform processing
+        if isinstance(distances_cm, (int, float)):
+            distances_dict = {alias: float(distances_cm) for alias in pony_data.keys()}
+            logger.info(f"Validating PONI distances against user distance: {distances_cm:.2f} cm...")
+        else:
+            distances_dict = distances_cm
+            logger.info(f"Validating PONI distances against per-detector distances...")
         
         for alias, (poni_content, poni_filename) in pony_data.items():
+            # Get distance for this detector
+            detector_distance = distances_dict.get(alias)
+            if detector_distance is None:
+                logger.warning(f"  ⚠ {alias}: No distance specified, skipping validation")
+                continue
+            
             try:
                 schema.validate_poni_distance(
                     poni_content, 
-                    distance_cm, 
+                    detector_distance, 
                     tolerance_percent=poni_tolerance_percent
                 )
-                logger.info(f"  ✓ {alias}: {poni_filename} - distance OK")
+                logger.info(f"  ✓ {alias}: {poni_filename} - distance {detector_distance:.2f} cm OK")
             except ValueError as e:
                 logger.error(f"  ✗ {alias}: {poni_filename} - {e}")
                 raise ValueError(
                     f"PONI validation failed for {alias} ({poni_filename}):\n{e}"
                 )
     
-    # Create container
-    container_id, file_path = create_technical_container(folder, distance_cm, container_id)
+    # Get root distance (use first detector distance if dict)
+    if isinstance(distances_cm, dict):
+        root_distance_cm = list(distances_cm.values())[0]
+    else:
+        root_distance_cm = distances_cm
     
-    # Store poni_distance_cm in root attributes if provided
-    if poni_distance_cm is not None:
+    # Create container
+    container_id, file_path = create_technical_container(folder, root_distance_cm, container_id)
+    
+    # Store poni_distances_cm in root attributes if provided
+    if poni_distances_cm is not None:
         with utils.open_h5_append(file_path) as f:
-            f.attrs["poni_distance_cm"] = poni_distance_cm
-            # Check if distances match within tolerance (1mm)
-            f.attrs["distance_verified"] = abs(distance_cm - poni_distance_cm) < 0.1
+            if isinstance(poni_distances_cm, dict):
+                # Store as JSON for per-detector distances
+                import json
+                f.attrs["poni_distances_cm_json"] = json.dumps(poni_distances_cm)
+            else:
+                f.attrs["poni_distance_cm"] = poni_distances_cm
+            
+            # Verify distances match
+            if isinstance(distances_cm, dict) and isinstance(poni_distances_cm, dict):
+                all_verified = all(
+                    abs(distances_cm.get(alias, 0) - poni_distances_cm.get(alias, 0)) < 0.1
+                    for alias in distances_cm.keys()
+                )
+                f.attrs["distance_verified"] = all_verified
+            elif not isinstance(distances_cm, dict) and not isinstance(poni_distances_cm, dict):
+                f.attrs["distance_verified"] = abs(distances_cm - poni_distances_cm) < 0.1
     
     # Write detector configuration
     write_detector_config(file_path, detector_config, active_detector_ids)
     
     # Write PONY datasets
-    write_pony_datasets(file_path, pony_data, distance_cm)
+    write_pony_datasets(file_path, pony_data, distances_cm)
     
     # Add technical events
     event_index = 1
@@ -387,7 +437,7 @@ def generate_from_aux_table(
                 technical_type=tech_type,
                 measurements=measurements,
                 timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
-                distance_cm=distance_cm
+                distances_cm=distances_cm
             )
             
             # Track AGBH events for PONI linking

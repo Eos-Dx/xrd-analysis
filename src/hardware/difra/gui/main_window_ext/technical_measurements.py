@@ -2339,58 +2339,54 @@ Wavelength: {wavelength}
             if res != QMessageBox.Yes:
                 return
 
-        # Determine distance from PONI content (meters -> cm)
-        distances_m = []
-        poni_distance_cm = None  # Real distance from PONI file
-        
-        for content, _fname in pony_data.values():
-            d = self._parse_poni_distance_m(content)
-            if d is not None:
-                distances_m.append(d)
-
-        # Check if all PONI files have consistent distance
-        if distances_m:
-            ref = distances_m[0]
-            poni_distance_cm = ref * 100.0  # Convert meters to cm
-            
-            if any(abs(d - ref) > 1e-4 for d in distances_m[1:]):
+        # Check if per-detector distances have been configured
+        if hasattr(self, '_detector_distances') and self._detector_distances:
+            # Use pre-configured per-detector distances
+            user_distances_cm = self._detector_distances.copy()
+            self._log_technical_event(
+                f"Using pre-configured per-detector distances: {user_distances_cm}"
+            )
+        else:
+            # No distances configured - require user to configure them first
+            if not dev_mode:
                 QMessageBox.warning(
                     self,
-                    "Distance Mismatch Between PONIs",
-                    f"Different distances detected in PONI files:\n"
-                    + "\n".join([f"  {d*100:.2f} cm" for d in distances_m[:5]])
-                    + ("\n  ..." if len(distances_m) > 5 else "")
-                    + "\n\nPlease verify and enter the correct distance.",
+                    "Distances Not Configured",
+                    "Please click the 'Distances...' button to configure detector distances before generating H5 container.",
                 )
+                return
+            
+            # Dev mode: use single distance prompt as fallback
+            self._log_technical_event("Dev mode: no pre-configured distances, prompting user")
+            user_distance_cm = self._prompt_distance_cm(default_cm=17.0)
+            if user_distance_cm is None:
+                return
+            # Convert to dict for uniform processing
+            user_distances_cm = {alias: user_distance_cm for alias in aliases_to_check}
         
-        # Always prompt user to confirm/override distance
-        if poni_distance_cm is not None:
-            # Show dialog with PONI distance for user confirmation
-            res = QMessageBox.question(
-                self,
-                "Confirm Distance from PONI",
-                f"Distance from PONI file: {poni_distance_cm:.2f} cm\n\n"
-                f"Use this distance, or enter a different value?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes,
-            )
-            if res == QMessageBox.Yes:
-                user_distance_cm = poni_distance_cm
-            else:
-                user_distance_cm = self._prompt_distance_cm(default_cm=poni_distance_cm)
-        else:
-            # No PONI distance available, must enter manually
-            user_distance_cm = self._prompt_distance_cm()
-
-        if user_distance_cm is None:
-            return
+        # Extract PONI distances per detector for validation
+        poni_distances_cm = {}
+        for alias in aliases_to_check:
+            if alias in pony_data:
+                poni_content, _fname = pony_data[alias]
+                d = self._parse_poni_distance_m(poni_content)
+                if d is not None:
+                    poni_distances_cm[alias] = d * 100.0  # Convert meters to cm
         
-        # In dev mode, generate fake PONI files matching user distance (within 3%)
+        # In dev mode, generate fake PONI files matching user distances (within 3%)
         if dev_mode:
             self._log_technical_event(
-                f"Dev mode: generating fake PONI files with distance within ±3% of {user_distance_cm:.2f} cm"
+                f"Dev mode: generating fake PONI files with distances within ±3%: {user_distances_cm}"
             )
-            pony_data = self._generate_fake_poni_data(aliases_to_check, user_distance_cm)
+            # Generate fake PONIs per detector
+            fake_pony_data = {}
+            for alias in aliases_to_check:
+                distance_cm = user_distances_cm.get(alias, 17.0)
+                # Generate single detector fake PONI
+                single_pony = self._generate_fake_poni_data([alias], distance_cm)
+                if alias in single_pony:
+                    fake_pony_data[alias] = single_pony[alias]
+            pony_data = fake_pony_data
 
         # Get technical temp folder for HDF5 generation
         tech_temp_folder = _get_technical_temp_folder(self.config if hasattr(self, "config") else None)
@@ -2403,8 +2399,8 @@ Wavelength: {wavelength}
                 pony_data=pony_data,
                 detector_config=self.config.get("detectors", []),
                 active_detector_ids=self._get_active_detector_ids(),
-                distance_cm=user_distance_cm,
-                poni_distance_cm=poni_distance_cm if not dev_mode else user_distance_cm,  # Use user distance in dev mode
+                distances_cm=user_distances_cm,  # Pass per-detector distances dict
+                poni_distances_cm=poni_distances_cm if poni_distances_cm else None,  # Pass per-detector PONI distances
             )
         except Exception as e:
             QMessageBox.critical(
