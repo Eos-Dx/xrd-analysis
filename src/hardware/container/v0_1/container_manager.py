@@ -351,6 +351,79 @@ def get_primary_measurements(tech_file: Path) -> dict:
         return {}
 
 
+# ==================== New Locking Functions (with operator support) ====================
+
+def lock_technical_container(
+    tech_file: Path,
+    locked_by: str,
+    notes: Optional[str] = None
+) -> None:
+    """Lock technical container for production use.
+    
+    This locks the container and records who locked it and when.
+    Locked containers are ready for session measurements.
+    
+    Args:
+        tech_file: Path to technical container
+        locked_by: Operator ID who is locking the container
+        notes: Optional notes about locking
+        
+    Raises:
+        RuntimeError: If container already locked
+    """
+    lock_container(tech_file, user_id=locked_by)
+    
+    # Add notes if provided
+    if notes:
+        try:
+            with h5py.File(tech_file, 'a') as f:
+                f.attrs['locked_notes'] = notes
+        except Exception as e:
+            logger.warning(f"Could not add lock notes: {e}")
+    
+    logger.info(f"Locked container for production: {tech_file} by {locked_by}")
+
+
+def get_lock_info(tech_file: Path) -> dict:
+    """Get lock information from container.
+    
+    Args:
+        tech_file: Path to technical container
+        
+    Returns:
+        Dict with keys: locked, locked_timestamp, locked_by, locked_notes
+    """
+    tech_file = Path(tech_file)
+    
+    info = {
+        'locked': False,
+        'locked_timestamp': None,
+        'locked_by': None,
+        'locked_notes': None
+    }
+    
+    if not tech_file.exists():
+        return info
+    
+    try:
+        with h5py.File(tech_file, 'r') as f:
+            info['locked'] = f.attrs.get('locked', False)
+            
+            if info['locked']:
+                ts = f.attrs.get('locked_timestamp')
+                info['locked_timestamp'] = ts.decode('utf-8') if isinstance(ts, bytes) else ts
+                
+                by = f.attrs.get('locked_by')
+                info['locked_by'] = by.decode('utf-8') if isinstance(by, bytes) else by
+                
+                notes = f.attrs.get('locked_notes')
+                info['locked_notes'] = notes.decode('utf-8') if isinstance(notes, bytes) else notes
+    except Exception as e:
+        logger.error(f"Failed to get lock info: {e}")
+    
+    return info
+
+
 # ==================== Validation Helpers ====================
 
 def validate_technical_container_format(tech_file: Path) -> bool:

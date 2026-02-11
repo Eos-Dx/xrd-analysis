@@ -1703,6 +1703,165 @@ Wavelength: {wavelength}
             3,
         )
         return float(dist_cm) if ok else None
+    
+    def _validate_and_prompt_lock(self, container_path: str, container_id: str):
+        """Validate container and prompt user to lock it.
+        
+        Args:
+            container_path: Path to generated container
+            container_id: Container ID
+        """
+        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+        import h5py
+        
+        # Validate container
+        try:
+            is_valid, errors, warnings = validate_technical_container(container_path, strict=False)
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Validation Error",
+                f"Failed to validate container:\n{e}"
+            )
+            self._log_technical_event(f"Validation error: {e}")
+            return
+        
+        # Check schema version
+        expected_version = self.config.get("expected_technical_schema_version", "1.0")
+        try:
+            with h5py.File(container_path, 'r') as f:
+                actual_version = f.attrs.get("schema_version", "unknown")
+                if isinstance(actual_version, bytes):
+                    actual_version = actual_version.decode('utf-8')
+                
+                if actual_version != expected_version:
+                    errors.append(
+                        f"Schema version mismatch: container has {actual_version}, expected {expected_version}"
+                    )
+                    is_valid = False
+        except Exception as e:
+            errors.append(f"Failed to check schema version: {e}")
+            is_valid = False
+        
+        # Build validation summary
+        status_icon = "✅" if is_valid else ("⚠️" if errors else "✅")
+        summary_lines = [
+            f"{status_icon} Container Validation Results",
+            "",
+            f"Container ID: {container_id}",
+            f"Location: {os.path.basename(container_path)}",
+            f"Schema Version: {actual_version}",
+            "",
+        ]
+        
+        if errors:
+            summary_lines.append(f"❌ {len(errors)} Error(s):")
+            for i, error in enumerate(errors[:5], 1):
+                summary_lines.append(f"  {i}. {error}")
+            if len(errors) > 5:
+                summary_lines.append(f"  ... and {len(errors) - 5} more")
+            summary_lines.append("")
+        
+        if warnings:
+            summary_lines.append(f"⚠️  {len(warnings)} Warning(s):")
+            for i, warning in enumerate(warnings[:3], 1):
+                summary_lines.append(f"  {i}. {warning}")
+            if len(warnings) > 3:
+                summary_lines.append(f"  ... and {len(warnings) - 3} more")
+            summary_lines.append("")
+        
+        if not errors and not warnings:
+            summary_lines.append("✅ No issues found")
+            summary_lines.append("")
+        
+        # Show validation results
+        if is_valid:
+            summary_lines.append("Container is valid and ready to lock.")
+            summary_lines.append("\nLock this container for session measurements?")
+            
+            reply = QMessageBox.question(
+                self,
+                "Validation Passed",
+                "\n".join(summary_lines),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
+            
+            if reply == QMessageBox.Yes:
+                # Lock the container
+                self._lock_container(container_path, container_id)
+            else:
+                QMessageBox.information(
+                    self,
+                    "Container Saved",
+                    f"Container saved without locking.\n\nLocation: {container_path}",
+                )
+        else:
+            summary_lines.append("Container has validation errors.")
+            summary_lines.append("\nYou can still use this container, but it may not work correctly.")
+            summary_lines.append("\nSave anyway?")
+            
+            reply = QMessageBox.warning(
+                self,
+                "Validation Failed",
+                "\n".join(summary_lines),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            
+            if reply == QMessageBox.Yes:
+                self._log_technical_event(f"User saved container {container_id} despite validation errors")
+                QMessageBox.information(
+                    self,
+                    "Container Saved",
+                    f"Container saved with errors.\n\nLocation: {container_path}",
+                )
+    
+    def _lock_container(self, container_path: str, container_id: str):
+        """Lock the technical container.
+        
+        Args:
+            container_path: Path to container
+            container_id: Container ID
+        """
+        from hardware.container.v0_1.container_manager import lock_technical_container
+        from hardware.difra.gui.operator_manager import OperatorManager
+        
+        # Get current operator
+        operator_manager = OperatorManager()
+        operator_id = operator_manager.get_current_operator_id()
+        
+        if not operator_id:
+            operator_id = "unknown"
+        
+        # Lock the container
+        try:
+            lock_technical_container(
+                Path(container_path),
+                locked_by=operator_id,
+                notes="Auto-locked after generation and validation"
+            )
+            
+            self._log_technical_event(
+                f"Container {container_id} locked by {operator_id}"
+            )
+            
+            QMessageBox.information(
+                self,
+                "Container Locked",
+                f"✅ Container locked successfully!\n\n"
+                f"Container ID: {container_id}\n"
+                f"Locked by: {operator_id}\n"
+                f"Location: {container_path}\n\n"
+                f"This container is now ready for session measurements.",
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Lock Failed",
+                f"Failed to lock container:\n{e}\n\nContainer location: {container_path}"
+            )
+            self._log_technical_event(f"Failed to lock container: {e}")
 
     def _normalize_technical_type(self, typ: str) -> str:
         """Normalize UI type labels to schema technical types."""
@@ -2427,12 +2586,18 @@ Wavelength: {wavelength}
                 f"Warning: Could not copy to storage folder, file remains in temp: {temp_file_path}"
             )
             final_path = temp_file_path
-
-        QMessageBox.information(
-            self,
-            "HDF5 Generated",
-            f"Temp location:\n{temp_file_path}\n\nStorage location:\n{final_path}\n\nContainer ID:\n{container_id}",
-        )
+        
+        # Auto-validate container if configured
+        should_validate = self.config.get("validate_containers_before_locking", True)
+        if should_validate:
+            self._log_technical_event("Auto-validating generated container...")
+            self._validate_and_prompt_lock(final_path, container_id)
+        else:
+            QMessageBox.information(
+                self,
+                "HDF5 Generated",
+                f"Container generated successfully!\n\nLocation: {final_path}\n\nContainer ID: {container_id}",
+            )
     
     # -------------------- Load Technical HDF5 --------------------
     def load_technical_h5(self):
