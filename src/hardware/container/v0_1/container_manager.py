@@ -353,6 +353,61 @@ def get_primary_measurements(tech_file: Path) -> dict:
 
 # ==================== New Locking Functions (with operator support) ====================
 
+def archive_technical_data_files(
+    container_path: Path,
+    archive_folder: Path,
+    file_patterns: Optional[list] = None
+) -> int:
+    """Archive data files associated with a technical container.
+    
+    Moves data files from the container directory to the archive folder.
+    File patterns are detector-specific (e.g., Advacam uses .txt/.dsc/.npy,
+    Bruker might use different formats).
+    
+    Args:
+        container_path: Path to the technical container .h5 file
+        archive_folder: Path to archive folder (will be created if needed)
+        file_patterns: List of file patterns to archive (e.g., ['*.txt', '*.dsc', '*.npy'])
+                      If None, defaults to ['*.txt', '*.dsc', '*.npy'] for Advacam detectors
+    
+    Returns:
+        Number of files archived
+    
+    Example:
+        # For Advacam detectors
+        archive_technical_data_files(container, archive, ['*.txt', '*.dsc', '*.npy'])
+        
+        # For Bruker detectors (hypothetical)
+        archive_technical_data_files(container, archive, ['*.raw', '*.brml'])
+    """
+    container_path = Path(container_path)
+    archive_folder = Path(archive_folder)
+    container_dir = container_path.parent
+    
+    # Default patterns for Advacam detectors
+    if file_patterns is None:
+        file_patterns = ['*.txt', '*.dsc', '*.npy']
+    
+    # Create archive folder
+    archive_folder.mkdir(parents=True, exist_ok=True)
+    
+    archived_count = 0
+    for pattern in file_patterns:
+        for data_file in container_dir.glob(pattern):
+            try:
+                dest = archive_folder / data_file.name
+                shutil.move(str(data_file), str(dest))
+                archived_count += 1
+                logger.debug(f"Archived: {data_file.name} -> {archive_folder.name}")
+            except Exception as e:
+                logger.warning(f"Failed to archive {data_file.name}: {e}")
+    
+    if archived_count > 0:
+        logger.info(f"Archived {archived_count} data files to {archive_folder}")
+    
+    return archived_count
+
+
 def lock_technical_container(
     tech_file: Path,
     locked_by: str,
@@ -362,6 +417,9 @@ def lock_technical_container(
     
     This locks the container and records who locked it and when.
     Locked containers are ready for session measurements.
+    
+    Note: This function only locks the container. Use archive_technical_data_files()
+    separately to archive associated data files if needed.
     
     Args:
         tech_file: Path to technical container

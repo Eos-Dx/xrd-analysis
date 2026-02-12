@@ -213,20 +213,20 @@ def add_technical_event(
         
         utils.create_group_if_missing(file_path, detector_path)
         
-        # Write raw_signal dataset
-        raw_signal_path = f"{detector_path}/{schema.DATASET_RAW_SIGNAL}"
+        # Write processed_signal dataset (only signal stored)
+        processed_signal_path = f"{detector_path}/{schema.DATASET_PROCESSED_SIGNAL}"
         utils.write_dataset(
             file_path=file_path,
-            dataset_path=raw_signal_path,
+            dataset_path=processed_signal_path,
             data=meas_data["data"],
             compression="gzip",
-            compression_opts=9,  # Maximum compression for raw data
+            compression_opts=schema.COMPRESSION_PROCESSED,
             overwrite=True
         )
         
         # Write raw data blobs if source file is provided
         # Store only .txt (ASCII data) and .dsc (descriptor) as raw blobs
-        # (.npy is processed data and already stored in raw_signal dataset)
+        # (.npy is processed data and already stored in processed_signal dataset)
         source_file = meas_data.get("source_file")
         if source_file and os.path.exists(source_file):
             from pathlib import Path
@@ -449,6 +449,18 @@ def generate_from_aux_table(
         
         for alias, file_path_str in alias_files.items():
             try:
+                # Container v0.1 strictly requires .npy files
+                # Detectors must convert raw output using convert_to_container_format()
+                if not file_path_str.endswith('.npy'):
+                    raise ValueError(
+                        f"Container v0.1 requires .npy files for detector '{alias}'.\n"
+                        f"Got: {file_path_str}\n\n"
+                        f"Solution: Use detector.convert_to_container_format(raw_file, '0.1') "
+                        f"to convert raw detector output before passing to container writer.\n"
+                        f"Example for Advacam detectors:\n"
+                        f"  detector.convert_to_container_format('measurement.txt', '0.1') -> 'measurement.npy'"
+                    )
+                
                 data = np.load(file_path_str)
                 measurements[alias] = {
                     "data": data,

@@ -1,10 +1,10 @@
-"""Legacy session_container module (deprecated).
+"""Session container API for HDF5 container v0.1.
 
-Use hardware.container.v0_1.session_container instead. This module remains as a
-thin compatibility layer to avoid breaking older imports.
+This module provides the session container functions as a dedicated API surface
+and delegates implementation to writer.py.
 """
 
-from hardware.container.v0_1.session_container import (
+from .writer import (
     create_session_container,
     copy_technical_to_session,
     add_image,

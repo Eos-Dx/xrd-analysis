@@ -15,15 +15,13 @@ __version__ = "0.1.0-beta"
 from . import schema
 from . import utils
 from . import writer
+from . import session_container
 from . import validator
 from . import technical_container
 from . import measurement_counter
 from . import container_manager
 from .reader import SessionContainer, TechnicalContainer
 
-# Compatibility layer: old code expects session_container as a module
-# Map writer functions to session_container namespace
-session_container = writer
 
 # Compatibility layer: old code expects session_validator as a module
 # Map validator functions to session_validator namespace  
@@ -37,7 +35,7 @@ __all__ = [
     "technical_container",
     "measurement_counter",
     "container_manager",
-    "session_container",  # Compatibility alias
+    "session_container",
     "session_validator",   # Compatibility alias
     "SessionContainer",
     "TechnicalContainer",

@@ -204,8 +204,8 @@ class TechnicalContainerValidator:
         det_group = f[det_path]
         
         # Check required datasets
-        if schema_v1.DATASET_RAW_SIGNAL not in det_group:
-            self._add_error(f"{det_path}: Missing 'raw_signal' dataset")
+        if schema_v1.DATASET_PROCESSED_SIGNAL not in det_group:
+            self._add_error(f"{det_path}: Missing 'processed_signal' dataset")
         
         # Check for raw data storage (optional but recommended)
         # New schema: blob/ group with raw_txt, raw_dsc, etc.
