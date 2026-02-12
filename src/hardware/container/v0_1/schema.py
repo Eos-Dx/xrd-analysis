@@ -2,6 +2,27 @@
 
 This module defines constants, formatters, and validation rules matching
 the approved DIFRA_HDF5_Data_Model_FINAL.md specification.
+
+Container v0.1 Format Requirements:
+- Measurement data MUST be in .npy format (numpy binary)
+- Raw detector files (.txt, .dsc for Advacam) stored as blobs
+- Detectors MUST convert raw output using convert_to_container_format() before
+  passing to container writers
+
+Example detector workflow:
+    # 1. Detector captures raw data
+    detector.capture_point(frames=10, seconds=2.0, filename_base="dark_001")
+    # Creates: dark_001.txt, dark_001.dsc
+    
+    # 2. Convert to container format
+    npy_file = detector.convert_to_container_format("dark_001.txt", "0.1")
+    # Creates: dark_001.npy
+    
+    # 3. Pass .npy to container writer
+    technical_container.add_technical_event(
+        measurements={"PRIMARY": {"data": np.load(npy_file), "source_file": npy_file}}
+    )
+    # Container stores .npy data as raw_signal dataset, archives .txt/.dsc as blobs
 """
 
 import re
@@ -293,19 +314,24 @@ def format_technical_container_filename(container_id: str, distance_cm: float = 
         return f"technical_{container_id}.h5"
 
 def format_session_container_filename(container_id: str, sample_id: str = None) -> str:
-    """Format session container filename: session_<id>.h5
+    """Format session container filename: session_<id>_<date>_<sample>.h5
     
-    Optionally include sample_id for human readability.
+    Includes acquisition date (YYYY_MM_DD) and optionally sample_id for human readability.
     """
+    import time
+    
     if not validate_container_id(container_id):
         raise ValueError(f"Invalid container ID: {container_id}")
+    
+    # Get current date in YYYY_MM_DD format
+    date_str = time.strftime("%Y_%m_%d")
     
     if sample_id:
         # Sanitize sample_id for filename
         safe_sample_id = re.sub(r'[^a-zA-Z0-9_-]', '_', sample_id)
-        return f"session_{container_id}_{safe_sample_id}.h5"
+        return f"session_{container_id}_{date_str}_{safe_sample_id}.h5"
     else:
-        return f"session_{container_id}.h5"
+        return f"session_{container_id}_{date_str}.h5"
 
 def validate_technical_type(tech_type: str) -> bool:
     """Validate technical type is in allowed set."""

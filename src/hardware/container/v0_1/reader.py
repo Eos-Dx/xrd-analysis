@@ -122,7 +122,7 @@ class SessionContainer(BaseContainer):
             return measurements
     
     def get_detector_data(self, point_index: int, measurement_counter: int, detector_id: str) -> Optional[np.ndarray]:
-        """Get raw detector data for a specific measurement.
+        """Get processed detector data for a specific measurement.
         
         Args:
             point_index: Point index
@@ -130,13 +130,13 @@ class SessionContainer(BaseContainer):
             detector_id: Detector ID
             
         Returns:
-            Raw signal array or None
+            Processed signal array or None
         """
         pt_name = schema.format_point_id(point_index)
         meas_name = schema.format_measurement_id(measurement_counter)
         det_role = schema.format_detector_role(detector_id)
         
-        signal_path = f"{schema.GROUP_MEASUREMENTS}/{pt_name}/{meas_name}/{det_role}/{schema.DATASET_RAW_SIGNAL}"
+        signal_path = f"{schema.GROUP_MEASUREMENTS}/{pt_name}/{meas_name}/{det_role}/{schema.DATASET_PROCESSED_SIGNAL}"
         
         with utils.open_h5_readonly(self.file_path) as f:
             if signal_path in f:

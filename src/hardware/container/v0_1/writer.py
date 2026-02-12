@@ -178,14 +178,17 @@ def add_detector_data_with_blobs(
         file_path: Container path
         detector_path: Full path to detector group (e.g., "/measurements/pt_001/meas_NNN/det_saxs")
         processed_signal: Mandatory processed numpy array (compression=4)
-        raw_files: Optional dict of {"filename.ext": bytes_content} for raw data blobs
+        raw_files: Optional dict of {"raw_txt": bytes, "raw_dsc": bytes, ...} for raw data blobs
+                   Keys should use format: raw_<extension> (e.g., raw_txt, raw_dsc, raw_t3pa)
+                   This matches technical container blob naming convention.
         metadata: Optional metadata dict (stored as JSON)
         pony_ref_path: Optional path to PONI file for reference
         
     Notes:
         - processed_signal is MANDATORY
-        - raw_files stored as blobs with max compression (9)
+        - raw_files stored as blobs with max compression (9) using keys: raw_txt, raw_dsc, etc.
         - metadata stored as JSON string (no compression)
+        - Blob naming convention matches technical containers for consistency
     """
     # Create detector group
     utils.create_group_if_missing(file_path, detector_path)
@@ -201,25 +204,26 @@ def add_detector_data_with_blobs(
         overwrite=True,
     )
     
-    # Also write as raw_signal for backward compatibility
-    raw_signal_path = f"{detector_path}/{schema.DATASET_RAW_SIGNAL}"
-    utils.write_dataset(
-        file_path=file_path,
-        dataset_path=raw_signal_path,
-        data=processed_signal,
-        compression="gzip",
-        compression_opts=schema.COMPRESSION_PROCESSED,
-        overwrite=True,
-    )
+    # raw_signal is no longer written; processed_signal is the only stored signal
     
     # 2. Write raw file blobs if provided (compression=9)
+    # Blobs are stored with keys: raw_txt, raw_dsc, etc.
+    # This matches the naming convention used in technical containers
     if raw_files:
         blob_group = f"{detector_path}/{schema.DATASET_BLOB}"
         utils.create_group_if_missing(file_path, blob_group)
         
-        for filename, content in raw_files.items():
-            # Store as blob with max compression
-            blob_path = f"{blob_group}/{filename}"
+        for blob_key, content in raw_files.items():
+            # blob_key should already be in format: raw_txt, raw_dsc, etc.
+            # If caller provides full filenames, extract format
+            if not blob_key.startswith('raw_'):
+                # Extract extension from filename (e.g., file.txt -> txt)
+                import os
+                _, ext = os.path.splitext(blob_key)
+                file_format = ext[1:] if ext else "unknown"
+                blob_key = f"raw_{file_format}"
+            
+            blob_path = f"{blob_group}/{blob_key}"
             
             # Convert bytes to numpy array for HDF5 storage
             if isinstance(content, bytes):

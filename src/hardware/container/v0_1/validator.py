@@ -252,24 +252,24 @@ class SessionContainerValidator:
                         det_path = f"{meas_path}/{detector_id}"
                         detector = meas[detector_id]
 
-                        # Check for raw_signal dataset
-                        if schema.DATASET_RAW_SIGNAL not in detector:
+                        # Check for processed_signal dataset
+                        if schema.DATASET_PROCESSED_SIGNAL not in detector:
                             self.errors.append(
                                 ValidationError(
                                     "ERROR",
                                     det_path,
-                                    "Missing raw_signal dataset",
+                                    "Missing processed_signal dataset",
                                 )
                             )
                         else:
-                            # Validate raw_signal is 2D array
-                            raw_signal = detector[schema.DATASET_RAW_SIGNAL]
-                            if len(raw_signal.shape) != 2:
+                            # Validate processed_signal is 2D array
+                            processed_signal = detector[schema.DATASET_PROCESSED_SIGNAL]
+                            if len(processed_signal.shape) != 2:
                                 self.errors.append(
                                     ValidationError(
                                         "ERROR",
-                                        f"{det_path}/{schema.DATASET_RAW_SIGNAL}",
-                                        f"Expected 2D array, got shape {raw_signal.shape}",
+                                        f"{det_path}/{schema.DATASET_PROCESSED_SIGNAL}",
+                                        f"Expected 2D array, got shape {processed_signal.shape}",
                                     )
                                 )
 
