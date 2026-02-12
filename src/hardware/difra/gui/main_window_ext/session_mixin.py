@@ -155,13 +155,15 @@ class SessionMixin:
                 return
             
             try:
-                # Create session
+                # Create session with schema-driven parameters
+                # All attributes come from params dict or SessionManager defaults
                 session_id, session_path = self.session_manager.create_session(
                     folder=session_folder,
-                    sample_id=params['sample_id'],
                     distance_cm=params['distance_cm'],
+                    sample_id=params['sample_id'],
                     operator_id=params.get('operator_id'),
-                    beam_energy_kev=params.get('beam_energy_kev'),
+                    # Any other schema attributes can be passed from params
+                    **{k: v for k, v in params.items() if k not in ['sample_id', 'operator_id', 'distance_cm']},
                 )
                 
                 QMessageBox.information(
@@ -250,28 +252,46 @@ class SessionMixin:
         )
     
     def get_session_folder(self) -> Path:
-        """Get session folder from config or user selection.
+        """Get session (measurements) folder from config.
+        
+        Reads measurements_folder from global.json config.
+        User can change this later from Zone Measurements panel.
         
         Returns:
-            Path to session folder, or None if cancelled
+            Path to measurements folder from config
         """
-        # Try to get from config
+        # Get measurements folder from config
         if hasattr(self, 'config') and self.config:
+            # Try measurements_folder first (preferred)
+            folder = self.config.get('measurements_folder')
+            if folder:
+                folder_path = Path(folder)
+                folder_path.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Using measurements folder from config: {folder_path}")
+                return folder_path
+            
+            # Fallback to session_folder for backward compatibility
             folder = self.config.get('session_folder')
             if folder:
-                return Path(folder)
+                folder_path = Path(folder)
+                folder_path.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Using session folder from config: {folder_path}")
+                return folder_path
         
-        # Prompt user
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            "Select Session Folder",
-            str(Path.home()),
-        )
+        # No config - use default under difra_base_folder
+        if hasattr(self, 'config') and self.config:
+            base = self.config.get('difra_base_folder')
+            if base:
+                folder_path = Path(base) / 'measurements'
+                folder_path.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Using default measurements folder: {folder_path}")
+                return folder_path
         
-        if folder:
-            return Path(folder)
-        
-        return None
+        # Last resort: use home directory
+        folder_path = Path.home() / 'difra_measurements'
+        folder_path.mkdir(parents=True, exist_ok=True)
+        logger.warning(f"No config found, using fallback: {folder_path}")
+        return folder_path
     
     def update_session_status(self):
         """Update UI to reflect current session status."""
@@ -294,6 +314,27 @@ class SessionMixin:
                 self.statusBar().showMessage(status_msg)
             else:
                 self.statusBar().showMessage("No active session")
+        
+        # Update Zone Measurements panel Sample ID if present
+        if hasattr(self, 'fileNameLineEdit'):
+            if info['active']:
+                self.fileNameLineEdit.setText(info['sample_id'])
+                # Update lock indicator
+                if hasattr(self, 'sampleIdLockLabel'):
+                    is_locked = info.get('is_locked', False)
+                    if is_locked:
+                        self.sampleIdLockLabel.setText("🔒 Locked")
+                        self.sampleIdLockLabel.setStyleSheet("color: #d32f2f; font-size: 9px;")
+                    else:
+                        self.sampleIdLockLabel.setText("")
+            else:
+                self.fileNameLineEdit.setText("")
+                if hasattr(self, 'sampleIdLockLabel'):
+                    self.sampleIdLockLabel.setText("")
+        
+        # Update Session tab if present
+        if hasattr(self, '_update_session_tab_info'):
+            self._update_session_tab_info()
     
     def _handle_session_replacement(self) -> bool:
         """Handle replacement of existing session with error checking.
@@ -513,13 +554,14 @@ class SessionMixin:
                 logger.info(f"Using image directory as session folder: {session_folder}")
             
             try:
-                # Create session
+                # Create session with schema-driven parameters
                 session_id, session_path = self.session_manager.create_session(
                     folder=session_folder,
-                    sample_id=params['sample_id'],
                     distance_cm=params['distance_cm'],
+                    sample_id=params['sample_id'],
                     operator_id=params.get('operator_id'),
-                    beam_energy_kev=params.get('beam_energy_kev'),
+                    # Pass all other schema attributes from params
+                    **{k: v for k, v in params.items() if k not in ['sample_id', 'operator_id', 'distance_cm']},
                 )
                 
                 # Add image to session container
@@ -567,8 +609,8 @@ class SessionMixin:
                 )
                 
                 logger.info(
-                    f"Created new session: {session_id} for sample {params['sample_id']}",
-                    image_path=image_path,
+                    f"Created new session: {session_id} for sample {params['sample_id']} "
+                    f"with image: {image_path}"
                 )
                 
                 # Update UI
@@ -585,95 +627,122 @@ class SessionMixin:
             logger.info("User cancelled session creation")
     
     def _add_zones_to_session(self):
-        """Add zones from shapes to session container.
+        """Add zones from state to session container.
         
-        Called after points are generated to store zone definitions.
+        Called when measurements start to store zone definitions from state.
         """
         if not hasattr(self, 'session_manager') or not self.session_manager.is_session_active():
             return
         
-        if not hasattr(self, 'image_view') or not hasattr(self.image_view, 'shapes'):
-            logger.warning("No image view or shapes available")
+        # Get shapes from state instead of image_view
+        if not hasattr(self, 'state') or 'shapes' not in self.state:
+            logger.warning("No shapes found in state")
+            return
+        
+        shapes_data = self.state.get('shapes', [])
+        if not shapes_data:
+            logger.warning("Shapes list is empty in state")
             return
         
         try:
             zone_index = 1
-            for shape in self.image_view.shapes:
+            for shape in shapes_data:
+                # Get shape data from state structure
                 role = shape.get('role', 'include')
-                item = shape.get('item')
+                shape_type = shape.get('type', 'Circle').lower()
+                geometry = shape.get('geometry', {})
                 
-                if item is None:
-                    continue
+                # Convert geometry dict to list format [x, y, width, height]
+                geometry_px = [
+                    geometry.get('x', 0),
+                    geometry.get('y', 0),
+                    geometry.get('width', 0),
+                    geometry.get('height', 0),
+                ]
                 
-                # Get geometry from shape
-                from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem
-                from PyQt5.QtCore import QPointF
+                # Map role to zone_role
+                zone_role_map = {
+                    'include': 'sample_holder',
+                    'sample holder': 'sample_holder',
+                    'exclude': 'exclude',
+                }
+                zone_role = zone_role_map.get(role.lower(), 'sample_holder')
                 
-                geometry_px = None
-                shape_type = "polygon"
+                # Get holder diameter if it's a sample_holder
+                holder_diameter_mm = None
+                if zone_role == 'sample_holder' and hasattr(self, 'pixel_to_mm_ratio'):
+                    # Calculate diameter from geometry
+                    if shape_type == 'circle' and len(geometry_px) == 4:
+                        diameter_px = max(geometry_px[2], geometry_px[3])
+                        holder_diameter_mm = diameter_px / self.pixel_to_mm_ratio
                 
-                if isinstance(item, QGraphicsEllipseItem):
-                    rect = item.rect()
-                    geometry_px = [
-                        rect.x(),
-                        rect.y(),
-                        rect.width(),
-                        rect.height(),
-                    ]
-                    shape_type = "circle"
-                elif hasattr(item, 'polygon'):
-                    # Polygon shape
-                    poly = item.polygon()
-                    geometry_px = [[p.x(), p.y()] for p in poly]
-                    shape_type = "polygon"
-                elif isinstance(item, QGraphicsRectItem):
-                    rect = item.rect()
-                    geometry_px = [
-                        rect.x(),
-                        rect.y(),
-                        rect.width(),
-                        rect.height(),
-                    ]
-                    shape_type = "rectangle"
+                self.session_manager.add_zone(
+                    zone_index=zone_index,
+                    geometry_px=geometry_px,
+                    shape=shape_type,
+                    zone_role=zone_role,
+                    holder_diameter_mm=holder_diameter_mm,
+                )
                 
-                if geometry_px:
-                    # Map role to zone_role
-                    zone_role_map = {
-                        'include': 'sample_holder',
-                        'exclude': 'exclude',
-                    }
-                    zone_role = zone_role_map.get(role, 'sample_holder')
-                    
-                    # Get holder diameter if it's a sample_holder
-                    holder_diameter_mm = None
-                    if zone_role == 'sample_holder' and hasattr(self, 'pixel_to_mm_ratio'):
-                        # Calculate diameter from geometry
-                        if shape_type == 'circle' and len(geometry_px) == 4:
-                            diameter_px = max(geometry_px[2], geometry_px[3])
-                            holder_diameter_mm = diameter_px / self.pixel_to_mm_ratio
-                    
-                    self.session_manager.add_zone(
-                        zone_index=zone_index,
-                        geometry_px=geometry_px,
-                        shape=shape_type,
-                        zone_role=zone_role,
-                        image_index=1,
-                        holder_diameter_mm=holder_diameter_mm,
-                    )
-                    
-                    logger.info(
-                        f"Added zone {zone_index} to session",
-                        role=zone_role,
-                        shape=shape_type,
-                    )
-                    zone_index += 1
+                logger.info(
+                    f"Added zone {zone_index} to session: role={zone_role}, shape={shape_type}, geometry={geometry_px}"
+                )
+                zone_index += 1
             
             if zone_index > 1:
                 logger.info(f"Added {zone_index - 1} zones to session container")
+            else:
+                logger.warning("No zones were added to session container")
         
         except Exception as e:
             logger.error(
                 f"Failed to add zones to session container: {e}",
+                exc_info=True,
+            )
+    
+    def _add_mapping_to_session(self):
+        """Add image mapping (pixel-to-mm conversion) to session container.
+        
+        Called when measurements start to store the coordinate transformation.
+        """
+        if not hasattr(self, 'session_manager') or not self.session_manager.is_session_active():
+            return
+        
+        if not hasattr(self, 'pixel_to_mm_ratio'):
+            logger.warning("No pixel_to_mm_ratio available for mapping")
+            return
+        
+        try:
+            from hardware.container.v0_1 import writer
+            
+            # Find sample_holder zone ID (first zone with sample_holder role)
+            sample_holder_zone_id = "zone_001"  # Default to first zone
+            
+            # Create pixel-to-mm conversion dict
+            pixel_to_mm_conversion = {
+                "ratio": float(self.pixel_to_mm_ratio),
+                "units": "mm/pixel",
+            }
+            
+            # Add orientation if available
+            orientation = "standard"
+            
+            # Call writer to add mapping with overwrite=True
+            writer.add_image_mapping(
+                file_path=self.session_manager.session_path,
+                sample_holder_zone_id=sample_holder_zone_id,
+                pixel_to_mm_conversion=pixel_to_mm_conversion,
+                orientation=orientation,
+                mapping_version="1.0",
+            )
+            
+            logger.info(
+                f"Added image mapping to session container: ratio={self.pixel_to_mm_ratio}"
+            )
+            
+        except Exception as e:
+            logger.error(
+                f"Failed to add mapping to session container: {e}",
                 exc_info=True,
             )
     

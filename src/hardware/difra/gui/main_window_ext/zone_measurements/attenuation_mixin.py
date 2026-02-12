@@ -133,10 +133,9 @@ class AttenuationMixin:
         save_folder = self.folderLineEdit.text().strip()
         os.makedirs(save_folder, exist_ok=True)
 
-        from hardware.difra.gui.technical.capture import (
-            move_and_convert_measurement_file,
-        )
-
+        # Get container version from config
+        container_version = self.config.get('container_version', '0.1') if hasattr(self, 'config') else '0.1'
+        
         results = {}
         all_data = {}  # Collect data for all detectors
         
@@ -172,7 +171,18 @@ class AttenuationMixin:
                 )
                 continue
 
-            final_npy_file = move_and_convert_measurement_file(txt_file, save_folder)
+            # Detector converts raw file to container format
+            try:
+                final_npy_file = detector.convert_to_container_format(txt_file, container_version)
+            except Exception as e:
+                logger.error(
+                    "Failed to convert to container format",
+                    mode=mode,
+                    detector=alias,
+                    file=txt_file,
+                    error=str(e),
+                )
+                continue
 
             try:
                 frame = np.load(final_npy_file)

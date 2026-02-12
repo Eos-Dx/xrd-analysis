@@ -43,6 +43,16 @@ class ZonePointsMixin:
 
         self.zonePointsDock = QDockWidget("Zone Points", self)
         container = QWidget()
+        
+        # Set smaller font for all controls to fit smaller screens
+        try:
+            from PyQt5.QtGui import QFont
+            control_font = QFont()
+            control_font.setPointSize(9)  # Smaller font for controls (menu-size)
+            container.setFont(control_font)
+        except Exception:
+            pass
+        
         layout = QVBoxLayout(container)
         # Tighten margins/spacing to reduce vertical footprint
         layout.setContentsMargins(6, 4, 6, 4)
@@ -86,6 +96,15 @@ class ZonePointsMixin:
 
         container.setLayout(layout)
         self.zonePointsDock.setWidget(container)
+        
+        # Set minimum height to be compact - just enough for toolbar and a few table rows
+        # This gives more vertical space to other zones (image view, etc.)
+        try:
+            # Minimum: title bar (~20px) + compact toolbar (~32px) + 2-3 table rows (~80px)
+            self.zonePointsDock.setMinimumHeight(130)
+        except Exception:
+            pass
+        
         self.addDockWidget(Qt.BottomDockWidgetArea, self.zonePointsDock)
         try:
             splitter.setStretchFactor(0, 3)
