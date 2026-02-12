@@ -335,8 +335,8 @@ def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
                 det_data = evt_group[det_key]
 
                 # Check datasets
-                assert "raw_signal" in det_data
-                signal_ds = det_data["raw_signal"]
+                assert "processed_signal" in det_data
+                signal_ds = det_data["processed_signal"]
                 assert signal_ds.shape == (256, 256)  # Demo detector size
                 assert signal_ds.dtype in [np.float32, np.float64]
 
@@ -383,7 +383,7 @@ def test_roundtrip_measurement_data(temp_output_dir, demo_poni_files, demo_confi
         assert dark_evt is not None, "DARK event not found in HDF5"
 
         # Load data
-        h5_data = dark_evt["det_primary"]["raw_signal"][:]
+        h5_data = dark_evt["det_primary"]["processed_signal"][:]
 
         # Compare
         np.testing.assert_array_almost_equal(

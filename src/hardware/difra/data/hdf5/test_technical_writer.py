@@ -159,7 +159,7 @@ Wavelength: 1.5406e-10
         technical_container.write_pony_datasets(
             file_path=file_path,
             pony_data=pony_data,
-            distance_cm=17.0,
+            distances_cm=17.0,
             operator_confirmed=True
         )
         
@@ -222,7 +222,7 @@ def test_technical_event_writing():
             technical_type="AGBH",
             measurements=measurements,
             timestamp="2026-02-05 09:00:00",
-            distance_cm=17.0
+            distances_cm=17.0
         )
         
         print(f"✓ Technical event created: {event_path}")
@@ -236,13 +236,13 @@ def test_technical_event_writing():
             # Check PRIMARY detector data
             primary_path = f"{event_path}/det_primary"
             assert primary_path in f
-            raw_signal_path = f"{primary_path}/{schema_v1.DATASET_RAW_SIGNAL}"
+            raw_signal_path = f"{primary_path}/{schema_v1.DATASET_PROCESSED_SIGNAL}"
             assert raw_signal_path in f
             
             raw_data = f[raw_signal_path][()]
             assert raw_data.shape == (256, 256)
             assert raw_data.dtype == np.float32
-            print(f"✓ PRIMARY raw_signal shape: {raw_data.shape}, dtype: {raw_data.dtype}")
+            print(f"✓ PRIMARY processed_signal shape: {raw_data.shape}, dtype: {raw_data.dtype}")
             
             # Check attributes
             assert f[primary_path].attrs[schema_v1.ATTR_TECHNICAL_TYPE] == "AGBH"
@@ -313,7 +313,7 @@ def test_full_generation_from_aux_table():
             pony_data=pony_data,
             detector_config=detector_config,
             active_detector_ids=active_ids,
-            distance_cm=17.0
+            distances_cm=17.0
         )
         
         print(f"✓ Container generated: {Path(file_path).name}")
@@ -390,7 +390,7 @@ def test_object_references():
             technical_type="AGBH",
             measurements=measurements,
             timestamp="2026-02-05 09:00:00",
-            distance_cm=17.0
+            distances_cm=17.0
         )
         
         # Write PONY
@@ -398,7 +398,7 @@ def test_object_references():
         technical_container.write_pony_datasets(
             file_path=file_path,
             pony_data=pony_data,
-            distance_cm=17.0
+            distances_cm=17.0
         )
         
         # Link PONY to event

@@ -117,7 +117,7 @@ Wavelength: 1.54e-10
         pony_data=pony_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
-        distances_cm=17.0,
+        distances_cm={"PRIMARY": 17.0, "SECONDARY": 2.0},
     )
 
     return file_path
@@ -294,8 +294,8 @@ def test_session_validator_detects_missing_technical():
         assert error_count > 0
 
 
-def test_session_validator_detects_missing_raw_signal():
-    """Test validator detects missing raw_signal in measurements."""
+def test_session_validator_detects_missing_processed_signal():
+    """Test validator detects missing processed_signal in measurements."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
 
@@ -317,7 +317,7 @@ def test_session_validator_detects_missing_raw_signal():
             physical_coordinates_mm=[10.0, 10.0],
         )
 
-        # Create measurement group without raw_signal
+    # Create measurement group without processed_signal
         from hardware.container.v0_1 import utils
 
         utils.create_group_if_missing(
@@ -329,11 +329,11 @@ def test_session_validator_detects_missing_raw_signal():
         validator = session_validator.SessionContainerValidator(session_file)
         is_valid, errors = validator.validate()
 
-        # Should detect missing raw_signal
-        has_raw_signal_error = any(
-            "raw_signal" in e.message for e in errors if e.severity == "ERROR"
-        )
-        assert has_raw_signal_error
+    # Should detect missing processed_signal
+    has_processed_signal_error = any(
+        "processed_signal" in e.message for e in errors if e.severity == "ERROR"
+    )
+    assert has_processed_signal_error
 
 
 def test_session_multiple_images_zones(temp_output_dir, technical_container_file):

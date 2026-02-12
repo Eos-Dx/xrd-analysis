@@ -44,7 +44,7 @@ def session_container_with_technical(temp_dir):
     # Create minimal technical container
     tech_id, tech_path = create_technical_container(
         folder=temp_dir,
-        distances_cm=17.0,
+        distance_cm=17.0,
     )
     
     # Add detector config
@@ -171,9 +171,9 @@ class TestAnalyticalMeasurementBasics:
             assert f"{ana_path}/det_det1" in f
             assert f"{ana_path}/det_det2" in f
             
-            # Check raw_signal datasets
+            # Check processed_signal datasets
             det1_group = f[f"{ana_path}/det_det1"]
-            det1_signal = det1_group[schema.DATASET_RAW_SIGNAL]
+            det1_signal = det1_group[schema.DATASET_PROCESSED_SIGNAL]
             assert det1_signal.shape == (256, 256)
             # Attributes are on the detector group, not the dataset
             assert det1_group.attrs[schema.ATTR_DETECTOR_ID] == "DET1"
@@ -604,14 +604,14 @@ class TestAnalyticalMeasurementValidation:
             for attr in required_attrs:
                 assert attr in ana_group.attrs, f"Missing required attribute: {attr}"
             
-            # Check detector groups have raw_signal datasets
+            # Check detector groups have processed_signal datasets
             for det_name in ["det_det1", "det_det2"]:
                 det_group = ana_group[det_name]
-                assert schema.DATASET_RAW_SIGNAL in det_group
+                assert schema.DATASET_PROCESSED_SIGNAL in det_group
                 
                 # Check dataset is 2D array
-                raw_signal = det_group[schema.DATASET_RAW_SIGNAL]
-                assert len(raw_signal.shape) == 2
+                processed_signal = det_group[schema.DATASET_PROCESSED_SIGNAL]
+                assert len(processed_signal.shape) == 2
 
 
 class TestAnalyticalMeasurementIntegration:

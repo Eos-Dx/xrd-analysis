@@ -920,7 +920,7 @@ def test_raw_data_archiving_after_lock(
     """Test that raw .txt and .dsc files are archived after container locking.
     
     Note: .npy files are NOT archived as they contain processed data that's
-    already stored in the H5 container's raw_signal dataset.
+    already stored in the H5 container's processed_signal dataset.
     """
     # Create container
     container_path = create_valid_container(

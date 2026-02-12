@@ -576,7 +576,7 @@ def test_step5_record_measurements(temp_dir, technical_container_path):
         assert "det_saxs" in meas
         assert "det_waxs" in meas
 
-        saxs_data = meas["det_saxs/raw_signal"][:]
+        saxs_data = meas[f"det_saxs/{schema.DATASET_PROCESSED_SIGNAL}"][:]
         assert saxs_data.shape == (256, 256)
         assert saxs_data.dtype == np.float32
 
