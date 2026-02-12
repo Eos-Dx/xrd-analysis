@@ -27,7 +27,6 @@ def _get_zone_technical_imports():
     try:
         from hardware.difra.gui.technical.capture import (
             CaptureWorker,
-            move_and_convert_measurement_file,
             validate_folder,
         )
         from hardware.difra.gui.technical.measurement_worker import MeasurementWorker
@@ -35,7 +34,6 @@ def _get_zone_technical_imports():
         
         _zone_technical_modules.update({
             'CaptureWorker': CaptureWorker,
-            'move_and_convert_measurement_file': move_and_convert_measurement_file,
             'validate_folder': validate_folder,
             'MeasurementWorker': MeasurementWorker,
             'MeasurementHistoryWidget': MeasurementHistoryWidget,
@@ -60,7 +58,6 @@ def _get_zone_technical_module(name):
                 'moveToThread': lambda self, thread: None,
                 'finished': type('Signal', (), {'connect': lambda self, f: None})()
             }),
-            'move_and_convert_measurement_file': lambda *args, **kwargs: None,
             'validate_folder': lambda path: str(path) if path else "",
             'MeasurementWorker': type('MeasurementWorker', (), {
                 '__init__': lambda self, *args, **kwargs: None,
@@ -109,20 +106,12 @@ class ZoneMeasurementsProcessMixin:
 
         # ===== PRE-FLIGHT MANDATORY CHECKLIST =====
         try:
-            # Allow global admin disable via QSettings
-            from PyQt5.QtCore import QSettings
-
             from .preflight_dialog import PreflightDialog
 
+            # Pass session_manager for technical container validation
             d = PreflightDialog(
                 self,
-                self.measurement_folder,
-                self.state_path_measurements,
-                getattr(self, "ponis", {}),
-                bool(
-                    getattr(self, "attenuationCheckBox", None)
-                    and self.attenuationCheckBox.isChecked()
-                ),
+                session_manager=getattr(self, 'session_manager', None),
             )
             if d.exec_() != d.Accepted:
                 return
@@ -356,15 +345,30 @@ class ZoneMeasurementsProcessMixin:
                     })
                 
                 # Add all points to session
+                logger.info("=== SESSION CONTAINER POPULATION ===")
+                logger.info(f"Adding {len(points_for_session)} points to session container...")
                 self.session_manager.add_points(points_for_session)
-                
-                logger.info(
-                    f"Added {len(points_for_session)} points to session container"
-                )
+                logger.info(f"✓ Added {len(points_for_session)} points to session container")
                 
                 # Add zones to session if available
                 if hasattr(self, '_add_zones_to_session'):
+                    logger.info("Adding zones to session container...")
+                    num_shapes = len(self.state.get('shapes', []))
+                    logger.info(f"Found {num_shapes} shapes in state")
                     self._add_zones_to_session()
+                    logger.info("✓ Zones processing complete")
+                else:
+                    logger.warning("⚠ _add_zones_to_session method not found")
+                
+                # Add image mapping to session
+                if hasattr(self, '_add_mapping_to_session'):
+                    logger.info("Adding mapping to session container...")
+                    self._add_mapping_to_session()
+                    logger.info("✓ Mapping added")
+                else:
+                    logger.warning("⚠ _add_mapping_to_session method not found")
+                
+                logger.info("=== SESSION CONTAINER INITIALIZED ===")
                 
                 # Note: Attenuation linking happens per-point during automatic attenuation workflow
                 
@@ -476,6 +480,10 @@ class ZoneMeasurementsProcessMixin:
             self._append_measurement_log("Normal: capture")
         except Exception:
             pass
+        
+        # Get container version from config
+        container_version = self.config.get('container_version', '0.1') if hasattr(self, 'config') else '0.1'
+        
         CaptureWorker = _get_zone_technical_module('CaptureWorker')
         self.capture_worker = CaptureWorker(
             detector_controller=self.detector_controller,
@@ -483,6 +491,7 @@ class ZoneMeasurementsProcessMixin:
             txt_filename_base=txt_filename_base,
             frames=1,
             naming_mode="normal",
+            container_version=container_version,
         )
         self.capture_thread = QThread()
         self.capture_worker.moveToThread(self.capture_thread)
@@ -553,6 +562,9 @@ class ZoneMeasurementsProcessMixin:
         base_name = self.fileNameLineEdit.text().strip()
         group_base = os.path.join(self.measurement_folder, f"{base_name}_{group_ts}")
 
+        # Get container version from config
+        container_version = self.config.get('container_version', '0.1') if hasattr(self, 'config') else '0.1'
+        
         results = {}
         for alias, controller in self.detector_controller.items():
             try:
@@ -562,14 +574,11 @@ class ZoneMeasurementsProcessMixin:
                 )
                 txt_path = per_alias_base + ".txt" if ok else None
                 if txt_path and os.path.exists(txt_path):
-                    alias_folder = (
-                        self.measurement_folder
-                    )  # Save into the main folder (no subfolders)
-                    move_and_convert_measurement_file = _get_zone_technical_module('move_and_convert_measurement_file')
-                    moved_npy = move_and_convert_measurement_file(
-                        txt_path, alias_folder
+                    # Detector converts raw file to container format
+                    npy_path = controller.convert_to_container_format(
+                        txt_path, container_version
                     )
-                    results[alias] = moved_npy
+                    results[alias] = npy_path
                 else:
                     results[alias] = None
             except Exception as e:
@@ -714,6 +723,10 @@ class ZoneMeasurementsProcessMixin:
             )
         except Exception:
             pass
+        
+        # Get container version from config
+        container_version = self.config.get('container_version', '0.1') if hasattr(self, 'config') else '0.1'
+        
         CaptureWorker = _get_zone_technical_module('CaptureWorker')
         self._attn2_worker = CaptureWorker(
             detector_controller=self.detector_controller,
@@ -721,34 +734,22 @@ class ZoneMeasurementsProcessMixin:
             txt_filename_base=txt_filename_base,
             frames=frames,
             naming_mode="attenuation_with",
+            container_version=container_version,
         )
         self._attn2_thread = QThread()
         self._attn2_worker.moveToThread(self._attn2_thread)
         self._attn2_thread.started.connect(self._attn2_worker.run)
 
         def _after_attn_with(success2, result_files2):
-            # Move WITH-sample attenuation files into alias folders and record moved paths
+            # Files are already converted by detector - just record paths
             try:
                 self._append_measurement_log("Attenuation: with-sample files saved")
             except Exception:
                 pass
-            moved_map = {}
-            try:
-                import os as _os
-
-                for a, txt in (result_files2 or {}).items():
-                    if txt and _os.path.exists(txt):
-                        alias_folder = (
-                            self.measurement_folder
-                        )  # Save into the main folder (no subfolders)
-                        move_and_convert_measurement_file = _get_zone_technical_module('move_and_convert_measurement_file')
-                        moved_map[a] = move_and_convert_measurement_file(
-                            txt, alias_folder
-                        )
-                    else:
-                        moved_map[a] = None
-            except Exception:
-                pass
+            
+            # result_files2 already contains .npy paths from detector conversion
+            moved_map = result_files2 or {}
+            
             try:
                 self._record_attenuation_files("with_sample", moved_map)
             except Exception:
@@ -827,6 +828,12 @@ class ZoneMeasurementsProcessMixin:
         Handles errors, triggers post-processing, colors UI.
         Adds detector meta to measurements_meta for each measurement file.
         """
+        from pathlib import Path
+        import numpy as np
+        
+        print(f"\n\n>>> CRITICAL DEBUG: on_capture_finished ENTERED, success={success}\n\n")
+        logger.info(f">>> on_capture_finished called: success={success}, files={list(result_files.keys()) if result_files else None}")
+        
         if not success:
             logger.error("Measurement capture failed")
             try:
@@ -834,13 +841,26 @@ class ZoneMeasurementsProcessMixin:
             except Exception:
                 pass
             return
+        
         logger.info("Measurement capture successful", files=list(result_files.keys()))
+        print(">>> CHECKPOINT 1: Before measurement log")
         try:
             self._append_measurement_log("Normal: capture finished")
+        except Exception as e:
+            print(f">>> ERROR in _append_measurement_log: {e}")
+        
+        print(">>> CHECKPOINT 2: After measurement log")
+        
+        try:
+            self._append_measurement_log("[DEBUG] Post-processing started")
         except Exception:
             pass
+        
+        print(">>> CHECKPOINT 3: Starting post-processing")
+        logger.info("Starting post-capture processing...")
 
         # Build detector meta as before
+        print(">>> CHECKPOINT 4: Building detector lookup")
         detector_lookup = {d["alias"]: d for d in self.config["detectors"]}
 
         measurements = self.state_measurements.get("measurements_meta", {})
@@ -850,7 +870,7 @@ class ZoneMeasurementsProcessMixin:
         y = self._y_mm
         point_unique_id = measurement_points[current_index]["unique_id"]
 
-        for alias, txt_filename in result_files.items():
+        for alias, npy_filename in result_files.items():
             detector_meta = detector_lookup.get(alias, {})
             entry = {
                 "x": x,
@@ -869,74 +889,168 @@ class ZoneMeasurementsProcessMixin:
             gh = getattr(self, "calibration_group_hash", None)
             if gh:
                 entry["CALIBRATION_GROUP_HASH"] = gh
-            measurements[Path(txt_filename).name] = entry
+            # result_files now contains .npy files (converted by detector)
+            measurements[Path(npy_filename).name] = entry
 
         self.state_measurements["measurements_meta"] = measurements
 
+        try:
+            self._append_measurement_log("[DEBUG] Saving state file")
+        except Exception:
+            pass
+        
         # Save updated state
         with open(self.state_path_measurements, "w") as f:
             json.dump(self.state_measurements, f, indent=4)
         
+        try:
+            self._append_measurement_log("[DEBUG] State saved")
+        except Exception:
+            pass
+        
         # Add to session container if session is active
+        logger.info(f"Checking session manager: has_attr={hasattr(self, 'session_manager')}, active={self.session_manager.is_session_active() if hasattr(self, 'session_manager') else False}")
+        
+        try:
+            self._append_measurement_log("[DEBUG] Checking H5 session")
+        except Exception:
+            pass
+        
         if hasattr(self, 'session_manager') and self.session_manager.is_session_active():
             try:
-                # Convert txt files to npy and load data
-                from hardware.difra.gui.technical.capture import (
-                    move_and_convert_measurement_file,
-                )
+                self._append_measurement_log("[DEBUG] Writing to H5")
+            except Exception:
+                pass
+            try:
+                logger.info(f"=== ADDING MEASUREMENT TO H5 (Point {current_index + 1}) ===")
+                logger.info(f"Session path: {self.session_manager.session_path}")
+                # Files are already .npy (converted by detector)
                 
                 all_data = {}
-                for alias, txt_filename in result_files.items():
-                    # Convert to .npy
-                    npy_file = move_and_convert_measurement_file(
-                        txt_filename, self.measurement_folder
-                    )
-                    # Load data
-                    import numpy as np
-                    all_data[alias] = np.load(npy_file)
+                raw_files_data = {}
                 
-                # Build metadata
-                metadata = {
-                    "x_mm": x,
-                    "y_mm": y,
-                    "integration_time_s": self.integration_time,
-                    "timestamp": self._timestamp,
-                    "unique_id": point_unique_id,
-                }
+                detector_lookup = {d["alias"]: d for d in self.config["detectors"]}
+                pony_alias_map = {}
+                for alias, npy_file in result_files.items():
+                    detector_meta = detector_lookup.get(alias, {})
+                    detector_id = detector_meta.get("id", alias)
+                    pony_alias_map[alias] = detector_id
+                    # Load data directly
+                    logger.info(f"Loading {alias} data from: {Path(npy_file).name}")
+                    all_data[detector_id] = np.load(npy_file)
+                    logger.info(f"  Data shape: {all_data[detector_id].shape}")
+                    
+                    # Find and read raw files for blob storage
+                    npy_path = Path(npy_file)
+                    base_name = npy_path.stem  # filename without .npy
+                    folder = npy_path.parent
+                    
+                    # Get raw file patterns from detector
+                    detector_controller = self.detector_controller.get(alias)
+                    if detector_controller and hasattr(detector_controller, 'get_raw_file_patterns'):
+                        patterns = detector_controller.get_raw_file_patterns()
+                    else:
+                        # Fallback patterns if detector doesn't specify
+                        patterns = ['*.txt', '*.dsc', '*.t3pa']
+                        logger.warning(f"Detector {alias} has no get_raw_file_patterns(), using default patterns")
+                    
+                    # Collect raw files based on detector patterns
+                    raw_files = {}
+                    for pattern in patterns:
+                        ext = pattern[1:] if pattern.startswith('*') else pattern
+                        raw_file = folder / f"{base_name}{ext}"
+                        if raw_file.exists():
+                            try:
+                                with open(raw_file, 'rb') as f:
+                                    # Store with key format: raw_<ext> (e.g., raw_txt, raw_dsc)
+                                    # This matches technical container blob naming convention
+                                    file_format = ext[1:] if ext.startswith('.') else ext
+                                    blob_key = f"raw_{file_format}"
+                                    raw_files[blob_key] = f.read()
+                                logger.debug(f"Read raw file for blob: {raw_file.name} -> {blob_key}")
+                            except Exception as e:
+                                logger.warning(f"Failed to read raw file {raw_file}: {e}")
+                    
+                    if raw_files:
+                        raw_files_data[detector_id] = raw_files
+                        logger.info(f"  Found {len(raw_files)} raw files for {alias}: {list(raw_files.keys())}")
+                    else:
+                        logger.warning(f"  No raw files found for {alias} using patterns {patterns}")
                 
-                # Get PONI map
-                pony_map = {}
-                for alias in all_data.keys():
-                    if hasattr(self, 'get_poni_file'):
-                        poni_file = self.get_poni_file(alias)
-                        if poni_file:
-                            pony_map[alias] = poni_file
+                logger.info(f"Loaded data from {len(all_data)} detectors")
                 
-                # Add measurement to session container
+                # Build detector metadata (per-detector)
+                detector_metadata = {}
+                for detector_id in all_data.keys():
+                    detector_metadata[detector_id] = {
+                        "integration_time_ms": self.integration_time * 1000,  # Convert to ms
+                        "detector_id": detector_id,
+                        "x_mm": x,
+                        "y_mm": y,
+                        "timestamp": self._timestamp,
+                        "unique_id": point_unique_id,
+                    }
+                
+                raw_files_by_detector_id = raw_files_data
+                
+                # Add measurement to session container with raw file blobs
+                # current_index is 0-based, but session container uses 1-based indices
+                point_index_1based = current_index + 1
+                logger.info(f"Writing to H5: /measurements/pt_{point_index_1based:03d}/meas_NNNNNNNNN")
+                logger.info(f"  Detectors: {list(all_data.keys())}")
+                logger.info(f"  Raw files: {len(raw_files_by_detector_id)} detector(s) with blobs")
+                
                 self.session_manager.add_measurement(
-                    point_idx=current_index,
-                    data=all_data,
-                    metadata=metadata,
-                    pony_map=pony_map,
+                    point_index=point_index_1based,
+                    measurement_data=all_data,
+                    detector_metadata=detector_metadata,
+                    pony_alias_map=pony_alias_map,
+                    raw_files=raw_files_by_detector_id if raw_files_by_detector_id else None,
                 )
                 
-                logger.info(
-                    f"Added measurement to session container",
-                    point_idx=current_index,
-                    detectors=list(all_data.keys()),
-                )
+                logger.info(f"✓ Measurement added to H5 container for point {point_index_1based}")
+                
+                try:
+                    self._append_measurement_log("[DEBUG] H5 write complete")
+                except Exception:
+                    pass
                 
             except Exception as e:
-                logger.error(
-                    f"Failed to add measurement to session container: {e}",
-                    exc_info=True,
-                )
+                logger.error("="*60)
+                logger.error(f"✗ CRITICAL ERROR: Failed to add measurement to H5")
+                logger.error("="*60)
+                logger.error(f"Error type: {type(e).__name__}")
+                logger.error(f"Error message: {e}")
+                logger.error(f"Point index: {current_index + 1}")
+                logger.error(f"Detectors: {list(result_files.keys())}")
+                logger.error(f"Session path: {self.session_manager.session_path if hasattr(self, 'session_manager') else 'N/A'}")
+                logger.error("="*60, exc_info=True)
+                # Don't return - let the workflow continue even if H5 write fails
+                logger.warning("Continuing measurement workflow despite H5 write failure...")
+        else:
+            logger.warning("⚠ Session manager not active - measurements will NOT be saved to H5!")
+            try:
+                self._append_measurement_log("[DEBUG] No H5 session active")
+            except Exception:
+                pass
 
         # === The rest is unchanged (your logic) ===
+        try:
+            self._append_measurement_log("[DEBUG] Spawning worker thread")
+        except Exception:
+            pass
+        
+        logger.info("Spawning measurement thread for post-processing...")
         current_row = self.sorted_indices[self.current_measurement_sorted_index]
         self.spawn_measurement_thread(current_row, result_files)
 
         # Visual feedback
+        try:
+            self._append_measurement_log("[DEBUG] Updating UI colors")
+        except Exception:
+            pass
+        
+        logger.info("Updating UI visual feedback...")
         green_brush = QColor(0, 255, 0)
         self._point_item.setBrush(green_brush)
         try:
@@ -946,7 +1060,17 @@ class ZoneMeasurementsProcessMixin:
                 self._zone_item.setBrush(green_zone)
         except Exception as e:
             logger.warning("Error updating zone item color", error=str(e))
+        
+        try:
+            self._append_measurement_log("[DEBUG] Scheduling next point")
+        except Exception:
+            pass
+        
+        print(">>> CHECKPOINT FINAL: About to schedule QTimer")
+        logger.info("Scheduling measurement_finished in 1000ms...")
         QTimer.singleShot(1000, self.measurement_finished)
+        print(">>> CHECKPOINT EXIT: on_capture_finished complete")
+        logger.info("<<< on_capture_finished complete")
 
     def spawn_measurement_thread(self, row, file_map):
         """
@@ -984,12 +1108,16 @@ class ZoneMeasurementsProcessMixin:
         Called after one measurement completes.
         Advances progress, updates time estimates, and triggers next point if not done.
         """
+        logger.info(f">>> measurement_finished called (point {self.current_measurement_sorted_index + 1}/{self.total_points})")
+        
         if self.stopped:
             logger.debug("Measurement stopped in measurement_finished")
             return
 
+        logger.info("Advancing to next point...")
         self.current_measurement_sorted_index += 1
         self.progressBar.setValue(self.current_measurement_sorted_index)
+        logger.info(f"Progress: {self.current_measurement_sorted_index}/{self.total_points}")
         elapsed = time.time() - self.measurementStartTime
         if self.current_measurement_sorted_index > 0:
             avg_time = elapsed / self.current_measurement_sorted_index
@@ -1008,13 +1136,18 @@ class ZoneMeasurementsProcessMixin:
             and not self.paused
             and not self.stopped
         ):
+            logger.info(f"Moving to next point ({self.current_measurement_sorted_index + 1}/{self.total_points})")
             self.measure_next_point()
         else:
             if self.current_measurement_sorted_index >= self.total_points:
-                logger.info("All measurement points completed")
+                logger.info("=== ALL MEASUREMENT POINTS COMPLETED ===")
                 self.pause_btn.setEnabled(False)
                 self.stop_btn.setEnabled(False)
                 self.start_btn.setEnabled(True)
+            else:
+                logger.warning(f"Measurement stopped: paused={self.paused}, stopped={self.stopped}")
+        
+        logger.info("<<< measurement_finished complete")
 
     def add_measurement_to_table(self, row, results, timestamp=None):
         """Add measurement results to the appropriate point's widget (right panel, not the table).

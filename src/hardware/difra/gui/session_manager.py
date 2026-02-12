@@ -39,6 +39,9 @@ class SessionManager:
         self.i0_counter: Optional[int] = None  # Attenuation without sample
         self.i_counter: Optional[int] = None   # Attenuation with sample
         
+        # Store config for later use
+        self.config = config or {}
+        
         # Configuration - read from config or use defaults
         if config:
             self.operator_id: str = config.get('operator_id', 'operator')
@@ -51,6 +54,26 @@ class SessionManager:
             self.machine_name: str = "DIFRA-01"
             self.beam_energy_kev: float = 17.5
     
+    def _get_technical_folder(self) -> Path:
+        """Get technical container folder from config.
+        
+        Returns:
+            Path to technical folder from config
+        """
+        # Try technical_folder from config first
+        folder = self.config.get('technical_folder')
+        if folder:
+            return Path(folder)
+        
+        # Fall back to difra_base_folder/technical
+        base = self.config.get('difra_base_folder')
+        if base:
+            return Path(base) / 'technical'
+        
+        # Last resort: home directory
+        logger.warning("No technical folder in config, using default")
+        return Path.home() / 'difra_technical'
+    
     def is_session_active(self) -> bool:
         """Check if a session is currently active."""
         return self.session_path is not None and self.session_path.exists()
@@ -58,31 +81,43 @@ class SessionManager:
     def create_session(
         self,
         folder: Path,
-        sample_id: str,
         distance_cm: float,
-        operator_id: Optional[str] = None,
+        **session_attrs,
     ) -> Tuple[str, Path]:
         """Create a new session container.
         
+        All required session attributes should be provided as keyword arguments.
+        These will be passed to the container writer and validated against schema.
+        
+        Required session attributes (from schema):
+            sample_id: str - Unique sample identifier
+            operator_id: str - Operator ID/name (optional, uses config default)
+            site_id: str - Site identifier (optional, uses config default)
+            machine_name: str - Machine name (optional, uses config default)
+            beam_energy_keV: float - Beam energy (optional, uses config default)
+            acquisition_date: str - Acquisition date (optional, auto-generated)
+        
+        Optional session attributes:
+            patient_id: str - Patient identifier
+            
         Args:
-            folder: Directory for session container
-            sample_id: Unique sample identifier
-            distance_cm: Sample-detector distance
-            operator_id: Operator name (optional, overrides config)
+            folder: Directory for session container (measurements folder)
+            distance_cm: Sample-detector distance (for technical container lookup)
+            **session_attrs: All session attributes as keyword arguments
             
         Returns:
             Tuple of (session_id, session_path)
             
         Raises:
             RuntimeError: If no valid technical container found
-            
-        Notes:
-            - beam_energy_kev is read from config (global.json)
-            - Cannot be changed per session (requires service engineer)
+            ValueError: If required session attributes are missing
         """
-        # Find active technical container for this distance
+        # Get technical folder from config
+        technical_folder = self._get_technical_folder()
+        
+        # Find active technical container for this distance in technical folder
         tech_path = find_active_technical_container(
-            folder=folder,
+            folder=technical_folder,
             distance_cm=distance_cm,
         )
         
@@ -98,27 +133,62 @@ class SessionManager:
                 "Please lock the technical container before creating sessions."
             )
         
+        # Build session attributes from provided kwargs and config defaults
+        # Required attributes from schema
+        container_attrs = {
+            schema.ATTR_SAMPLE_ID: session_attrs.get(
+                schema.ATTR_SAMPLE_ID,
+                session_attrs.get('sample_id'),  # Support both snake_case and schema names
+            ),
+            schema.ATTR_OPERATOR_ID: session_attrs.get(
+                schema.ATTR_OPERATOR_ID,
+                session_attrs.get('operator_id', self.operator_id),
+            ),
+            schema.ATTR_SITE_ID: session_attrs.get(
+                schema.ATTR_SITE_ID,
+                session_attrs.get('site_id', self.site_id),
+            ),
+            schema.ATTR_MACHINE_NAME: session_attrs.get(
+                schema.ATTR_MACHINE_NAME,
+                session_attrs.get('machine_name', self.machine_name),
+            ),
+            schema.ATTR_BEAM_ENERGY_KEV: session_attrs.get(
+                schema.ATTR_BEAM_ENERGY_KEV,
+                session_attrs.get('beam_energy_keV', self.beam_energy_kev),
+            ),
+            schema.ATTR_ACQUISITION_DATE: session_attrs.get(
+                schema.ATTR_ACQUISITION_DATE,
+                session_attrs.get('acquisition_date', datetime.now().strftime("%Y-%m-%d")),
+            ),
+        }
+        
+        # Add optional attributes if provided
+        if schema.ATTR_PATIENT_ID in session_attrs or 'patient_id' in session_attrs:
+            container_attrs[schema.ATTR_PATIENT_ID] = session_attrs.get(
+                schema.ATTR_PATIENT_ID,
+                session_attrs.get('patient_id'),
+            )
+        
+        # Validate required sample_id
+        if not container_attrs[schema.ATTR_SAMPLE_ID]:
+            raise ValueError("sample_id is required to create a session")
+        
+        sample_id = container_attrs[schema.ATTR_SAMPLE_ID]
+        
         logger.info(
             "Creating new session",
             sample_id=sample_id,
             distance_cm=distance_cm,
             technical_container=str(tech_path),
-            beam_energy_kev=self.beam_energy_kev,
+            operator_id=container_attrs.get(schema.ATTR_OPERATOR_ID),
+            site_id=container_attrs.get(schema.ATTR_SITE_ID),
+            machine_name=container_attrs.get(schema.ATTR_MACHINE_NAME),
         )
         
-        # Use provided operator_id or default
-        if operator_id:
-            self.operator_id = operator_id
-        
-        # Create session container
+        # Create session container with schema-driven attributes
         self.session_id, session_path_str = writer.create_session_container(
             folder=folder,
-            sample_id=sample_id,
-            operator_id=self.operator_id,
-            site_id=self.site_id,
-            machine_name=self.machine_name,
-            beam_energy_keV=self.beam_energy_kev,
-            acquisition_date=datetime.now().strftime("%Y-%m-%d"),
+            **container_attrs,
         )
         
         self.session_path = Path(session_path_str)
@@ -188,7 +258,6 @@ class SessionManager:
         geometry_px,
         shape: str,
         zone_role: str = "sample_holder",
-        image_index: int = 1,
         holder_diameter_mm: Optional[float] = None,
     ) -> str:
         """Add zone definition to session container.
@@ -198,7 +267,6 @@ class SessionManager:
             geometry_px: Geometry in pixels (dict or array)
             shape: Shape type ("circle", "rectangle", etc.)
             zone_role: Role of zone (default "sample_holder")
-            image_index: Associated image index
             holder_diameter_mm: Optional holder diameter in mm
             
         Returns:
@@ -212,7 +280,6 @@ class SessionManager:
             geometry_px=geometry_px,
             shape=shape,
             zone_role=zone_role,
-            image_index=image_index,
             holder_diameter_mm=holder_diameter_mm,
         )
     
@@ -336,6 +403,7 @@ class SessionManager:
         measurement_data: Dict,
         detector_metadata: Dict,
         pony_alias_map: Dict,
+        raw_files: Optional[Dict] = None,
     ) -> str:
         """Add regular measurement at a point.
         
@@ -344,6 +412,7 @@ class SessionManager:
             measurement_data: Dict mapping detector_id to 2D array
             detector_metadata: Dict mapping detector_id to metadata dict
             pony_alias_map: Dict mapping detector_alias to detector_id
+            raw_files: Optional dict of {detector_id: {"file.txt": bytes, "file.dsc": bytes}}
             
         Returns:
             Measurement group path
@@ -356,6 +425,7 @@ class SessionManager:
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
             pony_alias_map=pony_alias_map,
+            raw_files=raw_files,
         )
         
         # Update point status to measured
@@ -375,6 +445,62 @@ class SessionManager:
                 "No active session. Please create a session first using create_session()."
             )
     
+    def is_locked(self) -> bool:
+        """Check if the current session container is locked.
+        
+        Returns:
+            True if locked, False if unlocked or no active session
+        """
+        if not self.is_session_active():
+            return False
+        
+        return is_container_locked(self.session_path)
+    
+    def update_sample_id(self, new_sample_id: str) -> bool:
+        """Update the sample ID in the session container.
+        
+        Can only update if container is unlocked.
+        
+        Args:
+            new_sample_id: New sample identifier
+            
+        Returns:
+            True if updated successfully, False if locked or failed
+        """
+        self._check_active()
+        
+        if self.is_locked():
+            logger.warning(
+                "Cannot update sample_id: container is locked",
+                sample_id=new_sample_id,
+            )
+            return False
+        
+        try:
+            import h5py
+            
+            with h5py.File(self.session_path, 'a') as f:
+                old_sample_id = f.attrs.get(schema.ATTR_SAMPLE_ID, 'unknown')
+                f.attrs[schema.ATTR_SAMPLE_ID] = new_sample_id
+                
+            self.sample_id = new_sample_id
+            
+            logger.info(
+                "Updated sample_id in session container",
+                old_sample_id=old_sample_id,
+                new_sample_id=new_sample_id,
+                session_path=str(self.session_path),
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(
+                f"Failed to update sample_id: {e}",
+                exc_info=True,
+            )
+            return False
+    
     def get_session_info(self) -> Dict:
         """Get current session information.
         
@@ -392,6 +518,7 @@ class SessionManager:
             "operator_id": self.operator_id,
             "machine_name": self.machine_name,
             "beam_energy_kev": self.beam_energy_kev,
+            "is_locked": self.is_locked(),
             "i0_recorded": self.i0_counter is not None,
             "i_recorded": self.i_counter is not None,
             "attenuation_complete": (

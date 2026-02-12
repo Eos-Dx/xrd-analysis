@@ -28,43 +28,41 @@ class SessionMeasurementHandler:
         self,
         session_folder: Union[str, Path],
         technical_container_file: Union[str, Path],
-        sample_id: str,
-        operator_id: str,
-        site_id: str,
-        machine_name: str,
-        beam_energy_keV: float,
-        acquisition_date: Optional[str] = None,
-        patient_id: Optional[str] = None,
+        **session_attrs,
     ):
         """Initialize session measurement handler.
+
+        All session attributes should be provided as keyword arguments.
+        These will be validated against the schema when creating the session.
+        
+        Required session attributes (from schema):
+            sample_id: str - Sample identifier
+            operator_id: str - Operator ID/name
+            site_id: str - Site identifier
+            machine_name: str - Acquisition machine name
+            beam_energy_keV: float - Beam energy in keV
+            acquisition_date: str - Acquisition date (auto-generated if not provided)
+            
+        Optional attributes:
+            patient_id: str - Patient identifier
 
         Args:
             session_folder: Directory where session container will be created
             technical_container_file: Path to technical container with calibration data
-            sample_id: Sample identifier
-            operator_id: Operator ID/name
-            site_id: Site identifier
-            machine_name: Acquisition machine name
-            beam_energy_keV: Beam energy in keV
-            acquisition_date: Optional acquisition date (generated if not provided)
-            patient_id: Optional patient identifier
+            **session_attrs: All session attributes as keyword arguments
         """
         self.session_folder = Path(session_folder)
         self.technical_container_file = Path(technical_container_file)
-        self.sample_id = sample_id
-        self.operator_id = operator_id
-        self.site_id = site_id
-        self.machine_name = machine_name
-        self.beam_energy_keV = beam_energy_keV
-        self.patient_id = patient_id
-
-        if acquisition_date is None:
-            acquisition_date = time.strftime("%Y-%m-%d")
-        self.acquisition_date = acquisition_date
-
+        
+        # Store session attributes for later use
+        self.session_attrs = session_attrs.copy()
+        
+        # Auto-generate acquisition_date if not provided
+        if schema.ATTR_ACQUISITION_DATE not in self.session_attrs and 'acquisition_date' not in self.session_attrs:
+            self.session_attrs['acquisition_date'] = time.strftime("%Y-%m-%d")
+        
         self.session_file = None
         self.session_id = None
-        self.counter = None
 
     def create_session(self) -> str:
         """Create a new session container.
@@ -81,17 +79,28 @@ class SessionMeasurementHandler:
 
         self.session_folder.mkdir(parents=True, exist_ok=True)
 
-        # Create session container
+        # Create session container with explicit required attributes
+        sample_id = self.session_attrs.get(schema.ATTR_SAMPLE_ID, self.session_attrs.get("sample_id"))
+        operator_id = self.session_attrs.get(schema.ATTR_OPERATOR_ID, self.session_attrs.get("operator_id"))
+        site_id = self.session_attrs.get(schema.ATTR_SITE_ID, self.session_attrs.get("site_id"))
+        machine_name = self.session_attrs.get(schema.ATTR_MACHINE_NAME, self.session_attrs.get("machine_name"))
+        beam_energy_keV = self.session_attrs.get(schema.ATTR_BEAM_ENERGY_KEV, self.session_attrs.get("beam_energy_keV"))
+        acquisition_date = self.session_attrs.get(schema.ATTR_ACQUISITION_DATE, self.session_attrs.get("acquisition_date"))
+        patient_id = self.session_attrs.get(schema.ATTR_PATIENT_ID, self.session_attrs.get("patient_id"))
+        container_id = self.session_attrs.get(schema.ATTR_SESSION_ID, self.session_attrs.get("session_id"))
+
         self.session_id, self.session_file = session_container.create_session_container(
             folder=self.session_folder,
-            sample_id=self.sample_id,
-            operator_id=self.operator_id,
-            site_id=self.site_id,
-            machine_name=self.machine_name,
-            beam_energy_keV=self.beam_energy_keV,
-            acquisition_date=self.acquisition_date,
-            patient_id=self.patient_id,
+            sample_id=sample_id,
+            operator_id=operator_id,
+            site_id=site_id,
+            machine_name=machine_name,
+            beam_energy_keV=beam_energy_keV,
+            acquisition_date=acquisition_date,
+            patient_id=patient_id,
+            container_id=container_id,
         )
+        self.sample_id = sample_id
 
         # Copy technical data
         session_container.copy_technical_to_session(
@@ -256,7 +265,8 @@ class SessionMeasurementHandler:
 
         Args:
             point_index: Point index (1-based)
-            measurement_data: Dict mapping detector_id to raw signal array
+            measurement_data: Dict mapping detector_id to processed signal array
+array
             detector_metadata: Dict mapping detector_id to metadata
             pony_alias_map: Dict mapping alias to detector_id
             timestamp_start: Start timestamp
