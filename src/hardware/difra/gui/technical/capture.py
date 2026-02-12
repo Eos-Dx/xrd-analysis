@@ -18,7 +18,7 @@ from xrdanalysis.data_processing.utility_functions import create_mask
 
 
 class CaptureWorker(QObject):
-    finished = pyqtSignal(bool, dict)  # Or as appropriate for your use
+    finished = pyqtSignal(bool, dict)  # success, {alias: converted_file_path}
 
     def __init__(
         self,
@@ -32,6 +32,7 @@ class CaptureWorker(QObject):
         stage_controller=None,
         enable_continuous_movement: bool = False,
         movement_radius: float = 2.0,
+        container_version: str = "0.1",  # Container version for format conversion
     ):
         super().__init__(parent)
         self.detector_controller = detector_controller
@@ -43,6 +44,7 @@ class CaptureWorker(QObject):
         self.stage_controller = stage_controller
         self.enable_continuous_movement = enable_continuous_movement
         self.movement_radius = movement_radius
+        self.container_version = container_version
         self._stop_requested = False
 
     def run(self):
@@ -97,12 +99,28 @@ class CaptureWorker(QObject):
                     else:
                         base = f"{self.txt_filename_base}_{alias}"
 
+                    # Step 1: Detector captures raw data (.txt, .dsc)
                     success = controller.capture_point(
                         Nframes=self.frames,
                         Nseconds=self.integration_time,
                         filename_base=base,
                     )
-                    results[alias] = (base + ".txt") if success else None
+                    
+                    if success:
+                        # Step 2: Detector converts to container format (.txt -> .npy for v0.1)
+                        raw_file = base + ".txt"
+                        try:
+                            converted_file = controller.convert_to_container_format(
+                                raw_file, 
+                                self.container_version
+                            )
+                            results[alias] = converted_file
+                            print(f"Converted {alias}: {Path(raw_file).name} -> {Path(converted_file).name}")
+                        except Exception as e:
+                            print(f"Error converting {alias} to container format: {e}")
+                            results[alias] = None
+                    else:
+                        results[alias] = None
                 except Exception as e:
                     print(f"Error in capture for {alias}: {e}")
                     results[alias] = None
@@ -170,9 +188,20 @@ def move_and_convert_measurement_file(
     frames: int = 1,
     average_frames: bool = False,
 ):
-    """Move associated files into the target folder (no subfolders) and convert .txt to .npy.
+    """DEPRECATED: Move associated files into the target folder and convert .txt to .npy.
+    
+    This function is deprecated. Conversion is now handled by the detector's
+    convert_to_container_format() method. Use that instead.
+    
+    New workflow:
+        detector.capture_point(...)  # Creates .txt, .dsc
+        npy_file = detector.convert_to_container_format("file.txt", "0.1")  # Creates .npy
+    
+    This function remains for backward compatibility with existing code that hasn't
+    been migrated yet (e.g., some zone measurement workflows).
 
     Parameters
+    ----------
     src_file
         Path to the original .txt file.
     alias_folder
@@ -183,6 +212,7 @@ def move_and_convert_measurement_file(
         If True and frames > 1, divide the integrated image by frames to get a per-frame average.
 
     Returns
+    -------
     str
         Path to the saved .npy file (in the target folder).
     """

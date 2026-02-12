@@ -39,6 +39,46 @@ class DetectorController(ABC):
     @abstractmethod
     def stop_stream(self):
         pass
+    
+    @abstractmethod
+    def convert_to_container_format(self, raw_file_path: str, container_version: str = "0.1") -> str:
+        """Convert detector raw output to container format.
+        
+        Detectors are responsible for converting their raw output format to the format
+        required by the active container version. This enables version-independent and
+        detector-independent container workflows.
+        
+        Args:
+            raw_file_path: Path to detector raw output file (e.g., .txt for Advacam)
+            container_version: Container schema version (default: "0.1")
+        
+        Returns:
+            Path to converted file in container format (e.g., .npy for v0.1)
+        
+        Raises:
+            ValueError: If container version is not supported
+            RuntimeError: If conversion fails
+        
+        Example:
+            For container v0.1 (Advacam detector):
+            - Input: "measurement_001.txt" (ASCII data)
+            - Output: "measurement_001.npy" (numpy binary)
+        """
+        pass
+    
+    def get_raw_file_patterns(self):
+        """Return list of glob patterns for detector raw output files.
+        
+        Used for archiving raw detector files after container generation.
+        
+        Returns:
+            List of glob patterns (e.g., ['*.txt', '*.dsc'] for Advacam)
+        
+        Example:
+            Advacam detectors: ['*.txt', '*.dsc']
+            Bruker detectors: ['*.raw', '*.brml']
+        """
+        return []
 
 
 import threading
@@ -187,6 +227,62 @@ Layout=1x1
             time.sleep(exposure)
             if interval:
                 time.sleep(interval)
+    
+    def convert_to_container_format(self, raw_file_path: str, container_version: str = "0.1") -> str:
+        """Convert Advacam .txt format to container format.
+        
+        For container v0.1: converts ASCII .txt to binary .npy
+        
+        Args:
+            raw_file_path: Path to .txt file (ASCII detector output)
+            container_version: Container schema version
+        
+        Returns:
+            Path to .npy file
+        """
+        from pathlib import Path
+        
+        raw_path = Path(raw_file_path)
+        
+        if container_version == "0.1":
+            # Container v0.1 expects .npy files
+            npy_path = raw_path.with_suffix('.npy')
+            
+            if not npy_path.exists():
+                try:
+                    # Load ASCII data and save as numpy binary
+                    data = np.loadtxt(raw_path)
+                    np.save(npy_path, data)
+                    logger.info(
+                        f"Converted for container v{container_version}",
+                        detector=self.alias,
+                        input_file=raw_path.name,
+                        output_file=npy_path.name
+                    )
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to convert {raw_path} to .npy: {e}"
+                    )
+            else:
+                logger.debug(
+                    f"Container format file already exists",
+                    detector=self.alias,
+                    file=npy_path.name
+                )
+            
+            return str(npy_path)
+        else:
+            raise ValueError(
+                f"Detector {self.alias} does not support container version {container_version}"
+            )
+    
+    def get_raw_file_patterns(self):
+        """Return Advacam raw file patterns for archiving.
+        
+        Returns:
+            List of patterns for .txt (ASCII data) and .dsc (descriptor)
+        """
+        return ['*.txt', '*.dsc']
 
 
 class PixetDetectorController(DetectorController):
@@ -404,3 +500,60 @@ class PixetDetectorController(DetectorController):
                     pass
             if interval:
                 time.sleep(interval)
+    
+    def convert_to_container_format(self, raw_file_path: str, container_version: str = "0.1") -> str:
+        """Convert Pixet/Advacam .txt format to container format.
+        
+        For container v0.1: converts ASCII .txt to binary .npy
+        Pixet detectors use the same Advacam format (.txt ASCII + .dsc descriptor)
+        
+        Args:
+            raw_file_path: Path to .txt file (ASCII detector output)
+            container_version: Container schema version
+        
+        Returns:
+            Path to .npy file
+        """
+        from pathlib import Path
+        
+        raw_path = Path(raw_file_path)
+        
+        if container_version == "0.1":
+            # Container v0.1 expects .npy files
+            npy_path = raw_path.with_suffix('.npy')
+            
+            if not npy_path.exists():
+                try:
+                    # Load ASCII data and save as numpy binary
+                    data = np.loadtxt(raw_path)
+                    np.save(npy_path, data)
+                    logger.info(
+                        f"Converted for container v{container_version}",
+                        detector=self.alias,
+                        input_file=raw_path.name,
+                        output_file=npy_path.name
+                    )
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to convert {raw_path} to .npy: {e}"
+                    )
+            else:
+                logger.debug(
+                    f"Container format file already exists",
+                    detector=self.alias,
+                    file=npy_path.name
+                )
+            
+            return str(npy_path)
+        else:
+            raise ValueError(
+                f"Detector {self.alias} does not support container version {container_version}"
+            )
+    
+    def get_raw_file_patterns(self):
+        """Return Pixet/Advacam raw file patterns for archiving.
+        
+        Returns:
+            List of patterns for .txt (ASCII data) and .dsc (descriptor)
+        """
+        return ['*.txt', '*.dsc']

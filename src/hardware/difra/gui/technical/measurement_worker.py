@@ -7,7 +7,6 @@ from PyQt5.QtWidgets import QListWidgetItem
 
 from hardware.difra.gui.technical.capture import (
     compute_hf_score_from_cake,
-    move_and_convert_measurement_file,
 )
 from hardware.difra.utils.logger import get_module_logger
 
@@ -24,15 +23,15 @@ class MeasurementWorker(QObject):
 
     def __init__(
         self,
-        filenames,  # dict: {alias: filename}
+        filenames,  # dict: {alias: filename} - already converted to container format by detector
         masks=None,  # dict: {alias: mask}
         ponis=None,  # dict: {alias: poni}
         row=None,  # int: row in table, for zone measurements
         parent=None,
         hf_cutoff_fraction=0.2,
         columns_to_remove=30,
-        frames: int = 1,
-        average_frames: bool = False,
+        frames: int = 1,  # Deprecated - conversion now handled by detector
+        average_frames: bool = False,  # Deprecated - conversion now handled by detector
     ):
         super().__init__(parent)
         logger.debug(
@@ -49,23 +48,25 @@ class MeasurementWorker(QObject):
 
     @pyqtSlot()
     def run(self):
-
+        """Process already-converted measurement files.
+        
+        Files are already in container format (.npy for v0.1) - conversion
+        is handled by the detector's convert_to_container_format() method.
+        This worker just computes quality metrics and emits results.
+        """
         results = {}
-        for alias, txt_file in self.filenames.items():
+        for alias, container_file in self.filenames.items():
             logger.debug(
-                f"Processing detector measurement", detector=alias, file=txt_file
+                f"Processing detector measurement", detector=alias, file=container_file
             )
-            src_path = Path(txt_file)
-            alias_folder = (
-                src_path.parent
-            )  # Save directly in the parent folder (no subfolders)
-            npy_path = move_and_convert_measurement_file(
-                src_path,
-                alias_folder,
-                frames=self.frames,
-                average_frames=self.average_frames,
-            )
-            self.add_aux_item.emit(alias, str(npy_path))
+            
+            # Files are already converted by detector - just use them
+            npy_path = str(container_file)
+            
+            # Emit for GUI table
+            self.add_aux_item.emit(alias, npy_path)
+            
+            # Compute quality metrics
             mask = self.masks.get(alias)
             poni = self.ponis.get(alias)
             try:
