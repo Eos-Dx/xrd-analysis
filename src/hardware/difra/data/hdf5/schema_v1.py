@@ -186,7 +186,13 @@ ATTR_GEOMETRY_PX = "geometry_px"  # JSON or array depending on shape
 ATTR_HOLDER_DIAMETER_MM = "holder_diameter_mm"
 
 # ================== Dataset Names ==========================
+# Preferred dataset for detector data
+DATASET_PROCESSED_SIGNAL = "processed_signal"
+# Legacy alias (deprecated; no longer written)
 DATASET_RAW_SIGNAL = "raw_signal"
+# Raw file blob storage
+DATASET_BLOB = "blob"
+DATASET_METADATA = "metadata"
 DATASET_RAW_FILES = "raw_files"
 
 # ================== Helper Functions =======================

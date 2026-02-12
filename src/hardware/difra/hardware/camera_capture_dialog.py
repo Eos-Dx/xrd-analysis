@@ -169,6 +169,10 @@ class CameraCaptureDialog(QDialog):
             if not success or not os.path.exists(full_path):
                 raise IOError("cv2.imwrite failed or file does not exist after save.")
             self.selected_image_path = full_path
+            # Stop camera stream before closing dialog
+            self.timer.stop()
+            if self.camera is not None and self.camera.isOpened():
+                self.camera.release()
             self.accept()
         except Exception as e:
             QMessageBox.critical(

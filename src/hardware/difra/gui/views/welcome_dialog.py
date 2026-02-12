@@ -37,8 +37,23 @@ class WelcomeDialog(QDialog):
         self.setups_dir = config_dir / "setups"
         global_path = config_dir / "global.json"
 
-        # Set dialog icon to match main app
-        logo_path = app_root / "resources/images/rick_final.png"
+        # Set dialog icon to match main app - use platform-specific formats
+        import sys
+        logo_dir = app_root / "resources/images"
+        if sys.platform == 'win32':
+            # Windows: use .ico format
+            logo_path = logo_dir / "rick_final.ico"
+            if not logo_path.exists():
+                logo_path = logo_dir / "rick_final.png"  # Fallback to PNG
+        elif sys.platform == 'darwin':
+            # macOS: use .icns format for proper dock icon display
+            logo_path = logo_dir / "rick_final.icns"
+            if not logo_path.exists():
+                logo_path = logo_dir / "rick_final.png"  # Fallback to PNG
+        else:
+            # Linux: use .png format
+            logo_path = logo_dir / "rick_final.png"
+        
         if logo_path.exists():
             self.setWindowIcon(QIcon(str(logo_path)))
 
@@ -108,11 +123,13 @@ class WelcomeDialog(QDialog):
         title.setAlignment(Qt.AlignHCenter)
 
         # Use same image as main app for the welcome dialog header
+        # Note: QPixmap requires PNG, not ICO format
         logo_label = QLabel(header)
         logo_label.setObjectName("LogoLabel")
         logo_label.setAlignment(Qt.AlignHCenter)
-        if logo_path.exists():
-            pm = QPixmap(str(logo_path))
+        logo_pixmap_path = logo_dir / "rick_final.png"  # Always use PNG for QPixmap
+        if logo_pixmap_path.exists():
+            pm = QPixmap(str(logo_pixmap_path))
             # Scale to a reasonable height while keeping aspect ratio
             scaled = pm.scaledToHeight(96, mode=Qt.SmoothTransformation)
             logo_label.setPixmap(scaled)

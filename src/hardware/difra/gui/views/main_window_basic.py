@@ -27,15 +27,28 @@ class MainWindowBasic(QMainWindow):
         base_title = "EosDX Scanning Software"
         self.setWindowTitle(base_title)
 
-        # Window icon
-        logo_path = (
-            Path(__file__).resolve().parent.parent.parent
-            / "resources/images/rick_final.png"
-        )
+        # Window icon - use platform-specific formats for best display
+        import sys
+        logo_dir = Path(__file__).resolve().parent.parent.parent / "resources/images"
+        if sys.platform == 'win32':
+            # Windows: use .ico format
+            logo_path = logo_dir / "rick_final.ico"
+            if not logo_path.exists():
+                logo_path = logo_dir / "rick_final.png"  # Fallback to PNG
+        elif sys.platform == 'darwin':
+            # macOS: use .icns format for proper dock icon display
+            logo_path = logo_dir / "rick_final.icns"
+            if not logo_path.exists():
+                logo_path = logo_dir / "rick_final.png"  # Fallback to PNG
+        else:
+            # Linux: use .png format
+            logo_path = logo_dir / "rick_final.png"
+        
         if logo_path.exists():
             self.setWindowIcon(QIcon(str(logo_path)))
+            logger.debug("Loaded window icon", path=str(logo_path))
         else:
-            logger.warning("Logo file not found", path=str(logo_path))
+            logger.warning("Logo file not found", path=str(logo_path), checked_dir=str(logo_dir))
 
         self.resize(800, 600)
 
