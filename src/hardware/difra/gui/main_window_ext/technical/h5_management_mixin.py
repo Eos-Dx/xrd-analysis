@@ -277,22 +277,28 @@ class H5ManagementMixin:
                     (f" [ERROR: {error_reason}]" if created_by_error else "")
                 )
                 
-                # Move any associated RAW data files (.txt, .dsc) from same folder
-                # Skip .npy as it's processed data already stored in H5 container
-                raw_file_count = 0
-                for pattern in ["*.txt", "*.dsc"]:
-                    for raw_file in storage_path.glob(pattern):
-                        try:
-                            dest_raw = archive_folder / raw_file.name
-                            shutil.move(str(raw_file), str(dest_raw))
-                            raw_file_count += 1
-                        except Exception as e:
-                            logger.warning(f"Failed to archive {raw_file.name}: {e}")
+                # Move any associated data files using container module function
+                # Get patterns from config (detector-specific)
+                file_patterns = None
+                if hasattr(self, 'config') and self.config:
+                    file_patterns = self.config.get('technical_archive_patterns', ['*.txt', '*.dsc', '*.npy'])
                 
-                if raw_file_count > 0:
-                    self._log_technical_event(
-                        f"Archived {raw_file_count} raw data file(s) with container"
+                try:
+                    from hardware.container.v0_1.container_manager import archive_technical_data_files
+                    # Create a dummy container path in the storage folder to use with the function
+                    dummy_container_path = storage_path / h5_file.name
+                    raw_file_count = archive_technical_data_files(
+                        container_path=dummy_container_path,
+                        archive_folder=archive_folder,
+                        file_patterns=file_patterns
                     )
+                    
+                    if raw_file_count > 0:
+                        self._log_technical_event(
+                            f"Archived {raw_file_count} data file(s) with container"
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to archive data files: {e}")
                 
                 archived_count += 1
                 
@@ -309,7 +315,10 @@ class H5ManagementMixin:
             container_path: Path to container
             container_id: Container ID
         """
-        from hardware.container.v0_1.container_manager import lock_technical_container
+        from hardware.container.v0_1.container_manager import (
+            lock_technical_container,
+            archive_technical_data_files
+        )
         from hardware.difra.gui.operator_manager import OperatorManager
         from .helpers import _get_technical_archive_folder
         
@@ -332,10 +341,9 @@ class H5ManagementMixin:
                 f"Container {container_id} locked by {operator_id}"
             )
             
-            # After successful locking, archive raw data files
+            # After successful locking, archive data files
             archived_count = 0
             try:
-                container_dir = Path(container_path).parent
                 archive_folder = Path(_get_technical_archive_folder(
                     self.config if hasattr(self, "config") else None
                 ))
@@ -343,29 +351,27 @@ class H5ManagementMixin:
                 # Create timestamped subfolder in archive for this container
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
                 archive_subdir = archive_folder / f"{container_id}_{timestamp}"
-                archive_subdir.mkdir(parents=True, exist_ok=True)
                 
-                # Find and move all RAW data files (.txt, .dsc) from the container directory
-                # Skip .npy as it's processed data already stored in H5 container
-                for pattern in ["*.txt", "*.dsc"]:
-                    for data_file in container_dir.glob(pattern):
-                        try:
-                            dest = archive_subdir / data_file.name
-                            shutil.move(str(data_file), str(dest))
-                            archived_count += 1
-                            self._log_technical_event(
-                                f"Archived raw data: {data_file.name} -> {archive_subdir.name}"
-                            )
-                        except Exception as e:
-                            logger.warning(f"Failed to archive {data_file.name}: {e}")
+                # Get file patterns from config (detector-specific)
+                # Default to Advacam patterns if not configured
+                file_patterns = None
+                if hasattr(self, 'config') and self.config:
+                    file_patterns = self.config.get('technical_archive_patterns', ['*.txt', '*.dsc', '*.npy'])
+                
+                # Use container module function to archive files
+                archived_count = archive_technical_data_files(
+                    container_path=Path(container_path),
+                    archive_folder=archive_subdir,
+                    file_patterns=file_patterns
+                )
                 
                 if archived_count > 0:
                     self._log_technical_event(
-                        f"Archived {archived_count} raw measurement file(s) to {archive_subdir}"
+                        f"Archived {archived_count} data file(s) to {archive_subdir.name}"
                     )
             except Exception as e:
-                logger.warning(f"Failed to archive raw data files: {e}")
-                self._log_technical_event(f"Warning: Could not archive raw data: {e}")
+                logger.warning(f"Failed to archive data files: {e}")
+                self._log_technical_event(f"Warning: Could not archive data files: {e}")
                 # Non-fatal - container is still locked
             
             QMessageBox.information(
@@ -386,12 +392,124 @@ class H5ManagementMixin:
             )
             self._log_technical_event(f"Failed to lock container: {e}")
     
+    def validate_technical_h5(self):
+        """Validate an existing technical HDF5 container without loading it.
+        
+        Displays validation results in a dialog.
+        """
+        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+        from hardware.container.v0_1.container_manager import is_container_locked
+        from .helpers import _get_default_folder
+        import h5py
+        
+        self._log_technical_event("Opening file dialog to validate HDF5 container...")
+        
+        # Get folder from UI
+        folder = (self.folderLE.text() or "").strip()
+        if not folder:
+            folder = _get_default_folder(self.config if hasattr(self, "config") else None)
+        
+        # Open file dialog to select HDF5 file
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Validate Technical HDF5 Container",
+            folder,
+            "HDF5 Files (*.h5 *.hdf5);;All Files (*)"
+        )
+        
+        if not file_path:
+            self._log_technical_event("Validation cancelled by user")
+            return
+        
+        self._log_technical_event(f"Validating: {os.path.basename(file_path)}")
+        
+        # Perform validation
+        try:
+            is_valid, errors, warnings = validate_technical_container(file_path, strict=False)
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Validation Error",
+                f"Failed to validate container:\n{e}"
+            )
+            self._log_technical_event(f"Validation error: {e}")
+            return
+        
+        # Check lock status
+        is_locked = is_container_locked(file_path)
+        lock_status = "🔒 LOCKED" if is_locked else "🔓 UNLOCKED"
+        
+        # Check schema version
+        expected_version = self.config.get("expected_technical_schema_version", "1.0")
+        try:
+            with h5py.File(file_path, 'r') as f:
+                actual_version = f.attrs.get("schema_version", "unknown")
+                if isinstance(actual_version, bytes):
+                    actual_version = actual_version.decode('utf-8')
+                container_id = f.attrs.get("container_id", "unknown")
+                if isinstance(container_id, bytes):
+                    container_id = container_id.decode('utf-8')
+        except Exception as e:
+            actual_version = "unknown"
+            container_id = "unknown"
+            errors.append(f"Failed to read container metadata: {e}")
+        
+        # Build validation report
+        status_icon = "✅" if is_valid else "❌"
+        report_lines = [
+            f"{status_icon} Validation Report",
+            "",
+            f"Container: {os.path.basename(file_path)}",
+            f"Container ID: {container_id}",
+            f"Lock Status: {lock_status}",
+            f"Schema Version: {actual_version} (expected: {expected_version})",
+            "",
+        ]
+        
+        if errors:
+            report_lines.append(f"❌ {len(errors)} Error(s):")
+            for i, error in enumerate(errors[:10], 1):
+                report_lines.append(f"  {i}. {error}")
+            if len(errors) > 10:
+                report_lines.append(f"  ... and {len(errors) - 10} more")
+            report_lines.append("")
+        
+        if warnings:
+            report_lines.append(f"⚠️  {len(warnings)} Warning(s):")
+            for i, warning in enumerate(warnings[:5], 1):
+                report_lines.append(f"  {i}. {warning}")
+            if len(warnings) > 5:
+                report_lines.append(f"  ... and {len(warnings) - 5} more")
+            report_lines.append("")
+        
+        if not errors and not warnings:
+            report_lines.append("✅ No issues found")
+            report_lines.append("")
+        
+        # Show report
+        if is_valid:
+            QMessageBox.information(
+                self,
+                "✅ Validation Passed",
+                "\n".join(report_lines)
+            )
+        else:
+            QMessageBox.warning(
+                self,
+                "❌ Validation Failed",
+                "\n".join(report_lines)
+            )
+        
+        self._log_technical_event(f"Validation complete: {status_icon} {len(errors)} errors, {len(warnings)} warnings")
+    
     def load_technical_h5(self):
         """Load and validate an existing technical HDF5 container.
         
         Automatically validates the container and displays its contents in the aux table.
+        Works with both locked and unlocked containers.
         """
         from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+        from hardware.container.v0_1.container_manager import is_container_locked
         from .helpers import _get_default_folder
         
         self._log_technical_event("Opening file dialog to load HDF5 container...")
@@ -415,6 +533,10 @@ class H5ManagementMixin:
         
         self._log_technical_event(f"Loading and validating: {os.path.basename(file_path)}")
         
+        # Check lock status
+        is_locked = is_container_locked(file_path)
+        lock_status = "🔒 LOCKED" if is_locked else "🔓 UNLOCKED"
+        
         # Perform automatic validation
         try:
             is_valid, errors, warnings = validate_technical_container(file_path, strict=False)
@@ -431,6 +553,7 @@ class H5ManagementMixin:
         if not is_valid:
             msg_parts = [
                 f"Container validation failed with {len(errors)} error(s).",
+                f"Lock Status: {lock_status}",
                 "",
                 "Errors:"
             ]
@@ -462,6 +585,7 @@ class H5ManagementMixin:
             status_icon = "✅" if is_valid else "⚠️"
             msg_parts = [
                 f"{status_icon} Container loaded: {os.path.basename(file_path)}",
+                f"Lock Status: {lock_status}",
                 "",
             ]
             
@@ -475,7 +599,7 @@ class H5ManagementMixin:
                 msg_parts.append("Status: ✅ VALID")
             
             QMessageBox.information(self, "Container Loaded", "\n".join(msg_parts))
-            self._log_technical_event(f"Container loaded successfully: {os.path.basename(file_path)}")
+            self._log_technical_event(f"Container loaded successfully: {os.path.basename(file_path)} ({lock_status})")
             
         except Exception as e:
             QMessageBox.critical(
@@ -489,15 +613,24 @@ class H5ManagementMixin:
     def _populate_aux_table_from_h5(self, h5_path: str):
         """Populate aux table from a technical HDF5 container.
         
+        Also extracts and sets detector distances from the container.
+        
         Args:
             h5_path: Path to the technical HDF5 container
         """
         import h5py
         from hardware.container.v0_1 import schema
+        from hardware.difra.data.hdf5 import schema_v1
         from PyQt5.QtWidgets import QComboBox
         
         # Clear existing table
         self.auxTable.setRowCount(0)
+        
+        # Extract detector distances from container
+        extracted_distances = {}
+        
+        # Track loaded items for logging
+        loaded_count = 0
         
         with h5py.File(h5_path, "r") as f:
             tech_group = f.get("technical")
@@ -510,7 +643,8 @@ class H5ManagementMixin:
                     continue
                 
                 evt_group = tech_group[evt_name]
-                tech_type = evt_group.attrs.get("technical_type", "UNKNOWN")
+                # Read technical_type attribute from event level
+                tech_type = evt_group.attrs.get(schema_v1.ATTR_TECHNICAL_TYPE, 'UNKNOWN')
                 
                 # Iterate through detectors in this event
                 for det_name in evt_group.keys():
@@ -522,6 +656,11 @@ class H5ManagementMixin:
                     # Get detector alias from attributes
                     detector_id = det_group.attrs.get("detector_id", det_name.replace("det_", ""))
                     
+                    # Extract distance from this detector's measurement
+                    distance_cm = det_group.attrs.get("distance_cm", None)
+                    if distance_cm is not None and detector_id:
+                        extracted_distances[detector_id] = float(distance_cm)
+                    
                     # Get measurement file path if stored
                     file_path = det_group.attrs.get("source_file", "")
                     if not file_path:
@@ -529,16 +668,70 @@ class H5ManagementMixin:
                     
                     # Add to table
                     alias = detector_id.upper() if detector_id else "UNKNOWN"
-                    self._add_aux_item_to_list(alias, file_path)
+                    try:
+                        self._add_aux_item_to_list(alias, file_path)
+                        loaded_count += 1
+                        
+                        # Log each item added
+                        self._log_technical_event(
+                            f"Loading: {tech_type} measurement for {alias}"
+                        )
+                    except Exception as add_err:
+                        logger.error(f"Failed to add item to table: {add_err}", exc_info=True)
+                        self._log_technical_event(f"Error adding {alias}: {add_err}")
+                        continue
                     
-                    # Set type in the newly added row
+                    # Set type and primary status in the newly added row
                     row_idx = self.auxTable.rowCount() - 1
-                    type_cb = self.auxTable.cellWidget(row_idx, 1)
+                    
+                    # Set Type combobox (column 2)
+                    type_cb = self.auxTable.cellWidget(row_idx, 2)
                     if type_cb and isinstance(type_cb, QComboBox):
                         idx = type_cb.findText(tech_type)
                         if idx >= 0:
                             type_cb.setCurrentIndex(idx)
+                    
+                    # Set Primary checkbox (column 0) based on detector role
+                    # Primary detector (det_primary) should be checked
+                    try:
+                        is_primary = det_name == "det_primary" or det_name.endswith("_primary")
+                        checkbox_widget = self.auxTable.cellWidget(row_idx, 0)
+                        if checkbox_widget:
+                            # Find the checkbox within the widget
+                            from PyQt5.QtWidgets import QCheckBox
+                            checkbox = checkbox_widget.findChild(QCheckBox)
+                            if checkbox:
+                                checkbox.setChecked(is_primary)
+                    except Exception as e:
+                        logger.warning(f"Failed to set primary checkbox: {e}")
         
-        self._log_technical_event(
-            f"Loaded {self.auxTable.rowCount()} measurements from container"
-        )
+        # Force table update
+        try:
+            self.auxTable.viewport().update()
+        except Exception:
+            pass
+        
+        # Set extracted distances
+        if extracted_distances:
+            self._detector_distances = extracted_distances
+            self._log_technical_event(
+                f"Extracted distances from container: {extracted_distances}"
+            )
+            
+            # Update window title and button states
+            if hasattr(self, '_update_window_title_with_distances'):
+                self._update_window_title_with_distances()
+            if hasattr(self, '_update_distance_dependent_controls'):
+                self._update_distance_dependent_controls()
+        
+        # Final summary
+        row_count = self.auxTable.rowCount()
+        if row_count == 0:
+            self._log_technical_event(
+                "WARNING: No measurements were loaded from container (table is empty)"
+            )
+            logger.warning(f"No items loaded from H5 container: {h5_path}")
+        else:
+            self._log_technical_event(
+                f"Successfully loaded {row_count} measurements from container"
+            )

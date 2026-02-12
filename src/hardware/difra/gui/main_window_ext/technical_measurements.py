@@ -371,6 +371,15 @@ class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeas
         outer.setContentsMargins(6, 4, 6, 4)  # Reduced margins
         outer.setSpacing(6)  # Reduced spacing between sections
         
+        # Set smaller font for all controls to fit smaller screens
+        try:
+            from PyQt5.QtGui import QFont
+            control_font = QFont()
+            control_font.setPointSize(9)  # Smaller font for controls (menu-size)
+            container.setFont(control_font)
+        except Exception:
+            pass
+        
         # Note: We don't show import warnings at startup to avoid triggering crashes
         # Warnings will be displayed when the user first tries to use technical features
 
@@ -433,7 +442,7 @@ class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeas
 
         # Auxiliary Measurement controls (no label to save space)
         row = QHBoxLayout()
-        self.auxBtn = QPushButton("Measure Aux")
+        self.auxBtn = QPushButton("Measure")
         self.auxBtn.clicked.connect(self.measure_aux)
         row.addWidget(self.auxBtn)
 
@@ -479,12 +488,12 @@ class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeas
 
             # Optimize font and row height for small screens
             font = QFont()
-            font.setPointSize(8)  # Smaller font size for more rows
+            font.setPointSize(9)  # Match control font size
             self.auxTable.setFont(font)
 
             # Reduce row height for more compact display
             self.auxTable.verticalHeader().setDefaultSectionSize(
-                22
+                24
             )  # Smaller row height
         except Exception:
             pass
@@ -498,32 +507,37 @@ class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeas
         actions_layout.setContentsMargins(0, 0, 0, 0)
         actions_layout.setSpacing(4)
         actions_layout.addWidget(QLabel("Actions:"))  # Simple label instead of groupbox
-
-        # Configure distances button
-        dist_btn = QPushButton("Distances...")
-        dist_btn.setToolTip("Configure detector distances for technical measurements")
-        dist_btn.clicked.connect(self.configure_detector_distances)
-        actions_layout.addWidget(dist_btn)
         
-        load_btn = QPushButton("Load Files…")
-        load_btn.setToolTip("Load existing technical measurement files into the table")
-        load_btn.clicked.connect(self.load_technical_files)
-        actions_layout.addWidget(load_btn)
+        self.load_files_btn = QPushButton("Load Files…")
+        self.load_files_btn.setToolTip("Load existing technical measurement files into the table")
+        self.load_files_btn.clicked.connect(self.load_technical_files)
+        actions_layout.addWidget(self.load_files_btn)
 
-        pyfai_btn = QPushButton("PyFAI")
-        pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
-        pyfai_btn.clicked.connect(self.run_pyfai)
-        actions_layout.addWidget(pyfai_btn)
+        self.load_h5_btn = QPushButton("Load H5")
+        self.load_h5_btn.setToolTip("Load and validate existing technical HDF5 container")
+        self.load_h5_btn.clicked.connect(self.load_technical_h5)
+        actions_layout.addWidget(self.load_h5_btn)
+        
+        self.validate_btn = QPushButton("Validate")
+        self.validate_btn.setToolTip("Validate existing technical HDF5 container without loading")
+        self.validate_btn.clicked.connect(self.validate_technical_h5)
+        actions_layout.addWidget(self.validate_btn)
+        
+        # Configure distances button
+        self.dist_btn = QPushButton("Distances...")
+        self.dist_btn.setToolTip("Configure detector distances for technical measurements")
+        self.dist_btn.clicked.connect(self.configure_detector_distances)
+        actions_layout.addWidget(self.dist_btn)
 
-        gen_btn = QPushButton("Gen H5")
-        gen_btn.setToolTip("Generate technical_<id>.h5 HDF5 container from all table rows")
-        gen_btn.clicked.connect(self.generate_technical_h5)
-        actions_layout.addWidget(gen_btn)
+        self.pyfai_btn = QPushButton("PyFAI")
+        self.pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
+        self.pyfai_btn.clicked.connect(self.run_pyfai)
+        actions_layout.addWidget(self.pyfai_btn)
 
-        load_btn = QPushButton("Load H5")
-        load_btn.setToolTip("Load and validate existing technical HDF5 container")
-        load_btn.clicked.connect(self.load_technical_h5)
-        actions_layout.addWidget(load_btn)
+        self.gen_h5_btn = QPushButton("Gen H5")
+        self.gen_h5_btn.setToolTip("Generate technical_<id>.h5 HDF5 container from all table rows")
+        self.gen_h5_btn.clicked.connect(self.generate_technical_h5)
+        actions_layout.addWidget(self.gen_h5_btn)
 
         outer.addLayout(actions_layout)
 
@@ -547,6 +561,15 @@ class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeas
         scroll.setWidgetResizable(True)
         scroll.setWidget(container)
         self.measDock.setWidget(scroll)
+        
+        # Set minimum width to be compact but readable
+        # This is a left-side dock, so we want it narrow to give more space to center view
+        try:
+            # Minimum width for controls: ~300-350px for spinboxes, buttons, and labels
+            self.measDock.setMinimumWidth(300)
+        except Exception:
+            pass
+        
         self.addDockWidget(Qt.LeftDockWidgetArea, self.measDock)
 
         self.enable_measurement_controls(False)
@@ -561,6 +584,11 @@ class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeas
         )
 
     def enable_measurement_controls(self, enable: bool):
+        """Enable/disable measurement controls based on hardware state.
+        
+        Note: This is called when hardware state changes. It does NOT control
+        distance-dependent button states - use _update_distance_dependent_controls for that.
+        """
         status = "enabled" if enable else "disabled"
         self._log_technical_event(f"Technical measurement controls {status}")
         widgets = [
@@ -569,18 +597,86 @@ class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeas
             self.moveContinuousCheck,
             self.movementRadiusSpin,
             self.folderLE,
-            self.auxBtn,
             self.auxNameLE,
             self.auxTable,
             self.framesSpin,
             self.rtBtn,
         ]
-        # Add Load H5 button if it exists
+        # Load Files and Load H5 are always enabled (not hardware dependent)
+        if hasattr(self, 'load_files_btn'):
+            self.load_files_btn.setEnabled(True)
         if hasattr(self, 'load_h5_btn'):
-            widgets.append(self.load_h5_btn)
+            self.load_h5_btn.setEnabled(True)
+        
         for w in widgets:
             w.setEnabled(enable)
+        
+        # Update distance-dependent controls
+        self._update_distance_dependent_controls()
 
+    def _update_distance_dependent_controls(self):
+        """Update button states based on whether distances are configured.
+        
+        Buttons that require distances:
+        - Measure (auxBtn)
+        - PyFAI
+        - Gen H5
+        - Validate
+        - Distance config (enabled if distances not set)
+        
+        Always enabled:
+        - Load Files
+        - Load H5
+        """
+        has_distances = hasattr(self, '_detector_distances') and bool(self._detector_distances)
+        
+        # Distance-dependent buttons
+        if hasattr(self, 'auxBtn'):
+            self.auxBtn.setEnabled(has_distances)
+        if hasattr(self, 'pyfai_btn'):
+            self.pyfai_btn.setEnabled(has_distances)
+        if hasattr(self, 'gen_h5_btn'):
+            self.gen_h5_btn.setEnabled(has_distances)
+        if hasattr(self, 'validate_btn'):
+            self.validate_btn.setEnabled(has_distances)
+        
+        # Update visual feedback if no distances set
+        if not has_distances and hasattr(self, 'auxBtn'):
+            self.auxBtn.setStyleSheet("color: gray;")
+        elif hasattr(self, 'auxBtn'):
+            self.auxBtn.setStyleSheet("")
+    
+    def _update_window_title_with_distances(self):
+        """Update main window title to show configured detector distances."""
+        if not hasattr(self, '_detector_distances') or not self._detector_distances:
+            return
+        
+        # Get detector configs to map IDs to aliases
+        detector_configs = self.config.get('detectors', [])
+        
+        # Build distance display string
+        distance_parts = []
+        for detector_id, distance_cm in sorted(self._detector_distances.items()):
+            # Find detector config by ID to get alias
+            detector_config = next(
+                (d for d in detector_configs if d.get('id') == detector_id),
+                None
+            )
+            alias = detector_config.get('alias', detector_id) if detector_config else detector_id
+            distance_parts.append(f"{alias}: {distance_cm} cm")
+        
+        distance_str = ", ".join(distance_parts)
+        
+        # Update window title
+        base_title = "EosDX Scanning Software"
+        is_dev = self.config.get("DEV", False)
+        dev_suffix = " [DEMO]" if is_dev else ""
+        
+        new_title = f"{base_title} ({distance_str}){dev_suffix}"
+        self.setWindowTitle(new_title)
+        
+        self._log_technical_event(f"Window title updated with distances: {distance_str}")
+    
     def configure_detector_distances(self):
         """Show dialog to configure detector distances."""
         from hardware.difra.gui.detector_distance_config_dialog import DetectorDistanceConfigDialog
@@ -628,6 +724,10 @@ class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeas
                 for d in active_detector_configs
             )
             self._log_technical_event(f"Configured distances: {dist_str}")
+            
+            # Update window title and button states
+            self._update_window_title_with_distances()
+            self._update_distance_dependent_controls()
             
             QMessageBox.information(
                 self,
@@ -733,18 +833,21 @@ class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeas
             f"continuous_movement={enable_continuous_movement}, radius={movement_radius}mm"
         )
 
+        # Get container version from config (default to v0.1)
+        container_version = self.config.get('container_version', '0.1') if hasattr(self, 'config') else '0.1'
+        
         CaptureWorker = _get_technical_module('CaptureWorker')
         worker = CaptureWorker(
             detector_controller=self.detector_controller,
             integration_time=integration_time_s,
             txt_filename_base=txt_filename_base,
             frames=frames,
-            # Average frames into a single final image (post-conversion)
             naming_mode="normal",
             continuous_movement_controller=self.continuous_movement_controller,
             stage_controller=stage_controller,
             enable_continuous_movement=enable_continuous_movement,
             movement_radius=movement_radius,
+            container_version=container_version,  # Detector will convert to this format
         )
         thread = QThread()
         worker.moveToThread(thread)
@@ -793,12 +896,12 @@ class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeas
 
         self._log_technical_event("Processing measurement files...")
         MeasurementWorker = _get_technical_module("MeasurementWorker")
-        # Match attenuation semantics: multiple frames averaged into one final image.
-        frames = int(self.captureFramesSpin.value())
+        # Files are already converted by detector - MeasurementWorker just processes them
+        # frames and average_frames params are deprecated (conversion now in detector)
         worker = MeasurementWorker(
-            filenames=result_files,
-            frames=frames,
-            average_frames=True,
+            filenames=result_files,  # Already .npy files from detector conversion
+            frames=1,  # Deprecated - kept for backward compatibility
+            average_frames=False,  # Deprecated - kept for backward compatibility
         )
         worker.add_aux_item.connect(self._add_aux_item_to_list)
         worker.run()
