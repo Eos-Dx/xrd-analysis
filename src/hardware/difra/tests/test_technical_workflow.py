@@ -27,8 +27,12 @@ SRC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "
 if SRC_ROOT not in sys.path:
     sys.path.insert(0, SRC_ROOT)
 
-from hardware.container.v0_1 import container_manager, schema, technical_container
-from hardware.difra.data.hdf5 import technical_validator
+from hardware.container.v0_1 import (
+    container_manager,
+    schema,
+    technical_container,
+    technical_validator,
+)
 from hardware.difra.hardware.detectors import DummyDetectorController
 
 
@@ -118,10 +122,10 @@ def sample_measurements(temp_dir, demo_config):
 
 def create_valid_container(temp_dir, valid_poni_files, sample_measurements, demo_config):
     """Helper to create a valid technical container."""
-    pony_data = {}
+    poni_data = {}
     for detector_id, poni_path in valid_poni_files.items():
         content = poni_path.read_text()
-        pony_data[detector_id] = (content, poni_path.name)
+        poni_data[detector_id] = (content, poni_path.name)
 
     distances_cm = {"PRIMARY": 100.0, "SECONDARY": 17.0}
     poni_distances_cm = {"PRIMARY": 100.0, "SECONDARY": 17.0}
@@ -129,7 +133,7 @@ def create_valid_container(temp_dir, valid_poni_files, sample_measurements, demo
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=str(temp_dir),
         aux_measurements=sample_measurements,
-        pony_data=pony_data,
+        poni_data=poni_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
         distances_cm=distances_cm,
@@ -173,15 +177,15 @@ def test_validation_fails_missing_required_types(
         incomplete_measurements["DARK"][detector_id] = str(filename)
 
     # Create container with incomplete measurements
-    pony_data = {}
+    poni_data = {}
     for detector_id, poni_path in valid_poni_files.items():
         content = poni_path.read_text()
-        pony_data[detector_id] = (content, poni_path.name)
+        poni_data[detector_id] = (content, poni_path.name)
 
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=str(temp_dir),
         aux_measurements=incomplete_measurements,
-        pony_data=pony_data,
+        poni_data=poni_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
         distances_cm={"PRIMARY": 100.0, "SECONDARY": 17.0},
@@ -404,7 +408,7 @@ Wavelength: 1.54e-10
     wrong_poni = poni_dir / "primary.poni"
     wrong_poni.write_text(poni_template.format(distance=0.50))
 
-    pony_data = {"PRIMARY": (wrong_poni.read_text(), "primary.poni")}
+    poni_data = {"PRIMARY": (wrong_poni.read_text(), "primary.poni")}
 
     # Create sample measurement
     measurements = {"DARK": {}}
@@ -419,7 +423,7 @@ Wavelength: 1.54e-10
         technical_container.generate_from_aux_table(
             folder=str(temp_dir),
             aux_measurements=measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=[demo_config["detectors"][0]],
             active_detector_ids=["PRIMARY"],
             distances_cm={"PRIMARY": 100.0},  # User expects 100cm
@@ -432,13 +436,13 @@ Wavelength: 1.54e-10
 def test_missing_poni_file_error(temp_dir, sample_measurements, demo_config):
     """Test error when PONI files are missing."""
     # Try to create container without PONI data
-    # Note: Current implementation may skip PONI validation if pony_data is empty
+    # Note: Current implementation may skip PONI validation if poni_data is empty
     # This test verifies that behavior is handled gracefully
     try:
         container_id, file_path = technical_container.generate_from_aux_table(
             folder=str(temp_dir),
             aux_measurements=sample_measurements,
-            pony_data={},  # No PONI data
+            poni_data={},  # No PONI data
             detector_config=demo_config["detectors"],
             active_detector_ids=demo_config["dev_active_detectors"],
             distances_cm={"PRIMARY": 100.0, "SECONDARY": 17.0},
@@ -448,10 +452,10 @@ def test_missing_poni_file_error(temp_dir, sample_measurements, demo_config):
         # Verify container exists but has no PONI data
         import h5py
         with h5py.File(file_path, "r") as f:
-            pony_group = f.get("technical/pony")
-            if pony_group:
-                pony_datasets = list(pony_group.keys())
-                assert len(pony_datasets) == 0, "Should have no PONI datasets"
+            poni_group = f.get("technical/poni")
+            if poni_group:
+                poni_datasets = list(poni_group.keys())
+                assert len(poni_datasets) == 0, "Should have no PONI datasets"
         print(f"✅ Container created without PONI data (allowed behavior)")
     except (ValueError, KeyError) as e:
         # If error is raised, that's also valid behavior
@@ -468,10 +472,10 @@ def test_per_detector_distance_validation(temp_dir, valid_poni_files, demo_confi
         np.save(filename, data)
         measurements["DARK"][detector_id] = str(filename)
 
-    pony_data = {}
+    poni_data = {}
     for detector_id, poni_path in valid_poni_files.items():
         content = poni_path.read_text()
-        pony_data[detector_id] = (content, poni_path.name)
+        poni_data[detector_id] = (content, poni_path.name)
 
     # Test with correct per-detector distances
     distances_cm = {"PRIMARY": 100.0, "SECONDARY": 17.0}
@@ -480,7 +484,7 @@ def test_per_detector_distance_validation(temp_dir, valid_poni_files, demo_confi
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=str(temp_dir),
         aux_measurements=measurements,
-        pony_data=pony_data,
+        poni_data=poni_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
         distances_cm=distances_cm,
@@ -692,7 +696,7 @@ def test_workflow_fails_on_invalid_container(temp_dir, demo_config):
     with h5py.File(container_path, "w") as f:
         f.attrs["container_id"] = "invalid123"
         f.attrs["container_type"] = "technical"
-        f.attrs["schema_version"] = "1.0"
+        f.attrs["schema_version"] = "0.1"
         f.attrs["creation_timestamp"] = "2024-01-01T00:00:00Z"
         f.attrs["distance_cm"] = 100.0
         f.create_group("technical")
@@ -984,7 +988,7 @@ def test_archive_folder_structure():
 def test_load_h5_imports_correctly():
     """Test that Load H5 can import the correct validator module."""
     try:
-        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+        from hardware.container.v0_1.technical_validator import validate_technical_container
         print(f"✅ Load H5 validator import successful")
         assert validate_technical_container is not None
     except ImportError as e:
@@ -995,7 +999,7 @@ def test_load_h5_with_valid_container(
     temp_dir, valid_poni_files, sample_measurements, demo_config
 ):
     """Test loading a valid H5 container."""
-    from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+    from hardware.container.v0_1.technical_validator import validate_technical_container
     
     # Create container
     container_path = create_valid_container(
@@ -1019,7 +1023,7 @@ def test_load_h5_with_valid_container(
 
 def test_load_h5_with_invalid_container(temp_dir):
     """Test loading an invalid H5 container shows appropriate errors."""
-    from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+    from hardware.container.v0_1.technical_validator import validate_technical_container
     
     # Create invalid container
     invalid_h5 = temp_dir / "invalid.h5"

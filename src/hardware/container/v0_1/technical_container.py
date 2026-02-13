@@ -2,7 +2,7 @@
 
 Creates and updates technical_<id>.h5 containers that store:
 - Detector configuration
-- PONY/PONI calibration data
+- PONI calibration data
 - Technical measurement events (DARK, EMPTY, BACKGROUND, AGBH, WATER)
 
 This module provides the primary API for generating technical containers
@@ -61,7 +61,7 @@ def create_technical_container(
     # Create top-level groups
     utils.create_group_if_missing(file_path, schema.GROUP_TECHNICAL)
     utils.create_group_if_missing(file_path, schema.GROUP_TECHNICAL_CONFIG)
-    utils.create_group_if_missing(file_path, schema.GROUP_TECHNICAL_PONY)
+    utils.create_group_if_missing(file_path, schema.GROUP_TECHNICAL_PONI)
     
     return container_id, file_path
 
@@ -117,23 +117,26 @@ def write_detector_config(
     )
 
 
-def write_pony_datasets(
+def write_poni_datasets(
     file_path: Union[str, Path],
-    pony_data: Dict[str, Tuple[str, str]],
+    poni_data: Dict[str, Tuple[str, str]],
     distances_cm: Union[float, Dict[str, float]],
+    detector_id_by_alias: Optional[Dict[str, str]] = None,
     operator_confirmed: bool = True
 ) -> None:
-    """Write PONY calibration data to /technical/pony.
+    """Write PONI calibration data to /technical/poni.
     
     Args:
         file_path: Technical container path
-        pony_data: Dict mapping alias to (pony_content, pony_filename)
+        poni_data: Dict mapping alias to (poni_content, poni_filename)
         distances_cm: Sample-detector distance (float for single, dict for per-detector)
-        operator_confirmed: Whether PONY is operator-confirmed
+        detector_id_by_alias: Optional mapping alias -> hardware detector ID
+        operator_confirmed: Whether PONI is operator-confirmed
     """
-    for alias, (pony_content, pony_filename) in pony_data.items():
+    detector_id_by_alias = detector_id_by_alias or {}
+    for alias, (poni_content, poni_filename) in poni_data.items():
         role = schema.format_detector_role(alias)
-        pony_path = f"{schema.GROUP_TECHNICAL_PONY}/pony_{role[4:]}"  # Remove "det_" prefix
+        poni_path = f"{schema.GROUP_TECHNICAL_PONI}/poni_{role[4:]}"  # Remove "det_" prefix
         
         # Get distance for this detector
         if isinstance(distances_cm, dict):
@@ -142,16 +145,17 @@ def write_pony_datasets(
             distance_cm = distances_cm
         
         attrs = {
-            schema.ATTR_DETECTOR_ID: alias,
+            schema.ATTR_DETECTOR_ID: detector_id_by_alias.get(alias, alias),
+            schema.ATTR_DETECTOR_ALIAS: alias,
             schema.ATTR_DISTANCE_CM: distance_cm,
-            schema.ATTR_PONY_OPERATOR_CONFIRMED: operator_confirmed,
-            "pony_filename": pony_filename,
+            schema.ATTR_PONI_OPERATOR_CONFIRMED: operator_confirmed,
+            "poni_filename": poni_filename,
         }
         
         utils.write_dataset(
             file_path=file_path,
-            dataset_path=pony_path,
-            data=pony_content,
+            dataset_path=poni_path,
+            data=poni_content,
             attrs=attrs,
             compression=None,
             overwrite=True
@@ -292,7 +296,8 @@ def add_technical_event(
             schema.ATTR_DISTANCE_CM: detector_distance_cm,  # Per-detector distance
             schema.ATTR_DETECTOR_DISTANCE_CM: detector_distance_cm,  # Explicit per-detector attr
             schema.ATTR_TIMESTAMP: meas_data.get("timestamp", timestamp),
-            schema.ATTR_DETECTOR_ID: meas_data.get("detector_id", alias),
+            schema.ATTR_DETECTOR_ID: meas_data.get("detector_id", alias),  # Alias for technical
+            schema.ATTR_DETECTOR_ALIAS: alias,
         }
         if source_file:
             attrs["source_file"] = os.path.basename(source_file)
@@ -302,28 +307,28 @@ def add_technical_event(
     return event_path
 
 
-def link_pony_to_event(
+def link_poni_to_event(
     file_path: Union[str, Path],
-    pony_alias: str,
+    poni_alias: str,
     event_index: int
 ) -> None:
-    """Link a PONY dataset to the technical event it was derived from.
+    """Link a PONI dataset to the technical event it was derived from.
     
     Args:
         file_path: Technical container path
-        pony_alias: Detector alias (e.g. "PRIMARY")
+        poni_alias: Detector alias (e.g. "PRIMARY")
         event_index: Technical event index
     """
-    role = schema.format_detector_role(pony_alias)
-    pony_path = f"{schema.GROUP_TECHNICAL_PONY}/pony_{role[4:]}"
+    role = schema.format_detector_role(poni_alias)
+    poni_path = f"{schema.GROUP_TECHNICAL_PONI}/poni_{role[4:]}"
     
     event_id = schema.format_technical_event_id(event_index)
     event_path = f"{schema.GROUP_TECHNICAL}/{event_id}"
     
     utils.set_reference_attr(
         file_path=file_path,
-        obj_path=pony_path,
-        attr_name=schema.ATTR_PONY_DERIVED_FROM,
+        obj_path=poni_path,
+        attr_name=schema.ATTR_PONI_DERIVED_FROM,
         target_path=event_path
     )
 
@@ -331,7 +336,7 @@ def link_pony_to_event(
 def generate_from_aux_table(
     folder: Union[str, Path],
     aux_measurements: Dict[str, Dict[str, str]],
-    pony_data: Dict[str, Tuple[str, str]],
+    poni_data: Dict[str, Tuple[str, str]],
     detector_config: List[Dict],
     active_detector_ids: List[str],
     distances_cm: Union[float, Dict[str, float]],
@@ -353,7 +358,7 @@ def generate_from_aux_table(
                 "BACKGROUND": {...},
                 "AGBH": {...},
             }
-        pony_data: Dict mapping alias to (pony_content, pony_filename)
+        poni_data: Dict mapping alias to (poni_content, poni_filename)
         detector_config: List of detector config dicts from DIFRA config
         active_detector_ids: List of active detector IDs
         distances_cm: User-defined sample-detector distance(s) in cm (float for single, dict for per-detector)
@@ -370,18 +375,23 @@ def generate_from_aux_table(
     """
     import logging
     logger = logging.getLogger(__name__)
+    detector_id_by_alias = {
+        cfg.get("alias"): cfg.get("id", cfg.get("alias"))
+        for cfg in detector_config
+        if cfg.get("alias")
+    }
     
     # STEP 1: Validate PONI distances against user distance(s)
-    if validate_poni and pony_data:
+    if validate_poni and poni_data:
         # Convert single distance to dict for uniform processing
         if isinstance(distances_cm, (int, float)):
-            distances_dict = {alias: float(distances_cm) for alias in pony_data.keys()}
+            distances_dict = {alias: float(distances_cm) for alias in poni_data.keys()}
             logger.info(f"Validating PONI distances against user distance: {distances_cm:.2f} cm...")
         else:
             distances_dict = distances_cm
             logger.info(f"Validating PONI distances against per-detector distances...")
         
-        for alias, (poni_content, poni_filename) in pony_data.items():
+        for alias, (poni_content, poni_filename) in poni_data.items():
             # Get distance for this detector
             detector_distance = distances_dict.get(alias)
             if detector_distance is None:
@@ -433,8 +443,13 @@ def generate_from_aux_table(
     # Write detector configuration
     write_detector_config(file_path, detector_config, active_detector_ids)
     
-    # Write PONY datasets
-    write_pony_datasets(file_path, pony_data, distances_cm)
+    # Write PONI datasets
+    write_poni_datasets(
+        file_path,
+        poni_data,
+        distances_cm,
+        detector_id_by_alias=detector_id_by_alias,
+    )
     
     # Add technical events
     event_index = 1
@@ -462,9 +477,10 @@ def generate_from_aux_table(
                     )
                 
                 data = np.load(file_path_str)
+                detector_id = detector_id_by_alias.get(alias, alias)
                 measurements[alias] = {
                     "data": data,
-                    "detector_id": alias,
+                    "detector_id": detector_id,
                     "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                     "source_file": file_path_str,  # Pass source file for blob storage
                 }
@@ -492,7 +508,7 @@ def generate_from_aux_table(
     if agbh_event_indices:
         for alias, evt_idx in agbh_event_indices.items():
             role = schema.format_detector_role(alias)
-            pony_path = f"{schema.GROUP_TECHNICAL_PONY}/pony_{role[4:]}"
+            poni_path = f"{schema.GROUP_TECHNICAL_PONI}/poni_{role[4:]}"
             
             event_id = schema.format_technical_event_id(evt_idx)
             event_path = f"{schema.GROUP_TECHNICAL}/{event_id}"
@@ -504,7 +520,7 @@ def generate_from_aux_table(
                     file_path=file_path,
                     obj_path=event_path,
                     attr_name=f"poni_{role[4:]}_ref",
-                    target_path=pony_path
+                    target_path=poni_path
                 )
             except Exception:
                 pass  # PONI may not exist for this alias
@@ -515,7 +531,7 @@ def generate_from_aux_table(
                     file_path=file_path,
                     obj_path=detector_path,
                     attr_name="poni_ref",
-                    target_path=pony_path
+                    target_path=poni_path
                 )
             except Exception:
                 pass  # PONI may not exist for this alias

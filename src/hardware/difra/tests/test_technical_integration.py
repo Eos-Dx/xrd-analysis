@@ -236,10 +236,10 @@ def test_generate_technical_h5_container(
             aux_measurements[meas_type][detector_id] = str(filename)
 
     # Prepare PONI data
-    pony_data = {}
+    poni_data = {}
     for detector_id, poni_path in demo_poni_files.items():
         content = poni_path.read_text()
-        pony_data[detector_id] = (content, poni_path.name)
+        poni_data[detector_id] = (content, poni_path.name)
 
     # Use per-detector distances: PRIMARY (SAXS) 100cm, SECONDARY (WAXS) 17cm
     distances_cm = {"PRIMARY": 100.0, "SECONDARY": 17.0}
@@ -249,7 +249,7 @@ def test_generate_technical_h5_container(
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=str(temp_output_dir),
         aux_measurements=aux_measurements,
-        pony_data=pony_data,
+        poni_data=poni_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
         distances_cm=distances_cm,
@@ -277,7 +277,7 @@ def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
         assert "container_id" in f.attrs
         assert f.attrs["container_id"] == container_id
         assert "schema_version" in f.attrs
-        assert f.attrs["schema_version"] == "1.0"
+        assert f.attrs["schema_version"] == "0.1"
         assert "creation_timestamp" in f.attrs
         assert "distance_cm" in f.attrs
         # Root distance_cm should be from first detector (PRIMARY: 100cm)
@@ -303,15 +303,15 @@ def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
         assert "active_detector_ids" in config_data
         assert len(config_data["detectors"]) == len(demo_config["dev_active_detectors"])
 
-        # 5. PONY primary group
-        assert "pony" in tech_group
-        pony_group = tech_group["pony"]
+        # 5. PONI primary group
+        assert "poni" in tech_group
+        poni_group = tech_group["poni"]
         for detector_id in demo_config["dev_active_detectors"]:
-            pony_id = f"pony_{detector_id.lower()}"
-            assert pony_id in pony_group
-            pony_data = pony_group[pony_id]
-            assert pony_data.dtype.kind in ["S", "O"]  # String or object type
-            assert "pony_filename" in pony_data.attrs
+            poni_id = f"poni_{detector_id.lower()}"
+            assert poni_id in poni_group
+            poni_data = poni_group[poni_id]
+            assert poni_data.dtype.kind in ["S", "O"]  # String or object type
+            assert "poni_filename" in poni_data.attrs
 
         # 6. Technical event groups (DARK, EMPTY, BACKGROUND, AGBH)
         required_types = ["DARK", "EMPTY", "BACKGROUND", "AGBH"]
@@ -344,19 +344,57 @@ def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
                 assert "detector_id" in det_data.attrs
 
         # 7. Object references
-        # Check that pony_primary references are valid
+        # Check that poni_primary references are valid
         for det_id in demo_config["dev_active_detectors"]:
-            pony_id = f"pony_{det_id.lower()}"
-            if pony_id in pony_group:
+            poni_id = f"poni_{det_id.lower()}"
+            if poni_id in poni_group:
                 # Reference should be dereferenceable
-                ref_ds = pony_group[pony_id]
+                ref_ds = poni_group[poni_id]
                 assert ref_ds is not None
 
     print(f"✅ HDF5 container validation passed: {file_path}")
-    print(f"   Container ID: {container_id}")
-    print(f"   File size: {Path(file_path).stat().st_size / 1024:.1f} KB")
 
 
+def test_technical_container_stores_detector_id_and_alias(temp_output_dir):
+    """Detector identity in technical H5 should keep both hardware ID and alias."""
+    dark_file = temp_output_dir / "dark_saxs.npy"
+    np.save(dark_file, np.random.rand(16, 16).astype(np.float32))
+
+    detector_config = [
+        {
+            "id": "advacam_001",
+            "alias": "SAXS",
+            "name": "SAXS",
+            "type": "dummy",
+            "size": [16, 16],
+            "pixel_size_um": 55.0,
+        }
+    ]
+    poni_data = {
+        "SAXS": (
+            "PixelSize1: 7.5e-05\nPixelSize2: 7.5e-05\nDistance: 0.17\n",
+            "saxs.poni",
+        )
+    }
+    aux_measurements = {"DARK": {"SAXS": str(dark_file)}}
+
+    _container_id, file_path = technical_container.generate_from_aux_table(
+        folder=str(temp_output_dir),
+        aux_measurements=aux_measurements,
+        poni_data=poni_data,
+        detector_config=detector_config,
+        active_detector_ids=["advacam_001"],
+        distances_cm={"SAXS": 17.0},
+    )
+
+    with h5py.File(file_path, "r") as file_handle:
+        poni_ds = file_handle["/technical/poni/poni_saxs"]
+        assert poni_ds.attrs[schema.ATTR_DETECTOR_ID] == "advacam_001"
+        assert poni_ds.attrs[schema.ATTR_DETECTOR_ALIAS] == "SAXS"
+
+        det_group = file_handle["/technical/tech_evt_001/det_saxs"]
+        assert det_group.attrs[schema.ATTR_DETECTOR_ID] == "advacam_001"
+        assert det_group.attrs[schema.ATTR_DETECTOR_ALIAS] == "SAXS"
 def test_roundtrip_measurement_data(temp_output_dir, demo_poni_files, demo_config):
     """Test that measurement data survives roundtrip through HDF5."""
     # Generate container

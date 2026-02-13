@@ -203,19 +203,18 @@ class TechnicalContainer(BaseContainer):
             
             return measurements
     
-    def get_pony_data(self) -> Dict[str, str]:
-        """Get PONY calibration data.
+    def get_poni_data(self) -> Dict[str, str]:
+        """Get PONI calibration data.
         
         Returns:
-            Dict mapping detector to PONY content
+            Dict mapping detector dataset name to PONI content
         """
         with utils.open_h5_readonly(self.file_path) as f:
-            pony_path = f"{schema.GROUP_TECHNICAL}/pony"
-            if pony_path not in f:
+            if schema.GROUP_TECHNICAL_PONI not in f:
                 return {}
             
-            pony_group = f[pony_path]
-            pony_data = {}
-            for pony_name in pony_group.keys():
-                pony_data[pony_name] = pony_group[pony_name][()]
-            return pony_data
+            poni_group = f[schema.GROUP_TECHNICAL_PONI]
+            poni_data: Dict[str, str] = {}
+            for dataset_name in poni_group.keys():
+                poni_data[dataset_name] = poni_group[dataset_name][()]
+            return poni_data

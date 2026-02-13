@@ -116,12 +116,12 @@ Stored in `/technical/config`:
 
 ---
 
-### 4.4 PONY Geometry (`/technical/pony`)
+### 4.4 PONI Geometry (`/technical/poni`)
 
-One PONY file per detector.
+One PONI file per detector.
 
 ```
-/technical/pony
+/technical/poni
 ├── pony_primary
 ├── pony_secondary
 ```
@@ -134,7 +134,7 @@ derived_from
 operator_confirmed
 ```
 
-Measurements cannot start without valid PONY geometry.
+Measurements cannot start without valid PONI geometry.
 
 ---
 
@@ -234,7 +234,7 @@ timestamp_start
 timestamp_end (optional)
 measurement_status
 point_ref
-pony_ref
+poni_ref
 ```
 
 ---
@@ -276,7 +276,7 @@ measurement_counter        (global, monotonic)
 timestamp_start
 timestamp_end (optional)
 measurement_status
-pony_ref
+poni_ref
 analysis_type              ("attenuation")
 ```
 

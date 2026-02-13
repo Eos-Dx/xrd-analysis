@@ -94,7 +94,7 @@ class H5GenerationMixin:
         import random
         import time
         
-        pony_data = {}
+        poni_data = {}
         
         for alias in aliases:
             # Get detector config
@@ -148,14 +148,14 @@ Wavelength: {wavelength}
 """
             
             poni_filename = f"{alias.lower()}_fake_h5gen.poni"
-            pony_data[alias] = (poni_content, poni_filename)
+            poni_data[alias] = (poni_content, poni_filename)
             
             logger.info(
                 f"Generated fake PONI for {alias}: distance={fake_distance_m*100:.2f} cm "
                 f"(user: {user_distance_cm:.2f} cm, margin: {margin*100:.1f}%)"
             )
         
-        return pony_data
+        return poni_data
 
     def _prompt_distance_cm(self, default_cm: float = None):
         """Prompt user for sample-detector distance in cm. Returns None if canceled."""
@@ -174,6 +174,7 @@ Wavelength: {wavelength}
     def generate_technical_meta(self):
         """Generate technical metadata JSON file from selected measurements."""
         from pathlib import Path
+        from hardware.container.v0_1 import schema as container_schema
 
         self._log_technical_event("Generating technical metadata...")
 
@@ -285,7 +286,7 @@ Wavelength: {wavelength}
         # Enforce completeness: all REQUIRED measurement types must be present, and for each alias
         required_types = set(
             getattr(self, "REQUIRED_TYPE_OPTIONS", None)
-            or ["AGBH", "DARK", "EMPTY", "BACKGROUND"]
+            or container_schema.REQUIRED_TECHNICAL_TYPES
         )
 
         # 1) Ensure at least one row selected for each required type
@@ -574,7 +575,7 @@ Wavelength: {wavelength}
         # Enforce completeness: all REQUIRED measurement types must be present, and for each alias
         required_types = set(
             getattr(self, "REQUIRED_TYPE_OPTIONS", None)
-            or ["AGBH", "DARK", "EMPTY", "BACKGROUND"]
+            or schema.REQUIRED_TECHNICAL_TYPES
         )
 
         # 1) Ensure at least one row selected for each required type
@@ -635,8 +636,8 @@ Wavelength: {wavelength}
             return
 
         # Collect PONI data (prefer file selection, fallback to in-memory PONI)
-        pony_data = {}
-        missing_pony = []
+        poni_data = {}
+        missing_poni = []
         selected_poni_files = {}
         
         # Check if dev mode is enabled
@@ -690,16 +691,16 @@ Wavelength: {wavelength}
                     poni_content = None
 
             if poni_content:
-                pony_data[alias] = (poni_content, poni_filename or f"{alias}.poni")
+                poni_data[alias] = (poni_content, poni_filename or f"{alias}.poni")
             else:
-                missing_pony.append(alias)
+                missing_poni.append(alias)
 
-        if missing_pony:
+        if missing_poni:
             res = QMessageBox.question(
                 self,
                 "Missing PONI Data",
                 "No PONI data found for:\n"
-                + ", ".join(missing_pony)
+                + ", ".join(missing_poni)
                 + "\n\nContinue without these PONI datasets?",
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No,
@@ -758,8 +759,8 @@ Wavelength: {wavelength}
         # Extract PONI distances per detector for validation
         poni_distances_cm = {}
         for alias in aliases_to_check:
-            if alias in pony_data:
-                poni_content, _fname = pony_data[alias]
+            if alias in poni_data:
+                poni_content, _fname = poni_data[alias]
                 d = self._parse_poni_distance_m(poni_content)
                 if d is not None:
                     poni_distances_cm[alias] = d * 100.0  # Convert meters to cm
@@ -770,14 +771,14 @@ Wavelength: {wavelength}
                 f"Dev mode: generating fake PONI files with distances within ±3%: {user_distances_cm}"
             )
             # Generate fake PONIs per detector
-            fake_pony_data = {}
+            fake_poni_data = {}
             for alias in aliases_to_check:
                 distance_cm = user_distances_cm.get(alias, 17.0)
                 # Generate single detector fake PONI
-                single_pony = self._generate_fake_poni_data([alias], distance_cm)
-                if alias in single_pony:
-                    fake_pony_data[alias] = single_pony[alias]
-            pony_data = fake_pony_data
+                single_poni = self._generate_fake_poni_data([alias], distance_cm)
+                if alias in single_poni:
+                    fake_poni_data[alias] = single_poni[alias]
+            poni_data = fake_poni_data
 
         # Get technical temp folder for HDF5 generation
         tech_temp_folder = _get_technical_temp_folder(self.config if hasattr(self, "config") else None)
@@ -787,7 +788,7 @@ Wavelength: {wavelength}
             container_id, temp_file_path = technical_container.generate_from_aux_table(
                 folder=tech_temp_folder,
                 aux_measurements=aux_measurements,
-                pony_data=pony_data,
+                poni_data=poni_data,
                 detector_config=self.config.get("detectors", []),
                 active_detector_ids=self._get_active_detector_ids(),
                 distances_cm=user_distances_cm,  # Pass per-detector distances dict

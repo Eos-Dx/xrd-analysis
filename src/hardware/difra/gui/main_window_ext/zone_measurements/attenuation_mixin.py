@@ -231,26 +231,30 @@ class AttenuationMixin:
         # Add to session container
         if all_data:
             try:
-                # Build metadata
-                metadata = {
-                    "n_frames": N,
-                    "integration_time_s": t_exp,
-                    "timestamp": timestamp,
-                    "integration_radius_px": radius,
+                detector_lookup = {
+                    d.get("alias"): d for d in self.config.get("detectors", [])
                 }
-                
-                # Get PONI map (assuming all detectors share same PONI)
-                pony_map = {}
-                for alias in all_data.keys():
-                    poni_file = self.get_poni_file(alias)
-                    if poni_file:
-                        pony_map[alias] = poni_file
-                
+                measurement_data = {}
+                detector_metadata = {}
+                poni_alias_map = {}
+                for alias, signal in all_data.items():
+                    detector_meta = detector_lookup.get(alias, {})
+                    detector_id = detector_meta.get("id", alias)
+                    measurement_data[detector_id] = signal
+                    detector_metadata[detector_id] = {
+                        "integration_time_ms": t_exp * 1000,
+                        "detector_id": detector_id,
+                        "timestamp": timestamp,
+                        "integration_radius_px": radius,
+                        "n_frames": N,
+                    }
+                    poni_alias_map[alias] = detector_id
+
                 # Add to session container
                 self.session_manager.add_attenuation_measurement(
-                    data=all_data,
-                    metadata=metadata,
-                    pony_map=pony_map,
+                    measurement_data=measurement_data,
+                    detector_metadata=detector_metadata,
+                    poni_alias_map=poni_alias_map,
                     mode=mode,
                 )
                 

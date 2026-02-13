@@ -129,7 +129,7 @@ def test_h5_with_multiple_events(temp_folder, demo_poni_content):
     # Create PONI data
     poni_file = temp_folder / "PRIMARY.poni"
     poni_file.write_text(demo_poni_content)
-    pony_data = {"PRIMARY": (demo_poni_content, "PRIMARY.poni")}
+    poni_data = {"PRIMARY": (demo_poni_content, "PRIMARY.poni")}
     
     # Generate container
     detector_config = [{"id": "PRIMARY", "alias": "PRIMARY", "type": "dummy", "width": 256, "height": 256}]
@@ -137,7 +137,7 @@ def test_h5_with_multiple_events(temp_folder, demo_poni_content):
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=str(temp_folder),
         aux_measurements=aux_measurements,
-        pony_data=pony_data,
+        poni_data=poni_data,
         detector_config=detector_config,
         active_detector_ids=["PRIMARY"],
         distances_cm=17.0,
@@ -179,13 +179,13 @@ def test_measurement_selection_for_h5(temp_folder, demo_poni_content):
     for mtype in ["EMPTY", "BACKGROUND", "AGBH"]:
         np.save(aux_measurements[mtype]["PRIMARY"], np.random.rand(256, 256).astype(np.float32) * 1000)
     
-    pony_data = {"PRIMARY": (demo_poni_content, "PRIMARY.poni")}
+    poni_data = {"PRIMARY": (demo_poni_content, "PRIMARY.poni")}
     detector_config = [{"id": "PRIMARY", "alias": "PRIMARY", "type": "dummy", "width": 256, "height": 256}]
     
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=str(temp_folder),
         aux_measurements=aux_measurements,
-        pony_data=pony_data,
+        poni_data=poni_data,
         detector_config=detector_config,
         active_detector_ids=["PRIMARY"],
         distances_cm=17.0,

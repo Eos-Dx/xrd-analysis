@@ -151,16 +151,16 @@ def technical_container_path(temp_dir, demo_config, demo_poni_files):
             tech_measurements[tech_type][alias] = str(filename)
 
     # Load PONI data
-    pony_data = {}
+    poni_data = {}
     for alias, poni_path in demo_poni_files.items():
         content = poni_path.read_text()
-        pony_data[alias] = (content, poni_path.name)
+        poni_data[alias] = (content, poni_path.name)
 
     # Generate technical container
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=temp_dir,
         aux_measurements=tech_measurements,
-        pony_data=pony_data,
+        poni_data=poni_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["active_detectors"],
         distances_cm={"SAXS": 100.0, "WAXS": 17.0},
@@ -237,7 +237,7 @@ def test_step1_create_session(temp_dir, technical_container_path):
     # Verify technical data was copied
     with h5py.File(session_path, "r") as f:
         assert "/technical" in f
-        assert "/technical/pony" in f
+        assert "/technical/poni" in f
         print(f"  ✓ Technical calibration data copied")
 
         # Count technical events
@@ -528,7 +528,7 @@ def test_step5_record_measurements(temp_dir, technical_container_path):
         )
 
     # Record measurements for each point
-    pony_alias_map = {"SAXS": "det_saxs", "WAXS": "det_waxs"}
+    poni_alias_map = {"SAXS": "det_saxs", "WAXS": "det_waxs"}
 
     for point_idx in range(1, 4):
         # Generate synthetic detector data
@@ -555,7 +555,7 @@ def test_step5_record_measurements(temp_dir, technical_container_path):
             point_index=point_idx,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
         )
 
         print(f"  ✓ Point {point_idx} measured: {meas_path}")
@@ -613,7 +613,7 @@ def test_step6_attenuation(temp_dir, technical_container_path):
         technical_file=technical_container_path, session_file=session_path
     )
 
-    pony_alias_map = {"SAXS": "det_saxs", "WAXS": "det_waxs"}
+    poni_alias_map = {"SAXS": "det_saxs", "WAXS": "det_waxs"}
 
     # Record I₀ (without sample at loading position)
     i0_data = {
@@ -638,7 +638,7 @@ def test_step6_attenuation(temp_dir, technical_container_path):
         file_path=session_path,
         measurement_data=i0_data,
         detector_metadata=i0_metadata,
-        pony_alias_map=pony_alias_map,
+        poni_alias_map=poni_alias_map,
         analysis_type="attenuation_i0",
     )
 
@@ -656,7 +656,7 @@ def test_step6_attenuation(temp_dir, technical_container_path):
         file_path=session_path,
         measurement_data=i_data,
         detector_metadata=i_metadata,
-        pony_alias_map=pony_alias_map,
+        poni_alias_map=poni_alias_map,
         analysis_type="attenuation_i",
     )
 
@@ -794,7 +794,7 @@ def test_step8_lock_container(temp_dir, technical_container_path):
         physical_coordinates_mm=[15.0, 20.0],
     )
 
-    pony_alias_map = {"SAXS": "det_saxs", "WAXS": "det_waxs"}
+    poni_alias_map = {"SAXS": "det_saxs", "WAXS": "det_waxs"}
     measurement_data = {
         "det_saxs": np.random.poisson(100, size=(256, 256)).astype(np.float32),
     }
@@ -811,7 +811,7 @@ def test_step8_lock_container(temp_dir, technical_container_path):
         point_index=1,
         measurement_data=measurement_data,
         detector_metadata=detector_metadata,
-        pony_alias_map=pony_alias_map,
+        poni_alias_map=poni_alias_map,
     )
 
     print(f"  ✓ Session populated with data")
@@ -898,7 +898,7 @@ def test_step9_complete_workflow(temp_dir, technical_container_path):
     print(f"  ✓ Step 5: Points added")
 
     # 6. Record measurements
-    pony_alias_map = {"SAXS": "det_saxs", "WAXS": "det_waxs"}
+    poni_alias_map = {"SAXS": "det_saxs", "WAXS": "det_waxs"}
     for point_idx in range(1, 4):
         measurement_data = {
             "det_saxs": np.random.poisson(100, size=(256, 256)).astype(np.float32),
@@ -921,7 +921,7 @@ def test_step9_complete_workflow(temp_dir, technical_container_path):
             point_index=point_idx,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
         )
         session_container.update_point_status(
             file_path=session_path, point_index=point_idx, point_status="measured"
@@ -943,7 +943,7 @@ def test_step9_complete_workflow(temp_dir, technical_container_path):
         file_path=session_path,
         measurement_data=i0_data,
         detector_metadata=i0_metadata,
-        pony_alias_map=pony_alias_map,
+        poni_alias_map=poni_alias_map,
         analysis_type="attenuation_i0",
     )
     print(f"  ✓ Step 7: Attenuation recorded")

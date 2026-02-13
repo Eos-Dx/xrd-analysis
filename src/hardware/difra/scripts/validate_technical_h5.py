@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI tool for validating technical HDF5 containers against schema v1.0.
+"""CLI tool for validating technical HDF5 containers against schema v0.1.
 
 Usage:
     python validate_technical_h5.py <path_to_h5_file>
@@ -13,7 +13,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from hardware.container.v0_1.validator import (
+from hardware.container.v0_1.technical_validator import (
     validate_technical_container,
     print_validation_report,
 )
@@ -21,7 +21,7 @@ from hardware.container.v0_1.validator import (
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Validate technical HDF5 containers against DIFRA schema v1.0",
+        description="Validate technical HDF5 containers against DIFRA schema v0.1",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

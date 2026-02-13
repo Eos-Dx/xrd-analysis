@@ -4,6 +4,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+import h5py
 import numpy as np
 import pytest
 
@@ -13,6 +14,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from hardware.difra.gui.session_manager import SessionManager
+from hardware.container.v0_1 import schema
 from hardware.container.v0_1.technical_container import generate_from_aux_table
 from hardware.container.v0_1.container_manager import lock_container
 
@@ -43,7 +45,7 @@ Poni2: 0.014025
     tech_id, tech_path = generate_from_aux_table(
         folder=temp_dir,
         aux_measurements={"DARK": {"DET1": str(dark_file)}},
-        pony_data={"DET1": (poni_content, "DET1_17cm.poni")},
+        poni_data={"DET1": (poni_content, "DET1_17cm.poni")},
         detector_config=[{
             "id": "DET1",
             "alias": "DET1",
@@ -64,7 +66,7 @@ Poni2: 0.014025
 
 def test_session_manager_create_session(temp_dir, technical_container):
     """Test creating a new session."""
-    manager = SessionManager()
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
     
     # Initially no session
     assert not manager.is_session_active()
@@ -73,7 +75,7 @@ def test_session_manager_create_session(temp_dir, technical_container):
     session_id, session_path = manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distances_cm=17.0,
+        distance_cm=17.0,
         operator_id="test_operator",
     )
     
@@ -86,11 +88,11 @@ def test_session_manager_create_session(temp_dir, technical_container):
 
 def test_session_manager_add_points(temp_dir, technical_container):
     """Test adding points to session."""
-    manager = SessionManager()
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
     manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distances_cm=17.0,
+        distance_cm=17.0,
     )
     
     # Add points
@@ -111,11 +113,11 @@ def test_session_manager_add_points(temp_dir, technical_container):
 
 def test_session_manager_attenuation_workflow(temp_dir, technical_container):
     """Test complete attenuation workflow."""
-    manager = SessionManager()
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
     manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distances_cm=17.0,
+        distance_cm=17.0,
     )
     
     # Add points
@@ -134,7 +136,7 @@ def test_session_manager_attenuation_workflow(temp_dir, technical_container):
     i0_counter = manager.add_attenuation_measurement(
         measurement_data=i0_data,
         detector_metadata=i0_metadata,
-        pony_alias_map={"DET1": "DET1"},
+        poni_alias_map={"DET1": "DET1"},
         mode="without",
     )
     
@@ -148,7 +150,7 @@ def test_session_manager_attenuation_workflow(temp_dir, technical_container):
     i_counter = manager.add_attenuation_measurement(
         measurement_data=i_data,
         detector_metadata=i_metadata,
-        pony_alias_map={"DET1": "DET1"},
+        poni_alias_map={"DET1": "DET1"},
         mode="with",
     )
     
@@ -163,13 +165,64 @@ def test_session_manager_attenuation_workflow(temp_dir, technical_container):
     assert info["attenuation_complete"] is True
 
 
-def test_session_manager_add_measurement(temp_dir, technical_container):
-    """Test adding regular measurements."""
-    manager = SessionManager()
+def test_session_manager_link_attenuation_start_point(temp_dir, technical_container):
+    """Test linking attenuation measurements starting from a specific point index."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
     manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distances_cm=17.0,
+        distance_cm=17.0,
+    )
+
+    manager.add_points(
+        [
+            {"pixel_coordinates": [100, 200], "physical_coordinates_mm": [10.0, 20.0]},
+            {"pixel_coordinates": [110, 210], "physical_coordinates_mm": [11.0, 21.0]},
+            {"pixel_coordinates": [120, 220], "physical_coordinates_mm": [12.0, 22.0]},
+        ]
+    )
+
+    i0_data = {"DET1": np.random.randint(800, 1000, (256, 256), dtype=np.uint16)}
+    i0_metadata = {"DET1": {"integration_time_ms": 50.0}}
+    i_data = {"DET1": np.random.randint(400, 600, (256, 256), dtype=np.uint16)}
+    i_metadata = {"DET1": {"integration_time_ms": 50.0}}
+    poni_alias_map = {"DET1": "DET1"}
+
+    manager.add_attenuation_measurement(
+        measurement_data=i0_data,
+        detector_metadata=i0_metadata,
+        poni_alias_map=poni_alias_map,
+        mode="without",
+    )
+    manager.add_attenuation_measurement(
+        measurement_data=i_data,
+        detector_metadata=i_metadata,
+        poni_alias_map=poni_alias_map,
+        mode="with",
+    )
+
+    manager.link_attenuation_to_points(num_points=1, start_point_idx=2)
+
+    with h5py.File(manager.session_path, "r") as session_file:
+        pt1 = session_file["/points/pt_001"]
+        pt2 = session_file["/points/pt_002"]
+        pt3 = session_file["/points/pt_003"]
+
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS not in pt1.attrs
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS in pt2.attrs
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS not in pt3.attrs
+
+        refs = pt2.attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_REFS]
+        assert len(refs) == 2
+
+
+def test_session_manager_add_measurement(temp_dir, technical_container):
+    """Test adding regular measurements."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_001",
+        distance_cm=17.0,
     )
     
     # Add point
@@ -184,7 +237,7 @@ def test_session_manager_add_measurement(temp_dir, technical_container):
         point_index=1,
         measurement_data=meas_data,
         detector_metadata=meas_metadata,
-        pony_alias_map={"DET1": "DET1"},
+        poni_alias_map={"DET1": "DET1"},
     )
     
     assert "meas_" in meas_path
@@ -192,11 +245,11 @@ def test_session_manager_add_measurement(temp_dir, technical_container):
 
 def test_session_manager_close_session(temp_dir, technical_container):
     """Test closing session."""
-    manager = SessionManager()
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
     manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distances_cm=17.0,
+        distance_cm=17.0,
     )
     
     assert manager.is_session_active()
@@ -210,7 +263,7 @@ def test_session_manager_close_session(temp_dir, technical_container):
 
 def test_session_manager_requires_active_session(temp_dir):
     """Test that operations require active session."""
-    manager = SessionManager()
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
     
     # Should raise without active session
     with pytest.raises(RuntimeError, match="No active session"):
@@ -222,7 +275,7 @@ def test_session_manager_requires_active_session(temp_dir):
 
 def test_session_manager_get_session_info(temp_dir, technical_container):
     """Test getting session info."""
-    manager = SessionManager()
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
     
     # No active session
     info = manager.get_session_info()
@@ -232,7 +285,7 @@ def test_session_manager_get_session_info(temp_dir, technical_container):
     manager.create_session(
         folder=temp_dir,
         sample_id="TEST_SAMPLE_001",
-        distances_cm=17.0,
+        distance_cm=17.0,
     )
     
     info = manager.get_session_info()

@@ -256,7 +256,7 @@ class SessionMeasurementHandler:
         point_index: int,
         measurement_data: Dict[str, np.ndarray],
         detector_metadata: Dict[str, Dict],
-        pony_alias_map: Dict[str, str],
+        poni_alias_map: Dict[str, str],
         timestamp_start: Optional[str] = None,
         timestamp_end: Optional[str] = None,
         measurement_status: str = schema.STATUS_COMPLETED,
@@ -268,7 +268,7 @@ class SessionMeasurementHandler:
             measurement_data: Dict mapping detector_id to processed signal array
 array
             detector_metadata: Dict mapping detector_id to metadata
-            pony_alias_map: Dict mapping alias to detector_id
+            poni_alias_map: Dict mapping alias to detector_id
             timestamp_start: Start timestamp
             timestamp_end: End timestamp
             measurement_status: Measurement status
@@ -284,7 +284,7 @@ array
             point_index=point_index,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             timestamp_start=timestamp_start,
             timestamp_end=timestamp_end,
             measurement_status=measurement_status,
@@ -294,7 +294,7 @@ array
         self,
         measurement_data: Dict[str, np.ndarray],
         detector_metadata: Dict[str, Dict],
-        pony_alias_map: Dict[str, str],
+        poni_alias_map: Dict[str, str],
         analysis_type: str,
         timestamp_start: Optional[str] = None,
         timestamp_end: Optional[str] = None,
@@ -304,7 +304,7 @@ array
         Args:
             measurement_data: Dict mapping detector_id to raw signal array
             detector_metadata: Dict mapping detector_id to metadata
-            pony_alias_map: Dict mapping alias to detector_id
+            poni_alias_map: Dict mapping alias to detector_id
             analysis_type: Type of analysis (e.g., "attenuation")
             timestamp_start: Start timestamp
             timestamp_end: End timestamp
@@ -319,7 +319,7 @@ array
             file_path=self.session_file,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type=analysis_type,
             timestamp_start=timestamp_start,
             timestamp_end=timestamp_end,

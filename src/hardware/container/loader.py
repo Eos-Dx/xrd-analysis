@@ -5,6 +5,8 @@ from typing import Union
 
 import h5py
 
+from .registry import load_version_module, normalize_version
+
 
 def detect_version(file_path: Union[str, Path]) -> str:
     """Detect container schema version from HDF5 file.
@@ -13,14 +15,14 @@ def detect_version(file_path: Union[str, Path]) -> str:
         file_path: Path to HDF5 container
         
     Returns:
-        Version string (e.g., "0.1", "1.0")
+        Version string (e.g., "0.1")
         
     Raises:
         ValueError: If version cannot be detected
     """
     try:
         with h5py.File(file_path, "r") as f:
-            # Try to read schema_version attribute
+            # Read schema_version attribute
             version = f.attrs.get("schema_version", None)
             
             if version is not None:
@@ -78,28 +80,18 @@ def open_container(file_path: Union[str, Path], version: str = None, validate: b
                 f"Please specify version explicitly. Error: {e}"
             )
     
-    # Normalize version string
-    version = str(version).replace(".", "_")  # "0.1" -> "0_1"
-    
-    # Map versions
-    # v0.1 (beta) corresponds to schema_version 1.0 from DIFRA
-    if version in ["0_1", "1_0"]:
-        version = "0_1"
-    
-    # Load appropriate version module
-    if version == "0_1":
-        from .v0_1 import SessionContainer, TechnicalContainer, utils
-        
-        # Detect container type
-        info = utils.get_container_info(str(file_path))
-        container_type = info.get("container_type", "").lower()
-        
-        if container_type == "session":
-            return SessionContainer.open(file_path, validate=validate)
-        elif container_type == "technical":
-            return TechnicalContainer.open(file_path, validate=validate)
-        else:
-            raise ValueError(f"Unknown container type: {container_type}")
-    
-    else:
-        raise ValueError(f"Unsupported container version: {version}")
+    normalized = normalize_version(version)
+    version_module = load_version_module(normalized)
+    utils = version_module.utils
+    session_cls = version_module.SessionContainer
+    technical_cls = version_module.TechnicalContainer
+
+    # Detect container type
+    info = utils.get_container_info(str(file_path))
+    container_type = info.get("container_type", "").lower()
+
+    if container_type == "session":
+        return session_cls.open(file_path, validate=validate)
+    if container_type == "technical":
+        return technical_cls.open(file_path, validate=validate)
+    raise ValueError(f"Unknown container type: {container_type}")

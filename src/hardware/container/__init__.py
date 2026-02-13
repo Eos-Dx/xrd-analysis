@@ -19,5 +19,12 @@ Usage:
 __version__ = "0.1.0-beta"
 
 from .loader import open_container
+from .manager import is_container_locked, lock_container, unlock_container
 
-__all__ = ["open_container", "__version__"]
+__all__ = [
+    "open_container",
+    "is_container_locked",
+    "lock_container",
+    "unlock_container",
+    "__version__",
+]

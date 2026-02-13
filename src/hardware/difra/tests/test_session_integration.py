@@ -25,7 +25,7 @@ if SRC_ROOT not in sys.path:
 from hardware.container.v0_1 import (
     schema,
     session_container,
-    session_validator,
+    validator,
     technical_container,
     measurement_counter,
 )
@@ -93,12 +93,12 @@ Rot3: 0.0
 Wavelength: 1.54e-10
 """
 
-    pony_data = {}
+    poni_data = {}
     for detector, distance in [("PRIMARY", 0.17), ("SECONDARY", 0.02)]:
         poni_path = poni_dir / f"{detector.lower()}_demo.poni"
         content = poni_content_template.format(detector=detector, distance=distance)
         poni_path.write_text(content)
-        pony_data[detector] = (content, poni_path.name)
+        poni_data[detector] = (content, poni_path.name)
 
     # Create synthetic technical measurements
     aux_measurements = {}
@@ -114,7 +114,7 @@ Wavelength: 1.54e-10
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=temp_output_dir,
         aux_measurements=aux_measurements,
-        pony_data=pony_data,
+        poni_data=poni_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
         distances_cm={"PRIMARY": 17.0, "SECONDARY": 2.0},
@@ -176,13 +176,13 @@ def test_session_handler_complete_workflow(temp_output_dir, technical_container_
             "SECONDARY": {"integration_time_ms": 100.0, "beam_energy_keV": 12.5},
         }
 
-        pony_alias_map = {"PRIMARY": "PRIMARY", "SECONDARY": "SECONDARY"}
+        poni_alias_map = {"PRIMARY": "PRIMARY", "SECONDARY": "SECONDARY"}
 
         handler.add_measurement(
             point_index=pt_idx,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
         )
 
         handler.update_point_status(
@@ -259,11 +259,11 @@ def test_session_validator_complete_container(
     )
 
     # Validate
-    is_valid, summary = session_validator.validate_session_container(session_file)
+    is_valid, summary = validator.validate_session_container(session_file)
 
     # Should be valid (or have only warnings, not errors)
-    validator = session_validator.SessionContainerValidator(session_file)
-    is_valid, errors = validator.validate()
+    container_validator = validator.SessionContainerValidator(session_file)
+    is_valid, errors = container_validator.validate()
 
     error_count = sum(1 for e in errors if e.severity == "ERROR")
     assert error_count == 0, f"Validation errors: {[e for e in errors if e.severity == 'ERROR']}"
@@ -286,8 +286,8 @@ def test_session_validator_detects_missing_technical():
         )
 
         # Don't copy technical data - this should be invalid
-        validator = session_validator.SessionContainerValidator(session_file)
-        is_valid, errors = validator.validate()
+        container_validator = validator.SessionContainerValidator(session_file)
+        is_valid, errors = container_validator.validate()
 
         # Should have errors
         error_count = sum(1 for e in errors if e.severity == "ERROR")
@@ -326,8 +326,8 @@ def test_session_validator_detects_missing_processed_signal():
         )
 
         # Validate
-        validator = session_validator.SessionContainerValidator(session_file)
-        is_valid, errors = validator.validate()
+        container_validator = validator.SessionContainerValidator(session_file)
+        is_valid, errors = container_validator.validate()
 
     # Should detect missing processed_signal
     has_processed_signal_error = any(
@@ -416,12 +416,12 @@ def test_session_analytical_measurement_workflow(
     # Add analytical measurement
     ana_data = {"PRIMARY": np.random.rand(256, 256).astype(np.float32)}
     ana_meta = {"PRIMARY": {"integration_time_ms": 50.0}}
-    pony_map = {"PRIMARY": "PRIMARY"}
+    poni_map = {"PRIMARY": "PRIMARY"}
 
     handler.add_analytical_measurement(
         measurement_data=ana_data,
         detector_metadata=ana_meta,
-        pony_alias_map=pony_map,
+        poni_alias_map=poni_map,
         analysis_type=schema.ANALYSIS_TYPE_ATTENUATION,
     )
 

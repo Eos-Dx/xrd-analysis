@@ -2,7 +2,7 @@
 
 Creates and updates session_<id>.h5 containers that store:
 - Complete sample acquisition session data (sample_id, operator, beam energy, etc.)
-- Copy of /technical group from technical container (PONY, detector config, technical measurements)
+- Copy of /technical group from technical container (PONI, detector config, technical measurements)
 - Sample images and zone definitions
 - Point locations and metadata
 - Measurement data organized point-centrically
@@ -168,9 +168,8 @@ def add_detector_data_with_blobs(
     file_path: Union[str, Path],
     detector_path: str,
     processed_signal: np.ndarray,
-    raw_files: Optional[Dict[str, bytes]] = None,
-    metadata: Optional[Dict] = None,
-    pony_ref_path: Optional[str] = None,
+    raw_files: Dict[str, bytes],
+    poni_ref_path: Optional[str] = None,
 ) -> None:
     """Add detector data with raw file blobs and mandatory processed signal.
     
@@ -178,17 +177,15 @@ def add_detector_data_with_blobs(
         file_path: Container path
         detector_path: Full path to detector group (e.g., "/measurements/pt_001/meas_NNN/det_saxs")
         processed_signal: Mandatory processed numpy array (compression=4)
-        raw_files: Optional dict of {"raw_txt": bytes, "raw_dsc": bytes, ...} for raw data blobs
+        raw_files: Mandatory dict of {"raw_txt": bytes, "raw_dsc": bytes, ...} for raw data blobs
                    Keys should use format: raw_<extension> (e.g., raw_txt, raw_dsc, raw_t3pa)
                    This matches technical container blob naming convention.
-        metadata: Optional metadata dict (stored as JSON)
-        pony_ref_path: Optional path to PONI file for reference
+        poni_ref_path: Optional path to PONI file for reference
         
     Notes:
-        - processed_signal is MANDATORY
-        - raw_files stored as blobs with max compression (9) using keys: raw_txt, raw_dsc, etc.
-        - metadata stored as JSON string (no compression)
-        - Blob naming convention matches technical containers for consistency
+        - processed_signal is MANDATORY (stored at detector_path/processed_signal)
+        - raw_files is MANDATORY (stored as blobs under detector_path/blob with max compression 9)
+        - Blob naming convention: raw_txt, raw_dsc, etc. matches technical containers
     """
     # Create detector group
     utils.create_group_if_missing(file_path, detector_path)
@@ -204,65 +201,50 @@ def add_detector_data_with_blobs(
         overwrite=True,
     )
     
-    # raw_signal is no longer written; processed_signal is the only stored signal
-    
-    # 2. Write raw file blobs if provided (compression=9)
+    # 2. Write raw file blobs (compression=9)
     # Blobs are stored with keys: raw_txt, raw_dsc, etc.
     # This matches the naming convention used in technical containers
-    if raw_files:
-        blob_group = f"{detector_path}/{schema.DATASET_BLOB}"
-        utils.create_group_if_missing(file_path, blob_group)
-        
-        for blob_key, content in raw_files.items():
-            # blob_key should already be in format: raw_txt, raw_dsc, etc.
-            # If caller provides full filenames, extract format
-            if not blob_key.startswith('raw_'):
-                # Extract extension from filename (e.g., file.txt -> txt)
-                import os
-                _, ext = os.path.splitext(blob_key)
-                file_format = ext[1:] if ext else "unknown"
-                blob_key = f"raw_{file_format}"
-            
-            blob_path = f"{blob_group}/{blob_key}"
-            
-            # Convert bytes to numpy array for HDF5 storage
-            if isinstance(content, bytes):
-                blob_data = np.frombuffer(content, dtype=np.uint8)
-            elif isinstance(content, np.ndarray):
-                # If already numpy, store as-is
-                blob_data = content
-            else:
-                raise TypeError(f"Raw file content must be bytes or numpy array, got {type(content)}")
-            
-            utils.write_dataset(
-                file_path=file_path,
-                dataset_path=blob_path,
-                data=blob_data,
-                compression="gzip",
-                compression_opts=schema.COMPRESSION_BLOB_MAX,
-                overwrite=True,
-            )
+    blob_group = f"{detector_path}/{schema.DATASET_BLOB}"
+    utils.create_group_if_missing(file_path, blob_group)
     
-    # 3. Write optional metadata as JSON
-    if metadata:
-        metadata_path = f"{detector_path}/{schema.DATASET_METADATA}"
-        metadata_json = json.dumps(metadata, indent=2)
+    for blob_key, content in raw_files.items():
+        # blob_key should already be in format: raw_txt, raw_dsc, etc.
+        # If caller provides full filenames, extract format
+        if not blob_key.startswith('raw_'):
+            # Extract extension from filename (e.g., file.txt -> txt)
+            import os
+            _, ext = os.path.splitext(blob_key)
+            file_format = ext[1:] if ext else "unknown"
+            blob_key = f"raw_{file_format}"
+        
+        blob_path = f"{blob_group}/{blob_key}"
+        
+        # Convert bytes to numpy array for HDF5 storage
+        if isinstance(content, bytes):
+            blob_data = np.frombuffer(content, dtype=np.uint8)
+        elif isinstance(content, np.ndarray):
+            # If already numpy, store as-is
+            blob_data = content
+        else:
+            raise TypeError(f"Raw file content must be bytes or numpy array, got {type(content)}")
+        
         utils.write_dataset(
             file_path=file_path,
-            dataset_path=metadata_path,
-            data=metadata_json,
-            compression=None,  # JSON is already compact
+            dataset_path=blob_path,
+            data=blob_data,
+            compression="gzip",
+            compression_opts=schema.COMPRESSION_BLOB_MAX,
             overwrite=True,
         )
     
-    # 4. Add PONI reference if provided
-    if pony_ref_path:
+    # 3. Add PONI reference if provided
+    if poni_ref_path:
         try:
             utils.set_reference_attr(
                 file_path=file_path,
                 obj_path=detector_path,
-                attr_name=schema.ATTR_PONY_REF,
-                target_path=pony_ref_path,
+                attr_name=schema.ATTR_PONI_REF,
+                target_path=poni_ref_path,
             )
         except KeyError:
             # PONI may not exist
@@ -390,7 +372,7 @@ def add_image_mapping(
     sample_holder_zone_id: str,
     pixel_to_mm_conversion: Dict,
     orientation: str = "standard",
-    mapping_version: str = "1.0",
+    mapping_version: str = "0.1",
 ) -> str:
     """Add pixel-to-mm mapping metadata to /images/mapping.
 
@@ -503,7 +485,7 @@ def add_measurement(
     point_index: int,
     measurement_data: Dict[str, np.ndarray],
     detector_metadata: Dict[str, Dict],
-    pony_alias_map: Dict[str, str],
+    poni_alias_map: Dict[str, str],
     raw_files: Optional[Dict[str, Dict[str, bytes]]] = None,
     timestamp_start: Optional[str] = None,
     timestamp_end: Optional[str] = None,
@@ -518,10 +500,8 @@ def add_measurement(
         detector_metadata: Dict mapping detector_id to metadata dict with keys:
                           - 'integration_time_ms': float
                           - 'beam_energy_keV': float (optional)
-                          - 'detector_id': str
-        pony_alias_map: Dict mapping detector_alias to detector_id
-        raw_files: Optional dict of {detector_id: {"file1.txt": bytes, "file1.dsc": bytes}}
-                  Raw detector files stored as blobs with max compression
+        poni_alias_map: Dict mapping detector_alias to detector_id
+        raw_files: Dict mapping detector_id to {"raw_txt": bytes, "raw_dsc": bytes} (MANDATORY)
         timestamp_start: Start timestamp (generated if not provided)
         timestamp_end: End timestamp (optional)
         measurement_status: Status of measurement (completed, failed, aborted)
@@ -531,7 +511,7 @@ def add_measurement(
         
     Notes:
         - measurement_data contains mandatory processed signals (compression=4)
-        - raw_files contain optional raw detector files (compression=9)
+        - raw_files contains mandatory raw detector file blobs (compression=9)
     """
     if timestamp_start is None:
         timestamp_start = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -570,11 +550,13 @@ def add_measurement(
 
     utils.set_attrs(file_path, meas_path, attrs)
 
-    # Write per-detector data using blob storage
+    # Write per-detector data
+    raw_files = raw_files or {}
+
     for detector_id, processed_signal in measurement_data.items():
         # Determine detector role from alias
         alias = None
-        for a, d in pony_alias_map.items():
+        for a, d in poni_alias_map.items():
             if d == detector_id:
                 alias = a
                 break
@@ -584,15 +566,16 @@ def add_measurement(
         role = schema.format_detector_role(alias)
         detector_path = f"{meas_path}/{role}"
         
-        # Get raw files for this detector if provided
-        detector_raw_files = raw_files.get(detector_id) if raw_files else None
-        
         # Get metadata for this detector
         metadata = detector_metadata.get(detector_id) if detector_metadata else None
         
+        # Get raw files for this detector (mandatory)
+        detector_raw_files = raw_files.get(detector_id, {})
+        
         # Set detector-level attributes
         det_attrs = {
-            schema.ATTR_DETECTOR_ID: detector_id,
+            schema.ATTR_DETECTOR_ID: detector_id,  # Real hardware ID
+            schema.ATTR_DETECTOR_ALIAS: alias,  # Alias (e.g., "PRIMARY")
         }
         if metadata:
             det_attrs[schema.ATTR_INTEGRATION_TIME_MS] = metadata.get(
@@ -601,15 +584,14 @@ def add_measurement(
             if "beam_energy_keV" in metadata:
                 det_attrs[schema.ATTR_BEAM_ENERGY_KEV] = metadata["beam_energy_keV"]
         
-        # Write detector data with blobs
-        pony_path = f"{schema.GROUP_TECHNICAL_PONY}/pony_{role[4:]}"
+        # Write detector data with mandatory blobs
+        poni_path = f"{schema.GROUP_TECHNICAL_PONI}/poni_{role[4:]}"
         add_detector_data_with_blobs(
             file_path=file_path,
             detector_path=detector_path,
             processed_signal=processed_signal,
             raw_files=detector_raw_files,
-            metadata=metadata,
-            pony_ref_path=pony_path,
+            poni_ref_path=poni_path,
         )
         
         # Set detector attributes
@@ -622,7 +604,7 @@ def add_analytical_measurement(
     file_path: Union[str, Path],
     measurement_data: Dict[str, np.ndarray],
     detector_metadata: Dict[str, Dict],
-    pony_alias_map: Dict[str, str],
+    poni_alias_map: Dict[str, str],
     analysis_type: str,
     raw_files: Optional[Dict[str, Dict[str, bytes]]] = None,
     timestamp_start: Optional[str] = None,
@@ -635,9 +617,9 @@ def add_analytical_measurement(
         file_path: Session container path
         measurement_data: Dict mapping detector_id to processed numpy array (MANDATORY)
         detector_metadata: Dict mapping detector_id to metadata dict
-        pony_alias_map: Dict mapping detector_alias to detector_id
+        poni_alias_map: Dict mapping detector_alias to detector_id
         analysis_type: Type of analysis (e.g., "attenuation")
-        raw_files: Optional dict of {detector_id: {"file1.txt": bytes, "file1.dsc": bytes}}
+        raw_files: Dict mapping detector_id to {"raw_txt": bytes, "raw_dsc": bytes} (MANDATORY)
         timestamp_start: Start timestamp (generated if not provided)
         timestamp_end: End timestamp (optional)
         measurement_status: Status of measurement
@@ -669,11 +651,13 @@ def add_analytical_measurement(
 
     utils.set_attrs(file_path, ana_path, attrs)
 
-    # Write per-detector data using blob storage
+    # Write per-detector data
+    raw_files = raw_files or {}
+
     for detector_id, processed_signal in measurement_data.items():
         # Determine detector role
         alias = None
-        for a, d in pony_alias_map.items():
+        for a, d in poni_alias_map.items():
             if d == detector_id:
                 alias = a
                 break
@@ -683,15 +667,16 @@ def add_analytical_measurement(
         role = schema.format_detector_role(alias)
         detector_path = f"{ana_path}/{role}"
         
-        # Get raw files for this detector if provided
-        detector_raw_files = raw_files.get(detector_id) if raw_files else None
-        
         # Get metadata for this detector
         metadata = detector_metadata.get(detector_id) if detector_metadata else None
         
+        # Get raw files for this detector (mandatory)
+        detector_raw_files = raw_files.get(detector_id, {})
+        
         # Set detector-level attributes
         det_attrs = {
-            schema.ATTR_DETECTOR_ID: detector_id,
+            schema.ATTR_DETECTOR_ID: detector_id,  # Real hardware ID
+            schema.ATTR_DETECTOR_ALIAS: alias,  # Alias (e.g., "PRIMARY")
         }
         if metadata:
             det_attrs[schema.ATTR_INTEGRATION_TIME_MS] = metadata.get(
@@ -700,15 +685,14 @@ def add_analytical_measurement(
             if "beam_energy_keV" in metadata:
                 det_attrs[schema.ATTR_BEAM_ENERGY_KEV] = metadata["beam_energy_keV"]
         
-        # Write detector data with blobs
-        pony_path = f"{schema.GROUP_TECHNICAL_PONY}/pony_{role[4:]}"
+        # Write detector data with mandatory blobs
+        poni_path = f"{schema.GROUP_TECHNICAL_PONI}/poni_{role[4:]}"
         add_detector_data_with_blobs(
             file_path=file_path,
             detector_path=detector_path,
             processed_signal=processed_signal,
             raw_files=detector_raw_files,
-            metadata=metadata,
-            pony_ref_path=pony_path,
+            poni_ref_path=poni_path,
         )
         
         # Set detector attributes

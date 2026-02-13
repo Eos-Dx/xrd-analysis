@@ -1,4 +1,4 @@
-"""DIFRA HDF5 Data Model v1.0 - Schema Constants and Utilities
+"""DIFRA HDF5 Data Model v0.1 - Schema Constants and Utilities
 
 This module defines constants, formatters, and validation rules matching
 the approved DIFRA_HDF5_Data_Model_FINAL.md specification.
@@ -30,8 +30,8 @@ import uuid
 from typing import Literal
 
 # ================== Version and Model ======================
-SCHEMA_VERSION = "1.0"
-DATA_MODEL_VERSION = "1.0"
+SCHEMA_VERSION = "0.1"
+DATA_MODEL_VERSION = "0.1"
 
 # ================== Container Types ========================
 CONTAINER_TYPE_TECHNICAL = "technical"
@@ -48,7 +48,7 @@ GROUP_ANALYTICAL_MEASUREMENTS = "/analytical_measurements"
 
 # Sub-groups within /technical
 GROUP_TECHNICAL_CONFIG = "/technical/config"
-GROUP_TECHNICAL_PONY = "/technical/pony"
+GROUP_TECHNICAL_PONI = "/technical/poni"
 
 # ================== ID Formatting ==========================
 def format_point_id(index: int) -> str:
@@ -155,11 +155,12 @@ ATTR_PATIENT_ID = "patient_id"
 # ================== Technical Measurement Attrs ============
 ATTR_TECHNICAL_TYPE = "technical_type"
 ATTR_TIMESTAMP = "timestamp"
-ATTR_DETECTOR_ID = "detector_id"
+ATTR_DETECTOR_ID = "detector_id"  # Real hardware ID (e.g., "advacam_001")
+ATTR_DETECTOR_ALIAS = "detector_alias"  # Alias/role (e.g., "PRIMARY", "SECONDARY")
 
-# ================== PONY Attributes ========================
-ATTR_PONY_DERIVED_FROM = "derived_from"  # HDF5 ref to technical event
-ATTR_PONY_OPERATOR_CONFIRMED = "operator_confirmed"
+# ================== PONI Attributes ========================
+ATTR_PONI_DERIVED_FROM = "derived_from"  # HDF5 ref to technical event
+ATTR_PONI_OPERATOR_CONFIRMED = "operator_confirmed"
 
 # ================== Measurement Attributes =================
 ATTR_MEASUREMENT_COUNTER = "measurement_counter"
@@ -167,7 +168,8 @@ ATTR_TIMESTAMP_START = "timestamp_start"
 ATTR_TIMESTAMP_END = "timestamp_end"
 ATTR_MEASUREMENT_STATUS = "measurement_status"
 ATTR_POINT_REF = "point_ref"
-ATTR_PONY_REF = "pony_ref"
+# Canonical reference attribute for PONI links
+ATTR_PONI_REF = "poni_ref"
 
 # Measurement status values
 STATUS_COMPLETED = "completed"

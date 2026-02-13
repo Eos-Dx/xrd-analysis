@@ -318,7 +318,7 @@ class SessionManager:
         self,
         measurement_data: Dict,
         detector_metadata: Dict,
-        pony_alias_map: Dict,
+        poni_alias_map: Dict,
         mode: str,  # "without" or "with"
     ) -> int:
         """Add attenuation measurement (I₀ or I) to session container.
@@ -326,7 +326,7 @@ class SessionManager:
         Args:
             measurement_data: Dict mapping detector_id to 2D array
             detector_metadata: Dict mapping detector_id to metadata dict
-            pony_alias_map: Dict mapping detector_alias to detector_id
+            poni_alias_map: Dict mapping detector_alias to detector_id
             mode: "without" for I₀, "with" for I
             
         Returns:
@@ -338,7 +338,7 @@ class SessionManager:
             file_path=self.session_path,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
             timestamp_start=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         )
@@ -359,13 +359,19 @@ class SessionManager:
     def link_attenuation_to_points(
         self,
         num_points: int,
+        start_point_idx: int = 1,
     ):
         """Link both I₀ and I attenuation measurements to all points.
         
         Args:
             num_points: Total number of points to link
+            start_point_idx: First point index to link (1-based)
         """
         self._check_active()
+        if start_point_idx < 1:
+            raise ValueError(
+                f"start_point_idx must be >= 1, got {start_point_idx}"
+            )
         
         if self.i0_counter is None or self.i_counter is None:
             raise RuntimeError(
@@ -376,11 +382,13 @@ class SessionManager:
         logger.info(
             "Linking attenuation to points",
             num_points=num_points,
+            start_point_idx=start_point_idx,
             i0_counter=self.i0_counter,
             i_counter=self.i_counter,
         )
         
-        for point_idx in range(1, num_points + 1):
+        end_point_idx = start_point_idx + num_points
+        for point_idx in range(start_point_idx, end_point_idx):
             # Link I₀
             writer.link_analytical_measurement_to_point(
                 file_path=self.session_path,
@@ -402,7 +410,7 @@ class SessionManager:
         point_index: int,
         measurement_data: Dict,
         detector_metadata: Dict,
-        pony_alias_map: Dict,
+        poni_alias_map: Dict,
         raw_files: Optional[Dict] = None,
     ) -> str:
         """Add regular measurement at a point.
@@ -411,7 +419,7 @@ class SessionManager:
             point_index: Point index (1-based)
             measurement_data: Dict mapping detector_id to 2D array
             detector_metadata: Dict mapping detector_id to metadata dict
-            pony_alias_map: Dict mapping detector_alias to detector_id
+            poni_alias_map: Dict mapping detector_alias to detector_id
             raw_files: Optional dict of {detector_id: {"file.txt": bytes, "file.dsc": bytes}}
             
         Returns:
@@ -424,7 +432,7 @@ class SessionManager:
             point_index=point_index,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             raw_files=raw_files,
         )
         

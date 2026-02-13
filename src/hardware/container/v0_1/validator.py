@@ -123,18 +123,28 @@ class SessionContainerValidator:
             return
 
         tech_group = f[schema.GROUP_TECHNICAL]
+        _ = tech_group
 
-        # Check for required subgroups
-        required_subgroups = [schema.GROUP_TECHNICAL_CONFIG, schema.GROUP_TECHNICAL_PONY]
-        for subgroup in required_subgroups:
-            if subgroup not in f:
-                self.errors.append(
-                    ValidationError(
-                        "ERROR",
-                        schema.GROUP_TECHNICAL,
-                        f"Missing required subgroup: {subgroup}",
-                    )
+        # Check required config subgroup
+        if schema.GROUP_TECHNICAL_CONFIG not in f:
+            self.errors.append(
+                ValidationError(
+                    "ERROR",
+                    schema.GROUP_TECHNICAL,
+                    f"Missing required subgroup: {schema.GROUP_TECHNICAL_CONFIG}",
                 )
+            )
+
+        # Check required PONI subgroup
+        if schema.GROUP_TECHNICAL_PONI not in f:
+            self.errors.append(
+                ValidationError(
+                    "ERROR",
+                    schema.GROUP_TECHNICAL,
+                    f"Missing required subgroup: {schema.GROUP_TECHNICAL_PONI}",
+                )
+            )
+            return
 
         # Check for detector config
         config_path = f"{schema.GROUP_TECHNICAL_CONFIG}/detector_config"
@@ -147,14 +157,15 @@ class SessionContainerValidator:
                 )
             )
 
-        # Check for PONY datasets
-        pony_group = f[schema.GROUP_TECHNICAL_PONY]
-        if len(pony_group) == 0:
+        # Check for PONI datasets
+        poni_group = f[schema.GROUP_TECHNICAL_PONI]
+        has_poni_like_dataset = any(name.startswith("poni_") for name in poni_group.keys())
+        if not has_poni_like_dataset:
             self.errors.append(
                 ValidationError(
                     "WARNING",
-                    schema.GROUP_TECHNICAL_PONY,
-                    "No PONY datasets found",
+                    schema.GROUP_TECHNICAL_PONI,
+                    "No PONI datasets found",
                 )
             )
 

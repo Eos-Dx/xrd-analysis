@@ -17,26 +17,22 @@ from . import utils
 from . import writer
 from . import session_container
 from . import validator
+from . import technical_validator
 from . import technical_container
 from . import measurement_counter
 from . import container_manager
 from .reader import SessionContainer, TechnicalContainer
-
-
-# Compatibility layer: old code expects session_validator as a module
-# Map validator functions to session_validator namespace  
-session_validator = validator
 
 __all__ = [
     "schema",
     "utils", 
     "writer",
     "validator",
+    "technical_validator",
     "technical_container",
     "measurement_counter",
     "container_manager",
     "session_container",
-    "session_validator",   # Compatibility alias
     "SessionContainer",
     "TechnicalContainer",
     "__version__",

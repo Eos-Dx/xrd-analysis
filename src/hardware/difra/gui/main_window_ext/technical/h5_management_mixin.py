@@ -59,7 +59,7 @@ class H5ManagementMixin:
             container_path: Path to generated container
             container_id: Container ID
         """
-        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+        from hardware.container.v0_1.technical_validator import validate_technical_container
         import h5py
         
         # Validate container
@@ -75,7 +75,7 @@ class H5ManagementMixin:
             return
         
         # Check schema version
-        expected_version = self.config.get("expected_technical_schema_version", "1.0")
+        expected_version = self.config.get("expected_technical_schema_version", "0.1")
         try:
             with h5py.File(container_path, 'r') as f:
                 actual_version = f.attrs.get("schema_version", "unknown")
@@ -397,7 +397,7 @@ class H5ManagementMixin:
         
         Displays validation results in a dialog.
         """
-        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+        from hardware.container.v0_1.technical_validator import validate_technical_container
         from hardware.container.v0_1.container_manager import is_container_locked
         from .helpers import _get_default_folder
         import h5py
@@ -440,7 +440,7 @@ class H5ManagementMixin:
         lock_status = "🔒 LOCKED" if is_locked else "🔓 UNLOCKED"
         
         # Check schema version
-        expected_version = self.config.get("expected_technical_schema_version", "1.0")
+        expected_version = self.config.get("expected_technical_schema_version", "0.1")
         try:
             with h5py.File(file_path, 'r') as f:
                 actual_version = f.attrs.get("schema_version", "unknown")
@@ -508,7 +508,7 @@ class H5ManagementMixin:
         Automatically validates the container and displays its contents in the aux table.
         Works with both locked and unlocked containers.
         """
-        from hardware.difra.data.hdf5.technical_validator import validate_technical_container
+        from hardware.container.v0_1.technical_validator import validate_technical_container
         from hardware.container.v0_1.container_manager import is_container_locked
         from .helpers import _get_default_folder
         
@@ -620,7 +620,6 @@ class H5ManagementMixin:
         """
         import h5py
         from hardware.container.v0_1 import schema
-        from hardware.difra.data.hdf5 import schema_v1
         from PyQt5.QtWidgets import QComboBox
         
         # Clear existing table
@@ -628,6 +627,17 @@ class H5ManagementMixin:
         
         # Extract detector distances from container
         extracted_distances = {}
+        detector_configs = self.config.get("detectors", []) if hasattr(self, "config") else []
+        alias_to_detector_id = {
+            cfg.get("alias"): cfg.get("id")
+            for cfg in detector_configs
+            if cfg.get("alias") and cfg.get("id")
+        }
+        detector_id_to_alias = {
+            cfg.get("id"): cfg.get("alias")
+            for cfg in detector_configs
+            if cfg.get("id") and cfg.get("alias")
+        }
         
         # Track loaded items for logging
         loaded_count = 0
@@ -643,8 +653,12 @@ class H5ManagementMixin:
                     continue
                 
                 evt_group = tech_group[evt_name]
-                # Read technical_type attribute from event level
-                tech_type = evt_group.attrs.get(schema_v1.ATTR_TECHNICAL_TYPE, 'UNKNOWN')
+                # Read technical type from event-level attrs.
+                # Current writers use "type"; keep ATTR_TECHNICAL_TYPE as fallback.
+                tech_type = evt_group.attrs.get(
+                    "type",
+                    evt_group.attrs.get(schema.ATTR_TECHNICAL_TYPE, "UNKNOWN"),
+                )
                 
                 # Iterate through detectors in this event
                 for det_name in evt_group.keys():
@@ -653,8 +667,22 @@ class H5ManagementMixin:
                     
                     det_group = evt_group[det_name]
                     
-                    # Get detector alias from attributes
-                    detector_id = det_group.attrs.get("detector_id", det_name.replace("det_", ""))
+                    # Recover detector identity from canonical attributes.
+                    detector_id = det_group.attrs.get(schema.ATTR_DETECTOR_ID, "")
+                    detector_alias = det_group.attrs.get(schema.ATTR_DETECTOR_ALIAS, "")
+                    if isinstance(detector_id, bytes):
+                        detector_id = detector_id.decode("utf-8")
+                    if isinstance(detector_alias, bytes):
+                        detector_alias = detector_alias.decode("utf-8")
+                    if not detector_alias:
+                        detector_alias = detector_id_to_alias.get(detector_id, "")
+                    if not detector_alias:
+                        try:
+                            detector_alias = schema.parse_detector_role(det_name)
+                        except Exception:
+                            detector_alias = det_name.replace("det_", "").upper()
+                    if not detector_id:
+                        detector_id = alias_to_detector_id.get(detector_alias, detector_alias)
                     
                     # Extract distance from this detector's measurement
                     distance_cm = det_group.attrs.get("distance_cm", None)
@@ -667,7 +695,7 @@ class H5ManagementMixin:
                         file_path = f"[H5: {evt_name}/{det_name}]"
                     
                     # Add to table
-                    alias = detector_id.upper() if detector_id else "UNKNOWN"
+                    alias = detector_alias if detector_alias else "UNKNOWN"
                     try:
                         self._add_aux_item_to_list(alias, file_path)
                         loaded_count += 1
@@ -691,17 +719,15 @@ class H5ManagementMixin:
                         if idx >= 0:
                             type_cb.setCurrentIndex(idx)
                     
-                    # Set Primary checkbox (column 0) based on detector role
-                    # Primary detector (det_primary) should be checked
+                    # Loaded technical container rows are canonical primaries.
                     try:
-                        is_primary = det_name == "det_primary" or det_name.endswith("_primary")
                         checkbox_widget = self.auxTable.cellWidget(row_idx, 0)
                         if checkbox_widget:
                             # Find the checkbox within the widget
                             from PyQt5.QtWidgets import QCheckBox
                             checkbox = checkbox_widget.findChild(QCheckBox)
                             if checkbox:
-                                checkbox.setChecked(is_primary)
+                                checkbox.setChecked(True)
                     except Exception as e:
                         logger.warning(f"Failed to set primary checkbox: {e}")
         

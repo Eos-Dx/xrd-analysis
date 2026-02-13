@@ -608,25 +608,29 @@ class ZoneMeasurementsProcessMixin:
                         all_data[alias] = np.load(npy_file)
                 
                 if all_data:
-                    metadata = {
-                        "n_frames": frames,
-                        "integration_time_s": short_t,
-                        "timestamp": group_ts,
-                        "loading_position_mm": [load_x, load_y],
+                    detector_lookup = {
+                        d.get("alias"): d for d in self.config.get("detectors", [])
                     }
-                    
-                    # Get PONI map
-                    pony_map = {}
-                    for alias in all_data.keys():
-                        if hasattr(self, 'get_poni_file'):
-                            poni_file = self.get_poni_file(alias)
-                            if poni_file:
-                                pony_map[alias] = poni_file
-                    
+                    measurement_data = {}
+                    detector_metadata = {}
+                    poni_alias_map = {}
+                    for alias, signal in all_data.items():
+                        detector_meta = detector_lookup.get(alias, {})
+                        detector_id = detector_meta.get("id", alias)
+                        measurement_data[detector_id] = signal
+                        detector_metadata[detector_id] = {
+                            "integration_time_ms": short_t * 1000,
+                            "detector_id": detector_id,
+                            "timestamp": group_ts,
+                            "loading_position_mm": [load_x, load_y],
+                            "n_frames": frames,
+                        }
+                        poni_alias_map[alias] = detector_id
+
                     self.session_manager.add_attenuation_measurement(
-                        data=all_data,
-                        metadata=metadata,
-                        pony_map=pony_map,
+                        measurement_data=measurement_data,
+                        detector_metadata=detector_metadata,
+                        poni_alias_map=poni_alias_map,
                         mode="without",
                     )
                     
@@ -765,25 +769,29 @@ class ZoneMeasurementsProcessMixin:
                             all_data[alias] = np.load(npy_file)
                     
                     if all_data:
-                        metadata = {
-                            "n_frames": frames,
-                            "integration_time_s": short_t,
-                            "timestamp": self._timestamp,
-                            "point_position_mm": [self._x_mm, self._y_mm],
+                        detector_lookup = {
+                            d.get("alias"): d for d in self.config.get("detectors", [])
                         }
-                        
-                        # Get PONI map
-                        pony_map = {}
-                        for alias in all_data.keys():
-                            if hasattr(self, 'get_poni_file'):
-                                poni_file = self.get_poni_file(alias)
-                                if poni_file:
-                                    pony_map[alias] = poni_file
-                        
+                        measurement_data = {}
+                        detector_metadata = {}
+                        poni_alias_map = {}
+                        for alias, signal in all_data.items():
+                            detector_meta = detector_lookup.get(alias, {})
+                            detector_id = detector_meta.get("id", alias)
+                            measurement_data[detector_id] = signal
+                            detector_metadata[detector_id] = {
+                                "integration_time_ms": short_t * 1000,
+                                "detector_id": detector_id,
+                                "timestamp": self._timestamp,
+                                "point_position_mm": [self._x_mm, self._y_mm],
+                                "n_frames": frames,
+                            }
+                            poni_alias_map[alias] = detector_id
+
                         self.session_manager.add_attenuation_measurement(
-                            data=all_data,
-                            metadata=metadata,
-                            pony_map=pony_map,
+                            measurement_data=measurement_data,
+                            detector_metadata=detector_metadata,
+                            poni_alias_map=poni_alias_map,
                             mode="with",
                         )
                         
@@ -792,7 +800,7 @@ class ZoneMeasurementsProcessMixin:
                         try:
                             self.session_manager.link_attenuation_to_points(
                                 num_points=1,
-                                start_point_idx=self.current_measurement_sorted_index,
+                                start_point_idx=self.current_measurement_sorted_index + 1,
                             )
                             logger.info(
                                 f"Linked attenuation to point {self.current_measurement_sorted_index}"
@@ -930,11 +938,11 @@ class ZoneMeasurementsProcessMixin:
                 raw_files_data = {}
                 
                 detector_lookup = {d["alias"]: d for d in self.config["detectors"]}
-                pony_alias_map = {}
+                poni_alias_map = {}
                 for alias, npy_file in result_files.items():
                     detector_meta = detector_lookup.get(alias, {})
                     detector_id = detector_meta.get("id", alias)
-                    pony_alias_map[alias] = detector_id
+                    poni_alias_map[alias] = detector_id
                     # Load data directly
                     logger.info(f"Loading {alias} data from: {Path(npy_file).name}")
                     all_data[detector_id] = np.load(npy_file)
@@ -1004,7 +1012,7 @@ class ZoneMeasurementsProcessMixin:
                     point_index=point_index_1based,
                     measurement_data=all_data,
                     detector_metadata=detector_metadata,
-                    pony_alias_map=pony_alias_map,
+                    poni_alias_map=poni_alias_map,
                     raw_files=raw_files_by_detector_id if raw_files_by_detector_id else None,
                 )
                 

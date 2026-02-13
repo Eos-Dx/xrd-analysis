@@ -218,7 +218,7 @@ def create_reference(
     
     Args:
         file_path: Container file path
-        target_path: Path to target object (e.g. "/technical/pony/pony_primary")
+        target_path: Path to target object (e.g. "/technical/poni/poni_primary")
     
     Returns:
         h5py.Reference object
@@ -256,7 +256,7 @@ def set_reference_attr(
     Args:
         file_path: Container file path
         obj_path: Path to object that will hold the reference attribute
-        attr_name: Attribute name (e.g. "pony_ref")
+        attr_name: Attribute name (e.g. "poni_ref")
         target_path: Path to referenced object
     """
     with open_h5_append(file_path) as f:

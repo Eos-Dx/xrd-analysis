@@ -733,7 +733,7 @@ class SessionMixin:
                 sample_holder_zone_id=sample_holder_zone_id,
                 pixel_to_mm_conversion=pixel_to_mm_conversion,
                 orientation=orientation,
-                mapping_version="1.0",
+                mapping_version="0.1",
             )
             
             logger.info(

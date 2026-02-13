@@ -4,7 +4,7 @@ Tests verify:
 - Adding analytical measurements with analysis_type="attenuation"
 - Linking analytical measurements to points
 - Per-detector metadata (integration time, beam energy)
-- PONY references from analytical measurements
+- PONI references from analytical measurements
 - Multiple analytical measurements per session
 - Validation of analytical measurement structure
 """
@@ -38,7 +38,7 @@ def session_container_with_technical(temp_dir):
     from hardware.container.v0_1.technical_container import (
         create_technical_container,
         write_detector_config,
-        write_pony_datasets,
+        write_poni_datasets,
     )
     
     # Create minimal technical container
@@ -80,12 +80,12 @@ Rot3: 0.000000
 Detector_config: {"pixel1": 5.5e-05, "pixel2": 5.5e-05, "max_shape": [256, 256]}
 """
     
-    pony_data = {
+    poni_data = {
         "DET1": (poni_content, "DET1_17cm.poni"),
         "DET2": (poni_content, "DET2_17cm.poni"),
     }
     
-    write_pony_datasets(tech_path, pony_data, 17.0)
+    write_poni_datasets(tech_path, poni_data, 17.0)
     
     # Lock technical container
     from hardware.container.v0_1.container_manager import lock_container
@@ -144,14 +144,14 @@ class TestAnalyticalMeasurementBasics:
             },
         }
         
-        pony_alias_map = {"DET1": "DET1", "DET2": "DET2"}
+        poni_alias_map = {"DET1": "DET1", "DET2": "DET2"}
         
         # Add analytical measurement
         ana_path = writer.add_analytical_measurement(
             file_path=session_file,
             measurement_data=attenuation_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
             timestamp_start="2024-01-15 10:30:00",
         )
@@ -184,7 +184,7 @@ class TestAnalyticalMeasurementBasics:
         """Test adding multiple analytical measurements to same session."""
         session_file = session_container_with_technical
         
-        pony_alias_map = {"DET1": "DET1", "DET2": "DET2"}
+        poni_alias_map = {"DET1": "DET1", "DET2": "DET2"}
         
         # Add "without sample" measurement
         without_data = {
@@ -201,7 +201,7 @@ class TestAnalyticalMeasurementBasics:
             file_path=session_file,
             measurement_data=without_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
             timestamp_start="2024-01-15 10:30:00",
         )
@@ -216,7 +216,7 @@ class TestAnalyticalMeasurementBasics:
             file_path=session_file,
             measurement_data=with_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
             timestamp_start="2024-01-15 10:31:00",
         )
@@ -229,8 +229,8 @@ class TestAnalyticalMeasurementBasics:
             assert f[without_path].attrs[schema.ATTR_MEASUREMENT_COUNTER] == 1
             assert f[with_path].attrs[schema.ATTR_MEASUREMENT_COUNTER] == 2
     
-    def test_analytical_measurement_pony_references(self, session_container_with_technical):
-        """Test that analytical measurements correctly reference PONY files."""
+    def test_analytical_measurement_poni_references(self, session_container_with_technical):
+        """Test that analytical measurements correctly reference PONI files."""
         session_file = session_container_with_technical
         
         attenuation_data = {
@@ -241,30 +241,30 @@ class TestAnalyticalMeasurementBasics:
             "DET1": {"integration_time_ms": 50.0, "beam_energy_keV": 17.5},
         }
         
-        pony_alias_map = {"DET1": "DET1"}
+        poni_alias_map = {"DET1": "DET1"}
         
         ana_path = writer.add_analytical_measurement(
             file_path=session_file,
             measurement_data=attenuation_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
         )
         
-        # Verify PONY reference
+        # Verify PONI reference
         with h5py.File(session_file, "r") as f:
             det_group = f[f"{ana_path}/det_det1"]
             
-            # Check PONY reference exists
-            assert schema.ATTR_PONY_REF in det_group.attrs
+            # Check PONI reference exists
+            assert schema.ATTR_PONI_REF in det_group.attrs
             
-            # Dereference and verify it points to correct PONY
-            pony_ref = det_group.attrs[schema.ATTR_PONY_REF]
-            pony_group = f[pony_ref]
+            # Dereference and verify it points to correct PONI
+            poni_ref = det_group.attrs[schema.ATTR_PONI_REF]
+            poni_group = f[poni_ref]
             
-            assert pony_group.name == "/technical/pony/pony_det1"
-            # PONY content is stored as dataset data, not an attribute
-            assert schema.ATTR_DETECTOR_ID in pony_group.attrs
+            assert poni_group.name == "/technical/poni/poni_det1"
+            # PONI content is stored as dataset data, not an attribute
+            assert schema.ATTR_DETECTOR_ID in poni_group.attrs
 
 
 class TestAnalyticalMeasurementPointLinking:
@@ -283,13 +283,13 @@ class TestAnalyticalMeasurementPointLinking:
             "DET1": {"integration_time_ms": 50.0, "beam_energy_keV": 17.5},
         }
         
-        pony_alias_map = {"DET1": "DET1"}
+        poni_alias_map = {"DET1": "DET1"}
         
         ana_path = writer.add_analytical_measurement(
             file_path=session_file,
             measurement_data=attenuation_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
         )
         
@@ -321,7 +321,7 @@ class TestAnalyticalMeasurementPointLinking:
         """Test linking multiple analytical measurements to same point."""
         session_file = session_container_with_technical
         
-        pony_alias_map = {"DET1": "DET1"}
+        poni_alias_map = {"DET1": "DET1"}
         detector_metadata = {
             "DET1": {"integration_time_ms": 50.0, "beam_energy_keV": 17.5},
         }
@@ -336,7 +336,7 @@ class TestAnalyticalMeasurementPointLinking:
                 file_path=session_file,
                 measurement_data=data,
                 detector_metadata=detector_metadata,
-                pony_alias_map=pony_alias_map,
+                poni_alias_map=poni_alias_map,
                 analysis_type="attenuation",
             )
         
@@ -386,13 +386,13 @@ class TestAnalyticalMeasurementPointLinking:
             "DET1": {"integration_time_ms": 50.0, "beam_energy_keV": 17.5},
         }
         
-        pony_alias_map = {"DET1": "DET1"}
+        poni_alias_map = {"DET1": "DET1"}
         
         writer.add_analytical_measurement(
             file_path=session_file,
             measurement_data=data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
         )
         
@@ -441,13 +441,13 @@ class TestAnalyticalMeasurementMetadata:
             },
         }
         
-        pony_alias_map = {"DET1": "DET1", "DET2": "DET2"}
+        poni_alias_map = {"DET1": "DET1", "DET2": "DET2"}
         
         ana_path = writer.add_analytical_measurement(
             file_path=session_file,
             measurement_data=attenuation_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
         )
         
@@ -480,13 +480,13 @@ class TestAnalyticalMeasurementMetadata:
             },
         }
         
-        pony_alias_map = {"DET1": "DET1", "DET2": "DET2"}
+        poni_alias_map = {"DET1": "DET1", "DET2": "DET2"}
         
         ana_path = writer.add_analytical_measurement(
             file_path=session_file,
             measurement_data=attenuation_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
         )
         
@@ -513,13 +513,13 @@ class TestAnalyticalMeasurementMetadata:
             },
         }
         
-        pony_alias_map = {"DET1": "DET1"}
+        poni_alias_map = {"DET1": "DET1"}
         
         ana_path = writer.add_analytical_measurement(
             file_path=session_file,
             measurement_data=attenuation_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
         )
         
@@ -550,13 +550,13 @@ class TestAnalyticalMeasurementValidation:
             "DET1": {"integration_time_ms": 50.0, "beam_energy_keV": 17.5},
         }
         
-        pony_alias_map = {"DET1": "DET1"}
+        poni_alias_map = {"DET1": "DET1"}
         
         writer.add_analytical_measurement(
             file_path=session_file,
             measurement_data=data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
         )
         
@@ -579,13 +579,13 @@ class TestAnalyticalMeasurementValidation:
             "DET2": {"integration_time_ms": 50.0, "beam_energy_keV": 17.5},
         }
         
-        pony_alias_map = {"DET1": "DET1", "DET2": "DET2"}
+        poni_alias_map = {"DET1": "DET1", "DET2": "DET2"}
         
         ana_path = writer.add_analytical_measurement(
             file_path=session_file,
             measurement_data=data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
         )
         
@@ -630,13 +630,13 @@ class TestAnalyticalMeasurementIntegration:
             "DET1": {"integration_time_ms": 1000.0, "beam_energy_keV": 17.5},
         }
         
-        pony_alias_map = {"DET1": "DET1"}
+        poni_alias_map = {"DET1": "DET1"}
         
         meas_path = writer.add_measurement(
             file_path=session_file,
             measurement_data=regular_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             point_index=1,
         )
         
@@ -649,7 +649,7 @@ class TestAnalyticalMeasurementIntegration:
             file_path=session_file,
             measurement_data=analytical_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
         )
         
@@ -697,7 +697,7 @@ class TestAnalyticalMeasurementIntegration:
                 physical_coordinates_mm=[10.0 * i, 20.0 * i],
             )
         
-        pony_alias_map = {"DET1": "DET1", "DET2": "DET2"}
+        poni_alias_map = {"DET1": "DET1", "DET2": "DET2"}
         
         # Step 1: Measure without sample (I0)
         without_data = {
@@ -714,7 +714,7 @@ class TestAnalyticalMeasurementIntegration:
             file_path=session_file,
             measurement_data=without_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
             timestamp_start="2024-01-15 10:00:00",
         )
@@ -729,7 +729,7 @@ class TestAnalyticalMeasurementIntegration:
             file_path=session_file,
             measurement_data=with_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
             timestamp_start="2024-01-15 10:01:00",
         )

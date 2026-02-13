@@ -212,8 +212,12 @@ class TestTechnicalMetaGeneration(unittest.TestCase):
     def setUp(self):
         # Import module under test (PyQt5 may already be imported by other tests)
         from hardware.difra.gui.main_window_ext import technical_measurements as tm
+        from hardware.difra.gui.main_window_ext.technical import (
+            h5_generation_mixin as h5gm,
+        )
 
         self.tm = tm
+        self.h5gm = h5gm
 
         # Ensure QMessageBox and QComboBox are always stubbed (even if real PyQt5 is present)
         # This avoids needing a QApplication in unit tests.
@@ -222,6 +226,7 @@ class TestTechnicalMetaGeneration(unittest.TestCase):
                 pass
 
         self.tm.QComboBox = _StubComboBox
+        self.h5gm.QComboBox = _StubComboBox
 
         class _StubMsgBox:
             Yes = 1
@@ -244,6 +249,7 @@ class TestTechnicalMetaGeneration(unittest.TestCase):
                 return None
 
         self.tm.QMessageBox = _StubMsgBox
+        self.h5gm.QMessageBox = _StubMsgBox
 
         # Monkeypatch validate_folder to be identity
         self.tm.validate_folder = lambda p: p
@@ -306,13 +312,18 @@ class TestTechnicalMetaGeneration(unittest.TestCase):
                 return self._sel
 
             def item(self, row, col):
-                # Only (row,0) is used
-                return _StubItem(self._rows[row]["file_path"]) if col == 0 else None
+                # Support both legacy and current table layouts:
+                # - file in column 0 (legacy)
+                # - file in column 1 (current with "Primary" checkbox at column 0)
+                return _StubItem(self._rows[row]["file_path"]) if col in (0, 1) else None
 
             def cellWidget(self, row, col):
-                if col == 1:
+                # Support both legacy and current table layouts:
+                # - type in column 1 (legacy) or 2 (current)
+                # - alias in column 2 (legacy) or 3 (current)
+                if col in (1, 2):
                     return _make_cb(self._rows[row]["type_text"])
-                if col == 2:
+                if col in (2, 3):
                     return _make_cb(self._rows[row]["alias_text"])
                 return None
 
@@ -383,6 +394,7 @@ class TestTechnicalMetaGeneration(unittest.TestCase):
             tm.PoniFileSelectionDialog = (
                 lambda aliases, current_poni_files=None, parent=None: dummy_dialog
             )
+            obj.generate_technical_h5 = lambda: None
 
             # Run
             obj.generate_technical_meta()

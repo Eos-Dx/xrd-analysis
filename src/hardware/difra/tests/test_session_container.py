@@ -125,16 +125,16 @@ def technical_container_file(temp_output_dir, demo_config, demo_poni_files):
             aux_measurements[tech_type][det_id] = str(filename)
 
     # Create PONI data dict
-    pony_data = {}
+    poni_data = {}
     for alias, poni_path in demo_poni_files.items():
         content = poni_path.read_text()
-        pony_data[alias] = (content, poni_path.name)
+        poni_data[alias] = (content, poni_path.name)
 
     # Generate technical container with per-detector distances matching PONI files
     container_id, file_path = technical_container.generate_from_aux_table(
         folder=temp_output_dir,
         aux_measurements=aux_measurements,
-        pony_data=pony_data,
+        poni_data=poni_data,
         detector_config=demo_config["detectors"],
         active_detector_ids=demo_config["dev_active_detectors"],
         distances_cm={"PRIMARY": 17.0, "SECONDARY": 2.0},  # Match PONI distances
@@ -203,7 +203,7 @@ def test_copy_technical_to_session(temp_output_dir, technical_container_file):
     with h5py.File(session_file, "r") as f:
         assert "/technical" in f
         assert "/technical/config" in f
-        assert "/technical/pony" in f
+        assert "/technical/poni" in f
 
 
 def test_add_image(temp_output_dir, technical_container_file):
@@ -348,14 +348,14 @@ def test_add_measurement(temp_output_dir, technical_container_file):
         "SECONDARY": {"integration_time_ms": 100.0, "beam_energy_keV": 12.5},
     }
 
-    pony_alias_map = {"PRIMARY": "PRIMARY", "SECONDARY": "SECONDARY"}
+    poni_alias_map = {"PRIMARY": "PRIMARY", "SECONDARY": "SECONDARY"}
 
     meas_path = session_container.add_measurement(
         file_path=session_file,
         point_index=1,
         measurement_data=measurement_data,
         detector_metadata=detector_metadata,
-        pony_alias_map=pony_alias_map,
+        poni_alias_map=poni_alias_map,
     )
 
     with h5py.File(session_file, "r") as f:
@@ -395,14 +395,14 @@ def test_measurement_counter_increments(temp_output_dir, technical_container_fil
                 "PRIMARY": np.random.rand(256, 256).astype(np.float32),
             }
             detector_metadata = {"PRIMARY": {"integration_time_ms": 100.0}}
-            pony_alias_map = {"PRIMARY": "PRIMARY"}
+            poni_alias_map = {"PRIMARY": "PRIMARY"}
 
             session_container.add_measurement(
                 file_path=session_file,
                 point_index=pt_idx,
                 measurement_data=measurement_data,
                 detector_metadata=detector_metadata,
-                pony_alias_map=pony_alias_map,
+                poni_alias_map=poni_alias_map,
             )
 
     with h5py.File(session_file, "r") as f:
@@ -431,13 +431,13 @@ def test_add_analytical_measurement(temp_output_dir, technical_container_file):
     }
 
     detector_metadata = {"PRIMARY": {"integration_time_ms": 100.0}}
-    pony_alias_map = {"PRIMARY": "PRIMARY"}
+    poni_alias_map = {"PRIMARY": "PRIMARY"}
 
     ana_path = session_container.add_analytical_measurement(
         file_path=session_file,
         measurement_data=measurement_data,
         detector_metadata=detector_metadata,
-        pony_alias_map=pony_alias_map,
+        poni_alias_map=poni_alias_map,
         analysis_type=schema.ANALYSIS_TYPE_ATTENUATION,
     )
 
@@ -475,13 +475,13 @@ def test_link_analytical_measurement_to_point(temp_output_dir, technical_contain
         "PRIMARY": np.random.rand(256, 256).astype(np.float32),
     }
     detector_metadata = {"PRIMARY": {"integration_time_ms": 100.0}}
-    pony_alias_map = {"PRIMARY": "PRIMARY"}
+    poni_alias_map = {"PRIMARY": "PRIMARY"}
 
     session_container.add_analytical_measurement(
         file_path=session_file,
         measurement_data=measurement_data,
         detector_metadata=detector_metadata,
-        pony_alias_map=pony_alias_map,
+        poni_alias_map=poni_alias_map,
         analysis_type=schema.ANALYSIS_TYPE_ATTENUATION,
     )
 
@@ -620,14 +620,14 @@ def test_complete_session_workflow(temp_output_dir, technical_container_file):
             "SECONDARY": {"integration_time_ms": 100.0, "beam_energy_keV": 12.5},
         }
 
-        pony_alias_map = {"PRIMARY": "PRIMARY", "SECONDARY": "SECONDARY"}
+        poni_alias_map = {"PRIMARY": "PRIMARY", "SECONDARY": "SECONDARY"}
 
         session_container.add_measurement(
             file_path=session_file,
             point_index=pt_idx,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
-            pony_alias_map=pony_alias_map,
+            poni_alias_map=poni_alias_map,
         )
 
         # Update point status
@@ -646,7 +646,7 @@ def test_complete_session_workflow(temp_output_dir, technical_container_file):
         # Technical data
         assert "/technical" in f
         assert "/technical/config" in f
-        assert "/technical/pony" in f
+        assert "/technical/poni" in f
 
         # Images
         assert "/images/img_001" in f

@@ -62,7 +62,7 @@ def test_validate_poni_distance_exact_match():
     poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
     
     # Should not raise
-    schema.validate_poni_distance(poni_content, user_distances_cm=17.0)
+    schema.validate_poni_distance(poni_content, user_distance_cm=17.0)
 
 
 def test_validate_poni_distance_within_tolerance():
@@ -70,10 +70,10 @@ def test_validate_poni_distance_within_tolerance():
     poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
     
     # 17.5 cm is 2.9% deviation - should pass
-    schema.validate_poni_distance(poni_content, user_distances_cm=17.5)
+    schema.validate_poni_distance(poni_content, user_distance_cm=17.5)
     
     # 17.8 cm is 4.7% deviation - should pass
-    schema.validate_poni_distance(poni_content, user_distances_cm=17.8)
+    schema.validate_poni_distance(poni_content, user_distance_cm=17.8)
 
 
 def test_validate_poni_distance_exceeds_tolerance():
@@ -82,7 +82,7 @@ def test_validate_poni_distance_exceeds_tolerance():
     
     # 20 cm is 17.6% deviation - should fail
     with pytest.raises(ValueError, match="validation failed"):
-        schema.validate_poni_distance(poni_content, user_distances_cm=20.0)
+        schema.validate_poni_distance(poni_content, user_distance_cm=20.0)
 
 
 def test_validate_poni_distance_custom_tolerance():
@@ -92,10 +92,10 @@ def test_validate_poni_distance_custom_tolerance():
     # 18 cm is 5.9% deviation
     # Should fail with 5% tolerance
     with pytest.raises(ValueError):
-        schema.validate_poni_distance(poni_content, user_distances_cm=18.0, tolerance_percent=5.0)
+        schema.validate_poni_distance(poni_content, user_distance_cm=18.0, tolerance_percent=5.0)
     
     # Should pass with 10% tolerance
-    schema.validate_poni_distance(poni_content, user_distances_cm=18.0, tolerance_percent=10.0)
+    schema.validate_poni_distance(poni_content, user_distance_cm=18.0, tolerance_percent=10.0)
 
 
 # ==================== Container Locking Tests ====================
@@ -107,7 +107,7 @@ def test_container_initially_unlocked():
         
         # Create technical container
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus', 
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {
@@ -120,7 +120,7 @@ def test_container_initially_unlocked():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -137,7 +137,7 @@ def test_lock_container():
         
         # Create minimal technical container
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -146,7 +146,7 @@ def test_lock_container():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -178,7 +178,7 @@ def test_lock_already_locked_container():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -187,7 +187,7 @@ def test_lock_already_locked_container():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -209,7 +209,7 @@ def test_unlock_container():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -218,7 +218,7 @@ def test_unlock_container():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -242,7 +242,7 @@ def test_archive_locked_container():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -251,7 +251,7 @@ def test_archive_locked_container():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -282,7 +282,7 @@ def test_archive_requires_confirmation():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -291,7 +291,7 @@ def test_archive_requires_confirmation():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -313,7 +313,7 @@ def test_archive_unlocked_container_fails():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -322,7 +322,7 @@ def test_archive_unlocked_container_fails():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -346,7 +346,7 @@ def test_find_active_container_by_distance():
         poni_content_20 = "Distance: 0.20\nPixelSize1: 7.5e-05"
         
         # Create container at 17cm
-        pony_data = {'PRIMARY': (poni_content_17, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content_17, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark1.npy')}}
@@ -355,32 +355,32 @@ def test_find_active_container_by_distance():
         tech_id_17, tech_file_17 = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
         )
         
         # Create container at 20cm
-        pony_data = {'PRIMARY': (poni_content_20, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content_20, 'primary.poni')}
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark2.npy')}}
         np.save(folder / 'dark2.npy', np.random.rand(256, 256).astype(np.float32))
         
         tech_id_20, tech_file_20 = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=20.0,
         )
         
         # Find 17cm container
-        found = container_manager.find_active_technical_container(folder, distances_cm=17.0)
+        found = container_manager.find_active_technical_container(folder, distance_cm=17.0)
         assert found == Path(tech_file_17)
         
         # Find 20cm container
-        found = container_manager.find_active_technical_container(folder, distances_cm=20.0)
+        found = container_manager.find_active_technical_container(folder, distance_cm=20.0)
         assert found == Path(tech_file_20)
 
 
@@ -390,7 +390,7 @@ def test_find_active_excludes_archived():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -399,7 +399,7 @@ def test_find_active_excludes_archived():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -408,7 +408,7 @@ def test_find_active_excludes_archived():
         tech_path = Path(tech_file)
         
         # Should find it
-        found = container_manager.find_active_technical_container(folder, distances_cm=17.0)
+        found = container_manager.find_active_technical_container(folder, distance_cm=17.0)
         assert found == tech_path
         
         # Lock and archive
@@ -416,7 +416,7 @@ def test_find_active_excludes_archived():
         container_manager.archive_technical_container(folder, tech_path, user_confirmed=True)
         
         # Should NOT find it (archived)
-        found = container_manager.find_active_technical_container(folder, distances_cm=17.0)
+        found = container_manager.find_active_technical_container(folder, distance_cm=17.0)
         assert found is None
 
 
@@ -428,7 +428,7 @@ def test_set_measurement_primary_status():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         
@@ -443,7 +443,7 @@ def test_set_measurement_primary_status():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -472,7 +472,7 @@ def test_cannot_modify_locked_container():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -481,7 +481,7 @@ def test_cannot_modify_locked_container():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -503,7 +503,7 @@ def test_get_primary_measurements():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {
@@ -516,7 +516,7 @@ def test_get_primary_measurements():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -545,7 +545,7 @@ def test_copy_technical_locks_unlocked_container():
         
         # Create technical container
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -554,7 +554,7 @@ def test_copy_technical_locks_unlocked_container():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -586,7 +586,7 @@ def test_copy_technical_user_confirm_lock():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -595,7 +595,7 @@ def test_copy_technical_user_confirm_lock():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -629,7 +629,7 @@ def test_copy_technical_already_locked():
         folder = Path(tmpdir)
         
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -638,7 +638,7 @@ def test_copy_technical_already_locked():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -676,7 +676,7 @@ def test_poni_validation_in_generate_from_aux_table():
         
         # PONI with wrong distance
         poni_content = "Distance: 0.20\nPixelSize1: 7.5e-05"  # 20cm, not 17cm
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -687,7 +687,7 @@ def test_poni_validation_in_generate_from_aux_table():
             technical_container.generate_from_aux_table(
                 folder=folder,
                 aux_measurements=aux_measurements,
-                pony_data=pony_data,
+                poni_data=poni_data,
                 detector_config=detector_config,
                 active_detector_ids=['PRIMARY'],
                 distances_cm=17.0,  # User says 17cm, but PONI says 20cm
@@ -702,7 +702,7 @@ def test_poni_validation_can_be_disabled():
         
         # PONI with wrong distance
         poni_content = "Distance: 0.20\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -712,7 +712,7 @@ def test_poni_validation_can_be_disabled():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
@@ -729,7 +729,7 @@ def test_locked_container_reused_by_multiple_sessions():
         
         # Create and lock technical container
         poni_content = "Distance: 0.17\nPixelSize1: 7.5e-05"
-        pony_data = {'PRIMARY': (poni_content, 'primary.poni')}
+        poni_data = {'PRIMARY': (poni_content, 'primary.poni')}
         detector_config = [{'id': 'PRIMARY', 'alias': 'PRIMARY', 'type': 'Pilatus',
                            'size': [256, 256], 'pixel_size_um': 172.0}]
         aux_measurements = {'DARK': {'PRIMARY': str(folder / 'dark.npy')}}
@@ -738,7 +738,7 @@ def test_locked_container_reused_by_multiple_sessions():
         tech_id, tech_file = technical_container.generate_from_aux_table(
             folder=folder,
             aux_measurements=aux_measurements,
-            pony_data=pony_data,
+            poni_data=poni_data,
             detector_config=detector_config,
             active_detector_ids=['PRIMARY'],
             distances_cm=17.0,
