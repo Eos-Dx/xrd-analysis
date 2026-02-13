@@ -1,16 +1,5 @@
-import json
 import logging
-import os
-import queue
-import re
-import subprocess
-import sys
-import time
 import traceback
-import uuid
-
-import matplotlib.pyplot as plt
-import numpy as np
 
 # Module logger
 logger = logging.getLogger(__name__)
@@ -47,7 +36,6 @@ except Exception:  # pragma: no cover - test stubs
         def __init__(self, *a, **k):
             pass
 
-    # Minimal QtCore stubs
     QEvent = object
 
     class _Qt:
@@ -56,6 +44,9 @@ except Exception:  # pragma: no cover - test stubs
         Horizontal = 0
         Key_Delete = 16777223
         UserRole = 32
+        AlignCenter = 0
+        ItemIsSelectable = 1
+        ItemIsEnabled = 2
 
     Qt = _Qt()
 
@@ -87,9 +78,11 @@ except Exception:  # pragma: no cover - test stubs
         def start(self, *a, **k):
             pass
 
+        def stop(self):
+            pass
+
     QTimer = _QTimer
 
-    # Minimal QtWidgets stubs used by this module
     QCheckBox = _Stub
     QComboBox = _Stub
 
@@ -115,7 +108,7 @@ except Exception:  # pragma: no cover - test stubs
     QWidget = _Stub
 
     class QMessageBox:
-        Yes, No = 1, 0
+        Yes, No, Cancel = 1, 0, -1
 
         @staticmethod
         def warning(*args, **kwargs):
@@ -134,90 +127,96 @@ except Exception:  # pragma: no cover - test stubs
             return None
 
 
-# Avoid importing heavy zone_measurements dependencies during tests
 try:
     from hardware.difra.gui.main_window_ext.zone_measurements import (
         ZoneMeasurementsMixin as _ZoneMeasurementsMixin,
     )
 except Exception:  # pragma: no cover - test stubs
-
     class _ZoneMeasurementsMixin(object):
         pass
 
 
-# Defer all technical imports to avoid pyFAI crashes on startup
-# These will be imported only when actually needed
-_TECHNICAL_IMPORTS_AVAILABLE = None  # None = not yet tested
+_TECHNICAL_IMPORTS_AVAILABLE = None
 _technical_modules = {}
+
 
 def _get_technical_imports():
     """Lazy import of technical modules to avoid startup crashes."""
     global _TECHNICAL_IMPORTS_AVAILABLE, _technical_modules
-    
     if _TECHNICAL_IMPORTS_AVAILABLE is not None:
         return _TECHNICAL_IMPORTS_AVAILABLE
-    
+
     try:
-        from hardware.difra.gui.technical.capture import (
-            CaptureWorker,
-            show_measurement_window,
-            validate_folder,
-        )
+        from hardware.difra.gui.technical.capture import CaptureWorker, show_measurement_window, validate_folder
         from hardware.difra.gui.technical.measurement_worker import MeasurementWorker
-        
-        _technical_modules.update({
-            'CaptureWorker': CaptureWorker,
-            'show_measurement_window': show_measurement_window,
-            'validate_folder': validate_folder,
-            'MeasurementWorker': MeasurementWorker,
-        })
+
+        _technical_modules.update(
+            {
+                "CaptureWorker": CaptureWorker,
+                "show_measurement_window": show_measurement_window,
+                "validate_folder": validate_folder,
+                "MeasurementWorker": MeasurementWorker,
+            }
+        )
         _TECHNICAL_IMPORTS_AVAILABLE = True
         logger.info("Technical measurement imports successful")
         return True
     except Exception as e:
-        # Get detailed traceback for debugging
-        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        tb_str = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         logger.error(
             f"Technical measurement imports failed: {type(e).__name__}: {e}\n{tb_str}",
-            exc_info=True
+            exc_info=True,
         )
         _TECHNICAL_IMPORTS_AVAILABLE = False
         return False
-
-# Import helper functions and mixins from refactored module
-from .technical.helpers import (
-    _get_technical_temp_folder,
-    _get_difra_base_folder,
-    _get_technical_storage_folder,
-    _get_technical_archive_folder,
-    _get_measurement_default_folder,
-    _get_default_folder,
-)
-from .technical.h5_management_mixin import H5ManagementMixin
-from .technical.h5_generation_mixin import H5GenerationMixin
 
 
 def _get_technical_module(name):
     """Get a technical module by name, with fallback stubs."""
     if _get_technical_imports():
         return _technical_modules.get(name)
-    else:
-        # Return stub implementations
-        stubs = {
-            'CaptureWorker': type('CaptureWorker', (), {
-                '__init__': lambda self, *args, **kwargs: None,
-                'moveToThread': lambda self, thread: None,
-                'finished': type('Signal', (), {'connect': lambda self, f: None})()
-            }),
-            'show_measurement_window': lambda *args, **kwargs: print("Technical measurement window not available - imports failed"),
-            'validate_folder': lambda path: str(path) if path else "",
-            'MeasurementWorker': type('MeasurementWorker', (), {
-                '__init__': lambda self, *args, **kwargs: None,
-                'run': lambda self: None,
-                'add_aux_item': type('Signal', (), {'connect': lambda self, f: None})()
-            })
-        }
-        return stubs.get(name)
+
+    stubs = {
+        "CaptureWorker": type(
+            "CaptureWorker",
+            (),
+            {
+                "__init__": lambda self, *args, **kwargs: None,
+                "moveToThread": lambda self, thread: None,
+                "finished": type("Signal", (), {"connect": lambda self, f: None})(),
+            },
+        ),
+        "show_measurement_window": lambda *args, **kwargs: print(
+            "Technical measurement window not available - imports failed"
+        ),
+        "validate_folder": lambda path: str(path) if path else "",
+        "MeasurementWorker": type(
+            "MeasurementWorker",
+            (),
+            {
+                "__init__": lambda self, *args, **kwargs: None,
+                "run": lambda self: None,
+                "add_aux_item": type("Signal", (), {"connect": lambda self, f: None})(),
+            },
+        ),
+    }
+    return stubs.get(name)
+
+
+from .technical.aux_table_mixin import TechnicalAuxTableMixin
+from .technical.capture_mixin import TechnicalCaptureMixin
+from .technical.h5_generation_mixin import H5GenerationMixin
+from .technical.h5_management_mixin import H5ManagementMixin
+from .technical.helpers import (
+    _get_default_folder,
+    _get_difra_base_folder,
+    _get_measurement_default_folder,
+    _get_technical_archive_folder,
+    _get_technical_storage_folder,
+    _get_technical_temp_folder,
+)
+from .technical.panel_mixin import TechnicalPanelMixin
+from .technical.realtime_mixin import TechnicalRealtimeMixin
 
 
 class PoniFileSelectionDialog(QDialog):
@@ -229,18 +228,13 @@ class PoniFileSelectionDialog(QDialog):
         self.poni_files = {}
         self.line_edits = {}
 
-        # Pre-populate with current PONI files if available
         if current_poni_files:
             for alias in aliases:
                 if alias in current_poni_files:
                     poni_info = current_poni_files[alias]
                     if isinstance(poni_info, dict) and "path" in poni_info:
                         self.poni_files[alias] = poni_info["path"]
-                    elif (
-                        hasattr(self.parent(), "poni_files")
-                        and alias in self.parent().poni_files
-                    ):
-                        # Fallback to parent's poni_files if available
+                    elif hasattr(self.parent(), "poni_files") and alias in self.parent().poni_files:
                         parent_poni = self.parent().poni_files[alias]
                         if isinstance(parent_poni, dict) and "path" in parent_poni:
                             self.poni_files[alias] = parent_poni["path"]
@@ -253,20 +247,13 @@ class PoniFileSelectionDialog(QDialog):
         self.resize(600, 400)
 
         layout = QVBoxLayout(self)
-
-        # Header
         header = QLabel("Select PONI calibration files for each detector alias:")
         header.setStyleSheet("font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(header)
-
-        # Form layout for PONI file selection
         form_layout = QFormLayout()
 
         for alias in self.aliases:
-            # Create horizontal layout for each alias
             h_layout = QHBoxLayout()
-
-            # Line edit for file path
             line_edit = QLineEdit()
             line_edit.setPlaceholderText(f"Select PONI file for {alias}")
             if alias in self.poni_files:
@@ -274,38 +261,27 @@ class PoniFileSelectionDialog(QDialog):
             self.line_edits[alias] = line_edit
             h_layout.addWidget(line_edit)
 
-            # Browse button
             browse_btn = QPushButton("Browse...")
-            browse_btn.clicked.connect(
-                lambda checked, a=alias: self.browse_poni_file(a)
-            )
+            browse_btn.clicked.connect(lambda checked, a=alias: self.browse_poni_file(a))
             h_layout.addWidget(browse_btn)
 
-            # Clear button
             clear_btn = QPushButton("Clear")
             clear_btn.clicked.connect(lambda checked, a=alias: self.clear_poni_file(a))
             h_layout.addWidget(clear_btn)
-
             form_layout.addRow(f"{alias}:", h_layout)
 
         layout.addLayout(form_layout)
-
-        # Buttons
         button_layout = QHBoxLayout()
-
         ok_btn = QPushButton("OK")
         ok_btn.clicked.connect(self.accept)
         button_layout.addWidget(ok_btn)
-
         cancel_btn = QPushButton("Cancel")
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
-
         layout.addStretch()
         layout.addLayout(button_layout)
 
     def browse_poni_file(self, alias):
-        """Open file dialog to select PONI file for the given alias."""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             f"Select PONI File for {alias}",
@@ -317,13 +293,11 @@ class PoniFileSelectionDialog(QDialog):
             self.poni_files[alias] = file_path
 
     def clear_poni_file(self, alias):
-        """Clear the PONI file selection for the given alias."""
         self.line_edits[alias].setText("")
         if alias in self.poni_files:
             del self.poni_files[alias]
 
     def get_poni_files(self):
-        """Return dictionary of alias -> poni_file_path."""
         result = {}
         for alias, line_edit in self.line_edits.items():
             path = line_edit.text().strip()
@@ -332,1337 +306,32 @@ class PoniFileSelectionDialog(QDialog):
         return result
 
 
-class TechnicalMeasurementsMixin(H5GenerationMixin, H5ManagementMixin, _ZoneMeasurementsMixin):
+class TechnicalMeasurementsMixin(
+    TechnicalPanelMixin,
+    TechnicalCaptureMixin,
+    TechnicalAuxTableMixin,
+    TechnicalRealtimeMixin,
+    H5GenerationMixin,
+    H5ManagementMixin,
+    _ZoneMeasurementsMixin,
+):
+    AUX_COL_PRIMARY = 0
+    AUX_COL_FILE = 1
+    AUX_COL_TYPE = 2
+    AUX_COL_ALIAS = 3
 
     NO_SELECTION_LABEL = "— Select —"
-
-    # Types that can be assigned to a technical measurement file in the UI.
-    # NOTE: "SPECIAL" is optional and should not be required for completeness checks.
     TYPE_OPTIONS = ["AGBH", "DARK", "EMPTY", "BACKGROUND", "SPECIAL"]
-
-    # Types required to generate a complete technical_meta_*.json (per alias).
     REQUIRED_TYPE_OPTIONS = ["AGBH", "DARK", "EMPTY", "BACKGROUND"]
 
+    def _technical_imports_available(self):
+        return _get_technical_imports()
+
+    def _get_technical_module(self, name):
+        return _get_technical_module(name)
+
     def _log_technical_event(self, message: str):
-        """Log technical measurement events to the Zone Measurements log window."""
         try:
-            # Use the inherited logging method from ZoneMeasurementsUIMixin
             self._append_measurement_log(f"[Technical] {message}")
         except Exception:
-            # Fallback to print if logging fails
             print(f"[Technical] {message}")
-
-    def create_technical_panel(self):
-        self.aux_counter = 0
-        super().create_zone_measurements()
-
-        # Initialize continuous movement controller
-        self.continuous_movement_controller = None
-        self._initialize_continuous_movement_controller()
-
-        title = "Technical Measurements"
-        # Note: We don't test imports here to avoid triggering the crash at startup
-        # The warning will be shown when the user first tries to use a technical feature
-        self.measDock = QDockWidget(title, self)
-        self.measDock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-
-        container = QWidget()
-        outer = QVBoxLayout(container)
-        outer.setContentsMargins(6, 4, 6, 4)  # Reduced margins
-        outer.setSpacing(6)  # Reduced spacing between sections
-        
-        # Set smaller font for all controls to fit smaller screens
-        try:
-            from PyQt5.QtGui import QFont
-            control_font = QFont()
-            control_font.setPointSize(9)  # Smaller font for controls (menu-size)
-            container.setFont(control_font)
-        except Exception:
-            pass
-        
-        # Note: We don't show import warnings at startup to avoid triggering crashes
-        # Warnings will be displayed when the user first tries to use technical features
-
-        # Integration time + frames control
-        it_layout = QHBoxLayout()
-        it_layout.addWidget(QLabel("Integration Time (s):"))
-        self.integrationTimeSpin = QDoubleSpinBox()
-        # Pixet minimum integration time tested: 1 µs
-        self.integrationTimeSpin.setDecimals(6)
-        self.integrationTimeSpin.setRange(1e-6, 1e4)
-        self.integrationTimeSpin.setSingleStep(1e-6)
-        self.integrationTimeSpin.setValue(1.0)
-        it_layout.addWidget(self.integrationTimeSpin)
-
-        it_layout.addWidget(QLabel("Frames:"))
-        self.captureFramesSpin = QSpinBox()
-        self.captureFramesSpin.setRange(1, 1_000_000)
-        self.captureFramesSpin.setValue(1)
-        self.captureFramesSpin.setToolTip(
-            "Capture N frames at the given integration time; frames will be averaged into a single final image"
-        )
-        it_layout.addWidget(self.captureFramesSpin)
-
-        outer.addLayout(it_layout)
-
-        # Continuous movement controls for AgBH measurements
-        cm_layout = QHBoxLayout()
-        self.moveContinuousCheck = QCheckBox("Move Continuous (AgBH)")
-        self.moveContinuousCheck.setToolTip(
-            "Enable continuous circular movement during AgBH measurements to smooth out sample inconsistencies"
-        )
-        cm_layout.addWidget(self.moveContinuousCheck)
-
-        cm_layout.addWidget(QLabel("Radius (mm):"))
-        self.movementRadiusSpin = QDoubleSpinBox()
-        self.movementRadiusSpin.setRange(0.1, 10.0)
-        self.movementRadiusSpin.setSingleStep(0.1)
-        self.movementRadiusSpin.setValue(2.0)
-        self.movementRadiusSpin.setDecimals(1)
-        self.movementRadiusSpin.setToolTip(
-            "Maximum radius for continuous movement pattern (decreases during measurement)"
-        )
-        cm_layout.addWidget(self.movementRadiusSpin)
-
-        outer.addLayout(cm_layout)
-
-        # Save folder selector
-        fld = QHBoxLayout()
-        fld.addWidget(QLabel("Save Folder:"))
-        self.folderLE = QLineEdit()
-        # Use new folder helper that respects platform defaults
-        default_folder = _get_default_folder(self.config if hasattr(self, "config") else None)
-        self.folderLE.setText(default_folder)
-
-        fld.addWidget(self.folderLE, 1)
-        b = QPushButton("Browse…")
-        b.clicked.connect(self._browse_folder)
-        fld.addWidget(b)
-        outer.addLayout(fld)
-
-        # Auxiliary Measurement controls (no label to save space)
-        row = QHBoxLayout()
-        self.auxBtn = QPushButton("Measure")
-        self.auxBtn.clicked.connect(self.measure_aux)
-        row.addWidget(self.auxBtn)
-
-        self._aux_status = QLabel("")
-        row.addWidget(self._aux_status)
-        self._aux_timer = QTimer(self)
-        self._aux_timer.setInterval(200)
-        self._aux_timer.timeout.connect(self._update_aux_status)
-
-        self.auxNameLE = QLineEdit()
-        self.auxNameLE.setPlaceholderText("Measurement name (for metadata generation)")
-        self.auxNameLE.setToolTip(
-            "Enter name for auxiliary measurement - used for metadata file generation"
-        )
-        row.addWidget(self.auxNameLE, 1)
-        outer.addLayout(row)
-
-        # Aux measurements table (compact layout for small screens)
-        self.auxTable = QTableWidget()
-        self.auxTable.setColumnCount(4)
-        self.auxTable.installEventFilter(self)  # Delete key support
-        self.auxTable.setHorizontalHeaderLabels(["Primary", "File", "Type", "Alias"])
-
-        # Make table more compact for small screens
-        self.auxTable.verticalHeader().setVisible(False)  # Hide row numbers
-        self.auxTable.setAlternatingRowColors(True)  # Better visual separation
-        # Configure column sizing and appearance
-        try:
-            from PyQt5.QtGui import QFont
-            from PyQt5.QtWidgets import QHeaderView
-
-            header = self.auxTable.horizontalHeader()
-            # Primary checkbox column, File column takes most space, Type and Alias are compact
-            header.setSectionResizeMode(0, QHeaderView.Fixed)  # Primary column
-            header.setSectionResizeMode(1, QHeaderView.Stretch)  # File column
-            header.setSectionResizeMode(2, QHeaderView.Fixed)  # Type column
-            header.setSectionResizeMode(3, QHeaderView.Fixed)  # Alias column
-
-            # Set fixed widths
-            self.auxTable.setColumnWidth(0, 60)  # Primary checkbox
-            self.auxTable.setColumnWidth(2, 60)  # Type column
-            self.auxTable.setColumnWidth(3, 60)  # Alias column
-
-            # Optimize font and row height for small screens
-            font = QFont()
-            font.setPointSize(9)  # Match control font size
-            self.auxTable.setFont(font)
-
-            # Reduce row height for more compact display
-            self.auxTable.verticalHeader().setDefaultSectionSize(
-                24
-            )  # Smaller row height
-        except Exception:
-            pass
-        self.auxTable.setSelectionBehavior(self.auxTable.SelectRows)
-        self.auxTable.setSelectionMode(self.auxTable.ExtendedSelection)
-        self.auxTable.cellDoubleClicked.connect(self._open_measurement_from_table)
-        outer.addWidget(self.auxTable)
-
-        # Compact actions layout (no groupbox to save vertical space)
-        actions_layout = QHBoxLayout()
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(4)
-        actions_layout.addWidget(QLabel("Actions:"))  # Simple label instead of groupbox
-        
-        self.load_files_btn = QPushButton("Load Files…")
-        self.load_files_btn.setToolTip("Load existing technical measurement files into the table")
-        self.load_files_btn.clicked.connect(self.load_technical_files)
-        actions_layout.addWidget(self.load_files_btn)
-
-        self.load_h5_btn = QPushButton("Load H5")
-        self.load_h5_btn.setToolTip("Load and validate existing technical HDF5 container")
-        self.load_h5_btn.clicked.connect(self.load_technical_h5)
-        actions_layout.addWidget(self.load_h5_btn)
-        
-        self.validate_btn = QPushButton("Validate")
-        self.validate_btn.setToolTip("Validate existing technical HDF5 container without loading")
-        self.validate_btn.clicked.connect(self.validate_technical_h5)
-        actions_layout.addWidget(self.validate_btn)
-        
-        # Configure distances button
-        self.dist_btn = QPushButton("Distances...")
-        self.dist_btn.setToolTip("Configure detector distances for technical measurements")
-        self.dist_btn.clicked.connect(self.configure_detector_distances)
-        actions_layout.addWidget(self.dist_btn)
-
-        self.pyfai_btn = QPushButton("PyFAI")
-        self.pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
-        self.pyfai_btn.clicked.connect(self.run_pyfai)
-        actions_layout.addWidget(self.pyfai_btn)
-
-        self.gen_h5_btn = QPushButton("Gen H5")
-        self.gen_h5_btn.setToolTip("Generate technical_<id>.h5 HDF5 container from all table rows")
-        self.gen_h5_btn.clicked.connect(self.generate_technical_h5)
-        actions_layout.addWidget(self.gen_h5_btn)
-
-        outer.addLayout(actions_layout)
-
-        # Real-time controls
-        rt_layout = QHBoxLayout()
-        rt_layout.addWidget(QLabel("Frames/⟳:"))
-        self.framesSpin = QSpinBox()
-        self.framesSpin.setRange(1, 1_000_000)
-        self.framesSpin.setValue(1)
-        rt_layout.addWidget(self.framesSpin)
-
-        self.rtBtn = QPushButton("Real-time")
-        self.rtBtn.setCheckable(True)
-        self.rtBtn.clicked.connect(self._toggle_realtime)
-        rt_layout.addWidget(self.rtBtn)
-
-        outer.addLayout(rt_layout)
-
-        # Wrap in a scroll area and add to dock
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(container)
-        self.measDock.setWidget(scroll)
-        
-        # Set minimum width to be compact but readable
-        # This is a left-side dock, so we want it narrow to give more space to center view
-        try:
-            # Minimum width for controls: ~300-350px for spinboxes, buttons, and labels
-            self.measDock.setMinimumWidth(300)
-        except Exception:
-            pass
-        
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.measDock)
-
-        self.enable_measurement_controls(False)
-        self.hardware_state_changed.connect(self.enable_measurement_controls)
-        # Refresh alias models when hardware state changes
-        self.hardware_state_changed.connect(
-            lambda _: self.refresh_aux_table_alias_models()
-        )
-        # Reinitialize continuous movement controller when hardware changes
-        self.hardware_state_changed.connect(
-            lambda _: self._initialize_continuous_movement_controller()
-        )
-
-    def enable_measurement_controls(self, enable: bool):
-        """Enable/disable measurement controls based on hardware state.
-        
-        Note: This is called when hardware state changes. It does NOT control
-        distance-dependent button states - use _update_distance_dependent_controls for that.
-        """
-        status = "enabled" if enable else "disabled"
-        self._log_technical_event(f"Technical measurement controls {status}")
-        widgets = [
-            self.integrationTimeSpin,
-            self.captureFramesSpin,
-            self.moveContinuousCheck,
-            self.movementRadiusSpin,
-            self.folderLE,
-            self.auxNameLE,
-            self.auxTable,
-            self.framesSpin,
-            self.rtBtn,
-        ]
-        # Load Files and Load H5 are always enabled (not hardware dependent)
-        if hasattr(self, 'load_files_btn'):
-            self.load_files_btn.setEnabled(True)
-        if hasattr(self, 'load_h5_btn'):
-            self.load_h5_btn.setEnabled(True)
-        
-        for w in widgets:
-            w.setEnabled(enable)
-        
-        # Update distance-dependent controls
-        self._update_distance_dependent_controls()
-
-    def _update_distance_dependent_controls(self):
-        """Update button states based on whether distances are configured.
-        
-        Buttons that require distances:
-        - Measure (auxBtn)
-        - PyFAI
-        - Gen H5
-        - Validate
-        - Distance config (enabled if distances not set)
-        
-        Always enabled:
-        - Load Files
-        - Load H5
-        """
-        has_distances = hasattr(self, '_detector_distances') and bool(self._detector_distances)
-        
-        # Distance-dependent buttons
-        if hasattr(self, 'auxBtn'):
-            self.auxBtn.setEnabled(has_distances)
-        if hasattr(self, 'pyfai_btn'):
-            self.pyfai_btn.setEnabled(has_distances)
-        if hasattr(self, 'gen_h5_btn'):
-            self.gen_h5_btn.setEnabled(has_distances)
-        if hasattr(self, 'validate_btn'):
-            self.validate_btn.setEnabled(has_distances)
-        
-        # Update visual feedback if no distances set
-        if not has_distances and hasattr(self, 'auxBtn'):
-            self.auxBtn.setStyleSheet("color: gray;")
-        elif hasattr(self, 'auxBtn'):
-            self.auxBtn.setStyleSheet("")
-    
-    def _update_window_title_with_distances(self):
-        """Update main window title to show configured detector distances."""
-        if not hasattr(self, '_detector_distances') or not self._detector_distances:
-            return
-        
-        # Get detector configs to map IDs to aliases
-        detector_configs = self.config.get('detectors', [])
-        
-        # Build distance display string
-        distance_parts = []
-        for detector_id, distance_cm in sorted(self._detector_distances.items()):
-            # Find detector config by ID to get alias
-            detector_config = next(
-                (d for d in detector_configs if d.get('id') == detector_id),
-                None
-            )
-            alias = detector_config.get('alias', detector_id) if detector_config else detector_id
-            distance_parts.append(f"{alias}: {distance_cm} cm")
-        
-        distance_str = ", ".join(distance_parts)
-        
-        # Update window title
-        base_title = "EosDX Scanning Software"
-        is_dev = self.config.get("DEV", False)
-        dev_suffix = " [DEMO]" if is_dev else ""
-        
-        new_title = f"{base_title} ({distance_str}){dev_suffix}"
-        self.setWindowTitle(new_title)
-        
-        self._log_technical_event(f"Window title updated with distances: {distance_str}")
-    
-    def configure_detector_distances(self):
-        """Show dialog to configure detector distances."""
-        from hardware.difra.gui.detector_distance_config_dialog import DetectorDistanceConfigDialog
-        
-        detector_configs = self.config.get('detectors', [])
-        if not detector_configs:
-            QMessageBox.warning(
-                self,
-                "No Detectors",
-                "No detector configuration found.",
-            )
-            return
-        
-        # Get active detector configs only
-        active_detector_ids = self._get_active_detector_ids()
-        active_detector_configs = [
-            d for d in detector_configs
-            if d.get('id') in active_detector_ids
-        ]
-        
-        if not active_detector_configs:
-            QMessageBox.warning(
-                self,
-                "No Active Detectors",
-                "No active detectors configured.",
-            )
-            return
-        
-        # Get current distances if set
-        current_distances = getattr(self, '_detector_distances', {})
-        
-        dialog = DetectorDistanceConfigDialog(
-            detector_configs=active_detector_configs,
-            current_distances=current_distances,
-            parent=self
-        )
-        
-        if dialog.exec_() == QDialog.Accepted:
-            distances = dialog.get_distances()
-            self._detector_distances = distances
-            
-            # Log distances
-            dist_str = ", ".join(
-                f"{d.get('alias', d['id'])}: {distances.get(d['id'], 'N/A')} cm"
-                for d in active_detector_configs
-            )
-            self._log_technical_event(f"Configured distances: {dist_str}")
-            
-            # Update window title and button states
-            self._update_window_title_with_distances()
-            self._update_distance_dependent_controls()
-            
-            QMessageBox.information(
-                self,
-                "Distances Configured",
-                f"Detector distances set:\n\n{dist_str}",
-            )
-    
-    def _initialize_continuous_movement_controller(self):
-        """Initialize the continuous movement controller if stage is available."""
-        try:
-            from hardware.difra.gui.technical.continuous_movement import (
-                ContinuousMovementController,
-            )
-
-            # Get stage controller from hardware controller if available
-            stage_controller = None
-            if hasattr(self, "hardware_controller") and self.hardware_controller:
-                stage_controller = self.hardware_controller.stage_controller
-            elif hasattr(self, "stage_controller"):
-                stage_controller = self.stage_controller
-
-            if stage_controller:
-                self.continuous_movement_controller = ContinuousMovementController(
-                    stage_controller=stage_controller, parent=self
-                )
-                # Connect signals for monitoring
-                self.continuous_movement_controller.movement_error.connect(
-                    lambda msg: self._log_technical_event(f"Movement error: {msg}")
-                )
-                self._log_technical_event("Continuous movement controller initialized")
-                logger.info("Continuous movement controller initialized")
-            else:
-                self._log_technical_event(
-                    "No stage controller available for continuous movement"
-                )
-                logger.debug("No stage controller available for continuous movement")
-        except ImportError as e:
-            logger.warning(f"Failed to import continuous movement controller: {e}")
-        except Exception as e:
-            logger.error(f"Error initializing continuous movement controller: {e}", exc_info=True)
-
-    def _browse_folder(self):
-        f = QFileDialog.getExistingDirectory(self, "Select Folder")
-        if f:
-            self.folderLE.setText(f)
-
-    def _start_capture(self, typ: str):
-        if not _get_technical_imports():
-            error_msg = (
-                f"Cannot start {typ} capture - technical measurement modules failed to import. "
-                "Check application logs for detailed error information. "
-                "Common causes: missing pyFAI or fabio dependencies."
-            )
-            self._log_technical_event(error_msg)
-            logger.error(error_msg)
-            QMessageBox.warning(
-                self,
-                "Import Error",
-                error_msg + "\n\nPlease check the application log file for detailed traceback."
-            )
-            return
-
-        counter_attr = f"{typ.lower()}_counter"
-        count = getattr(self, counter_attr, 0) + 1
-        setattr(self, counter_attr, count)
-
-        validate_folder = _get_technical_module("validate_folder")
-        folder = validate_folder(self.folderLE.text())
-        base = self._file_base(typ)
-        base_with_count = f"{base}_{count:03d}"
-        ts = time.strftime("%Y%m%d_%H%M%S")
-
-        integration_time_s = float(self.integrationTimeSpin.value())
-        frames = int(self.captureFramesSpin.value())
-
-        # Keep filenames stable/readable at microsecond times and include frames.
-        t_token = f"{integration_time_s:.6f}s"
-        txt_filename_base = os.path.join(
-            folder,
-            f"{base_with_count}_{ts}_{t_token}_{frames}frames",
-        )
-
-        # Get stage controller for continuous movement
-        stage_controller = None
-        if hasattr(self, "hardware_controller") and self.hardware_controller:
-            stage_controller = self.hardware_controller.stage_controller
-        elif hasattr(self, "stage_controller"):
-            stage_controller = self.stage_controller
-
-        # Check if continuous movement should be enabled
-        enable_continuous_movement = (
-            getattr(self, "moveContinuousCheck", None) is not None
-            and self.moveContinuousCheck.isChecked()
-        )
-        movement_radius = (
-            self.movementRadiusSpin.value()
-            if getattr(self, "movementRadiusSpin", None) is not None
-            else 2.0
-        )
-        
-        logger.debug(
-            f"Starting {typ} capture: integration_time={integration_time_s}s, frames={frames}, "
-            f"continuous_movement={enable_continuous_movement}, radius={movement_radius}mm"
-        )
-
-        # Get container version from config (default to v0.1)
-        container_version = self.config.get('container_version', '0.1') if hasattr(self, 'config') else '0.1'
-        
-        CaptureWorker = _get_technical_module('CaptureWorker')
-        worker = CaptureWorker(
-            detector_controller=self.detector_controller,
-            integration_time=integration_time_s,
-            txt_filename_base=txt_filename_base,
-            frames=frames,
-            naming_mode="normal",
-            continuous_movement_controller=self.continuous_movement_controller,
-            stage_controller=stage_controller,
-            enable_continuous_movement=enable_continuous_movement,
-            movement_radius=movement_radius,
-            container_version=container_version,  # Detector will convert to this format
-        )
-        thread = QThread()
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)  # .run() method needed in worker
-
-        def _cleanup(success, result_files, t=typ):
-            try:
-                self._on_capture_done(success, result_files, t)
-            except Exception as e:
-                logger.error(f"Error in _on_capture_done for {t}: {e}", exc_info=True)
-            finally:
-                worker.deleteLater()
-                thread.quit()
-                thread.deleteLater()
-                self._capture_workers.remove(worker)
-
-        worker.finished.connect(_cleanup)
-        thread.start()
-
-        if not hasattr(self, "_capture_workers"):
-            self._capture_workers = []
-        self._capture_workers.append(worker)
-
-    def _on_capture_done(self, success: bool, result_files: dict, typ: str):
-        if not success:
-            self._log_technical_event(f"{typ} capture failed")
-            logger.warning(f"[{typ}] capture failed")
-            self._aux_timer.stop()
-            self._aux_status.setText("")
-            return
-
-        self._log_technical_event(
-            f"{typ} capture successful: {len(result_files)} files"
-        )
-        logger.info(f"[{typ}] capture successful: {list(result_files.keys())}")
-        self._aux_timer.stop()
-        self._aux_status.setText("Processing...")
-
-        # --- Set up worker
-        if not _get_technical_imports():
-            error_msg = "Cannot process files - technical imports not available"
-            self._log_technical_event(error_msg)
-            logger.error(error_msg)
-            self._aux_status.setText("Import error")
-            return
-
-        self._log_technical_event("Processing measurement files...")
-        MeasurementWorker = _get_technical_module("MeasurementWorker")
-        # Files are already converted by detector - MeasurementWorker just processes them
-        # frames and average_frames params are deprecated (conversion now in detector)
-        worker = MeasurementWorker(
-            filenames=result_files,  # Already .npy files from detector conversion
-            frames=1,  # Deprecated - kept for backward compatibility
-            average_frames=False,  # Deprecated - kept for backward compatibility
-        )
-        worker.add_aux_item.connect(self._add_aux_item_to_list)
-        worker.run()
-
-    def _add_aux_item_to_list(self, alias, npy_path):
-        """Add a new row to the Aux table with file, type and alias selectors.
-        Also validates filename format: name_timestamp_..._ALIAS.ext (timestamp before alias).
-        """
-        from pathlib import Path
-
-        from PyQt5.QtCore import Qt
-
-        # Validate naming: ensure timestamp before alias
-        try:
-            if not self._validate_timestamp_before_alias(npy_path):
-                from PyQt5.QtWidgets import QMessageBox
-
-                QMessageBox.warning(
-                    self,
-                    "Filename format",
-                    "File name should include timestamp before detector alias\n"
-                    "Expected pattern like: name_YYYYMMDD_HHMMSS_..._ALIAS.ext",
-                )
-        except Exception:
-            pass
-
-        row = self.auxTable.rowCount()
-        self.auxTable.insertRow(row)
-
-        # Primary checkbox (default unchecked)
-        primary_checkbox = QCheckBox()
-        primary_checkbox.setChecked(False)
-        primary_checkbox.setToolTip(
-            "Mark as primary measurement (unchecked = supplementary)"
-        )
-        # Center the checkbox in the cell
-        checkbox_widget = QWidget()
-        checkbox_layout = QHBoxLayout(checkbox_widget)
-        checkbox_layout.addWidget(primary_checkbox)
-        checkbox_layout.setAlignment(Qt.AlignCenter)
-        checkbox_layout.setContentsMargins(0, 0, 0, 0)
-        self.auxTable.setCellWidget(row, 0, checkbox_widget)
-
-        # File column (read-only, store full path in UserRole)
-        display = f"{alias}: {Path(npy_path).name}"
-        file_item = QTableWidgetItem(display)
-        file_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-        file_item.setData(Qt.UserRole, str(npy_path))
-        self.auxTable.setItem(row, 1, file_item)
-
-        # Type combobox (blank by default)
-        type_cb = self._make_type_combobox()
-        self.auxTable.setCellWidget(row, 2, type_cb)
-
-        # Alias combobox (preselect the source alias)
-        alias_cb = self._make_alias_combobox(preselect=alias)
-        self.auxTable.setCellWidget(row, 3, alias_cb)
-
-        # Auto-set type if we can infer it from filename
-        try:
-            inferred_type = self._infer_type_from_filename(npy_path)
-            if inferred_type:
-                type_cb = self.auxTable.cellWidget(row, 2)
-                if type_cb and hasattr(type_cb, "findText"):
-                    idx = type_cb.findText(inferred_type)
-                    if idx >= 0:
-                        type_cb.setCurrentIndex(idx)
-                        self._log_technical_event(
-                            f"Added {inferred_type} measurement: {alias} ({os.path.basename(npy_path)})"
-                        )
-        except Exception:
-            pass
-
-    def _file_base(self, typ: str) -> str:
-        le: QLineEdit = getattr(self, f"{typ.lower()}NameLE")
-        txt = le.text().strip().replace(" ", "_")
-        return txt or typ.lower()
-
-    # ---- Upload and validation helpers ----
-    def _validate_timestamp_before_alias(self, file_path: str) -> bool:
-        """Return True if the file name has a timestamp (YYYYMMDD_HHMMSS) before alias.
-        Accepts names like: name_YYYYMMDD_HHMMSS_..._ALIAS.ext"""
-        base = os.path.basename(file_path)
-        # Remove extension
-        name, _ext = os.path.splitext(base)
-        # Expect at least 3 tokens separated by underscores
-        toks = name.split("_")
-        if len(toks) < 3:
-            return False
-        # Look for timestamp token 'YYYYMMDD_HHMMSS' across two tokens or combined with underscore
-        # Our generator uses a single token with embedded '_': YYYYMMDD_HHMMSS
-        stamp_match = re.search(r"\d{8}_\d{6}", name)
-        if not stamp_match:
-            return False
-        # Ensure alias is the last token
-        alias = toks[-1]
-        # Minimal alias check: alphanumeric
-        if not re.fullmatch(r"[A-Za-z0-9]+", alias):
-            return False
-        # Ensure the timestamp appears before the alias
-        return stamp_match.start() < (len(name) - len(alias))
-
-    def _infer_alias_from_filename(self, file_path: str) -> str:
-        base = os.path.basename(file_path)
-        alias = os.path.splitext(base)[0].split("_")[-1]
-        # Validate against active aliases if available
-        try:
-            active_aliases = self._get_active_detector_aliases()
-            if alias in active_aliases:
-                return alias
-        except Exception:
-            pass
-        return alias  # fallback
-
-    def _infer_type_from_filename(self, file_path: str) -> str:
-        """Infer measurement type from filename patterns."""
-        base = os.path.basename(file_path).lower()
-        # Check for explicit type tokens first
-        for type_option in self.TYPE_OPTIONS:
-            if type_option.lower() in base:
-                return type_option
-
-        # Variations / legacy naming
-        if "background" in base:
-            return "BACKGROUND"
-        if "dark" in base:
-            return "DARK"
-        if "empty" in base:
-            return "EMPTY"
-        if "agbh" in base:
-            return "AGBH"
-        return None  # No match found
-
-    def load_technical_files(self):
-        """Load existing technical measurement files into the aux table.
-        Validates file naming and tries to infer alias from the filename."""
-        from PyQt5.QtWidgets import QFileDialog, QMessageBox
-
-        files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Load Technical Measurement Files",
-            str(self.folderLE.text() or ""),
-            "NumPy Arrays (*.npy);;Text Files (*.txt);;All Files (*)",
-        )
-        if not files:
-            return
-
-        self._log_technical_event(f"Loading {len(files)} technical files...")
-
-        for fpath in files:
-            # Convert .txt to .npy next to it (non-destructive)
-            path_to_use = fpath
-            try:
-                if fpath.lower().endswith(".txt"):
-                    data = np.loadtxt(fpath)
-                    npy_path = os.path.splitext(fpath)[0] + ".npy"
-                    np.save(npy_path, data)
-                    path_to_use = npy_path
-            except Exception as e:
-                QMessageBox.warning(
-                    self,
-                    "Conversion failed",
-                    f"Failed to convert TXT to NPY for:\n{fpath}\nError: {e}",
-                )
-                continue
-
-            # Validate filename format
-            if not self._validate_timestamp_before_alias(path_to_use):
-                QMessageBox.warning(
-                    self,
-                    "Filename format",
-                    "File name should include timestamp before detector alias\n"
-                    "Expected pattern like: name_YYYYMMDD_HHMMSS_..._ALIAS.ext",
-                )
-                # Continue adding anyway, but user is informed
-
-            alias = self._infer_alias_from_filename(path_to_use)
-            self._add_aux_item_to_list(alias, path_to_use)
-
-            # Auto-set type if we can infer it from filename
-            try:
-                inferred_type = self._infer_type_from_filename(path_to_use)
-                if inferred_type:
-                    row_idx = self.auxTable.rowCount() - 1
-                    type_cb = self.auxTable.cellWidget(row_idx, 1)
-                    if type_cb and hasattr(type_cb, "findText"):
-                        idx = type_cb.findText(inferred_type)
-                        if idx >= 0:
-                            type_cb.setCurrentIndex(idx)
-            except Exception:
-                pass
-
-    # ---- Persist/restore aux table in global state ----
-    def build_aux_state(self):
-        """Serialize current auxTable rows to a list for state saving."""
-        rows = []
-        try:
-            if not hasattr(self, "auxTable") or self.auxTable is None:
-                return rows
-            for r in range(self.auxTable.rowCount()):
-                file_item = self.auxTable.item(r, 0)
-                file_path = (
-                    file_item.data(Qt.UserRole) if file_item is not None else None
-                )
-                # Type
-                type_cb = self.auxTable.cellWidget(r, 1)
-                type_text = None
-                try:
-                    if type_cb is not None:
-                        t = type_cb.currentText()
-                        if t and t != self.NO_SELECTION_LABEL:
-                            type_text = t
-                except Exception:
-                    pass
-                # Alias
-                alias_cb = self.auxTable.cellWidget(r, 2)
-                alias_text = None
-                try:
-                    if alias_cb is not None:
-                        a = alias_cb.currentText()
-                        if a and a != self.NO_SELECTION_LABEL:
-                            alias_text = a
-                except Exception:
-                    pass
-                rows.append(
-                    {"file_path": file_path, "type": type_text, "alias": alias_text}
-                )
-        except Exception as e:
-            print(f"Error building aux state: {e}")
-        return rows
-
-    def restore_technical_aux_rows(self, rows):
-        """Restore auxTable rows from previously saved state."""
-        try:
-            if not hasattr(self, "auxTable") or self.auxTable is None:
-                return
-            # Clear existing rows
-            self.auxTable.setRowCount(0)
-            for row in rows or []:
-                fpath = row.get("file_path")
-                alias = row.get("alias") or self._infer_alias_from_filename(fpath or "")
-                self._add_aux_item_to_list(alias or "", fpath or "")
-                # Set type if provided
-                try:
-                    rix = self.auxTable.rowCount() - 1
-                    type_cb = self.auxTable.cellWidget(rix, 1)
-                    if type_cb is not None and row.get("type"):
-                        idx = (
-                            type_cb.findText(row["type"])
-                            if hasattr(type_cb, "findText")
-                            else -1
-                        )
-                        if idx >= 0:
-                            type_cb.setCurrentIndex(idx)
-                except Exception:
-                    pass
-        except Exception as e:
-            print(f"Error restoring aux rows: {e}")
-
-    def measure_aux(self):
-        # Check if technical imports are available before starting
-        if not _get_technical_imports():
-            self._log_technical_event("Cannot start Aux measurement - technical imports not available")
-            print("❌ Cannot start Aux measurement - technical measurements disabled due to import errors")
-            from PyQt5.QtWidgets import QMessageBox
-            QMessageBox.warning(
-                self,
-                "Technical Measurements Unavailable",
-                "Technical measurements are disabled due to import errors.\n\nCheck the console for details."
-            )
-            return
-        
-        # Check for existing HDF5 containers before starting new measurements
-        folder = (self.folderLE.text() or "").strip()
-        if folder and os.path.isdir(folder):
-            try:
-                from hardware.difra.utils.technical_h5_archival import (
-                    TechnicalH5Archival,
-                    format_archival_summary,
-                )
-                
-                containers = TechnicalH5Archival.find_h5_containers(folder)
-                if containers:
-                    # Found existing containers - prompt user
-                    container_list = "\n".join([f"  • {c.name}" for c in containers[:5]])
-                    if len(containers) > 5:
-                        container_list += f"\n  ... and {len(containers) - 5} more"
-                    
-                    message = (
-                        f"Found {len(containers)} existing HDF5 container(s) in:\n"
-                        f"{folder}\n\n"
-                        f"{container_list}\n\n"
-                        f"These will be moved to '{TechnicalH5Archival.STORAGE_SUBFOLDER}' "
-                        f"folder and associated .npy files will be cleaned up.\n\n"
-                        f"Do you want to archive them before starting new measurements?"
-                    )
-                    
-                    reply = QMessageBox.question(
-                        self,
-                        "Archive Existing Containers?",
-                        message,
-                        QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
-                        QMessageBox.Yes,
-                    )
-                    
-                    if reply == QMessageBox.Cancel:
-                        self._log_technical_event("Aux measurement cancelled by user")
-                        return
-                    elif reply == QMessageBox.Yes:
-                        # Archive containers and clean up files
-                        self._log_technical_event(
-                            f"Archiving {len(containers)} HDF5 container(s)..."
-                        )
-                        
-                        # Get active detector aliases for cleanup
-                        try:
-                            aliases = self._get_active_detector_aliases()
-                        except Exception:
-                            aliases = ["PRIMARY", "SECONDARY"]  # Fallback
-                        
-                        measurement_types = ["DARK", "EMPTY", "BACKGROUND", "AGBH", "WATER", "SPECIAL"]
-                        
-                        archived, cleaned, errors = TechnicalH5Archival.archive_all_and_cleanup(
-                            folder,
-                            measurement_types=measurement_types,
-                            aliases=aliases,
-                            add_timestamp=True,
-                        )
-                        
-                        summary = format_archival_summary(archived, cleaned, errors)
-                        self._log_technical_event(f"Archival complete: {archived} archived, {cleaned} cleaned")
-                        
-                        QMessageBox.information(
-                            self,
-                            "Archival Complete",
-                            f"Archival Summary:\n\n{summary}",
-                        )
-                    else:  # QMessageBox.No
-                        self._log_technical_event("User chose to skip archival")
-                        logger.info("User skipped HDF5 container archival")
-                        
-            except Exception as e:
-                logger.error(f"Error checking for existing containers: {e}", exc_info=True)
-                # Non-fatal - continue with measurement
-                self._log_technical_event(f"Warning: Failed to check for existing containers: {e}")
-        
-        self._log_technical_event("Starting auxiliary measurement...")
-        self._aux_start = time.time()
-        self._aux_spinner_state = 0
-        self._aux_status.setText("0 s ⁑")
-        self._aux_timer.start()
-        self._start_capture("Aux")
-
-    def _open_measurement_from_table(self, row: int, _col: int):
-        """Open measurement window for the selected row."""
-        from PyQt5.QtCore import Qt
-
-        file_item = self.auxTable.item(row, 0)
-        if not file_item:
-            return
-        file_path = file_item.data(Qt.UserRole)
-
-        self._log_technical_event(
-            f"Opening measurement file: {os.path.basename(file_path) if file_path else 'Unknown'}"
-        )
-
-        # Prefer alias from Alias #1 if selected, else try to infer from display text
-        alias_cb = self.auxTable.cellWidget(row, 2)
-        alias = None
-        if isinstance(alias_cb, QComboBox):
-            a = alias_cb.currentText().strip()
-            if a and a != self.NO_SELECTION_LABEL:
-                alias = a
-
-        if not alias:
-            disp = file_item.text()
-            if ":" in disp:
-                alias = disp.split(":", 1)[0].strip()
-
-        if not alias:
-            # Fallback to first controller alias
-            try:
-                alias = next(iter(self.detector_controller))
-            except Exception:
-                alias = None
-
-        if not _get_technical_imports():
-            self._log_technical_event("Cannot open measurement window - technical imports not available")
-            return
-            
-        show_measurement_window = _get_technical_module('show_measurement_window')
-        show_measurement_window(
-            file_path, self.masks.get(alias), self.ponis.get(alias), self
-        )
-
-    def run_pyfai(self):
-        self._log_technical_event("Starting PyFAI calibration...")
-        env = self.config.get("conda")
-        if not env:
-            self._log_technical_event("Error: No conda environment configured")
-            print("❌ No conda env set in self.config['conda']")
-            return
-
-        validate_folder = _get_technical_module('validate_folder')
-        folder = validate_folder(self.folderLE.text())
-
-        if os.name == "nt":
-            cmd = (
-                f"CALL conda activate {env} " f'&& cd /d "{folder}" ' f"&& pyfai-calib2"
-            )
-            start_cmd = f'start cmd /K "{cmd}"'
-            try:
-                subprocess.Popen(start_cmd, shell=True)
-                self._log_technical_event("PyFAI calibration launched in new window")
-                print("▶️ Launched PyFai in new cmd window.")
-            except Exception as e:
-                self._log_technical_event(f"Failed to launch PyFAI on Windows: {e}")
-                print("❌ Failed to launch PyFai on Windows:", e)
-        else:
-            # Use conda run instead of conda activate for better compatibility
-            try:
-                # Try to open in a new terminal window (macOS)
-                if sys.platform == 'darwin':
-                    # macOS: Create a temporary shell script and open it with Terminal
-                    # This avoids needing AppleScript permissions
-                    import tempfile
-                    
-                    script_content = f'''#!/bin/bash
-cd "{folder}"
-echo "Starting PyFAI calibration in conda environment: {env}"
-echo "Folder: {folder}"
-echo ""
-conda run -n {env} pyfai-calib2
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "Error: Failed to launch PyFAI. Check that:"
-    echo "  1. Conda environment '{env}' exists (run: conda env list)"
-    echo "  2. pyfai-calib2 is installed (run: conda run -n {env} which pyfai-calib2)"
-    echo ""
-    echo "Press any key to close..."
-    read -n 1
-fi
-'''
-                    
-                    # Create temporary script file
-                    with tempfile.NamedTemporaryFile(mode='w', suffix='.command', delete=False) as f:
-                        f.write(script_content)
-                        script_path = f.name
-                    
-                    # Make it executable
-                    import os as os_module
-                    os_module.chmod(script_path, 0o755)
-                    
-                    # Open with Terminal using 'open' command (doesn't require permissions)
-                    subprocess.Popen(['open', '-a', 'Terminal', script_path])
-                    self._log_technical_event(f"PyFAI calibration script created: {script_path}")
-                else:
-                    # Linux: try common terminal emulators
-                    bash_cmd = (
-                        f'cd "{folder}" && '
-                        f'echo "Starting PyFAI in environment: {env}" && '
-                        f'conda run -n {env} pyfai-calib2 || '
-                        f'(echo "\\nError: Failed to launch PyFAI"; read -p "Press Enter to close...")'
-                    )
-                    for terminal in ['gnome-terminal', 'konsole', 'xterm']:
-                        try:
-                            subprocess.Popen([terminal, '--', 'bash', '-c', bash_cmd])
-                            break
-                        except FileNotFoundError:
-                            continue
-                self._log_technical_event(
-                    "PyFAI calibration launched in new terminal window"
-                )
-                print("▶️ Launched PyFai in new terminal window.")
-            except Exception as e:
-                self._log_technical_event(f"Failed to launch PyFAI on Unix: {e}")
-                print("❌ Failed to launch PyFai on Unix:", e)
-
-    def initialize_hardware(self):
-        pass
-
-    def _update_aux_status(self):
-        elapsed = int(time.time() - self._aux_start)
-        spinner = ["⁑", "⁙", "⁹", "⁸", "‼", "‴", "…", "‧", " ", "‏"]
-        ch = spinner[self._aux_spinner_state % len(spinner)]
-        self._aux_spinner_state += 1
-        self._aux_status.setText(f"{elapsed} s {ch}")
-
-        # Log every 10 seconds
-        if (
-            elapsed > 0
-            and elapsed % 10 == 0
-            and self._aux_spinner_state % len(spinner) == 0
-        ):
-            self._log_technical_event(
-                f"Auxiliary measurement in progress: {elapsed} seconds"
-            )
-
-    def _toggle_realtime(self, checked: bool):
-        if checked:
-            self._log_technical_event("Starting real-time measurement display")
-            self._start_realtime()
-            self.rtBtn.setText("Stop RT")
-        else:
-            self._log_technical_event("Stopping real-time measurement display")
-            self._stop_realtime()
-            self.rtBtn.setText("Real-time")
-
-    # ---- Deletion of selected Aux rows via Delete key (no file removal) ----
-    def delete_selected_aux_rows(self):
-        try:
-            if not hasattr(self, "auxTable") or self.auxTable is None:
-                return
-            sel_model = self.auxTable.selectionModel()
-            if not sel_model:
-                return
-            rows = sorted({ix.row() for ix in sel_model.selectedRows()}, reverse=True)
-            if not rows:
-                return
-            for r in rows:
-                try:
-                    self.auxTable.removeRow(r)
-                except Exception:
-                    pass
-        except Exception as e:
-            print(f"Error deleting selected aux rows: {e}")
-
-    def eventFilter(self, source, event):
-        # Handle Delete key for auxTable to remove rows only from UI/state
-        if (
-            source is getattr(self, "auxTable", None)
-            and event.type() == QEvent.KeyPress
-        ):
-            try:
-                if event.key() == Qt.Key_Delete:
-                    self.delete_selected_aux_rows()
-                    return True
-            except Exception:
-                pass
-        # Chain to super to allow other mixins (e.g., ZonePoints) to handle their filters
-        return super().eventFilter(source, event)
-
-    def _start_realtime(self):
-        exposure = float(self.integrationTimeSpin.value())
-        self._rt_queue = queue.Queue()
-
-        plt.ion()
-        detector_aliases = list(self.detector_controller.keys())
-        n_det = len(detector_aliases)
-        self._rt_img = {}
-        self._rt_last_frame = {}  # <--- Cache for latest frame per alias
-
-        # One subplot per detector alias
-        fig, axes = plt.subplots(1, n_det, figsize=(5 * n_det, 5))
-        if n_det == 1:
-            axes = [axes]
-
-        for ax, alias in zip(axes, detector_aliases):
-            size = getattr(self.detector_controller[alias], "size", (256, 256))
-            self._rt_img[alias] = ax.imshow(
-                np.zeros(size), origin="lower", interpolation="none"
-            )
-            ax.set_title(alias)
-        self._rt_fig = fig
-        plt.show()
-
-        self._plot_timer = QTimer(self)
-        self._plot_timer.setInterval(50)
-        self._plot_timer.timeout.connect(self._rt_plot_tick)
-        self._plot_timer.start()
-
-        def callback(frames_dict):
-            # Cache most recent frame per alias
-            for alias, frame in frames_dict.items():
-                self._rt_last_frame[alias] = frame
-            self._rt_queue.put(True)  # Just a signal to the timer
-
-        # Start stream on all detectors
-        for controller in self.detector_controller.values():
-            controller.start_stream(
-                callback=callback, exposure=exposure, interval=0.0, frames=1
-            )
-
-    def _rt_plot_tick(self):
-        # Drain the queue (we only need to plot once per timer tick)
-        while True:
-            try:
-                _ = self._rt_queue.get_nowait()
-            except queue.Empty:
-                break
-        # Update all subplots with their latest frame
-        for alias in self._rt_img:
-            frame = self._rt_last_frame.get(alias)
-            if frame is not None:
-                self._rt_img[alias].set_data(frame)
-                self._rt_img[alias].set_clim(frame.min(), frame.max())
-        self._rt_fig.canvas.draw_idle()
-
-    def _stop_realtime(self):
-        for controller in self.detector_controller.values():
-            controller.stop_stream()
-        if hasattr(self, "_plot_timer"):
-            self._plot_timer.stop()
-            del self._plot_timer
-        import matplotlib.pyplot as plt
-
-        plt.close(self._rt_fig)
-        del self._rt_queue
-        del self._rt_last_frame
-
-    # -------------------- Helpers for Aux Table --------------------
-    def _get_active_detector_aliases(self):
-        """Return aliases from settings (main.json), honoring DEV/dev_active_detectors.
-        This intentionally reads from config instead of live hardware."""
-        dev_mode = self.config.get("DEV", False)
-        ids = (
-            self.config.get("dev_active_detectors", [])
-            if dev_mode
-            else self.config.get("active_detectors", [])
-        )
-        return [
-            d.get("alias")
-            for d in self.config.get("detectors", [])
-            if d.get("id") in ids
-        ]
-
-    def _get_active_detector_ids(self):
-        """Return active detector IDs from config (main.json), honoring DEV/dev_active_detectors."""
-        dev_mode = self.config.get("DEV", False)
-        return (
-            self.config.get("dev_active_detectors", [])
-            if dev_mode
-            else self.config.get("active_detectors", [])
-        )
-
-
-    def _normalize_technical_type(self, typ: str) -> str:
-        """Normalize UI type labels to schema technical types."""
-        if typ == "SPECIAL":
-            return "WATER"
-        return typ
-
-    def _make_type_combobox(self):
-        cb = QComboBox()
-        cb.addItem(self.NO_SELECTION_LABEL, None)
-        for t in self.TYPE_OPTIONS:
-            cb.addItem(t, t)
-        # Connect signal to sync type across detectors
-        cb.currentTextChanged.connect(self._on_type_changed)
-        return cb
-
-    def _on_type_changed(self, new_type):
-        """Sync type selection across all rows with the same measurement name.
-        
-        When user selects AgBH/DARK/etc for one detector, automatically select
-        the same type for all other detectors from the same measurement batch.
-        """
-        if new_type == self.NO_SELECTION_LABEL:
-            return
-        
-        # Find which row triggered this change
-        sender = self.sender()
-        if not isinstance(sender, QComboBox):
-            return
-        
-        trigger_row = None
-        for row in range(self.auxTable.rowCount()):
-            if self.auxTable.cellWidget(row, 2) is sender:
-                trigger_row = row
-                break
-        
-        if trigger_row is None:
-            return
-        
-        # Get the measurement name (base name without detector alias)
-        file_item = self.auxTable.item(trigger_row, 1)
-        if not file_item:
-            return
-        
-        file_path = file_item.data(Qt.UserRole)
-        if not file_path:
-            return
-        
-        # Extract measurement name without alias and timestamp
-        # Expected format: name_YYYYMMDD_HHMMSS_..._ALIAS.ext
-        import re
-        from pathlib import Path
-        
-        base_name = Path(file_path).stem
-        # Remove alias (last token after underscore)
-        parts = base_name.split('_')
-        if len(parts) < 2:
-            return
-        
-        # Remove the alias (last part) to get measurement identifier
-        measurement_name = '_'.join(parts[:-1])
-        
-        # Find all rows with the same measurement name and sync their type
-        for row in range(self.auxTable.rowCount()):
-            if row == trigger_row:
-                continue
-            
-            row_file_item = self.auxTable.item(row, 1)
-            if not row_file_item:
-                continue
-            
-            row_file_path = row_file_item.data(Qt.UserRole)
-            if not row_file_path:
-                continue
-            
-            row_base_name = Path(row_file_path).stem
-            row_parts = row_base_name.split('_')
-            if len(row_parts) < 2:
-                continue
-            
-            row_measurement_name = '_'.join(row_parts[:-1])
-            
-            # If same measurement (ignoring detector alias), sync the type
-            if row_measurement_name == measurement_name:
-                type_cb = self.auxTable.cellWidget(row, 2)
-                if isinstance(type_cb, QComboBox):
-                    # Block signals to avoid recursive updates
-                    type_cb.blockSignals(True)
-                    type_cb.setCurrentText(new_type)
-                    type_cb.blockSignals(False)
-                    
-                    self._log_technical_event(
-                        f"Auto-synced type to {new_type} for row {row + 1}"
-                    )
-    
-    def _make_alias_combobox(self, preselect=None):
-        cb = QComboBox()
-        cb.addItem(self.NO_SELECTION_LABEL, None)
-        for alias in self._get_active_detector_aliases():
-            cb.addItem(alias, alias)
-        if preselect:
-            idx = cb.findText(preselect)
-            if idx >= 0:
-                cb.setCurrentIndex(idx)
-        return cb
-
-    def refresh_aux_table_alias_models(self):
-        aliases = self._get_active_detector_aliases()
-        for row in range(self.auxTable.rowCount()):
-            cb = self.auxTable.cellWidget(row, 3)
-            if not isinstance(cb, QComboBox):
-                continue
-            current = cb.currentText()
-            cb.blockSignals(True)
-            cb.clear()
-            cb.addItem(self.NO_SELECTION_LABEL, None)
-            for a in aliases:
-                cb.addItem(a, a)
-            # restore selection if still present
-            if current and current in aliases:
-                cb.setCurrentText(current)
-            cb.blockSignals(False)
-
-    # -------------------- Generate Technical Meta --------------------
-    # -------------------- Generate Technical Metadata & HDF5 --------------------
-    # generate_technical_meta() and generate_technical_h5() moved to H5GenerationMixin
-    
-    # -------------------- Load Technical HDF5 --------------------
-    # load_technical_h5() and _populate_aux_table_from_h5() moved to H5ManagementMixin
