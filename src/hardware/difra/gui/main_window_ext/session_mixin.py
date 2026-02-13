@@ -171,6 +171,7 @@ class SessionMixin:
                     "Session Created",
                     f"Session created successfully!\n\n"
                     f"Sample ID: {params['sample_id']}\n"
+                    f"Study: {params.get('study_name', 'UNSPECIFIED')}\n"
                     f"Container: {session_path.name}",
                 )
                 
@@ -235,6 +236,7 @@ class SessionMixin:
         
         # Build info message
         msg = f"Sample ID: {info['sample_id']}\n"
+        msg += f"Study: {info.get('study_name', 'UNSPECIFIED')}\n"
         msg += f"Session ID: {info['session_id']}\n"
         msg += f"Operator: {info['operator_id']}\n"
         msg += f"Machine: {info['machine_name']}\n"
@@ -503,8 +505,21 @@ class SessionMixin:
         import shutil
         import time
         
-        # Create archive folder
-        archive_base = session_path.parent / "session_archive"
+        # Create archive folder from config (preferred) with deterministic fallback
+        archive_base = None
+        try:
+            if hasattr(self, "config") and self.config:
+                configured = self.config.get("measurements_archive_folder")
+                if configured:
+                    archive_base = Path(configured)
+                elif self.config.get("session_archive_folder"):
+                    archive_base = Path(self.config.get("session_archive_folder"))
+        except Exception:
+            archive_base = None
+
+        if archive_base is None:
+            archive_base = session_path.parent.parent / "archive" / "measurements"
+
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         archive_folder = archive_base / f"{session_id}_{timestamp}"
         archive_folder.mkdir(parents=True, exist_ok=True)
@@ -604,6 +619,7 @@ class SessionMixin:
                     "Session Created",
                     f"Session created successfully!\n\n"
                     f"Sample ID: {params['sample_id']}\n"
+                    f"Study: {params.get('study_name', 'UNSPECIFIED')}\n"
                     f"Container: {session_path.name}\n\n"
                     f"Sample image added to container.",
                 )
@@ -867,6 +883,7 @@ class SessionMixin:
             # Open container to read metadata
             with h5py.File(file_path, 'r') as f:
                 sample_id = f.attrs.get(schema.ATTR_SAMPLE_ID, 'Unknown')
+                study_name = f.attrs.get(schema.ATTR_STUDY_NAME, 'UNSPECIFIED')
                 session_id = f.attrs.get(schema.ATTR_SESSION_ID, 'Unknown')
                 operator_id = f.attrs.get(schema.ATTR_OPERATOR_ID, 'Unknown')
                 distance_cm = f.attrs.get(schema.ATTR_DISTANCE_CM, None)
@@ -886,6 +903,7 @@ class SessionMixin:
             msg = (
                 f"Container Information:\n\n"
                 f"Sample ID: {sample_id}\n"
+                f"Study: {study_name}\n"
                 f"Session ID: {session_id}\n"
                 f"Operator: {operator_id}\n"
                 f"Status: {lock_status}\n\n"
@@ -915,13 +933,15 @@ class SessionMixin:
             # Set session manager state (read-only reference)
             self.session_manager.session_path = file_path
             self.session_manager.sample_id = str(sample_id)
+            self.session_manager.study_name = str(study_name)
             self.session_manager.session_id = str(session_id)
+            self.session_manager.operator_id = str(operator_id)
             
             logger.info(
-                f"Opened existing session container",
-                sample_id=sample_id,
-                locked=is_locked,
-                path=str(file_path),
+                "Opened existing session container: sample_id=%s locked=%s path=%s",
+                sample_id,
+                is_locked,
+                str(file_path),
             )
             
             # Update UI
@@ -949,6 +969,7 @@ class NewSessionDialog(QDialog):
     
     Prompts user for:
     - Sample ID (required)
+    - Study (required)
     - Distance in cm (required)
     - Operator (with option to use current or select different)
     
@@ -974,6 +995,11 @@ class NewSessionDialog(QDialog):
         self.sample_id_edit = QLineEdit()
         self.sample_id_edit.setPlaceholderText("e.g. SAMPLE_001")
         form_layout.addRow("Sample ID*:", self.sample_id_edit)
+
+        # Study (required)
+        self.study_name_edit = QLineEdit()
+        self.study_name_edit.setPlaceholderText("e.g. STUDY_2026_A")
+        form_layout.addRow("Study*:", self.study_name_edit)
         
         # Distance (required) - with explicit prompt
         distance_label = QLabel(
@@ -1112,6 +1138,14 @@ class NewSessionDialog(QDialog):
                 "Please enter a Sample ID.",
             )
             return
+
+        if not self.study_name_edit.text().strip():
+            QMessageBox.warning(
+                self,
+                "Missing Study",
+                "Please enter a Study name.",
+            )
+            return
         
         if not self.distance_edit.text().strip():
             QMessageBox.warning(
@@ -1148,6 +1182,7 @@ class NewSessionDialog(QDialog):
         """Get session parameters from dialog."""
         params = {
             'sample_id': self.sample_id_edit.text().strip(),
+            'study_name': self.study_name_edit.text().strip(),
             'distance_cm': float(self.distance_edit.text()),
             'operator_id': self.selected_operator_id,
         }

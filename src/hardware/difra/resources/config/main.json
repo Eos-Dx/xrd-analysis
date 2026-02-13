@@ -143,7 +143,12 @@
     "dev_active_stages": [
         "DUMMY-XY-000"
     ],
-    "conda": "ulster37",
+    "conda": "ulster38",
+    "difra_base_folder": "/Users/sad/dev/Data/difra",
+    "technical_folder": "/Users/sad/dev/Data/difra/technical",
+    "technical_archive_folder": "/Users/sad/dev/Data/difra/archive/technical",
+    "measurements_folder": "/Users/sad/dev/Data/difra/measurements",
+    "measurements_archive_folder": "/Users/sad/dev/Data/difra/archive/measurements",
     "standard_distances": {
         "SAXS": 0.17239906043601042,
         "WAXS": 0.023128625835860867
