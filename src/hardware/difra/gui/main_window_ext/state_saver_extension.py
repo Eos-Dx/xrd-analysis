@@ -260,6 +260,14 @@ class StateSaverMixin:
         except Exception as e:
             print("Error saving state:", e)
 
+        # Keep active unlocked session containers in sync with latest workspace state
+        # so crash recovery can restore from container content.
+        try:
+            if hasattr(self, "sync_workspace_to_session_container"):
+                self.sync_workspace_to_session_container(state=state)
+        except Exception as e:
+            print("Warning: failed to sync workspace to session container:", e)
+
     def _get_crop_rect(self):
         r = getattr(self.image_view, "crop_rect", None)
         return (

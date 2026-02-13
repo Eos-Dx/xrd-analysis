@@ -34,6 +34,8 @@ class SessionManager:
         self.session_path: Optional[Path] = None
         self.session_id: Optional[str] = None
         self.sample_id: Optional[str] = None
+        self.study_name: Optional[str] = None
+        self.technical_container_path: Optional[Path] = None
         
         # Track counters for linking
         self.i0_counter: Optional[int] = None  # Attenuation without sample
@@ -91,6 +93,7 @@ class SessionManager:
         
         Required session attributes (from schema):
             sample_id: str - Unique sample identifier
+            study_name: str - Study name/identifier (optional, defaults to UNSPECIFIED)
             operator_id: str - Operator ID/name (optional, uses config default)
             site_id: str - Site identifier (optional, uses config default)
             machine_name: str - Machine name (optional, uses config default)
@@ -140,6 +143,10 @@ class SessionManager:
                 schema.ATTR_SAMPLE_ID,
                 session_attrs.get('sample_id'),  # Support both snake_case and schema names
             ),
+            schema.ATTR_STUDY_NAME: session_attrs.get(
+                schema.ATTR_STUDY_NAME,
+                session_attrs.get('study_name', "UNSPECIFIED"),
+            ),
             schema.ATTR_OPERATOR_ID: session_attrs.get(
                 schema.ATTR_OPERATOR_ID,
                 session_attrs.get('operator_id', self.operator_id),
@@ -174,12 +181,14 @@ class SessionManager:
             raise ValueError("sample_id is required to create a session")
         
         sample_id = container_attrs[schema.ATTR_SAMPLE_ID]
+        study_name = container_attrs[schema.ATTR_STUDY_NAME]
         
         logger.info(
             "Creating new session",
             sample_id=sample_id,
             distance_cm=distance_cm,
             technical_container=str(tech_path),
+            study_name=study_name,
             operator_id=container_attrs.get(schema.ATTR_OPERATOR_ID),
             site_id=container_attrs.get(schema.ATTR_SITE_ID),
             machine_name=container_attrs.get(schema.ATTR_MACHINE_NAME),
@@ -193,6 +202,8 @@ class SessionManager:
         
         self.session_path = Path(session_path_str)
         self.sample_id = sample_id
+        self.study_name = study_name
+        self.technical_container_path = Path(tech_path)
         
         # Copy technical data to session
         writer.copy_technical_to_session(
@@ -224,8 +235,64 @@ class SessionManager:
         self.session_path = None
         self.session_id = None
         self.sample_id = None
+        self.study_name = None
+        self.technical_container_path = None
         self.i0_counter = None
         self.i_counter = None
+
+    def open_existing_session(self, session_file: Path) -> Dict:
+        """Load metadata from an existing session container into manager state."""
+        import h5py
+
+        def _as_text(value, default=""):
+            if value is None:
+                return default
+            if isinstance(value, bytes):
+                return value.decode("utf-8", errors="replace")
+            return str(value)
+
+        session_file = Path(session_file)
+        if not session_file.exists():
+            raise FileNotFoundError(f"Session container not found: {session_file}")
+
+        with h5py.File(session_file, "r") as f:
+            self.session_path = session_file
+            self.sample_id = _as_text(f.attrs.get(schema.ATTR_SAMPLE_ID), "unknown")
+            self.study_name = _as_text(
+                f.attrs.get(schema.ATTR_STUDY_NAME), "UNSPECIFIED"
+            )
+            self.session_id = _as_text(f.attrs.get(schema.ATTR_SESSION_ID), "unknown")
+            self.operator_id = _as_text(
+                f.attrs.get(schema.ATTR_OPERATOR_ID), self.operator_id
+            )
+
+            if schema.GROUP_TECHNICAL in f:
+                source = f[schema.GROUP_TECHNICAL].attrs.get("source_file")
+                self.technical_container_path = Path(source) if source else None
+            else:
+                self.technical_container_path = None
+
+        return self.get_session_info()
+
+    def replace_technical_container(
+        self,
+        technical_file: Path,
+        auto_lock_source: bool = False,
+    ) -> None:
+        """Replace the embedded /technical group in an active unlocked session."""
+        self._check_active()
+
+        if self.is_locked():
+            raise RuntimeError(
+                "Cannot update technical data: session container is locked."
+            )
+
+        writer.copy_technical_to_session(
+            technical_file=technical_file,
+            session_file=self.session_path,
+            auto_lock=auto_lock_source,
+        )
+        self.technical_container_path = Path(technical_file)
     
     def add_sample_image(
         self,
@@ -523,6 +590,7 @@ class SessionManager:
             "session_id": self.session_id,
             "session_path": str(self.session_path),
             "sample_id": self.sample_id,
+            "study_name": self.study_name,
             "operator_id": self.operator_id,
             "machine_name": self.machine_name,
             "beam_energy_kev": self.beam_energy_kev,

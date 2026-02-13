@@ -83,7 +83,27 @@ def test_session_manager_create_session(temp_dir, technical_container):
     assert manager.is_session_active()
     assert session_path.exists()
     assert manager.sample_id == "TEST_SAMPLE_001"
+    assert manager.study_name == "UNSPECIFIED"
     assert manager.session_id == session_id
+
+
+def test_session_manager_create_session_with_study(temp_dir, technical_container):
+    """Test creating a session with explicit study_name."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    session_id, session_path = manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_002",
+        study_name="STUDY_X",
+        distance_cm=17.0,
+        operator_id="test_operator",
+    )
+
+    assert session_path.exists()
+    assert manager.session_id == session_id
+    assert manager.study_name == "STUDY_X"
+
+    with h5py.File(session_path, "r") as session_file:
+        assert session_file.attrs.get(schema.ATTR_STUDY_NAME) == "STUDY_X"
 
 
 def test_session_manager_add_points(temp_dir, technical_container):
@@ -292,6 +312,52 @@ def test_session_manager_get_session_info(temp_dir, technical_container):
     assert info["active"] is True
     assert info["sample_id"] == "TEST_SAMPLE_001"
     assert info["attenuation_complete"] is False
+
+
+def test_session_manager_replace_technical_container(temp_dir, technical_container):
+    """Test replacing embedded technical data in an active unlocked session."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    _session_id, session_path = manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_SWAP",
+        distance_cm=17.0,
+    )
+
+    # Create second locked technical container to swap in.
+    dark_file = temp_dir / "dark_swap.npy"
+    np.save(dark_file, np.random.rand(64, 64).astype(np.float32))
+    _new_id, new_tech_path = generate_from_aux_table(
+        folder=temp_dir,
+        aux_measurements={"DARK": {"DET1": str(dark_file)}},
+        poni_data={
+            "DET1": (
+                "Detector: AdvaPIX\nPixelSize1: 5.500e-05\nPixelSize2: 5.500e-05\nDistance: 0.170000\n",
+                "DET1_swap.poni",
+            )
+        },
+        detector_config=[
+            {
+                "id": "DET1",
+                "alias": "DET1",
+                "type": "AdvaPIX",
+                "size": [64, 64],
+                "pixel_size_um": 55.0,
+            }
+        ],
+        active_detector_ids=["DET1"],
+        distances_cm=17.0,
+        validate_poni=True,
+    )
+    lock_container(new_tech_path)
+
+    manager.replace_technical_container(Path(new_tech_path))
+
+    assert manager.technical_container_path == Path(new_tech_path)
+    with h5py.File(session_path, "r") as session_file:
+        source_file = session_file["/technical"].attrs.get("source_file", "")
+        if isinstance(source_file, bytes):
+            source_file = source_file.decode("utf-8")
+        assert source_file == str(new_tech_path)
 
 
 if __name__ == "__main__":

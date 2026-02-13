@@ -602,6 +602,17 @@ class H5ManagementMixin:
         # Load container and populate aux table
         try:
             self._populate_aux_table_from_h5(file_path)
+
+            # Notify host window so active session containers can optionally
+            # refresh embedded technical data.
+            if hasattr(self, "on_technical_container_loaded"):
+                try:
+                    self.on_technical_container_loaded(file_path, is_locked=is_locked)
+                except Exception as callback_error:
+                    logger.warning(
+                        f"Technical-load callback failed: {callback_error}",
+                        exc_info=True,
+                    )
             
             # Show success message
             status_icon = "✅" if is_valid else "⚠️"
@@ -642,10 +653,25 @@ class H5ManagementMixin:
         """
         import h5py
         from hardware.container.v0_1 import schema
-        from PyQt5.QtWidgets import QComboBox
+        from PyQt5.QtWidgets import QCheckBox, QComboBox
+
+        def _as_text(value):
+            if isinstance(value, bytes):
+                return value.decode("utf-8", errors="replace")
+            return str(value) if value is not None else ""
+
+        def _find_column_index(label: str, default_index: int) -> int:
+            label_norm = label.strip().lower()
+            for index in range(self.auxTable.columnCount()):
+                header_item = self.auxTable.horizontalHeaderItem(index)
+                if header_item and header_item.text().strip().lower() == label_norm:
+                    return index
+            return default_index
         
         # Clear existing table
         self.auxTable.setRowCount(0)
+        primary_col = _find_column_index("Primary", 0)
+        type_col = _find_column_index("Type", 2)
         
         # Extract detector distances from container
         extracted_distances = {}
@@ -677,10 +703,10 @@ class H5ManagementMixin:
                 evt_group = tech_group[evt_name]
                 # Read technical type from event-level attrs.
                 # Current writers use "type"; keep ATTR_TECHNICAL_TYPE as fallback.
-                tech_type = evt_group.attrs.get(
+                tech_type = _as_text(evt_group.attrs.get(
                     "type",
                     evt_group.attrs.get(schema.ATTR_TECHNICAL_TYPE, "UNKNOWN"),
-                )
+                )).strip().upper()
                 
                 # Iterate through detectors in this event
                 for det_name in evt_group.keys():
@@ -735,20 +761,27 @@ class H5ManagementMixin:
                     row_idx = self.auxTable.rowCount() - 1
                     
                     # Set Type combobox (column 2)
-                    type_cb = self.auxTable.cellWidget(row_idx, 2)
+                    type_cb = self.auxTable.cellWidget(row_idx, type_col)
                     if type_cb and isinstance(type_cb, QComboBox):
-                        idx = type_cb.findText(tech_type)
+                        idx = -1
+                        for item_idx in range(type_cb.count()):
+                            item_text = _as_text(type_cb.itemText(item_idx)).strip().upper()
+                            if item_text == tech_type:
+                                idx = item_idx
+                                break
                         if idx >= 0:
                             type_cb.setCurrentIndex(idx)
                     
                     # Loaded technical container rows are canonical primaries.
                     try:
-                        checkbox_widget = self.auxTable.cellWidget(row_idx, 0)
+                        checkbox_widget = self.auxTable.cellWidget(row_idx, primary_col)
                         if checkbox_widget:
-                            # Find the checkbox within the widget
-                            from PyQt5.QtWidgets import QCheckBox
-                            checkbox = checkbox_widget.findChild(QCheckBox)
-                            if checkbox:
+                            checkbox = (
+                                checkbox_widget
+                                if isinstance(checkbox_widget, QCheckBox)
+                                else checkbox_widget.findChild(QCheckBox)
+                            )
+                            if checkbox is not None:
                                 checkbox.setChecked(True)
                     except Exception as e:
                         logger.warning(f"Failed to set primary checkbox: {e}")

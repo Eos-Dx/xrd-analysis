@@ -32,6 +32,7 @@ def create_session_container(
     beam_energy_keV: float,
     acquisition_date: str,
     patient_id: Optional[str] = None,
+    study_name: str = "UNSPECIFIED",
     container_id: Optional[str] = None,
 ) -> Tuple[str, str]:
     """Create a new empty session container with required root attributes.
@@ -39,6 +40,7 @@ def create_session_container(
     Args:
         folder: Directory where container will be created
         sample_id: Unique sample identifier
+        study_name: Study name/identifier
         operator_id: ID/name of operator
         site_id: Site/location identifier
         machine_name: Name/ID of acquisition machine
@@ -63,6 +65,7 @@ def create_session_container(
 
     root_attrs = {
         schema.ATTR_SAMPLE_ID: sample_id,
+        schema.ATTR_STUDY_NAME: study_name,
         schema.ATTR_SESSION_ID: container_id,
         schema.ATTR_CREATION_TIMESTAMP: time.strftime("%Y-%m-%d %H:%M:%S"),
         schema.ATTR_ACQUISITION_DATE: acquisition_date,
@@ -161,6 +164,16 @@ def copy_technical_to_session(
         src_group=schema.GROUP_TECHNICAL,
         dst_file=session_file,
         dst_group=schema.GROUP_TECHNICAL,
+    )
+
+    # Track technical source used by this session snapshot.
+    utils.set_attrs(
+        file_path=session_file,
+        path=schema.GROUP_TECHNICAL,
+        attrs={
+            "source_file": str(technical_file),
+            "copied_timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        },
     )
 
 
