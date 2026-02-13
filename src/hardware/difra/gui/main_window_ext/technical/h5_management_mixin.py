@@ -331,6 +331,7 @@ class H5ManagementMixin:
         
         # Lock the container
         try:
+            bundle_path = None
             lock_technical_container(
                 Path(container_path),
                 locked_by=operator_id,
@@ -369,11 +370,31 @@ class H5ManagementMixin:
                     self._log_technical_event(
                         f"Archived {archived_count} data file(s) to {archive_subdir.name}"
                     )
+
+                try:
+                    from hardware.container import create_container_bundle
+
+                    output_zip = archive_subdir.with_suffix(".zip")
+                    bundle_path = create_container_bundle(
+                        container_file=Path(container_path),
+                        source_folder=archive_subdir if archive_subdir.exists() else None,
+                        output_zip=output_zip,
+                        source_arcname=archive_subdir.name,
+                    )
+                    self._log_technical_event(
+                        f"Created container ZIP bundle: {Path(bundle_path).name}"
+                    )
+                except Exception as zip_error:
+                    logger.warning(f"Failed to create technical ZIP bundle: {zip_error}")
+                    self._log_technical_event(
+                        f"Warning: Could not create ZIP bundle: {zip_error}"
+                    )
             except Exception as e:
                 logger.warning(f"Failed to archive data files: {e}")
                 self._log_technical_event(f"Warning: Could not archive data files: {e}")
                 # Non-fatal - container is still locked
             
+            bundle_line = f"ZIP bundle: {bundle_path}\n" if bundle_path else ""
             QMessageBox.information(
                 self,
                 "Container Locked",
@@ -382,6 +403,7 @@ class H5ManagementMixin:
                 f"Locked by: {operator_id}\n"
                 f"Location: {container_path}\n"
                 f"Raw data archived: {archived_count} file(s)\n\n"
+                f"{bundle_line}"
                 f"This container is now ready for session measurements.",
             )
         except Exception as e:

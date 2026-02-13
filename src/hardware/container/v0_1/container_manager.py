@@ -12,6 +12,8 @@ import os
 import shutil
 import stat
 import time
+import zipfile
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Optional
 
@@ -147,6 +149,74 @@ def unlock_container(container_file: Path) -> None:
 
 
 # ==================== Archive Management ====================
+
+def create_container_bundle(
+    container_path: Path,
+    source_folder: Optional[Path] = None,
+    output_zip: Optional[Path] = None,
+    include_patterns: Optional[list] = None,
+    source_arcname: Optional[str] = None,
+) -> Path:
+    """Create ZIP bundle with container and optional operator folder structure.
+
+    The container file is stored at ZIP root and source folder contents are
+    preserved using relative paths under ``source_arcname``.
+
+    Args:
+        container_path: Path to .h5 container file
+        source_folder: Optional folder containing operator-created structure/files
+        output_zip: Optional output ZIP path (defaults to sibling ``<stem>.zip``)
+        include_patterns: Optional glob patterns for source files
+        source_arcname: Optional top-level folder name inside ZIP for source files
+
+    Returns:
+        Path to created ZIP bundle
+    """
+    container_path = Path(container_path)
+    if not container_path.exists():
+        raise FileNotFoundError(f"Container not found: {container_path}")
+
+    if output_zip is None:
+        output_zip = container_path.with_suffix(".zip")
+    output_zip = Path(output_zip)
+    output_zip.parent.mkdir(parents=True, exist_ok=True)
+
+    selected_patterns = include_patterns or ["*"]
+    source_root = Path(source_folder) if source_folder else None
+    arc_root = source_arcname or (source_root.name if source_root else None)
+
+    def _include_relative_path(relative_path: Path) -> bool:
+        relative_str = relative_path.as_posix()
+        base_name = relative_path.name
+        for pattern in selected_patterns:
+            normalized_pattern = str(pattern).replace("\\", "/")
+            if fnmatch(base_name, normalized_pattern) or fnmatch(
+                relative_str, normalized_pattern
+            ):
+                return True
+        return False
+
+    with zipfile.ZipFile(output_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.write(container_path, arcname=container_path.name)
+
+        if source_root and source_root.exists():
+            for candidate in sorted(source_root.rglob("*")):
+                if not candidate.is_file():
+                    continue
+                if candidate.resolve() == output_zip.resolve():
+                    continue
+                relative_path = candidate.relative_to(source_root)
+                if not _include_relative_path(relative_path):
+                    continue
+
+                if arc_root:
+                    arcname = (Path(arc_root) / relative_path).as_posix()
+                else:
+                    arcname = relative_path.as_posix()
+                zf.write(candidate, arcname=arcname)
+
+    logger.info("Created container bundle ZIP: %s", output_zip)
+    return output_zip
 
 def archive_technical_container(
     folder: Path,

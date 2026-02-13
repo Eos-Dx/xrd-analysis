@@ -18,11 +18,18 @@ Usage:
 
 __version__ = "0.1.0-beta"
 
-from .loader import open_container
-from .manager import is_container_locked, lock_container, unlock_container
+from .loader import open_container, open_container_bundle
+from .manager import (
+    create_container_bundle,
+    is_container_locked,
+    lock_container,
+    unlock_container,
+)
 
 __all__ = [
     "open_container",
+    "open_container_bundle",
+    "create_container_bundle",
     "is_container_locked",
     "lock_container",
     "unlock_container",

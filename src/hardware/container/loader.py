@@ -1,7 +1,9 @@
 """Container loader with automatic version detection."""
 
 from pathlib import Path
+import tempfile
 from typing import Union
+import zipfile
 
 import h5py
 
@@ -95,3 +97,37 @@ def open_container(file_path: Union[str, Path], version: str = None, validate: b
     if container_type == "technical":
         return technical_cls.open(file_path, validate=validate)
     raise ValueError(f"Unknown container type: {container_type}")
+
+
+def open_container_bundle(
+    bundle_file: Union[str, Path],
+    extract_to: Union[str, Path] = None,
+    version: str = None,
+    validate: bool = True,
+):
+    """Open a container from ZIP bundle.
+
+    Expects at least one ``.h5`` file in the ZIP. If multiple are present,
+    the first path-sorted match is used.
+    """
+    bundle_path = Path(bundle_file)
+    if not bundle_path.exists():
+        raise FileNotFoundError(f"Bundle not found: {bundle_path}")
+
+    if extract_to is None:
+        extract_dir = Path(tempfile.mkdtemp(prefix="difra_bundle_"))
+    else:
+        extract_dir = Path(extract_to)
+        extract_dir.mkdir(parents=True, exist_ok=True)
+
+    with zipfile.ZipFile(bundle_path, "r") as zf:
+        zf.extractall(extract_dir)
+
+    h5_files = sorted(
+        (candidate for candidate in extract_dir.rglob("*.h5") if candidate.is_file()),
+        key=lambda candidate: (len(candidate.parts), candidate.as_posix()),
+    )
+    if not h5_files:
+        raise ValueError(f"No .h5 container found in bundle: {bundle_path}")
+
+    return open_container(h5_files[0], version=version, validate=validate)

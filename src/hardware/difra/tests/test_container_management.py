@@ -12,6 +12,7 @@ Tests:
 import os
 import stat
 import tempfile
+import zipfile
 from pathlib import Path
 
 import h5py
@@ -30,6 +31,8 @@ from hardware.container.v0_1 import (
     technical_container,
     container_manager,
 )
+from hardware.container.loader import open_container_bundle
+from hardware.container.manager import create_container_bundle
 
 
 # ==================== PONI Distance Validation Tests ====================
@@ -769,6 +772,89 @@ def test_locked_container_reused_by_multiple_sessions():
         
         # Technical container still locked
         assert container_manager.is_container_locked(tech_path)
+
+
+# ==================== ZIP Bundle Tests ====================
+
+def test_create_container_bundle_preserves_operator_structure():
+    """Test bundle exporter keeps operator folder structure and container."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base = Path(tmpdir)
+        session_folder = base / "sessions"
+        session_folder.mkdir(parents=True, exist_ok=True)
+
+        session_id, session_file = writer.create_session_container(
+            folder=session_folder,
+            sample_id="SAMPLE_BUNDLE_001",
+            operator_id="test_user",
+            site_id="test_site",
+            machine_name="DIFRA_TEST",
+            beam_energy_keV=12.5,
+            acquisition_date="2026-02-13",
+        )
+
+        operator_folder = base / "operator_run_001"
+        nested_dir = operator_folder / "raw" / "det_primary"
+        nested_dir.mkdir(parents=True, exist_ok=True)
+        (nested_dir / "frame_001.txt").write_text("1 2 3\n4 5 6\n", encoding="utf-8")
+        (nested_dir / "frame_001.dsc").write_text("[F0]\nType=i16\n", encoding="utf-8")
+        (operator_folder / "state" / "sample_state.json").parent.mkdir(
+            parents=True, exist_ok=True
+        )
+        (operator_folder / "state" / "sample_state.json").write_text(
+            '{"sample_id":"SAMPLE_BUNDLE_001"}', encoding="utf-8"
+        )
+
+        bundle_zip = create_container_bundle(
+            container_file=session_file,
+            source_folder=operator_folder,
+            output_zip=base / "session_bundle.zip",
+            source_arcname=operator_folder.name,
+        )
+
+        assert bundle_zip.exists()
+
+        with zipfile.ZipFile(bundle_zip, "r") as zf:
+            names = set(zf.namelist())
+
+        assert Path(session_file).name in names
+        assert "operator_run_001/raw/det_primary/frame_001.txt" in names
+        assert "operator_run_001/raw/det_primary/frame_001.dsc" in names
+        assert "operator_run_001/state/sample_state.json" in names
+
+
+def test_open_container_bundle_loads_session_container():
+    """Test opener can load session container directly from ZIP bundle."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base = Path(tmpdir)
+        session_folder = base / "sessions"
+        session_folder.mkdir(parents=True, exist_ok=True)
+
+        session_id, session_file = writer.create_session_container(
+            folder=session_folder,
+            sample_id="SAMPLE_BUNDLE_002",
+            operator_id="test_user",
+            site_id="test_site",
+            machine_name="DIFRA_TEST",
+            beam_energy_keV=12.5,
+            acquisition_date="2026-02-13",
+        )
+
+        payload = base / "operator_payload"
+        payload.mkdir(parents=True, exist_ok=True)
+        (payload / "notes.txt").write_text("bundle payload", encoding="utf-8")
+
+        bundle_zip = create_container_bundle(
+            container_file=session_file,
+            source_folder=payload,
+            output_zip=base / "bundle_open_test.zip",
+        )
+
+        opened = open_container_bundle(bundle_zip, validate=False)
+        metadata = opened.get_metadata()
+
+        assert metadata.get("container_type") == schema.CONTAINER_TYPE_SESSION
+        assert metadata.get("sample_id") == "SAMPLE_BUNDLE_002"
 
 
 if __name__ == '__main__':
