@@ -1,5 +1,4 @@
 import os
-import shutil
 import threading
 from pathlib import Path
 
@@ -173,94 +172,6 @@ class CaptureWorker(QObject):
                 print("Stopped continuous movement due to capture stop request")
             except Exception as e:
                 print(f"Error stopping continuous movement during stop request: {e}")
-
-
-import shutil
-from pathlib import Path
-
-import numpy as np
-
-
-def move_and_convert_measurement_file(
-    src_file,
-    alias_folder,
-    *,
-    frames: int = 1,
-    average_frames: bool = False,
-):
-    """DEPRECATED: Move associated files into the target folder and convert .txt to .npy.
-    
-    This function is deprecated. Conversion is now handled by the detector's
-    convert_to_container_format() method. Use that instead.
-    
-    New workflow:
-        detector.capture_point(...)  # Creates .txt, .dsc
-        npy_file = detector.convert_to_container_format("file.txt", "0.1")  # Creates .npy
-    
-    This function remains for backward compatibility with existing code that hasn't
-    been migrated yet (e.g., some zone measurement workflows).
-
-    Parameters
-    ----------
-    src_file
-        Path to the original .txt file.
-    alias_folder
-        Target directory where files should reside (created if needed).
-    frames
-        Number of frames used during acquisition.
-    average_frames
-        If True and frames > 1, divide the integrated image by frames to get a per-frame average.
-
-    Returns
-    -------
-    str
-        Path to the saved .npy file (in the target folder).
-    """
-    src_file = Path(src_file)
-    alias_folder = Path(alias_folder)
-    alias_folder.mkdir(parents=True, exist_ok=True)
-
-    # Move .txt file (skip if already in target folder)
-    dest_txt = alias_folder / src_file.name
-    try:
-        if src_file.resolve() != dest_txt.resolve():
-            shutil.move(str(src_file), str(dest_txt))
-        else:
-            dest_txt = src_file
-    except Exception as e:
-        print(f"[move_and_convert_measurement_file] Error moving .txt: {e}")
-        dest_txt = src_file  # fallback
-
-    # Move both .dsc and .txt.dsc (Pixet style), skip if already in place
-    candidates = [
-        src_file.with_suffix(".dsc"),  # aux_001_..._SAXS.dsc
-        src_file.parent / (src_file.name + ".dsc"),  # aux_001_..._SAXS.txt.dsc
-    ]
-    for dsc_candidate in candidates:
-        if dsc_candidate.exists():
-            dest_dsc = alias_folder / dsc_candidate.name
-            try:
-                if dsc_candidate.resolve() != dest_dsc.resolve():
-                    shutil.move(str(dsc_candidate), str(dest_dsc))
-                    print(f"Moved {dsc_candidate} → {dest_dsc}")
-            except Exception as e:
-                print(
-                    f"[move_and_convert_measurement_file] Error moving {dsc_candidate}: {e}"
-                )
-
-    # Convert to .npy in target folder
-    try:
-        data = np.loadtxt(dest_txt)
-        if average_frames and int(frames) > 1:
-            data = data / float(frames)
-        npy_file = dest_txt.with_suffix(".npy")
-        np.save(npy_file, data)
-    except Exception as e:
-        print(f"[move_and_convert_measurement_file] Error converting to .npy: {e}")
-        npy_file = dest_txt  # fallback
-
-    return str(npy_file)
-
 
 def validate_folder(path: str):
     if not path:

@@ -245,9 +245,6 @@ def test_step1_create_session(temp_dir, technical_container_path):
         tech_events = [k for k in tech_group.keys() if k.startswith("tech_evt_")]
         print(f"  ✓ Technical events: {len(tech_events)}")
 
-    return session_id, session_path
-
-
 # ============================================================================
 # Test 2: Add Sample Image
 # ============================================================================
@@ -302,9 +299,6 @@ def test_step2_add_sample_image(temp_dir, technical_container_path):
 
         assert img_group.attrs["image_type"] == "sample"
         print(f"  ✓ Image data integrity verified")
-
-    return session_id, session_path, (image_width, image_height)
-
 
 # ============================================================================
 # Test 3: Define Measurement Zones
@@ -426,9 +420,6 @@ def test_step3_define_zones(temp_dir, technical_container_path):
 
         print(f"  ✓ All zones verified in HDF5")
 
-    return session_id, session_path
-
-
 # ============================================================================
 # Test 4: Add Measurement Points
 # ============================================================================
@@ -486,9 +477,6 @@ def test_step4_add_points(temp_dir, technical_container_path):
             assert len(point.attrs["physical_coordinates_mm"]) == 2
 
     print(f"  ✓ {len(points)} points added and verified")
-
-    return session_id, session_path
-
 
 # ============================================================================
 # Test 5: Record Measurements
@@ -582,9 +570,6 @@ def test_step5_record_measurements(temp_dir, technical_container_path):
 
         print(f"  ✓ All measurements verified")
         print(f"  ✓ Data integrity confirmed")
-
-    return session_id, session_path
-
 
 # ============================================================================
 # Test 6: Attenuation Measurements
@@ -689,9 +674,6 @@ def test_step6_attenuation(temp_dir, technical_container_path):
 
         print(f"  ✓ Attenuation measurements verified")
 
-    return session_id, session_path
-
-
 # ============================================================================
 # Test 7: Error Handling - Session with Error Marking
 # ============================================================================
@@ -755,9 +737,6 @@ def test_step7_error_marking(temp_dir, technical_container_path):
         assert f.attrs["created_by_error"] == True
 
     print(f"  ✓ Archived session verified")
-
-    return session_id, archived_path
-
 
 # ============================================================================
 # Test 8: Container Locking
@@ -835,9 +814,6 @@ def test_step8_lock_container(temp_dir, technical_container_path):
 
     print(f"  ✓ Lock attributes verified")
     print(f"  ✓ Container ready for upload")
-
-    return session_id, session_path
-
 
 # ============================================================================
 # Test 9: Complete End-to-End Workflow
@@ -969,9 +945,6 @@ def test_step9_complete_workflow(temp_dir, technical_container_path):
 
     print(f"  ✓ Step 9: Complete structure verified")
     print(f"\n=== ALL WORKFLOW STEPS COMPLETED SUCCESSFULLY ===")
-
-    return session_id, session_path
-
 
 # ============================================================================
 # Run Tests

@@ -392,6 +392,7 @@ def get_container_info(file_path: Union[str, Path]) -> Dict:
         # Add type-specific info
         if info['container_type'] == 'session':
             info['sample_id'] = f.attrs.get(schema.ATTR_SAMPLE_ID, 'unknown')
+            info['study_name'] = f.attrs.get(schema.ATTR_STUDY_NAME, 'unknown')
             info['operator_id'] = f.attrs.get(schema.ATTR_OPERATOR_ID, 'unknown')
         
         return info

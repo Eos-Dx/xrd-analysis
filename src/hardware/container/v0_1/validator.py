@@ -79,6 +79,7 @@ class SessionContainerValidator:
             schema.ATTR_CONTAINER_TYPE,
             schema.ATTR_SCHEMA_VERSION,
             schema.ATTR_SAMPLE_ID,
+            schema.ATTR_STUDY_NAME,
             schema.ATTR_SESSION_ID,
             schema.ATTR_CREATION_TIMESTAMP,
             schema.ATTR_ACQUISITION_DATE,

@@ -205,24 +205,17 @@ def test_capture_all_technical_measurements(
             assert detector_id in captured_files[meas_type]
             assert Path(captured_files[meas_type][detector_id]).exists()
 
-    return captured_files
-
-
-def test_generate_technical_h5_container(
-    temp_output_dir, demo_poni_files, demo_config
-):
-    """Test generating HDF5 technical container from measurements."""
-    # Create detector controllers
+def _generate_technical_h5_container(temp_output_dir, demo_poni_files, demo_config):
+    """Generate a technical HDF5 container and return `(file_path, container_id)`."""
     detectors = {}
     for det_config in demo_config["detectors"]:
         det_id = det_config["id"]
         if det_id in demo_config["dev_active_detectors"]:
             detectors[det_id] = DummyDetectorController(
                 alias=det_id,
-                size=(det_config["width"], det_config["height"])
+                size=(det_config["width"], det_config["height"]),
             )
 
-    # Capture all required measurements
     aux_measurements = {}
     required_types = ["DARK", "EMPTY", "BACKGROUND", "AGBH"]
 
@@ -256,18 +249,27 @@ def test_generate_technical_h5_container(
         poni_distances_cm=poni_distances_cm,
     )
 
+    return file_path, container_id
+
+
+def test_generate_technical_h5_container(
+    temp_output_dir, demo_poni_files, demo_config
+):
+    """Test generating HDF5 technical container from measurements."""
+    file_path, container_id = _generate_technical_h5_container(
+        temp_output_dir, demo_poni_files, demo_config
+    )
+
     # Verify file created
     assert Path(file_path).exists()
     assert container_id in file_path
     assert file_path.endswith(".h5")
 
-    return file_path, container_id
-
 
 def test_validate_h5_structure(temp_output_dir, demo_poni_files, demo_config):
     """Test and validate complete HDF5 container structure."""
     # Generate container
-    file_path, container_id = test_generate_technical_h5_container(
+    file_path, container_id = _generate_technical_h5_container(
         temp_output_dir, demo_poni_files, demo_config
     )
 
@@ -395,10 +397,12 @@ def test_technical_container_stores_detector_id_and_alias(temp_output_dir):
         det_group = file_handle["/technical/tech_evt_001/det_saxs"]
         assert det_group.attrs[schema.ATTR_DETECTOR_ID] == "advacam_001"
         assert det_group.attrs[schema.ATTR_DETECTOR_ALIAS] == "SAXS"
+
+
 def test_roundtrip_measurement_data(temp_output_dir, demo_poni_files, demo_config):
     """Test that measurement data survives roundtrip through HDF5."""
     # Generate container
-    file_path, _ = test_generate_technical_h5_container(
+    file_path, _ = _generate_technical_h5_container(
         temp_output_dir, demo_poni_files, demo_config
     )
 
@@ -436,7 +440,7 @@ def test_multiple_containers_unique_ids(temp_output_dir, demo_poni_files, demo_c
     container_ids = []
 
     for i in range(3):
-        file_path, container_id = test_generate_technical_h5_container(
+        file_path, container_id = _generate_technical_h5_container(
             temp_output_dir, demo_poni_files, demo_config
         )
         container_ids.append(container_id)

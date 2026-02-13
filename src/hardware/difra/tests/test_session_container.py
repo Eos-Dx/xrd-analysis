@@ -162,9 +162,27 @@ def test_create_session_container(temp_output_dir):
         assert f.attrs["container_id"] == container_id
         assert f.attrs["container_type"] == schema.CONTAINER_TYPE_SESSION
         assert f.attrs["sample_id"] == "SAMPLE_001"
+        assert f.attrs["study_name"] == "UNSPECIFIED"
         assert f.attrs["operator_id"] == "operator_1"
         assert f.attrs["machine_name"] == "DIFRA_01"
         assert f.attrs["beam_energy_keV"] == 12.5
+
+
+def test_create_session_container_with_study_name(temp_output_dir):
+    """Test creating session container with explicit study_name."""
+    _container_id, file_path = session_container.create_session_container(
+        folder=temp_output_dir,
+        sample_id="SAMPLE_003",
+        study_name="STUDY_A",
+        operator_id="operator_1",
+        site_id="site_A",
+        machine_name="DIFRA_01",
+        beam_energy_keV=12.5,
+        acquisition_date="2024-02-09",
+    )
+
+    with h5py.File(file_path, "r") as f:
+        assert f.attrs.get("study_name") == "STUDY_A"
 
 
 def test_create_session_container_with_patient_id(temp_output_dir):

@@ -43,8 +43,9 @@ Final data product for a single sample and acquisition session.
 1. Created when a new sample/image is loaded.
 2. `/technical` is copied from the active technical container.
 3. Images, points, measurements, and analytical measurements are appended.
-4. Container is uploaded to cloud storage.
-5. Container is removed from active DIFRA use or archived locally.
+4. Container is finalized (locked/read-only).
+5. Container is sent to cloud (currently fake send in development mode).
+6. Container is moved from active measurements folder to session archive.
 
 ---
 
@@ -53,6 +54,7 @@ Final data product for a single sample and acquisition session.
 Required:
 ```
 sample_id
+study_name
 session_id
 creation_timestamp
 acquisition_date
@@ -67,7 +69,7 @@ Optional:
 patient_id
 ```
 
-Attributes are mutable until upload. After upload, the container is immutable at the OS level.
+Attributes are mutable until finalization. After finalization/send, the container is immutable at the OS level.
 
 ---
 
@@ -349,10 +351,11 @@ Compression:
 2. Session container created when a new sample starts.
 3. `/technical` copied into session container.
 4. Images, points, measurements, and analytical measurements appended.
-5. Session container uploaded.
-6. Session container archived or removed locally.
-7. New sample → new session container.
-8. New calibration → new technical container.
+5. Session container finalized/locked.
+6. Session container sent (fake send currently in development mode).
+7. Session container archived from measurements folder to session archive.
+8. New sample → new session container.
+9. New calibration → new technical container.
 
 ---
 

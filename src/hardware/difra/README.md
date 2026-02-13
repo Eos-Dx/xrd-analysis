@@ -102,24 +102,33 @@ Edit `src/hardware/difra/resources/config/global.json`:
 ### Main Workflow
 
 1. **Select Setup** - Choose Xena or Moli on startup
-2. **Load Image** - Open an existing image or capture from camera
-3. **Define Zones** - Draw rectangular zones on the image for measurement
-4. **Run Measurements** - Execute zone scans with configured detectors
-5. **Calibration** - Use PyFAI for detector calibration
+2. **Create Session** - Set `sample_id`, `study`, distance, and operator
+3. **Load Image** - Open an existing image or capture from camera
+4. **Define Zones** - Draw `sample_holder`/`include`/`exclude` zones
+5. **Run Measurements** - Execute point-based scans with configured detectors
+6. **Finalize and Send** - Use Session tab queue to close+send selected/all containers
 
 ### Key Features
 
 #### Zone Measurements
-- Draw rectangular regions of interest on the sample image
+- Draw and manage holder/include/exclude zones on the sample image
 - Configure exposure time and number of frames
-- Run automated scans across defined zones
-- Data saved to configured output folder
+- Generate points and run automated measurements
+- Data is written to session HDF5 containers
 
 #### Technical Measurements (Auxiliary)
 - Capture calibration images
 - Manage PONI files (PyFAI calibration data)
+- Load existing technical containers or raw technical files
+- Auto-assign technical types and primary rows from loaded containers
 - Apply masks to detector images
 - View real-time detector output
+
+#### Session Queue and Archive
+- Session tab lists all `session_*.h5` containers in measurements folder
+- Close/send one, selected set, or all containers (fake cloud send in current dev mode)
+- Sent containers are locked, moved to session archive, and removed from pending list
+- Archive list shows sample/study/operator/created/archived metadata
 
 #### PyFAI Calibration
 1. Set the working folder where calibration images are stored
