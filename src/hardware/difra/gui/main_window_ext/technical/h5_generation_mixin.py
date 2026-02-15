@@ -7,6 +7,8 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
+from hardware.difra.gui.container_api import get_schema, get_technical_container
+
 # Import Qt for type hints and usage
 try:
     from PyQt5.QtWidgets import QComboBox, QDialog, QFileDialog, QInputDialog, QMessageBox, QCheckBox
@@ -174,7 +176,7 @@ Wavelength: {wavelength}
     def generate_technical_meta(self):
         """Generate technical metadata JSON file from selected measurements."""
         from pathlib import Path
-        from hardware.container.v0_1 import schema as container_schema
+        container_schema = get_schema(self.config if hasattr(self, "config") else None)
 
         self._log_technical_event("Generating technical metadata...")
 
@@ -459,7 +461,10 @@ Wavelength: {wavelength}
 
     def generate_technical_h5(self):
         """Generate technical HDF5 container from measurements in aux table."""
-        from hardware.container.v0_1 import schema, technical_container
+        schema = get_schema(self.config if hasattr(self, "config") else None)
+        technical_container = get_technical_container(
+            self.config if hasattr(self, "config") else None
+        )
         from .helpers import _get_technical_temp_folder
         from hardware.difra.gui.main_window_ext.technical_measurements import PoniFileSelectionDialog
 

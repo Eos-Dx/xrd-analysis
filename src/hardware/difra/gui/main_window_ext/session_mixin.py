@@ -22,6 +22,11 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
+from hardware.difra.gui.container_api import (
+    get_container_manager,
+    get_schema,
+    get_writer,
+)
 from hardware.difra.gui.session_manager import SessionManager
 from hardware.difra.gui.operator_manager import OperatorManager, OperatorSelectionDialog
 
@@ -440,7 +445,7 @@ class SessionMixin:
 
         try:
             import h5py
-            from hardware.container.v0_1 import schema
+            schema = get_schema(self.config if hasattr(self, "config") else None)
 
             restored_shapes = []
             restored_points = []
@@ -617,7 +622,8 @@ class SessionMixin:
 
         try:
             import h5py
-            from hardware.container.v0_1 import schema, writer
+            schema = get_schema(self.config if hasattr(self, "config") else None)
+            writer = get_writer(self.config if hasattr(self, "config") else None)
 
             session_path = self.session_manager.session_path
 
@@ -674,7 +680,7 @@ class SessionMixin:
                         "units": "mm/pixel",
                     },
                     orientation="standard",
-                    mapping_version="0.1",
+                    mapping_version=schema.SCHEMA_VERSION,
                 )
 
             # Only rewrite points while there are no recorded measurements.
@@ -718,9 +724,9 @@ class SessionMixin:
             True if session was closed/archived, False if user cancelled
         """
         from PyQt5.QtWidgets import QInputDialog
-        from hardware.container.v0_1.container_manager import is_container_locked
         import h5py
         import time
+        container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
         
         if not self.session_manager.is_session_active():
             return True
@@ -731,14 +737,15 @@ class SessionMixin:
         session_id = info['session_id']
         
         # Check if container is locked/finalized
-        is_locked = is_container_locked(session_path)
+        is_locked = container_manager.is_container_locked(session_path)
         
         # Check if measurements exist
         has_measurements = False
         try:
             with h5py.File(session_path, 'r') as f:
-                if '/measurements' in f:
-                    meas_group = f['/measurements']
+                schema = get_schema(self.config if hasattr(self, "config") else None)
+                if schema.GROUP_MEASUREMENTS in f:
+                    meas_group = f[schema.GROUP_MEASUREMENTS]
                     # Check if any point groups exist
                     has_measurements = any(key.startswith('pt_') for key in meas_group.keys())
         except Exception:
@@ -1102,7 +1109,8 @@ class SessionMixin:
             return
         
         try:
-            from hardware.container.v0_1 import writer
+            writer = get_writer(self.config if hasattr(self, "config") else None)
+            schema = get_schema(self.config if hasattr(self, "config") else None)
             
             # Find sample_holder zone ID (first zone with sample_holder role)
             sample_holder_zone_id = "zone_001"  # Default to first zone
@@ -1122,7 +1130,7 @@ class SessionMixin:
                 sample_holder_zone_id=sample_holder_zone_id,
                 pixel_to_mm_conversion=pixel_to_mm_conversion,
                 orientation=orientation,
-                mapping_version="0.1",
+                mapping_version=schema.SCHEMA_VERSION,
             )
             
             logger.info(
@@ -1169,7 +1177,7 @@ class SessionMixin:
         
         if reply == QMessageBox.Yes:
             try:
-                from hardware.container.v0_1.container_manager import lock_container
+                container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
                 
                 session_path = self.session_manager.session_path
                 
@@ -1177,7 +1185,7 @@ class SessionMixin:
                 self.session_manager.close_session()
                 
                 # Lock the container (mark read-only)
-                lock_container(session_path)
+                container_manager.lock_container(session_path)
                 
                 logger.info(
                     f"Session finalized and locked: {session_path.name}"
@@ -1229,7 +1237,7 @@ class SessionMixin:
             self,
             "Open Session Container",
             str(Path.home()),
-            "HDF5 Files (*.h5);;All Files (*)",
+            "NeXus HDF5 Files (*.nxs.h5 *.h5);;All Files (*)",
         )
         
         if not file_path:
@@ -1247,11 +1255,11 @@ class SessionMixin:
         
         try:
             import h5py
-            from hardware.container.v0_1 import schema
-            from hardware.container.v0_1.container_manager import is_container_locked
+            schema = get_schema(self.config if hasattr(self, "config") else None)
+            container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
             
             # Check if locked
-            is_locked = is_container_locked(file_path)
+            is_locked = container_manager.is_container_locked(file_path)
             
             # Open container to read metadata
             with h5py.File(file_path, 'r') as f:
@@ -1316,7 +1324,7 @@ class SessionMixin:
             # Restore workspace data from session container when UI supports it.
             self._restore_session_workspace_from_container(file_path)
 
-            # If technical table exists, restore it directly from /technical in session.
+            # If technical table exists, restore from embedded calibration snapshot data.
             if hasattr(self, "_populate_aux_table_from_h5"):
                 try:
                     self._populate_aux_table_from_h5(str(file_path))

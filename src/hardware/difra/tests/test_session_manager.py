@@ -14,9 +14,9 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from hardware.difra.gui.session_manager import SessionManager
-from hardware.container.v0_1 import schema
-from hardware.container.v0_1.technical_container import generate_from_aux_table
-from hardware.container.v0_1.container_manager import lock_container
+from hardware.container.v0_2 import schema
+from hardware.container.v0_2.technical_container import generate_from_aux_table
+from hardware.container.v0_2.container_manager import lock_container
 
 
 @pytest.fixture
@@ -224,16 +224,20 @@ def test_session_manager_link_attenuation_start_point(temp_dir, technical_contai
     manager.link_attenuation_to_points(num_points=1, start_point_idx=2)
 
     with h5py.File(manager.session_path, "r") as session_file:
-        pt1 = session_file["/points/pt_001"]
-        pt2 = session_file["/points/pt_002"]
-        pt3 = session_file["/points/pt_003"]
+        pt1 = session_file[f"{schema.GROUP_POINTS}/pt_001"]
+        pt2 = session_file[f"{schema.GROUP_POINTS}/pt_002"]
+        pt3 = session_file[f"{schema.GROUP_POINTS}/pt_003"]
 
-        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS not in pt1.attrs
-        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS in pt2.attrs
-        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS not in pt3.attrs
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_IDS in pt1.attrs
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_IDS in pt2.attrs
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_IDS in pt3.attrs
 
-        refs = pt2.attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_REFS]
-        assert len(refs) == 2
+        refs_pt1 = pt1.attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_IDS]
+        refs_pt2 = pt2.attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_IDS]
+        refs_pt3 = pt3.attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_IDS]
+        assert len(refs_pt1) == 0
+        assert len(refs_pt2) == 2
+        assert len(refs_pt3) == 0
 
 
 def test_session_manager_add_measurement(temp_dir, technical_container):
@@ -354,7 +358,9 @@ def test_session_manager_replace_technical_container(temp_dir, technical_contain
 
     assert manager.technical_container_path == Path(new_tech_path)
     with h5py.File(session_path, "r") as session_file:
-        source_file = session_file["/technical"].attrs.get("source_file", "")
+        source_file = session_file[schema.GROUP_CALIBRATION_SNAPSHOT].attrs.get(
+            "source_file", ""
+        )
         if isinstance(source_file, bytes):
             source_file = source_file.decode("utf-8")
         assert source_file == str(new_tech_path)

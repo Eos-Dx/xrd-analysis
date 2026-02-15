@@ -1,0 +1,613 @@
+"""DIFRA NeXus Session Container Writer (v0.2)."""
+
+import json
+import time
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
+
+import h5py
+import numpy as np
+
+from . import schema, utils
+
+
+def _string_list_dtype():
+    return h5py.string_dtype(encoding="utf-8")
+
+
+def _read_string_list_attr(attrs, name: str) -> List[str]:
+    value = attrs.get(name)
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, bytes):
+        return [value.decode("utf-8", errors="replace")]
+    if isinstance(value, np.ndarray):
+        result = []
+        for item in value.tolist():
+            if isinstance(item, bytes):
+                result.append(item.decode("utf-8", errors="replace"))
+            else:
+                result.append(str(item))
+        return result
+    if isinstance(value, (list, tuple)):
+        return [str(item) for item in value]
+    return [str(value)]
+
+
+def _append_unique_string_attr(file_path: Union[str, Path], obj_path: str, attr_name: str, item: str) -> None:
+    with utils.open_h5_append(file_path) as f:
+        obj = f[obj_path]
+        values = _read_string_list_attr(obj.attrs, attr_name)
+        if item not in values:
+            values.append(item)
+        obj.attrs[attr_name] = np.array(values, dtype=_string_list_dtype())
+
+
+def _set_nx_class(file_path: Union[str, Path], path: str, nx_class: str) -> None:
+    utils.set_attrs(file_path=file_path, path=path, attrs={schema.ATTR_NX_CLASS: nx_class})
+
+
+def create_session_container(
+    folder: Union[str, Path],
+    sample_id: str,
+    operator_id: str,
+    site_id: str,
+    machine_name: str,
+    beam_energy_keV: float,
+    acquisition_date: str,
+    patient_id: Optional[str] = None,
+    study_name: str = "UNSPECIFIED",
+    container_id: Optional[str] = None,
+) -> Tuple[str, str]:
+    """Create a new NeXus session container."""
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+
+    if container_id is None:
+        container_id = schema.generate_container_id()
+    elif not schema.validate_container_id(container_id):
+        raise ValueError(f"Invalid container ID: {container_id}")
+
+    filename = schema.format_session_container_filename(container_id, sample_id)
+    file_path = str(folder / filename)
+
+    root_attrs = {
+        schema.ATTR_SAMPLE_ID: sample_id,
+        schema.ATTR_STUDY_NAME: study_name,
+        schema.ATTR_SESSION_ID: container_id,
+        schema.ATTR_CREATION_TIMESTAMP: schema.now_timestamp(),
+        schema.ATTR_ACQUISITION_DATE: acquisition_date,
+        schema.ATTR_OPERATOR_ID: operator_id,
+        schema.ATTR_SITE_ID: site_id,
+        schema.ATTR_MACHINE_NAME: machine_name,
+        schema.ATTR_BEAM_ENERGY_KEV: beam_energy_keV,
+    }
+
+    if patient_id is not None:
+        root_attrs[schema.ATTR_PATIENT_ID] = patient_id
+
+    utils.create_empty_container(
+        file_path=file_path,
+        container_id=container_id,
+        container_type=schema.CONTAINER_TYPE_SESSION,
+        root_attrs=root_attrs,
+    )
+
+    # NXentry metadata
+    utils.write_dataset(
+        file_path=file_path,
+        dataset_path=f"{schema.GROUP_ENTRY}/{schema.ATTR_ENTRY_DEFINITION}",
+        data=schema.APPDEF_SESSION,
+        compression=None,
+        overwrite=True,
+    )
+    utils.write_dataset(
+        file_path=file_path,
+        dataset_path=f"{schema.GROUP_ENTRY}/{schema.ATTR_START_TIME}",
+        data=schema.now_timestamp(),
+        compression=None,
+        overwrite=True,
+    )
+    utils.set_attrs(
+        file_path=file_path,
+        path=schema.GROUP_ENTRY,
+        attrs={schema.ATTR_ENTRY_DEFAULT: "images", schema.ATTR_NX_CLASS: schema.NX_CLASS_ENTRY},
+    )
+
+    # Required groups
+    for group_path, nx_class in [
+        (schema.GROUP_SAMPLE, schema.NX_CLASS_SAMPLE),
+        (schema.GROUP_USER, schema.NX_CLASS_USER),
+        (schema.GROUP_INSTRUMENT, schema.NX_CLASS_INSTRUMENT),
+        (schema.GROUP_IMAGES, schema.NX_CLASS_COLLECTION),
+        (schema.GROUP_IMAGES_ZONES, schema.NX_CLASS_COLLECTION),
+        (schema.GROUP_IMAGES_MAPPING, schema.NX_CLASS_COLLECTION),
+        (schema.GROUP_POINTS, schema.NX_CLASS_COLLECTION),
+        (schema.GROUP_MEASUREMENTS, schema.NX_CLASS_COLLECTION),
+        (schema.GROUP_ANALYTICAL_MEASUREMENTS, schema.NX_CLASS_COLLECTION),
+        (schema.GROUP_CALIBRATION_SNAPSHOT, schema.NX_CLASS_COLLECTION),
+        (schema.GROUP_TECHNICAL_CONFIG, schema.NX_CLASS_INSTRUMENT),
+        (schema.GROUP_TECHNICAL_PONI, schema.NX_CLASS_COLLECTION),
+        (schema.GROUP_RUNTIME, schema.NX_CLASS_COLLECTION),
+    ]:
+        utils.create_group_if_missing(file_path, group_path)
+        _set_nx_class(file_path, group_path, nx_class)
+
+    # Mirror important attributes on semantic groups.
+    utils.set_attrs(
+        file_path=file_path,
+        path=schema.GROUP_SAMPLE,
+        attrs={
+            schema.ATTR_SAMPLE_ID: sample_id,
+            schema.ATTR_STUDY_NAME: study_name,
+            **({schema.ATTR_PATIENT_ID: patient_id} if patient_id is not None else {}),
+        },
+    )
+    utils.set_attrs(
+        file_path=file_path,
+        path=schema.GROUP_USER,
+        attrs={
+            schema.ATTR_OPERATOR_ID: operator_id,
+            schema.ATTR_SITE_ID: site_id,
+            schema.ATTR_MACHINE_NAME: machine_name,
+        },
+    )
+    utils.set_attrs(
+        file_path=file_path,
+        path=schema.GROUP_INSTRUMENT,
+        attrs={schema.ATTR_BEAM_ENERGY_KEV: beam_energy_keV},
+    )
+
+    # Initialize global measurement counter in runtime and root for compatibility.
+    with utils.open_h5_append(file_path) as f:
+        f.attrs["measurement_counter"] = 0
+        f[schema.GROUP_RUNTIME].attrs["measurement_counter"] = 0
+        entry_links = {
+            "sample": schema.GROUP_SAMPLE,
+            "user": schema.GROUP_USER,
+            "instrument": schema.GROUP_INSTRUMENT,
+            "technical": schema.GROUP_TECHNICAL,
+            "images": schema.GROUP_IMAGES,
+            "points": schema.GROUP_POINTS,
+            "measurements": schema.GROUP_MEASUREMENTS,
+            "analytical_measurements": schema.GROUP_ANALYTICAL_MEASUREMENTS,
+            "calibration_snapshot": schema.GROUP_CALIBRATION_SNAPSHOT,
+            "difra_runtime": schema.GROUP_RUNTIME,
+        }
+        for name, target in entry_links.items():
+            link_path = f"{schema.GROUP_ENTRY}/{name}"
+            if link_path in f:
+                del f[link_path]
+            f[link_path] = h5py.SoftLink(target)
+
+    return container_id, file_path
+
+
+def copy_technical_to_session(
+    technical_file: Union[str, Path],
+    session_file: Union[str, Path],
+    auto_lock: bool = False,
+    user_confirm_lock: Optional[callable] = None,
+) -> None:
+    """Copy technical NeXus data into session calibration snapshot."""
+    from . import container_manager
+
+    technical_file = Path(technical_file)
+
+    if not technical_file.exists():
+        raise FileNotFoundError(f"Technical container not found: {technical_file}")
+
+    is_locked = container_manager.is_container_locked(technical_file)
+
+    if not is_locked:
+        should_lock = False
+        if auto_lock:
+            should_lock = True
+        elif user_confirm_lock is not None:
+            should_lock = user_confirm_lock(technical_file)
+
+        if should_lock:
+            container_manager.lock_container(technical_file)
+
+    with h5py.File(technical_file, "r") as src, h5py.File(session_file, "a") as dst:
+        snapshot_path = schema.GROUP_CALIBRATION_SNAPSHOT
+        if snapshot_path in dst:
+            del dst[snapshot_path]
+
+        if schema.GROUP_TECHNICAL not in src:
+            raise KeyError(
+                f"Technical container is missing required group: {schema.GROUP_TECHNICAL}"
+            )
+
+        src.copy(schema.GROUP_TECHNICAL, dst, name=snapshot_path)
+        snapshot = dst[snapshot_path]
+        if schema.ATTR_NX_CLASS not in snapshot.attrs:
+            snapshot.attrs[schema.ATTR_NX_CLASS] = schema.NX_CLASS_COLLECTION
+        snapshot.attrs["source_file"] = str(technical_file)
+        snapshot.attrs["copied_timestamp"] = schema.now_timestamp()
+        snapshot.attrs["source_container_id"] = src.attrs.get(schema.ATTR_CONTAINER_ID, "")
+
+
+def add_detector_data_with_blobs(
+    file_path: Union[str, Path],
+    detector_path: str,
+    processed_signal: np.ndarray,
+    raw_files: Dict[str, bytes],
+    poni_ref_path: Optional[str] = None,
+) -> None:
+    """Add detector data and raw blobs."""
+    utils.create_group_if_missing(file_path, detector_path)
+    _set_nx_class(file_path, detector_path, schema.NX_CLASS_DETECTOR)
+
+    processed_path = f"{detector_path}/{schema.DATASET_PROCESSED_SIGNAL}"
+    utils.write_dataset(
+        file_path=file_path,
+        dataset_path=processed_path,
+        data=processed_signal,
+        compression="gzip",
+        compression_opts=schema.COMPRESSION_PROCESSED,
+        overwrite=True,
+    )
+
+    blob_group = f"{detector_path}/{schema.DATASET_BLOB}"
+    utils.create_group_if_missing(file_path, blob_group)
+    _set_nx_class(file_path, blob_group, schema.NX_CLASS_COLLECTION)
+
+    for blob_key, content in (raw_files or {}).items():
+        if not blob_key.startswith("raw_"):
+            import os
+
+            _, ext = os.path.splitext(blob_key)
+            blob_key = f"raw_{ext[1:] if ext else 'unknown'}"
+
+        blob_path = f"{blob_group}/{blob_key}"
+        if isinstance(content, bytes):
+            blob_data = np.frombuffer(content, dtype=np.uint8)
+        elif isinstance(content, np.ndarray):
+            blob_data = content
+        else:
+            raise TypeError(f"Raw file content must be bytes or numpy array, got {type(content)}")
+
+        utils.write_dataset(
+            file_path=file_path,
+            dataset_path=blob_path,
+            data=blob_data,
+            compression="gzip",
+            compression_opts=schema.COMPRESSION_BLOB_MAX,
+            overwrite=True,
+        )
+
+    if poni_ref_path:
+        utils.set_attrs(
+            file_path=file_path,
+            path=detector_path,
+            attrs={"poni_path": poni_ref_path},
+        )
+
+
+def add_image(
+    file_path: Union[str, Path],
+    image_index: int,
+    image_data: Union[np.ndarray, str],
+    image_type: str = schema.IMAGE_TYPE_SAMPLE,
+    timestamp: Optional[str] = None,
+) -> str:
+    if timestamp is None:
+        timestamp = schema.now_timestamp()
+
+    image_id = schema.format_image_id(image_index)
+    image_path = f"{schema.GROUP_IMAGES}/{image_id}"
+
+    utils.create_group_if_missing(file_path, image_path)
+    _set_nx_class(file_path, image_path, schema.NX_CLASS_DATA)
+
+    if isinstance(image_data, str):
+        image_data = np.load(image_data)
+
+    utils.write_dataset(
+        file_path=file_path,
+        dataset_path=f"{image_path}/data",
+        data=image_data,
+        compression="gzip",
+        compression_opts=schema.COMPRESSION_IMAGE,
+        overwrite=True,
+    )
+
+    utils.set_attrs(
+        file_path=file_path,
+        path=image_path,
+        attrs={schema.ATTR_IMAGE_TYPE: image_type, schema.ATTR_TIMESTAMP: timestamp},
+    )
+
+    return image_path
+
+
+def add_zone(
+    file_path: Union[str, Path],
+    zone_index: int,
+    zone_role: str,
+    geometry_px: Union[List, np.ndarray, str],
+    shape: str = "polygon",
+    holder_diameter_mm: Optional[float] = None,
+) -> str:
+    if not schema.validate_zone_role(zone_role):
+        raise ValueError(f"Invalid zone role: {zone_role}")
+
+    zone_id = schema.format_zone_id(zone_index)
+    zone_path = f"{schema.GROUP_IMAGES_ZONES}/{zone_id}"
+
+    utils.create_group_if_missing(file_path, zone_path)
+    _set_nx_class(file_path, zone_path, schema.NX_CLASS_COLLECTION)
+
+    if isinstance(geometry_px, str):
+        utils.write_dataset(
+            file_path=file_path,
+            dataset_path=f"{zone_path}/geometry_px",
+            data=geometry_px,
+            compression=None,
+            overwrite=True,
+        )
+    else:
+        utils.write_dataset(
+            file_path=file_path,
+            dataset_path=f"{zone_path}/geometry_px",
+            data=np.array(geometry_px),
+            compression="gzip",
+            overwrite=True,
+        )
+
+    attrs = {schema.ATTR_ZONE_ROLE: zone_role, schema.ATTR_ZONE_SHAPE: shape}
+    if holder_diameter_mm is not None:
+        attrs[schema.ATTR_HOLDER_DIAMETER_MM] = holder_diameter_mm
+
+    utils.set_attrs(file_path, zone_path, attrs)
+
+    return zone_path
+
+
+def add_image_mapping(
+    file_path: Union[str, Path],
+    sample_holder_zone_id: str,
+    pixel_to_mm_conversion: Dict,
+    orientation: str = "standard",
+    mapping_version: str = "0.2",
+) -> str:
+    mapping_data = {
+        "sample_holder_zone_id": sample_holder_zone_id,
+        "pixel_to_mm_conversion": pixel_to_mm_conversion,
+        "orientation": orientation,
+        "mapping_version": mapping_version,
+    }
+
+    mapping_json = json.dumps(mapping_data, indent=2)
+    mapping_path = f"{schema.GROUP_IMAGES_MAPPING}/mapping"
+
+    utils.write_dataset(
+        file_path=file_path,
+        dataset_path=mapping_path,
+        data=mapping_json,
+        compression=None,
+        overwrite=True,
+    )
+    _set_nx_class(file_path, schema.GROUP_IMAGES_MAPPING, schema.NX_CLASS_NOTE)
+    return mapping_path
+
+
+def add_point(
+    file_path: Union[str, Path],
+    point_index: int,
+    pixel_coordinates: List[float],
+    physical_coordinates_mm: List[float],
+    point_status: str = schema.POINT_STATUS_PENDING,
+) -> str:
+    point_id = schema.format_point_id(point_index)
+    point_path = f"{schema.GROUP_POINTS}/{point_id}"
+
+    utils.create_group_if_missing(file_path, point_path)
+    _set_nx_class(file_path, point_path, schema.NX_CLASS_COLLECTION)
+
+    utils.set_attrs(
+        file_path=file_path,
+        path=point_path,
+        attrs={
+            schema.ATTR_PIXEL_COORDINATES: np.array(pixel_coordinates),
+            schema.ATTR_PHYSICAL_COORDINATES_MM: np.array(physical_coordinates_mm),
+            schema.ATTR_POINT_STATUS: point_status,
+        },
+    )
+
+    with utils.open_h5_append(file_path) as f:
+        f[point_path].attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_IDS] = np.array(
+            [], dtype=_string_list_dtype()
+        )
+
+    return point_path
+
+
+def update_point_status(
+    file_path: Union[str, Path],
+    point_index: int,
+    point_status: str,
+) -> None:
+    point_id = schema.format_point_id(point_index)
+    point_path = f"{schema.GROUP_POINTS}/{point_id}"
+
+    utils.set_attrs(file_path=file_path, path=point_path, attrs={schema.ATTR_POINT_STATUS: point_status})
+
+
+def get_next_measurement_counter(file_path: Union[str, Path]) -> int:
+    with utils.open_h5_append(file_path) as f:
+        runtime = f[schema.GROUP_RUNTIME]
+        counter = int(runtime.attrs.get("measurement_counter", f.attrs.get("measurement_counter", 0)))
+        next_counter = counter + 1
+        runtime.attrs["measurement_counter"] = next_counter
+        f.attrs["measurement_counter"] = next_counter
+    return next_counter
+
+
+def add_measurement(
+    file_path: Union[str, Path],
+    point_index: int,
+    measurement_data: Dict[str, np.ndarray],
+    detector_metadata: Dict[str, Dict],
+    poni_alias_map: Dict[str, str],
+    raw_files: Optional[Dict[str, Dict[str, bytes]]] = None,
+    timestamp_start: Optional[str] = None,
+    timestamp_end: Optional[str] = None,
+    measurement_status: str = schema.STATUS_COMPLETED,
+) -> str:
+    if timestamp_start is None:
+        timestamp_start = schema.now_timestamp()
+
+    meas_counter = get_next_measurement_counter(file_path)
+
+    point_id = schema.format_point_id(point_index)
+    meas_id = schema.format_measurement_id(meas_counter)
+    meas_path = f"{schema.GROUP_MEASUREMENTS}/{point_id}/{meas_id}"
+
+    utils.create_group_if_missing(file_path, meas_path)
+    _set_nx_class(file_path, meas_path, schema.NX_CLASS_DATA)
+
+    attrs = {
+        schema.ATTR_MEASUREMENT_COUNTER: meas_counter,
+        schema.ATTR_TIMESTAMP_START: timestamp_start,
+        schema.ATTR_MEASUREMENT_STATUS: measurement_status,
+        schema.ATTR_POINT_REF: point_id,
+    }
+    if timestamp_end is not None:
+        attrs[schema.ATTR_TIMESTAMP_END] = timestamp_end
+    utils.set_attrs(file_path, meas_path, attrs)
+
+    raw_files = raw_files or {}
+
+    for detector_id, processed_signal in measurement_data.items():
+        alias = next((a for a, d in poni_alias_map.items() if d == detector_id), detector_id)
+        role = schema.format_detector_role(alias)
+        detector_path = f"{meas_path}/{role}"
+
+        metadata = detector_metadata.get(detector_id) if detector_metadata else None
+        detector_raw_files = raw_files.get(detector_id, {})
+
+        det_attrs = {
+            schema.ATTR_DETECTOR_ID: detector_id,
+            schema.ATTR_DETECTOR_ALIAS: alias,
+        }
+        if metadata:
+            det_attrs[schema.ATTR_INTEGRATION_TIME_MS] = metadata.get("integration_time_ms", 0)
+            if "beam_energy_keV" in metadata:
+                det_attrs[schema.ATTR_BEAM_ENERGY_KEV] = metadata["beam_energy_keV"]
+
+        poni_path = f"{schema.GROUP_CALIBRATION_SNAPSHOT}/poni/poni_{role[4:]}"
+        add_detector_data_with_blobs(
+            file_path=file_path,
+            detector_path=detector_path,
+            processed_signal=processed_signal,
+            raw_files=detector_raw_files,
+            poni_ref_path=poni_path,
+        )
+        utils.set_attrs(file_path, detector_path, det_attrs)
+
+    return meas_path
+
+
+def add_analytical_measurement(
+    file_path: Union[str, Path],
+    measurement_data: Dict[str, np.ndarray],
+    detector_metadata: Dict[str, Dict],
+    poni_alias_map: Dict[str, str],
+    analysis_type: str,
+    raw_files: Optional[Dict[str, Dict[str, bytes]]] = None,
+    timestamp_start: Optional[str] = None,
+    timestamp_end: Optional[str] = None,
+    measurement_status: str = schema.STATUS_COMPLETED,
+) -> str:
+    if timestamp_start is None:
+        timestamp_start = schema.now_timestamp()
+
+    meas_counter = get_next_measurement_counter(file_path)
+
+    ana_id = schema.format_analytical_measurement_id(meas_counter)
+    ana_path = f"{schema.GROUP_ANALYTICAL_MEASUREMENTS}/{ana_id}"
+
+    utils.create_group_if_missing(file_path, ana_path)
+    _set_nx_class(file_path, ana_path, schema.NX_CLASS_DATA)
+
+    attrs = {
+        schema.ATTR_MEASUREMENT_COUNTER: meas_counter,
+        schema.ATTR_TIMESTAMP_START: timestamp_start,
+        schema.ATTR_MEASUREMENT_STATUS: measurement_status,
+        schema.ATTR_ANALYSIS_TYPE: analysis_type,
+    }
+    if timestamp_end is not None:
+        attrs[schema.ATTR_TIMESTAMP_END] = timestamp_end
+
+    utils.set_attrs(file_path, ana_path, attrs)
+
+    raw_files = raw_files or {}
+
+    for detector_id, processed_signal in measurement_data.items():
+        alias = next((a for a, d in poni_alias_map.items() if d == detector_id), detector_id)
+        role = schema.format_detector_role(alias)
+        detector_path = f"{ana_path}/{role}"
+
+        metadata = detector_metadata.get(detector_id) if detector_metadata else None
+        detector_raw_files = raw_files.get(detector_id, {})
+
+        det_attrs = {
+            schema.ATTR_DETECTOR_ID: detector_id,
+            schema.ATTR_DETECTOR_ALIAS: alias,
+        }
+        if metadata:
+            det_attrs[schema.ATTR_INTEGRATION_TIME_MS] = metadata.get("integration_time_ms", 0)
+            if "beam_energy_keV" in metadata:
+                det_attrs[schema.ATTR_BEAM_ENERGY_KEV] = metadata["beam_energy_keV"]
+
+        poni_path = f"{schema.GROUP_CALIBRATION_SNAPSHOT}/poni/poni_{role[4:]}"
+        add_detector_data_with_blobs(
+            file_path=file_path,
+            detector_path=detector_path,
+            processed_signal=processed_signal,
+            raw_files=detector_raw_files,
+            poni_ref_path=poni_path,
+        )
+        utils.set_attrs(file_path, detector_path, det_attrs)
+
+    return ana_path
+
+
+def link_analytical_measurement_to_point(
+    file_path: Union[str, Path],
+    point_index: int,
+    analytical_measurement_index: int,
+) -> None:
+    point_id = schema.format_point_id(point_index)
+    point_path = f"{schema.GROUP_POINTS}/{point_id}"
+    ana_id = schema.format_analytical_measurement_id(analytical_measurement_index)
+
+    _append_unique_string_attr(
+        file_path=file_path,
+        obj_path=point_path,
+        attr_name=schema.ATTR_ANALYTICAL_MEASUREMENT_IDS,
+        item=ana_id,
+    )
+
+
+def find_active_session_container(
+    folder: Union[str, Path], sample_id: Optional[str] = None
+) -> Optional[str]:
+    folder = Path(folder)
+    if not folder.exists():
+        return None
+
+    candidates = list(folder.glob("session_*.nxs.h5"))
+
+    if sample_id:
+        candidates = [path for path in candidates if sample_id in path.name]
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return str(candidates[0])

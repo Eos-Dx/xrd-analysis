@@ -14,15 +14,15 @@ class VersionSpec:
 
 
 VERSION_REGISTRY = {
-    "0_1": VersionSpec(
-        normalized_version="0_1",
-        module_path="hardware.container.v0_1",
+    "0_2": VersionSpec(
+        normalized_version="0_2",
+        module_path="hardware.container.v0_2",
     ),
 }
 
 
 def normalize_version(version: str) -> str:
-    """Normalize version values like '0.1' -> '0_1'."""
+    """Normalize version values like '0.2' -> '0_2'."""
     return str(version).strip().replace(".", "_")
 
 
@@ -43,4 +43,3 @@ def load_version_module(version: str) -> ModuleType:
     """Load and return implementation module for version."""
     spec = get_version_spec(version)
     return import_module(spec.module_path)
-

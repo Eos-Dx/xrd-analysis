@@ -5,6 +5,8 @@ import sys
 import tempfile
 import time
 
+from hardware.difra.gui.container_api import get_container_version
+
 logger = logging.getLogger(__name__)
 
 
@@ -70,7 +72,9 @@ class TechnicalCaptureMixin:
             f"continuous_movement={enable_continuous_movement}, radius={movement_radius}mm"
         )
 
-        container_version = self.config.get("container_version", "0.1") if hasattr(self, "config") else "0.1"
+        container_version = get_container_version(
+            self.config if hasattr(self, "config") else None
+        )
         CaptureWorker = self._get_technical_module("CaptureWorker")
         worker = CaptureWorker(
             detector_controller=self.detector_controller,

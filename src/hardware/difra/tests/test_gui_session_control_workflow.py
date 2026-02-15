@@ -7,7 +7,7 @@ Workflow covered:
 4. Generate 5 measurement points
 5. Start measurements
 6. Close/lock session container
-7. Validate resulting session container against v0.1 schema expectations
+7. Validate resulting session container against v0.2 schema expectations
 """
 
 import json
@@ -34,8 +34,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from hardware.container.v0_1 import schema, technical_container
-from hardware.container.v0_1.container_manager import lock_container
+from hardware.container.v0_2 import schema, technical_container
+from hardware.container.v0_2.container_manager import lock_container
 from hardware.difra.gui.session_manager import SessionManager
 
 
@@ -344,7 +344,12 @@ def test_session_control_button_workflow(qapp, tmp_path, monkeypatch):
         assert _decode(h5f.attrs.get(schema.ATTR_STUDY_NAME)) == "STUDY_GUI"
         assert _decode(h5f.attrs.get(schema.ATTR_OPERATOR_ID)) == "sad"
 
-        assert schema.GROUP_TECHNICAL in h5f
+        assert schema.GROUP_CALIBRATION_SNAPSHOT in h5f
+        assert any(
+            name.startswith("tech_evt_")
+            for name in h5f[schema.GROUP_CALIBRATION_SNAPSHOT].keys()
+        )
+        assert f"{schema.GROUP_CALIBRATION_SNAPSHOT}/poni" in h5f
         assert schema.GROUP_IMAGES in h5f
         assert schema.GROUP_IMAGES_ZONES in h5f
         assert schema.GROUP_POINTS in h5f
@@ -412,12 +417,10 @@ def test_session_control_button_workflow_with_attenuation(qapp, tmp_path, monkey
         for analytical_id in analytical_ids:
             analytical_path = f"{schema.GROUP_ANALYTICAL_MEASUREMENTS}/{analytical_id}"
             assert _decode(h5f[analytical_path].attrs.get(schema.ATTR_ANALYSIS_TYPE)) == "attenuation"
-            assert schema.ATTR_POINT_REFS in h5f[analytical_path].attrs
-            assert len(h5f[analytical_path].attrs[schema.ATTR_POINT_REFS]) == 5
 
         point_ids = sorted(h5f[schema.GROUP_POINTS].keys())
         assert len(point_ids) == 5
         for point_id in point_ids:
             point_path = f"{schema.GROUP_POINTS}/{point_id}"
-            assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS in h5f[point_path].attrs
-            assert len(h5f[point_path].attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_REFS]) == 2
+            assert schema.ATTR_ANALYTICAL_MEASUREMENT_IDS in h5f[point_path].attrs
+            assert len(h5f[point_path].attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_IDS]) == 2

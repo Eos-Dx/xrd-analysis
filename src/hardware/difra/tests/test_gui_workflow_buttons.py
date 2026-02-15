@@ -41,7 +41,7 @@ from PyQt5.QtWidgets import (
     QDialog,
 )
 
-from hardware.container.v0_1 import schema
+from hardware.container.v0_2 import schema
 from hardware.difra.gui.main_window_ext import technical_measurements
 from hardware.difra.gui.main_window_ext.technical import (
     h5_generation_mixin,
@@ -351,7 +351,7 @@ def test_gui_button_driven_technical_workflow(qapp, tmp_path, monkeypatch):
     qapp.processEvents()
 
     # 7) Find resulting technical container and validate schema-level content
-    generated = sorted(work_dir.glob("technical_*.h5"))
+    generated = sorted(work_dir.glob("technical_*.nxs.h5"))
     assert len(generated) == 1, f"Expected exactly one technical container, found: {generated}"
     container_path = generated[0]
 

@@ -7,6 +7,12 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+from hardware.difra.gui.container_api import (
+    get_container_manager,
+    get_schema,
+    get_technical_validator,
+)
+
 # Import Qt for type hints and usage
 try:
     from PyQt5.QtWidgets import QFileDialog, QInputDialog, QMessageBox
@@ -59,8 +65,11 @@ class H5ManagementMixin:
             container_path: Path to generated container
             container_id: Container ID
         """
-        from hardware.container.v0_1.technical_validator import validate_technical_container
         import h5py
+        technical_validator = get_technical_validator(
+            self.config if hasattr(self, "config") else None
+        )
+        validate_technical_container = technical_validator.validate_technical_container
         
         # Validate container
         try:
@@ -75,7 +84,10 @@ class H5ManagementMixin:
             return
         
         # Check schema version
-        expected_version = self.config.get("expected_technical_schema_version", "0.1")
+        expected_version = self.config.get(
+            "expected_technical_schema_version",
+            self.config.get("container_version", "0.2"),
+        )
         try:
             with h5py.File(container_path, 'r') as f:
                 actual_version = f.attrs.get("schema_version", "unknown")
@@ -181,7 +193,7 @@ class H5ManagementMixin:
             Number of containers archived
         """
         from .helpers import _get_technical_archive_folder
-        from hardware.container.v0_1.container_manager import is_container_locked
+        container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
         
         storage_path = Path(storage_folder)
         if not storage_path.exists():
@@ -208,7 +220,7 @@ class H5ManagementMixin:
                     container_id = filename  # Fallback to full name
                 
                 # Check if container is locked
-                is_locked = is_container_locked(h5_file)
+                is_locked = container_manager.is_container_locked(h5_file)
                 
                 # If unlocked, prompt user about error status
                 created_by_error = False
@@ -284,7 +296,7 @@ class H5ManagementMixin:
                     file_patterns = self.config.get('technical_archive_patterns', ['*.txt', '*.dsc', '*.npy'])
                 
                 try:
-                    from hardware.container.v0_1.container_manager import archive_technical_data_files
+                    archive_technical_data_files = container_manager.archive_technical_data_files
                     # Create a dummy container path in the storage folder to use with the function
                     dummy_container_path = storage_path / h5_file.name
                     raw_file_count = archive_technical_data_files(
@@ -315,12 +327,9 @@ class H5ManagementMixin:
             container_path: Path to container
             container_id: Container ID
         """
-        from hardware.container.v0_1.container_manager import (
-            lock_technical_container,
-            archive_technical_data_files
-        )
         from hardware.difra.gui.operator_manager import OperatorManager
         from .helpers import _get_technical_archive_folder
+        container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
         
         # Get current operator
         operator_manager = OperatorManager()
@@ -332,7 +341,7 @@ class H5ManagementMixin:
         # Lock the container
         try:
             bundle_path = None
-            lock_technical_container(
+            container_manager.lock_technical_container(
                 Path(container_path),
                 locked_by=operator_id,
                 notes="Auto-locked after generation and validation"
@@ -360,7 +369,7 @@ class H5ManagementMixin:
                     file_patterns = self.config.get('technical_archive_patterns', ['*.txt', '*.dsc', '*.npy'])
                 
                 # Use container module function to archive files
-                archived_count = archive_technical_data_files(
+                archived_count = container_manager.archive_technical_data_files(
                     container_path=Path(container_path),
                     archive_folder=archive_subdir,
                     file_patterns=file_patterns
@@ -419,10 +428,13 @@ class H5ManagementMixin:
         
         Displays validation results in a dialog.
         """
-        from hardware.container.v0_1.technical_validator import validate_technical_container
-        from hardware.container.v0_1.container_manager import is_container_locked
         from .helpers import _get_default_folder
         import h5py
+        technical_validator = get_technical_validator(
+            self.config if hasattr(self, "config") else None
+        )
+        validate_technical_container = technical_validator.validate_technical_container
+        container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
         
         self._log_technical_event("Opening file dialog to validate HDF5 container...")
         
@@ -436,7 +448,7 @@ class H5ManagementMixin:
             self,
             "Validate Technical HDF5 Container",
             folder,
-            "HDF5 Files (*.h5 *.hdf5);;All Files (*)"
+            "NeXus HDF5 Files (*.nxs.h5 *.h5 *.hdf5);;All Files (*)"
         )
         
         if not file_path:
@@ -458,11 +470,14 @@ class H5ManagementMixin:
             return
         
         # Check lock status
-        is_locked = is_container_locked(file_path)
+        is_locked = container_manager.is_container_locked(file_path)
         lock_status = "🔒 LOCKED" if is_locked else "🔓 UNLOCKED"
         
         # Check schema version
-        expected_version = self.config.get("expected_technical_schema_version", "0.1")
+        expected_version = self.config.get(
+            "expected_technical_schema_version",
+            self.config.get("container_version", "0.2"),
+        )
         try:
             with h5py.File(file_path, 'r') as f:
                 actual_version = f.attrs.get("schema_version", "unknown")
@@ -530,9 +545,12 @@ class H5ManagementMixin:
         Automatically validates the container and displays its contents in the aux table.
         Works with both locked and unlocked containers.
         """
-        from hardware.container.v0_1.technical_validator import validate_technical_container
-        from hardware.container.v0_1.container_manager import is_container_locked
         from .helpers import _get_default_folder
+        technical_validator = get_technical_validator(
+            self.config if hasattr(self, "config") else None
+        )
+        validate_technical_container = technical_validator.validate_technical_container
+        container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
         
         self._log_technical_event("Opening file dialog to load HDF5 container...")
         
@@ -546,7 +564,7 @@ class H5ManagementMixin:
             self,
             "Load Technical HDF5 Container",
             folder,
-            "HDF5 Files (*.h5 *.hdf5);;All Files (*)"
+            "NeXus HDF5 Files (*.nxs.h5 *.h5 *.hdf5);;All Files (*)"
         )
         
         if not file_path:
@@ -556,7 +574,7 @@ class H5ManagementMixin:
         self._log_technical_event(f"Loading and validating: {os.path.basename(file_path)}")
         
         # Check lock status
-        is_locked = is_container_locked(file_path)
+        is_locked = container_manager.is_container_locked(file_path)
         lock_status = "🔒 LOCKED" if is_locked else "🔓 UNLOCKED"
         
         # Perform automatic validation
@@ -652,7 +670,7 @@ class H5ManagementMixin:
             h5_path: Path to the technical HDF5 container
         """
         import h5py
-        from hardware.container.v0_1 import schema
+        schema = get_schema(self.config if hasattr(self, "config") else None)
         from PyQt5.QtWidgets import QCheckBox, QComboBox
 
         def _as_text(value):
@@ -691,9 +709,15 @@ class H5ManagementMixin:
         loaded_count = 0
         
         with h5py.File(h5_path, "r") as f:
-            tech_group = f.get("technical")
+            tech_group = f.get(schema.GROUP_TECHNICAL)
+            if tech_group is None:
+                tech_group = f.get(f"{schema.GROUP_CALIBRATION_SNAPSHOT}/events")
             if not tech_group:
-                raise ValueError("No /technical group found in container")
+                raise ValueError(
+                    f"No technical event group found in container. "
+                    f"Expected {schema.GROUP_TECHNICAL} or "
+                    f"{schema.GROUP_CALIBRATION_SNAPSHOT}/events."
+                )
             
             # Iterate through technical events
             for evt_name in sorted(tech_group.keys()):

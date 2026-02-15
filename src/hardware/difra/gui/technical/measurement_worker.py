@@ -50,7 +50,7 @@ class MeasurementWorker(QObject):
     def run(self):
         """Process already-converted measurement files.
         
-        Files are already in container format (.npy for v0.1) - conversion
+        Files are already in container format (.npy for v0.2) - conversion
         is handled by the detector's convert_to_container_format() method.
         This worker just computes quality metrics and emits results.
         """

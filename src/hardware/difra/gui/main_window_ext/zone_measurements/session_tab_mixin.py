@@ -20,8 +20,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from hardware.container.v0_1 import schema
-from hardware.container.v0_1.container_manager import is_container_locked, lock_container
+from hardware.difra.gui.container_api import get_container_manager, get_schema
 from hardware.difra.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -29,6 +28,12 @@ logger = get_module_logger(__name__)
 
 class SessionTabMixin:
     """Mixin for session management tab in Zone Measurements."""
+
+    def _container_schema(self):
+        return get_schema(self.config if hasattr(self, "config") else None)
+
+    def _container_manager(self):
+        return get_container_manager(self.config if hasattr(self, "config") else None)
 
     def create_session_tab(self):
         """Create session management tab with queue and archive views."""
@@ -184,7 +189,7 @@ class SessionTabMixin:
         if not measurements_folder.exists():
             return []
         return sorted(
-            [path for path in measurements_folder.glob("session_*.h5") if path.is_file()]
+            [path for path in measurements_folder.glob("session_*.nxs.h5") if path.is_file()]
         )
 
     def _scan_archived_session_containers(self) -> List[Path]:
@@ -192,7 +197,7 @@ class SessionTabMixin:
         if not archive_folder.exists():
             return []
         return sorted(
-            [path for path in archive_folder.rglob("session_*.h5") if path.is_file()]
+            [path for path in archive_folder.rglob("session_*.nxs.h5") if path.is_file()]
         )
 
     def _read_session_container_metadata(self, container_path: Path) -> Dict[str, str]:
@@ -209,6 +214,7 @@ class SessionTabMixin:
         }
 
         try:
+            schema = self._container_schema()
             with h5py.File(container_path, "r") as h5f:
                 info["sample_id"] = str(
                     self._decode_attr(h5f.attrs.get(schema.ATTR_SAMPLE_ID, "UNKNOWN"))
@@ -229,7 +235,7 @@ class SessionTabMixin:
                 info["session_id"] = str(
                     self._decode_attr(h5f.attrs.get(schema.ATTR_SESSION_ID, ""))
                 )
-                locked = bool(h5f.attrs.get("locked", False))
+                locked = self._container_manager().is_container_locked(container_path)
                 info["status"] = "LOCKED" if locked else "UNLOCKED"
         except Exception as exc:
             info["status"] = f"ERROR ({exc})"
@@ -358,11 +364,12 @@ class SessionTabMixin:
                     active_path = Path(self.session_manager.session_path)
                     was_active = active_path.resolve() == container_path.resolve()
 
-                if not is_container_locked(container_path):
+                container_manager = self._container_manager()
+                if not container_manager.is_container_locked(container_path):
                     lock_user = None
                     if hasattr(self, "session_manager") and self.session_manager:
                         lock_user = getattr(self.session_manager, "operator_id", None)
-                    lock_container(container_path, user_id=lock_user)
+                    container_manager.lock_container(container_path, user_id=lock_user)
 
                 # Fake cloud send for development mode: keep explicit log marker,
                 # but apply real post-send lifecycle (lock + archive move).
@@ -501,7 +508,7 @@ class SessionTabMixin:
             )
 
             logger.info("Locking session container", session_path=str(session_path))
-            lock_container(session_path)
+            self._container_manager().lock_container(session_path)
 
             archive_dest, archived_count = self._archive_measurement_files(
                 measurements_folder, info["sample_id"]

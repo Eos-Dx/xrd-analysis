@@ -25,7 +25,7 @@ SRC_ROOT = Path(__file__).resolve().parents[3]
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from hardware.container.v0_1 import (
+from hardware.container.v0_2 import (
     schema,
     writer,
     technical_container,
@@ -464,9 +464,11 @@ def test_set_measurement_primary_status():
         
         # Verify attributes
         with h5py.File(tech_path, 'r') as f:
-            assert f['/technical/tech_evt_001'].attrs['is_primary'] == True
-            assert f['/technical/tech_evt_002'].attrs['is_primary'] == False
-            assert 'supplementary_note' in f['/technical/tech_evt_002'].attrs
+            event_1 = f[f"{schema.GROUP_TECHNICAL}/tech_evt_000001"]
+            event_2 = f[f"{schema.GROUP_TECHNICAL}/tech_evt_000002"]
+            assert event_1.attrs['is_primary'] == True
+            assert event_2.attrs['is_primary'] == False
+            assert 'supplementary_note' in event_2.attrs
 
 
 def test_cannot_modify_locked_container():

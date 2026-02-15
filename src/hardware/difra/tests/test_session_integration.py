@@ -22,12 +22,13 @@ SRC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "
 if SRC_ROOT not in sys.path:
     sys.path.insert(0, SRC_ROOT)
 
-from hardware.container.v0_1 import (
+from hardware.container.v0_2 import (
     schema,
     session_container,
     validator,
     technical_container,
     measurement_counter,
+    utils,
 )
 from hardware.difra.gui.session_measurement_handler import SessionMeasurementHandler
 
@@ -175,6 +176,16 @@ def test_session_handler_complete_workflow(temp_output_dir, technical_container_
             "PRIMARY": {"integration_time_ms": 100.0, "beam_energy_keV": 12.5},
             "SECONDARY": {"integration_time_ms": 100.0, "beam_energy_keV": 12.5},
         }
+        raw_files = {
+            "PRIMARY": {
+                "raw_txt": b"primary txt blob",
+                "raw_dsc": b"primary dsc blob",
+            },
+            "SECONDARY": {
+                "raw_txt": b"secondary txt blob",
+                "raw_dsc": b"secondary dsc blob",
+            },
+        }
 
         poni_alias_map = {"PRIMARY": "PRIMARY", "SECONDARY": "SECONDARY"}
 
@@ -183,6 +194,7 @@ def test_session_handler_complete_workflow(temp_output_dir, technical_container_
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
             poni_alias_map=poni_alias_map,
+            raw_files=raw_files,
         )
 
         handler.update_point_status(
@@ -193,10 +205,12 @@ def test_session_handler_complete_workflow(temp_output_dir, technical_container_
     with h5py.File(session_file, "r") as f:
         assert f.attrs["sample_id"] == "SAMPLE_TEST_001"
         assert f.attrs["operator_id"] == "test_operator"
-        assert "/technical" in f
-        assert "/images/img_001" in f
-        assert "/images/zones/zone_001" in f
-        assert "/images/mapping/mapping" in f
+        assert schema.GROUP_CALIBRATION_SNAPSHOT in f
+        assert "/entry/images/img_001" in f
+        assert "/entry/images/zones/zone_001" in f
+        assert "/entry/images/mapping/mapping" in f
+        assert "/measurements/pt_001/meas_000000001/det_primary/blob/raw_txt" in f
+        assert "/entry/measurements/pt_001/meas_000000001/det_secondary/blob/raw_dsc" in f
         assert f.attrs["measurement_counter"] == 3
 
 
@@ -258,9 +272,6 @@ def test_session_validator_complete_container(
         physical_coordinates_mm=[10.0, 10.0],
     )
 
-    # Validate
-    is_valid, summary = validator.validate_session_container(session_file)
-
     # Should be valid (or have only warnings, not errors)
     container_validator = validator.SessionContainerValidator(session_file)
     is_valid, errors = container_validator.validate()
@@ -318,11 +329,9 @@ def test_session_validator_detects_missing_processed_signal():
         )
 
     # Create measurement group without processed_signal
-        from hardware.container.v0_1 import utils
-
         utils.create_group_if_missing(
             file_path=session_file,
-            group_path="/measurements/pt_001/meas_000000001/det_primary",
+            group_path=f"{schema.GROUP_MEASUREMENTS}/pt_001/meas_000000001/det_primary",
         )
 
         # Validate
@@ -373,19 +382,19 @@ def test_session_multiple_images_zones(temp_output_dir, technical_container_file
 
     # Verify in HDF5
     with h5py.File(session_file, "r") as f:
-        assert "/images/img_001" in f
-        assert "/images/img_002" in f
-        assert "/images/img_003" in f
-        assert "/images/zones/zone_001" in f
-        assert "/images/zones/zone_002" in f
-        assert "/images/zones/zone_003" in f
+        assert "/entry/images/img_001" in f
+        assert "/entry/images/img_002" in f
+        assert "/entry/images/img_003" in f
+        assert "/entry/images/zones/zone_001" in f
+        assert "/entry/images/zones/zone_002" in f
+        assert "/entry/images/zones/zone_003" in f
 
         assert (
-            f["/images/zones/zone_001"].attrs["zone_role"]
+            f["/entry/images/zones/zone_001"].attrs["zone_role"]
             == schema.ZONE_ROLE_SAMPLE_HOLDER
         )
         assert (
-            f["/images/zones/zone_002"].attrs["zone_role"]
+            f["/entry/images/zones/zone_002"].attrs["zone_role"]
             == schema.ZONE_ROLE_INCLUDE
         )
 
@@ -432,10 +441,10 @@ def test_session_analytical_measurement_workflow(
 
     # Verify
     with h5py.File(session_file, "r") as f:
-        assert "/analytical_measurements/ana_000000001" in f
-        ana = f["/analytical_measurements/ana_000000001"]
+        assert "/entry/analytical_measurements/ana_000000001" in f
+        ana = f["/entry/analytical_measurements/ana_000000001"]
         assert ana.attrs["analysis_type"] == schema.ANALYSIS_TYPE_ATTENUATION
 
-        # Check reference link
-        point = f["/points/pt_001"]
-        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS in point.attrs
+        # Check ID-based link
+        point = f["/entry/points/pt_001"]
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_IDS in point.attrs

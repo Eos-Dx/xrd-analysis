@@ -11,6 +11,6 @@ import hardware.difra as _e
 
 # Map common subpackages
 for _name in ("gui", "hardware", "utils"):
-    sys.modules[__name__ + "." + _name] = importlib.import_module(
-        "hardware.difra." + _name
-    )
+    _module = importlib.import_module("hardware.difra." + _name)
+    sys.modules[__name__ + "." + _name] = _module
+    setattr(sys.modules[__name__], _name, _module)

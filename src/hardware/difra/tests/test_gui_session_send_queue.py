@@ -10,8 +10,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt5.QtWidgets import QApplication, QCheckBox, QMainWindow, QMessageBox, QTabWidget, QVBoxLayout, QWidget
 
-from hardware.container.v0_1 import schema, writer as session_writer
-from hardware.container.v0_1.container_manager import is_container_locked
+from hardware.container.v0_2 import schema, writer as session_writer
+from hardware.container.v0_2.container_manager import is_container_locked
 from hardware.difra.gui.main_window_ext.zone_measurements.session_tab_mixin import SessionTabMixin
 
 
@@ -142,7 +142,7 @@ def test_session_queue_send_selected_and_all(qapp, tmp_path, monkeypatch):
     # Selected one was moved + locked and removed from queue
     assert harness.pending_sessions_table.rowCount() == 1
     assert harness.archived_sessions_table.rowCount() == 1
-    archived_files = sorted(archive_folder.rglob("session_*.h5"))
+    archived_files = sorted(archive_folder.rglob("session_*.nxs.h5"))
     assert len(archived_files) == 1
     with h5py.File(archived_files[0], "r") as h5f:
         assert bool(h5f.attrs.get("locked", False)) is True
@@ -158,7 +158,7 @@ def test_session_queue_send_selected_and_all(qapp, tmp_path, monkeypatch):
 
     assert harness.pending_sessions_table.rowCount() == 0
     assert harness.archived_sessions_table.rowCount() == 2
-    archived_files = sorted(archive_folder.rglob("session_*.h5"))
+    archived_files = sorted(archive_folder.rglob("session_*.nxs.h5"))
     assert len(archived_files) == 2
     for archived in archived_files:
         with h5py.File(archived, "r") as h5f:
