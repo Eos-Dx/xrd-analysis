@@ -17,7 +17,13 @@ except Exception as exc:  # pragma: no cover - environment-dependent import
 else:
     _GRPC_IMPORT_ERROR = None
 
-from google.protobuf.timestamp_pb2 import Timestamp
+try:
+    from google.protobuf.timestamp_pb2 import Timestamp
+except Exception as exc:  # pragma: no cover - environment-dependent import
+    Timestamp = None
+    _PROTOBUF_IMPORT_ERROR = exc
+else:
+    _PROTOBUF_IMPORT_ERROR = None
 
 from hardware.difra.hardware.hardware_control import HardwareController
 
@@ -30,10 +36,18 @@ if str(_GENERATED_STUB_ROOT) not in sys.path:
     sys.path.insert(0, str(_GENERATED_STUB_ROOT))
 
 if grpc is not None:
-    from hub.v1 import hub_pb2, hub_pb2_grpc
+    try:
+        from hub.v1 import hub_pb2, hub_pb2_grpc
+    except Exception as exc:  # pragma: no cover - environment-dependent import
+        hub_pb2 = None
+        hub_pb2_grpc = None
+        _HUB_IMPORT_ERROR = exc
+    else:
+        _HUB_IMPORT_ERROR = None
 else:  # pragma: no cover - exercised when grpc is missing
     hub_pb2 = None
     hub_pb2_grpc = None
+    _HUB_IMPORT_ERROR = _GRPC_IMPORT_ERROR
 
 if grpc is not None:
     _FALLBACK_GRPC_EXCEPTIONS = (
@@ -54,6 +68,8 @@ else:  # pragma: no cover - exercised when grpc is missing
 
 
 def _timestamp_now() -> Timestamp:
+    if Timestamp is None:
+        raise RuntimeError("protobuf Timestamp is unavailable")
     ts = Timestamp()
     ts.FromDatetime(datetime.now(timezone.utc))
     return ts
@@ -262,8 +278,13 @@ class GrpcHardwareClient(HardwareClient):
         timeout_s: float = 3.0,
         user: str = "difra_gui",
     ):
-        if grpc is None or hub_pb2 is None or hub_pb2_grpc is None:
-            detail = f": {_GRPC_IMPORT_ERROR}" if _GRPC_IMPORT_ERROR else ""
+        if grpc is None or Timestamp is None or hub_pb2 is None or hub_pb2_grpc is None:
+            import_error = (
+                _GRPC_IMPORT_ERROR
+                or _PROTOBUF_IMPORT_ERROR
+                or _HUB_IMPORT_ERROR
+            )
+            detail = f": {import_error}" if import_error else ""
             raise RuntimeError(
                 f"grpcio/protobuf stubs unavailable; gRPC client disabled{detail}"
             )
@@ -528,10 +549,15 @@ def create_hardware_client(config: Dict[str, Any]) -> HardwareClient:
 
     grpc_client: Optional[GrpcHardwareClient] = None
     if mode in {"dual", "grpc"}:
-        if grpc is None or hub_pb2 is None or hub_pb2_grpc is None:
+        if grpc is None or Timestamp is None or hub_pb2 is None or hub_pb2_grpc is None:
+            import_error = (
+                _GRPC_IMPORT_ERROR
+                or _PROTOBUF_IMPORT_ERROR
+                or _HUB_IMPORT_ERROR
+            )
             msg = (
                 f"grpcio/protobuf stubs unavailable in this environment"
-                + (f": {_GRPC_IMPORT_ERROR}" if _GRPC_IMPORT_ERROR else "")
+                + (f": {import_error}" if import_error else "")
             )
             if mode == "grpc":
                 raise RuntimeError(msg)

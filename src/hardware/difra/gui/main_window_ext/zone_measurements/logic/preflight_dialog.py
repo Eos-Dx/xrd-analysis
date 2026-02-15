@@ -1,3 +1,5 @@
+import logging
+
 from PyQt5.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -8,6 +10,8 @@ from PyQt5.QtWidgets import (
 )
 
 from hardware.difra.gui.container_api import get_schema
+
+logger = logging.getLogger(__name__)
 
 
 class PreflightDialog(QDialog):
@@ -34,6 +38,8 @@ class PreflightDialog(QDialog):
 
         # Technical data info (from session)
         self.h5_label = QLabel("")
+        self.h5_label.setWordWrap(True)
+        self.h5_label.setStyleSheet("color: #222;")
         layout.addWidget(self.h5_label)
         
         # Confirmation checkbox
@@ -63,6 +69,8 @@ class PreflightDialog(QDialog):
             # Get session path and look for technical data
             import h5py
             session_path = self.session_manager.session_path
+            if not session_path:
+                return None
             
             # Check if session has technical data group
             with h5py.File(session_path, 'r') as f:
@@ -71,13 +79,19 @@ class PreflightDialog(QDialog):
                     if self.session_manager
                     else None
                 )
-                if schema.GROUP_CALIBRATION_SNAPSHOT in f:
-                    # Technical data exists in session - it was copied from technical container
-                    # Return the session path as indicator that technical data is present
-                    self.technical_h5_path = session_path
-                    return session_path
-        except Exception:
-            pass
+                candidates = []
+                for attr in ("GROUP_CALIBRATION_SNAPSHOT", "GROUP_TECHNICAL", "GROUP_CALIBRATION"):
+                    value = getattr(schema, attr, None)
+                    if isinstance(value, str) and value:
+                        candidates.append(value)
+                candidates.extend(["/technical", "technical"])
+                for group_name in candidates:
+                    if group_name in f:
+                        # Technical data exists in session - it was copied from technical container
+                        self.technical_h5_path = session_path
+                        return session_path
+        except Exception as exc:
+            logger.debug("Preflight technical-data detection failed: %s", exc)
         
         self.technical_h5_path = None
         return None
@@ -85,7 +99,7 @@ class PreflightDialog(QDialog):
     def _revalidate(self):
         # Technical HDF5 container
         h5 = self._detect_h5()
-        icon_h5 = "✅" if h5 else "⚠️"
+        icon_h5 = "[OK]" if h5 else "[MISSING]"
         
         if h5:
             # Show session container name with technical data indicator
