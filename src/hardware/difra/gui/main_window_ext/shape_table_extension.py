@@ -15,6 +15,7 @@ class ShapeTableMixin:
 
     def create_shape_table(self):
         self.shapeDock = QDockWidget("Shapes", self)
+        self.shapeDock.setObjectName("ShapesDock")
         # Increase the column count to include a "Role" column.
         self.shapeTable = QTableWidget(0, 7, self)
         self.shapeTable.setHorizontalHeaderLabels(

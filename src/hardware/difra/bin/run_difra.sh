@@ -22,5 +22,6 @@ fi
 echo "[INFO] Starting DiFRA GUI with environment: $CONDA_ENV"
 echo "Repository root: $REPO_ROOT"
 
-# Launch the GUI using the specified conda environment
-conda run -n "$CONDA_ENV" python "$REPO_ROOT/src/hardware/difra/gui/main_app.py" "$@"
+# Launch the GUI using unbuffered Python and no conda output capture
+# so runtime errors are streamed immediately to the terminal.
+conda run --no-capture-output -n "$CONDA_ENV" python -u "$REPO_ROOT/src/hardware/difra/gui/main_app.py" "$@"

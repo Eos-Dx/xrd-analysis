@@ -22,6 +22,7 @@ class TechnicalPanelMixin:
 
         title = "Technical Measurements"
         self.measDock = tm.QDockWidget(title, self)
+        self.measDock.setObjectName("TechnicalMeasurementsDock")
         self.measDock.setAllowedAreas(tm.Qt.LeftDockWidgetArea | tm.Qt.RightDockWidgetArea)
 
         container = tm.QWidget()

@@ -166,6 +166,7 @@ class MainWindowBasic(QMainWindow):
 
     def create_tool_bar(self):
         self.toolbar = QToolBar("Tools", self)
+        self.toolbar.setObjectName("MainToolsToolbar")
         self.addToolBar(self.toolbar)
         self.toolbar.addAction(self.open_act)
         self.toolbar.addAction(self.capture_camera_act)

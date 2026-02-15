@@ -463,7 +463,6 @@ class NewSessionDialog(QDialog):
         operator_layout = QFormLayout(operator_group)
         
         self.operator_combo = QComboBox()
-        self.operator_combo.currentIndexChanged.connect(self._on_operator_changed)
         self._populate_operator_combo()
         operator_layout.addRow("Operator*:", self.operator_combo)
         
@@ -474,6 +473,7 @@ class NewSessionDialog(QDialog):
             "color: #555; background-color: #f0f0f0; padding: 5px; border-radius: 3px; font-size: 10px;"
         )
         operator_layout.addRow("Details:", self.operator_details_label)
+        self.operator_combo.currentIndexChanged.connect(self._on_operator_changed)
         
         # Add new operator button
         new_operator_btn = QPushButton("Add New Operator...")
@@ -530,6 +530,9 @@ class NewSessionDialog(QDialog):
     
     def _update_operator_details(self):
         """Update operator details display."""
+        if not hasattr(self, "operator_details_label"):
+            return
+
         operator_id = self.operator_combo.currentData()
         
         if not operator_id:

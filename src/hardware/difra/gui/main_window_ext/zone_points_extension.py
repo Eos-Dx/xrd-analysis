@@ -42,6 +42,7 @@ class ZonePointsMixin:
         self._initialize_state()
 
         self.zonePointsDock = QDockWidget("Zone Points", self)
+        self.zonePointsDock.setObjectName("ZonePointsDock")
         container = QWidget()
         
         # Set smaller font for all controls to fit smaller screens

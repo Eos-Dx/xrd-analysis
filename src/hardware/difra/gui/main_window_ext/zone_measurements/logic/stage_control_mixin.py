@@ -191,6 +191,11 @@ class StageControlMixin:
                     x, y = self.stage_controller.get_xy_position()
                 else:
                     x, y = 0.0, 0.0
+                    if not getattr(self, "_xy_pos_stage_unavailable_logged", False):
+                        logging.debug("Stage controller unavailable while hardware_initialized=True")
+                        self._xy_pos_stage_unavailable_logged = True
+                if getattr(self, "_xy_pos_stage_unavailable_logged", False):
+                    self._xy_pos_stage_unavailable_logged = False
 
                 position_text = f"Current XY: ({x:.3f}, {y:.3f}) mm"
                 if hasattr(self, "currentPositionLabel"):
@@ -198,7 +203,9 @@ class StageControlMixin:
                 if hasattr(self, "zoneCurrentPositionLabel"):
                     self.zoneCurrentPositionLabel.setText(position_text)
             except Exception as exc:
-                print("Error reading stage pos:", exc)
+                if not getattr(self, "_xy_pos_error_logged", False):
+                    logging.warning("Error reading stage position: %s", exc)
+                    self._xy_pos_error_logged = True
                 x, y = 0, 0
                 error_text = "Current XY: (Error reading position)"
                 if hasattr(self, "currentPositionLabel"):
@@ -207,6 +214,8 @@ class StageControlMixin:
                     self.zoneCurrentPositionLabel.setText(error_text)
         else:
             x, y = 0, 0
+            if getattr(self, "_xy_pos_error_logged", False):
+                self._xy_pos_error_logged = False
             not_init_text = "Current XY: (Not initialized)"
             if hasattr(self, "currentPositionLabel"):
                 self.currentPositionLabel.setText(not_init_text)

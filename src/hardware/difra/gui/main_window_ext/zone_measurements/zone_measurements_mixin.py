@@ -38,6 +38,7 @@ class ZoneMeasurementsMixin(
 
         # --- Create and set up the Dock ---
         self.zoneMeasurementsDock = QDockWidget("Zone Measurements", self)
+        self.zoneMeasurementsDock.setObjectName("ZoneMeasurementsDock")
         self.zoneMeasurementsDock.setWidget(container)
         
         # Set minimum height to be compact - just enough for controls and a few rows

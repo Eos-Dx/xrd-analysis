@@ -5,6 +5,7 @@ from . import session_mixin as _session_module
 Path = _session_module.Path
 QMessageBox = _session_module.QMessageBox
 QFileDialog = _session_module.QFileDialog
+QDialog = _session_module.QDialog
 get_container_manager = _session_module.get_container_manager
 get_schema = _session_module.get_schema
 get_writer = _session_module.get_writer
@@ -647,4 +648,3 @@ class SessionFlowMixin:
                 f"Failed to open session container:\n\n{str(e)}",
             )
             logger.error(f"Failed to open session container: {e}", exc_info=True)
-
