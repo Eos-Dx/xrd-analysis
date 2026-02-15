@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Fault injection'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Simulate beam drop > X ms and confirm transition to SAFE state.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_005

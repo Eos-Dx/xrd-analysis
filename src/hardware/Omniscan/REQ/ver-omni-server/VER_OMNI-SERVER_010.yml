@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Data encryption validation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Verify database files encrypted at rest using AES-256-GCM. Test TPM key storage and retrieval. Validate TLS 1.3 connection establishment with mutual authentication. Confirm all gRPC traffic encrypted. Test access log completeness for data operations.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_015

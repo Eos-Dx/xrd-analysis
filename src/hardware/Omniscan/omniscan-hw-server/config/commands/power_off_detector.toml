@@ -1,0 +1,31 @@
+command_id = "power_off_detector"
+description = "Safely power down X-ray detector"
+service = "DeviceInitialization"
+audit_level = "High"
+risk_level = "Low"
+
+[safety_requirements]
+allowed_states = ["Idle"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = true
+max_execution_time_seconds = 30
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "detector_power_off"
+message = "Detector power off requested"
+
+[[execution.steps]]
+type = "CallDevice"
+device = "detector"
+method = "power_off"
+parameters = []
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "detector"
+change_type = "powered_off"

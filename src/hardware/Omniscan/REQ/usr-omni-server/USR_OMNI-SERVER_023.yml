@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Offline operation capability'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall maintain full diagnostic capability during network outages with complete measurement operations without cloud connectivity, local data storage with automatic synchronization upon reconnection, and clear network connectivity status indication.'
+type: requirement

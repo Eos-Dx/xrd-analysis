@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "device": {
+    "name": "Production_GPIO",
+    "interlocks_armed": true,
+    "emergency_stop": false,
+    "power_default_on": true,
+    "gui_mode": true
+  },
+  "measurement": {
+    "output_dir": "measurements",
+    "default_duration_s": 60
+  },
+  "logging": {
+    "log_dir": "logs",
+    "log_level": "INFO"
+  },
+  "maintenance": {
+    "dev_mode": false,
+    "dev_secret": "CHANGE_ME_IN_PRODUCTION"
+  }
+}

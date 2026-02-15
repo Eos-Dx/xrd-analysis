@@ -1,0 +1,52 @@
+command_id = "power_device"
+description = "Control power state for detector, motion, or GPIO devices"
+service = "DeviceControl"
+audit_level = "High"
+risk_level = "Medium"
+
+[safety_requirements]
+allowed_states = ["Idle", "Maintenance"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = true
+max_execution_time_seconds = 30
+
+[[parameters]]
+name = "device_type"
+required = true
+description = "Type of device to power control"
+
+[parameters.param_type]
+type = "Enum"
+allowed_values = ["detector", "motion", "gpio"]
+
+[[parameters]]
+name = "power_on"
+required = true
+description = "True to power on, false to power off"
+
+[parameters.param_type]
+type = "Boolean"
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "device_power_change"
+message = "Device power state change requested"
+
+[[execution.steps]]
+type = "CallDevice"
+device = "pdu"
+method = "set_power"
+parameters = ["device_type", "power_on"]
+
+[[execution.steps]]
+type = "Delay"
+duration_ms = 2000
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "device"
+change_type = "power_changed"

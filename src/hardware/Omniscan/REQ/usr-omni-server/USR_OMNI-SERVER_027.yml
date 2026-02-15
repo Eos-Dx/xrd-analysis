@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Training support'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall support efficient user training with target times (Clinical operators: 4h, Administrators: 8h, Maintenance engineers: 16h) through in-application help system, visual workflow guides, interactive training mode, quick reference cards, and video tutorials.'
+type: requirement

@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Daily calibration capability'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The operator must be able to verify device health via a daily calibration routine.'
+type: requirement

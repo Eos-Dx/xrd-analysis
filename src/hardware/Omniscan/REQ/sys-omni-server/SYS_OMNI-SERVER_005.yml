@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Beam fault handling'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall abort exposure if beam intensity drops below threshold for > X ms and remain locked until stable.'
+type: requirement
+links:
+- USR_OMNI-SERVER_001

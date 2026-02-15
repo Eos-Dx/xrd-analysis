@@ -1,0 +1,756 @@
+{"timestamp":"2025-10-28T08:03:23.335729Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T08:03:23.335929Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.336061Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.336208Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.336519Z","level":"INFO","fields":{"message":"✅ GPIO notification sender configured (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.336599Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.337824Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T08:03:23.340739Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T08:03:23.345293Z","level":"INFO","fields":{"message":"Audit session started: 75953920-8de6-4bae-a166-7f870dcf11bc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T08:03:23.345409Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.345539Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.345583Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.345653Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:03:23.345708Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.345820Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.345903Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T08:03:23.350665Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T08:03:23.350762Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T08:03:23.350848Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.355058Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.355395Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.355466Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:23.355518Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:03:24.337132Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:05:54.050989Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:05:55.101182Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to OFF"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:05:55.951856Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:05:56.634678Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to OFF"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:11:23.961488Z","level":"INFO","fields":{"message":"DEMO GPIO: Radiation set to UNSAFE"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:11:25.825479Z","level":"INFO","fields":{"message":"DEMO GPIO: Radiation set to SAFE"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:11:26.592121Z","level":"INFO","fields":{"message":"DEMO GPIO: Radiation set to UNSAFE"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:11:27.508367Z","level":"INFO","fields":{"message":"DEMO GPIO: Radiation set to SAFE"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:11:28.975491Z","level":"INFO","fields":{"message":"DEMO GPIO: Emergency stop set to PRESSED"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:11:29.708761Z","level":"INFO","fields":{"message":"DEMO GPIO: Emergency stop set to RELEASED"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:43:48.988501Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:50:29.362293Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:50:50.013817Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:59:35.834526Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T08:59:35.834957Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.835009Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.835047Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.835187Z","level":"INFO","fields":{"message":"✅ GPIO notification sender configured (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.835229Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.836234Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T08:59:35.838782Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T08:59:35.842200Z","level":"INFO","fields":{"message":"Audit session started: e7802e9a-a855-4bb3-b31b-b03e2995cd97"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T08:59:35.842382Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.842509Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.842653Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.842819Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:59:35.842899Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.843016Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.843096Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T08:59:35.845856Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T08:59:35.845910Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T08:59:35.845947Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.848884Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.849066Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.849137Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:35.849204Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:36.835717Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T08:59:42.063121Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:59:42.063295Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:59:44.429008Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T08:59:44.429151Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:59:46.129097Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T08:59:46.129291Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:59:47.328600Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T08:59:47.328841Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:59:48.112590Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T08:59:48.112761Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:59:48.761891Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T08:59:48.762124Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:59:49.695860Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T08:59:49.696133Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T08:59:50.196220Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T08:59:50.196700Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:36:41.478861Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T09:36:41.479015Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.479126Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.479179Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.479275Z","level":"INFO","fields":{"message":"✅ GPIO notification sender configured (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.479332Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.480092Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T09:36:41.482278Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T09:36:41.487142Z","level":"INFO","fields":{"message":"Audit session started: 33d5d795-3d99-4ec6-86d9-9e2f2c15b443"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T09:36:41.487239Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.487306Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.487363Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.487420Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:36:41.487473Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.487536Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.487596Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T09:36:41.489922Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T09:36:41.490011Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T09:36:41.490081Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.492494Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.492589Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.492647Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:41.492700Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:42.480057Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:36:47.000840Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:36:47.001384Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:43:58.538898Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:43:58.539091Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:44:20.338558Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:44:25.005172Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:44:28.904621Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:44:28.904798Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:44:30.954741Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:44:30.954923Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:44:31.671858Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:44:31.672243Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:44:32.204654Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:44:32.204896Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:44:45.020249Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:45:02.520430Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:45:02.520806Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:45:03.654635Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:45:03.655173Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:45:04.804053Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:45:04.804203Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:45:05.553942Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:45:05.554130Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:01.547154Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T09:53:01.547519Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.547670Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.547898Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.548109Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.548230Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.549192Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T09:53:01.551974Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T09:53:01.559176Z","level":"INFO","fields":{"message":"Audit session started: b7cf480d-1f27-450d-9e5b-a63ac9b93285"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T09:53:01.559325Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.559429Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.559500Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.559572Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:01.559629Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.559803Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.559986Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T09:53:01.562756Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T09:53:01.562827Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T09:53:01.562880Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.565242Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.565371Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.565447Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:01.565502Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:02.548714Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T09:53:05.307607Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:05.307943Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:08.007575Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:53:08.007810Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:08.008101Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:13.240299Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:53:13.240675Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:14.357557Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:53:14.357834Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:26.173511Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:53:26.174015Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:27.106791Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:53:27.107079Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:28.273443Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to OFF"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:29.106741Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:30.073528Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:53:30.073892Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:53:30.656711Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T09:53:30.657039Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:58:00.882845Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T09:58:20.893852Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:22:11.334788Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T10:22:11.334931Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.334997Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.335068Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.335195Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.335257Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.336229Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T10:22:11.339126Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T10:22:11.341961Z","level":"INFO","fields":{"message":"Audit session started: e534a2fa-8355-479b-831f-79b320082499"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T10:22:11.342224Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.342362Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.342439Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.342596Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:22:11.342735Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.342812Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.342879Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T10:22:11.345312Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T10:22:11.345380Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T10:22:11.345448Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.348704Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.348786Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.348842Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:11.348904Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:12.335848Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:22:15.909319Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:22:20.042847Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T10:22:20.043128Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:26:24.437619Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T10:26:24.437911Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.438156Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.438579Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.438866Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.439012Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.439855Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T10:26:24.442419Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T10:26:24.445938Z","level":"INFO","fields":{"message":"Audit session started: 794f44a9-275e-41a4-b7ac-8b9df5cfae45"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T10:26:24.446021Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.446075Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.446128Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.446192Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:26:24.446246Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.446309Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.446389Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T10:26:24.462118Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T10:26:24.462224Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T10:26:24.462302Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.472310Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.472432Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.472686Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:24.472792Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:25.439501Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T10:26:28.219579Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:26:28.219748Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:26:30.385830Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T10:26:30.386033Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:26:30.386192Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:31:30.027793Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:31:52.022140Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:47:59.316941Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:48:29.324489Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:50:16.479845Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:50:48.974373Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:50:57.545444Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:51:18.852951Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T10:51:21.444774Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:01:42.545720Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:01:45.094330Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:02:06.545072Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:05:55.253979Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:06:16.021901Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:07:09.252096Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:07:31.019397Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:07:52.700751Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:08:15.029118Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:10:01.752008Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:10:23.021284Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:11:54.861285Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:12:10.546253Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:12:23.262829Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:12:48.033559Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:20:09.169160Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T13:20:09.169677Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.170163Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.170637Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.170854Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.171151Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.172317Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T13:20:09.177330Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T13:20:09.183527Z","level":"INFO","fields":{"message":"Audit session started: e9062ed2-0a0c-4ad7-802d-9ded3453d4e3"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T13:20:09.183832Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.183957Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.184048Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.184104Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:20:09.184134Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.184203Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.184501Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T13:20:09.188271Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T13:20:09.188354Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T13:20:09.188427Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.191407Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor and DeviceInitialization)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.191628Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.191754Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:09.191950Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:10.171774Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:20:50.596295Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:21:28.606242Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:21:31.345749Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:22:03.463553Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:22:08.744249Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:22:17.643847Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:22:26.577311Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:22:31.393325Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:22:39.893615Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:22:49.426301Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:22:58.942407Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:23:09.158922Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:23:18.792101Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:23:21.475144Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T13:23:21.475558Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:23:22.475221Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:23:25.358684Z","level":"INFO","fields":{"message":"InitializeDetector requested by user: operator1 (c974c87f-c6af-414d-9968-b19bd0842630)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T13:23:25.358923Z","level":"INFO","fields":{"message":"DEMO Detector: Powered on"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T13:23:25.359071Z","level":"INFO","fields":{"message":"Detector powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T13:23:48.027832Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:25:29.588319Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:25:32.286145Z","level":"INFO","fields":{"message":"InitializeMotion requested by user: sad (0d72f9ed-966b-4781-8aae-7a95e59a339a)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T13:25:32.286392Z","level":"INFO","fields":{"message":"XY Motion: Powered on"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T13:25:32.286493Z","level":"INFO","fields":{"message":"Motion controller powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T13:25:49.678619Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:59:30.517451Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T13:59:30.517624Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.517686Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.517751Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.517885Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.517974Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.518851Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T13:59:30.521876Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T13:59:30.525484Z","level":"INFO","fields":{"message":"Audit session started: 1232c4d6-3b61-435d-b62c-96588956c770"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T13:59:30.525577Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.525650Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.525716Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.525785Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:59:30.525840Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.525894Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.526013Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T13:59:30.528899Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T13:59:30.529049Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T13:59:30.529426Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.532546Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor and DeviceInitialization)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.532688Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.532762Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:30.532838Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:31.518444Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T13:59:34.715394Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:59:39.698812Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T13:59:39.699506Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:59:51.198252Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T13:59:52.764317Z","level":"INFO","fields":{"message":"InitializeDetector requested by user: sad (90f84e5c-ca4e-4abf-924a-950b430ffbbb)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T13:59:52.764487Z","level":"INFO","fields":{"message":"DEMO Detector: Powered on"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T13:59:52.764828Z","level":"INFO","fields":{"message":"Detector powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T13:59:53.489958Z","level":"INFO","fields":{"message":"InitializeMotion requested by user: sad (e9732957-7908-4421-a64a-ccc68f8e740e)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T13:59:53.490302Z","level":"INFO","fields":{"message":"XY Motion: Powered on"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T13:59:53.490557Z","level":"INFO","fields":{"message":"Motion controller powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:00:14.027077Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:33:02.937852Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T14:33:02.938015Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.938074Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.938130Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.938245Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.938308Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.939138Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T14:33:02.941556Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T14:33:02.945540Z","level":"INFO","fields":{"message":"Audit session started: 150ae567-d6d7-4bf9-a5e4-b6317dbb19fd"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T14:33:02.945622Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.945680Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.945751Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.945859Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:33:02.945945Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.946133Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.946264Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T14:33:02.948750Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T14:33:02.948914Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T14:33:02.949055Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.963973Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor and DeviceInitialization)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.964148Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.964268Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:02.964340Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:03.939050Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:33:07.060605Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:33:07.060772Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:33:09.710259Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T14:33:09.710528Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:33:09.710624Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:34:28.457697Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:34:29.362850Z","level":"INFO","fields":{"message":"InitializeDetector requested by user: sad (bd82d2a2-bb32-4a31-a265-415d8a00b8f9)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:29.363064Z","level":"INFO","fields":{"message":"DEMO Detector: Powered on"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T14:34:29.363273Z","level":"INFO","fields":{"message":"Detector powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:30.060540Z","level":"INFO","fields":{"message":"InitializeMotion requested by user: sad (c312f9d1-307b-4bf5-b1b0-d0251e028fbc)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:30.060699Z","level":"INFO","fields":{"message":"XY Motion: Powered on"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T14:34:30.060817Z","level":"INFO","fields":{"message":"Motion controller powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:39.141976Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (b66909dc-fd46-49c5-863c-c3ae045b4d74)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:39.142097Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:39.142269Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T14:34:41.158120Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T14:34:41.158254Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:41.158528Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:41.158663Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T14:34:46.169088Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T14:34:46.169321Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:46.169541Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T14:34:46.169762Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 100.00 mm, Center: (512.5, 512.5) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T14:34:46.169923Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T14:34:46.170054Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 5.20e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.950 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 25.4 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.92 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 100.00 mm\n     Beam Center: (512.5, 512.5) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:46.170218Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:46.170338Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T14:34:46.170238500+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T14:34:46.170432Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:34:49.021097Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:48:31.795243Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T14:48:31.795610Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.795789Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.796121Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.796367Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.796519Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.797651Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T14:48:31.802549Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T14:48:31.807553Z","level":"INFO","fields":{"message":"Audit session started: c3760f5d-f55f-4b3d-bb60-01fae0768115"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T14:48:31.807656Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.807727Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.807798Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.807864Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:48:31.807918Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.807970Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.808042Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T14:48:31.810944Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T14:48:31.811127Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T14:48:31.811268Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.813936Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor and DeviceInitialization)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.814084Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.814160Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:31.814231Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:32.797246Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T14:48:39.786977Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:48:42.017917Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T14:48:42.018317Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:48:51.567613Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:48:52.557213Z","level":"INFO","fields":{"message":"InitializeDetector requested by user: sad (65778b38-3268-4541-aef6-c79c7678e0a1)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:48:52.557412Z","level":"INFO","fields":{"message":"DEMO Detector: Powered on"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T14:48:52.557545Z","level":"INFO","fields":{"message":"Detector powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:48:53.141646Z","level":"INFO","fields":{"message":"InitializeMotion requested by user: sad (bb11546c-72c3-4a46-abb9-3f73c4c8d59e)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:48:53.141830Z","level":"INFO","fields":{"message":"XY Motion: Powered on"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T14:48:53.141945Z","level":"INFO","fields":{"message":"Motion controller powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:48:56.407973Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (fde5f201-a26b-4aab-b5a8-906ae11ece33)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:48:56.408133Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:48:56.408239Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T14:48:58.422449Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T14:48:58.422828Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:48:58.422938Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:48:58.423050Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T14:49:03.436707Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T14:49:03.436844Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:49:03.437105Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T14:49:03.437288Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 100.00 mm, Center: (512.5, 512.5) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T14:49:03.437386Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T14:49:03.437488Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 5.20e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.950 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 25.4 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.92 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 100.00 mm\n     Beam Center: (512.5, 512.5) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:49:03.437545Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:49:03.437629Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T14:49:03.437550400+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T14:49:03.437704Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:49:12.012666Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T14:52:40.490105Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (d241504b-9042-4eea-a080-861016c3534c)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:52:40.490278Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:52:40.490395Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T14:52:42.492491Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T14:52:42.492730Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:52:42.493080Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:52:42.493381Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T14:52:47.504790Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T14:52:47.505033Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:52:47.505264Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T14:52:47.505376Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 100.00 mm, Center: (512.5, 512.5) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T14:52:47.505433Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T14:52:47.505548Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 5.20e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.950 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 25.4 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.92 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 100.00 mm\n     Beam Center: (512.5, 512.5) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:52:47.505661Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T14:52:47.505712Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T14:52:47.505670600+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T14:52:47.505743Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:07:55.445530Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T15:07:55.445765Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.445843Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.445958Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.446089Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.446189Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.447424Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T15:07:55.450465Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T15:07:55.454208Z","level":"INFO","fields":{"message":"Audit session started: 494eff34-970e-46e8-b46e-02c44393a9cc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T15:07:55.454318Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.454433Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.454510Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.454642Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:07:55.454725Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.454782Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.454853Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T15:07:55.471119Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T15:07:55.471247Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T15:07:55.471349Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.474032Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor and DeviceInitialization)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.474129Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.474190Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:55.474301Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:56.446872Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:07:59.335819Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:07:59.335995Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:08:02.469683Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T15:08:02.469833Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:08:02.470051Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:08:16.535555Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:08:17.396645Z","level":"INFO","fields":{"message":"InitializeDetector requested by user: sad (c4914fdb-6988-4b64-a38b-19633394a505)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:08:17.397059Z","level":"INFO","fields":{"message":"DEMO Detector: Powered on"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T15:08:17.397334Z","level":"INFO","fields":{"message":"Detector powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:08:17.986400Z","level":"INFO","fields":{"message":"InitializeMotion requested by user: sad (4f6414da-01c1-4979-b5a9-0b9635540f31)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:08:17.986640Z","level":"INFO","fields":{"message":"XY Motion: Powered on"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T15:08:17.986936Z","level":"INFO","fields":{"message":"Motion controller powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:08:31.660065Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (286d83d8-c61e-4885-a0ad-e769e635633a)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:08:31.660231Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:08:31.660365Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T15:08:33.661708Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T15:08:33.661954Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:08:33.662037Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:08:33.662127Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T15:09:42.398413Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T15:09:42.398696Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.398923Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.399132Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.399353Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.399616Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.401257Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T15:09:42.404760Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T15:09:42.409837Z","level":"INFO","fields":{"message":"Audit session started: 142ddb87-0ec5-4176-a6fc-d944d365a166"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T15:09:42.409976Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.410060Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.410140Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.410210Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:09:42.410296Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.410405Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.410528Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T15:09:42.414075Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T15:09:42.414324Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T15:09:42.414473Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.419740Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor and DeviceInitialization)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.419878Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.419989Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:42.420074Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:43.400492Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T15:09:45.999799Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:09:46.000079Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:09:48.632969Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T15:09:48.633197Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:09:48.633297Z","level":"WARN","fields":{"message":"Failed to send notification: no subscribers"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:10:01.283808Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:10:01.852284Z","level":"INFO","fields":{"message":"InitializeDetector requested by user: sad (29aa52a7-5b17-41a5-afb3-dfc53aba75e5)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:01.852773Z","level":"INFO","fields":{"message":"DEMO Detector: Powered on"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T15:10:01.852981Z","level":"INFO","fields":{"message":"Detector powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:02.574946Z","level":"INFO","fields":{"message":"InitializeMotion requested by user: sad (a3ddb31b-1e8a-4e8f-9456-2f14014e7053)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:02.575194Z","level":"INFO","fields":{"message":"XY Motion: Powered on"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T15:10:02.575441Z","level":"INFO","fields":{"message":"Motion controller powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:03.969426Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (8328f583-4f35-4df2-9319-24eb23f7b557)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:03.969574Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:03.969659Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T15:10:05.973470Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T15:10:05.973648Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:05.974014Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:05.974077Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T15:10:10.985345Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T15:10:10.985510Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:10.985602Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T15:10:10.985798Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 100.00 mm, Center: (512.5, 512.5) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T15:10:10.986053Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T15:10:10.986566Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 5.20e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.950 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 25.4 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.92 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 100.00 mm\n     Beam Center: (512.5, 512.5) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:10.986696Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:10.987078Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T15:10:10.986706+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T15:10:10.987239Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:10:23.020283Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T15:11:14.893559Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (545d0051-d79f-4a41-aef3-8dc16db3aa11)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:14.893885Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:14.894513Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T15:11:16.904350Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T15:11:16.904776Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:16.905154Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:16.905426Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T15:11:21.911004Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T15:11:21.911201Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:21.911472Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T15:11:21.911664Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 100.00 mm, Center: (512.5, 512.5) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T15:11:21.911755Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T15:11:21.911817Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 5.20e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.950 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 25.4 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.92 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 100.00 mm\n     Beam Center: (512.5, 512.5) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:21.911857Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:21.911886Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T15:11:21.911862300+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T15:11:21.911925Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:51.882774Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (4351defe-0063-4c3c-90c6-21b676813a6e)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:51.882998Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:51.883156Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T15:11:53.889711Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T15:11:53.889911Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:53.890022Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:53.890105Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T15:11:58.899391Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T15:11:58.899480Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:58.899581Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T15:11:58.899664Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 100.00 mm, Center: (512.5, 512.5) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T15:11:58.899735Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T15:11:58.899831Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 5.20e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.950 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 25.4 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.92 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 100.00 mm\n     Beam Center: (512.5, 512.5) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:58.899903Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T15:11:58.899969Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T15:11:58.899910700+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T15:11:58.900032Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:54:55.819091Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T16:54:55.819422Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.819494Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.819545Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.819671Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.819776Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.821110Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T16:54:55.824705Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T16:54:55.828527Z","level":"INFO","fields":{"message":"Audit session started: e69d7f96-4b59-45b0-9518-855410766490"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T16:54:55.828627Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.828696Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.828747Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.828809Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T16:54:55.828862Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.828911Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.828986Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T16:54:55.831843Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T16:54:55.831932Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T16:54:55.831988Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.834776Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor and DeviceInitialization)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.834909Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.834979Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:55.835040Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:54:56.820401Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T16:56:24.551802Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T16:56:28.484968Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T16:56:28.485293Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T16:56:39.634611Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T16:56:40.976764Z","level":"INFO","fields":{"message":"InitializeDetector requested by user: sad (b79e0e31-cf15-426b-9282-b1c37ee1cc58)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:56:40.977202Z","level":"INFO","fields":{"message":"DEMO Detector: Powered on"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T16:56:40.977858Z","level":"INFO","fields":{"message":"Detector powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:56:42.059746Z","level":"INFO","fields":{"message":"InitializeMotion requested by user: sad (28ff06c2-4047-4b76-b3dc-b77c189f27a2)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:56:42.059980Z","level":"INFO","fields":{"message":"XY Motion: Powered on"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T16:56:42.060132Z","level":"INFO","fields":{"message":"Motion controller powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:56:56.147812Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (581b45a0-eb72-4535-ba07-523d86a6f423)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:56:56.148030Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:56:56.148316Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T16:56:58.164930Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T16:56:58.165337Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:56:58.165642Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:56:58.166030Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T16:57:03.177523Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T16:57:03.177960Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:57:03.178387Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T16:57:03.178610Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 100.00 mm, Center: (512.5, 512.5) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T16:57:03.178735Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T16:57:03.178922Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 5.20e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.950 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 25.4 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.92 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 100.00 mm\n     Beam Center: (512.5, 512.5) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:57:03.179073Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:57:03.179341Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T16:57:03.179092900+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T16:57:03.179541Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T16:57:03.193788Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T17:22:44.133423Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (e83d714b-6acc-4312-8d13-0f105e3baf61)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:22:44.133608Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:22:44.133823Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T17:22:46.139761Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T17:22:46.140187Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:22:46.140731Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:22:46.140825Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T17:22:51.146786Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T17:22:51.147252Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:22:51.147815Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:22:51.148377Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 100.00 mm, Center: (512.5, 512.5) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:22:51.148799Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:22:51.149215Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 5.20e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.950 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 25.4 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.92 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 100.00 mm\n     Beam Center: (512.5, 512.5) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:22:51.149372Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:22:51.149520Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T17:22:51.149383+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T17:22:51.149576Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:41:49.151981Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (cdcdc200-e6a2-4de4-b6fa-af0a04a4646c)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:41:49.152247Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:41:49.152408Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T17:41:51.160271Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T17:41:51.160494Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:41:51.161029Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:41:51.161358Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T17:41:56.170255Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T17:41:56.170568Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:41:56.170663Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:41:56.170876Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 100.00 mm, Center: (512.5, 512.5) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:41:56.171022Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:41:56.171262Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 5.20e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.950 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 25.4 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.92 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 100.00 mm\n     Beam Center: (512.5, 512.5) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:41:56.171407Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:41:56.171460Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T17:41:56.171427900+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T17:41:56.171494Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:52:33.141125Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T17:52:33.141495Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.141835Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.141946Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.142173Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.142289Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.144578Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T17:52:33.147855Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T17:52:33.151370Z","level":"INFO","fields":{"message":"Audit session started: 6a3bef76-aa0d-4a83-a569-d029b7f67566"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T17:52:33.151472Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.152110Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.152164Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.152247Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T17:52:33.152305Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.152361Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.152631Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T17:52:33.155852Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T17:52:33.155935Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T17:52:33.155992Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.158989Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor and DeviceInitialization)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.159695Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.160028Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:33.160126Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:34.143075Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.401245Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-28T17:52:37.401510Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.401708Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.401846Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.402012Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.402147Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.403549Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T17:52:37.408845Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T17:52:37.416607Z","level":"INFO","fields":{"message":"Audit session started: 293b6f84-3efe-4b8a-b4b8-e48f8c32ba4a"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-28T17:52:37.416904Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.417086Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.417281Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.417459Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED - system ready for operation"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T17:52:37.417639Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.417770Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.417946Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T17:52:37.422289Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T17:52:37.422507Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T17:52:37.422670Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.427412Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor and DeviceInitialization)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.427603Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.427785Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.428114Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:37.431767Z","level":"ERROR","fields":{"message":"gRPC server failed: gRPC server error: transport error"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:52:38.402833Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-28T17:53:04.541863Z","level":"INFO","fields":{"message":"DEMO GPIO: Key switch set to ON"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T17:53:06.492033Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2025-10-28T17:53:06.492419Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T17:53:15.241410Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2025-10-28T17:53:16.029144Z","level":"INFO","fields":{"message":"InitializeDetector requested by user: sad (140d4577-0e8d-41cb-ba3b-051b2f78856e)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:16.029756Z","level":"INFO","fields":{"message":"DEMO Detector: Powered on"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T17:53:16.029957Z","level":"INFO","fields":{"message":"Detector powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:18.483652Z","level":"INFO","fields":{"message":"InitializeMotion requested by user: sad (12528007-f34e-4cf7-8b46-ede7274152af)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:18.483848Z","level":"INFO","fields":{"message":"XY Motion: Powered on"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T17:53:18.483997Z","level":"INFO","fields":{"message":"Motion controller powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:21.685912Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: operator1 (9825992b-b3af-4758-8eb1-14d8e90351ea)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:21.686136Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:21.686337Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T17:53:23.692631Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T17:53:23.692817Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:23.692990Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:23.693175Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T17:53:28.695372Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T17:53:28.695549Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:28.695694Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:53:28.695833Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 101.74 mm, Center: (511.6, 512.0) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:53:28.695921Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:53:28.696113Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 4.52e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.956 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 29.0 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.88 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 101.74 mm\n     Beam Center: (511.6, 512.0) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:28.696268Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:28.696449Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T17:53:28.696320900+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T17:53:28.696537Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:28.718767Z","level":"INFO","fields":{"message":"Calibrate detector requested by user: sad (9646740f-6ccc-43b4-bf0c-65fa1778cebe)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:28.718870Z","level":"INFO","fields":{"message":"Calibration: Starting XY stage homing sequence"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:28.718963Z","level":"INFO","fields":{"message":"XY Motion: Starting homing sequence"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T17:53:30.726922Z","level":"INFO","fields":{"message":"XY Motion: Homing completed at (0.000, 0.000)"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2025-10-28T17:53:30.727073Z","level":"INFO","fields":{"message":"Calibration: XY stage homing completed successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:30.727236Z","level":"INFO","fields":{"message":"Calibration: Starting detector measurement"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:30.727444Z","level":"INFO","fields":{"message":"DEMO Detector: Starting calibration measurement..."},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T17:53:35.743380Z","level":"INFO","fields":{"message":"DEMO Detector: Calibration completed successfully"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2025-10-28T17:53:35.743561Z","level":"INFO","fields":{"message":"Calibration: Detector measurement completed, running quality control checks"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:35.743666Z","level":"INFO","fields":{"message":"Running calibration quality control cascade for LaB6"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:53:35.743821Z","level":"INFO","fields":{"message":"PONI file calculated - Distance: 101.16 mm, Center: (511.6, 514.8) pixels"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:53:35.743880Z","level":"INFO","fields":{"message":"✅ Calibration QC PASSED - all checks successful"},"target":"omniscan_hw_server::calibration_qc"}
+{"timestamp":"2025-10-28T17:53:35.743983Z","level":"INFO","fields":{"message":"QC Report:\n═══════════════════════════════════════════════\n  CALIBRATION QUALITY CONTROL REPORT\n  Calibrant: LaB6\n═══════════════════════════════════════════════\n\nOverall Status: ✅ PASS\n\nIndividual Checks:\n  1. Total Intensity - PASS\n     Total intensity 6.31e6 counts exceeds threshold 1.00e6\n\n  2. Goodness of Fit - PASS\n     Ring fitting goodness 0.977 exceeds threshold 0.850\n\n  3. Signal-to-Noise Ratio - PASS\n     SNR 15.2 exceeds threshold 10.0\n\n  4. Ring Quality - PASS\n     Ring quality score 0.95 exceeds threshold 0.80. All expected rings detected.\n\n  5. PONI File Generation - SUCCESS\n     Distance: 101.16 mm\n     Beam Center: (511.6, 514.8) pixels\n\n═══════════════════════════════════════════════\n"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:35.744055Z","level":"INFO","fields":{"message":"Calibration: QC PASSED - Recording calibration"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:35.744115Z","level":"INFO","fields":{"message":"Calibration recorded at: 2025-10-28T17:53:35.744069800+00:00"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-28T17:53:35.744165Z","level":"INFO","fields":{"message":"✅ Calibration completed successfully with valid QC"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2025-10-28T17:53:35.754560Z","level":"INFO","fields":{"message":"DEMO GPIO: ⏱️  Activation button EXPIRED (queried)"},"target":"omniscan_hw_server::devices::gpio::demo"}

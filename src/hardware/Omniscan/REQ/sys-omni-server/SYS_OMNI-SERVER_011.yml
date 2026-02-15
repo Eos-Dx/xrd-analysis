@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Maintenance mode state'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall implement MAINTENANCE state requiring key switch activation + authenticated session. All interlock bypasses shall be logged with operator ID, timestamp, and bypass reason. Automatic return to IDLE state on key switch deactivation.'
+type: requirement
+links:
+- USR_OMNI-SERVER_004

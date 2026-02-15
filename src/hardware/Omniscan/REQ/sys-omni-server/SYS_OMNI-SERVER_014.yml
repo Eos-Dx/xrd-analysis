@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Transactional data storage'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall use SQLite with WAL mode for atomic transactions. Commit measurement data immediately after acquisition completion. Implement write-ahead logging with fsync on commit. On unexpected termination, auto-recover on restart with transaction rollback.'
+type: requirement
+links:
+- USR_OMNI-SERVER_007

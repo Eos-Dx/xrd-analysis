@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Operator interface requirements'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide an intuitive interface with measurement initiation achievable in maximum 4 user interactions, large touch-friendly buttons visible from 2 meters, plain language status, real-time updates <200ms, and actionable error messages.'
+type: requirement

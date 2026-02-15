@@ -1,0 +1,6 @@
+settings:
+  digits: 3
+  itemformat: yaml
+  parent: SYS_OMNI-SERVER
+  prefix: VER_OMNI-SERVER
+  sep: _

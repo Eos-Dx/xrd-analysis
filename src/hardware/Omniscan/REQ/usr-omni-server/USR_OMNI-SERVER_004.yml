@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Maintenance mode safety'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide controlled maintenance access with multi-factor authentication, explicit interlock bypass capability with comprehensive warnings, and complete audit trail of maintenance activities.'
+type: requirement

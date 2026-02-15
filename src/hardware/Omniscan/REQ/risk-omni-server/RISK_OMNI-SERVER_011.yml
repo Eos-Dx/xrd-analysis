@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Malicious or corrupted software update'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Ed25519 digital signatures verify update package authenticity. Checksum verification detects corruption. Physical key switch + ADMIN authentication prevents unauthorized updates. Automatic rollback on validation failure protects system integrity.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_023

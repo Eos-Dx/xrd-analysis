@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Performance benchmarks validation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Measure and validate all performance targets: gRPC latency <200ms, emergency stop <100ms, database commit <1s, state transition <500ms. Test under normal and stress conditions (concurrent operations, large datasets). Use automated performance regression testing.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_027

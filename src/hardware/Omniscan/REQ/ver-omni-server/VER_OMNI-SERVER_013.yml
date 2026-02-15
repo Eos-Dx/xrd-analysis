@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Offline operation validation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Test full measurement capability without network connectivity. Verify local data storage. Test automatic synchronization upon reconnection. Validate exponential backoff retry logic (1s, 2s, 4s, max 60s). Confirm network status reporting accuracy.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_026

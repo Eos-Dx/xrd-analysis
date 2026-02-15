@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Unit test coverage'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: '≥ 80 % code coverage for all safety-related modules.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_001

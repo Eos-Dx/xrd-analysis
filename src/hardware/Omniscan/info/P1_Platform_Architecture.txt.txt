@@ -1,0 +1,225 @@
+Executive Summary
+
+The EosDx Platform is a cloud-based medical diagnostic system that uses X-ray Diffraction (XRD) technology to analyze patient samples and provide diagnostic support to clinicians. The platform consists of on-premise clinic interfaces connected to a cloud infrastructure that handles data processing, machine learning inference, and report generation. The architecture is designed with FDA compliance, data integrity, and scalability as core principles.
+
+System Architecture Overview
+
+The platform is divided into four main functional areas:
+
+Clinic Interface (On-Premise) - Hardware interface and local data collection
+
+Core Backend Service (Cloud) - Central orchestration and data management
+
+Processing & ML Services (Cloud) - Data processing and inference
+
+Reporting Service (Cloud) - Results delivery and clinician portal
+
+All cloud components are hosted on AWS infrastructure with message broker-based communication for resilience and scalability.
+
+Component Descriptions
+
+Clinic Interface (On-Premise)
+
+The clinic interface represents the physical deployment at clinical sites where XRD measurements are performed on patient samples. Each XRD machine operates as an independent unit with its own software stack to ensure reliability and simplify troubleshooting.
+
+The machine interface layer provides direct control of the XRD hardware. This layer exists solely to relay commands to the machine and capture raw diffraction data. For similar machine models, the same code can be reused, but different machine types may require different implementations to accommodate their specific hardware characteristics.
+
+Each machine has its own orchestrator that manages all communication between the local hardware and the cloud infrastructure. The orchestrator handles the bidirectional flow of information between the machine interface and the cloud services, manages interactions with the local database, and provides data to the clinician interface. This per-machine architecture was chosen to reduce code complexity and make each machine installation independent. The orchestrator is responsible for routing data with appropriate type information so the cloud system knows whether it is receiving clinical data or research data.
+
+A local database at each machine stores system logs and execution traces for troubleshooting and audit purposes. More importantly, it temporarily stores raw XRD data until the system receives confirmation that the data has been successfully transmitted to the cloud. This design ensures that no data is lost during network outages or connectivity issues. The local database is not intended for long-term storage or user queries but rather as a reliability mechanism.
+
+The clinician user interface allows clinical staff to operate the machine, initiate scans, and monitor data quality in real time. This interface provides immediate feedback about measurement quality before data is sent to the cloud for further analysis.
+
+Calibration data follows a special workflow. The system collects known diffraction patterns to verify machine accuracy, and stores it locally until the end of the day. The final retention and storage policies for calibration data are still being determined, but this data is critical for maintaining system accuracy and meeting regulatory validation requirements.
+
+Multiple XRD machines can be deployed at a single clinical site, each operating independently with its own complete software stack.
+
+Core Backend Service
+
+The Core Backend Service acts as the central nervous system of the cloud platform, orchestrating all data flow, storage decisions, and communication between services. Its primary responsibility is to ensure that data moves through the system correctly and that each component receives the information it needs when it needs it.
+
+The Core Backend makes routing decisions based on the source and type of incoming data. When data arrives from a clinical site, it is routed to one set of databases and processing pipelines. When data arrives from a research study, it follows a different path with additional metadata requirements. This separation is critical both for operational efficiency and for regulatory compliance, as it maintains clear boundaries between production clinical data and research data used for algorithm development.
+
+The service manages all interactions with the various databases, deciding when to write new data, when to update existing metadata, and when to retrieve information for downstream services. It tracks the complete lifecycle of each sample from initial receipt through processing, inference, and final report generation.
+
+Message brokers are used at key points in the architecture to enable asynchronous communication between services. The Ingress Queue handles all incoming data from clinic orchestrators, providing a buffer that can absorb bursts of activity when multiple clinics upload data simultaneously. This queue also implements retry logic so that temporary network issues do not result in data loss.
+
+Processing Queues manage the bidirectional communication between the Core Backend and the Processing Service. When raw data is ready for processing, a message is sent through the first queue. When processing is complete, the Processing Service responds through the second queue. This pattern allows the Processing Service to scale independently and ensures that slow processing does not block other operations.
+
+The ML Queue handles communication with the ML Service for inference requests. When processed data is ready for analysis, the Core Backend sends a request through this queue. The ML Service performs its analysis and returns results through the same queue. This asynchronous pattern is particularly important because inference can take variable amounts of time depending on the complexity of the sample and the current system load.
+
+These message brokers provide several critical benefits for a medical diagnostic platform. They ensure that services can be updated or restarted without losing data, they enable each component to scale independently based on its workload, and they provide natural points for implementing retry logic and error handling. For FDA compliance, the durability guarantees of message brokers help ensure that no patient data is lost during system operations.
+
+Data Storage Layer
+
+The platform uses multiple specialized databases to optimize for different data types and access patterns. This multi-database approach may seem complex initially, but each database serves a distinct purpose and the separation provides significant benefits for performance, compliance, and maintainability.
+
+The Data Store uses object storage to hold all raw and processed XRD data files. These are large binary files that contain the actual diffraction patterns from patient samples. Object storage is well-suited for this purpose because it provides essentially unlimited capacity at reasonable cost and is designed for storing large files that are written once and read multiple times. The Core Backend writes raw data to this store as soon as it is received from clinics. The Processing Service reads raw data, performs its analysis, and writes the processed data back to the same store. The ML Service later reads this processed data when performing inference. This centralized data store ensures that there is a single authoritative copy of all measurement data.
+
+The metadata databases store structured information about samples, patients, measurements, and processing status. Critically, these databases store references to where the actual data files are located in the Data Store rather than storing the large data files themselves. This separation allows the metadata databases to remain responsive for queries while the large data files are stored cost-effectively in object storage.
+
+Metadata Database 1 contains information about samples with known diagnoses that come from research studies. This database has richer metadata requirements because research data includes validated diagnoses, study protocols, and detailed quality metrics. The ML Service uses this database when training or retraining models because it provides ground truth for algorithm development. The flexible schema of this database allows it to accommodate evolving research needs without requiring major structural changes.
+
+Metadata Database 2 contains information about samples from clinical sites where the diagnosis is not yet known. This is production clinical data that flows through the system for inference. The metadata requirements are simpler than for research data because the focus is on operational information needed to process samples and generate reports. The ML Service reads from this database when performing inference to understand patient context and measurement parameters.
+
+The System and Operations Database has a fixed schema and contains user accounts, permissions, audit logs, and system monitoring data. Unlike the flexible metadata databases, this database follows a strict structure because it needs to reliably support critical functions like access control and audit trails. Currently, audit trails are centralized in this database, though we are considering whether a distributed approach across services might be beneficial. This decision will depend on regulatory guidance and operational experience.
+
+The Inference Results Database stores the outputs from the ML Service along with all relevant metadata needed for report generation. When the ML Service completes an analysis, the Core Backend stores the results in this database along with copies of the patient and measurement metadata that are relevant for reporting. This design decision means that the Reporting Service only needs to access a single database to generate reports rather than joining data from multiple sources. This simplification improves performance, reduces system complexity, and minimizes coupling between the reporting function and the rest of the platform.
+
+The separation of data into these specialized databases provides several benefits. Query performance is optimized because each database is structured for its specific access patterns. The separation of clinical and research data supports different retention policies and regulatory requirements. The flexible schema databases can evolve as our understanding of the data matures without requiring changes to the operational databases. Most importantly for FDA compliance, this architecture provides clear data lineage from raw measurements through processing and inference to final reports.
+
+Processing and Quality Control Service
+
+The Processing and Quality Control Service is responsible for transforming raw XRD data into a format suitable for machine learning analysis. When the Core Backend determines that raw data is ready for processing, it sends a request through the Processing Queue. The Processing Service retrieves the raw data from the Data Store, performs its analysis, and writes the processed data back to the Data Store. It then notifies the Core Backend through the return queue that processing is complete so that metadata can be updated and the next stage can begin.
+
+The processing steps include data normalization to account for variations in measurement conditions, preprocessing to enhance signal quality, and quality control checks to identify any issues with the measurement. Quality control is particularly critical in a medical diagnostic system. The service validates that data meets minimum quality standards before it proceeds to inference. It identifies artifacts or measurement errors that could lead to unreliable results and flags samples that may require manual review.
+
+When processing is complete, the Core Backend updates the relevant metadata database to record that processed data is available and includes any quality metrics that were calculated. This metadata update is important for tracking the status of each sample as it moves through the system and for maintaining a complete audit trail.
+
+There is an open question about the optimal implementation approach for this service. The current architecture shows a dedicated Processing Service, but we are considering whether this functionality might be better implemented within the ML Service or as serverless functions. The decision will depend on the complexity of the processing algorithms, the expected throughput, and operational considerations. Regardless of the implementation approach, the functional responsibilities and interfaces with other components would remain the same.
+
+Machine Learning Service
+
+The ML Service is the analytical heart of the platform and will be the primary focus of FDA review as Software as Medical Device. This service performs diagnostic inference on clinical samples and manages the continuous improvement of the underlying algorithms.
+
+The Model Store maintains all algorithm versions along with their validation status. For clinical use, only fully validated models are deployed for inference on production data. Development models used for research and algorithm improvement are kept separate to ensure that unvalidated algorithms never affect clinical decisions. The service maintains detailed version control and tracks which model version was used for each inference, which is critical for regulatory traceability.
+
+The Inference Engine performs the actual diagnostic analysis. When the Core Backend sends an inference request through the ML Queue, the engine retrieves the processed data from the Data Store and relevant metadata from the clinical metadata database. It applies the validated models to generate diagnostic predictions and confidence scores. The results are sent back to the Core Backend through the ML Queue for storage in the Inference Results Database.
+
+The platform is designed to support continuous algorithm improvement through a hybrid approach. An automated suite of algorithms is prepared to run retraining when certain predefined conditions are met, such as accumulation of sufficient new validated samples or drift detection in model performance. However, human research and development oversight remains central to the process. The R&D team reviews automated retraining results, develops improved algorithms, and validates new model versions before they are deployed for clinical use. This hybrid approach balances the efficiency of automation with the careful validation required for medical diagnostic algorithms.
+
+For training and retraining purposes, the ML Service reads from the research metadata database to access validated samples with known diagnoses. This separation between the research data used for algorithm development and the clinical data used for production inference is a key architectural principle that supports both regulatory compliance and operational safety.
+
+Reporting Service
+
+The Reporting Service handles the final stage of the diagnostic workflow by generating reports and delivering them to clinicians. This service is separated into distinct backend and frontend components to enable clean separation of concerns.
+
+The Reporting Backend manages data access, implements report generation logic, and tracks report status. When inference results are available, the backend retrieves the results and associated metadata from the Inference Results Database. Because all necessary information is stored together in this database, the backend does not need to query multiple sources or join data from different systems. This design simplifies the reporting logic and improves performance.
+
+The backend generates formatted diagnostic reports that include the inference results, confidence metrics, relevant patient information, and any quality control flags from earlier stages. It implements report versioning to maintain a complete history of what was delivered to clinicians, which is important for audit purposes. The service also tracks delivery status and clinician acknowledgment, providing documentation that reports were successfully delivered and accessed.
+
+The Reporting Frontend is the clinician portal where healthcare providers access diagnostic results. This interface displays the diagnostic reports in a clear, clinically relevant format. It provides access to historical reports for a patient and may include interactive visualizations of the XRD data and analysis. The frontend communicates with the backend through a well-defined interface, which allows the user experience to evolve independently of the backend logic.
+
+The separation between report generation and report delivery provides flexibility for future enhancements. Different frontend implementations could be developed for different use cases, such as mobile applications or integrations with electronic health record systems, without requiring changes to the core reporting logic.
+
+Data Flow Through the System
+
+Understanding how data flows through the platform helps clarify the relationships between components and the purpose of each processing stage.
+
+Clinical Workflow for Unknown Diagnosis
+
+When a patient sample is measured at a clinical site, the XRD machine captures raw diffraction data which is passed through the machine interface layer to the orchestrator. The orchestrator stores this data temporarily in the local database as a safeguard against connectivity issues and then transmits it to the cloud through the Ingress Queue, marking it as clinical site data.
+
+The Core Backend receives the data from the Ingress Queue and makes initial routing decisions. It stores the raw data in the Data Store and creates a metadata record in the clinical metadata database that includes a reference to where the data is stored. The system operation is logged in the operations database for audit purposes.
+
+When the Core Backend determines that the data is ready for processing, it sends a request through the Processing Queue. The Processing Service retrieves the raw data, performs quality control checks and preprocessing, and writes the processed data back to the Data Store. It notifies the Core Backend of completion through the return queue, and the Core Backend updates the metadata to reflect that processed data is now available.
+
+With processed data available, the Core Backend sends an inference request through the ML Queue. This request includes references to the processed data and relevant metadata from the clinical database. The ML Service retrieves the processed data from the Data Store, reads the metadata for context, and performs diagnostic inference using its validated models. The inference results are returned to the Core Backend through the ML Queue.
+
+The Core Backend stores these inference results in the Inference Results Database along with copies of the relevant patient and measurement metadata. This consolidated storage means that everything needed for report generation is now in one place. The system marks the report as ready for generation.
+
+When a clinician accesses the reporting portal, the Reporting Backend queries the Inference Results Database, generates the formatted diagnostic report, and delivers it through the frontend. The system tracks that the report was accessed and maintains this information for audit purposes.
+
+Research Workflow for Known Diagnosis
+
+Research samples follow a similar initial path but with important differences. When a research sample with a validated diagnosis is measured, the orchestrator marks it as research study data rather than clinical data. The Core Backend routes this data to the research metadata database instead of the clinical database. Because these samples have known diagnoses and are part of structured research studies, significantly more metadata is collected and stored.
+
+This research data is flagged as available for use in model training and improvement. Periodically, the ML Service reads validated data from the research metadata database as part of its training and retraining processes. The automated retraining suite can trigger based on predefined conditions such as the accumulation of sufficient new samples or detection of performance drift. The human R&D team reviews these automated results, develops improved algorithms, and validates new model versions before they are deployed for clinical use.
+
+This clear separation between clinical data used for production inference and research data used for algorithm development is fundamental to the platform's regulatory strategy and operational safety.
+
+Design Principles and Decisions
+
+Several key design decisions shape the platform architecture and merit explanation.
+
+Message-Based Communication
+
+The use of message brokers at critical integration points provides several benefits that are particularly important for a medical diagnostic platform. Message brokers decouple services so they can be developed, deployed, and scaled independently. If one service needs to be updated or temporarily taken offline, other services continue operating and messages are queued until the service returns. This resilience is critical in healthcare settings where system availability affects patient care.
+
+Message brokers also provide natural retry mechanisms. If a processing step fails due to a transient error, the system can automatically retry without manual intervention. For FDA compliance, the durability guarantees of message brokers help ensure that no patient data is lost during system operations. The queues provide a clear audit trail of when each processing step was requested and completed.
+
+The asynchronous nature of message-based communication improves system performance and user experience. Clinicians do not need to wait while processing and inference complete. Instead, they can perform other tasks and return later to view results. The system can also batch operations for efficiency when appropriate without affecting the user experience.
+
+Separation of Metadata and Large Data Files
+
+Storing metadata in databases while keeping large data files in object storage optimizes both performance and cost. The metadata databases can quickly answer queries about sample status, patient information, and processing history without needing to access large binary files. Meanwhile, the large XRD data files are stored cost-effectively in object storage that is designed for this purpose.
+
+The metadata databases use flexible schemas that can evolve as our understanding of the data matures. This flexibility is important during the development and regulatory approval process when requirements may change. The object storage provides essentially unlimited capacity, so the platform can scale to handle data from many clinic sites without architectural changes.
+
+The use of references between metadata and data files provides a clean separation of concerns. Services that need only metadata can work efficiently without accessing large files. Services that need the actual data can retrieve it using the references stored in the metadata. This approach also means that the same data file can be referenced from multiple metadata records when appropriate without creating duplicate copies.
+
+Two Metadata Databases for Clinical and Research Data
+
+The decision to maintain separate metadata databases for clinical and research data supports several important goals. From a regulatory perspective, it maintains clear boundaries between production clinical operations and the research activities used for algorithm development. The FDA review process will focus heavily on the clinical pipeline, and having this clearly separated from research activities simplifies validation.
+
+The two databases have different metadata requirements reflecting their different purposes. Research data requires richer metadata about study protocols, validated diagnoses, and detailed quality metrics. Clinical data focuses on operational information needed to process samples and generate reports efficiently. Maintaining separate databases allows each to be optimized for its purpose without compromise.
+
+The separation also enables different data retention policies. Clinical data may need to be retained for longer periods to support long-term patient care, while research data retention may be governed by study protocols and institutional review board requirements. Having separate databases makes it straightforward to implement these different policies.
+
+Finally, the separation provides a clear data lineage that is important for regulatory compliance. The system can demonstrate that clinical diagnostic decisions are made using validated algorithms operating on clinical data, while algorithm improvement uses a clearly defined set of research data with known ground truth.
+
+Storing Metadata with Inference Results
+
+The decision to store relevant patient and measurement metadata alongside inference results in a dedicated database simplifies the architecture and improves performance. The alternative would be for the Reporting Service to query both the Inference Results Database and the clinical metadata database, joining information from these two sources to generate reports.
+
+By copying the relevant metadata into the Inference Results Database, the Reporting Service needs to access only a single database. This reduces complexity, eliminates the need for cross-database joins, and improves query performance. It also reduces coupling between the reporting function and the rest of the platform. If changes are made to the clinical metadata database structure, the Reporting Service is not affected as long as the Inference Results Database schema remains stable.
+
+From a data modeling perspective, this represents a denormalization decision that prioritizes read performance for reporting over storage efficiency. Given that storage is relatively inexpensive and reporting performance directly affects clinician experience, this trade-off makes sense for our use case.
+
+Local Temporary Storage at Clinic Sites
+
+The decision to store data temporarily in local databases at each clinic site provides important resilience benefits. Network connectivity between clinic sites and the cloud infrastructure cannot be assumed to be perfectly reliable. Power outages, network maintenance, or internet service disruptions could interrupt data transmission.
+
+By storing data locally until the system receives confirmation that it has been successfully transmitted to the cloud, we ensure that no patient data is lost due to connectivity issues. The orchestrator can retry transmission when connectivity is restored without any data loss or manual intervention. This design allows clinics to continue operating even during temporary cloud outages, with data automatically syncing when the connection is restored.
+
+The local database also stores calibration data until it can be confirmed as successfully transferred, which is critical for maintaining measurement accuracy and meeting regulatory requirements. System logs and execution traces stored locally aid in troubleshooting when issues occur.
+
+Regulatory Considerations
+
+The platform is pursuing FDA approval through the De Novo pathway because there is no existing predicate device for medical diagnosis using XRD technology. This pathway requires demonstrating both safety and effectiveness for a first-of-kind device.
+
+The architecture is designed to support regulatory validation in several ways. Component separation allows each part of the system to be validated independently, which simplifies the approval process and makes updates easier to manage after approval. The message queues and database operations provide a complete audit trail showing how each sample moves through the system from initial measurement to final report. Every data transformation is logged with timestamps and version information.
+
+The separation of clinical and research data is particularly important for regulatory compliance. The FDA review will focus on the clinical pipeline that processes patient samples and generates diagnostic results. By keeping this clearly separated from research activities, we can demonstrate that the clinical system operates with validated algorithms on production data without interference from experimental development work.
+
+The ML Service is the primary focus of the Software as Medical Device review. The architecture maintains clear version control of models, tracks which model version was used for each inference, and provides complete traceability of the data used to train each model version. The separation between validated models used for clinical inference and development models used for research is enforced by the architecture itself.
+
+Quality control checkpoints throughout the processing pipeline demonstrate that the system validates data quality before diagnostic decisions are made. The Processing Service performs explicit quality checks, and these results are recorded in metadata and can affect whether a sample proceeds to inference or is flagged for manual review.
+
+The Reporting Service tracks report delivery and clinician acknowledgment, providing documentation required for audit purposes. The complete history of what information was presented to clinicians and when they accessed it is maintained for regulatory compliance.
+
+Scalability and Future Growth
+
+The architecture is designed to scale as the platform grows from initial deployment to wider clinical adoption. Each major component can scale independently based on its workload. As more clinics are deployed, the Ingress Queue absorbs the increased data volume and additional instances of the Core Backend can be added to handle the load. If processing becomes a bottleneck, additional Processing Service workers can be deployed. If inference demand increases, additional ML Service inference engines can be added.
+
+The use of object storage for large data files means that storage capacity is essentially unlimited and scales automatically. The metadata databases can scale as query volume increases through various approaches.
+
+The message broker architecture provides natural scaling points. Each queue can be processed by multiple workers, and adding capacity is a matter of deploying additional instances rather than redesigning the system. The asynchronous nature of the system means that temporary spikes in load are absorbed by the queues rather than causing failures.
+
+The flexible schema metadata databases can accommodate new data types and additional metadata fields as our understanding evolves without requiring major structural changes. The architecture can support different types of XRD machines as the platform expands, with machine-specific interface layers connecting through the same orchestrator design pattern.
+
+The separation of concerns in the architecture means that improvements can be made to individual components without affecting the entire system. New ML models can be deployed by updating the ML Service. Report formats can be enhanced by updating the Reporting Service. Processing algorithms can be refined by updating the Processing Service. Each of these updates can be validated independently and deployed without requiring a complete system revalidation.
+
+Open Questions and Future Decisions
+
+Several aspects of the architecture are marked as to-be-determined pending further analysis or regulatory guidance.
+
+The optimal implementation approach for the Processing Service remains open. The current design shows a dedicated service, but migrating this functionality to the ML Service or implementing it as serverless functions might provide benefits in terms of operational simplicity or cost. This decision will be made based on the complexity of the processing algorithms, expected throughput requirements, and operational experience with the platform.
+
+The current design centralizes audit trails in the System and Operations Database, but we are considering whether a distributed approach with each service maintaining its own audit logs might be preferable. This decision will depend on regulatory guidance about audit trail requirements and operational experience with query patterns for compliance reporting.
+
+Calibration data retention policies need to be finalized. The current design stores calibration data locally until the end of the day and transfers it to the cloud, but the long-term retention requirements and access patterns for this data need to be determined based on regulatory requirements and quality control procedures.
+
+The specific conditions that trigger automated model retraining need to be defined. We need to establish thresholds for the number of new validated samples required, define metrics for detecting model performance drift, and document the validation procedures that new model versions must pass before clinical deployment.
+
+The Processing Service write pattern presents two alternatives. It could write processed data directly to the Data Store and notify the Core Backend, or it could send processed data back through the queue for the Core Backend to write. Each approach has implications for performance, error handling, and system complexity that need to be evaluated based on implementation experience.
+
+Conclusion
+
+The EosDx Platform architecture provides a foundation for a first-of-kind medical diagnostic system using XRD technology. The design emphasizes regulatory compliance through clear component separation, comprehensive audit trails, and validated ML models. Reliability is ensured through message brokers, retry logic, local redundancy, and durability guarantees that prevent data loss. The architecture scales horizontally across all components to grow from initial deployment to widespread clinical adoption. Clean separation of concerns and well-defined interfaces support long-term maintainability and continuous improvement.
+
+The platform balances current requirements with flexibility for future growth. The separation of clinical and research data supports both immediate operational needs and continuous algorithm improvement. The flexible schema databases can evolve as understanding matures. The component architecture allows improvements to individual services without requiring complete system redesign.
+
+The FDA De Novo pathway requires comprehensive documentation and validation of a first-of-kind device. This architecture supports these requirements through clear data lineage from raw measurements through processing and inference to final reports, complete audit trails of all operations, and explicit separation of validated clinical operations from research and development activities.
+
+The design decisions documented here represent the team's current understanding and will continue to evolve as implementation progresses and regulatory guidance is obtained. The open questions identified provide a roadmap for the decisions that need to be resolved during detailed design and implementation phases.

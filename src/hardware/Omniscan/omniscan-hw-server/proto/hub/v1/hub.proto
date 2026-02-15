@@ -1,0 +1,479 @@
+syntax = "proto3";
+package hub.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Context for all commands - required for audit trail and safety
+message CommandContext {
+  string command_id = 1;        // UUID for command tracking
+  string user = 2;              // User context
+  string reason = 3;            // Reason for command
+  google.protobuf.Timestamp timestamp = 4;  // Command timestamp
+}
+
+message Empty {}
+
+// System state machine as defined in context
+enum ServerState {
+  STATE_UNSPECIFIED = 0;
+  IDLE = 1;
+  PENDING_ARMED = 2;           // Waiting for physical enable
+  RUNNING = 3;
+  STOPPING = 4;
+  SAFE = 5;                    // Emergency safe state
+  LOCKED = 6;                  // System locked - requires calibration
+  CALIBRATION = 7;             // Calibration in progress
+  MAINTENANCE = 8;             // Maintenance mode active
+}
+
+// Detector status
+enum DetectorStatus {
+  DETECTOR_OFF = 0;
+  DETECTOR_INIT = 1;           // Initializing (powered but not ready)
+  DETECTOR_IDLE = 2;
+  DETECTOR_EXPOSING = 3;
+  DETECTOR_READING = 4;
+  DETECTOR_ERROR = 5;
+}
+
+// Motion status
+enum MotionStatus {
+  MOTION_OFF = 0;
+  MOTION_INIT = 1;             // Initializing (powered but not ready)
+  MOTION_IDLE = 2;
+  MOTION_MOVING = 3;
+  MOTION_HOMING = 4;
+  MOTION_ERROR = 5;
+  MOTION_LIMIT_HIT = 6;
+}
+
+// Interlock status for safety system
+message InterlockStatus {
+  bool emergency_stop = 1;      // E-stop not pressed
+  bool door_closed = 2;         // Safety door closed
+  bool radiation_safe = 3;      // Radiation levels safe
+  bool cooling_ok = 4;          // Cooling system operational
+  bool power_ok = 5;            // Power stable
+  bool overall_safe = 6;        // All interlocks satisfied
+  string violation_reason = 7;   // Reason if not safe
+  bool enable_button = 8;       // Enable button pressed (for non-safe operations)
+  bool key_switch = 9;          // Key switch in ON position
+}
+
+// Device health information
+message DetectorHealth {
+  bool powered = 1;
+  float temperature = 2;        // Celsius
+  float voltage = 3;           // Volts
+  DetectorStatus status = 4;
+  uint32 last_exposure_time = 5; // milliseconds
+  uint64 total_exposures = 6;
+  uint64 uptime_seconds = 7;
+}
+
+message MotionHealth {
+  bool powered = 1;
+  MotionStatus status = 2;
+  optional double position = 3; // mm, null if not homed
+  optional double target_position = 4;
+  bool is_homed = 5;
+  uint64 total_moves = 6;
+  uint64 uptime_seconds = 7;
+}
+
+// General device state request
+message DeviceStateRequest {
+  string device_type = 1;  // "pdu", "gpio", "detector", "motion"
+}
+
+// General device state response
+message DeviceStateResponse {
+  string device_type = 1;
+  bool powered = 2;
+  string status = 3;  // Device-specific status string: "Active", "Off", "IDLE", "INIT", etc.
+  uint64 uptime_seconds = 4;
+  map<string, bool> outputs = 5;  // Device outputs (e.g., PDU: {"main_power": true})
+}
+
+// Exposure result
+message ExposureResult {
+  uint32 exposure_time_ms = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  uint64 data_size = 3;
+  optional string data_path = 4;
+  float detector_temp = 5;
+}
+
+// Command requests
+message StartExposureRequest {
+  CommandContext ctx = 1;
+  uint32 exposure_time_ms = 2;   // Required exposure time
+  uint32 max_timeout_ms = 3;     // Safety timeout
+}
+
+message StopRequest { CommandContext ctx = 1; }
+message AbortRequest { CommandContext ctx = 1; }
+
+message MoveToRequest {
+  CommandContext ctx = 1;
+  double position_mm = 2;        // Single axis for now
+}
+
+message MoveRelativeRequest {
+  CommandContext ctx = 1;
+  double distance_mm = 2;
+}
+
+message HomeRequest { CommandContext ctx = 1; }
+message SetVelocityRequest {
+  CommandContext ctx = 1;
+  double velocity_mm_s = 2;
+}
+
+message PowerDeviceRequest {
+  CommandContext ctx = 1;
+  string device_type = 2;        // "detector", "motion", "gpio"
+  bool power_on = 3;
+}
+
+// Calibration request and response
+message CalibrateDetectorRequest { CommandContext ctx = 1; }
+
+message CalibrateDetectorResponse {
+  bool success = 1;
+  optional CalibrationQcReport qc_report = 2;
+  string error_message = 3;
+}
+
+// Background measurement (dark frame) - requires beam closed
+message StartBackgroundMeasurementRequest {
+  CommandContext ctx = 1;
+  uint32 exposure_time_ms = 2;   // Exposure time for dark frame
+}
+
+message BackgroundMeasurementResponse {
+  bool success = 1;
+  string error_message = 2;
+  optional ExposureResult result = 3;
+}
+
+message GetLastCalibrationResponse {
+  bool has_calibration = 1;
+  optional CalibrationQcReport qc_report = 2;
+}
+
+// Calibration Quality Control Report
+message CalibrationQcReport {
+  string calibrant_material = 1;      // "LaB6", "Si", "CeO2", etc.
+  bool overall_pass = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  
+  // Individual QC checks
+  QcCheckResult total_intensity_check = 4;
+  QcCheckResult goodness_check = 5;
+  QcCheckResult snr_check = 6;
+  QcCheckResult ring_quality_check = 7;
+  PoniCalculationResult poni_result = 8;
+  
+  // Summary statistics
+  string formatted_report = 9;        // Human-readable report text
+}
+
+// Individual quality control check result
+message QcCheckResult {
+  bool passed = 1;
+  string check_name = 2;
+  double measured_value = 3;
+  double threshold = 4;
+  string details = 5;
+}
+
+// PONI file calculation result
+message PoniCalculationResult {
+  bool success = 1;
+  optional double distance_mm = 2;           // Sample-detector distance
+  optional double beam_center_x = 3;         // Beam center X (pixels)
+  optional double beam_center_y = 4;         // Beam center Y (pixels)
+  optional double rot1 = 5;                  // Rotation angles
+  optional double rot2 = 6;
+  optional double rot3 = 7;
+  optional double pixel_size_1_m = 8;        // Pixel sizes (meters)
+  optional double pixel_size_2_m = 9;
+  optional double wavelength_angstrom = 10;
+  optional string poni_file_content = 11;    // Full PONI file text
+}
+
+message InitializeDetectorRequest { CommandContext ctx = 1; }
+message InitializeMotionRequest { CommandContext ctx = 1; }
+
+// State query responses
+message GpioStateResponse {
+  bool powered = 1;
+  bool key_switch_on = 2;
+  bool activation_button_active = 3;
+  optional uint32 activation_remaining_secs = 4;
+  InterlockStatus interlocks = 5;
+  string main_led = 6;              // "Red", "Orange", "Green", "Off"
+  string radiation_led = 7;
+}
+
+message DetectorStateResponse {
+  bool powered = 1;
+  bool initialized = 2;
+  DetectorStatus status = 3;
+  float temperature = 4;
+  uint64 total_exposures = 5;
+}
+
+message MotionStateResponse {
+  bool powered = 1;
+  bool initialized = 2;
+  bool is_homed = 3;
+  MotionStatus status = 4;
+  optional double position_x = 5;
+  optional double position_y = 6;
+  uint64 total_moves = 7;
+}
+
+message FullServerStateResponse {
+  ServerState safety_state = 1;
+  GpioStateResponse gpio = 2;
+  DetectorStateResponse detector = 3;
+  MotionStateResponse motion = 4;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+// State change notification (no details)
+message StateChangeNotification {
+  google.protobuf.Timestamp timestamp = 1;
+  string component = 2;             // "gpio", "detector", "motion", "safety"
+  string change_type = 3;           // "state_changed", "power_changed", etc.
+}
+
+// Response messages
+message GetStateResponse {
+  ServerState state = 1;
+  string detail = 2;
+  InterlockStatus interlocks = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+message GetPositionResponse {
+  optional double position_mm = 1;
+  bool is_homed = 2;
+}
+
+message GetExposureResultResponse {
+  bool has_result = 1;
+  optional ExposureResult result = 2;
+}
+
+message HealthComponent {
+  string name = 1;
+  bool ok = 2;
+  string detail = 3;
+  google.protobuf.Timestamp last_check = 4;
+}
+
+message AggregateHealth {
+  bool ok = 1;
+  repeated HealthComponent components = 2;
+  InterlockStatus interlocks = 3;
+}
+
+// Event streaming for real-time monitoring
+message SystemEvent {
+  google.protobuf.Timestamp timestamp = 1;
+  oneof event {
+    StateChangedEvent state_changed = 2;
+    InterlockEvent interlock_event = 3;
+    ExposureEvent exposure_event = 4;
+    MotionEvent motion_event = 5;
+    ErrorEvent error = 6;
+  }
+}
+
+message StateChangedEvent {
+  ServerState old_state = 1;
+  ServerState new_state = 2;
+  string reason = 3;
+}
+
+message InterlockEvent {
+  InterlockStatus status = 1;
+  string triggered_by = 2;
+}
+
+message ExposureEvent {
+  enum Type {
+    STARTED = 0;
+    COMPLETED = 1;
+    STOPPED = 2;
+    FAILED = 3;
+  }
+  Type type = 1;
+  uint32 exposure_time_ms = 2;
+}
+
+message MotionEvent {
+  enum Type {
+    MOVE_STARTED = 0;
+    MOVE_COMPLETED = 1;
+    HOME_COMPLETED = 2;
+    STOPPED = 3;
+    LIMIT_HIT = 4;
+  }
+  Type type = 1;
+  optional double position_mm = 2;
+}
+
+message ErrorEvent {
+  string component = 1;
+  string error_message = 2;
+  string error_code = 3;
+}
+
+// Services as defined in context document
+service Acquisition {
+  rpc StartExposure(StartExposureRequest) returns (Empty);
+  rpc Stop(StopRequest) returns (Empty);
+  rpc Abort(AbortRequest) returns (Empty);
+  rpc GetState(Empty) returns (GetStateResponse);
+  rpc GetLastExposureResult(Empty) returns (GetExposureResultResponse);
+  rpc CalibrateDetector(CalibrateDetectorRequest) returns (CalibrateDetectorResponse);
+  rpc GetLastCalibration(Empty) returns (GetLastCalibrationResponse);
+  rpc StartBackgroundMeasurement(StartBackgroundMeasurementRequest) returns (BackgroundMeasurementResponse);
+  // Stream real-time events for monitoring
+  rpc SubscribeRunEvents(Empty) returns (stream SystemEvent);
+}
+
+service Motion {
+  rpc MoveTo(MoveToRequest) returns (Empty);
+  rpc MoveRelative(MoveRelativeRequest) returns (Empty);
+  rpc Home(HomeRequest) returns (Empty);
+  rpc Stop(StopRequest) returns (Empty);
+  rpc SetVelocity(SetVelocityRequest) returns (Empty);
+  rpc GetPosition(Empty) returns (GetPositionResponse);
+}
+
+service DeviceControl {
+  rpc PowerDevice(PowerDeviceRequest) returns (Empty);
+  rpc GetDetectorHealth(Empty) returns (DetectorHealth);
+  rpc GetMotionHealth(Empty) returns (MotionHealth);
+  // General device state query (supports: "pdu", "gpio", "detector", "motion")
+  rpc GetDeviceState(DeviceStateRequest) returns (DeviceStateResponse);
+}
+
+service Safety {
+  rpc GetInterlockStatus(Empty) returns (InterlockStatus);
+  rpc ResetInterlocks(CommandContext) returns (Empty);
+  rpc CheckSafetyToOperate(Empty) returns (InterlockStatus);
+}
+
+service Health {
+  rpc Liveness(Empty) returns (Empty);                    // Basic liveness check
+  rpc Readiness(Empty) returns (Empty);                   // Readiness for operations
+  rpc GetAggregateHealth(Empty) returns (AggregateHealth); // Detailed health
+}
+
+// State monitoring service for orchestrator
+service StateMonitor {
+  // Subscribe to state change notifications (open to all)
+  rpc SubscribeToStateUpdates(Empty) returns (stream StateChangeNotification);
+  
+  // Query detailed state (requires authentication)
+  rpc GetFullServerState(Empty) returns (FullServerStateResponse);
+  rpc GetGpioState(Empty) returns (GpioStateResponse);
+  rpc GetDetectorState(Empty) returns (DetectorStateResponse);
+  rpc GetMotionState(Empty) returns (MotionStateResponse);
+}
+
+// Device initialization service
+service DeviceInitialization {
+  // Initialize detector (requires: key switch ON, activation button active, interlocks safe)
+  rpc InitializeDetector(InitializeDetectorRequest) returns (DetectorStateResponse);
+  
+  // Initialize motion system (requires: key switch ON, activation button active, interlocks safe)
+  rpc InitializeMotion(InitializeMotionRequest) returns (MotionStateResponse);
+  
+  // Power off devices
+  rpc PowerOffDetector(CommandContext) returns (Empty);
+  rpc PowerOffMotion(CommandContext) returns (Empty);
+}
+
+// Command Discovery - allows orchestrators to query available commands and validate compatibility
+message FieldDescriptor {
+  string name = 1;                      // Field name (e.g., "exposure_time_ms")
+  string type = 2;                      // Field type (e.g., "uint32", "string", "CommandContext")
+  bool required = 3;                    // Whether the field is required
+  string description = 4;               // Human-readable description
+  optional string default_value = 5;    // Default value if any
+}
+
+message CommandDescriptor {
+  string service_name = 1;              // Service name (e.g., "Acquisition", "Motion")
+  string command_name = 2;              // Command/RPC name (e.g., "StartExposure", "MoveTo")
+  string description = 3;               // Command description
+  repeated FieldDescriptor request_fields = 4;   // Fields in the request message
+  string response_type = 5;             // Response message type
+  repeated FieldDescriptor response_fields = 6;  // Fields in the response message
+  repeated string required_permissions = 7;      // Permissions needed (future use)
+  repeated string safety_requirements = 8;       // Safety requirements (e.g., "interlocks_safe", "key_switch_on")
+}
+
+message ServerCapabilities {
+  string server_version = 1;            // Server version (semver)
+  string protocol_version = 2;          // Protocol version (semver)
+  google.protobuf.Timestamp build_time = 3;
+  repeated string supported_features = 4;  // Feature flags (e.g., "mtls", "audit_logging", "gui")
+  string device_type = 5;               // "hardware_server", "orchestrator", etc.
+}
+
+message GetServerCapabilitiesResponse {
+  ServerCapabilities capabilities = 1;
+}
+
+message ListCommandsResponse {
+  repeated CommandDescriptor commands = 1;
+  ServerCapabilities server_info = 2;
+}
+
+message ValidateCompatibilityRequest {
+  string client_version = 1;            // Client version (semver)
+  string client_protocol_version = 2;   // Client protocol version
+  repeated string required_commands = 3; // Commands the client requires
+}
+
+message ValidateCompatibilityResponse {
+  bool compatible = 1;                  // Overall compatibility status
+  string message = 2;                   // Human-readable message
+  repeated string missing_commands = 3; // Commands client requires but server doesn't have
+  repeated string version_warnings = 4; // Version-related warnings
+  bool protocol_compatible = 5;         // Whether protocol versions are compatible
+}
+
+// Per-command readiness for UI enable/disable decisions
+message CommandReadiness {
+  string service_name = 1;
+  string command_name = 2;
+  bool ready = 3;
+  repeated string reasons = 4; // If not ready, human-readable reasons
+}
+
+message GetCommandReadinessResponse {
+  repeated CommandReadiness items = 1;
+}
+
+service CommandDiscovery {
+  // Get server capabilities and version info
+  rpc GetServerCapabilities(Empty) returns (GetServerCapabilitiesResponse);
+  
+  // List all available commands with their metadata
+  rpc ListCommands(Empty) returns (ListCommandsResponse);
+  
+  // Validate compatibility between client and server
+  rpc ValidateCompatibility(ValidateCompatibilityRequest) returns (ValidateCompatibilityResponse);
+
+  // Evaluate readiness of all commands based on current state/interlocks
+  rpc GetCommandReadiness(Empty) returns (GetCommandReadinessResponse);
+}

@@ -1,0 +1,67 @@
+# Omniscan Orchestrator Configuration
+# Medical Device Software - FDA Compliant
+
+[server]
+# Hardware server connection settings
+grpc_address = "localhost:50051"
+use_mtls = false
+cert_path = ""
+key_path = ""
+ca_cert_path = ""
+
+[database]
+# Local SQLite database for patient data and measurements
+path = "data/orchestrator.db"
+backup_interval_hours = 24
+# Automatic backup location
+backup_path = "data/backups"
+
+[cloud]
+# Cloud synchronization settings
+enabled = true
+endpoint = "https://cloud.omniscan.com"
+# API key should be set via environment variable
+api_key_env = "OMNISCAN_CLOUD_API_KEY"
+upload_retry_interval_seconds = 60
+max_retry_attempts = 5
+# Timeout for uploads
+upload_timeout_seconds = 30
+
+[workflow]
+# Daily operation workflow settings
+enable_button_timeout_seconds = 20
+warmup_check_interval_seconds = 10
+calibration_validity_hours = 24
+# Progress update interval during operations
+progress_update_interval_ms = 500
+
+[qc]
+# Quality control settings
+calibration_reference_data = "data/reference/calibrant.json"
+auto_qc_enabled = true
+qc_pass_threshold = 0.8
+# Future: Peak detection parameters
+peak_detection_enabled = false
+
+[ui]
+# User interface settings
+theme = "dark"
+show_debug_info = false
+use_color = true
+# Progress bar style
+progress_bar_style = "bar"
+
+[logging]
+# Logging configuration
+level = "INFO"
+file = "logs/orchestrator.log"
+max_size_mb = 100
+backup_count = 5
+format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+[security]
+# Security settings
+session_timeout_minutes = 60
+require_password = true
+# Minimum password length for local users
+min_password_length = 8

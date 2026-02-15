@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "device": {
+    "name": "GPIO",
+    "interlocks_armed": true,
+    "emergency_stop": false,
+    "power_default_on": true,
+    "gui_mode": true
+  },
+  "measurement": {
+    "output_dir": "measurements",
+    "default_duration_s": 60
+  },
+  "logging": {
+    "log_dir": "logs",
+    "log_level": "INFO"
+  },
+  "maintenance": {
+    "dev_mode": true,
+    "dev_secret": "dev"
+  },
+  "workflow": {
+    "enable_button_timeout": 20,
+    "warmup_duration": 600,
+    "calibration_validity_hours": 24,
+    "gpio_poll_interval_ms": 100
+  }
+}

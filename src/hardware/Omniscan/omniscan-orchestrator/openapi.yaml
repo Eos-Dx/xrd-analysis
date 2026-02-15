@@ -1,0 +1,1415 @@
+openapi: 3.0.3
+info:
+  title: Omniscan Orchestrator API
+  description: |
+    Medical device orchestration API for Omniscan XRD system.
+    
+    **Privacy-First Architecture**: Patient PII never leaves the orchestrator database - only UUIDs are transmitted to the hardware server and cloud.
+    
+    **Safety-Critical**: Physical Enable Button confirmation required for potentially harmful operations (X-ray activation, motion system).
+    
+    **Medical Device Compliance**: Complete audit trails with cryptographic hash chaining for regulatory compliance (FDA 21 CFR Part 11, HIPAA, GDPR).
+    
+    ## Authentication
+    All endpoints (except `/api/auth/login`, `/api/connection/status`, `/api/debug/status`, and Command Discovery endpoints) require authentication via the `X-Session-Id` header.
+    
+    ## Safety Requirements
+    - **Enable Button Operations**: Initialize detector, initialize motion, start exposure, motion commands require physical Enable Button confirmation (20-second window)
+    - **Safe Operations**: Stop operations, power off, read states do not require Enable Button
+    - **Safety Interlocks**: Key switch ON, emergency stop not pressed, door closed, cooling OK, power OK
+  version: 0.1.0
+  contact:
+    name: Omniscan Team
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: http://localhost:8081
+    description: Alternate local server
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: System Health
+    description: System health, state monitoring, and hardware status
+  - name: Patients
+    description: Patient record management (PII stored locally only)
+  - name: Measurements
+    description: X-ray measurement operations
+  - name: Calibration
+    description: Daily calibration procedures and QC
+  - name: Hardware Control
+    description: Hardware device initialization and control
+  - name: GPIO & Safety
+    description: GPIO state, interlocks, and Enable Button monitoring
+  - name: Motion Control
+    description: Motion system control
+  - name: Command Discovery
+    description: Hardware server capability discovery and compatibility validation
+  - name: WebSocket
+    description: Real-time updates via WebSocket
+  - name: Development
+    description: Development and diagnostic endpoints
+
+paths:
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: |
+        Authenticate user with password and key switch verification.
+        
+        Process:
+        1. Verify username/password (local DB or LDAP)
+        2. Check hardware key switch is ON (via gRPC)
+        3. Create session if both pass
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login response (check success field)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Logout user and invalidate session
+      operationId: logout
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Logout response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/state:
+    get:
+      tags:
+        - System Health
+      summary: Get system state
+      description: |
+        Get current system state for UI polling.
+        
+        Returns essential state info:
+        - state: Current server state (IDLE, PENDING_ARMED, RUNNING, etc.)
+        - interlocks: Safety interlock status
+        - devices: Device status (detector, motion, PDU, GPIO)
+        - calibration: Calibration validity
+      operationId: getSystemState
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: System state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    type: string
+                    enum: [IDLE, PENDING_ARMED, RUNNING, STOPPING, SAFE, LOCKED, CALIBRATION, MAINTENANCE]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  interlocks:
+                    $ref: '#/components/schemas/SafetyInterlocks'
+                  devices:
+                    type: object
+                    properties:
+                      pdu:
+                        $ref: '#/components/schemas/PduStatus'
+                      gpio:
+                        $ref: '#/components/schemas/GpioStatus'
+                      detector:
+                        $ref: '#/components/schemas/DetectorStatus'
+                      motion:
+                        $ref: '#/components/schemas/MotionStatus'
+                  calibration:
+                    type: object
+                    properties:
+                      valid:
+                        type: boolean
+                      expires_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/health:
+    get:
+      tags:
+        - System Health
+      summary: Get system health
+      description: Get overall system health from hardware server including all device statuses
+      operationId: getSystemHealth
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: System health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemHealth'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/patients:
+    post:
+      tags:
+        - Patients
+      summary: Create patient record
+      description: |
+        Create a new patient record in the orchestrator database.
+        
+        **IMPORTANT**: Patient PII stays in orchestrator database only. Only UUIDs are transmitted to hardware server and cloud.
+      operationId: createPatient
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientCreate'
+      responses:
+        '200':
+          description: Patient created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/patients/search:
+    get:
+      tags:
+        - Patients
+      summary: Search patient by MRN
+      description: Search for a patient by Medical Record Number
+      operationId: searchPatient
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: mrn
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Medical Record Number
+      responses:
+        '200':
+          description: Patient found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/patients/{patient_id}:
+    get:
+      tags:
+        - Patients
+      summary: Get patient by ID
+      description: Load a patient by ID (used by UI after selection)
+      operationId: getPatientById
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: patient_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Patient found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/measurement_hb:
+    get:
+      tags:
+        - Measurements
+      summary: Measurement heartbeat
+      description: |
+        Return current measurement/calibration heartbeats for UI.
+        
+        Response includes progress information for active runs.
+      operationId: measurementHeartbeat
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Active runs status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        run_id:
+                          type: string
+                          format: uuid
+                        type:
+                          type: string
+                          enum: [measurement, calibration]
+                        elapsed:
+                          type: integer
+                          description: Elapsed time in seconds
+                        total_secs:
+                          type: integer
+                          nullable: true
+                          description: Total expected duration (null for calibration)
+                        percent:
+                          type: integer
+                          nullable: true
+                          description: Progress percentage
+                        status:
+                          type: string
+                          enum: [running, completed, failed]
+                        started:
+                          type: string
+                          format: date-time
+                  timestamp:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/measurements/start:
+    post:
+      tags:
+        - Measurements
+      summary: Start measurement
+      description: |
+        Start a new X-ray measurement.
+        
+        **Privacy protection flow:**
+        1. Get patient data from local database (includes PII)
+        2. Generate UUID for measurement (no PII)
+        3. Store UUID → patient mapping locally
+        4. Send ONLY UUID to hardware server via gRPC
+        5. Return measurement ID to Web UI
+        
+        **Requires**: Enable Button activation (20-second window)
+      operationId: startMeasurement
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasurementStartRequest'
+      responses:
+        '200':
+          description: Measurement start response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementStartResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+
+  /api/measurements/{run_id}/stop:
+    post:
+      tags:
+        - Measurements
+      summary: Stop measurement
+      description: Stop ongoing measurement (safe; no activation button required)
+      operationId: stopMeasurement
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Measurement stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [stopped]
+                  run_id:
+                    type: string
+                    format: uuid
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/measurements/{run_id}/abort:
+    post:
+      tags:
+        - Measurements
+      summary: Abort measurement
+      description: Emergency abort measurement
+      operationId: abortMeasurement
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Measurement aborted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [aborted]
+                  run_id:
+                    type: string
+                    format: uuid
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/measurements:
+    get:
+      tags:
+        - Measurements
+      summary: Get measurement history
+      description: |
+        Get measurement history with patient information.
+        
+        Note: This endpoint joins local patient data with measurement records. Only orchestrator has access to patient identifiable information.
+      operationId: getMeasurementHistory
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Measurement history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementHistoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/calibration/start:
+    post:
+      tags:
+        - Calibration
+      summary: Start calibration
+      description: |
+        Start daily calibration procedure (async - returns immediately).
+        
+        Calibration runs in background and notifies via WebSocket:
+        - calibration_start: when calibration begins
+        - calibration_complete: when finished (success or error)
+        
+        Timeout protection: 13 seconds (1.3x typical integration time).
+        
+        **Requires**: Enable Button activation, key switch ON, interlocks satisfied
+      operationId: startCalibration
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Calibration started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalibrationStartResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+
+  /api/calibration/status:
+    get:
+      tags:
+        - Calibration
+      summary: Get calibration status
+      description: Get current calibration status
+      operationId: getCalibrationStatus
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Calibration status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalibrationStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/calibration/latest:
+    get:
+      tags:
+        - Calibration
+      summary: Get latest calibration
+      description: Get the latest calibration QC report as JSON
+      operationId: getLatestCalibration
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Latest calibration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  calibration_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+                  timestamp:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  calibrant_material:
+                    type: string
+                    nullable: true
+                  overall_pass:
+                    type: boolean
+                    nullable: true
+                  qc_checks:
+                    type: object
+                    nullable: true
+                  formatted_report:
+                    type: string
+                    nullable: true
+                  error:
+                    type: string
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/calibration/running:
+    get:
+      tags:
+        - Calibration
+      summary: Check running calibration
+      description: Check if calibration is currently running
+      operationId: getRunningCalibration
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Running calibration status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  running:
+                    type: boolean
+                  calibration_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/calibration/history:
+    get:
+      tags:
+        - Calibration
+      summary: Get calibration history
+      description: Return calibration records from the last N hours (default 24), newest first
+      operationId: getCalibrationHistory
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Calibration history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  total:
+                    type: integer
+                  records:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        timestamp:
+                          type: string
+                          format: date-time
+                        operator:
+                          type: string
+                        material:
+                          type: string
+                        overall_pass:
+                          type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/gpio/state:
+    get:
+      tags:
+        - GPIO & Safety
+      summary: Get GPIO state
+      description: Get GPIO state including buttons, interlocks, and LEDs
+      operationId: getGpioState
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: GPIO state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  powered:
+                    type: boolean
+                  key_switch_on:
+                    type: boolean
+                  activation_button_active:
+                    type: boolean
+                  activation_remaining_secs:
+                    type: integer
+                    nullable: true
+                  interlocks:
+                    $ref: '#/components/schemas/SafetyInterlocks'
+                  main_led:
+                    type: string
+                  radiation_led:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/gpio/enable-button:
+    get:
+      tags:
+        - GPIO & Safety
+      summary: Check Enable Button
+      description: Check Enable Button status
+      operationId: checkEnableButton
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Enable Button status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active:
+                    type: boolean
+                    description: Whether button is currently active
+                  remaining_secs:
+                    type: integer
+                    nullable: true
+                    description: Seconds remaining in 20s window
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/hardware/{device}/init:
+    post:
+      tags:
+        - Hardware Control
+      summary: Initialize device
+      description: |
+        Initialize hardware device (detector or motion).
+        
+        **REQUIRES**: Enable button must be active (within 20s window).
+        
+        This is a HARMFUL operation that requires operator confirmation via the physical enable button before initialization can proceed.
+      operationId: initializeDevice
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: device
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [detector, motion]
+      responses:
+        '200':
+          description: Device initialized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  device:
+                    type: string
+                  status:
+                    type: string
+                  detail:
+                    type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/hardware/{device}/stop:
+    post:
+      tags:
+        - Hardware Control
+      summary: Stop device
+      description: |
+        Power off hardware device (detector or motion).
+        
+        This is a SAFE operation - no enable button required. Powers down the device in a controlled manner.
+      operationId: stopDevice
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: device
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [detector, motion]
+      responses:
+        '200':
+          description: Device stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  device:
+                    type: string
+                  status:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/motion/stop:
+    post:
+      tags:
+        - Motion Control
+      summary: Stop motion
+      description: Stop any ongoing motion immediately (safe; no activation button required)
+      operationId: stopMotion
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Motion stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [stopped]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/server/capabilities:
+    get:
+      tags:
+        - Command Discovery
+      summary: Get server capabilities
+      description: Get hardware server capabilities and version (no auth required)
+      operationId: getServerCapabilities
+      responses:
+        '200':
+          description: Server capabilities
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/server/commands:
+    get:
+      tags:
+        - Command Discovery
+      summary: List server commands
+      description: List all available commands from hardware server (no auth required)
+      operationId: listServerCommands
+      parameters:
+        - name: service
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by service name
+      responses:
+        '200':
+          description: Server commands
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commands:
+                    type: array
+                    items:
+                      type: object
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/server/commands/readiness:
+    get:
+      tags:
+        - Command Discovery
+      summary: List commands with readiness
+      description: List commands and their readiness for execution based on current hardware state
+      operationId: listServerCommandsWithReadiness
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: service
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Commands with readiness status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commands:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        service_name:
+                          type: string
+                        command_name:
+                          type: string
+                        description:
+                          type: string
+                        ready:
+                          type: boolean
+                        reasons:
+                          type: array
+                          items:
+                            type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/server/validate-compatibility:
+    post:
+      tags:
+        - Command Discovery
+      summary: Validate compatibility
+      description: Validate compatibility between orchestrator and hardware server
+      operationId: validateCompatibility
+      parameters:
+        - name: client_version
+          in: query
+          schema:
+            type: string
+            default: 0.1.0
+        - name: protocol_version
+          in: query
+          schema:
+            type: string
+            default: 1.0.0
+      responses:
+        '200':
+          description: Compatibility result
+          content:
+            application/json:
+              schema:
+                type: object
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /ws:
+    get:
+      tags:
+        - WebSocket
+      summary: WebSocket connection
+      description: |
+        WebSocket connection for real-time system updates.
+        
+        Clients receive:
+        - System state changes
+        - Measurement progress updates
+        - Safety alerts
+        - Calibration status changes
+      operationId: websocketEndpoint
+      responses:
+        '101':
+          description: WebSocket connection established
+
+  /api/connection/status:
+    get:
+      tags:
+        - Development
+      summary: Connection status
+      description: Check connection status to hardware server (no auth required)
+      operationId: connectionStatus
+      responses:
+        '200':
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connected:
+                    type: boolean
+                  hardware_state:
+                    type: string
+                  hardware_ok:
+                    type: boolean
+                  error:
+                    type: string
+
+  /api/debug/status:
+    get:
+      tags:
+        - Development
+      summary: Debug status
+      description: Debug endpoint to check server status (no auth required)
+      operationId: debugStatus
+      responses:
+        '200':
+          description: Debug status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  grpc_connected:
+                    type: boolean
+                  db_initialized:
+                    type: boolean
+                  auth_manager:
+                    type: boolean
+                  active_sessions:
+                    type: integer
+                  websocket_clients:
+                    type: integer
+
+components:
+  securitySchemes:
+    SessionAuth:
+      type: apiKey
+      in: header
+      name: X-Session-Id
+      description: Session ID obtained from login
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: User identifier
+        password:
+          type: string
+          format: password
+          description: User password
+
+    LoginResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        session_id:
+          type: string
+          nullable: true
+        user_id:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+          enum: [operator, engineer, administrator]
+        error:
+          type: string
+          nullable: true
+
+    LogoutResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    PatientCreate:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - date_of_birth
+        - medical_record_number
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+          description: ISO format date
+        medical_record_number:
+          type: string
+
+    PatientResponse:
+      type: object
+      required:
+        - patient_id
+        - first_name
+        - last_name
+        - date_of_birth
+        - medical_record_number
+        - created_at
+      properties:
+        patient_id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+        last_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        medical_record_number:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    MeasurementStartRequest:
+      type: object
+      required:
+        - patient_id
+        - exposure_duration
+      properties:
+        patient_id:
+          type: string
+          format: uuid
+          description: Patient identifier
+        sample_id:
+          type: string
+          nullable: true
+          description: Sample identifier
+        exposure_duration:
+          type: integer
+          description: Exposure time in milliseconds
+        notes:
+          type: string
+          nullable: true
+          description: Optional notes
+
+    MeasurementStartResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        measurement_id:
+          type: string
+          format: uuid
+          nullable: true
+        run_id:
+          type: string
+          format: uuid
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    MeasurementResult:
+      type: object
+      required:
+        - measurement_id
+        - run_id
+        - patient_id
+        - sample_id
+        - timestamp
+        - status
+        - exposure_actual
+        - qc_passed
+        - operator_id
+      properties:
+        measurement_id:
+          type: string
+          format: uuid
+        run_id:
+          type: string
+          format: uuid
+        patient_id:
+          type: string
+          format: uuid
+        sample_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [SUCCESS, FAILED, ABORTED]
+        exposure_actual:
+          type: integer
+        qc_passed:
+          type: boolean
+        operator_id:
+          type: string
+
+    MeasurementHistoryResponse:
+      type: object
+      required:
+        - measurements
+        - total
+      properties:
+        measurements:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeasurementResult'
+        total:
+          type: integer
+
+    CalibrationStartResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        calibration_id:
+          type: string
+          format: uuid
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    CalibrationStatus:
+      type: object
+      required:
+        - valid
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          nullable: true
+        valid:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        distance_check:
+          type: boolean
+          nullable: true
+        snr_threshold:
+          type: number
+          format: float
+          nullable: true
+
+    SafetyInterlocks:
+      type: object
+      required:
+        - overall_safe
+        - key_switch
+        - enable_button
+        - door_closed
+        - emergency_stop
+        - radiation_safe
+        - cooling_ok
+        - power_ok
+      properties:
+        overall_safe:
+          type: boolean
+        key_switch:
+          type: boolean
+        enable_button:
+          type: boolean
+        door_closed:
+          type: boolean
+        emergency_stop:
+          type: boolean
+        radiation_safe:
+          type: boolean
+        cooling_ok:
+          type: boolean
+        power_ok:
+          type: boolean
+
+    DetectorStatus:
+      type: object
+      required:
+        - powered
+        - status
+      properties:
+        powered:
+          type: boolean
+        status:
+          type: string
+          enum: [OFF, IDLE, READY, INIT, EXPOSING, READING, ERROR]
+        temperature:
+          type: number
+          format: float
+          nullable: true
+        voltage:
+          type: number
+          format: float
+          nullable: true
+
+    MotionStatus:
+      type: object
+      required:
+        - powered
+        - status
+      properties:
+        powered:
+          type: boolean
+        status:
+          type: string
+          enum: [OFF, IDLE, READY, INIT, MOVING, HOMING, ERROR, LIMIT_HIT]
+        is_homed:
+          type: boolean
+          nullable: true
+        position:
+          type: number
+          format: float
+          nullable: true
+
+    GpioStatus:
+      type: object
+      required:
+        - powered
+        - status
+      properties:
+        powered:
+          type: boolean
+        status:
+          type: string
+          enum: [Active, Off]
+
+    PduStatus:
+      type: object
+      required:
+        - powered
+        - status
+      properties:
+        powered:
+          type: boolean
+        status:
+          type: string
+          enum: [Active, Off]
+        outputs:
+          type: object
+          additionalProperties:
+            type: boolean
+          nullable: true
+
+    SystemHealth:
+      type: object
+      required:
+        - state
+        - interlocks
+        - uptime
+        - cloud_connected
+        - last_heartbeat
+      properties:
+        state:
+          type: string
+          enum: [IDLE, RUNNING, SAFE, LOCKED, CALIBRATION, MAINTENANCE]
+        interlocks:
+          $ref: '#/components/schemas/SafetyInterlocks'
+        calibration:
+          $ref: '#/components/schemas/CalibrationStatus'
+        pdu:
+          $ref: '#/components/schemas/PduStatus'
+        gpio:
+          $ref: '#/components/schemas/GpioStatus'
+        detector:
+          $ref: '#/components/schemas/DetectorStatus'
+        motion:
+          $ref: '#/components/schemas/MotionStatus'
+        uptime:
+          type: integer
+          description: System uptime in seconds
+        cloud_connected:
+          type: boolean
+        last_heartbeat:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          nullable: true
+        details:
+          type: string
+          nullable: true
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid session
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    PreconditionFailed:
+      description: Precondition failed - Enable Button not active or interlocks not satisfied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    ServiceUnavailable:
+      description: Service unavailable - hardware server not responding
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

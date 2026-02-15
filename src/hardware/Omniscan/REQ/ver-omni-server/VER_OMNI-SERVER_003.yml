@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'System qualification'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Manual qualification of transitions IDLE ↔ RUNNING ↔ SAFE ↔ STOPPING.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_003

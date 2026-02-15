@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Data persistence fault tolerance test'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Simulate system crashes during measurement at various points. Verify transaction rollback on restart. Test power loss scenarios during database commit. Confirm zero data loss for completed measurements. Validate WAL mode recovery.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_014

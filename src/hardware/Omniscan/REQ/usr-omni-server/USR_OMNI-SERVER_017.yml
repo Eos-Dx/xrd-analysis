@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Operator-facing error messages'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide clear, actionable error messages with plain language description, numbered checklist of troubleshooting steps, clear escalation indication, contact information, and unique error reference numbers.'
+type: requirement

@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Role-based access control'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall implement role-based access control with defined roles (Clinical Operator, Senior Staff, Maintenance Engineer, Administrator), graphical user management interface, cryptographic authentication, and multi-factor authentication for privileged roles.'
+type: requirement

@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Safety authority'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The Rust Hardware Server exclusively authorizes all beam and motion operations.'
+type: requirement
+links:
+- USR_OMNI-SERVER_001

@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Update deployment control'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide controlled update deployment with comprehensive release notes, staged deployment capability, rollback capability, scheduled installation during non-operational hours, 48-hour advance notification, and automatic backup before update.'
+type: requirement

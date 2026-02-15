@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: 'gRPC interface'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Expose endpoints: StartCalibration, StartMeasurement, Abort, Stop, GetState, etc.'
+type: requirement
+links:
+- USR_OMNI-SERVER_001
+- USR_OMNI-SERVER_002

@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Calibration diagnostics'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide maintenance engineers with comprehensive calibration diagnostic capabilities including detailed parameters, graphical trending, failure indication, historical data, and data export.'
+type: requirement

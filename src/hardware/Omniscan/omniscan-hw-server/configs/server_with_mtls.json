@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "device": {
+    "name": "OMNIScan XRD Device",
+    "interlocks_armed": true,
+    "emergency_stop": false,
+    "power_default_on": false
+  },
+  "measurement": {
+    "output_dir": "measurements",
+    "default_duration_s": 60
+  },
+  "logging": {
+    "log_dir": "logs",
+    "log_level": "INFO"
+  },
+  "maintenance": {
+    "dev_mode": false,
+    "dev_secret": "change-me-in-production"
+  },
+  "certificates": {
+    "device_uuid": "ABC123",
+    "cert_base_dir": "../omniscan-certificate-center/certs",
+    "enable_mtls": true
+  }
+}

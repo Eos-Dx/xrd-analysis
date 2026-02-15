@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Performance targets implementation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall meet response times: gRPC call latency <200ms (local network), emergency stop response <100ms (hardware interrupt), database commit <1s (async), state transition broadcast <500ms. Use async I/O for all network and disk operations to maintain UI responsiveness.'
+type: requirement
+links:
+- USR_OMNI-SERVER_025

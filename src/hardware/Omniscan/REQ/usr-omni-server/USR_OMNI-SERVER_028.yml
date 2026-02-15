@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Documentation requirements'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall be supported by comprehensive documentation including user manual, administrator guide, troubleshooting guide, API documentation, release notes, searchable online help system, and emergency procedure posters.'
+type: requirement

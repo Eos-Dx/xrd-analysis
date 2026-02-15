@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Maintenance mode access control test'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Verify MAINTENANCE state requires key switch + authentication. Test interlock bypass logging. Confirm automatic exit to IDLE on key switch deactivation. Validate audit trail completeness for all bypass events.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_011

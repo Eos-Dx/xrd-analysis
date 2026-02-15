@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Beam exposure when door open'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Door sensor interlock disables beam output.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_002

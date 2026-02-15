@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Quality metrics calculation validation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Validate SNR calculation against reference implementation. Test flagging logic with known anomaly scenarios: expired calibration, interlock violation during measurement, beam intensity deviation. Confirm REVIEW_REQUIRED flag set appropriately.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_013

@@ -1,0 +1,210 @@
+{"timestamp":"2026-01-27T13:57:31.269983Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2026-01-27T13:57:31.270255Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.270291Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.270309Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.270327Z","level":"WARN","fields":{"message":"⚠️  DANGER: Interlock checks DISABLED - Testing mode only!"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.271634Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.271667Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.272150Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:////Users/sad/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T13:57:31.275419Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T13:57:31.275956Z","level":"INFO","fields":{"message":"Audit session started: 7ac8c4f6-0b94-4890-beb9-a43bd712f00c"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T13:57:31.275982Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.275998Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.276016Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.276055Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED (simulated pins -> High)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T13:57:31.276073Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.276090Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.276144Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T13:57:31.276650Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T13:57:31.276678Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T13:57:31.276697Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.277370Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor, DeviceInitialization, and CommandDiscovery)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.277571Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.277616Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:31.277633Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T13:57:32.277976Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.687073Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2026-01-27T14:04:51.687300Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.687327Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.687341Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.689279Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.689305Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.689789Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:////Users/sad/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:04:51.692415Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:04:51.692886Z","level":"INFO","fields":{"message":"Audit session started: 3f4f96c2-48e1-4d7d-9aec-2ff6dbfb1269"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:04:51.692904Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.692919Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.692932Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.692965Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED (simulated pins -> High)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T14:04:51.692980Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.692994Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.693056Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:04:51.693431Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:04:51.693446Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:04:51.693458Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.693855Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor, DeviceInitialization, and CommandDiscovery)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.693908Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.693951Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:51.693966Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:04:52.690580Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:05:10.380037Z","level":"INFO","fields":{"message":"CommandDiscovery: ValidateCompatibility called - client v0.1.0, protocol v1.0.0"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:05:10.380174Z","level":"INFO","fields":{"message":"Client is compatible"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:08:17.402636Z","level":"INFO","fields":{"message":"CommandDiscovery: ValidateCompatibility called - client v0.1.0, protocol v1.0.0"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:08:17.402730Z","level":"INFO","fields":{"message":"Client is compatible"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:09:22.285983Z","level":"INFO","fields":{"message":"CommandDiscovery: ValidateCompatibility called - client v0.1.0, protocol v1.0.0"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:09:22.286351Z","level":"INFO","fields":{"message":"Client is compatible"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:11:19.941617Z","level":"INFO","fields":{"message":"CommandDiscovery: ValidateCompatibility called - client v0.1.0, protocol v1.0.0"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:11:19.941880Z","level":"INFO","fields":{"message":"Client is compatible"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:13:26.948254Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2026-01-27T14:13:26.948510Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.948546Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.948560Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.948625Z","level":"WARN","fields":{"message":"⚠️  DANGER: Interlock checks DISABLED - Testing mode only!"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.949818Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.949843Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.950367Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:////Users/sad/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:13:26.953033Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:13:26.953546Z","level":"INFO","fields":{"message":"Audit session started: 62e5adb1-06c5-4f97-8a2e-b6bc6a593e96"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:13:26.953569Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.953585Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.953601Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.953743Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED (simulated pins -> High)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T14:13:26.953761Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.953779Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.954096Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:13:26.954487Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:13:26.954512Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:13:26.954527Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.954909Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor, DeviceInitialization, and CommandDiscovery)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.954952Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.954985Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.954999Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:26.955621Z","level":"ERROR","fields":{"message":"gRPC server failed: gRPC server error: transport error"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:13:27.955247Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.011314Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2026-01-27T14:14:36.011648Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.011700Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.011724Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.011750Z","level":"WARN","fields":{"message":"⚠️  DANGER: Interlock checks DISABLED - Testing mode only!"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.014255Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.014294Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.014954Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:////Users/sad/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:14:36.018981Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:14:36.019599Z","level":"INFO","fields":{"message":"Audit session started: b5a7bc71-92d8-4d22-ac74-a039e6024fd4"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:14:36.019622Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.019639Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.019657Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.019688Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED (simulated pins -> High)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T14:14:36.019710Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.019726Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.019772Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:14:36.020164Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:14:36.020184Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:14:36.020200Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.020635Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor, DeviceInitialization, and CommandDiscovery)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.020679Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.020713Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:36.020729Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:37.020903Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:14:52.070262Z","level":"INFO","fields":{"message":"CommandDiscovery: ValidateCompatibility called - client v0.1.0, protocol v1.0.0"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:14:52.070739Z","level":"INFO","fields":{"message":"Client is compatible"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:15:32.985802Z","level":"INFO","fields":{"message":"GUI closed. Server continues running in background."},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:15:32.985869Z","level":"INFO","fields":{"message":"Press Ctrl+C to stop the server."},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.429884Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2026-01-27T14:16:03.430119Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.430147Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.430161Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.430176Z","level":"WARN","fields":{"message":"⚠️  DANGER: Interlock checks DISABLED - Testing mode only!"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.431327Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.431354Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.431881Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:////Users/sad/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:16:03.434670Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:16:03.435138Z","level":"INFO","fields":{"message":"Audit session started: e5dba023-9281-42e4-bdad-2b93b27fd066"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T14:16:03.435161Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.435179Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.435197Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.435228Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED (simulated pins -> High)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T14:16:03.435245Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.435261Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.435306Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:16:03.435709Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:16:03.435730Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T14:16:03.435744Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.436082Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor, DeviceInitialization, and CommandDiscovery)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.436120Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.436161Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:03.436175Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:04.437242Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T14:16:35.507556Z","level":"INFO","fields":{"message":"CommandDiscovery: ValidateCompatibility called - client v0.1.0, protocol v1.0.0"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:16:35.507700Z","level":"INFO","fields":{"message":"Client is compatible"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:17:30.243537Z","level":"INFO","fields":{"message":"CommandDiscovery: ValidateCompatibility called - client v0.1.0, protocol v1.0.0"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:17:30.243772Z","level":"INFO","fields":{"message":"Client is compatible"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:19:13.573587Z","level":"INFO","fields":{"message":"CommandDiscovery: ValidateCompatibility called - client v0.1.0, protocol v1.0.0"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:19:13.573686Z","level":"INFO","fields":{"message":"Client is compatible"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T14:21:41.201793Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2026-01-27T14:21:41.201947Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T15:01:59.865225Z","level":"INFO","fields":{"message":"DEMO PDU: Power OFF"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2026-01-27T15:01:59.865306Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to FAULT"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T15:02:18.181990Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2026-01-27T15:02:18.182088Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T15:02:53.782838Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2026-01-27T15:02:53.783976Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.784022Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.784037Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.784057Z","level":"WARN","fields":{"message":"⚠️  DANGER: Interlock checks DISABLED - Testing mode only!"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.785466Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.785560Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.786121Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:////Users/sad/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T15:02:53.789397Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T15:02:53.789971Z","level":"INFO","fields":{"message":"Audit session started: 8943e364-ada6-46ec-92e1-6974ad58d7e2"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T15:02:53.789992Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.790007Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.790021Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.790058Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED (simulated pins -> High)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T15:02:53.790075Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.790088Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.790148Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T15:02:53.790590Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T15:02:53.790608Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T15:02:53.790622Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.791224Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor, DeviceInitialization, and CommandDiscovery)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.791489Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.791696Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:53.791713Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:02:54.792333Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:03:02.023141Z","level":"INFO","fields":{"message":"CommandDiscovery: ValidateCompatibility called - client v0.1.0, protocol v1.0.0"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T15:03:02.023324Z","level":"INFO","fields":{"message":"Client is compatible"},"target":"omniscan_hw_server::grpc::command_discovery_service"}
+{"timestamp":"2026-01-27T15:03:07.506709Z","level":"INFO","fields":{"message":"DEMO PDU: Power ON"},"target":"omniscan_hw_server::devices::pdu::demo"}
+{"timestamp":"2026-01-27T15:03:07.506791Z","level":"INFO","fields":{"message":"DEMO GPIO: Power set to OK"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T15:11:09.669429Z","level":"INFO","fields":{"message":"DEMO GPIO: ⚡ Activation button ACTIVATED for 20 seconds"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T15:11:13.691408Z","level":"INFO","fields":{"message":"InitializeDetector requested by user: admin (33805f28-470f-41ab-8e20-7322b821e89d)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2026-01-27T15:11:13.691491Z","level":"INFO","fields":{"message":"DEMO Detector: Powered on"},"target":"omniscan_hw_server::devices::detectors::demo"}
+{"timestamp":"2026-01-27T15:11:13.691509Z","level":"INFO","fields":{"message":"Detector powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2026-01-27T15:11:15.599350Z","level":"INFO","fields":{"message":"InitializeMotion requested by user: admin (9faf834a-3331-4d76-b390-54104b455564)"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2026-01-27T15:11:15.599462Z","level":"INFO","fields":{"message":"XY Motion: Powered on"},"target":"omniscan_hw_server::devices::motions::xy_demo"}
+{"timestamp":"2026-01-27T15:11:15.599498Z","level":"INFO","fields":{"message":"Motion controller powered on and initialized successfully"},"target":"omniscan_hw_server::grpc::services"}
+{"timestamp":"2026-01-27T15:25:00.796078Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2026-01-27T15:25:00.796517Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.796576Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.796607Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.796638Z","level":"WARN","fields":{"message":"⚠️  DANGER: Interlock checks DISABLED - Testing mode only!"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.798484Z","level":"INFO","fields":{"message":"✅ Notification sender configured for GPIO and PDU (shared with GUI)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.798519Z","level":"INFO","fields":{"message":"🖥️  Starting in DEMO mode with GUI"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.799303Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:////Users/sad/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T15:25:00.803132Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T15:25:00.803738Z","level":"INFO","fields":{"message":"Audit session started: 452092dc-11a1-4d41-88aa-5b7cdcaeb0e5"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2026-01-27T15:25:00.803761Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.803779Z","level":"INFO","fields":{"message":"🔌 GPIO hardware ready - reading interlocks"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.803794Z","level":"INFO","fields":{"message":"🔧 DEV MODE: Arming all interlocks for testing"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.803836Z","level":"INFO","fields":{"message":"DEMO GPIO: ✅ All interlocks ARMED (simulated pins -> High)"},"target":"omniscan_hw_server::devices::gpio::demo"}
+{"timestamp":"2026-01-27T15:25:00.803854Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.803871Z","level":"INFO","fields":{"message":"✅ Using shared GPIO notification sender"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.803952Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T15:25:00.804667Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> IDLE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T15:25:00.804734Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2026-01-27T15:25:00.804771Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.805339Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized (including StateMonitor, DeviceInitialization, and CommandDiscovery)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.805398Z","level":"INFO","fields":{"message":"🚀 Starting gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.805439Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:00.805453Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server"},"target":"omniscan_hw_server"}
+{"timestamp":"2026-01-27T15:25:01.804533Z","level":"INFO","fields":{"message":"🖥️  Launching Server GUI..."},"target":"omniscan_hw_server"}

@@ -1,0 +1,122 @@
+# Omniscan WARP Configuration
+# Medical XRD diagnostic platform - IEC 62304 Class B compliant
+
+[project]
+name = "Omniscan"
+description = "Medical X-ray diffraction diagnostic platform with Rust hardware server, Python orchestrator, and cloud ML backend"
+version = "0.1.0"
+type = "medical_device"
+compliance = ["IEC-62304-B", "FDA-De-Novo", "ISO-14971", "ISO-13485"]
+
+[languages]
+primary = ["rust", "python"]
+secondary = ["typescript", "yaml"]
+
+[structure]
+hardware_server = "hardware-server/"
+orchestrator = "orchestrator/"
+ui = "ui/"
+cloud = "cloud/"
+docs = "docs/"
+tests = "tests/"
+requirements = "docs/requirements/"
+
+[development]
+rust_edition = "2021"
+rust_toolchain = "stable"
+python_version = "3.11+"
+node_version = "18+"
+
+[build]
+rust_build = "cargo build --release"
+rust_test = "cargo test"
+rust_lint = "cargo clippy -- -D warnings"
+rust_audit = "cargo audit"
+rust_fmt = "cargo fmt --check"
+
+python_test = "pytest"
+python_lint = "ruff check"
+python_fmt = "ruff format"
+
+[safety_critical]
+safety_class = "IEC-62304-B"
+risk_analysis = "ISO-14971"
+traceability_tool = "doorstop"
+audit_requirements = true
+
+[workflows]
+# Development workflow commands
+dev_setup = [
+    "cd hardware-server && cargo build",
+    "cd orchestrator && uv venv && uv pip install -r requirements.txt"
+]
+
+lint_all = [
+    "cargo clippy -- -D warnings",
+    "cargo fmt --check", 
+    "ruff check orchestrator/",
+    "ruff format --check orchestrator/"
+]
+
+test_all = [
+    "cargo test",
+    "pytest orchestrator/tests/"
+]
+
+security_audit = [
+    "cargo audit",
+    "safety check orchestrator/requirements.txt"
+]
+
+# Compliance checks
+compliance_check = [
+    "doorstop publish all docs/traceability/",
+    "cargo audit",
+    "pytest --cov=orchestrator tests/",
+    "cargo test -- --nocapture"
+]
+
+[environment]
+# Environment variables for development
+RUST_LOG = "debug"
+PYTHONPATH = "orchestrator/"
+OMNISCAN_ENV = "development"
+
+[documentation]
+architecture = "docs/architecture.md"
+requirements = "doorstop/"
+requirements_html = "doorstop/html/index.html"
+dhf = "docs/dhf/"
+risk_analysis = "doorstop/risk/"
+traceability = "doorstop/"
+
+[deployment]
+target_os = "windows"
+service_type = "windows_service"
+cloud_provider = "aws"
+compliance_validation = true
+
+[quality]
+code_coverage_target = 80
+static_analysis = true
+security_scan = true
+traceability_matrix = "docs/traceability/traceability-matrix.yml"
+
+[dependencies]
+# Key dependencies to track for SBOM
+rust_core = ["tokio", "tonic", "rustls", "tracing", "serde"]
+python_core = ["grpcio", "grpcio-tools", "cryptography", "pydantic"]
+
+[compliance_metadata]
+device_class = "Class II"
+fda_pathway = "De Novo"
+medical_specialty = "Radiology"
+risk_class = "Non-life-threatening"
+software_safety_class = "B"
+
+[contacts]
+project_owner = "TBD"
+system_engineer = "TBD" 
+software_architect = "TBD"
+qa_lead = "TBD"
+regulatory_affairs = "TBD"

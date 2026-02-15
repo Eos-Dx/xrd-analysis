@@ -1,0 +1,54 @@
+command_id = "abort"
+description = "Emergency abort - triggered by E-stop or key switch OFF - immediately terminate all operations and enter safe state"
+service = "Acquisition"
+audit_level = "Critical"
+risk_level = "Critical"
+
+# NOTE: This command is triggered automatically when:
+# - Emergency stop button is pressed (interlock violation)
+# - Key switch is turned to OFF position
+# - Any critical safety interlock fails
+
+[safety_requirements]
+allowed_states = ["Running", "PendingArmed", "Stopping", "Idle", "Calibration"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = false
+max_execution_time_seconds = 5
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "emergency_abort"
+message = "EMERGENCY ABORT - Hardware interlock triggered (E-stop pressed or key switch OFF)"
+
+[[execution.steps]]
+type = "StateTransition"
+to_state = "Safe"
+reason = "Emergency abort commanded"
+
+# Close beam-stop immediately for safety
+[[execution.steps]]
+type = "CallDevice"
+device = "gpio"
+method = "close_beam_stop"
+parameters = []
+
+[[execution.steps]]
+type = "CallDevice"
+device = "detector"
+method = "stop_exposure"
+parameters = []
+
+[[execution.steps]]
+type = "CallDevice"
+device = "motion"
+method = "stop"
+parameters = []
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "safety"
+change_type = "emergency_abort"

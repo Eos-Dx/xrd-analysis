@@ -1,0 +1,87 @@
+{"timestamp":"2025-10-23T12:23:59.503808Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:23:59.504119Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:23:59.504274Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:23:59.504401Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:23:59.506331Z","level":"ERROR","fields":{"message":"❌ CRITICAL: Failed to initialize audit logger: error returned from database: (code: 14) unable to open database file"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:07.592266Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:24:07.592499Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:07.592605Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:07.592705Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:07.593980Z","level":"ERROR","fields":{"message":"❌ CRITICAL: Failed to initialize audit logger: error returned from database: (code: 14) unable to open database file"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:17.084622Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:24:17.084877Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:17.085118Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:17.085316Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:17.087039Z","level":"ERROR","fields":{"message":"❌ CRITICAL: Failed to initialize audit logger: error returned from database: (code: 14) unable to open database file"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:31.880852Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:24:31.880995Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:31.881023Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:31.881046Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:24:31.882260Z","level":"ERROR","fields":{"message":"❌ CRITICAL: Failed to initialize audit logger: error returned from database: (code: 14) unable to open database file"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:25.155550Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:25:25.155722Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:25.155753Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:25.155771Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:25.157437Z","level":"ERROR","fields":{"message":"❌ CRITICAL: Failed to initialize audit logger: error returned from database: (code: 14) unable to open database file"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:31.582418Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:25:31.582543Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:31.582571Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:31.582592Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:31.583872Z","level":"ERROR","fields":{"message":"❌ CRITICAL: Failed to initialize audit logger: error returned from database: (code: 14) unable to open database file"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:38.425369Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:25:38.425513Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:38.425543Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:38.425561Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:25:38.426929Z","level":"ERROR","fields":{"message":"❌ CRITICAL: Failed to initialize audit logger: error returned from database: (code: 14) unable to open database file"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:26:23.254838Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:26:23.255149Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:26:23.255280Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:26:23.255731Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:26:23.257969Z","level":"ERROR","fields":{"message":"❌ CRITICAL: Failed to initialize audit logger: error returned from database: (code: 14) unable to open database file"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:26:54.571170Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:26:54.571290Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:26:54.571319Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:26:54.571342Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:26:54.572420Z","level":"ERROR","fields":{"message":"❌ CRITICAL: Failed to initialize audit logger: error returned from database: (code: 14) unable to open database file"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:27:49.146866Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:27:49.147034Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:27:49.147101Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:27:49.147127Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:27:49.147300Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-23T12:27:49.148905Z","level":"ERROR","fields":{"message":"❌ CRITICAL: Failed to initialize audit logger: error returned from database: (code: 14) unable to open database file"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:27.967257Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:28:27.967419Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:27.967447Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:27.967470Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:27.967622Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-23T12:28:27.989598Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-23T12:28:27.993328Z","level":"INFO","fields":{"message":"Audit session started: 7be8d699-b8c2-4dad-88f9-176f196391b7"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-23T12:28:27.993404Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:27.993457Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-23T12:28:27.996819Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> SAFE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-23T12:28:27.996889Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-23T12:28:27.996924Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized - ready for medical operations"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:27.997015Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:28.000150Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized: Acquisition, Motion, Health, Safety"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:28.000238Z","level":"INFO","fields":{"message":"🚀 Starting OMNIScan gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:28.000265Z","level":"INFO","fields":{"message":"📡 Services: Acquisition, Motion, Health, Safety"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:28.000294Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:28.000320Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server (SYS_OMNI-SERVER_001)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.847832Z","level":"INFO","fields":{"message":"Logging initialized - Level: INFO, Directory: logs"},"target":"omniscan_hw_server::logging"}
+{"timestamp":"2025-10-23T12:28:40.848185Z","level":"INFO","fields":{"message":"🩺 Starting OMNIScan Medical Device Hardware Server v0.2.0"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.848399Z","level":"INFO","fields":{"message":"📁 Config loaded from: config/server.toml"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.848576Z","level":"INFO","fields":{"message":"🔒 FDA/IEC 62304 Class B Medical Software"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.848821Z","level":"INFO","fields":{"message":"Connecting to audit database: sqlite:///C:/dev/Omniscan/omniscan-hw-server/logs/omniscan_audit.db?mode=rwc"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-23T12:28:40.851603Z","level":"INFO","fields":{"message":"Audit database initialized"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-23T12:28:40.855513Z","level":"INFO","fields":{"message":"Audit session started: 71480269-f786-4eae-aba1-0c75d04494e9"},"target":"omniscan_hw_server::audit"}
+{"timestamp":"2025-10-23T12:28:40.855727Z","level":"INFO","fields":{"message":"📋 Medical device audit logger initialized"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.855871Z","level":"INFO","fields":{"message":"Initializing safety state machine"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-23T12:28:40.858769Z","level":"INFO","fields":{"message":"Safety state transition: LOCKED -> SAFE (System startup)"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-23T12:28:40.858887Z","level":"INFO","fields":{"message":"Safety state machine initialized"},"target":"omniscan_hw_server::safety"}
+{"timestamp":"2025-10-23T12:28:40.858984Z","level":"INFO","fields":{"message":"🛡️  Safety state machine initialized - ready for medical operations"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.859097Z","level":"INFO","fields":{"message":"🔬 Medical device components initialized: Detector, Motion, GPIO"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.862943Z","level":"INFO","fields":{"message":"🌐 gRPC services initialized: Acquisition, Motion, Health, Safety"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.863154Z","level":"INFO","fields":{"message":"🚀 Starting OMNIScan gRPC server on [::1]:50051"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.863272Z","level":"INFO","fields":{"message":"📡 Services: Acquisition, Motion, Health, Safety"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.863378Z","level":"INFO","fields":{"message":"ℹ️  Running in plaintext mode (development only)"},"target":"omniscan_hw_server"}
+{"timestamp":"2025-10-23T12:28:40.863497Z","level":"INFO","fields":{"message":"🛡️  Safety Authority: Rust Hardware Server (SYS_OMNI-SERVER_001)"},"target":"omniscan_hw_server"}

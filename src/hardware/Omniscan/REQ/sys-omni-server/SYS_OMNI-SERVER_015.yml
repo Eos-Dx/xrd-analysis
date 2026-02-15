@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Data encryption implementation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall encrypt all database files at rest using AES-256-GCM with keys stored in Windows TPM 2.0. Use TLS 1.3 (fallback TLS 1.2) for all gRPC communications with mutual certificate authentication. Log all data access operations to audit database.'
+type: requirement
+links:
+- USR_OMNI-SERVER_008

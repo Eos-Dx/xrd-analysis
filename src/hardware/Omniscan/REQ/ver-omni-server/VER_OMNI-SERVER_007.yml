@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Exposure timing accuracy test'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Measure actual exposure duration for programmed values 1s, 10s, 60s, 300s. Verify ±50ms tolerance. Inject simulated beam intensity deviations >10% and confirm abort within 200ms. Validate timestamp precision in stored records.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_012

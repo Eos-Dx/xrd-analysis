@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Reliable and safe operation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The hardware server must ensure safe beam and motion control under all conditions; interlocks must disable beam on any fault.'
+type: requirement

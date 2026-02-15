@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: 'Offline operation and synchronization'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall operate fully without cloud connectivity. All measurement data stored locally. Optional cloud sync module monitors connectivity every 60s. On reconnection: upload queued data with exponential backoff (1s, 2s, 4s, max 60s). Network status exposed via GetSystemStatus endpoint.'
+type: requirement
+links:
+- USR_OMNI-SERVER_023
+- USR_OMNI-SERVER_024

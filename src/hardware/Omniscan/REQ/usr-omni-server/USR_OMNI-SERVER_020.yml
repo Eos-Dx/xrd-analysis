@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Update impact transparency'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide clear communication of update impacts including estimated downtime, workflow changes, calibration requirements post-update, new features, deprecated features, and security patches.'
+type: requirement

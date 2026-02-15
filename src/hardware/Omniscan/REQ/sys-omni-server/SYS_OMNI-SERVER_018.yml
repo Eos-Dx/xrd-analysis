@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Windows service implementation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall run as Windows service with automatic startup (delayed). Implement hardware reconnection on USB/network device detection events. Startup sequence: initialize logging → load config → connect hardware → enter IDLE or LOCKED state within 180s.'
+type: requirement
+links:
+- USR_OMNI-SERVER_013

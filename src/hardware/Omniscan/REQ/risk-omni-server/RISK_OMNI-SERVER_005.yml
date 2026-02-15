@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Data loss during upload'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Local database keeps all raw data until verified upload confirmation.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_006

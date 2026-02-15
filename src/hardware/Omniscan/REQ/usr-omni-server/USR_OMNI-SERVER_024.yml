@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Network management'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide IT administrators with real-time cloud connectivity status dashboard, upload queue monitoring, failed upload notification, bandwidth throttling controls, synchronization pause/resume controls, and secure proxy configuration support.'
+type: requirement

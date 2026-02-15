@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Metadata capture completeness test'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Verify all required metadata fields captured and stored for each measurement: device serial, firmware versions, username, timestamps, calibration ID, exposure parameters, quality metrics, environmental data. Test with various scenarios including warnings/faults.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_016

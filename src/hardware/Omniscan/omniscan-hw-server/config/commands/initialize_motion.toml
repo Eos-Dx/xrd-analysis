@@ -1,0 +1,59 @@
+command_id = "initialize_motion"
+description = "Initialize motion controller (requires key switch ON, enable button, and safe interlocks)"
+service = "DeviceInitialization"
+audit_level = "High"
+risk_level = "Medium"
+
+[safety_requirements]
+allowed_states = ["Idle", "Locked"]
+requires_enable_button = true
+requires_calibration = false
+requires_key_switch = true
+enable_timeout_seconds = 20
+max_execution_time_seconds = 60
+
+[[safety_requirements.interlock_checks]]
+name = "emergency_stop"
+required_value = false
+error_message = "Emergency stop is pressed"
+
+[execution]
+rollback_on_failure = true
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "motion_initialization"
+message = "Motion controller initialization requested"
+
+[[execution.steps]]
+type = "WaitForCondition"
+condition = "enable_button_pressed"
+timeout_ms = 20000
+poll_interval_ms = 100
+
+[[execution.steps]]
+type = "CallDevice"
+device = "motion"
+method = "initialize"
+parameters = []
+
+[[execution.steps]]
+type = "WaitForCondition"
+condition = "motion_ready"
+timeout_ms = 30000
+poll_interval_ms = 500
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "motion_initialization_completed"
+message = "Motion controller initialization completed successfully"
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "motion"
+change_type = "initialized"
+
+[[execution.error_cleanup]]
+type = "LogAudit"
+event_type = "motion_init_failed"
+message = "Motion initialization failed"

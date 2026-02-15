@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Calibration trending and diagnostics'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall maintain historical calibration results for ≥90 days. Provide gRPC endpoints: GetCalibrationHistory, GetCalibrationTrend, ExportCalibrationData. Calculate rolling statistics (mean, std-dev, min, max) for key parameters.'
+type: requirement
+links:
+- USR_OMNI-SERVER_010

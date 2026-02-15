@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Data retention'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'All metadata, logs, and calibration records must be stored indefinitely; archival encryption optional after ≥ 5 years.'
+type: requirement
+links:
+- USR_OMNI-SERVER_003

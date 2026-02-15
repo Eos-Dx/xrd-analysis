@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'System responsiveness'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall meet performance benchmarks: measurement initiation ≤2s, emergency stop response ≤100ms, state transition display ≤1s, data commit ≤5s post-measurement, calibration completion ≤10min, historical data search ≤5s, UI response ≤200ms.'
+type: requirement

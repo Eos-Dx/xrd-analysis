@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Clinician interface requirements'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide clinicians with comprehensive data visualization including high-resolution zoomable graphs, quality issue highlighting, tabular measurement parameters, data export in standard formats, and comparison tools.'
+type: requirement

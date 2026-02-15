@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Interlocks and watchdogs'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall include key switch, enable button, E-stop, door sensor, beam watchdog, and optional over-temperature input.'
+type: requirement
+links:
+- USR_OMNI-SERVER_001

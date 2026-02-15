@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Quality metrics calculation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall calculate and store quality metrics for each measurement: signal-to-noise ratio (SNR), beam intensity mean/std-dev, calibration validity flag, interlock violation flags. Flag measurements with any anomaly as "REVIEW_REQUIRED".'
+type: requirement
+links:
+- USR_OMNI-SERVER_006

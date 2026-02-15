@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Diagnostic and troubleshooting support'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide IT administrators with structured log files, standard user account operation, specific error messages with component identification, service restart capability, and remote monitoring capability for system health.'
+type: requirement

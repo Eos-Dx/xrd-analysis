@@ -1,0 +1,58 @@
+command_id = "stop"
+description = "Controlled stop of current measurement or operation"
+service = "Acquisition"
+audit_level = "High"
+risk_level = "Medium"
+
+[safety_requirements]
+allowed_states = ["Running", "PendingArmed"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = true
+max_execution_time_seconds = 30
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "stop_requested"
+message = "User requested controlled stop"
+
+[[execution.steps]]
+type = "StateTransition"
+to_state = "Stopping"
+reason = "Controlled stop initiated"
+
+[[execution.steps]]
+type = "CallDevice"
+device = "detector"
+method = "stop_exposure"
+parameters = []
+
+# Close beam-stop (shutter) to block X-rays
+[[execution.steps]]
+type = "CallDevice"
+device = "gpio"
+method = "close_beam_stop"
+parameters = []
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "beam_stop_closed"
+message = "Beam-stop closed - X-rays disabled"
+
+[[execution.steps]]
+type = "StateTransition"
+to_state = "Idle"
+reason = "Stop completed successfully"
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "safety"
+change_type = "stopped"
+
+[[execution.error_cleanup]]
+type = "StateTransition"
+to_state = "Safe"
+reason = "Stop failed - entering safe state"

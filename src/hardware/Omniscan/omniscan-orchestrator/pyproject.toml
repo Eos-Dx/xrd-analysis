@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "omniscan-orchestrator"
+version = "0.1.0"
+description = "Omniscan Orchestrator: CLI, REST API server, and privacy gateway for medical workflow coordination"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+authors = [{ name = "Omniscan", email = "dev@omniscan.local" }]
+license = { text = "Proprietary" }
+dependencies = [
+  "typer>=0.12.0",
+  "cryptography>=42.0.0",
+  "rich>=13.7.0",
+  "prompt-toolkit>=3.0.0",
+  "grpcio>=1.60.0",
+  "grpcio-tools>=1.60.0",
+  "protobuf>=4.25.0",
+  "httpx>=0.27.0",
+  "fastapi>=0.109.0",
+  "uvicorn[standard]>=0.27.0",
+  "pydantic>=2.5.0",
+  "websockets>=12.0"
+]
+
+[project.scripts]
+omni-orch = "omniscan_orchestrator.cli:app"
+omni-rest = "omniscan_orchestrator.rest_cli:app"
+
+[project.optional-dependencies]
+test = [
+  "pytest>=7.4.0",
+  "pytest-cov>=4.1.0",
+  "pytest-asyncio>=0.21.0",
+  "pytest-mock>=3.11.0",
+  "coverage>=7.3.0",
+  "hypothesis>=6.88.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omniscan_orchestrator"]

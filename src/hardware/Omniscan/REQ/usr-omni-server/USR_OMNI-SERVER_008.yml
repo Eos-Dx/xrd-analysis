@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Data security and HIPAA compliance'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall encrypt all patient data at rest using AES-256-GCM, encrypt data in transit using TLS 1.3 or TLS 1.2 minimum, maintain access logs for all patient data operations, and store credentials in hardware-protected storage (TPM).'
+type: requirement

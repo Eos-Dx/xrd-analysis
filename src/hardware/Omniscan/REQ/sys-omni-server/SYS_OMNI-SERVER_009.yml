@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Session security'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Require mutual TLS + password + key switch; session expires on disconnect.'
+type: requirement
+links:
+- USR_OMNI-SERVER_001

@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Audit database'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Maintain append-only, encrypted audit log with TPM-signed daily roll; export read-only for audits.'
+type: requirement
+links:
+- USR_OMNI-SERVER_003

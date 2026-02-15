@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: 'Software update mechanism'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall support signed update packages (.omnipkg format) verified with Ed25519 signatures. Update process: backup database → stop service → extract files → verify checksums → start service → validate startup. Rollback on validation failure. Require ADMIN role + key switch for update installation.'
+type: requirement
+links:
+- USR_OMNI-SERVER_019
+- USR_OMNI-SERVER_020

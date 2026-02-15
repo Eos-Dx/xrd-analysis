@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Session management implementation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall implement exclusive session control: only one active operator session allowed. Session token with 12-hour expiration. Automatic session termination on gRPC connection loss. Broadcast current operator ID and session start time via GetState endpoint.'
+type: requirement
+links:
+- USR_OMNI-SERVER_015

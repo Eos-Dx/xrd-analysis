@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Maintenance mode unauthorized access'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Multi-factor authentication (key switch + password) prevents unauthorized maintenance mode access. Audit log records all access attempts with operator identity and timestamp.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_011

@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Metadata capture'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall automatically capture and store: device serial number, firmware versions, authenticated username, measurement timestamp (UTC+local), linked calibration ID, all exposure parameters, real-time quality metrics, active warnings/faults during measurement.'
+type: requirement
+links:
+- USR_OMNI-SERVER_009

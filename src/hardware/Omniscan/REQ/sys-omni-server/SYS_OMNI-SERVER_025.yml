@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Analytics and reporting'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall provide gRPC endpoints for analytics queries: GetMeasurementStats (success rate, count by operator), GetCalibrationTrends (SPC charts data), GetQualityMetrics (SNR trends). Calculate statistics over configurable time windows (day, week, month).'
+type: requirement
+links:
+- USR_OMNI-SERVER_022

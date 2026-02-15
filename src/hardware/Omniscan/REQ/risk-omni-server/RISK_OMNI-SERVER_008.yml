@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Unreliable diagnostic data from faulty measurement'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Quality metrics flag measurements with anomalies (calibration expired, beam instability, interlock violations). REVIEW_REQUIRED flag alerts clinicians to potential data quality issues preventing misdiagnosis.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_013

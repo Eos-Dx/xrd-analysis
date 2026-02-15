@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Role-based access control implementation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall define roles: OPERATOR (measurement/calibration), SENIOR (audit access), MAINTENANCE (full diagnostics), ADMIN (config/users). Enforce permissions at gRPC endpoint level. Store user credentials hashed (Argon2id) in encrypted database. Require key switch for MAINTENANCE role activation.'
+type: requirement
+links:
+- USR_OMNI-SERVER_016

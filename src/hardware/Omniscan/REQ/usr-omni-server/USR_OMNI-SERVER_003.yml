@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Data integrity and traceability'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'All measurements and logs must remain traceable to device, operator, and calibration data.'
+type: requirement

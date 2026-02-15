@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Comprehensive audit trail'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall maintain a complete, tamper-evident audit trail with append-only storage, cryptographic integrity protection, exportable in standard formats, searchable and filterable, minimum 7-year retention, and daily automated integrity verification.'
+type: requirement

@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: 'Structured error messages'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall return gRPC error responses with: error_code (string), user_message (plain language), technical_details (for logs), corrective_actions (list), escalation_required (bool), support_reference_id (UUID). Define error code taxonomy: DEV_xxx (device), NET_xxx (network), CAL_xxx (calibration), etc.'
+type: requirement
+links:
+- USR_OMNI-SERVER_017
+- USR_OMNI-SERVER_018

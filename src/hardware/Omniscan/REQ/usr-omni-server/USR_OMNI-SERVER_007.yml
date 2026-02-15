@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Data persistence and fault tolerance'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall ensure zero measurement data loss under all conditions including system failures through immediate persistent storage, transaction-based storage with automatic rollback, and graceful shutdown with data preservation.'
+type: requirement

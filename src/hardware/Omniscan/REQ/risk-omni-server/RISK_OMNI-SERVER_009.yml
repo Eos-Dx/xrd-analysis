@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: 'Patient data breach or unauthorized access'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'AES-256-GCM encryption at rest and TLS 1.3 in transit protect patient data. TPM-based key storage prevents key extraction. Access logging provides audit trail for HIPAA compliance. Role-based access control limits data access.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_015
+- SYS_OMNI-SERVER_021

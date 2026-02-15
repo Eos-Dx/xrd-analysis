@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: 'Integration test'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Validate gRPC state machine and interlock simulation.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_008
+- SYS_OMNI-SERVER_003

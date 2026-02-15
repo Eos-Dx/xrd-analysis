@@ -1,0 +1,314 @@
+syntax = "proto3";
+package hub.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Context for all commands - required for audit trail and safety
+message CommandContext {
+  string command_id = 1;        // UUID for command tracking
+  string user = 2;              // User context
+  string reason = 3;            // Reason for command
+  google.protobuf.Timestamp timestamp = 4;  // Command timestamp
+}
+
+message Empty {}
+
+// System state machine as defined in context
+enum ServerState {
+  STATE_UNSPECIFIED = 0;
+  IDLE = 1;
+  PENDING_ARMED = 2;           // Waiting for physical enable
+  RUNNING = 3;
+  STOPPING = 4;
+  SAFE = 5;                    // Emergency safe state
+}
+
+// Detector status
+enum DetectorStatus {
+  DETECTOR_OFF = 0;
+  DETECTOR_IDLE = 1;
+  DETECTOR_EXPOSING = 2;
+  DETECTOR_READING = 3;
+  DETECTOR_ERROR = 4;
+}
+
+// Motion status
+enum MotionStatus {
+  MOTION_OFF = 0;
+  MOTION_IDLE = 1;
+  MOTION_MOVING = 2;
+  MOTION_HOMING = 3;
+  MOTION_ERROR = 4;
+  MOTION_LIMIT_HIT = 5;
+}
+
+// Interlock status for safety system
+message InterlockStatus {
+  bool emergency_stop = 1;      // E-stop not pressed
+  bool door_closed = 2;         // Safety door closed
+  bool radiation_safe = 3;      // Radiation levels safe
+  bool cooling_ok = 4;          // Cooling system operational
+  bool power_ok = 5;            // Power stable
+  bool overall_safe = 6;        // All interlocks satisfied
+  string violation_reason = 7;   // Reason if not safe
+  bool enable_button = 8;       // Enable button pressed (for non-safe operations)
+  bool key_switch = 9;          // Key switch in ON position
+}
+
+// Device health information
+message DetectorHealth {
+  bool powered = 1;
+  float temperature = 2;        // Celsius
+  float voltage = 3;           // Volts
+  DetectorStatus status = 4;
+  uint32 last_exposure_time = 5; // milliseconds
+  uint64 total_exposures = 6;
+  uint64 uptime_seconds = 7;
+}
+
+message MotionHealth {
+  bool powered = 1;
+  MotionStatus status = 2;
+  optional double position = 3; // mm, null if not homed
+  optional double target_position = 4;
+  bool is_homed = 5;
+  uint64 total_moves = 6;
+  uint64 uptime_seconds = 7;
+}
+
+// Exposure result
+message ExposureResult {
+  uint32 exposure_time_ms = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  uint64 data_size = 3;
+  optional string data_path = 4;
+  float detector_temp = 5;
+}
+
+// Command requests
+message StartExposureRequest {
+  CommandContext ctx = 1;
+  uint32 exposure_time_ms = 2;   // Required exposure time
+  uint32 max_timeout_ms = 3;     // Safety timeout
+}
+
+message StopRequest { CommandContext ctx = 1; }
+message AbortRequest { CommandContext ctx = 1; }
+
+message MoveToRequest {
+  CommandContext ctx = 1;
+  double position_mm = 2;        // Single axis for now
+}
+
+message MoveRelativeRequest {
+  CommandContext ctx = 1;
+  double distance_mm = 2;
+}
+
+message HomeRequest { CommandContext ctx = 1; }
+message SetVelocityRequest {
+  CommandContext ctx = 1;
+  double velocity_mm_s = 2;
+}
+
+message PowerDeviceRequest {
+  CommandContext ctx = 1;
+  string device_type = 2;        // "detector", "motion", "gpio"
+  bool power_on = 3;
+}
+
+message CalibrateDetectorRequest { CommandContext ctx = 1; }
+
+message InitializeDetectorRequest { CommandContext ctx = 1; }
+message InitializeMotionRequest { CommandContext ctx = 1; }
+
+// State query responses
+message GpioStateResponse {
+  bool powered = 1;
+  bool key_switch_on = 2;
+  bool activation_button_active = 3;
+  optional uint32 activation_remaining_secs = 4;
+  InterlockStatus interlocks = 5;
+  string main_led = 6;              // "Red", "Orange", "Green", "Off"
+  string radiation_led = 7;
+}
+
+message DetectorStateResponse {
+  bool powered = 1;
+  bool initialized = 2;
+  DetectorStatus status = 3;
+  float temperature = 4;
+  uint64 total_exposures = 5;
+}
+
+message MotionStateResponse {
+  bool powered = 1;
+  bool initialized = 2;
+  bool is_homed = 3;
+  MotionStatus status = 4;
+  optional double position_x = 5;
+  optional double position_y = 6;
+  uint64 total_moves = 7;
+}
+
+message FullServerStateResponse {
+  ServerState safety_state = 1;
+  GpioStateResponse gpio = 2;
+  DetectorStateResponse detector = 3;
+  MotionStateResponse motion = 4;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+// State change notification (no details)
+message StateChangeNotification {
+  google.protobuf.Timestamp timestamp = 1;
+  string component = 2;             // "gpio", "detector", "motion", "safety"
+  string change_type = 3;           // "state_changed", "power_changed", etc.
+}
+
+// Response messages
+message GetStateResponse {
+  ServerState state = 1;
+  string detail = 2;
+  InterlockStatus interlocks = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+message GetPositionResponse {
+  optional double position_mm = 1;
+  bool is_homed = 2;
+}
+
+message GetExposureResultResponse {
+  bool has_result = 1;
+  optional ExposureResult result = 2;
+}
+
+message HealthComponent {
+  string name = 1;
+  bool ok = 2;
+  string detail = 3;
+  google.protobuf.Timestamp last_check = 4;
+}
+
+message AggregateHealth {
+  bool ok = 1;
+  repeated HealthComponent components = 2;
+  InterlockStatus interlocks = 3;
+}
+
+// Event streaming for real-time monitoring
+message SystemEvent {
+  google.protobuf.Timestamp timestamp = 1;
+  oneof event {
+    StateChangedEvent state_changed = 2;
+    InterlockEvent interlock_event = 3;
+    ExposureEvent exposure_event = 4;
+    MotionEvent motion_event = 5;
+    ErrorEvent error = 6;
+  }
+}
+
+message StateChangedEvent {
+  ServerState old_state = 1;
+  ServerState new_state = 2;
+  string reason = 3;
+}
+
+message InterlockEvent {
+  InterlockStatus status = 1;
+  string triggered_by = 2;
+}
+
+message ExposureEvent {
+  enum Type {
+    STARTED = 0;
+    COMPLETED = 1;
+    STOPPED = 2;
+    FAILED = 3;
+  }
+  Type type = 1;
+  uint32 exposure_time_ms = 2;
+}
+
+message MotionEvent {
+  enum Type {
+    MOVE_STARTED = 0;
+    MOVE_COMPLETED = 1;
+    HOME_COMPLETED = 2;
+    STOPPED = 3;
+    LIMIT_HIT = 4;
+  }
+  Type type = 1;
+  optional double position_mm = 2;
+}
+
+message ErrorEvent {
+  string component = 1;
+  string error_message = 2;
+  string error_code = 3;
+}
+
+// Services as defined in context document
+service Acquisition {
+  rpc StartExposure(StartExposureRequest) returns (Empty);
+  rpc Stop(StopRequest) returns (Empty);
+  rpc Abort(AbortRequest) returns (Empty);
+  rpc GetState(Empty) returns (GetStateResponse);
+  rpc GetLastExposureResult(Empty) returns (GetExposureResultResponse);
+  rpc CalibrateDetector(CalibrateDetectorRequest) returns (Empty);
+  // Stream real-time events for monitoring
+  rpc SubscribeRunEvents(Empty) returns (stream SystemEvent);
+}
+
+service Motion {
+  rpc MoveTo(MoveToRequest) returns (Empty);
+  rpc MoveRelative(MoveRelativeRequest) returns (Empty);
+  rpc Home(HomeRequest) returns (Empty);
+  rpc Stop(StopRequest) returns (Empty);
+  rpc SetVelocity(SetVelocityRequest) returns (Empty);
+  rpc GetPosition(Empty) returns (GetPositionResponse);
+}
+
+service DeviceControl {
+  rpc PowerDevice(PowerDeviceRequest) returns (Empty);
+  rpc GetDetectorHealth(Empty) returns (DetectorHealth);
+  rpc GetMotionHealth(Empty) returns (MotionHealth);
+}
+
+service Safety {
+  rpc GetInterlockStatus(Empty) returns (InterlockStatus);
+  rpc ResetInterlocks(CommandContext) returns (Empty);
+  rpc CheckSafetyToOperate(Empty) returns (InterlockStatus);
+}
+
+service Health {
+  rpc Liveness(Empty) returns (Empty);                    // Basic liveness check
+  rpc Readiness(Empty) returns (Empty);                   // Readiness for operations
+  rpc GetAggregateHealth(Empty) returns (AggregateHealth); // Detailed health
+}
+
+// State monitoring service for orchestrator
+service StateMonitor {
+  // Subscribe to state change notifications (open to all)
+  rpc SubscribeToStateUpdates(Empty) returns (stream StateChangeNotification);
+  
+  // Query detailed state (requires authentication)
+  rpc GetFullServerState(Empty) returns (FullServerStateResponse);
+  rpc GetGpioState(Empty) returns (GpioStateResponse);
+  rpc GetDetectorState(Empty) returns (DetectorStateResponse);
+  rpc GetMotionState(Empty) returns (MotionStateResponse);
+}
+
+// Device initialization service
+service DeviceInitialization {
+  // Initialize detector (requires: key switch ON, activation button active, interlocks safe)
+  rpc InitializeDetector(InitializeDetectorRequest) returns (DetectorStateResponse);
+  
+  // Initialize motion system (requires: key switch ON, activation button active, interlocks safe)
+  rpc InitializeMotion(InitializeMotionRequest) returns (MotionStateResponse);
+  
+  // Power off devices
+  rpc PowerOffDetector(CommandContext) returns (Empty);
+  rpc PowerOffMotion(CommandContext) returns (Empty);
+}

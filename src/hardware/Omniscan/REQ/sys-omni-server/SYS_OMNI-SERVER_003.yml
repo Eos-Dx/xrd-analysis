@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Operational states'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The state machine shall implement {IDLE, PENDING_ARMED, RUNNING, STOPPING, SAFE, CALIBRATION, MAINTENANCE, LOCKED}.'
+type: requirement
+links:
+- USR_OMNI-SERVER_001

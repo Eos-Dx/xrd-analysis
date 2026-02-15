@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Measurement quality validation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide clinicians with comprehensive quality indicators including flagging deviations, beam intensity statistics, identification of data collected during safety warnings, and quality metrics (SNR, beam stability, calibration validity).'
+type: requirement

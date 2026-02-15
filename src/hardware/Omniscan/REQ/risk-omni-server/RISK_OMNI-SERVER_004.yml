@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Unauthorized configuration'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Require signed update package and key switch activation.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_010

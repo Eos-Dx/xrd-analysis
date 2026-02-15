@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Motion when E-stop pressed'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Hardware E-stop line breaks power to actuators.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_002

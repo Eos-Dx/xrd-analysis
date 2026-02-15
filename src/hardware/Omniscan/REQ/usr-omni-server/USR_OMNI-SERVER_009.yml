@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Complete traceability'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall capture comprehensive metadata automatically including device identification, operator identification, temporal data, calibration linkage, measurement parameters, quality metrics, and environmental data for complete traceability.'
+type: requirement

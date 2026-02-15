@@ -1,0 +1,142 @@
+command_id = "start_exposure"
+description = "Begin X-ray exposure measurement with physical enable button confirmation"
+service = "Acquisition"
+audit_level = "Critical"
+risk_level = "High"
+
+[safety_requirements]
+allowed_states = ["Idle", "Calibrated"]
+requires_enable_button = true
+requires_calibration = true
+requires_key_switch = true
+enable_timeout_seconds = 20
+max_execution_time_seconds = 300
+
+[[safety_requirements.interlock_checks]]
+name = "door_closed"
+required_value = true
+error_message = "Safety door must be closed for X-ray exposure"
+
+[[safety_requirements.interlock_checks]]
+name = "emergency_stop"
+required_value = false
+error_message = "Emergency stop is pressed - cannot start exposure"
+
+[[safety_requirements.interlock_checks]]
+name = "beam_watchdog"
+required_value = true
+error_message = "Beam watchdog fault - radiation levels unsafe"
+
+[[parameters]]
+name = "exposure_time_ms"
+required = true
+description = "Exposure time in milliseconds"
+default_value = "1000"
+
+[parameters.param_type]
+type = "Float"
+unit = "milliseconds"
+min = 100.0
+max = 300000.0
+
+[[parameters]]
+name = "max_timeout_ms"
+required = false
+description = "Maximum timeout for exposure operation"
+
+[parameters.param_type]
+type = "Integer"
+min = 1000
+max = 600000
+
+[execution]
+rollback_on_failure = true
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "exposure_requested"
+message = "User requested X-ray exposure"
+
+[[execution.steps]]
+type = "StateTransition"
+to_state = "PendingArmed"
+reason = "Awaiting physical enable button confirmation"
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "safety"
+change_type = "pending_armed"
+
+[[execution.steps]]
+type = "WaitForCondition"
+condition = "enable_button_pressed"
+timeout_ms = 20000
+poll_interval_ms = 100
+
+# Open beam-stop (shutter) to allow X-rays through
+[[execution.steps]]
+type = "CallDevice"
+device = "gpio"
+method = "open_beam_stop"
+parameters = []
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "beam_stop_opened"
+message = "Beam-stop opened - X-rays enabled"
+
+[[execution.steps]]
+type = "CallDevice"
+device = "detector"
+method = "start_exposure"
+parameters = ["exposure_time_ms"]
+
+[[execution.steps]]
+type = "StateTransition"
+to_state = "Running"
+reason = "Exposure started successfully"
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "detector"
+change_type = "exposure_started"
+
+# Wait for exposure to complete, then close beam-stop
+[[execution.steps]]
+type = "WaitForCondition"
+condition = "detector_idle"
+timeout_ms = 300000
+poll_interval_ms = 500
+
+# Close beam-stop after exposure completes
+[[execution.steps]]
+type = "CallDevice"
+device = "gpio"
+method = "close_beam_stop"
+parameters = []
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "beam_stop_closed"
+message = "Beam-stop closed after exposure completion"
+
+[[execution.steps]]
+type = "StateTransition"
+to_state = "Idle"
+reason = "Exposure completed successfully"
+
+[[execution.error_cleanup]]
+type = "CallDevice"
+device = "gpio"
+method = "close_beam_stop"
+parameters = []
+
+[[execution.error_cleanup]]
+type = "StateTransition"
+to_state = "Safe"
+reason = "Exposure start failed - returning to safe state"
+
+[[execution.error_cleanup]]
+type = "LogAudit"
+event_type = "exposure_failed"
+message = "Exposure failed to start properly"

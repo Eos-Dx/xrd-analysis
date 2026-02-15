@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Quality improvement analytics'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide analytical capabilities including measurement success/failure rate reporting, calibration trend analysis, sample re-run analysis, quality control charts, equipment utilization metrics, and predictive maintenance indicators.'
+type: requirement

@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Calibration enforcement'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Daily calibration must be performed once per 24 h; operation without valid calibration is prohibited.'
+type: requirement
+links:
+- USR_OMNI-SERVER_002

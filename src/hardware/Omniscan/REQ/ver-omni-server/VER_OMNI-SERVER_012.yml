@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Audit trail integrity validation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Test append-only audit log prevents modification. Validate HMAC-SHA256 chain integrity. Test tampering detection. Verify daily TPM-signed hash generation. Test export functionality with digital signature validation. Confirm 7-year retention configuration.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_024

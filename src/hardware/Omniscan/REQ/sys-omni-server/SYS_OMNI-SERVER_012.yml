@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Exposure timing precision'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall use high-resolution timers (≥1kHz) to control beam duration within ±50ms. Monitor beam intensity every 100ms. If intensity deviates >±10% from target for >200ms, abort exposure and transition to SAFE state. Record all parameters with microsecond timestamps.'
+type: requirement
+links:
+- USR_OMNI-SERVER_005

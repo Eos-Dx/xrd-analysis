@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Excessive exposure from timing error'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'High-resolution timer with ±50ms tolerance prevents excessive sample exposure. Watchdog monitors beam duration and forces hardware shutdown if software timer fails. Independent hardware interlock provides backup protection.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_012

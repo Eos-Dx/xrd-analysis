@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Audit trail tampering or deletion'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Append-only database with HMAC-SHA256 chaining prevents retroactive modification. Daily TPM-signed hashes enable tamper detection. Separate audit database isolated from operational data prevents accidental deletion.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_024

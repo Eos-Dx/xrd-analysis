@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Calibration procedure test'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Verify enforcement of 24-hour calibration rule.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_004

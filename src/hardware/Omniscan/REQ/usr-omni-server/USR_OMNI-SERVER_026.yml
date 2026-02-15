@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Capacity and scalability'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall support 100 measurements per day per device, 10 years of historical data storage locally, 10 concurrent users, continuous 12-hour daily operation, 30-day uptime without restart requirement, and 1TB local data storage minimum.'
+type: requirement

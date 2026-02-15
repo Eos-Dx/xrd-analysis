@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Software watchdog failure'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Independent hardware watchdog resets beam enable line.'
+type: requirement
+links:
+- SYS_OMNI-SERVER_002

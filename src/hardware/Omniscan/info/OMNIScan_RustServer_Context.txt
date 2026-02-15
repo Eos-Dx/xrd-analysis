@@ -1,0 +1,109 @@
+# OMNIScan Hardware Server Context (for LLM development)
+
+## Overview
+We are building a Rust-based Hardware Server running on Windows (x86_64, MSVC). It will control a medical diagnostic device emitting X-rays. The server communicates via gRPC with a Python Orchestrator and enforces all safety-critical operations locally. The system must comply with FDA/IEC 62304 Class B software requirements.
+
+**Note:** At this stage, not all hardware commands, GPIO mappings, or interlock lines have been defined. Development will start by **porting and refactoring existing functionality** from the **current C# implementation of the BIS (Bruker Instrument Server) integration**, which handles detector communication and basic hardware control.
+
+## Architecture
+- **Rust Hardware Server**: Windows Service (critical, starts with OS). Controls devices via C DLLs and TCP protocols.
+- **Orchestrator (Python)**: Connects over gRPC with mTLS. May run locally or remotely. Handles workflow and UI logic.
+- **UI**: Browser-based (REST + WebSocket to Orchestrator).
+
+## Device Interfaces (initial scope)
+- Bruker detector — proprietary TCP protocol (BIS). **Existing C# BIS integration serves as reference implementation.**
+- AdvoCam detector — C DLL (to be wrapped in Rust FFI later).
+- Thorlabs motion controller — C DLL.
+- Power supply — TCP/IP (password-protected).
+- Future device — TBD.
+
+## Communication
+- **Internal:** Rust Server ⇄ Orchestrator via gRPC (tonic, HTTP/2)
+- **External:** Orchestrator ⇄ UI via REST + WebSocket
+- **Security:** mTLS with hardware-backed keys
+  - Server key in TPM
+  - Orchestrator key in USB/HSM
+  - Root CA → Device CA + Orchestrator CA
+
+## Safety Model
+- **Physical safety enforced in hardware:**
+  - PCIe GPIO card + safety relay/PLC gating beam/power
+  - Door, E-stop, Enable button, Key-switch inputs (read-only)
+  - Hardware timed cutout (beam auto-off after max exposure)
+- **Software safety enforced by Rust server:**
+  - Pre-check interlocks before commands
+  - Abort if interlock opens mid-run
+  - Exposure/dose timer watchdog (ABORTED_DUE_TO_LIMIT)
+  - Arm/Enable window for physical confirmation
+  - SAFE state assert after abort
+
+## Safety Profile
+- Encrypted and signed configuration stored on the device
+- AES-GCM encryption; key sealed to TPM
+- Signed by Engineer CA; hash measured into TPM PCR
+- Modifiable only via Engineer USB + service switch (physical action)
+- Defines:
+  - Required interlocks (mapping TBD)
+  - Commands needing physical enable (to be finalized)
+  - Exposure/dose/time limits
+  - GPIO mapping (to be defined)
+- Example vital commands: StartMachine, StartMeasurement
+
+## State Machine (conceptual)
+```
+IDLE
+ └─ StartMeasurement (check interlocks) →
+       if requires_physical_enable → PENDING_ARMED (arm_window)
+           ├─ ENABLE pressed → RUNNING
+           ├─ timeout/interlock open → IDLE (REJECTED/ABORT)
+       else → RUNNING
+RUNNING
+ ├─ Stop → STOPPING → IDLE
+ ├─ Abort → SAFE → IDLE
+ ├─ Interlock opens → SAFE → IDLE
+ ├─ Exposure timer → SAFE → IDLE
+ └─ Completed → IDLE
+```
+
+## Logging
+- **Server Local Audit DB** (engineer-only): command, timestamps, interlocks, exposure, dose, abort reasons, config hashes. Encrypted, append-only, daily signed roll.
+- **Orchestrator DB**: sent/received records (no direct read of HW logs).
+- Structured `tracing` JSON logs + Windows Event Log for high-level health.
+
+## Compliance Targets
+- FDA / IEC 62304 Class B
+- ISO 14971 (risk management)
+- FDA Cybersecurity 2023 guidance (mTLS, signed configs, SBOMs)
+- IEC 62366 (human factors: physical enable, alarm signaling)
+
+## Key Design Principles
+1. Server = Master authority. Orchestrator only requests.
+2. Physical safety chain non-bypassable in software.
+3. Rust unsafe confined to FFI (vendor DLLs).
+4. gRPC API typed, versioned (`hub.v1`), all commands carry `command_id`.
+5. Each command logged with timestamps, interlock snapshot, and hash.
+6. Service auto-starts with Windows; critical recovery policy (auto-restart).
+
+## Development Approach
+- **Phase 1:** Port the **existing BIS C# logic** to Rust (`tonic` + async TCP module). Ensure functional equivalence and validate protocol handling.
+- **Phase 2:** Introduce gRPC endpoints and secure communication (mTLS).
+- **Phase 3:** Integrate Safety Profile, interlocks, GPIO abstraction, and watchdogs.
+- **Phase 4:** Add other devices (AdvoCam, Thorlabs, Power Supply) and expand telemetry.
+
+## gRPC API Seeds (initial scope)
+- Acquisition service: StartMeasurement, Stop, Abort, SubscribeRunEvents
+- Health service: Liveness, Readiness
+- Message fields: command_id, user_context, reason, timestamps, state transitions
+
+## Next Development Step
+The LLM should generate the Rust project layout with:
+- DeviceDriver trait and driver modules (BIS TCP first, referencing C# implementation)
+- gRPC server (tonic + rustls, behind Envoy for TPM mTLS)
+- SafetyProfile manager (verify signature, unseal TPM key)
+- ArmController (PENDING_ARMED logic with GPIO feedback)
+- Watchdog and exposure timer
+- Append-only audit DB with cryptographic rollups
+- JSON structured logging + Windows Event Log hooks
+- Mock drivers for simulation and CI
+
+All code must be async (`tokio`), cancel-safe, and follow FDA software traceability requirements.

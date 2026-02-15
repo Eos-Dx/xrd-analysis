@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Safety profile updates'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'Allow updates only through signed USB/cloud package with physical activation.'
+type: requirement
+links:
+- USR_OMNI-SERVER_001

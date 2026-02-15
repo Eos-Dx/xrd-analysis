@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Precise exposure management'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall control X-ray exposure with ±50ms tolerance, implement real-time beam intensity monitoring, immediately terminate exposure if intensity deviates beyond ±10% of target, and record all exposure parameters with millisecond-precision timestamps.'
+type: requirement

@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: 'Audit trail implementation'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall maintain append-only audit log in separate SQLite database with HMAC-SHA256 chaining. Log events: authentication, measurement start/stop, calibration, state changes, config modifications, interlock events. Daily integrity check with TPM-signed hash. Export as CSV/JSON with digital signature.'
+type: requirement
+links:
+- USR_OMNI-SERVER_021

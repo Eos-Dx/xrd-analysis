@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: 'Structured logging system'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The system shall implement structured logging (JSON format) with levels: TRACE, DEBUG, INFO, WARN, ERROR, FATAL. Daily log rotation with 90-day retention. Include thread ID, timestamp, component name, and context data in all log entries. Separate audit log from operational log.'
+type: requirement
+links:
+- USR_OMNI-SERVER_014
+- USR_OMNI-SERVER_018

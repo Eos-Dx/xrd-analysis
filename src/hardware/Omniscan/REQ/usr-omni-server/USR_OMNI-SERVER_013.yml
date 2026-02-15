@@ -1,0 +1,9 @@
+active: true
+derived: false
+header: 'Availability and recovery'
+level: 1.0
+normative: true
+ref: ''
+reviewed: null
+text: 'The software shall provide automatic startup as system service, automatic hardware reconnection, 99% uptime target, graceful Windows update handling, maximum 3-minute restart time, and automatic recovery from transient hardware failures.'
+type: requirement
