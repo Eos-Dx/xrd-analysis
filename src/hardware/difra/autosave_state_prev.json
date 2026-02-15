@@ -1,108 +1,13 @@
 {
-    "measurement_points": [
-        {
-            "unique_id": "f0789542e6ab27d9",
-            "index": 0,
-            "point_index": 1,
-            "x": 3.8318482035350874,
-            "y": -9.213274795847662
-        },
-        {
-            "unique_id": "eb090fd1b24872b1",
-            "index": 1,
-            "point_index": 3,
-            "x": 5.256173884626145,
-            "y": -11.41306815599593
-        },
-        {
-            "unique_id": "e2407ae7c6a80462",
-            "index": 2,
-            "point_index": 0,
-            "x": 6.740356029789267,
-            "y": -9.318131420211822
-        },
-        {
-            "unique_id": "7754a05f17a7f3d4",
-            "index": 3,
-            "point_index": 4,
-            "x": 8.242743205903425,
-            "y": -7.303015166665886
-        },
-        {
-            "unique_id": "ea517101e583a12c",
-            "index": 4,
-            "point_index": 2,
-            "x": 9.584306639624003,
-            "y": -9.629624061415555
-        }
-    ],
-    "image": "/Users/sad/dev/xrd-analysis/src/hardware/difra/capture.jpg",
+    "measurement_points": [],
+    "image": null,
     "rotation_angle": 0,
     "crop_rect": null,
-    "shapes": [
-        {
-            "id": 1,
-            "type": "Circle",
-            "role": "sample holder",
-            "geometry": {
-                "x": 222.0,
-                "y": 200.0,
-                "width": 341.0,
-                "height": 341.0
-            }
-        },
-        {
-            "id": 2,
-            "type": "Circle",
-            "role": "include",
-            "geometry": {
-                "x": 327.0,
-                "y": 329.0,
-                "width": 109.0,
-                "height": 91.0
-            }
-        }
-    ],
-    "zone_points": [
-        {
-            "x": 381.0049614389688,
-            "y": 374.04314174732264,
-            "type": "generated",
-            "id": 1,
-            "radius": 22.262871067558446
-        },
-        {
-            "x": 435.7818588334225,
-            "y": 372.0683419884643,
-            "type": "generated",
-            "id": 2,
-            "radius": 22.262871067558446
-        },
-        {
-            "x": 327.4438916204146,
-            "y": 379.90958648999293,
-            "type": "generated",
-            "id": 3,
-            "radius": 22.262871067558446
-        },
-        {
-            "x": 408.9570585062076,
-            "y": 413.49778360459,
-            "type": "generated",
-            "id": 4,
-            "radius": 22.262871067558446
-        },
-        {
-            "x": 352.7100029554855,
-            "y": 336.09178563887417,
-            "type": "generated",
-            "id": 5,
-            "radius": 22.262871067558446
-        }
-    ],
+    "shapes": [],
+    "zone_points": [],
     "dock_geometry": {
         "window_geometry": "AdnQywADAAAAAAAAAAAAIQAABr8AAAQCAAAAAAAAAD0AAAa/AAAEAgAAAAACAAAABsAAAAAAAAAAPQAABr8AAAQC",
-        "window_state": "AAAA/wAAAAD9AAAAAwAAAAAAAAH5AAADk/wCAAAAAfv/////AQAAABgAAAOTAAAAYAD///8AAAABAAABAAAAA5P8AgAAAAH7/////wEAAAAYAAADkwAAAGAA////AAAAAwAABsAAAAKH/AEAAAAB/AAAAAAAAAbAAAAAAAD////6/////wEAAAAC+/////8D///8QwAAAekAAASwAAACcfv/////A////PUAAAHdAAAGwAAAAnIAAAPFAAADkwAAAAQAAAAEAAAACAAAAAj8AAAAAQAAAAIAAAAB/////wEAAAAA/////wAAAAAAAAAA"
+        "window_state": "AAAA/wAAAAD9AAAAAwAAAAAAAAH5AAABO/wCAAAAAfv/////AQAAABgAAAE7AAAAYAD///8AAAABAAABAAAAATv8AgAAAAH7/////wEAAAAYAAABOwAAAGAA////AAAAAwAABsAAAAJy/AEAAAAC+/////8BAAAAAAAAA9MAAAQ4AP////v/////AQAAA9QAAALsAAAC7AD///8AAAPFAAABOwAAAAQAAAAEAAAACAAAAAj8AAAAAQAAAAIAAAAB/////wEAAAAA/////wAAAAAAAAAA"
     },
     "active_detectors_aliases": [
         "SAXS",
@@ -110,14 +15,14 @@
     ],
     "detector_poni": {
         "SAXS": {
-            "poni_filename": "saxs_demo.poni",
-            "poni_path": "/Users/sad/dev/xrd-analysis/src/hardware/difra/resources/demo_poni_files/saxs_demo.poni",
-            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Fri Feb 13 16:03:29 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.229109\nPoni1: 0.007853\nPoni2: 0.002452\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: SAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_saxs.npy\n"
+            "poni_filename": null,
+            "poni_path": null,
+            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Sun Feb 15 20:16:22 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.156729\nPoni1: 0.006095\nPoni2: 0.002637\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: SAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_saxs.npy\n"
         },
         "WAXS": {
-            "poni_filename": "waxs_demo.poni",
-            "poni_path": "/Users/sad/dev/xrd-analysis/src/hardware/difra/resources/demo_poni_files/waxs_demo.poni",
-            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Fri Feb 13 16:03:29 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.119947\nPoni1: 0.00653\nPoni2: 0.002435\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: WAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_waxs.npy\n"
+            "poni_filename": null,
+            "poni_path": null,
+            "poni_value": "# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis\n# Calibration done on Sun Feb 15 20:16:22 2026 (DEMO MODE - FAKE DATA)\nponi_version: 2.1\nDetector: Detector\nDetector_config: {\"pixel1\": 9.999999999999999e-05, \"pixel2\": 9.999999999999999e-05, \"max_shape\": [128, 128], \"orientation\": 3}\nDistance: 0.080638\nPoni1: 0.00587\nPoni2: 0.00126\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1.5406e-10\n# Calibrant: AgBh (DEMO)\n# Detector: WAXS (DEMO MODE)\n# Image: demo://fake_calibration_image_waxs.npy\n"
         }
     },
     "technical_aux": []

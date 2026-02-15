@@ -13,6 +13,76 @@ def _pm():
 
 
 class ZoneMeasurementsProcessStartMixin:
+    def _ensure_writable_session_for_measurement(self) -> bool:
+        pm = _pm()
+
+        session_manager = getattr(self, "session_manager", None)
+        if session_manager is None:
+            return True
+        if not hasattr(session_manager, "is_session_active"):
+            return True
+        if not session_manager.is_session_active():
+            return True
+        if not hasattr(session_manager, "is_locked"):
+            return True
+        if not session_manager.is_locked():
+            return True
+
+        info = {}
+        try:
+            info = session_manager.get_session_info() or {}
+        except Exception:
+            info = {}
+
+        sample_id = info.get("sample_id") or "UNKNOWN"
+        session_id = info.get("session_id") or "UNKNOWN"
+
+        try:
+            session_manager.close_session()
+        except Exception as exc:
+            pm.logger.warning(
+                "Failed to close locked session before auto new-session flow",
+                error=str(exc),
+            )
+
+        if hasattr(self, "update_session_status"):
+            try:
+                self.update_session_status()
+            except Exception:
+                pass
+
+        pm.QMessageBox.information(
+            self,
+            "Session Locked",
+            "The active session container is locked and cannot accept new measurements.\n\n"
+            f"Closed locked session:\nSample ID: {sample_id}\nSession ID: {session_id}\n\n"
+            "A new session is required. Session creation dialog will open now.",
+        )
+
+        image_path = ""
+        try:
+            image_path = getattr(getattr(self, "image_view", None), "current_image_path", "") or ""
+        except Exception:
+            image_path = ""
+
+        if hasattr(self, "_handle_new_sample_image"):
+            self._handle_new_sample_image(image_path)
+        else:
+            pm.QMessageBox.warning(
+                self,
+                "Session Required",
+                "Please create a new session before starting measurements.",
+            )
+            return False
+
+        if not session_manager.is_session_active() or session_manager.is_locked():
+            pm.logger.warning(
+                "Measurement start cancelled: writable session was not created after locked-session rollover"
+            )
+            return False
+
+        return True
+
     def start_measurements(self):
         pm = _pm()
 
@@ -26,6 +96,9 @@ class ZoneMeasurementsProcessStartMixin:
                 "Folder Error",
                 "Selected folder does not exist. Please select the correct folder.",
             )
+            return
+
+        if not self._ensure_writable_session_for_measurement():
             return
 
         if not self._confirm_poni_settings_before_measurement():
@@ -128,7 +201,14 @@ class ZoneMeasurementsProcessStartMixin:
             pass
 
         try:
-            limits = self.stage_controller.get_limits() if hasattr(self, "stage_controller") else None
+            if hasattr(self, "_get_stage_limits"):
+                limits = self._get_stage_limits()
+            else:
+                limits = (
+                    self.stage_controller.get_limits()
+                    if hasattr(self, "stage_controller")
+                    else None
+                )
         except Exception:
             limits = None
         if not limits:

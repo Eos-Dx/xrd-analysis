@@ -11,6 +11,13 @@ def _pm():
 
 
 class ZoneMeasurementsProcessCaptureMixin:
+    def _move_stage(self, x_mm: float, y_mm: float, timeout_s: float):
+        if getattr(self, "hardware_client", None) is not None:
+            return self.hardware_client.move_to(x_mm, y_mm, timeout_s=timeout_s)
+        if hasattr(self, "stage_controller") and self.stage_controller is not None:
+            return self.stage_controller.move_stage(x_mm, y_mm, move_timeout=timeout_s)
+        raise RuntimeError("Stage not initialized")
+
     def measure_next_point(self):
         pm = _pm()
         if self.stopped:
@@ -62,7 +69,7 @@ class ZoneMeasurementsProcessCaptureMixin:
             return
 
         try:
-            self.stage_controller.move_stage(self._x_mm, self._y_mm, move_timeout=15)
+            self._move_stage(self._x_mm, self._y_mm, timeout_s=15)
         except TimeoutError:
             pm.QMessageBox.warning(
                 self,
@@ -106,6 +113,7 @@ class ZoneMeasurementsProcessCaptureMixin:
             frames=1,
             naming_mode="normal",
             container_version=container_version,
+            hardware_client=getattr(self, "hardware_client", None),
         )
         self.capture_thread = pm.QThread()
         self.capture_worker.moveToThread(self.capture_thread)
@@ -125,7 +133,10 @@ class ZoneMeasurementsProcessCaptureMixin:
         except Exception:
             pass
         try:
-            positions = self.stage_controller.get_home_load_positions()
+            if hasattr(self, "_get_home_load_positions"):
+                positions = self._get_home_load_positions()
+            else:
+                positions = self.stage_controller.get_home_load_positions()
             return positions.get("load", (None, None))
         except Exception:
             return (None, None)
@@ -142,7 +153,7 @@ class ZoneMeasurementsProcessCaptureMixin:
             return
 
         try:
-            self.stage_controller.move_stage(load_x, load_y, move_timeout=20)
+            self._move_stage(load_x, load_y, timeout_s=20)
         except Exception as e:
             pm.logger.warning(
                 "Failed to move to loading position; skipping attenuation background capture",
@@ -264,7 +275,7 @@ class ZoneMeasurementsProcessCaptureMixin:
             )
 
         try:
-            self.stage_controller.move_stage(self._x_mm, self._y_mm, move_timeout=15)
+            self._move_stage(self._x_mm, self._y_mm, timeout_s=15)
         except Exception:
             pass
 
@@ -294,6 +305,7 @@ class ZoneMeasurementsProcessCaptureMixin:
             frames=frames,
             naming_mode="attenuation_with",
             container_version=container_version,
+            hardware_client=getattr(self, "hardware_client", None),
         )
         self._attn2_thread = pm.QThread()
         self._attn2_worker.moveToThread(self._attn2_thread)

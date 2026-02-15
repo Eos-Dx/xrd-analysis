@@ -56,6 +56,8 @@ class TechnicalCaptureMixin:
             stage_controller = self.hardware_controller.stage_controller
         elif hasattr(self, "stage_controller"):
             stage_controller = self.stage_controller
+        elif hasattr(self, "hardware_client") and self.hardware_client:
+            stage_controller = self.hardware_client.stage_controller
 
         enable_continuous_movement = (
             getattr(self, "moveContinuousCheck", None) is not None
@@ -87,6 +89,7 @@ class TechnicalCaptureMixin:
             enable_continuous_movement=enable_continuous_movement,
             movement_radius=movement_radius,
             container_version=container_version,
+            hardware_client=getattr(self, "hardware_client", None),
         )
         thread = tm.QThread()
         worker.moveToThread(thread)

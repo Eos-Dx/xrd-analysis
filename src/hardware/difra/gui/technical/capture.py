@@ -30,6 +30,7 @@ class CaptureWorker(QObject):
         naming_mode: str = "normal",  # normal | attenuation_with | attenuation_without
         continuous_movement_controller=None,
         stage_controller=None,
+        hardware_client=None,
         enable_continuous_movement: bool = False,
         movement_radius: float = 2.0,
         container_version: str = None,  # Container version for format conversion
@@ -42,6 +43,7 @@ class CaptureWorker(QObject):
         self.naming_mode = naming_mode
         self.continuous_movement_controller = continuous_movement_controller
         self.stage_controller = stage_controller
+        self.hardware_client = hardware_client
         self.enable_continuous_movement = enable_continuous_movement
         self.movement_radius = movement_radius
         self.container_version = container_version or get_container_version(None)
@@ -63,7 +65,13 @@ class CaptureWorker(QObject):
             # Start continuous movement when enabled by the checkbox
             if is_continuous_movement:
                 # Get current stage position as center
-                center_x, center_y = self.stage_controller.get_xy_position()
+                try:
+                    center_x, center_y = self.stage_controller.get_xy_position()
+                except Exception:
+                    if self.hardware_client is not None:
+                        center_x, center_y = self.hardware_client.get_xy_position()
+                    else:
+                        raise
 
                 # Configure movement for the full acquisition duration (frames × integration time)
                 total_duration = float(self.integration_time) * max(int(self.frames), 1)

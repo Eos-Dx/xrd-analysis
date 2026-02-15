@@ -328,6 +328,8 @@ class TechnicalPanelMixin:
                 stage_controller = self.hardware_controller.stage_controller
             elif hasattr(self, "stage_controller"):
                 stage_controller = self.stage_controller
+            elif hasattr(self, "hardware_client") and self.hardware_client:
+                stage_controller = self.hardware_client.stage_controller
 
             if stage_controller:
                 self.continuous_movement_controller = ContinuousMovementController(
