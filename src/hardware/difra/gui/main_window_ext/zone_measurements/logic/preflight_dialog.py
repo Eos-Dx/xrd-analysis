@@ -7,6 +7,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
+from hardware.difra.gui.container_api import get_schema
+
 
 class PreflightDialog(QDialog):
     """Mandatory pre-capture checklist - confirm technical container is valid.
@@ -64,7 +66,12 @@ class PreflightDialog(QDialog):
             
             # Check if session has technical data group
             with h5py.File(session_path, 'r') as f:
-                if '/technical' in f:
+                schema = get_schema(
+                    getattr(self.session_manager, "config", None)
+                    if self.session_manager
+                    else None
+                )
+                if schema.GROUP_CALIBRATION_SNAPSHOT in f:
                     # Technical data exists in session - it was copied from technical container
                     # Return the session path as indicator that technical data is present
                     self.technical_h5_path = session_path

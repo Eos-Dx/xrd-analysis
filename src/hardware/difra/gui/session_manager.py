@@ -11,11 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, List, Tuple
 
-from hardware.container.v0_1 import writer, schema
-from hardware.container.v0_1.container_manager import (
-    find_active_technical_container,
-    is_container_locked,
-)
+from hardware.difra.gui.container_api import get_container_module
 from hardware.difra.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -43,6 +39,10 @@ class SessionManager:
         
         # Store config for later use
         self.config = config or {}
+        self.container_module = get_container_module(self.config)
+        self.schema = self.container_module.schema
+        self.writer = self.container_module.writer
+        self.container_manager = self.container_module.container_manager
         
         # Configuration - read from config or use defaults
         if config:
@@ -89,7 +89,7 @@ class SessionManager:
         """Create a new session container.
         
         All required session attributes should be provided as keyword arguments.
-        These will be passed to the container writer and validated against schema.
+        These will be passed to the container writer and validated against self.schema.
         
         Required session attributes (from schema):
             sample_id: str - Unique sample identifier
@@ -115,6 +115,11 @@ class SessionManager:
             RuntimeError: If no valid technical container found
             ValueError: If required session attributes are missing
         """
+        schema = self.schema
+        writer = self.writer
+        find_active_technical_container = self.container_manager.find_active_technical_container
+        is_container_locked = self.container_manager.is_container_locked
+
         # Get technical folder from config
         technical_folder = self._get_technical_folder()
         
@@ -139,49 +144,49 @@ class SessionManager:
         # Build session attributes from provided kwargs and config defaults
         # Required attributes from schema
         container_attrs = {
-            schema.ATTR_SAMPLE_ID: session_attrs.get(
-                schema.ATTR_SAMPLE_ID,
+            self.schema.ATTR_SAMPLE_ID: session_attrs.get(
+                self.schema.ATTR_SAMPLE_ID,
                 session_attrs.get('sample_id'),  # Support both snake_case and schema names
             ),
-            schema.ATTR_STUDY_NAME: session_attrs.get(
-                schema.ATTR_STUDY_NAME,
+            self.schema.ATTR_STUDY_NAME: session_attrs.get(
+                self.schema.ATTR_STUDY_NAME,
                 session_attrs.get('study_name', "UNSPECIFIED"),
             ),
-            schema.ATTR_OPERATOR_ID: session_attrs.get(
-                schema.ATTR_OPERATOR_ID,
+            self.schema.ATTR_OPERATOR_ID: session_attrs.get(
+                self.schema.ATTR_OPERATOR_ID,
                 session_attrs.get('operator_id', self.operator_id),
             ),
-            schema.ATTR_SITE_ID: session_attrs.get(
-                schema.ATTR_SITE_ID,
+            self.schema.ATTR_SITE_ID: session_attrs.get(
+                self.schema.ATTR_SITE_ID,
                 session_attrs.get('site_id', self.site_id),
             ),
-            schema.ATTR_MACHINE_NAME: session_attrs.get(
-                schema.ATTR_MACHINE_NAME,
+            self.schema.ATTR_MACHINE_NAME: session_attrs.get(
+                self.schema.ATTR_MACHINE_NAME,
                 session_attrs.get('machine_name', self.machine_name),
             ),
-            schema.ATTR_BEAM_ENERGY_KEV: session_attrs.get(
-                schema.ATTR_BEAM_ENERGY_KEV,
+            self.schema.ATTR_BEAM_ENERGY_KEV: session_attrs.get(
+                self.schema.ATTR_BEAM_ENERGY_KEV,
                 session_attrs.get('beam_energy_keV', self.beam_energy_kev),
             ),
-            schema.ATTR_ACQUISITION_DATE: session_attrs.get(
-                schema.ATTR_ACQUISITION_DATE,
+            self.schema.ATTR_ACQUISITION_DATE: session_attrs.get(
+                self.schema.ATTR_ACQUISITION_DATE,
                 session_attrs.get('acquisition_date', datetime.now().strftime("%Y-%m-%d")),
             ),
         }
         
         # Add optional attributes if provided
-        if schema.ATTR_PATIENT_ID in session_attrs or 'patient_id' in session_attrs:
-            container_attrs[schema.ATTR_PATIENT_ID] = session_attrs.get(
-                schema.ATTR_PATIENT_ID,
+        if self.schema.ATTR_PATIENT_ID in session_attrs or 'patient_id' in session_attrs:
+            container_attrs[self.schema.ATTR_PATIENT_ID] = session_attrs.get(
+                self.schema.ATTR_PATIENT_ID,
                 session_attrs.get('patient_id'),
             )
         
         # Validate required sample_id
-        if not container_attrs[schema.ATTR_SAMPLE_ID]:
+        if not container_attrs[self.schema.ATTR_SAMPLE_ID]:
             raise ValueError("sample_id is required to create a session")
         
-        sample_id = container_attrs[schema.ATTR_SAMPLE_ID]
-        study_name = container_attrs[schema.ATTR_STUDY_NAME]
+        sample_id = container_attrs[self.schema.ATTR_SAMPLE_ID]
+        study_name = container_attrs[self.schema.ATTR_STUDY_NAME]
         
         logger.info(
             "Creating new session",
@@ -189,13 +194,13 @@ class SessionManager:
             distance_cm=distance_cm,
             technical_container=str(tech_path),
             study_name=study_name,
-            operator_id=container_attrs.get(schema.ATTR_OPERATOR_ID),
-            site_id=container_attrs.get(schema.ATTR_SITE_ID),
-            machine_name=container_attrs.get(schema.ATTR_MACHINE_NAME),
+            operator_id=container_attrs.get(self.schema.ATTR_OPERATOR_ID),
+            site_id=container_attrs.get(self.schema.ATTR_SITE_ID),
+            machine_name=container_attrs.get(self.schema.ATTR_MACHINE_NAME),
         )
         
         # Create session container with schema-driven attributes
-        self.session_id, session_path_str = writer.create_session_container(
+        self.session_id, session_path_str = self.writer.create_session_container(
             folder=folder,
             **container_attrs,
         )
@@ -206,7 +211,7 @@ class SessionManager:
         self.technical_container_path = Path(tech_path)
         
         # Copy technical data to session
-        writer.copy_technical_to_session(
+        self.writer.copy_technical_to_session(
             technical_file=tech_path,
             session_file=self.session_path,
         )
@@ -257,17 +262,38 @@ class SessionManager:
 
         with h5py.File(session_file, "r") as f:
             self.session_path = session_file
-            self.sample_id = _as_text(f.attrs.get(schema.ATTR_SAMPLE_ID), "unknown")
-            self.study_name = _as_text(
-                f.attrs.get(schema.ATTR_STUDY_NAME), "UNSPECIFIED"
+            sample_group = f.get(self.schema.GROUP_SAMPLE)
+            user_group = f.get(self.schema.GROUP_USER)
+            calibration_snapshot = f.get(self.schema.GROUP_CALIBRATION_SNAPSHOT)
+
+            self.sample_id = _as_text(
+                f.attrs.get(
+                    self.schema.ATTR_SAMPLE_ID,
+                    sample_group.attrs.get(self.schema.ATTR_SAMPLE_ID) if sample_group else None,
+                ),
+                "unknown",
             )
-            self.session_id = _as_text(f.attrs.get(schema.ATTR_SESSION_ID), "unknown")
+            self.study_name = _as_text(
+                f.attrs.get(
+                    self.schema.ATTR_STUDY_NAME,
+                    sample_group.attrs.get(self.schema.ATTR_STUDY_NAME) if sample_group else None,
+                ),
+                "UNSPECIFIED",
+            )
+            self.session_id = _as_text(
+                f.attrs.get(self.schema.ATTR_SESSION_ID),
+                "unknown",
+            )
             self.operator_id = _as_text(
-                f.attrs.get(schema.ATTR_OPERATOR_ID), self.operator_id
+                f.attrs.get(
+                    self.schema.ATTR_OPERATOR_ID,
+                    user_group.attrs.get(self.schema.ATTR_OPERATOR_ID) if user_group else None,
+                ),
+                self.operator_id,
             )
 
-            if schema.GROUP_TECHNICAL in f:
-                source = f[schema.GROUP_TECHNICAL].attrs.get("source_file")
+            if calibration_snapshot is not None:
+                source = calibration_snapshot.attrs.get("source_file")
                 self.technical_container_path = Path(source) if source else None
             else:
                 self.technical_container_path = None
@@ -279,7 +305,7 @@ class SessionManager:
         technical_file: Path,
         auto_lock_source: bool = False,
     ) -> None:
-        """Replace the embedded /technical group in an active unlocked session."""
+        """Replace embedded calibration snapshot in an active unlocked session."""
         self._check_active()
 
         if self.is_locked():
@@ -287,7 +313,7 @@ class SessionManager:
                 "Cannot update technical data: session container is locked."
             )
 
-        writer.copy_technical_to_session(
+        self.writer.copy_technical_to_session(
             technical_file=technical_file,
             session_file=self.session_path,
             auto_lock=auto_lock_source,
@@ -312,7 +338,7 @@ class SessionManager:
         """
         self._check_active()
         
-        return writer.add_image(
+        return self.writer.add_image(
             file_path=self.session_path,
             image_index=image_index,
             image_data=image_data,
@@ -341,7 +367,7 @@ class SessionManager:
         """
         self._check_active()
         
-        return writer.add_zone(
+        return self.writer.add_zone(
             file_path=self.session_path,
             zone_index=zone_index,
             geometry_px=geometry_px,
@@ -369,7 +395,7 @@ class SessionManager:
         
         paths = []
         for idx, point in enumerate(points, start=1):
-            path = writer.add_point(
+            path = self.writer.add_point(
                 file_path=self.session_path,
                 point_index=idx,
                 pixel_coordinates=point["pixel_coordinates"],
@@ -401,7 +427,7 @@ class SessionManager:
         """
         self._check_active()
         
-        ana_path = writer.add_analytical_measurement(
+        ana_path = self.writer.add_analytical_measurement(
             file_path=self.session_path,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
@@ -457,14 +483,14 @@ class SessionManager:
         end_point_idx = start_point_idx + num_points
         for point_idx in range(start_point_idx, end_point_idx):
             # Link I₀
-            writer.link_analytical_measurement_to_point(
+            self.writer.link_analytical_measurement_to_point(
                 file_path=self.session_path,
                 point_index=point_idx,
                 analytical_measurement_index=self.i0_counter,
             )
             
             # Link I
-            writer.link_analytical_measurement_to_point(
+            self.writer.link_analytical_measurement_to_point(
                 file_path=self.session_path,
                 point_index=point_idx,
                 analytical_measurement_index=self.i_counter,
@@ -494,7 +520,7 @@ class SessionManager:
         """
         self._check_active()
         
-        meas_path = writer.add_measurement(
+        meas_path = self.writer.add_measurement(
             file_path=self.session_path,
             point_index=point_index,
             measurement_data=measurement_data,
@@ -504,7 +530,7 @@ class SessionManager:
         )
         
         # Update point status to measured
-        writer.update_point_status(
+        self.writer.update_point_status(
             file_path=self.session_path,
             point_index=point_index,
             point_status="measured",
@@ -529,7 +555,7 @@ class SessionManager:
         if not self.is_session_active():
             return False
         
-        return is_container_locked(self.session_path)
+        return self.container_manager.is_container_locked(self.session_path)
     
     def update_sample_id(self, new_sample_id: str) -> bool:
         """Update the sample ID in the session container.
@@ -555,8 +581,10 @@ class SessionManager:
             import h5py
             
             with h5py.File(self.session_path, 'a') as f:
-                old_sample_id = f.attrs.get(schema.ATTR_SAMPLE_ID, 'unknown')
-                f.attrs[schema.ATTR_SAMPLE_ID] = new_sample_id
+                old_sample_id = f.attrs.get(self.schema.ATTR_SAMPLE_ID, 'unknown')
+                f.attrs[self.schema.ATTR_SAMPLE_ID] = new_sample_id
+                if self.schema.GROUP_SAMPLE in f:
+                    f[self.schema.GROUP_SAMPLE].attrs[self.schema.ATTR_SAMPLE_ID] = new_sample_id
                 
             self.sample_id = new_sample_id
             

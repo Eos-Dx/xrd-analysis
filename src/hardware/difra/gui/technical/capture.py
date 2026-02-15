@@ -9,6 +9,7 @@ from matplotlib.figure import Figure
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QHBoxLayout
 
+from hardware.difra.gui.container_api import get_container_version
 from xrdanalysis.data_processing.azimuthal_integration import (
     initialize_azimuthal_integrator_df,
     initialize_azimuthal_integrator_poni_text,
@@ -31,7 +32,7 @@ class CaptureWorker(QObject):
         stage_controller=None,
         enable_continuous_movement: bool = False,
         movement_radius: float = 2.0,
-        container_version: str = "0.1",  # Container version for format conversion
+        container_version: str = None,  # Container version for format conversion
     ):
         super().__init__(parent)
         self.detector_controller = detector_controller
@@ -43,7 +44,7 @@ class CaptureWorker(QObject):
         self.stage_controller = stage_controller
         self.enable_continuous_movement = enable_continuous_movement
         self.movement_radius = movement_radius
-        self.container_version = container_version
+        self.container_version = container_version or get_container_version(None)
         self._stop_requested = False
 
     def run(self):
@@ -106,7 +107,7 @@ class CaptureWorker(QObject):
                     )
                     
                     if success:
-                        # Step 2: Detector converts to container format (.txt -> .npy for v0.1)
+                        # Step 2: Detector converts to container format (.txt -> .npy for v0.2)
                         raw_file = base + ".txt"
                         try:
                             converted_file = controller.convert_to_container_format(

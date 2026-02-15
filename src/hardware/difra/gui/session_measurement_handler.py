@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 
-from hardware.container.v0_1 import schema, session_container, measurement_counter
+from hardware.difra.gui.container_api import get_container_module
 
 logger = logging.getLogger(__name__)
 
@@ -53,12 +53,16 @@ class SessionMeasurementHandler:
         """
         self.session_folder = Path(session_folder)
         self.technical_container_file = Path(technical_container_file)
+        self.container_module = get_container_module(session_attrs)
+        self.schema = self.container_module.schema
+        self.session_container = self.container_module.session_container
+        self.measurement_counter = self.container_module.measurement_counter
         
         # Store session attributes for later use
         self.session_attrs = session_attrs.copy()
         
         # Auto-generate acquisition_date if not provided
-        if schema.ATTR_ACQUISITION_DATE not in self.session_attrs and 'acquisition_date' not in self.session_attrs:
+        if self.schema.ATTR_ACQUISITION_DATE not in self.session_attrs and 'acquisition_date' not in self.session_attrs:
             self.session_attrs['acquisition_date'] = time.strftime("%Y-%m-%d")
         
         self.session_file = None
@@ -80,16 +84,16 @@ class SessionMeasurementHandler:
         self.session_folder.mkdir(parents=True, exist_ok=True)
 
         # Create session container with explicit required attributes
-        sample_id = self.session_attrs.get(schema.ATTR_SAMPLE_ID, self.session_attrs.get("sample_id"))
-        operator_id = self.session_attrs.get(schema.ATTR_OPERATOR_ID, self.session_attrs.get("operator_id"))
-        site_id = self.session_attrs.get(schema.ATTR_SITE_ID, self.session_attrs.get("site_id"))
-        machine_name = self.session_attrs.get(schema.ATTR_MACHINE_NAME, self.session_attrs.get("machine_name"))
-        beam_energy_keV = self.session_attrs.get(schema.ATTR_BEAM_ENERGY_KEV, self.session_attrs.get("beam_energy_keV"))
-        acquisition_date = self.session_attrs.get(schema.ATTR_ACQUISITION_DATE, self.session_attrs.get("acquisition_date"))
-        patient_id = self.session_attrs.get(schema.ATTR_PATIENT_ID, self.session_attrs.get("patient_id"))
-        container_id = self.session_attrs.get(schema.ATTR_SESSION_ID, self.session_attrs.get("session_id"))
+        sample_id = self.session_attrs.get(self.schema.ATTR_SAMPLE_ID, self.session_attrs.get("sample_id"))
+        operator_id = self.session_attrs.get(self.schema.ATTR_OPERATOR_ID, self.session_attrs.get("operator_id"))
+        site_id = self.session_attrs.get(self.schema.ATTR_SITE_ID, self.session_attrs.get("site_id"))
+        machine_name = self.session_attrs.get(self.schema.ATTR_MACHINE_NAME, self.session_attrs.get("machine_name"))
+        beam_energy_keV = self.session_attrs.get(self.schema.ATTR_BEAM_ENERGY_KEV, self.session_attrs.get("beam_energy_keV"))
+        acquisition_date = self.session_attrs.get(self.schema.ATTR_ACQUISITION_DATE, self.session_attrs.get("acquisition_date"))
+        patient_id = self.session_attrs.get(self.schema.ATTR_PATIENT_ID, self.session_attrs.get("patient_id"))
+        container_id = self.session_attrs.get(self.schema.ATTR_SESSION_ID, self.session_attrs.get("session_id"))
 
-        self.session_id, self.session_file = session_container.create_session_container(
+        self.session_id, self.session_file = self.session_container.create_session_container(
             folder=self.session_folder,
             sample_id=sample_id,
             operator_id=operator_id,
@@ -103,13 +107,13 @@ class SessionMeasurementHandler:
         self.sample_id = sample_id
 
         # Copy technical data
-        session_container.copy_technical_to_session(
+        self.session_container.copy_technical_to_session(
             technical_file=self.technical_container_file,
             session_file=self.session_file,
         )
 
         # Initialize counter handler
-        self.counter = measurement_counter.MeasurementCounter(self.session_file)
+        self.counter = self.measurement_counter.MeasurementCounter(self.session_file)
 
         logger.info(
             f"Session container created",
@@ -124,7 +128,7 @@ class SessionMeasurementHandler:
         self,
         image_data: Union[np.ndarray, str],
         image_index: int = 1,
-        image_type: str = schema.IMAGE_TYPE_SAMPLE,
+        image_type: str = None,
     ) -> str:
         """Add sample image to session.
 
@@ -139,7 +143,10 @@ class SessionMeasurementHandler:
         if self.session_file is None:
             raise RuntimeError("Session container not created")
 
-        return session_container.add_image(
+        if image_type is None:
+            image_type = self.schema.IMAGE_TYPE_SAMPLE
+
+        return self.session_container.add_image(
             file_path=self.session_file,
             image_index=image_index,
             image_data=image_data,
@@ -169,7 +176,7 @@ class SessionMeasurementHandler:
         if self.session_file is None:
             raise RuntimeError("Session container not created")
 
-        return session_container.add_zone(
+        return self.session_container.add_zone(
             file_path=self.session_file,
             zone_index=zone_index,
             zone_role=zone_role,
@@ -197,7 +204,7 @@ class SessionMeasurementHandler:
         if self.session_file is None:
             raise RuntimeError("Session container not created")
 
-        return session_container.add_image_mapping(
+        return self.session_container.add_image_mapping(
             file_path=self.session_file,
             sample_holder_zone_id=sample_holder_zone_id,
             pixel_to_mm_conversion=pixel_to_mm_conversion,
@@ -209,7 +216,7 @@ class SessionMeasurementHandler:
         point_index: int,
         pixel_coordinates: List[float],
         physical_coordinates_mm: List[float],
-        point_status: str = schema.POINT_STATUS_PENDING,
+        point_status: str = None,
     ) -> str:
         """Add measurement point.
 
@@ -225,7 +232,10 @@ class SessionMeasurementHandler:
         if self.session_file is None:
             raise RuntimeError("Session container not created")
 
-        return session_container.add_point(
+        if point_status is None:
+            point_status = self.schema.POINT_STATUS_PENDING
+
+        return self.session_container.add_point(
             file_path=self.session_file,
             point_index=point_index,
             pixel_coordinates=pixel_coordinates,
@@ -245,7 +255,7 @@ class SessionMeasurementHandler:
         if self.session_file is None:
             raise RuntimeError("Session container not created")
 
-        session_container.update_point_status(
+        self.session_container.update_point_status(
             file_path=self.session_file,
             point_index=point_index,
             point_status=point_status,
@@ -257,9 +267,10 @@ class SessionMeasurementHandler:
         measurement_data: Dict[str, np.ndarray],
         detector_metadata: Dict[str, Dict],
         poni_alias_map: Dict[str, str],
+        raw_files: Optional[Dict[str, Dict[str, bytes]]] = None,
         timestamp_start: Optional[str] = None,
         timestamp_end: Optional[str] = None,
-        measurement_status: str = schema.STATUS_COMPLETED,
+        measurement_status: str = None,
     ) -> str:
         """Add measurement to point.
 
@@ -269,6 +280,7 @@ class SessionMeasurementHandler:
 array
             detector_metadata: Dict mapping detector_id to metadata
             poni_alias_map: Dict mapping alias to detector_id
+            raw_files: Optional detector blob mapping per detector
             timestamp_start: Start timestamp
             timestamp_end: End timestamp
             measurement_status: Measurement status
@@ -279,12 +291,16 @@ array
         if self.session_file is None:
             raise RuntimeError("Session container not created")
 
-        return session_container.add_measurement(
+        if measurement_status is None:
+            measurement_status = self.schema.STATUS_COMPLETED
+
+        return self.session_container.add_measurement(
             file_path=self.session_file,
             point_index=point_index,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
             poni_alias_map=poni_alias_map,
+            raw_files=raw_files,
             timestamp_start=timestamp_start,
             timestamp_end=timestamp_end,
             measurement_status=measurement_status,
@@ -315,7 +331,7 @@ array
         if self.session_file is None:
             raise RuntimeError("Session container not created")
 
-        return session_container.add_analytical_measurement(
+        return self.session_container.add_analytical_measurement(
             file_path=self.session_file,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
@@ -337,7 +353,7 @@ array
         if self.session_file is None:
             raise RuntimeError("Session container not created")
 
-        session_container.link_analytical_measurement_to_point(
+        self.session_container.link_analytical_measurement_to_point(
             file_path=self.session_file,
             point_index=point_index,
             analytical_measurement_index=analytical_measurement_index,

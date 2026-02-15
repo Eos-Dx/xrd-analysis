@@ -17,7 +17,7 @@ def detect_version(file_path: Union[str, Path]) -> str:
         file_path: Path to HDF5 container
         
     Returns:
-        Version string (e.g., "0.1")
+        Version string (e.g., "0.2")
         
     Raises:
         ValueError: If version cannot be detected
@@ -33,12 +33,14 @@ def detect_version(file_path: Union[str, Path]) -> str:
                     version = version.decode('utf-8')
                 return str(version)
             
-            # Fallback: check for v0.1 indicators
-            if "sample_id" in f.attrs and "session_id" in f.attrs:
-                return "0.1"
-            elif "container_id" in f.attrs and "/technical" in f:
-                return "0.1"
-                
+            # v0.2 fallback marker checks (NeXus + entry definition)
+            if (
+                f.attrs.get("NX_class") == "NXroot"
+                and "/entry" in f
+                and "/entry/definition" in f
+            ):
+                return "0.2"
+
             raise ValueError("Cannot detect schema version from container")
             
     except Exception as e:
@@ -50,7 +52,7 @@ def open_container(file_path: Union[str, Path], version: str = None, validate: b
     
     Args:
         file_path: Path to HDF5 container
-        version: Optional explicit version (e.g., "0.1"). If None, auto-detect.
+        version: Optional explicit version (e.g., "0.2"). If None, auto-detect.
         validate: Whether to validate container structure
         
     Returns:
@@ -65,7 +67,7 @@ def open_container(file_path: Union[str, Path], version: str = None, validate: b
         container = open_container('session.h5')
         
         # Explicit version with validation disabled
-        container = open_container('session.h5', version='0.1', validate=False)
+        container = open_container('session.nxs.h5', version='0.2', validate=False)
     """
     file_path = Path(file_path)
     

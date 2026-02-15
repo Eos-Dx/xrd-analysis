@@ -4,7 +4,7 @@ This package provides versioned HDF5 container interfaces for storing
 and retrieving X-ray diffraction data with complete metadata.
 
 Versioning:
-- v0.1 (beta): Initial DIFRA HDF5 Data Model implementation
+- v0.2: NeXus-based DIFRA technical/session containers
 
 Usage:
     # Auto-detect version and open container
@@ -12,11 +12,11 @@ Usage:
     container = open_container('path/to/file.h5')
     
     # Manual version specification
-    from hardware.container.v0_1 import SessionContainer
+    from hardware.container.v0_2 import SessionContainer
     container = SessionContainer.open('path/to/file.h5')
 """
 
-__version__ = "0.1.0-beta"
+__version__ = "0.2.0"
 
 from .loader import open_container, open_container_bundle
 from .manager import (

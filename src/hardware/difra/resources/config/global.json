@@ -1,8 +1,9 @@
 {
     "conda": "ulster38",
+    "container_version": "0.2",
     "default_setup": "Ulster (Xena)",
     "DEV": true,
-    "expected_technical_schema_version": "0.1",
+    "expected_technical_schema_version": "0.2",
     "validate_containers_before_locking": true,
     "difra_base_folder": "/Users/sad/dev/Data/difra",
     "technical_folder": "/Users/sad/dev/Data/difra/technical",

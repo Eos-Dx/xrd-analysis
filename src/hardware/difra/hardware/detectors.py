@@ -41,7 +41,7 @@ class DetectorController(ABC):
         pass
     
     @abstractmethod
-    def convert_to_container_format(self, raw_file_path: str, container_version: str = "0.1") -> str:
+    def convert_to_container_format(self, raw_file_path: str, container_version: str = "0.2") -> str:
         """Convert detector raw output to container format.
         
         Detectors are responsible for converting their raw output format to the format
@@ -50,17 +50,17 @@ class DetectorController(ABC):
         
         Args:
             raw_file_path: Path to detector raw output file (e.g., .txt for Advacam)
-            container_version: Container schema version (default: "0.1")
+            container_version: Container schema version (default: "0.2")
         
         Returns:
-            Path to converted file in container format (e.g., .npy for v0.1)
+            Path to converted file in container format (e.g., .npy for v0.2)
         
         Raises:
             ValueError: If container version is not supported
             RuntimeError: If conversion fails
         
         Example:
-            For container v0.1 (Advacam detector):
+            For container v0.2 (Advacam detector):
             - Input: "measurement_001.txt" (ASCII data)
             - Output: "measurement_001.npy" (numpy binary)
         """
@@ -228,10 +228,10 @@ Layout=1x1
             if interval:
                 time.sleep(interval)
     
-    def convert_to_container_format(self, raw_file_path: str, container_version: str = "0.1") -> str:
+    def convert_to_container_format(self, raw_file_path: str, container_version: str = "0.2") -> str:
         """Convert Advacam .txt format to container format.
         
-        For container v0.1: converts ASCII .txt to binary .npy
+        For container v0.2: converts ASCII .txt to binary .npy
         
         Args:
             raw_file_path: Path to .txt file (ASCII detector output)
@@ -244,8 +244,8 @@ Layout=1x1
         
         raw_path = Path(raw_file_path)
         
-        if container_version == "0.1":
-            # Container v0.1 expects .npy files
+        if container_version == "0.2":
+            # Container v0.2 expects .npy files for processed detector data input
             npy_path = raw_path.with_suffix('.npy')
             
             if not npy_path.exists():
@@ -501,10 +501,10 @@ class PixetDetectorController(DetectorController):
             if interval:
                 time.sleep(interval)
     
-    def convert_to_container_format(self, raw_file_path: str, container_version: str = "0.1") -> str:
+    def convert_to_container_format(self, raw_file_path: str, container_version: str = "0.2") -> str:
         """Convert Pixet/Advacam .txt format to container format.
         
-        For container v0.1: converts ASCII .txt to binary .npy
+        For container v0.2: converts ASCII .txt to binary .npy
         Pixet detectors use the same Advacam format (.txt ASCII + .dsc descriptor)
         
         Args:
@@ -518,8 +518,8 @@ class PixetDetectorController(DetectorController):
         
         raw_path = Path(raw_file_path)
         
-        if container_version == "0.1":
-            # Container v0.1 expects .npy files
+        if container_version == "0.2":
+            # Container v0.2 expects .npy files for processed detector data input
             npy_path = raw_path.with_suffix('.npy')
             
             if not npy_path.exists():

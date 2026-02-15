@@ -22,6 +22,7 @@ from PyQt5.QtWidgets import (
 from hardware.difra.gui.main_window_ext.zone_measurements.logic.beam_center_utils import (
     get_beam_center,
 )
+from hardware.difra.gui.container_api import get_container_version
 from hardware.difra.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -134,7 +135,9 @@ class AttenuationMixin:
         os.makedirs(save_folder, exist_ok=True)
 
         # Get container version from config
-        container_version = self.config.get('container_version', '0.1') if hasattr(self, 'config') else '0.1'
+        container_version = get_container_version(
+            self.config if hasattr(self, "config") else None
+        )
         
         results = {}
         all_data = {}  # Collect data for all detectors

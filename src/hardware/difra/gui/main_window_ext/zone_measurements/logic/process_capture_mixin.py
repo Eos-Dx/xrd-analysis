@@ -1,6 +1,8 @@
 import os
 import time
 
+from hardware.difra.gui.container_api import get_container_version
+
 
 def _pm():
     from hardware.difra.gui.main_window_ext.zone_measurements.logic import process_mixin as pm
@@ -93,7 +95,9 @@ class ZoneMeasurementsProcessCaptureMixin:
         except Exception:
             pass
 
-        container_version = self.config.get("container_version", "0.1") if hasattr(self, "config") else "0.1"
+        container_version = get_container_version(
+            self.config if hasattr(self, "config") else None
+        )
         CaptureWorker = self._get_zone_technical_module("CaptureWorker")
         self.capture_worker = CaptureWorker(
             detector_controller=self.detector_controller,
@@ -158,7 +162,9 @@ class ZoneMeasurementsProcessCaptureMixin:
         group_ts = time.strftime("%Y%m%d_%H%M%S")
         base_name = self.fileNameLineEdit.text().strip()
         group_base = os.path.join(self.measurement_folder, f"{base_name}_{group_ts}")
-        container_version = self.config.get("container_version", "0.1") if hasattr(self, "config") else "0.1"
+        container_version = get_container_version(
+            self.config if hasattr(self, "config") else None
+        )
 
         results = {}
         for alias, controller in self.detector_controller.items():
@@ -277,7 +283,9 @@ class ZoneMeasurementsProcessCaptureMixin:
         except Exception:
             pass
 
-        container_version = self.config.get("container_version", "0.1") if hasattr(self, "config") else "0.1"
+        container_version = get_container_version(
+            self.config if hasattr(self, "config") else None
+        )
         CaptureWorker = self._get_zone_technical_module("CaptureWorker")
         self._attn2_worker = CaptureWorker(
             detector_controller=self.detector_controller,

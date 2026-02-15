@@ -27,8 +27,8 @@ from PyQt5.QtWidgets import (
     QFileDialog,
 )
 
-from hardware.container.v0_1 import technical_container, writer as session_writer
-from hardware.container.v0_1.container_manager import lock_container
+from hardware.container.v0_2 import technical_container, writer as session_writer
+from hardware.container.v0_2.container_manager import lock_container
 from hardware.difra.gui.main_window_ext import session_mixin, technical_measurements
 from hardware.difra.gui.main_window_ext.technical import h5_management_mixin
 from hardware.difra.gui.main_window_ext import state_saver_extension
@@ -255,7 +255,7 @@ def test_load_technical_h5_sets_primary_and_types(qapp, tmp_path, monkeypatch):
     monkeypatch.setattr(
         h5_management_mixin.QFileDialog,
         "getOpenFileName",
-        staticmethod(lambda *a, **k: (str(technical_path), "HDF5 Files (*.h5)")),
+        staticmethod(lambda *a, **k: (str(technical_path), "NeXus HDF5 Files (*.nxs.h5)")),
     )
 
     harness.load_technical_h5()
@@ -351,7 +351,7 @@ def test_open_existing_session_container_updates_state(qapp, tmp_path, monkeypat
     monkeypatch.setattr(
         session_mixin.QFileDialog,
         "getOpenFileName",
-        staticmethod(lambda *a, **k: (str(session_path), "HDF5 Files (*.h5)")),
+        staticmethod(lambda *a, **k: (str(session_path), "NeXus HDF5 Files (*.nxs.h5)")),
     )
 
     harness.on_restore_session()
@@ -467,7 +467,7 @@ def test_restore_session_recovers_image_zones_and_points(qapp, tmp_path, monkeyp
     monkeypatch.setattr(
         session_mixin.QFileDialog,
         "getOpenFileName",
-        staticmethod(lambda *a, **k: (str(session_path), "HDF5 Files (*.h5)")),
+        staticmethod(lambda *a, **k: (str(session_path), "NeXus HDF5 Files (*.nxs.h5)")),
     )
 
     harness.on_restore_session()
@@ -544,10 +544,10 @@ def test_sync_workspace_snapshot_to_unlocked_session(qapp, tmp_path, monkeypatch
     harness.sync_workspace_to_session_container(state=harness.state)
 
     with h5py.File(session_path, "r") as h5f:
-        assert "/images/img_001" in h5f
-        assert len(h5f["/images/zones"].keys()) == 2
-        assert len(h5f["/points"].keys()) == 5
-        mapping = h5f["/images/mapping/mapping"][()]
+        assert "/entry/images/img_001" in h5f
+        assert len(h5f["/entry/images/zones"].keys()) == 2
+        assert len(h5f["/entry/points"].keys()) == 5
+        mapping = h5f["/entry/images/mapping/mapping"][()]
         if isinstance(mapping, bytes):
             mapping = mapping.decode("utf-8")
         assert "ratio" in mapping
@@ -593,14 +593,14 @@ def test_loading_technical_updates_active_unlocked_session(qapp, tmp_path, monke
     monkeypatch.setattr(
         h5_management_mixin.QFileDialog,
         "getOpenFileName",
-        staticmethod(lambda *a, **k: (str(technical_b), "HDF5 Files (*.h5)")),
+        staticmethod(lambda *a, **k: (str(technical_b), "NeXus HDF5 Files (*.nxs.h5)")),
     )
 
     harness.load_technical_h5()
     qapp.processEvents()
 
     with h5py.File(session_path, "r") as h5f:
-        source_file = h5f["/technical"].attrs.get("source_file", "")
+        source_file = h5f["/entry/calibration_snapshot"].attrs.get("source_file", "")
         if isinstance(source_file, bytes):
             source_file = source_file.decode("utf-8")
         assert source_file == str(technical_b)

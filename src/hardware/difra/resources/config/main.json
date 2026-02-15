@@ -144,6 +144,8 @@
         "DUMMY-XY-000"
     ],
     "conda": "ulster38",
+    "container_version": "0.2",
+    "expected_technical_schema_version": "0.2",
     "difra_base_folder": "/Users/sad/dev/Data/difra",
     "technical_folder": "/Users/sad/dev/Data/difra/technical",
     "technical_archive_folder": "/Users/sad/dev/Data/difra/archive/technical",
