@@ -261,7 +261,6 @@ class OperatorSelectionDialog(QDialog):
         select_layout = QFormLayout(select_group)
         
         self.operator_combo = QComboBox()
-        self.operator_combo.currentIndexChanged.connect(self._on_operator_selected)
         self._populate_operator_combo()
         select_layout.addRow("Operator:", self.operator_combo)
         
@@ -272,6 +271,7 @@ class OperatorSelectionDialog(QDialog):
             "color: #555; background-color: #f0f0f0; padding: 8px; border-radius: 4px;"
         )
         select_layout.addRow("Details:", self.operator_details_label)
+        self.operator_combo.currentIndexChanged.connect(self._on_operator_selected)
         
         layout.addWidget(select_group)
         
@@ -316,6 +316,9 @@ class OperatorSelectionDialog(QDialog):
     
     def _update_operator_details(self):
         """Update operator details display."""
+        if not hasattr(self, "operator_details_label"):
+            return
+
         operator_id = self.operator_combo.currentData()
         
         if not operator_id:

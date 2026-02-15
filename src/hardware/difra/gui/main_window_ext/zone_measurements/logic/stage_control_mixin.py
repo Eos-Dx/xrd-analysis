@@ -104,9 +104,20 @@ class StageControlMixin:
         hardware client (gRPC primary, direct fallback).
         """
         if not getattr(self, "hardware_initialized", False):
-            client = self._ensure_hardware_client()
-            res_xystage = client.initialize_motion()
-            res_det = client.initialize_detector()
+            from PyQt5.QtWidgets import QMessageBox
+
+            try:
+                client = self._ensure_hardware_client()
+                res_xystage = client.initialize_motion()
+                res_det = client.initialize_detector()
+            except Exception as exc:
+                logging.exception("Hardware initialization failed")
+                QMessageBox.warning(
+                    self,
+                    "Hardware Initialization Failed",
+                    f"Could not initialize hardware:\n{exc}",
+                )
+                return
 
             self.hardware_controller = client.hardware_controller
             self.stage_controller = client.stage_controller
@@ -132,6 +143,13 @@ class StageControlMixin:
                 self.hardware_initialized = True
                 if hasattr(self, "hardware_state_changed"):
                     self.hardware_state_changed.emit(True)
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Hardware Initialization Failed",
+                    "Detector and/or motion initialization did not complete. "
+                    "Check hardware connections and logs.",
+                )
         else:
             try:
                 self._ensure_hardware_client().deinitialize()
