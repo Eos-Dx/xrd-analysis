@@ -162,8 +162,9 @@ Attrs:
 - `measurement_counter`
 - `timestamp_start`
 - optional `timestamp_end`
-- `measurement_status`
+- `measurement_status` (`in_progress`, `completed`, `failed`, `aborted`)
 - `point_ref` (point ID string like `pt_001`)
+- optional `failure_reason`
 
 Detector groups:
 - `det_*` (for example `det_primary`, `det_secondary`, `det_saxs`)
@@ -178,6 +179,9 @@ Detector attrs:
 Detector datasets:
 - `processed_signal`
 - optional `blob/raw_*` datasets
+
+Crash-recovery rule:
+- if `measurement_status == in_progress` and `timestamp_end` is missing, measurement started but did not finish (e.g. software crash).
 
 ### 9.3 Analytical measurements
 Path:

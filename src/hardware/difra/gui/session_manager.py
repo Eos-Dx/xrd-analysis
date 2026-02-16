@@ -47,6 +47,8 @@ class SessionManager:
         # Track counters for linking
         self.i0_counter: Optional[int] = None  # Attenuation without sample
         self.i_counter: Optional[int] = None   # Attenuation with sample
+        # Track in-progress point measurements for crash recovery metadata.
+        self._pending_measurements: Dict[int, str] = {}
         
         # Store config for later use
         self.config = config or {}
@@ -243,6 +245,7 @@ class SessionManager:
         # Reset counters
         self.i0_counter = None
         self.i_counter = None
+        self._pending_measurements = {}
         
         return self.session_id, self.session_path
     
@@ -262,6 +265,7 @@ class SessionManager:
         self.technical_container_path = None
         self.i0_counter = None
         self.i_counter = None
+        self._pending_measurements = {}
 
     def open_existing_session(self, session_file: Path) -> Dict:
         """Load metadata from an existing session container into manager state."""
@@ -322,6 +326,9 @@ class SessionManager:
                 self.technical_container_path = Path(source) if source else None
             else:
                 self.technical_container_path = None
+
+        # Runtime-only pending map is reconstructed during active capture only.
+        self._pending_measurements = {}
 
         return self.get_session_info()
 
@@ -528,6 +535,113 @@ class SessionManager:
         
         logger.info("Attenuation linked to all points successfully")
     
+    def begin_point_measurement(
+        self,
+        point_index: int,
+        timestamp_start: Optional[str] = None,
+    ) -> str:
+        """Create an in-progress measurement record before detector capture starts."""
+        self._check_active()
+
+        existing = self._pending_measurements.get(point_index)
+        if existing:
+            return existing
+
+        meas_path = self.writer.begin_measurement(
+            file_path=self.session_path,
+            point_index=point_index,
+            timestamp_start=timestamp_start,
+            measurement_status=self.schema.STATUS_IN_PROGRESS,
+        )
+        self._pending_measurements[point_index] = meas_path
+        logger.info("Started point measurement", point_index=point_index, path=meas_path)
+        return meas_path
+
+    def complete_point_measurement(
+        self,
+        point_index: int,
+        measurement_data: Dict,
+        detector_metadata: Dict,
+        poni_alias_map: Dict,
+        raw_files: Optional[Dict] = None,
+        timestamp_end: Optional[str] = None,
+        measurement_status: str = None,
+    ) -> str:
+        """Finalize point measurement and write detector payload."""
+        self._check_active()
+        if measurement_status is None:
+            measurement_status = self.schema.STATUS_COMPLETED
+
+        meas_path = self._pending_measurements.pop(point_index, None)
+        if meas_path:
+            meas_path = self.writer.finalize_measurement(
+                file_path=self.session_path,
+                measurement_path=meas_path,
+                measurement_data=measurement_data,
+                detector_metadata=detector_metadata,
+                poni_alias_map=poni_alias_map,
+                raw_files=raw_files,
+                timestamp_end=timestamp_end,
+                measurement_status=measurement_status,
+            )
+        else:
+            meas_path = self.writer.add_measurement(
+                file_path=self.session_path,
+                point_index=point_index,
+                measurement_data=measurement_data,
+                detector_metadata=detector_metadata,
+                poni_alias_map=poni_alias_map,
+                raw_files=raw_files,
+                timestamp_end=timestamp_end,
+                measurement_status=measurement_status,
+            )
+
+        if measurement_status == self.schema.STATUS_COMPLETED:
+            self.writer.update_point_status(
+                file_path=self.session_path,
+                point_index=point_index,
+                point_status="measured",
+            )
+
+        logger.info(
+            "Completed point measurement",
+            point_index=point_index,
+            status=measurement_status,
+            path=meas_path,
+        )
+        return meas_path
+
+    def fail_point_measurement(
+        self,
+        point_index: int,
+        reason: Optional[str] = None,
+        timestamp_end: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Optional[str]:
+        """Mark an in-progress point measurement as failed/aborted."""
+        self._check_active()
+
+        meas_path = self._pending_measurements.pop(point_index, None)
+        if not meas_path:
+            return None
+
+        terminal_status = status or self.schema.STATUS_FAILED
+        self.writer.fail_measurement(
+            file_path=self.session_path,
+            measurement_path=meas_path,
+            failure_reason=reason,
+            timestamp_end=timestamp_end,
+            measurement_status=terminal_status,
+        )
+        logger.warning(
+            "Point measurement failed",
+            point_index=point_index,
+            status=terminal_status,
+            reason=reason,
+            path=meas_path,
+        )
+        return meas_path
+
     def add_measurement(
         self,
         point_index: int,
@@ -536,38 +650,14 @@ class SessionManager:
         poni_alias_map: Dict,
         raw_files: Optional[Dict] = None,
     ) -> str:
-        """Add regular measurement at a point.
-        
-        Args:
-            point_index: Point index (1-based)
-            measurement_data: Dict mapping detector_id to 2D array
-            detector_metadata: Dict mapping detector_id to metadata dict
-            poni_alias_map: Dict mapping detector_alias to detector_id
-            raw_files: Optional dict of {detector_id: {"file.txt": bytes, "file.dsc": bytes}}
-            
-        Returns:
-            Measurement group path
-        """
-        self._check_active()
-        
-        meas_path = self.writer.add_measurement(
-            file_path=self.session_path,
+        """Backward-compatible wrapper: write completed point measurement."""
+        return self.complete_point_measurement(
             point_index=point_index,
             measurement_data=measurement_data,
             detector_metadata=detector_metadata,
             poni_alias_map=poni_alias_map,
             raw_files=raw_files,
         )
-        
-        # Update point status to measured
-        self.writer.update_point_status(
-            file_path=self.session_path,
-            point_index=point_index,
-            point_status="measured",
-        )
-        
-        logger.info("Added measurement", point_index=point_index, path=meas_path)
-        return meas_path
     
     def _check_active(self):
         """Check if session is active, raise if not."""

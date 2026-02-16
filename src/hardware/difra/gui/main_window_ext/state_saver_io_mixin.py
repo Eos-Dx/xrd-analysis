@@ -145,7 +145,8 @@ class StateSaverIOMixin:
             self._restoring_state = False
 
     def auto_save_state(self):
-        self._save_state(self.AUTO_STATE_FILE, True)
+        # Autosave is container-first: keep runtime state in session container, not sidecar files.
+        self._save_state(target_file=None, is_auto=True)
 
     def manual_save_state(self):
         self._save_state(self.PREV_STATE_FILE, False)
@@ -257,16 +258,17 @@ class StateSaverIOMixin:
             print(f"Warning: failed to collect technical aux rows: {e}")
 
         self.state = state
-        if is_auto and os.path.exists(self.AUTO_STATE_FILE):
+        if target_file:
+            if is_auto and os.path.exists(self.AUTO_STATE_FILE):
+                try:
+                    shutil.copyfile(self.AUTO_STATE_FILE, self.PREV_STATE_FILE)
+                except Exception as e:
+                    print("Error copying autosave file:", e)
             try:
-                shutil.copyfile(self.AUTO_STATE_FILE, self.PREV_STATE_FILE)
+                with open(target_file, "w") as f:
+                    json.dump(state, f, indent=4)
             except Exception as e:
-                print("Error copying autosave file:", e)
-        try:
-            with open(target_file, "w") as f:
-                json.dump(state, f, indent=4)
-        except Exception as e:
-            print("Error saving state:", e)
+                print("Error saving state:", e)
 
         # Keep active unlocked session containers in sync with latest workspace state
         # so crash recovery can restore from container content.

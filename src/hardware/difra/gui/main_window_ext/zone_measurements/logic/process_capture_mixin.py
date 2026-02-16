@@ -102,6 +102,24 @@ class ZoneMeasurementsProcessCaptureMixin:
         except Exception:
             pass
 
+        session_manager = getattr(self, "session_manager", None)
+        if (
+            session_manager is not None
+            and hasattr(session_manager, "is_session_active")
+            and session_manager.is_session_active()
+            and hasattr(session_manager, "begin_point_measurement")
+        ):
+            try:
+                session_manager.begin_point_measurement(
+                    point_index=self.current_measurement_sorted_index + 1,
+                    timestamp_start=time.strftime("%Y-%m-%d %H:%M:%S"),
+                )
+            except Exception as exc:
+                pm.logger.warning(
+                    "Failed to mark measurement start in session container",
+                    error=str(exc),
+                )
+
         container_version = get_container_version(
             self.config if hasattr(self, "config") else None
         )

@@ -558,45 +558,54 @@ def get_next_measurement_counter(file_path: Union[str, Path]) -> int:
     return next_counter
 
 
-def add_measurement(
+def begin_measurement(
     file_path: Union[str, Path],
     point_index: int,
-    measurement_data: Dict[str, np.ndarray],
-    detector_metadata: Dict[str, Dict],
-    poni_alias_map: Dict[str, str],
-    raw_files: Optional[Dict[str, Dict[str, bytes]]] = None,
     timestamp_start: Optional[str] = None,
-    timestamp_end: Optional[str] = None,
-    measurement_status: str = schema.STATUS_COMPLETED,
+    measurement_status: str = schema.STATUS_IN_PROGRESS,
 ) -> str:
+    """Create a measurement group with start timestamp before detector payload is written.
+
+    This is used to preserve in-container recovery info in case the app crashes mid-capture.
+    """
     if timestamp_start is None:
         timestamp_start = schema.now_timestamp()
 
     meas_counter = get_next_measurement_counter(file_path)
-
     point_id = schema.format_point_id(point_index)
     meas_id = schema.format_measurement_id(meas_counter)
     meas_path = f"{schema.GROUP_MEASUREMENTS}/{point_id}/{meas_id}"
 
     utils.create_group_if_missing(file_path, meas_path)
     _set_nx_class(file_path, meas_path, schema.NX_CLASS_DATA)
+    utils.set_attrs(
+        file_path=file_path,
+        path=meas_path,
+        attrs={
+            schema.ATTR_MEASUREMENT_COUNTER: meas_counter,
+            schema.ATTR_TIMESTAMP_START: timestamp_start,
+            schema.ATTR_MEASUREMENT_STATUS: measurement_status,
+            schema.ATTR_POINT_REF: point_id,
+        },
+    )
 
-    attrs = {
-        schema.ATTR_MEASUREMENT_COUNTER: meas_counter,
-        schema.ATTR_TIMESTAMP_START: timestamp_start,
-        schema.ATTR_MEASUREMENT_STATUS: measurement_status,
-        schema.ATTR_POINT_REF: point_id,
-    }
-    if timestamp_end is not None:
-        attrs[schema.ATTR_TIMESTAMP_END] = timestamp_end
-    utils.set_attrs(file_path, meas_path, attrs)
+    return meas_path
 
+
+def _write_measurement_detector_payload(
+    file_path: Union[str, Path],
+    measurement_path: str,
+    measurement_data: Dict[str, np.ndarray],
+    detector_metadata: Dict[str, Dict],
+    poni_alias_map: Dict[str, str],
+    raw_files: Optional[Dict[str, Dict[str, bytes]]] = None,
+) -> None:
     raw_files = raw_files or {}
 
     for detector_id, processed_signal in measurement_data.items():
         alias = next((a for a, d in poni_alias_map.items() if d == detector_id), detector_id)
         role = schema.format_detector_role(alias)
-        detector_path = f"{meas_path}/{role}"
+        detector_path = f"{measurement_path}/{role}"
 
         metadata = detector_metadata.get(detector_id) if detector_metadata else None
         detector_raw_files = raw_files.get(detector_id, {})
@@ -620,7 +629,90 @@ def add_measurement(
         )
         utils.set_attrs(file_path, detector_path, det_attrs)
 
-    return meas_path
+
+def finalize_measurement(
+    file_path: Union[str, Path],
+    measurement_path: str,
+    measurement_data: Dict[str, np.ndarray],
+    detector_metadata: Dict[str, Dict],
+    poni_alias_map: Dict[str, str],
+    raw_files: Optional[Dict[str, Dict[str, bytes]]] = None,
+    timestamp_end: Optional[str] = None,
+    measurement_status: str = schema.STATUS_COMPLETED,
+    failure_reason: Optional[str] = None,
+) -> str:
+    """Finalize a pre-created measurement group by writing payload and terminal status."""
+    if timestamp_end is None and measurement_status != schema.STATUS_IN_PROGRESS:
+        timestamp_end = schema.now_timestamp()
+
+    attrs = {schema.ATTR_MEASUREMENT_STATUS: measurement_status}
+    if timestamp_end is not None:
+        attrs[schema.ATTR_TIMESTAMP_END] = timestamp_end
+    if failure_reason:
+        attrs[schema.ATTR_FAILURE_REASON] = str(failure_reason)
+    utils.set_attrs(file_path=file_path, path=measurement_path, attrs=attrs)
+
+    if measurement_data:
+        _write_measurement_detector_payload(
+            file_path=file_path,
+            measurement_path=measurement_path,
+            measurement_data=measurement_data,
+            detector_metadata=detector_metadata,
+            poni_alias_map=poni_alias_map,
+            raw_files=raw_files,
+        )
+
+    return measurement_path
+
+
+def fail_measurement(
+    file_path: Union[str, Path],
+    measurement_path: str,
+    failure_reason: Optional[str] = None,
+    timestamp_end: Optional[str] = None,
+    measurement_status: str = schema.STATUS_FAILED,
+) -> str:
+    """Mark measurement as failed/aborted without detector payload."""
+    return finalize_measurement(
+        file_path=file_path,
+        measurement_path=measurement_path,
+        measurement_data={},
+        detector_metadata={},
+        poni_alias_map={},
+        raw_files=None,
+        timestamp_end=timestamp_end,
+        measurement_status=measurement_status,
+        failure_reason=failure_reason,
+    )
+
+
+def add_measurement(
+    file_path: Union[str, Path],
+    point_index: int,
+    measurement_data: Dict[str, np.ndarray],
+    detector_metadata: Dict[str, Dict],
+    poni_alias_map: Dict[str, str],
+    raw_files: Optional[Dict[str, Dict[str, bytes]]] = None,
+    timestamp_start: Optional[str] = None,
+    timestamp_end: Optional[str] = None,
+    measurement_status: str = schema.STATUS_COMPLETED,
+) -> str:
+    meas_path = begin_measurement(
+        file_path=file_path,
+        point_index=point_index,
+        timestamp_start=timestamp_start,
+        measurement_status=schema.STATUS_IN_PROGRESS,
+    )
+    return finalize_measurement(
+        file_path=file_path,
+        measurement_path=meas_path,
+        measurement_data=measurement_data,
+        detector_metadata=detector_metadata,
+        poni_alias_map=poni_alias_map,
+        raw_files=raw_files,
+        timestamp_end=timestamp_end,
+        measurement_status=measurement_status,
+    )
 
 
 def add_analytical_measurement(

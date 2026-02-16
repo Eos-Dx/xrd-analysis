@@ -15,8 +15,26 @@ def _pm():
 class ZoneMeasurementsProcessResultsMixin:
     def on_capture_finished(self, success: bool, result_files: dict):
         pm = _pm()
+        current_index = self.current_measurement_sorted_index
+        point_index_1based = current_index + 1
+        session_manager = getattr(self, "session_manager", None)
+
         if not success:
             pm.logger.error("Measurement capture failed")
+            if (
+                session_manager is not None
+                and hasattr(session_manager, "is_session_active")
+                and session_manager.is_session_active()
+                and hasattr(session_manager, "fail_point_measurement")
+            ):
+                try:
+                    session_manager.fail_point_measurement(
+                        point_index=point_index_1based,
+                        reason="capture_failed",
+                        timestamp_end=time.strftime("%Y-%m-%d %H:%M:%S"),
+                    )
+                except Exception:
+                    pm.logger.warning("Failed to mark failed measurement in session container", exc_info=True)
             try:
                 self._append_measurement_log("Normal: capture failed")
             except Exception:
@@ -33,12 +51,14 @@ class ZoneMeasurementsProcessResultsMixin:
         detector_lookup = {d["alias"]: d for d in self.config["detectors"]}
         measurements = self.state_measurements.get("measurements_meta", {})
         measurement_points = self.state_measurements["measurement_points"]
-        current_index = self.current_measurement_sorted_index
         x = self._x_mm
         y = self._y_mm
         point_unique_id = measurement_points[current_index]["unique_id"]
 
         for alias, npy_filename in result_files.items():
+            if not npy_filename:
+                pm.logger.warning("Capture returned empty file path", detector_alias=alias)
+                continue
             detector_meta = detector_lookup.get(alias, {})
             entry = {
                 "x": x,
@@ -74,14 +94,14 @@ class ZoneMeasurementsProcessResultsMixin:
         except Exception:
             pass
 
-        if hasattr(self, "session_manager") and self.session_manager.is_session_active():
+        if session_manager is not None and hasattr(session_manager, "is_session_active") and session_manager.is_session_active():
             try:
                 self._append_measurement_log("[DEBUG] Writing to H5")
             except Exception:
                 pass
             try:
-                pm.logger.info(f"=== ADDING MEASUREMENT TO H5 (Point {current_index + 1}) ===")
-                pm.logger.info(f"Session path: {self.session_manager.session_path}")
+                pm.logger.info(f"=== ADDING MEASUREMENT TO H5 (Point {point_index_1based}) ===")
+                pm.logger.info(f"Session path: {session_manager.session_path}")
 
                 all_data = {}
                 raw_files_data = {}
@@ -89,14 +109,19 @@ class ZoneMeasurementsProcessResultsMixin:
                 detector_lookup = {d["alias"]: d for d in self.config["detectors"]}
                 poni_alias_map = {}
                 for alias, npy_file in result_files.items():
+                    if not npy_file:
+                        continue
+                    npy_path = Path(npy_file)
+                    if not npy_path.exists():
+                        pm.logger.warning("Capture file missing on disk", detector_alias=alias, file=str(npy_file))
+                        continue
                     detector_meta = detector_lookup.get(alias, {})
                     detector_id = detector_meta.get("id", alias)
                     poni_alias_map[alias] = detector_id
-                    pm.logger.info(f"Loading {alias} data from: {Path(npy_file).name}")
+                    pm.logger.info(f"Loading {alias} data from: {npy_path.name}")
                     all_data[detector_id] = np.load(npy_file)
                     pm.logger.info(f"  Data shape: {all_data[detector_id].shape}")
 
-                    npy_path = Path(npy_file)
                     base_name = npy_path.stem
                     folder = npy_path.parent
 
@@ -146,19 +171,41 @@ class ZoneMeasurementsProcessResultsMixin:
                         "unique_id": point_unique_id,
                     }
 
+                if not all_data:
+                    pm.logger.error(
+                        "No detector payload produced for successful capture; marking failed",
+                        point_index=point_index_1based,
+                    )
+                    if hasattr(session_manager, "fail_point_measurement"):
+                        session_manager.fail_point_measurement(
+                            point_index=point_index_1based,
+                            reason="capture_success_without_payload",
+                            timestamp_end=time.strftime("%Y-%m-%d %H:%M:%S"),
+                        )
+                    return
+
                 raw_files_by_detector_id = raw_files_data
-                point_index_1based = current_index + 1
                 pm.logger.info(f"Writing to H5: /measurements/pt_{point_index_1based:03d}/meas_NNNNNNNNN")
                 pm.logger.info(f"  Detectors: {list(all_data.keys())}")
                 pm.logger.info(f"  Raw files: {len(raw_files_by_detector_id)} detector(s) with blobs")
 
-                self.session_manager.add_measurement(
-                    point_index=point_index_1based,
-                    measurement_data=all_data,
-                    detector_metadata=detector_metadata,
-                    poni_alias_map=poni_alias_map,
-                    raw_files=raw_files_by_detector_id if raw_files_by_detector_id else None,
-                )
+                if hasattr(session_manager, "complete_point_measurement"):
+                    session_manager.complete_point_measurement(
+                        point_index=point_index_1based,
+                        measurement_data=all_data,
+                        detector_metadata=detector_metadata,
+                        poni_alias_map=poni_alias_map,
+                        raw_files=raw_files_by_detector_id if raw_files_by_detector_id else None,
+                        timestamp_end=time.strftime("%Y-%m-%d %H:%M:%S"),
+                    )
+                else:
+                    session_manager.add_measurement(
+                        point_index=point_index_1based,
+                        measurement_data=all_data,
+                        detector_metadata=detector_metadata,
+                        poni_alias_map=poni_alias_map,
+                        raw_files=raw_files_by_detector_id if raw_files_by_detector_id else None,
+                    )
                 pm.logger.info(f"✓ Measurement added to H5 container for point {point_index_1based}")
                 try:
                     self._append_measurement_log("[DEBUG] H5 write complete")
@@ -170,13 +217,22 @@ class ZoneMeasurementsProcessResultsMixin:
                 pm.logger.error("=" * 60)
                 pm.logger.error(f"Error type: {type(e).__name__}")
                 pm.logger.error(f"Error message: {e}")
-                pm.logger.error(f"Point index: {current_index + 1}")
+                pm.logger.error(f"Point index: {point_index_1based}")
                 pm.logger.error(f"Detectors: {list(result_files.keys())}")
                 pm.logger.error(
-                    f"Session path: {self.session_manager.session_path if hasattr(self, 'session_manager') else 'N/A'}"
+                    f"Session path: {session_manager.session_path if session_manager is not None else 'N/A'}"
                 )
                 pm.logger.error("=" * 60, exc_info=True)
                 pm.logger.warning("Continuing measurement workflow despite H5 write failure...")
+                if hasattr(session_manager, "fail_point_measurement"):
+                    try:
+                        session_manager.fail_point_measurement(
+                            point_index=point_index_1based,
+                            reason=f"h5_write_failed:{type(e).__name__}",
+                            timestamp_end=time.strftime("%Y-%m-%d %H:%M:%S"),
+                        )
+                    except Exception:
+                        pm.logger.warning("Failed to persist failed status for point measurement", exc_info=True)
         else:
             pm.logger.warning("⚠ Session manager not active - measurements will NOT be saved to H5!")
             try:

@@ -291,6 +291,57 @@ def test_session_manager_add_measurement(temp_dir, technical_container):
     assert "meas_" in meas_path
 
 
+def test_session_manager_measurement_lifecycle_recovery(temp_dir, technical_container):
+    """Start/finish/fail lifecycle should be persisted in session container."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_RECOVERY",
+        distance_cm=17.0,
+    )
+    manager.add_points(
+        [{"pixel_coordinates": [100, 200], "physical_coordinates_mm": [10.0, 20.0]}]
+    )
+
+    start_1 = "2026-02-16 12:00:00"
+    end_1 = "2026-02-16 12:00:03"
+    meas_path_1 = manager.begin_point_measurement(point_index=1, timestamp_start=start_1)
+    with h5py.File(manager.session_path, "r") as session_file:
+        meas_1_started = session_file[meas_path_1]
+        assert meas_1_started.attrs[schema.ATTR_MEASUREMENT_STATUS] == schema.STATUS_IN_PROGRESS
+        assert meas_1_started.attrs[schema.ATTR_TIMESTAMP_START] == start_1
+        assert schema.ATTR_TIMESTAMP_END not in meas_1_started.attrs
+    manager.fail_point_measurement(point_index=1, reason="capture_failed", timestamp_end=end_1)
+
+    with h5py.File(manager.session_path, "r") as session_file:
+        meas_1 = session_file[meas_path_1]
+        assert meas_1.attrs[schema.ATTR_MEASUREMENT_STATUS] == schema.STATUS_FAILED
+        assert meas_1.attrs[schema.ATTR_TIMESTAMP_START] == start_1
+        assert meas_1.attrs[schema.ATTR_TIMESTAMP_END] == end_1
+        assert meas_1.attrs[schema.ATTR_FAILURE_REASON] == "capture_failed"
+        assert len([name for name in meas_1.keys() if name.startswith("det_")]) == 0
+
+    start_2 = "2026-02-16 12:01:00"
+    end_2 = "2026-02-16 12:01:05"
+    meas_path_2 = manager.begin_point_measurement(point_index=1, timestamp_start=start_2)
+    manager.complete_point_measurement(
+        point_index=1,
+        measurement_data={"DET1": np.random.rand(64, 64).astype(np.float32)},
+        detector_metadata={"DET1": {"integration_time_ms": 1000.0}},
+        poni_alias_map={"DET1": "DET1"},
+        timestamp_end=end_2,
+    )
+
+    with h5py.File(manager.session_path, "r") as session_file:
+        meas_2 = session_file[meas_path_2]
+        assert meas_2.attrs[schema.ATTR_MEASUREMENT_STATUS] == schema.STATUS_COMPLETED
+        assert meas_2.attrs[schema.ATTR_TIMESTAMP_START] == start_2
+        assert meas_2.attrs[schema.ATTR_TIMESTAMP_END] == end_2
+        assert any(name.startswith("det_") for name in meas_2.keys())
+        point = session_file[f"{schema.GROUP_POINTS}/pt_001"]
+        assert point.attrs[schema.ATTR_POINT_STATUS] == schema.POINT_STATUS_MEASURED
+
+
 def test_session_manager_close_session(temp_dir, technical_container):
     """Test closing session."""
     manager = SessionManager(config={"technical_folder": str(temp_dir)})
