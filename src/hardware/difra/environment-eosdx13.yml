@@ -1,0 +1,43 @@
+name: eosdx13
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - pip
+
+  # GUI + imaging
+  - pyqt=5
+  - matplotlib
+  - seaborn
+  - pillow
+  - opencv
+
+  # Numeric/science stack
+  - numpy
+  - scipy
+  - pandas
+  - h5py
+  - scikit-image
+  - scikit-learn
+  - pyfai
+
+  # gRPC/protobuf toolchain
+  - grpcio=1.78.*
+  - grpcio-tools=1.78.*
+  - protobuf=6.33.*
+
+  # Runtime helpers
+  - click
+  - requests
+
+  # Dev/test tools
+  - pytest
+  - black
+  - flake8
+  - isort
+  - coverage
+  - pre-commit
+
+  # NOTE:
+  # - pypixet / pypxproc are vendor binaries, not conda packages.
+  # - DiFRA uses PIXet C API via ctypes in this branch.
