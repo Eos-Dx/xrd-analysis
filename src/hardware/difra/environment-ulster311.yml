@@ -1,0 +1,43 @@
+name: ulster311
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+
+  # GUI + imaging
+  - pyqt=5
+  - matplotlib
+  - seaborn
+  - pillow
+  - opencv
+
+  # Numeric/science stack
+  - numpy=1.26.4
+  - scipy=1.13.0
+  - pandas=2.2.2
+  - h5py=3.11.0
+  - scikit-image=0.22.0
+  - scikit-learn=1.5.0
+  - pyfai=2024.5.0
+
+  # Latest protobuf/grpc toolchain for proto regeneration
+  - grpcio=1.78.*
+  - grpcio-tools=1.78.*
+  - protobuf=6.33.*
+
+  # Runtime helpers
+  - click=8.1.7
+  - requests
+
+  # Dev/test tools
+  - pytest=8.2.1
+  - black=24.4.2
+  - flake8=7.0.0
+  - isort=5.13.2
+  - coverage=7.5.1
+  - pre-commit=3.7.1
+
+  # NOTE:
+  # - On Windows with Advacam/PIXet, keep detector runtime in ulster38 if SDK
+  #   bindings are not compatible with Python 3.11.
