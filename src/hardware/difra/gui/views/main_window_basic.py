@@ -58,7 +58,13 @@ class MainWindowBasic(QMainWindow):
         )
         self._global_path = self._config_dir / "global.json"
         self._setups_dir = self._config_dir / "setups"
-        self._legacy_main_path = self._config_dir / "main.json"
+        main_name = "main_win.json" if os.name == "nt" else "main.json"
+        legacy_candidate = self._config_dir / main_name
+        self._legacy_main_path = (
+            legacy_candidate
+            if legacy_candidate.exists()
+            else self._config_dir / "main.json"
+        )
         self.config = self.load_config()
 
         # Central image view
@@ -77,6 +83,13 @@ class MainWindowBasic(QMainWindow):
         """Load global config and merge with a selected setup config.
         Fallback to legacy main.json if split configs are missing.
         """
+        folder_keys = (
+            "difra_base_folder",
+            "technical_folder",
+            "technical_archive_folder",
+            "measurements_folder",
+            "measurements_archive_folder",
+        )
 
         def _read_json(p: Path):
             try:
@@ -133,6 +146,14 @@ class MainWindowBasic(QMainWindow):
         # Merge: setup overrides global where keys overlap
         merged = dict(global_cfg)
         merged.update(setup_cfg)
+
+        # On Windows, prefer folder paths from main_win.json when available.
+        if os.name == "nt":
+            legacy_cfg = _read_json(self._legacy_main_path)
+            for key in folder_keys:
+                value = legacy_cfg.get(key)
+                if value:
+                    merged[key] = value
 
         # Remember active config path for editor
         self._active_config_path = setup_path if setup_path else self._legacy_main_path

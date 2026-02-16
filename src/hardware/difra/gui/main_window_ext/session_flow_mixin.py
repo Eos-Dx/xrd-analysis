@@ -16,6 +16,133 @@ from hardware.difra.gui.session_lifecycle_actions import SessionLifecycleActions
 
 
 class SessionFlowMixin:
+    def _resolve_measurements_folder_for_recovery(self, session_path: Path) -> Path:
+        """Resolve folder where raw/session measurement files are stored."""
+        if hasattr(self, "folderLineEdit"):
+            try:
+                folder_text = self.folderLineEdit.text().strip()
+                if folder_text:
+                    return Path(folder_text)
+            except Exception:
+                pass
+
+        if hasattr(self, "config") and isinstance(self.config, dict):
+            folder = self.config.get("measurements_folder")
+            if folder:
+                return Path(folder)
+
+        return session_path.parent
+
+    def _handle_incomplete_measurements_after_restore(self, session_path: Path):
+        """Recover in-progress measurements from on-disk files or mark for re-measurement."""
+        session_manager = getattr(self, "session_manager", None)
+        if session_manager is None:
+            return
+        if not hasattr(session_manager, "list_incomplete_measurements"):
+            return
+        if not session_manager.is_session_active():
+            return
+
+        try:
+            incomplete = session_manager.list_incomplete_measurements()
+        except Exception as exc:
+            logger.warning(f"Failed to scan incomplete measurements: {exc}", exc_info=True)
+            return
+
+        if not incomplete:
+            return
+
+        measurements_folder = self._resolve_measurements_folder_for_recovery(session_path)
+        integration_time_ms = 0.0
+        if hasattr(self, "integrationSpinBox"):
+            try:
+                integration_time_ms = float(self.integrationSpinBox.value()) * 1000.0
+            except Exception:
+                integration_time_ms = 0.0
+
+        for item in incomplete:
+            point_index = item.get("point_index")
+            measurement_path = item.get("measurement_path")
+            if not measurement_path:
+                continue
+
+            scan = session_manager.scan_recovery_files_for_measurement(
+                measurement_path=measurement_path,
+                measurement_folder=measurements_folder,
+            )
+            expected_aliases = scan.get("expected_aliases", [])
+            files_by_alias = scan.get("files_by_alias", {})
+            missing_aliases = scan.get("missing_aliases", [])
+            unreadable_aliases = scan.get("unreadable_aliases", [])
+            timestamp_start = scan.get("timestamp_start", "")
+
+            if scan.get("is_complete"):
+                details = "\n".join(
+                    [f"  • {alias}: {Path(path).name}" for alias, path in sorted(files_by_alias.items())]
+                )
+                choice = QMessageBox.question(
+                    self,
+                    "Recover Incomplete Point",
+                    (
+                        f"Point {point_index} was started ({timestamp_start}) but not finalized.\n\n"
+                        f"Found complete detector files in:\n{measurements_folder}\n\n"
+                        f"{details}\n\n"
+                        "Load these files into the session container now?\n"
+                        "Press No to mark this point for re-measurement."
+                    ),
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes,
+                )
+                if choice == QMessageBox.Yes:
+                    try:
+                        session_manager.finalize_incomplete_measurement_from_files(
+                            measurement_path=measurement_path,
+                            files_by_alias=files_by_alias,
+                            integration_time_ms=integration_time_ms,
+                        )
+                        logger.info(
+                            "Recovered point measurement from files: point=%s path=%s",
+                            point_index,
+                            measurement_path,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to recover point %s from files, marking for re-measurement: %s",
+                            point_index,
+                            exc,
+                            exc_info=True,
+                        )
+                        session_manager.abort_incomplete_measurement(
+                            measurement_path=measurement_path,
+                            reason=f"recovery_load_failed:{type(exc).__name__}",
+                        )
+                else:
+                    session_manager.abort_incomplete_measurement(
+                        measurement_path=measurement_path,
+                        reason="user_selected_remeasure",
+                    )
+                continue
+
+            expected_text = ", ".join(expected_aliases) if expected_aliases else "not configured"
+            missing_text = ", ".join(missing_aliases) if missing_aliases else "none"
+            unreadable_text = ", ".join(unreadable_aliases) if unreadable_aliases else "none"
+            QMessageBox.warning(
+                self,
+                "Incomplete Point Requires Re-measurement",
+                (
+                    f"Point {point_index} was started ({timestamp_start}) but could not be recovered from files.\n\n"
+                    f"Measurements folder: {measurements_folder}\n"
+                    f"Expected detectors: {expected_text}\n"
+                    f"Missing files: {missing_text}\n"
+                    f"Unreadable files: {unreadable_text}\n\n"
+                    "This point will be marked for re-measurement."
+                ),
+            )
+            session_manager.abort_incomplete_measurement(
+                measurement_path=measurement_path,
+                reason="recovery_missing_or_unreadable_files",
+            )
+
     def _handle_session_replacement(self) -> bool:
         """Handle replacement of existing session with error checking.
         
@@ -617,6 +744,9 @@ class SessionFlowMixin:
                     logger.warning(
                         f"Failed to restore technical table from session: {tech_restore_error}"
                     )
+
+            # Recover in-progress points from on-disk files or mark for re-measurement.
+            self._handle_incomplete_measurements_after_restore(file_path)
             
             # Update UI
             self.update_session_status()

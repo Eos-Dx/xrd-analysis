@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import json
+import os
 import sys
 import uuid
 from dataclasses import dataclass
@@ -116,7 +117,10 @@ def load_difra_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     if config_path:
         path = Path(config_path)
     else:
-        path = Path(__file__).resolve().parents[1] / "resources" / "config" / "main.json"
+        config_dir = Path(__file__).resolve().parents[1] / "resources" / "config"
+        main_name = "main_win.json" if os.name == "nt" else "main.json"
+        candidate = config_dir / main_name
+        path = candidate if candidate.exists() else config_dir / "main.json"
 
     if not path.exists():
         raise FileNotFoundError(f"DiFRA config not found: {path}")

@@ -201,6 +201,9 @@ class _SessionRestoreHarness(
         self.state = {}
         self.next_point_id = 1
         self.pixel_to_mm_ratio = 2.0
+        self.folderLineEdit = QLineEdit(str(config.get("measurements_folder", "")))
+        self.integrationSpinBox = QDoubleSpinBox()
+        self.integrationSpinBox.setValue(1.0)
 
     def update_session_status(self):
         self.status_updates += 1
@@ -606,3 +609,162 @@ def test_loading_technical_updates_active_unlocked_session(qapp, tmp_path, monke
         assert source_file == str(technical_b)
 
     assert harness.session_manager.technical_container_path == Path(technical_b)
+
+
+def test_restore_session_recovers_incomplete_point_from_files(qapp, tmp_path, monkeypatch):
+    _patch_non_blocking_dialogs(monkeypatch)
+
+    technical_folder = tmp_path / "technical_recover_complete"
+    technical_path = _make_technical_container(technical_folder)
+    lock_container(technical_path, user_id="sad")
+
+    measurement_folder = tmp_path / "session_measurements"
+    measurement_folder.mkdir(parents=True, exist_ok=True)
+
+    config = {
+        "technical_folder": str(technical_folder),
+        "measurements_folder": str(measurement_folder),
+        "operator_id": "sad",
+        "site_id": "ULSTER",
+        "machine_name": "DIFRA_TEST",
+        "beam_energy_kev": 17.5,
+        "detectors": [{"id": "det_primary", "alias": "PRIMARY"}],
+        "active_detectors": ["det_primary"],
+    }
+    manager = SessionManager(config=config)
+    _session_id, session_path = manager.create_session(
+        folder=tmp_path / "sessions_recover_complete",
+        distance_cm=17.0,
+        sample_id="RECOVER_OK_SAMPLE",
+        study_name="RECOVER_OK_STUDY",
+        operator_id="sad",
+        site_id="ULSTER",
+        machine_name="DIFRA_TEST",
+        beam_energy_keV=17.5,
+        acquisition_date="2026-02-13",
+    )
+    manager.add_points(
+        [
+            {
+                "pixel_coordinates": [10.0, 11.0],
+                "physical_coordinates_mm": [1.23, 4.56],
+                "point_status": "pending",
+            }
+        ]
+    )
+    measurement_path = manager.begin_point_measurement(
+        point_index=1,
+        timestamp_start="2026-02-13 12:34:56",
+    )
+
+    np.save(
+        measurement_folder / "RECOVER_OK_SAMPLE_1.23_4.56_20260213_123456_PRIMARY.npy",
+        np.full((8, 8), 5, dtype=np.float32),
+    )
+    manager.close_session()
+
+    harness = _SessionRestoreHarness(config=config)
+    harness.show()
+    qapp.processEvents()
+
+    monkeypatch.setattr(
+        session_mixin.QFileDialog,
+        "getOpenFileName",
+        staticmethod(lambda *a, **k: (str(session_path), "NeXus HDF5 Files (*.nxs.h5)")),
+    )
+
+    harness.on_restore_session()
+    qapp.processEvents()
+
+    with h5py.File(session_path, "r") as h5f:
+        measurement_group = h5f[measurement_path]
+        assert measurement_group.attrs[schema.ATTR_MEASUREMENT_STATUS] == schema.STATUS_COMPLETED
+        assert schema.ATTR_TIMESTAMP_END in measurement_group.attrs
+        assert "det_primary" in measurement_group
+        point_group = h5f[f"{schema.GROUP_POINTS}/pt_001"]
+        assert point_group.attrs[schema.ATTR_POINT_STATUS] == schema.POINT_STATUS_MEASURED
+
+
+def test_restore_session_marks_incomplete_point_for_remeasure_on_user_choice(qapp, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        staticmethod(
+            lambda *a, **k: QMessageBox.No
+            if len(a) > 1 and a[1] == "Recover Incomplete Point"
+            else QMessageBox.Yes
+        ),
+    )
+    monkeypatch.setattr(QMessageBox, "information", staticmethod(lambda *a, **k: QMessageBox.Ok))
+    monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: QMessageBox.Ok))
+    monkeypatch.setattr(QMessageBox, "critical", staticmethod(lambda *a, **k: QMessageBox.Ok))
+
+    technical_folder = tmp_path / "technical_recover_remeasure"
+    technical_path = _make_technical_container(technical_folder)
+    lock_container(technical_path, user_id="sad")
+
+    measurement_folder = tmp_path / "session_measurements_remeasure"
+    measurement_folder.mkdir(parents=True, exist_ok=True)
+
+    config = {
+        "technical_folder": str(technical_folder),
+        "measurements_folder": str(measurement_folder),
+        "operator_id": "sad",
+        "site_id": "ULSTER",
+        "machine_name": "DIFRA_TEST",
+        "beam_energy_kev": 17.5,
+        "detectors": [{"id": "det_primary", "alias": "PRIMARY"}],
+        "active_detectors": ["det_primary"],
+    }
+    manager = SessionManager(config=config)
+    _session_id, session_path = manager.create_session(
+        folder=tmp_path / "sessions_recover_remeasure",
+        distance_cm=17.0,
+        sample_id="RECOVER_REMEASURE_SAMPLE",
+        study_name="RECOVER_REMEASURE_STUDY",
+        operator_id="sad",
+        site_id="ULSTER",
+        machine_name="DIFRA_TEST",
+        beam_energy_keV=17.5,
+        acquisition_date="2026-02-13",
+    )
+    manager.add_points(
+        [
+            {
+                "pixel_coordinates": [20.0, 21.0],
+                "physical_coordinates_mm": [2.34, 5.67],
+                "point_status": "pending",
+            }
+        ]
+    )
+    measurement_path = manager.begin_point_measurement(
+        point_index=1,
+        timestamp_start="2026-02-13 12:44:56",
+    )
+
+    np.save(
+        measurement_folder / "RECOVER_REMEASURE_SAMPLE_2.34_5.67_20260213_124456_PRIMARY.npy",
+        np.full((8, 8), 9, dtype=np.float32),
+    )
+    manager.close_session()
+
+    harness = _SessionRestoreHarness(config=config)
+    harness.show()
+    qapp.processEvents()
+
+    monkeypatch.setattr(
+        session_mixin.QFileDialog,
+        "getOpenFileName",
+        staticmethod(lambda *a, **k: (str(session_path), "NeXus HDF5 Files (*.nxs.h5)")),
+    )
+
+    harness.on_restore_session()
+    qapp.processEvents()
+
+    with h5py.File(session_path, "r") as h5f:
+        measurement_group = h5f[measurement_path]
+        assert measurement_group.attrs[schema.ATTR_MEASUREMENT_STATUS] == schema.STATUS_ABORTED
+        assert measurement_group.attrs[schema.ATTR_FAILURE_REASON] == "user_selected_remeasure"
+        assert len([name for name in measurement_group.keys() if name.startswith("det_")]) == 0
+        point_group = h5f[f"{schema.GROUP_POINTS}/pt_001"]
+        assert point_group.attrs[schema.ATTR_POINT_STATUS] == schema.POINT_STATUS_PENDING
