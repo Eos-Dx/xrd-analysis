@@ -163,3 +163,53 @@ def test_session_queue_send_selected_and_all(qapp, tmp_path, monkeypatch):
     for archived in archived_files:
         with h5py.File(archived, "r") as h5f:
             assert bool(h5f.attrs.get("locked", False)) is True
+
+
+def test_session_tab_close_finalize_active_session(qapp, tmp_path, monkeypatch):
+    monkeypatch.setattr(QMessageBox, "question", staticmethod(lambda *a, **k: QMessageBox.Yes))
+    monkeypatch.setattr(QMessageBox, "information", staticmethod(lambda *a, **k: QMessageBox.Ok))
+    monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: QMessageBox.Ok))
+    monkeypatch.setattr(QMessageBox, "critical", staticmethod(lambda *a, **k: QMessageBox.Ok))
+
+    measurements_folder = tmp_path / "measurements"
+    measurements_folder.mkdir(parents=True, exist_ok=True)
+    archive_folder = tmp_path / "archive" / "measurements"
+
+    active_session = _create_session_file(measurements_folder, "SAMPLE_FINAL", "STUDY_FINAL")
+    (measurements_folder / "SAMPLE_FINAL_state.json").write_text('{"demo": true}')
+    (measurements_folder / "capture.txt").write_text("raw")
+    (measurements_folder / "capture.npy").write_text("processed")
+
+    session_manager = _FakeSessionManager()
+    session_manager.session_path = active_session
+    session_manager.sample_id = "SAMPLE_FINAL"
+    session_manager.study_name = "STUDY_FINAL"
+    session_manager.session_id = "session_final"
+
+    harness = _SessionQueueHarness(
+        config={
+            "measurements_folder": str(measurements_folder),
+            "measurements_archive_folder": str(archive_folder),
+        },
+        session_manager=session_manager,
+    )
+    harness.show()
+    qapp.processEvents()
+
+    harness._on_close_finalize_session()
+    qapp.processEvents()
+
+    assert session_manager.close_calls == 1
+    assert is_container_locked(active_session) is True
+
+    archived_dirs = sorted(
+        path for path in archive_folder.glob("SAMPLE_FINAL_*") if path.is_dir()
+    )
+    assert archived_dirs, "Expected archived measurement folder for finalized session"
+    archived_dir = archived_dirs[-1]
+    assert (archived_dir / "SAMPLE_FINAL_state.json").exists() is True
+    assert (archived_dir / "capture.txt").exists() is True
+    assert (archived_dir / "capture.npy").exists() is True
+
+    bundle_zip = archived_dir.with_suffix(".zip")
+    assert bundle_zip.exists() is True

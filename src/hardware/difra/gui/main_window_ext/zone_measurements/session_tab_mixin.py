@@ -1,11 +1,8 @@
 """Session management tab for Zone Measurements."""
 
-import shutil
-import time
 from pathlib import Path
-from typing import Dict, List
+from typing import List
 
-import h5py
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QCheckBox,
@@ -15,12 +12,15 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QPushButton,
     QTableWidget,
-    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
 from hardware.difra.gui.container_api import get_container_manager, get_schema
+from hardware.difra.gui.session_finalize_workflow import SessionFinalizeWorkflow
+from hardware.difra.gui.session_lifecycle_actions import SessionLifecycleActions
+from hardware.difra.gui.session_lifecycle_service import SessionLifecycleService
+from hardware.difra.gui.session_tab_presenter import SessionTabPresenter
 from hardware.difra.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -144,12 +144,6 @@ class SessionTabMixin:
         self._update_session_tab_info()
         self._refresh_session_container_lists()
 
-    @staticmethod
-    def _decode_attr(value):
-        if isinstance(value, bytes):
-            return value.decode("utf-8", errors="replace")
-        return value
-
     def _get_measurements_folder_for_queue(self) -> Path:
         if hasattr(self, "config") and self.config:
             folder = self.config.get("measurements_folder") or self.config.get(
@@ -173,127 +167,11 @@ class SessionTabMixin:
         return Path.home() / "difra_measurements"
 
     def _get_session_archive_folder(self) -> Path:
-        if hasattr(self, "config") and self.config:
-            archive = self.config.get("measurements_archive_folder")
-            if archive:
-                return Path(archive)
-            archive = self.config.get("session_archive_folder")
-            if archive:
-                return Path(archive)
-
         measurements_folder = self._get_measurements_folder_for_queue()
-        return measurements_folder.parent / "archive" / "measurements"
-
-    def _scan_pending_session_containers(self) -> List[Path]:
-        measurements_folder = self._get_measurements_folder_for_queue()
-        if not measurements_folder.exists():
-            return []
-        return sorted(
-            [path for path in measurements_folder.glob("session_*.nxs.h5") if path.is_file()]
+        return SessionLifecycleService.resolve_archive_folder(
+            config=self.config if hasattr(self, "config") else None,
+            measurements_folder=measurements_folder,
         )
-
-    def _scan_archived_session_containers(self) -> List[Path]:
-        archive_folder = self._get_session_archive_folder()
-        if not archive_folder.exists():
-            return []
-        return sorted(
-            [path for path in archive_folder.rglob("session_*.nxs.h5") if path.is_file()]
-        )
-
-    def _read_session_container_metadata(self, container_path: Path) -> Dict[str, str]:
-        info: Dict[str, str] = {
-            "file_name": container_path.name,
-            "path": str(container_path),
-            "sample_id": "UNKNOWN",
-            "study_name": "UNSPECIFIED",
-            "operator_id": "UNKNOWN",
-            "created": "",
-            "status": "UNKNOWN",
-            "session_id": "",
-            "archived": "",
-        }
-
-        try:
-            schema = self._container_schema()
-            with h5py.File(container_path, "r") as h5f:
-                info["sample_id"] = str(
-                    self._decode_attr(h5f.attrs.get(schema.ATTR_SAMPLE_ID, "UNKNOWN"))
-                )
-                info["study_name"] = str(
-                    self._decode_attr(
-                        h5f.attrs.get(schema.ATTR_STUDY_NAME, "UNSPECIFIED")
-                    )
-                )
-                info["operator_id"] = str(
-                    self._decode_attr(h5f.attrs.get(schema.ATTR_OPERATOR_ID, "UNKNOWN"))
-                )
-                info["created"] = str(
-                    self._decode_attr(
-                        h5f.attrs.get(schema.ATTR_CREATION_TIMESTAMP, "")
-                    )
-                )
-                info["session_id"] = str(
-                    self._decode_attr(h5f.attrs.get(schema.ATTR_SESSION_ID, ""))
-                )
-                locked = self._container_manager().is_container_locked(container_path)
-                info["status"] = "LOCKED" if locked else "UNLOCKED"
-        except Exception as exc:
-            info["status"] = f"ERROR ({exc})"
-
-        try:
-            parent_name = container_path.parent.name
-            if "_" in parent_name:
-                info["archived"] = parent_name.rsplit("_", 1)[-1]
-        except Exception:
-            pass
-        if not info["archived"]:
-            info["archived"] = time.strftime(
-                "%Y%m%d_%H%M%S", time.localtime(container_path.stat().st_mtime)
-            )
-
-        return info
-
-    def _populate_pending_table(self, containers: List[Path]):
-        self.pending_sessions_table.setRowCount(0)
-        for row, container_path in enumerate(containers):
-            info = self._read_session_container_metadata(container_path)
-            self.pending_sessions_table.insertRow(row)
-
-            checkbox = QCheckBox()
-            checkbox_widget = QWidget()
-            checkbox_layout = QHBoxLayout(checkbox_widget)
-            checkbox_layout.setContentsMargins(0, 0, 0, 0)
-            checkbox_layout.setAlignment(Qt.AlignCenter)
-            checkbox_layout.addWidget(checkbox)
-            self.pending_sessions_table.setCellWidget(row, 0, checkbox_widget)
-
-            for col, key in enumerate(
-                ["file_name", "sample_id", "study_name", "operator_id", "created", "status"],
-                start=1,
-            ):
-                item = QTableWidgetItem(str(info.get(key, "")))
-                item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-                self.pending_sessions_table.setItem(row, col, item)
-
-            path_item = QTableWidgetItem(str(container_path))
-            path_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-            self.pending_sessions_table.setItem(row, 7, path_item)
-
-    def _populate_archive_table(self, containers: List[Path]):
-        self.archived_sessions_table.setRowCount(0)
-        for row, container_path in enumerate(containers):
-            info = self._read_session_container_metadata(container_path)
-            self.archived_sessions_table.insertRow(row)
-            for col, key in enumerate(
-                ["file_name", "sample_id", "study_name", "operator_id", "created", "archived"]
-            ):
-                item = QTableWidgetItem(str(info.get(key, "")))
-                item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-                self.archived_sessions_table.setItem(row, col, item)
-
-            path_item = QTableWidgetItem(str(container_path))
-            path_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-            self.archived_sessions_table.setItem(row, 6, path_item)
 
     def _refresh_session_container_lists(self):
         if not hasattr(self, "pending_sessions_table") or not hasattr(
@@ -301,10 +179,20 @@ class SessionTabMixin:
         ):
             return
 
-        pending = self._scan_pending_session_containers()
-        archived = self._scan_archived_session_containers()
-        self._populate_pending_table(pending)
-        self._populate_archive_table(archived)
+        schema = self._container_schema()
+        container_manager = self._container_manager()
+        pending_rows = SessionTabPresenter.build_pending_rows(
+            self._get_measurements_folder_for_queue(),
+            schema=schema,
+            container_manager=container_manager,
+        )
+        archived_rows = SessionTabPresenter.build_archived_rows(
+            self._get_session_archive_folder(),
+            schema=schema,
+            container_manager=container_manager,
+        )
+        SessionTabPresenter.populate_pending_table(self.pending_sessions_table, pending_rows)
+        SessionTabPresenter.populate_archive_table(self.archived_sessions_table, archived_rows)
 
         archive_folder = self._get_session_archive_folder()
         self.archive_path_label.setText(f"Archive folder: {archive_folder}")
@@ -343,62 +231,60 @@ class SessionTabMixin:
             QMessageBox.information(self, "No Containers", "No session containers selected.")
             return
 
+        schema = self._container_schema()
+        container_manager = self._container_manager()
         archive_folder = self._get_session_archive_folder()
         archive_folder.mkdir(parents=True, exist_ok=True)
 
-        moved = 0
-        failed = []
+        active_session_path = None
+        if (
+            hasattr(self, "session_manager")
+            and self.session_manager
+            and getattr(self.session_manager, "session_path", None)
+        ):
+            active_session_path = Path(self.session_manager.session_path)
+        batch_session_ids = {}
 
         for container_path in container_paths:
-            try:
-                if not container_path.exists():
-                    continue
+            if not Path(container_path).exists():
+                continue
+            info = SessionTabPresenter.read_session_container_metadata(
+                Path(container_path),
+                schema=schema,
+                container_manager=container_manager,
+            )
+            logger.info(
+                "Fake cloud send completed",
+                session_path=str(container_path),
+                sample_id=info.get("sample_id"),
+            )
+            batch_session_ids[str(Path(container_path))] = (
+                info.get("session_id") or Path(container_path).stem
+            )
 
-                info = self._read_session_container_metadata(container_path)
-                was_active = False
-                if (
-                    hasattr(self, "session_manager")
-                    and self.session_manager
-                    and getattr(self.session_manager, "session_path", None)
-                ):
-                    active_path = Path(self.session_manager.session_path)
-                    was_active = active_path.resolve() == container_path.resolve()
+        lock_user = None
+        if hasattr(self, "session_manager") and self.session_manager:
+            lock_user = getattr(self.session_manager, "operator_id", None)
 
-                container_manager = self._container_manager()
-                if not container_manager.is_container_locked(container_path):
-                    lock_user = None
-                    if hasattr(self, "session_manager") and self.session_manager:
-                        lock_user = getattr(self.session_manager, "operator_id", None)
-                    container_manager.lock_container(container_path, user_id=lock_user)
+        workflow_result = SessionLifecycleActions.send_and_archive_session_containers(
+            container_paths=container_paths,
+            container_manager=container_manager,
+            archive_folder=archive_folder,
+            active_session_path=active_session_path,
+            lock_user=lock_user,
+            session_ids=batch_session_ids,
+        )
 
-                # Fake cloud send for development mode: keep explicit log marker,
-                # but apply real post-send lifecycle (lock + archive move).
-                logger.info(
-                    "Fake cloud send completed",
-                    session_path=str(container_path),
-                    sample_id=info.get("sample_id"),
-                )
+        if workflow_result.archived_active_session and hasattr(self, "session_manager"):
+            self.session_manager.close_session()
 
-                session_id = info.get("session_id") or container_path.stem
-                archive_stamp = time.strftime("%Y%m%d_%H%M%S")
-                session_archive_dir = archive_folder / f"{session_id}_{archive_stamp}"
-                session_archive_dir.mkdir(parents=True, exist_ok=True)
-                destination = session_archive_dir / container_path.name
-                shutil.move(str(container_path), str(destination))
-                moved += 1
-
-                if was_active:
-                    self.session_manager.close_session()
-            except Exception as exc:
-                failed.append(f"{container_path.name}: {exc}")
-
-        summary = [f"Sent+archived {moved} session container(s)."]
-        if failed:
+        summary = [f"Sent+archived {workflow_result.moved} session container(s)."]
+        if workflow_result.failed:
             summary.append("")
             summary.append("Failures:")
-            summary.extend(failed[:8])
-            if len(failed) > 8:
-                summary.append(f"... and {len(failed) - 8} more")
+            summary.extend(workflow_result.failed[:8])
+            if len(workflow_result.failed) > 8:
+                summary.append(f"... and {len(workflow_result.failed) - 8} more")
 
         QMessageBox.information(self, "Session Send Queue", "\n".join(summary))
         self._refresh_session_container_lists()
@@ -455,24 +341,10 @@ class SessionTabMixin:
             return
 
         info = self.session_manager.get_session_info()
-
-        if info["active"]:
-            info_text = f"<b>Sample ID:</b> {info['sample_id']}<br>"
-            info_text += f"<b>Study:</b> {info.get('study_name', 'UNSPECIFIED')}<br>"
-            info_text += f"<b>Session ID:</b> {info['session_id']}<br>"
-            info_text += f"<b>Operator:</b> {info['operator_id']}<br>"
-            info_text += f"<b>Container:</b> {Path(info['session_path']).name}<br>"
-            info_text += (
-                f"<b>Status:</b> {'🔒 Locked' if info['is_locked'] else '🔓 Unlocked'}"
-            )
-            self.session_info_label.setText(info_text)
-            is_locked = info["is_locked"]
-            self.close_session_btn.setEnabled(not is_locked)
-            self.upload_session_btn.setEnabled(is_locked)
-        else:
-            self.session_info_label.setText("No active session")
-            self.close_session_btn.setEnabled(False)
-            self.upload_session_btn.setEnabled(False)
+        view_state = SessionTabPresenter.build_active_session_view_state(info)
+        self.session_info_label.setText(view_state.info_text)
+        self.close_session_btn.setEnabled(view_state.close_enabled)
+        self.upload_session_btn.setEnabled(view_state.upload_enabled)
 
         self._refresh_session_container_lists()
 
@@ -503,17 +375,16 @@ class SessionTabMixin:
             session_path = Path(info["session_path"])
             measurements_folder = session_path.parent
 
-            self._store_json_state_in_container(
-                session_path, measurements_folder, info["sample_id"]
+            lock_user = getattr(self.session_manager, "operator_id", None)
+            workflow_result = SessionFinalizeWorkflow.finalize_session(
+                session_path=session_path,
+                measurements_folder=measurements_folder,
+                sample_id=info["sample_id"],
+                container_manager=self._container_manager(),
+                lock_user=lock_user,
+                config=self.config if hasattr(self, "config") else None,
+                logger=logger,
             )
-
-            logger.info("Locking session container", session_path=str(session_path))
-            self._container_manager().lock_container(session_path)
-
-            archive_dest, archived_count = self._archive_measurement_files(
-                measurements_folder, info["sample_id"]
-            )
-            bundle_path = self._create_session_bundle_zip(session_path, archive_dest)
 
             self.session_manager.close_session()
 
@@ -521,11 +392,11 @@ class SessionTabMixin:
                 f"Session '{info['sample_id']}' has been finalized.",
                 "",
                 f"Container: {session_path.name}",
-                f"Archived files: {archived_count}",
-                f"Archive folder: {archive_dest}",
+                f"Archived files: {workflow_result.archived_count}",
+                f"Archive folder: {workflow_result.archive_dest}",
             ]
-            if bundle_path:
-                details.append(f"ZIP bundle: {bundle_path}")
+            if workflow_result.bundle_path:
+                details.append(f"ZIP bundle: {workflow_result.bundle_path}")
 
             QMessageBox.information(self, "Session Finalized", "\n".join(details))
             logger.info("Session finalized and closed", sample_id=info["sample_id"])
@@ -541,94 +412,6 @@ class SessionTabMixin:
                 f"Failed to finalize session:\n\n{str(exc)}",
             )
             logger.error(f"Failed to finalize session: {exc}", exc_info=True)
-
-    def _store_json_state_in_container(
-        self, session_path: Path, measurements_folder: Path, sample_id: str
-    ):
-        """Store JSON state file in session container as attribute."""
-        import json
-
-        state_file = measurements_folder / f"{sample_id}_state.json"
-        if not state_file.exists():
-            logger.warning(f"State JSON file not found: {state_file}")
-            return
-
-        try:
-            with open(state_file, "r") as file_handle:
-                state_data = json.load(file_handle)
-            with h5py.File(session_path, "a") as h5f:
-                h5f.attrs["meta_json"] = json.dumps(state_data)
-            logger.info(
-                "Stored state JSON in container",
-                session_path=str(session_path),
-                state_file=str(state_file),
-            )
-        except Exception as exc:
-            logger.error(f"Failed to store state JSON in container: {exc}", exc_info=True)
-
-    def _archive_measurement_files(self, measurements_folder: Path, sample_id: str):
-        """Archive raw and NPY measurement files, including state JSON."""
-        from fnmatch import fnmatch
-
-        if hasattr(self, "config") and self.config:
-            archive_base = self.config.get("measurements_archive_folder")
-            if archive_base:
-                archive_folder = Path(archive_base)
-            else:
-                archive_folder = measurements_folder.parent / "archive" / "measurements"
-        else:
-            archive_folder = measurements_folder.parent / "archive" / "measurements"
-
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        archive_dest = archive_folder / f"{sample_id}_{timestamp}"
-        archive_dest.mkdir(parents=True, exist_ok=True)
-
-        patterns = ["*.txt", "*.dsc", "*.npy", "*.t3pa", "*_state.json"]
-        archived_count = 0
-        for file_path in sorted(measurements_folder.rglob("*")):
-            if not file_path.is_file():
-                continue
-
-            relative_path = file_path.relative_to(measurements_folder)
-            relative_str = relative_path.as_posix()
-            matches_pattern = any(
-                fnmatch(file_path.name, pattern) or fnmatch(relative_str, pattern)
-                for pattern in patterns
-            )
-            if not matches_pattern:
-                continue
-
-            try:
-                dest_path = archive_dest / relative_path
-                dest_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(file_path), str(dest_path))
-                archived_count += 1
-            except Exception as exc:
-                logger.warning(f"Failed to archive {relative_path}: {exc}")
-
-        logger.info(
-            f"Archived {archived_count} measurement files",
-            archive_folder=str(archive_dest),
-        )
-        return archive_dest, archived_count
-
-    def _create_session_bundle_zip(self, session_path: Path, archive_folder: Path):
-        """Create ZIP bundle with locked session container and archived files."""
-        from hardware.container import create_container_bundle
-
-        try:
-            output_zip = archive_folder.with_suffix(".zip")
-            bundle_path = create_container_bundle(
-                container_file=session_path,
-                source_folder=archive_folder,
-                output_zip=output_zip,
-                source_arcname=archive_folder.name,
-            )
-            logger.info("Created session ZIP bundle", bundle_path=str(bundle_path))
-            return bundle_path
-        except Exception as exc:
-            logger.warning(f"Failed to create session ZIP bundle: {exc}")
-            return None
 
     def _on_upload_session(self):
         """Fake upload action for currently active session."""

@@ -11,6 +11,9 @@ get_schema = _session_module.get_schema
 get_writer = _session_module.get_writer
 logger = _session_module.logger
 
+from hardware.difra.gui.session_lifecycle_service import SessionLifecycleService
+from hardware.difra.gui.session_lifecycle_actions import SessionLifecycleActions
+
 
 class SessionFlowMixin:
     def _handle_session_replacement(self) -> bool:
@@ -178,35 +181,15 @@ class SessionFlowMixin:
             created_by_error: Whether marked as error
             error_reason: Optional error reason
         """
-        import shutil
-        import time
-        
-        # Create archive folder from config (preferred) with deterministic fallback
-        archive_base = None
         try:
-            if hasattr(self, "config") and self.config:
-                configured = self.config.get("measurements_archive_folder")
-                if configured:
-                    archive_base = Path(configured)
-                elif self.config.get("session_archive_folder"):
-                    archive_base = Path(self.config.get("session_archive_folder"))
-        except Exception:
-            archive_base = None
-
-        if archive_base is None:
-            archive_base = session_path.parent.parent / "archive" / "measurements"
-
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        archive_folder = archive_base / f"{session_id}_{timestamp}"
-        archive_folder.mkdir(parents=True, exist_ok=True)
-        
-        # Move container to archive
-        dest_path = archive_folder / session_path.name
-        try:
-            shutil.move(str(session_path), str(dest_path))
+            destination = SessionLifecycleService.archive_session_container(
+                session_path=session_path,
+                session_id=session_id,
+                config=self.config if hasattr(self, "config") else None,
+            )
             logger.info(
-                f"Archived session container: {session_path.name} -> {archive_folder.name}/" +
-                (f" [ERROR: {error_reason}]" if created_by_error else "")
+                f"Archived session container: {session_path.name} -> {destination.parent.name}/"
+                + (f" [ERROR: {error_reason}]" if created_by_error else "")
             )
         except Exception as e:
             logger.error(f"Failed to move session to archive: {e}")
@@ -477,12 +460,17 @@ class SessionFlowMixin:
                 container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
                 
                 session_path = self.session_manager.session_path
+                lock_user = getattr(self.session_manager, "operator_id", None)
                 
                 # Close session
                 self.session_manager.close_session()
                 
                 # Lock the container (mark read-only)
-                container_manager.lock_container(session_path)
+                SessionLifecycleActions.finalize_session_container(
+                    session_path=session_path,
+                    container_manager=container_manager,
+                    lock_user=lock_user,
+                )
                 
                 logger.info(
                     f"Session finalized and locked: {session_path.name}"
