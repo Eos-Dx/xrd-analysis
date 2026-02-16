@@ -150,6 +150,7 @@ class ZonePointsMixin:
         self.pointsTable.selectionModel().selectionChanged.connect(
             self.on_points_table_selection
         )
+        self.pointsTable.itemChanged.connect(self.on_points_table_item_changed)
         self.pointsTable.installEventFilter(self)
 
     def update_conversion_label(self):
@@ -330,6 +331,100 @@ class ZonePointsMixin:
                 return True
         return super().eventFilter(source, event)
 
+    @staticmethod
+    def _make_points_table_item(value: str, editable: bool = False) -> QTableWidgetItem:
+        """Create a table item with deterministic edit flags."""
+        item = QTableWidgetItem(value)
+        flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
+        if editable:
+            flags |= Qt.ItemIsEditable
+        item.setFlags(flags)
+        return item
+
+    @staticmethod
+    def _set_item_center(item, x: float, y: float):
+        """Recenter a QGraphicsEllipseItem-like object while preserving its size."""
+        rect = item.rect()
+        width = rect.width()
+        height = rect.height()
+        item.setRect(x - width / 2.0, y - height / 2.0, width, height)
+
+    @staticmethod
+    def _is_deleted_item(item) -> bool:
+        """Guard sip.isdeleted for non-Qt test doubles."""
+        try:
+            return sip.isdeleted(item)
+        except Exception:
+            return False
+
+    def _find_user_point_and_zone_by_id(self, point_id: int):
+        """Return (point_item, zone_item_or_none) for a user point id."""
+        user_points = self.image_view.points_dict.get("user", {}).get("points", [])
+        user_zones = self.image_view.points_dict.get("user", {}).get("zones", [])
+        for idx, point_item in enumerate(user_points):
+            if point_item is None or self._is_deleted_item(point_item):
+                continue
+            if point_item.data(1) != point_id:
+                continue
+            zone_item = user_zones[idx] if idx < len(user_zones) else None
+            if zone_item is not None and self._is_deleted_item(zone_item):
+                zone_item = None
+            return point_item, zone_item
+        return None, None
+
+    def on_points_table_item_changed(self, item: QTableWidgetItem):
+        """Apply user point coordinate edits entered directly in the table."""
+        if (
+            item is None
+            or getattr(self, "_updating_points_table", False)
+            or not hasattr(self, "pointsTable")
+        ):
+            return
+
+        if item.column() not in (1, 2):
+            return
+
+        row = item.row()
+        point_id_item = self.pointsTable.item(row, 0)
+        if point_id_item is None:
+            return
+
+        try:
+            point_id = int(point_id_item.text())
+        except (TypeError, ValueError):
+            self.update_points_table()
+            return
+
+        point_item, zone_item = self._find_user_point_and_zone_by_id(point_id)
+        if point_item is None:
+            # Generated points are intentionally not editable from the table.
+            self.update_points_table()
+            return
+
+        x_item = self.pointsTable.item(row, 1)
+        y_item = self.pointsTable.item(row, 2)
+        if x_item is None or y_item is None:
+            self.update_points_table()
+            return
+
+        try:
+            x_val = float(x_item.text())
+            y_val = float(y_item.text())
+        except (TypeError, ValueError):
+            self.update_points_table()
+            return
+
+        self._set_item_center(point_item, x_val, y_val)
+        if zone_item is not None:
+            self._set_item_center(zone_item, x_val, y_val)
+
+        try:
+            self.image_view.scene.update()
+        except Exception:
+            pass
+
+        self.update_points_table()
+
     def update_points_table_safe(self):
         """Minimal safe table update for restore operations (no widgets)."""
         try:
@@ -345,17 +440,26 @@ class ZonePointsMixin:
                 self.pointsTable.setRowCount(len(points))
 
                 for idx, (x, y, ptype, point_id) in enumerate(points):
-                    from PyQt5.QtWidgets import QTableWidgetItem
-
+                    is_user = ptype == "user"
                     self.pointsTable.setItem(
                         idx,
                         0,
-                        QTableWidgetItem("" if point_id is None else str(point_id)),
+                        self._make_points_table_item(
+                            "" if point_id is None else str(point_id), editable=False
+                        ),
                     )
-                    self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
-                    self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
-                    self.pointsTable.setItem(idx, 3, QTableWidgetItem("N/A"))
-                    self.pointsTable.setItem(idx, 4, QTableWidgetItem("N/A"))
+                    self.pointsTable.setItem(
+                        idx, 1, self._make_points_table_item(f"{x:.2f}", editable=is_user)
+                    )
+                    self.pointsTable.setItem(
+                        idx, 2, self._make_points_table_item(f"{y:.2f}", editable=is_user)
+                    )
+                    self.pointsTable.setItem(
+                        idx, 3, self._make_points_table_item("N/A", editable=False)
+                    )
+                    self.pointsTable.setItem(
+                        idx, 4, self._make_points_table_item("N/A", editable=False)
+                    )
             finally:
                 self.pointsTable.blockSignals(False)
                 self._updating_points_table = False
@@ -490,14 +594,21 @@ class ZonePointsMixin:
     ):
         """Populate table rows with point data and reattach measurement widgets."""
         for idx, (x, y, ptype, point_id) in enumerate(points):
+            is_user = ptype == "user"
             # Set basic point data
             self.pointsTable.setItem(
                 idx,
                 0,
-                QTableWidgetItem("" if point_id is None else str(point_id)),
+                self._make_points_table_item(
+                    "" if point_id is None else str(point_id), editable=False
+                ),
             )
-            self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
-            self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
+            self.pointsTable.setItem(
+                idx, 1, self._make_points_table_item(f"{x:.2f}", editable=is_user)
+            )
+            self.pointsTable.setItem(
+                idx, 2, self._make_points_table_item(f"{y:.2f}", editable=is_user)
+            )
 
             # Set coordinate data
             if self.pixel_to_mm_ratio:
@@ -509,11 +620,19 @@ class ZonePointsMixin:
                     self.real_y_pos_mm.value()
                     - (y - self.include_center[1]) / self.pixel_to_mm_ratio
                 )
-                self.pointsTable.setItem(idx, 3, QTableWidgetItem(f"{x_mm:.2f}"))
-                self.pointsTable.setItem(idx, 4, QTableWidgetItem(f"{y_mm:.2f}"))
+                self.pointsTable.setItem(
+                    idx, 3, self._make_points_table_item(f"{x_mm:.2f}", editable=False)
+                )
+                self.pointsTable.setItem(
+                    idx, 4, self._make_points_table_item(f"{y_mm:.2f}", editable=False)
+                )
             else:
-                self.pointsTable.setItem(idx, 3, QTableWidgetItem("N/A"))
-                self.pointsTable.setItem(idx, 4, QTableWidgetItem("N/A"))
+                self.pointsTable.setItem(
+                    idx, 3, self._make_points_table_item("N/A", editable=False)
+                )
+                self.pointsTable.setItem(
+                    idx, 4, self._make_points_table_item("N/A", editable=False)
+                )
 
             # Do not attach measurement widgets in the table anymore. They live in the right panel.
 

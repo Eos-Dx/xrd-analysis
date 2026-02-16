@@ -4,6 +4,9 @@ import time
 from typing import Callable, Optional, Tuple
 
 from PyQt5.QtCore import QObject, QTimer, pyqtSignal
+from hardware.difra.utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
 
 
 class ContinuousMovementController(QObject):
@@ -74,11 +77,12 @@ class ContinuousMovementController(QObject):
             bool: True if movement started successfully, False otherwise
         """
         if self.is_active:
-            print("Movement already active")
+            logger.warning("Continuous movement start requested while already active")
             return False
 
         if not self.stage_controller:
             self.movement_error.emit("No stage controller available")
+            logger.error("Continuous movement start failed: no stage controller")
             return False
 
         # Safety check: verify that the movement pattern won't exceed stage limits
@@ -86,6 +90,12 @@ class ContinuousMovementController(QObject):
             self.movement_error.emit(
                 f"Movement pattern would exceed stage limits. "
                 f"Center: ({center_x:.3f}, {center_y:.3f}), Max radius: {self.max_radius:.3f}mm"
+            )
+            logger.error(
+                "Continuous movement start rejected by stage limits",
+                center_x=center_x,
+                center_y=center_y,
+                max_radius=self.max_radius,
             )
             return False
 
@@ -107,13 +117,22 @@ class ContinuousMovementController(QObject):
             self.movement_thread.start()
 
             self.movement_started.emit()
-            print(
-                f"Started continuous movement around ({center_x:.3f}, {center_y:.3f})"
+            logger.info(
+                "Started continuous movement",
+                center_x=center_x,
+                center_y=center_y,
+                max_radius=self.max_radius,
+                thread_name=self.movement_thread.name,
             )
             return True
 
         except Exception as e:
             self.movement_error.emit(f"Failed to start movement: {str(e)}")
+            logger.error(
+                "Failed to start continuous movement",
+                error=str(e),
+                exc_info=True,
+            )
             self.is_active = False
             return False
 
@@ -130,7 +149,7 @@ class ContinuousMovementController(QObject):
         if not self.is_active:
             return True
 
-        print("Stopping continuous movement...")
+        logger.info("Stopping continuous movement")
 
         # Signal the movement thread to stop
         self.stop_event.set()
@@ -146,15 +165,24 @@ class ContinuousMovementController(QObject):
             try:
                 x, y = self.original_position
                 self.stage_controller.move_stage(x, y)
-                print(f"Returned to original position ({x:.3f}, {y:.3f})")
+                logger.info(
+                    "Returned to original position after continuous movement",
+                    x=x,
+                    y=y,
+                )
                 self.position_changed.emit(x, y)
             except Exception as e:
                 self.movement_error.emit(
                     f"Failed to return to original position: {str(e)}"
                 )
+                logger.error(
+                    "Failed to return to original position after continuous movement",
+                    error=str(e),
+                    exc_info=True,
+                )
 
         self.movement_stopped.emit()
-        print("Continuous movement stopped")
+        logger.info("Continuous movement stopped")
         return True
 
     def _movement_loop(self, center_x: float, center_y: float):
@@ -193,11 +221,11 @@ class ContinuousMovementController(QObject):
 
                     except Exception as e:
                         error_msg = f"Stage movement failed: {str(e)}"
-                        print(error_msg)
+                        logger.error(error_msg, exc_info=True)
                         self.movement_error.emit(error_msg)
                         break
                 else:
-                    print(
+                    logger.warning(
                         f"Skipping position ({target_x:.3f}, {target_y:.3f}) - outside stage limits"
                     )
 
@@ -221,7 +249,7 @@ class ContinuousMovementController(QObject):
 
         except Exception as e:
             error_msg = f"Movement loop error: {str(e)}"
-            print(error_msg)
+            logger.error(error_msg, exc_info=True)
             self.movement_error.emit(error_msg)
 
         finally:
@@ -277,13 +305,13 @@ class ContinuousMovementController(QObject):
                     center_x, center_y, clock_position, self.max_radius
                 )
                 if not self._check_stage_limits(target_x, target_y):
-                    print(
+                    logger.warning(
                         f"Position ({target_x:.3f}, {target_y:.3f}) at clock {clock_position} would exceed stage limits"
                     )
                     return False
             return True
         except Exception as e:
-            print(f"Error validating movement pattern: {e}")
+            logger.error("Error validating movement pattern", error=str(e), exc_info=True)
             return False
 
     def _check_stage_limits(self, x: float, y: float) -> bool:
@@ -308,7 +336,7 @@ class ContinuousMovementController(QObject):
             return x_min <= x <= x_max and y_min <= y <= y_max
 
         except Exception as e:
-            print(f"Error checking stage limits: {e}")
+            logger.error("Error checking stage limits", error=str(e), exc_info=True)
             return False
 
     def is_moving(self) -> bool:
