@@ -85,6 +85,11 @@ def test_session_manager_create_session(temp_dir, technical_container):
     assert manager.sample_id == "TEST_SAMPLE_001"
     assert manager.study_name == "UNSPECIFIED"
     assert manager.session_id == session_id
+    with h5py.File(session_path, "r") as session_file:
+        assert session_file.attrs.get(schema.ATTR_PRODUCER_SOFTWARE) == "difra"
+        assert schema.ATTR_PRODUCER_VERSION in session_file.attrs
+        log_ds = f"{schema.GROUP_RUNTIME}/{schema.DATASET_SESSION_LOG}"
+        assert log_ds in session_file
 
 
 def test_session_manager_create_session_with_study(temp_dir, technical_container):

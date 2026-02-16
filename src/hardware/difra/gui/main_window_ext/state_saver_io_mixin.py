@@ -149,7 +149,8 @@ class StateSaverIOMixin:
         self._save_state(target_file=None, is_auto=True)
 
     def manual_save_state(self):
-        self._save_state(self.PREV_STATE_FILE, False)
+        # Manual state save is also container-first now (no local autosave sidecar).
+        self._save_state(target_file=None, is_auto=False)
 
     def setup_auto_save(self, interval=2000):
         self.autoSaveTimer = QTimer(self)

@@ -56,6 +56,15 @@ class SessionManager:
         self.schema = self.container_module.schema
         self.writer = self.container_module.writer
         self.container_manager = self.container_module.container_manager
+        self.producer_software: str = str(
+            self.config.get("producer_software")
+            or self.config.get("app_name")
+            or "difra"
+        )
+        self.producer_version: str = str(
+            self.config.get("producer_version")
+            or getattr(self.container_module, "__version__", "unknown")
+        )
         
         # Configuration - read from config or use defaults
         if config:
@@ -68,6 +77,29 @@ class SessionManager:
             self.site_id: str = "DIFRA_LAB"
             self.machine_name: str = "DIFRA-01"
             self.beam_energy_kev: float = 17.5
+
+    def log_event(
+        self,
+        message: str,
+        event_type: str = "event",
+        level: str = "INFO",
+        details: Optional[Dict] = None,
+    ) -> None:
+        """Append session runtime event to container log dataset."""
+        if not self.is_session_active():
+            return
+        append_runtime_log = getattr(self.writer, "append_runtime_log", None)
+        if not callable(append_runtime_log):
+            return
+        append_runtime_log(
+            file_path=self.session_path,
+            message=message,
+            level=level,
+            event_type=event_type,
+            source=self.producer_software,
+            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            details=details or {},
+        )
     
     def _get_technical_folder(self) -> Path:
         """Get technical container folder from config.
@@ -222,6 +254,8 @@ class SessionManager:
         # Create session container with schema-driven attributes
         self.session_id, session_path_str = self.writer.create_session_container(
             folder=folder,
+            producer_software=self.producer_software,
+            producer_version=self.producer_version,
             **container_attrs,
         )
         
@@ -234,6 +268,11 @@ class SessionManager:
         self.writer.copy_technical_to_session(
             technical_file=tech_path,
             session_file=self.session_path,
+        )
+        self.log_event(
+            message="Technical snapshot copied into session",
+            event_type="technical_snapshot_copied",
+            details={"technical_container": str(tech_path)},
         )
         
         logger.info(
@@ -435,6 +474,12 @@ class SessionManager:
                 point_status=point.get("point_status", "pending"),
             )
             paths.append(path)
+
+        self.log_event(
+            message=f"Generated {len(points)} measurement points",
+            event_type="points_generated",
+            details={"count": len(points)},
+        )
         
         logger.info("Added points to session", num_points=len(points))
         return paths
@@ -480,9 +525,19 @@ class SessionManager:
         if mode == "without":
             self.i0_counter = counter
             logger.info("Added I₀ attenuation measurement", counter=counter)
+            self.log_event(
+                message="Attenuation I0 recorded",
+                event_type="attenuation_i0_recorded",
+                details={"counter": counter},
+            )
         else:  # mode == "with"
             self.i_counter = counter
             logger.info("Added I attenuation measurement", counter=counter)
+            self.log_event(
+                message="Attenuation I recorded",
+                event_type="attenuation_i_recorded",
+                details={"counter": counter},
+            )
         
         return counter
     
@@ -534,6 +589,16 @@ class SessionManager:
             )
         
         logger.info("Attenuation linked to all points successfully")
+        self.log_event(
+            message="Linked attenuation analytical measurements to points",
+            event_type="attenuation_linked",
+            details={
+                "start_point_idx": start_point_idx,
+                "num_points": num_points,
+                "i0_counter": self.i0_counter,
+                "i_counter": self.i_counter,
+            },
+        )
     
     def begin_point_measurement(
         self,
@@ -554,6 +619,14 @@ class SessionManager:
             measurement_status=self.schema.STATUS_IN_PROGRESS,
         )
         self._pending_measurements[point_index] = meas_path
+        self.log_event(
+            message="Point measurement started",
+            event_type="measurement_started",
+            details={
+                "point_index": point_index,
+                "measurement_path": meas_path,
+            },
+        )
         logger.info("Started point measurement", point_index=point_index, path=meas_path)
         return meas_path
 
@@ -602,6 +675,16 @@ class SessionManager:
                 point_index=point_index,
                 point_status="measured",
             )
+        self.log_event(
+            message="Point measurement finalized",
+            event_type="measurement_finalized",
+            details={
+                "point_index": point_index,
+                "measurement_path": meas_path,
+                "status": measurement_status,
+                "detector_count": len(measurement_data or {}),
+            },
+        )
 
         logger.info(
             "Completed point measurement",
@@ -632,6 +715,17 @@ class SessionManager:
             failure_reason=reason,
             timestamp_end=timestamp_end,
             measurement_status=terminal_status,
+        )
+        self.log_event(
+            message="Point measurement failed",
+            event_type="measurement_failed",
+            level="WARNING",
+            details={
+                "point_index": point_index,
+                "measurement_path": meas_path,
+                "status": terminal_status,
+                "reason": reason or "",
+            },
         )
         logger.warning(
             "Point measurement failed",

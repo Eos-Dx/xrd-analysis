@@ -147,6 +147,8 @@ ATTR_BEAM_ENERGY_KEV = "beam_energy_keV"
 # Session container specific (optional)
 ATTR_PATIENT_ID = "patient_id"
 ATTR_HUMAN_SUMMARY = "human_summary"
+ATTR_PRODUCER_SOFTWARE = "producer_software"
+ATTR_PRODUCER_VERSION = "producer_version"
 
 # ================== NeXus Entry Attributes ================
 ATTR_ENTRY_DEFAULT = "default"
@@ -222,6 +224,7 @@ DATASET_RAW_SIGNAL = "raw_signal"
 DATASET_PROCESSED_SIGNAL = "processed_signal"
 DATASET_BLOB = "blob"
 DATASET_METADATA = "metadata"
+DATASET_SESSION_LOG = "session_log"
 
 # ================== Compression Levels =====================
 COMPRESSION_BLOB_MAX = 9

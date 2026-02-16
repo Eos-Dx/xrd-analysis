@@ -14,6 +14,8 @@ def create_technical_container(
     folder: Union[str, Path],
     distance_cm: float,
     container_id: Optional[str] = None,
+    producer_software: str = "difra",
+    producer_version: str = "unknown",
 ) -> Tuple[str, str]:
     """Create an empty NeXus technical container."""
     folder = Path(folder)
@@ -30,6 +32,8 @@ def create_technical_container(
     root_attrs = {
         schema.ATTR_CREATION_TIMESTAMP: schema.now_timestamp(),
         schema.ATTR_DISTANCE_CM: distance_cm,
+        schema.ATTR_PRODUCER_SOFTWARE: producer_software,
+        schema.ATTR_PRODUCER_VERSION: producer_version,
     }
 
     utils.create_empty_container(
@@ -64,6 +68,15 @@ def create_technical_container(
     for group_path, nx_class in group_classes:
         utils.create_group_if_missing(file_path, group_path)
         utils.set_attrs(file_path, group_path, {schema.ATTR_NX_CLASS: nx_class})
+
+    utils.set_attrs(
+        file_path=file_path,
+        path=schema.GROUP_RUNTIME,
+        attrs={
+            schema.ATTR_PRODUCER_SOFTWARE: producer_software,
+            schema.ATTR_PRODUCER_VERSION: producer_version,
+        },
+    )
 
     return container_id, file_path
 
@@ -308,6 +321,8 @@ def generate_from_aux_table(
     container_id: Optional[str] = None,
     validate_poni: bool = True,
     poni_tolerance_percent: float = 5.0,
+    producer_software: str = "difra",
+    producer_version: str = "unknown",
 ) -> Tuple[str, str]:
     detector_id_by_alias = {
         cfg.get("alias"): cfg.get("id", cfg.get("alias"))
@@ -336,7 +351,13 @@ def generate_from_aux_table(
     else:
         root_distance_cm = distances_cm
 
-    container_id, file_path = create_technical_container(folder, root_distance_cm, container_id)
+    container_id, file_path = create_technical_container(
+        folder=folder,
+        distance_cm=root_distance_cm,
+        container_id=container_id,
+        producer_software=producer_software,
+        producer_version=producer_version,
+    )
 
     if poni_distances_cm is not None:
         with utils.open_h5_append(file_path) as f:

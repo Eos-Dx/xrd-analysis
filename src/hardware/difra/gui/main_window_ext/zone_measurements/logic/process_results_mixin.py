@@ -182,7 +182,7 @@ class ZoneMeasurementsProcessResultsMixin:
                             reason="capture_success_without_payload",
                             timestamp_end=time.strftime("%Y-%m-%d %H:%M:%S"),
                         )
-                    return
+                    raise RuntimeError("No detector payload produced")
 
                 raw_files_by_detector_id = raw_files_data
                 pm.logger.info(f"Writing to H5: /measurements/pt_{point_index_1based:03d}/meas_NNNNNNNNN")

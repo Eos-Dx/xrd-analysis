@@ -86,6 +86,12 @@ class SessionContainerValidator:
                 "/",
                 f"schema_version must be {schema.SCHEMA_VERSION}",
             )
+        for producer_attr in (
+            schema.ATTR_PRODUCER_SOFTWARE,
+            schema.ATTR_PRODUCER_VERSION,
+        ):
+            if producer_attr not in f.attrs:
+                self._add("WARNING", "/", f"Missing producer metadata: {producer_attr}")
 
     def _validate_entry(self, f: h5py.File):
         if schema.GROUP_ENTRY not in f:

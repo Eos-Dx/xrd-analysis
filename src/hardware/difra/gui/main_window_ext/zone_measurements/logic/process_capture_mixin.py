@@ -114,6 +114,17 @@ class ZoneMeasurementsProcessCaptureMixin:
                     point_index=self.current_measurement_sorted_index + 1,
                     timestamp_start=time.strftime("%Y-%m-%d %H:%M:%S"),
                 )
+                if hasattr(session_manager, "log_event"):
+                    session_manager.log_event(
+                        message="Normal detector capture started",
+                        event_type="capture_started",
+                        details={
+                            "point_index": self.current_measurement_sorted_index + 1,
+                            "x_mm": float(getattr(self, "_x_mm", 0.0)),
+                            "y_mm": float(getattr(self, "_y_mm", 0.0)),
+                            "integration_time_s": float(getattr(self, "integration_time", 0.0)),
+                        },
+                    )
             except Exception as exc:
                 pm.logger.warning(
                     "Failed to mark measurement start in session container",

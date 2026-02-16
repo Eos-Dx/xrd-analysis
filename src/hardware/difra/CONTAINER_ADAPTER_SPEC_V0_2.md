@@ -77,6 +77,8 @@ Always parse these root attributes:
 - `schema_version`
 - `creation_timestamp`
 - `NX_class`
+- `producer_software`
+- `producer_version`
 
 Session root attributes:
 - `sample_id`
@@ -116,6 +118,19 @@ It is resolved from active setup/config identity in this priority:
 5. fallback `DIFRA-01`
 
 So for adapters, `machine_name` should be treated as installation/setup identity.
+
+## 7.3 Runtime Software Log in Container
+
+Session runtime log is stored in:
+- `/entry/difra_runtime/session_log`
+
+Format:
+- UTF-8 text payload stored as compressed byte array (`gzip`, high compression).
+- One line per event with timestamp/level/source/event_type.
+
+Usage:
+- If measurement started and app crashed, container log + measurement status provide audit trail.
+- Container is self-describing without relying only on external log files.
 
 ## 8. File Naming and Archive Naming (Human-Readable)
 

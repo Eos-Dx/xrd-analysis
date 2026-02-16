@@ -166,6 +166,56 @@ def refresh_human_summary(file_path: Union[str, Path]) -> str:
     return summary
 
 
+def append_runtime_log(
+    file_path: Union[str, Path],
+    message: str,
+    level: str = "INFO",
+    event_type: str = "event",
+    source: str = "difra",
+    timestamp: Optional[str] = None,
+    details: Optional[Dict] = None,
+) -> None:
+    """Append a human-readable log line to /entry/difra_runtime/session_log."""
+    if timestamp is None:
+        timestamp = schema.now_timestamp()
+
+    details = details or {}
+    details_json = json.dumps(details, ensure_ascii=False, separators=(",", ":"))
+    line = f"[{timestamp}] [{level.upper()}] [{source}] {event_type}: {message}"
+    if details:
+        line = f"{line} | {details_json}"
+
+    log_path = f"{schema.GROUP_RUNTIME}/{schema.DATASET_SESSION_LOG}"
+    with utils.open_h5_append(file_path) as f:
+        existing = ""
+        if log_path in f:
+            raw = f[log_path][()]
+            if isinstance(raw, np.ndarray):
+                existing = raw.tobytes().decode("utf-8", errors="replace")
+            elif isinstance(raw, bytes):
+                existing = raw.decode("utf-8", errors="replace")
+            else:
+                existing = str(raw)
+
+        text = f"{existing}\n{line}" if existing else line
+        payload = np.frombuffer(text.encode("utf-8"), dtype=np.uint8)
+
+    utils.write_dataset(
+        file_path=file_path,
+        dataset_path=log_path,
+        data=payload,
+        attrs={
+            schema.ATTR_NX_CLASS: schema.NX_CLASS_NOTE,
+            "encoding": "utf-8",
+            "format": "text/plain",
+            "line_count": int(text.count("\n") + 1),
+        },
+        compression="gzip",
+        compression_opts=schema.COMPRESSION_BLOB_MAX,
+        overwrite=True,
+    )
+
+
 def create_session_container(
     folder: Union[str, Path],
     sample_id: str,
@@ -178,6 +228,8 @@ def create_session_container(
     study_name: str = "UNSPECIFIED",
     project_id: Optional[str] = None,
     container_id: Optional[str] = None,
+    producer_software: str = "difra",
+    producer_version: str = "unknown",
 ) -> Tuple[str, str]:
     """Create a new NeXus session container."""
     folder = Path(folder)
@@ -203,6 +255,8 @@ def create_session_container(
         schema.ATTR_SITE_ID: site_id,
         schema.ATTR_MACHINE_NAME: machine_name,
         schema.ATTR_BEAM_ENERGY_KEV: beam_energy_keV,
+        schema.ATTR_PRODUCER_SOFTWARE: producer_software,
+        schema.ATTR_PRODUCER_VERSION: producer_version,
     }
 
     if patient_id is not None:
@@ -284,9 +338,24 @@ def create_session_container(
     # Initialize global measurement counter in runtime and root for compatibility.
     with utils.open_h5_append(file_path) as f:
         f.attrs["measurement_counter"] = 0
-        f[schema.GROUP_RUNTIME].attrs["measurement_counter"] = 0
+        runtime = f[schema.GROUP_RUNTIME]
+        runtime.attrs["measurement_counter"] = 0
+        runtime.attrs[schema.ATTR_PRODUCER_SOFTWARE] = producer_software
+        runtime.attrs[schema.ATTR_PRODUCER_VERSION] = producer_version
 
     refresh_human_summary(file_path)
+    append_runtime_log(
+        file_path=file_path,
+        source=producer_software,
+        event_type="session_created",
+        message="Session container created",
+        details={
+            "sample_id": sample_id,
+            "project_id": resolved_project_id,
+            "operator_id": operator_id,
+            "machine_name": machine_name,
+        },
+    )
 
     return container_id, file_path
 

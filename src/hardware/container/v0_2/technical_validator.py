@@ -75,6 +75,12 @@ class TechnicalContainerValidator:
             self._add_error(
                 f"schema_version must be {schema.SCHEMA_VERSION}, got {file_handle.attrs.get(schema.ATTR_SCHEMA_VERSION)}"
             )
+        for producer_attr in (
+            schema.ATTR_PRODUCER_SOFTWARE,
+            schema.ATTR_PRODUCER_VERSION,
+        ):
+            if producer_attr not in file_handle.attrs:
+                self._add_warning(f"Missing producer metadata: {producer_attr}")
 
     def _validate_entry(self, file_handle: h5py.File) -> None:
         if schema.GROUP_ENTRY not in file_handle:

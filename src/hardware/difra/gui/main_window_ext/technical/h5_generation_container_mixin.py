@@ -360,6 +360,12 @@ class H5GenerationContainerMixin:
                 active_detector_ids=self._get_active_detector_ids(),
                 distances_cm=user_distances_cm,  # Pass per-detector distances dict
                 poni_distances_cm=poni_distances_cm if poni_distances_cm else None,  # Pass per-detector PONI distances
+                producer_software=str(self.config.get("producer_software") or "difra"),
+                producer_version=str(
+                    self.config.get("producer_version")
+                    or self.config.get("container_version")
+                    or "unknown"
+                ),
             )
         except Exception as e:
             QMessageBox.critical(

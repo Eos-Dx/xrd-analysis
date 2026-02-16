@@ -404,6 +404,8 @@ def get_container_info(file_path: Union[str, Path]) -> Dict:
             'path': str(file_path),
             'container_type': _decode(f.attrs.get(schema.ATTR_CONTAINER_TYPE, 'unknown')),
             'schema_version': _decode(f.attrs.get(schema.ATTR_SCHEMA_VERSION, 'unknown')),
+            'producer_software': _decode(f.attrs.get(schema.ATTR_PRODUCER_SOFTWARE, 'unknown')),
+            'producer_version': _decode(f.attrs.get(schema.ATTR_PRODUCER_VERSION, 'unknown')),
         }
         
         # Add type-specific info
