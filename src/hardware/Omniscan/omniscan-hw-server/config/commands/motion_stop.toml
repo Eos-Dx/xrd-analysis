@@ -1,0 +1,31 @@
+command_id = "motion_stop"
+description = "Stop all motion controller movements immediately"
+service = "Motion"
+audit_level = "High"
+risk_level = "Low"
+
+[safety_requirements]
+allowed_states = ["Idle", "Calibrated", "Running"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = true
+max_execution_time_seconds = 5
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "motion_stop"
+message = "Motion stop commanded"
+
+[[execution.steps]]
+type = "CallDevice"
+device = "motion"
+method = "stop"
+parameters = []
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "motion"
+change_type = "stopped"

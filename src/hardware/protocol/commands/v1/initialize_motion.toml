@@ -1,0 +1,32 @@
+command_id = "initialize_motion"
+description = "Initialize motion hardware"
+service = "DeviceInitialization"
+audit_level = "High"
+risk_level = "Medium"
+
+[safety_requirements]
+allowed_states = ["Idle", "Locked"]
+requires_enable_button = true
+requires_calibration = false
+requires_key_switch = true
+enable_timeout_seconds = 20
+max_execution_time_seconds = 60
+
+[[safety_requirements.interlock_checks]]
+name = "emergency_stop"
+required_value = false
+error_message = "Emergency stop is pressed"
+
+[execution]
+rollback_on_failure = true
+
+[[execution.steps]]
+type = "CallDevice"
+device = "motion"
+method = "initialize"
+parameters = []
+
+[[execution.error_cleanup]]
+type = "LogAudit"
+event_type = "motion_init_failed"
+message = "Motion initialization failed"

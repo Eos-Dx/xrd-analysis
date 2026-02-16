@@ -1,0 +1,32 @@
+command_id = "home"
+description = "Home stage axes"
+service = "Motion"
+audit_level = "Standard"
+risk_level = "Medium"
+
+[safety_requirements]
+allowed_states = ["Idle"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = true
+max_execution_time_seconds = 120
+
+[[safety_requirements.interlock_checks]]
+name = "emergency_stop"
+required_value = false
+error_message = "Emergency stop is pressed"
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "CallDevice"
+device = "motion"
+method = "home"
+parameters = []
+
+[[execution.error_cleanup]]
+type = "CallDevice"
+device = "motion"
+method = "stop"
+parameters = []

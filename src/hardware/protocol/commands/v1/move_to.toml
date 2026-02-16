@@ -1,0 +1,43 @@
+command_id = "move_to"
+description = "Move stage to absolute position"
+service = "Motion"
+audit_level = "Standard"
+risk_level = "Medium"
+
+[safety_requirements]
+allowed_states = ["Idle"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = true
+max_execution_time_seconds = 120
+
+[[safety_requirements.interlock_checks]]
+name = "emergency_stop"
+required_value = false
+error_message = "Emergency stop is pressed"
+
+[[parameters]]
+name = "position_mm"
+required = true
+description = "Target position in millimeters"
+
+[parameters.param_type]
+type = "Float"
+unit = "millimeters"
+min = -500.0
+max = 500.0
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "CallDevice"
+device = "motion"
+method = "move_to"
+parameters = ["position_mm"]
+
+[[execution.error_cleanup]]
+type = "CallDevice"
+device = "motion"
+method = "stop"
+parameters = []

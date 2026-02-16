@@ -1,0 +1,87 @@
+command_id = "start_background_measurement"
+description = "Acquire dark frame (background) measurement with X-ray beam closed"
+service = "Acquisition"
+audit_level = "High"
+risk_level = "Low"
+
+[safety_requirements]
+allowed_states = ["Idle", "Calibrated"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = true
+max_execution_time_seconds = 300
+
+[[safety_requirements.interlock_checks]]
+name = "door_closed"
+required_value = true
+error_message = "Safety door must be closed"
+
+# Beam must be CLOSED for background measurement (radiation_safe = true)
+
+[[parameters]]
+name = "exposure_time_ms"
+required = true
+description = "Exposure time for dark frame in milliseconds"
+default_value = "1000"
+
+[parameters.param_type]
+type = "Float"
+unit = "milliseconds"
+min = 100.0
+max = 300000.0
+
+[execution]
+rollback_on_failure = true
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "background_measurement_started"
+message = "Dark frame acquisition initiated"
+
+[[execution.steps]]
+type = "StateTransition"
+to_state = "Running"
+reason = "Background measurement started"
+
+[[execution.steps]]
+type = "CheckInterlock"
+name = "radiation_safe"
+required_value = true
+
+[[execution.steps]]
+type = "CallDevice"
+device = "detector"
+method = "start_exposure"
+parameters = ["exposure_time_ms"]
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "detector"
+change_type = "background_measurement"
+
+# Wait for background measurement to complete
+[[execution.steps]]
+type = "WaitForCondition"
+condition = "detector_idle"
+timeout_ms = 300000
+poll_interval_ms = 500
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "background_measurement_completed"
+message = "Dark frame acquisition completed"
+
+[[execution.steps]]
+type = "StateTransition"
+to_state = "Idle"
+reason = "Background measurement completed successfully"
+
+[[execution.error_cleanup]]
+type = "StateTransition"
+to_state = "Idle"
+reason = "Background measurement failed"
+
+[[execution.error_cleanup]]
+type = "LogAudit"
+event_type = "background_measurement_failed"
+message = "Dark frame acquisition failed"

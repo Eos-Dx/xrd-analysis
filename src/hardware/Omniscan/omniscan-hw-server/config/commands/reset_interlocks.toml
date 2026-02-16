@@ -1,0 +1,64 @@
+command_id = "reset_interlocks"
+description = "Attempt to reset and clear interlock violations after safety conditions are restored"
+service = "Safety"
+audit_level = "Critical"
+risk_level = "High"
+
+[safety_requirements]
+allowed_states = ["Safe", "Idle"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = true
+max_execution_time_seconds = 10
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "interlock_reset_requested"
+message = "User requested interlock reset"
+
+[[execution.steps]]
+type = "CheckInterlock"
+name = "emergency_stop"
+required_value = false
+
+[[execution.steps]]
+type = "CheckInterlock"
+name = "door_closed"
+required_value = true
+
+[[execution.steps]]
+type = "CheckInterlock"
+name = "beam_watchdog"
+required_value = true
+
+[[execution.steps]]
+type = "CallDevice"
+device = "gpio"
+method = "reset_interlocks"
+parameters = []
+
+[[execution.steps]]
+type = "ConditionalBranch"
+condition = "interlocks_safe"
+[[execution.steps.if_true]]
+type = "StateTransition"
+to_state = "Idle"
+reason = "Interlocks cleared successfully"
+
+[[execution.steps.if_true]]
+type = "LogAudit"
+event_type = "interlock_reset_success"
+message = "Interlocks reset and system returned to Idle"
+
+[[execution.steps.if_false]]
+type = "LogAudit"
+event_type = "interlock_reset_failed"
+message = "Interlocks still violated after reset attempt"
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "safety"
+change_type = "interlock_reset"

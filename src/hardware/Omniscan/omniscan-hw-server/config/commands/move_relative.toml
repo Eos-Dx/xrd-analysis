@@ -1,0 +1,70 @@
+command_id = "move_relative"
+description = "Move XY stage relative to current position"
+service = "Motion"
+audit_level = "Standard"
+risk_level = "Medium"
+
+[safety_requirements]
+allowed_states = ["Idle", "Calibrated"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = true
+max_execution_time_seconds = 120
+
+[[safety_requirements.interlock_checks]]
+name = "emergency_stop"
+required_value = false
+error_message = "Emergency stop is pressed - motion disabled"
+
+[[parameters]]
+name = "distance_mm"
+required = true
+description = "Distance to move in millimeters (positive or negative)"
+
+[parameters.param_type]
+type = "Float"
+unit = "millimeters"
+min = -500.0
+max = 500.0
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "motion_move_relative"
+message = "Relative motion command initiated"
+
+[[execution.steps]]
+type = "CallDevice"
+device = "motion"
+method = "move_relative"
+parameters = ["distance_mm"]
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "motion"
+change_type = "move_started"
+
+# Wait for motion to complete
+[[execution.steps]]
+type = "WaitForCondition"
+condition = "motion_idle"
+timeout_ms = 120000
+poll_interval_ms = 500
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "motion_move_relative_completed"
+message = "Relative motion completed"
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "motion"
+change_type = "move_completed"
+
+[[execution.error_cleanup]]
+type = "CallDevice"
+device = "motion"
+method = "stop"
+parameters = []

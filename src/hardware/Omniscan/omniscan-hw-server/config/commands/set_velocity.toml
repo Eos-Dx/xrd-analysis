@@ -1,0 +1,42 @@
+command_id = "set_velocity"
+description = "Set motion controller velocity (speed) for future movements"
+service = "Motion"
+audit_level = "Standard"
+risk_level = "Low"
+
+[safety_requirements]
+allowed_states = ["Idle", "Calibrated"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = true
+max_execution_time_seconds = 5
+
+[[parameters]]
+name = "velocity_mm_s"
+required = true
+description = "Velocity in millimeters per second"
+
+[parameters.param_type]
+type = "Float"
+unit = "mm/s"
+min = 0.1
+max = 50.0
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "motion_velocity_set"
+message = "Motion velocity configured"
+
+[[execution.steps]]
+type = "CallDevice"
+device = "motion"
+method = "set_velocity"
+parameters = ["velocity_mm_s"]
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "motion"
+change_type = "velocity_changed"

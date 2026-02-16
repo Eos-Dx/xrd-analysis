@@ -1,0 +1,125 @@
+command_id = "calibrate_detector"
+description = "Perform detector calibration measurement with quality control validation"
+service = "Acquisition"
+audit_level = "Critical"
+risk_level = "High"
+
+[safety_requirements]
+allowed_states = ["Idle", "Locked"]
+requires_enable_button = true
+requires_calibration = false
+requires_key_switch = true
+enable_timeout_seconds = 20
+max_execution_time_seconds = 600
+
+[[safety_requirements.interlock_checks]]
+name = "door_closed"
+required_value = true
+error_message = "Safety door must be closed for calibration"
+
+[[safety_requirements.interlock_checks]]
+name = "emergency_stop"
+required_value = false
+error_message = "Emergency stop is pressed"
+
+# Note: For calibration, beam must be OPEN (radiation_safe = false)
+# This is checked in the execution logic
+
+[execution]
+rollback_on_failure = true
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "calibration_started"
+message = "Calibration sequence initiated"
+
+[[execution.steps]]
+type = "StateTransition"
+to_state = "Calibration"
+reason = "Beginning calibration procedure"
+
+# Step 1: Home XY stage
+[[execution.steps]]
+type = "CallDevice"
+device = "motion"
+method = "home"
+parameters = []
+
+[[execution.steps]]
+type = "WaitForCondition"
+condition = "motion_idle"
+timeout_ms = 60000
+poll_interval_ms = 500
+
+# Step 2: Wait for enable button (beam open)
+[[execution.steps]]
+type = "WaitForCondition"
+condition = "enable_button_pressed"
+timeout_ms = 20000
+poll_interval_ms = 100
+
+# Step 3: Open beam-stop for calibration
+[[execution.steps]]
+type = "CallDevice"
+device = "gpio"
+method = "open_beam_stop"
+parameters = []
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "beam_stop_opened"
+message = "Beam-stop opened for calibration"
+
+# Step 4: Perform calibration measurement
+[[execution.steps]]
+type = "CallDevice"
+device = "detector"
+method = "calibrate"
+parameters = []
+
+# Step 5: Wait for calibration to complete
+[[execution.steps]]
+type = "WaitForCondition"
+condition = "detector_idle"
+timeout_ms = 600000
+poll_interval_ms = 500
+
+# Step 6: Close beam-stop after calibration
+[[execution.steps]]
+type = "CallDevice"
+device = "gpio"
+method = "close_beam_stop"
+parameters = []
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "beam_stop_closed"
+message = "Beam-stop closed after calibration"
+
+# Step 7: QC checks are performed internally, record calibration if QC passes
+
+[[execution.steps]]
+type = "StateTransition"
+to_state = "Idle"
+reason = "Calibration completed successfully"
+
+[[execution.steps]]
+type = "NotifyStateChange"
+component = "safety"
+change_type = "calibration_complete"
+
+[[execution.error_cleanup]]
+type = "CallDevice"
+device = "gpio"
+method = "close_beam_stop"
+parameters = []
+
+[[execution.error_cleanup]]
+type = "StateTransition"
+to_state = "Locked"
+reason = "Calibration failed - system locked"
+
+[[execution.error_cleanup]]
+type = "LogAudit"
+event_type = "calibration_failed"
+message = "Calibration procedure failed"

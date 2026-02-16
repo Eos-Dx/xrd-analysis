@@ -1,0 +1,27 @@
+command_id = "resume"
+description = "Resume paused acquisition workflow"
+service = "Acquisition"
+audit_level = "High"
+risk_level = "Medium"
+
+[safety_requirements]
+allowed_states = ["Paused"]
+requires_enable_button = true
+requires_calibration = false
+requires_key_switch = true
+interlock_checks = []
+max_execution_time_seconds = 5
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "CallDevice"
+device = "detector"
+method = "resume"
+parameters = []
+
+[[execution.error_cleanup]]
+type = "LogAudit"
+event_type = "resume_failed"
+message = "Resume command failed"

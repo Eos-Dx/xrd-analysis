@@ -1,0 +1,27 @@
+command_id = "get_state"
+description = "Query current server state"
+service = "Acquisition"
+audit_level = "Low"
+risk_level = "Low"
+
+[safety_requirements]
+allowed_states = ["Idle", "Locked", "PendingArmed", "Running", "Paused", "Stopping", "Safe", "Maintenance"]
+requires_enable_button = false
+requires_calibration = false
+requires_key_switch = false
+interlock_checks = []
+enable_timeout_seconds = 0
+max_execution_time_seconds = 2
+
+[execution]
+rollback_on_failure = false
+
+[[execution.steps]]
+type = "LogAudit"
+event_type = "get_state"
+message = "State queried"
+
+[[execution.error_cleanup]]
+type = "LogAudit"
+event_type = "get_state_failed"
+message = "State query failed"
