@@ -213,6 +213,26 @@ class SessionContainerValidator:
             ]:
                 if attr not in ana_group.attrs:
                     self._add("WARNING", ana_path, f"Missing attribute: {attr}")
+            if schema.ATTR_ANALYSIS_ROLE not in ana_group.attrs:
+                self._add("WARNING", ana_path, f"Missing attribute: {schema.ATTR_ANALYSIS_ROLE}")
+            else:
+                analysis_type = ana_group.attrs.get(schema.ATTR_ANALYSIS_TYPE, "")
+                analysis_role = ana_group.attrs.get(schema.ATTR_ANALYSIS_ROLE, "")
+                if isinstance(analysis_type, bytes):
+                    analysis_type = analysis_type.decode("utf-8", errors="replace")
+                if isinstance(analysis_role, bytes):
+                    analysis_role = analysis_role.decode("utf-8", errors="replace")
+                if (
+                    analysis_type == schema.ANALYSIS_TYPE_ATTENUATION
+                    and analysis_role == schema.ANALYSIS_ROLE_UNSPECIFIED
+                ):
+                    self._add(
+                        "WARNING",
+                        ana_path,
+                        "attenuation analytical measurement should specify analysis_role=i0|i",
+                    )
+            if schema.ATTR_POINT_IDS not in ana_group.attrs:
+                self._add("WARNING", ana_path, f"Missing attribute: {schema.ATTR_POINT_IDS}")
 
             detector_groups = [name for name in ana_group.keys() if name.startswith("det_")]
             if not detector_groups:
@@ -252,6 +272,41 @@ class SessionContainerValidator:
                         "ERROR",
                         point_path,
                         f"Unknown analytical measurement id referenced: {value}",
+                    )
+
+            refs_attr = point_group.attrs.get(schema.ATTR_ANALYTICAL_MEASUREMENT_REFS)
+            if refs_attr is not None:
+                refs = [refs_attr] if isinstance(refs_attr, h5py.Reference) else list(refs_attr)
+                for ref in refs:
+                    try:
+                        target = f[ref]
+                    except Exception:
+                        self._add("ERROR", point_path, "Invalid analytical measurement reference")
+                        continue
+                    if not target.name.startswith(f"{schema.GROUP_ANALYTICAL_MEASUREMENTS}/"):
+                        self._add(
+                            "ERROR",
+                            point_path,
+                            f"Reference target outside analytical measurements: {target.name}",
+                        )
+
+        for ana_id, ana_group in f[schema.GROUP_ANALYTICAL_MEASUREMENTS].items():
+            ana_path = f"{schema.GROUP_ANALYTICAL_MEASUREMENTS}/{ana_id}"
+            point_refs = ana_group.attrs.get(schema.ATTR_POINT_REFS)
+            if point_refs is None:
+                continue
+            refs = [point_refs] if isinstance(point_refs, h5py.Reference) else list(point_refs)
+            for ref in refs:
+                try:
+                    target = f[ref]
+                except Exception:
+                    self._add("ERROR", ana_path, "Invalid point reference")
+                    continue
+                if not target.name.startswith(f"{schema.GROUP_POINTS}/"):
+                    self._add(
+                        "ERROR",
+                        ana_path,
+                        f"Reference target outside points: {target.name}",
                     )
 
     def _validate_measurement_counter_monotonic(self, f: h5py.File):

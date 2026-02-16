@@ -52,6 +52,7 @@ def test_archive_measurement_files_moves_only_matching_patterns(tmp_path):
     (measurements / "sample.dsc").write_text("dsc")
     (measurements / "sample.npy").write_text("npy")
     (measurements / "sample.t3pa").write_text("t3pa")
+    (measurements / "sample.poni").write_text("poni")
     (measurements / "SAMPLE_PAT_state.json").write_text("{}")
     (measurements / "keep.md").write_text("keep")
     nested = measurements / "nested"
@@ -61,18 +62,21 @@ def test_archive_measurement_files_moves_only_matching_patterns(tmp_path):
     archive_dest, archived_count = SessionFinalizeWorkflow.archive_measurement_files(
         measurements_folder=measurements,
         sample_id="SAMPLE_PAT",
+        operator_id="sad",
         config={"measurements_archive_folder": str(tmp_path / "archive" / "measurements")},
     )
 
     assert archive_dest.exists() is True
-    assert archived_count == 6
+    assert archived_count == 7
     assert (measurements / "keep.md").exists() is True
     assert (archive_dest / "sample.txt").exists() is True
     assert (archive_dest / "sample.dsc").exists() is True
     assert (archive_dest / "sample.npy").exists() is True
     assert (archive_dest / "sample.t3pa").exists() is True
+    assert (archive_dest / "sample.poni").exists() is True
     assert (archive_dest / "SAMPLE_PAT_state.json").exists() is True
     assert (archive_dest / "nested" / "nested.txt").exists() is True
+    assert "_sad_" in archive_dest.name
 
 
 def test_finalize_session_runs_lock_archive_and_bundle(tmp_path):
@@ -95,6 +99,7 @@ def test_finalize_session_runs_lock_archive_and_bundle(tmp_path):
     assert result.state_json_embedded is True
     assert result.archive_dest.exists() is True
     assert result.archived_count == 2
+    assert "_sad_" in result.archive_dest.name
     assert container_manager.is_container_locked(session_path) is True
     assert result.bundle_path is not None
     assert result.bundle_path.exists() is True

@@ -179,7 +179,31 @@ def test_session_manager_attenuation_workflow(temp_dir, technical_container):
     
     # Link to points
     manager.link_attenuation_to_points(num_points=1)
-    
+
+    with h5py.File(manager.session_path, "r") as session_file:
+        i0_path = f"{schema.GROUP_ANALYTICAL_MEASUREMENTS}/ana_000000001"
+        i_path = f"{schema.GROUP_ANALYTICAL_MEASUREMENTS}/ana_000000002"
+        pt_path = f"{schema.GROUP_POINTS}/pt_001"
+
+        assert session_file[i0_path].attrs[schema.ATTR_ANALYSIS_TYPE] == schema.ANALYSIS_TYPE_ATTENUATION
+        assert session_file[i_path].attrs[schema.ATTR_ANALYSIS_TYPE] == schema.ANALYSIS_TYPE_ATTENUATION
+        assert session_file[i0_path].attrs[schema.ATTR_ANALYSIS_ROLE] == schema.ANALYSIS_ROLE_I0
+        assert session_file[i_path].attrs[schema.ATTR_ANALYSIS_ROLE] == schema.ANALYSIS_ROLE_I
+
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_IDS in session_file[pt_path].attrs
+        linked_ids = list(session_file[pt_path].attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_IDS])
+        assert len(linked_ids) == 2
+
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS in session_file[pt_path].attrs
+        assert len(session_file[pt_path].attrs[schema.ATTR_ANALYTICAL_MEASUREMENT_REFS]) == 2
+
+        assert schema.ATTR_POINT_REFS in session_file[i0_path].attrs
+        assert schema.ATTR_POINT_REFS in session_file[i_path].attrs
+        assert len(session_file[i0_path].attrs[schema.ATTR_POINT_REFS]) == 1
+        assert len(session_file[i_path].attrs[schema.ATTR_POINT_REFS]) == 1
+        assert schema.ATTR_POINT_IDS in session_file[i0_path].attrs
+        assert schema.ATTR_POINT_IDS in session_file[i_path].attrs
+
     # Get session info
     info = manager.get_session_info()
     assert info["attenuation_complete"] is True

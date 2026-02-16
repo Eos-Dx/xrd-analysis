@@ -19,6 +19,17 @@ logger = get_module_logger(__name__)
 
 class SessionManager:
     """Manages HDF5 session containers for DIFRA measurements."""
+
+    @staticmethod
+    def _resolve_machine_name(config: Dict) -> str:
+        """Resolve machine name from explicit field or selected setup identity."""
+        return (
+            config.get("machine_name")
+            or config.get("setup_name")
+            or config.get("name")
+            or config.get("default_setup")
+            or "DIFRA-01"
+        )
     
     def __init__(self, config: Optional[Dict] = None):
         """Initialize SessionManager.
@@ -48,7 +59,7 @@ class SessionManager:
         if config:
             self.operator_id: str = config.get('operator_id', 'operator')
             self.site_id: str = config.get('site_id', 'DIFRA_LAB')
-            self.machine_name: str = config.get('machine_name', 'DIFRA-01')
+            self.machine_name: str = self._resolve_machine_name(config)
             self.beam_energy_kev: float = config.get('beam_energy_kev', 17.5)
         else:
             self.operator_id: str = "operator"
@@ -173,6 +184,13 @@ class SessionManager:
                 session_attrs.get('acquisition_date', datetime.now().strftime("%Y-%m-%d")),
             ),
         }
+
+        if hasattr(self.schema, "ATTR_PROJECT_ID"):
+            project_attr = self.schema.ATTR_PROJECT_ID
+            container_attrs[project_attr] = session_attrs.get(
+                project_attr,
+                session_attrs.get("project_id", container_attrs[self.schema.ATTR_STUDY_NAME]),
+            )
         
         # Add optional attributes if provided
         if self.schema.ATTR_PATIENT_ID in session_attrs or 'patient_id' in session_attrs:
@@ -290,6 +308,13 @@ class SessionManager:
                     user_group.attrs.get(self.schema.ATTR_OPERATOR_ID) if user_group else None,
                 ),
                 self.operator_id,
+            )
+            self.machine_name = _as_text(
+                f.attrs.get(
+                    self.schema.ATTR_MACHINE_NAME,
+                    user_group.attrs.get(self.schema.ATTR_MACHINE_NAME) if user_group else None,
+                ),
+                self.machine_name,
             )
 
             if calibration_snapshot is not None:
@@ -433,6 +458,11 @@ class SessionManager:
             detector_metadata=detector_metadata,
             poni_alias_map=poni_alias_map,
             analysis_type="attenuation",
+            analysis_role=(
+                self.schema.ANALYSIS_ROLE_I0
+                if mode == "without"
+                else self.schema.ANALYSIS_ROLE_I
+            ),
             timestamp_start=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         )
         
@@ -585,6 +615,10 @@ class SessionManager:
                 f.attrs[self.schema.ATTR_SAMPLE_ID] = new_sample_id
                 if self.schema.GROUP_SAMPLE in f:
                     f[self.schema.GROUP_SAMPLE].attrs[self.schema.ATTR_SAMPLE_ID] = new_sample_id
+
+            refresh_summary = getattr(self.writer, "refresh_human_summary", None)
+            if callable(refresh_summary):
+                refresh_summary(self.session_path)
                 
             self.sample_id = new_sample_id
             

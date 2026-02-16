@@ -209,7 +209,7 @@ def test_session_handler_complete_workflow(temp_output_dir, technical_container_
         assert "/entry/images/img_001" in f
         assert "/entry/images/zones/zone_001" in f
         assert "/entry/images/mapping/mapping" in f
-        assert "/measurements/pt_001/meas_000000001/det_primary/blob/raw_txt" in f
+        assert f"{schema.GROUP_MEASUREMENTS}/pt_001/meas_000000001/det_primary/blob/raw_txt" in f
         assert "/entry/measurements/pt_001/meas_000000001/det_secondary/blob/raw_dsc" in f
         assert f.attrs["measurement_counter"] == 3
 
@@ -432,6 +432,7 @@ def test_session_analytical_measurement_workflow(
         detector_metadata=ana_meta,
         poni_alias_map=poni_map,
         analysis_type=schema.ANALYSIS_TYPE_ATTENUATION,
+        analysis_role=schema.ANALYSIS_ROLE_I0,
     )
 
     # Link to point
@@ -444,7 +445,11 @@ def test_session_analytical_measurement_workflow(
         assert "/entry/analytical_measurements/ana_000000001" in f
         ana = f["/entry/analytical_measurements/ana_000000001"]
         assert ana.attrs["analysis_type"] == schema.ANALYSIS_TYPE_ATTENUATION
+        assert ana.attrs[schema.ATTR_ANALYSIS_ROLE] == schema.ANALYSIS_ROLE_I0
+        assert schema.ATTR_POINT_IDS in ana.attrs
 
         # Check ID-based link
         point = f["/entry/points/pt_001"]
         assert schema.ATTR_ANALYTICAL_MEASUREMENT_IDS in point.attrs
+        assert schema.ATTR_ANALYTICAL_MEASUREMENT_REFS in point.attrs
+        assert schema.ATTR_POINT_REFS in ana.attrs

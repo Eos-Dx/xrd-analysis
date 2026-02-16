@@ -49,6 +49,123 @@ def _set_nx_class(file_path: Union[str, Path], path: str, nx_class: str) -> None
     utils.set_attrs(file_path=file_path, path=path, attrs={schema.ATTR_NX_CLASS: nx_class})
 
 
+def _decode_attr(value, default: str = "") -> str:
+    if value is None:
+        return default
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+def _normalize_analysis_role(analysis_type: str, analysis_role: Optional[str]) -> str:
+    if analysis_role:
+        role = str(analysis_role).strip().lower()
+        if role in {"i0", "without", "without_sample"}:
+            return schema.ANALYSIS_ROLE_I0
+        if role in {"i", "with", "with_sample"}:
+            return schema.ANALYSIS_ROLE_I
+        return role
+
+    lowered = str(analysis_type or "").strip().lower()
+    if lowered in {"attenuation_i0", "i0", "attenuation_without", "attenuation_without_sample"}:
+        return schema.ANALYSIS_ROLE_I0
+    if lowered in {"attenuation_i", "i", "attenuation_with", "attenuation_with_sample"}:
+        return schema.ANALYSIS_ROLE_I
+    return schema.ANALYSIS_ROLE_UNSPECIFIED
+
+
+def _build_human_summary(
+    *,
+    sample_id: str,
+    project_id: str,
+    study_name: str,
+    operator_id: str,
+    machine_name: str,
+    site_id: str,
+    session_id: str,
+    acquisition_date: str,
+    creation_timestamp: str,
+) -> str:
+    lines = [
+        f"Sample ID: {sample_id}",
+        f"Project ID: {project_id}",
+        f"Study Name: {study_name}",
+        f"Operator ID: {operator_id}",
+        f"Machine: {machine_name}",
+        f"Site ID: {site_id}",
+        f"Session ID: {session_id}",
+        f"Acquisition Date: {acquisition_date}",
+        f"Created At: {creation_timestamp}",
+    ]
+    return "\n".join(lines)
+
+
+def refresh_human_summary(file_path: Union[str, Path]) -> str:
+    """Rebuild and persist user-readable session summary."""
+    with utils.open_h5_append(file_path) as f:
+        sample_group = f.get(schema.GROUP_SAMPLE)
+        user_group = f.get(schema.GROUP_USER)
+
+        sample_id = _decode_attr(
+            f.attrs.get(schema.ATTR_SAMPLE_ID)
+            or (sample_group.attrs.get(schema.ATTR_SAMPLE_ID) if sample_group else None),
+            "unknown",
+        )
+        study_name = _decode_attr(
+            f.attrs.get(schema.ATTR_STUDY_NAME)
+            or (sample_group.attrs.get(schema.ATTR_STUDY_NAME) if sample_group else None),
+            "UNSPECIFIED",
+        )
+        project_id = _decode_attr(
+            f.attrs.get(schema.ATTR_PROJECT_ID)
+            or (sample_group.attrs.get(schema.ATTR_PROJECT_ID) if sample_group else None),
+            study_name,
+        )
+        operator_id = _decode_attr(
+            f.attrs.get(schema.ATTR_OPERATOR_ID)
+            or (user_group.attrs.get(schema.ATTR_OPERATOR_ID) if user_group else None),
+            "unknown",
+        )
+        machine_name = _decode_attr(
+            f.attrs.get(schema.ATTR_MACHINE_NAME)
+            or (user_group.attrs.get(schema.ATTR_MACHINE_NAME) if user_group else None),
+            "unknown",
+        )
+        site_id = _decode_attr(
+            f.attrs.get(schema.ATTR_SITE_ID)
+            or (user_group.attrs.get(schema.ATTR_SITE_ID) if user_group else None),
+            "unknown",
+        )
+        session_id = _decode_attr(f.attrs.get(schema.ATTR_SESSION_ID), "unknown")
+        acquisition_date = _decode_attr(f.attrs.get(schema.ATTR_ACQUISITION_DATE), "")
+        creation_timestamp = _decode_attr(f.attrs.get(schema.ATTR_CREATION_TIMESTAMP), "")
+
+        summary = _build_human_summary(
+            sample_id=sample_id,
+            project_id=project_id,
+            study_name=study_name,
+            operator_id=operator_id,
+            machine_name=machine_name,
+            site_id=site_id,
+            session_id=session_id,
+            acquisition_date=acquisition_date,
+            creation_timestamp=creation_timestamp,
+        )
+
+        f.attrs[schema.ATTR_PROJECT_ID] = project_id
+        f.attrs[schema.ATTR_HUMAN_SUMMARY] = summary
+        summary_dataset = f"{schema.GROUP_ENTRY}/{schema.ATTR_HUMAN_SUMMARY}"
+        if summary_dataset in f:
+            del f[summary_dataset]
+        f.create_dataset(
+            summary_dataset,
+            data=summary,
+            dtype=h5py.string_dtype(encoding="utf-8"),
+        )
+
+    return summary
+
+
 def create_session_container(
     folder: Union[str, Path],
     sample_id: str,
@@ -59,6 +176,7 @@ def create_session_container(
     acquisition_date: str,
     patient_id: Optional[str] = None,
     study_name: str = "UNSPECIFIED",
+    project_id: Optional[str] = None,
     container_id: Optional[str] = None,
 ) -> Tuple[str, str]:
     """Create a new NeXus session container."""
@@ -72,10 +190,12 @@ def create_session_container(
 
     filename = schema.format_session_container_filename(container_id, sample_id)
     file_path = str(folder / filename)
+    resolved_project_id = project_id or study_name
 
     root_attrs = {
         schema.ATTR_SAMPLE_ID: sample_id,
         schema.ATTR_STUDY_NAME: study_name,
+        schema.ATTR_PROJECT_ID: resolved_project_id,
         schema.ATTR_SESSION_ID: container_id,
         schema.ATTR_CREATION_TIMESTAMP: schema.now_timestamp(),
         schema.ATTR_ACQUISITION_DATE: acquisition_date,
@@ -142,6 +262,7 @@ def create_session_container(
         attrs={
             schema.ATTR_SAMPLE_ID: sample_id,
             schema.ATTR_STUDY_NAME: study_name,
+            schema.ATTR_PROJECT_ID: resolved_project_id,
             **({schema.ATTR_PATIENT_ID: patient_id} if patient_id is not None else {}),
         },
     )
@@ -164,23 +285,8 @@ def create_session_container(
     with utils.open_h5_append(file_path) as f:
         f.attrs["measurement_counter"] = 0
         f[schema.GROUP_RUNTIME].attrs["measurement_counter"] = 0
-        entry_links = {
-            "sample": schema.GROUP_SAMPLE,
-            "user": schema.GROUP_USER,
-            "instrument": schema.GROUP_INSTRUMENT,
-            "technical": schema.GROUP_TECHNICAL,
-            "images": schema.GROUP_IMAGES,
-            "points": schema.GROUP_POINTS,
-            "measurements": schema.GROUP_MEASUREMENTS,
-            "analytical_measurements": schema.GROUP_ANALYTICAL_MEASUREMENTS,
-            "calibration_snapshot": schema.GROUP_CALIBRATION_SNAPSHOT,
-            "difra_runtime": schema.GROUP_RUNTIME,
-        }
-        for name, target in entry_links.items():
-            link_path = f"{schema.GROUP_ENTRY}/{name}"
-            if link_path in f:
-                del f[link_path]
-            f[link_path] = h5py.SoftLink(target)
+
+    refresh_human_summary(file_path)
 
     return container_id, file_path
 
@@ -216,12 +322,17 @@ def copy_technical_to_session(
         if snapshot_path in dst:
             del dst[snapshot_path]
 
-        if schema.GROUP_TECHNICAL not in src:
+        source_technical_path = None
+        for candidate in (schema.GROUP_TECHNICAL, "/technical"):
+            if candidate in src:
+                source_technical_path = candidate
+                break
+        if source_technical_path is None:
             raise KeyError(
                 f"Technical container is missing required group: {schema.GROUP_TECHNICAL}"
             )
 
-        src.copy(schema.GROUP_TECHNICAL, dst, name=snapshot_path)
+        src.copy(source_technical_path, dst, name=snapshot_path)
         snapshot = dst[snapshot_path]
         if schema.ATTR_NX_CLASS not in snapshot.attrs:
             snapshot.attrs[schema.ATTR_NX_CLASS] = schema.NX_CLASS_COLLECTION
@@ -518,6 +629,7 @@ def add_analytical_measurement(
     detector_metadata: Dict[str, Dict],
     poni_alias_map: Dict[str, str],
     analysis_type: str,
+    analysis_role: Optional[str] = None,
     raw_files: Optional[Dict[str, Dict[str, bytes]]] = None,
     timestamp_start: Optional[str] = None,
     timestamp_end: Optional[str] = None,
@@ -530,6 +642,7 @@ def add_analytical_measurement(
 
     ana_id = schema.format_analytical_measurement_id(meas_counter)
     ana_path = f"{schema.GROUP_ANALYTICAL_MEASUREMENTS}/{ana_id}"
+    normalized_role = _normalize_analysis_role(analysis_type, analysis_role)
 
     utils.create_group_if_missing(file_path, ana_path)
     _set_nx_class(file_path, ana_path, schema.NX_CLASS_DATA)
@@ -539,11 +652,20 @@ def add_analytical_measurement(
         schema.ATTR_TIMESTAMP_START: timestamp_start,
         schema.ATTR_MEASUREMENT_STATUS: measurement_status,
         schema.ATTR_ANALYSIS_TYPE: analysis_type,
+        schema.ATTR_ANALYSIS_ROLE: normalized_role,
     }
     if timestamp_end is not None:
         attrs[schema.ATTR_TIMESTAMP_END] = timestamp_end
 
     utils.set_attrs(file_path, ana_path, attrs)
+    utils.set_reference_list_attr(
+        file_path=file_path,
+        obj_path=ana_path,
+        attr_name=schema.ATTR_POINT_REFS,
+        target_paths=[],
+    )
+    with utils.open_h5_append(file_path) as f:
+        f[ana_path].attrs[schema.ATTR_POINT_IDS] = np.array([], dtype=_string_list_dtype())
 
     raw_files = raw_files or {}
 
@@ -585,12 +707,31 @@ def link_analytical_measurement_to_point(
     point_id = schema.format_point_id(point_index)
     point_path = f"{schema.GROUP_POINTS}/{point_id}"
     ana_id = schema.format_analytical_measurement_id(analytical_measurement_index)
+    ana_path = f"{schema.GROUP_ANALYTICAL_MEASUREMENTS}/{ana_id}"
 
     _append_unique_string_attr(
         file_path=file_path,
         obj_path=point_path,
         attr_name=schema.ATTR_ANALYTICAL_MEASUREMENT_IDS,
         item=ana_id,
+    )
+    utils.append_reference_to_list_attr(
+        file_path=file_path,
+        obj_path=point_path,
+        attr_name=schema.ATTR_ANALYTICAL_MEASUREMENT_REFS,
+        target_path=ana_path,
+    )
+    utils.append_reference_to_list_attr(
+        file_path=file_path,
+        obj_path=ana_path,
+        attr_name=schema.ATTR_POINT_REFS,
+        target_path=point_path,
+    )
+    _append_unique_string_attr(
+        file_path=file_path,
+        obj_path=ana_path,
+        attr_name=schema.ATTR_POINT_IDS,
+        item=point_id,
     )
 
 

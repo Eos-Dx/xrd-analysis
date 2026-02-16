@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
-import h5py
 import numpy as np
 
 from . import schema, utils
@@ -65,18 +64,6 @@ def create_technical_container(
     for group_path, nx_class in group_classes:
         utils.create_group_if_missing(file_path, group_path)
         utils.set_attrs(file_path, group_path, {schema.ATTR_NX_CLASS: nx_class})
-
-    with utils.open_h5_append(file_path) as f:
-        entry_links = {
-            "technical": schema.GROUP_TECHNICAL,
-            "instrument": schema.GROUP_TECHNICAL_CONFIG,
-            "difra_runtime": schema.GROUP_RUNTIME,
-        }
-        for name, target in entry_links.items():
-            link_path = f"{schema.GROUP_ENTRY}/{name}"
-            if link_path in f:
-                del f[link_path]
-            f[link_path] = h5py.SoftLink(target)
 
     return container_id, file_path
 

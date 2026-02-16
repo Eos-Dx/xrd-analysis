@@ -312,6 +312,7 @@ array
         detector_metadata: Dict[str, Dict],
         poni_alias_map: Dict[str, str],
         analysis_type: str,
+        analysis_role: str = None,
         timestamp_start: Optional[str] = None,
         timestamp_end: Optional[str] = None,
     ) -> str:
@@ -322,6 +323,7 @@ array
             detector_metadata: Dict mapping detector_id to metadata
             poni_alias_map: Dict mapping alias to detector_id
             analysis_type: Type of analysis (e.g., "attenuation")
+            analysis_role: Optional analytical role (e.g., "i0" or "i")
             timestamp_start: Start timestamp
             timestamp_end: End timestamp
 
@@ -337,6 +339,7 @@ array
             detector_metadata=detector_metadata,
             poni_alias_map=poni_alias_map,
             analysis_type=analysis_type,
+            analysis_role=analysis_role or self.schema.ANALYSIS_ROLE_UNSPECIFIED,
             timestamp_start=timestamp_start,
             timestamp_end=timestamp_end,
         )

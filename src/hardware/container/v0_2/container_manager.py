@@ -24,6 +24,42 @@ from . import schema
 logger = logging.getLogger(__name__)
 
 
+def _decode_attr(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+def _safe_archive_token(value: str, fallback: str = "unknown") -> str:
+    token = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in (value or ""))
+    token = token.strip("_")
+    return token or fallback
+
+
+def _resolve_archive_operator_token(container_path: Path) -> str:
+    try:
+        with h5py.File(container_path, "r") as f:
+            operator = _decode_attr(f.attrs.get(schema.ATTR_OPERATOR_ID))
+            if operator:
+                return _safe_archive_token(operator)
+
+            locked_by = _decode_attr(f.attrs.get("locked_by"))
+            if locked_by:
+                return _safe_archive_token(locked_by)
+
+            runtime = f.get(schema.GROUP_RUNTIME)
+            if runtime is not None:
+                runtime_locked_by = _decode_attr(runtime.attrs.get(schema.ATTR_LOCKED_BY))
+                if runtime_locked_by:
+                    return _safe_archive_token(runtime_locked_by)
+    except Exception:
+        pass
+
+    return "unknown"
+
+
 # ==================== Container Locking ====================
 
 def is_container_locked(container_file: Path) -> bool:
@@ -276,7 +312,10 @@ def archive_technical_container(
     
     # Generate archived filename with timestamp
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    archived_filename = f"{tech_file.stem}_archived_{timestamp}{tech_file.suffix}"
+    operator_token = _resolve_archive_operator_token(tech_file)
+    archived_filename = (
+        f"{tech_file.stem}_archived_{operator_token}_{timestamp}{tech_file.suffix}"
+    )
     archived_path = archive_dir / archived_filename
     
     # Move file to archive
@@ -452,15 +491,15 @@ def archive_technical_data_files(
     Args:
         container_path: Path to the technical container .h5 file
         archive_folder: Path to archive folder (will be created if needed)
-        file_patterns: List of file patterns to archive (e.g., ['*.txt', '*.dsc', '*.npy'])
-                      If None, defaults to ['*.txt', '*.dsc', '*.npy'] for Advacam detectors
+        file_patterns: List of file patterns to archive (e.g., ['*.txt', '*.dsc', '*.npy', '*.poni'])
+                      If None, defaults to ['*.txt', '*.dsc', '*.npy', '*.poni'] for Advacam detectors
     
     Returns:
         Number of files archived
     
     Example:
         # For Advacam detectors
-        archive_technical_data_files(container, archive, ['*.txt', '*.dsc', '*.npy'])
+        archive_technical_data_files(container, archive, ['*.txt', '*.dsc', '*.npy', '*.poni'])
         
         # For Bruker detectors (hypothetical)
         archive_technical_data_files(container, archive, ['*.raw', '*.brml'])
@@ -471,7 +510,7 @@ def archive_technical_data_files(
     
     # Default patterns for Advacam detectors
     if file_patterns is None:
-        file_patterns = ['*.txt', '*.dsc', '*.npy']
+        file_patterns = ['*.txt', '*.dsc', '*.npy', '*.poni']
     
     # Create archive folder
     archive_folder.mkdir(parents=True, exist_ok=True)
@@ -616,7 +655,9 @@ def get_lock_info(tech_file: Path) -> dict:
 def validate_technical_container_format(tech_file: Path) -> bool:
     """Validate technical container filename format.
     
-    Expected format: technical_<id>_<yyyymmdd>.nxs.h5
+    Expected format:
+    - technical_<id>_<yyyymmdd>.nxs.h5 (legacy)
+    - technical_<id>_<distance>cm_<yyyymmdd>.nxs.h5 (current)
     
     Args:
         tech_file: Path to technical container
@@ -626,8 +667,8 @@ def validate_technical_container_format(tech_file: Path) -> bool:
     """
     name = tech_file.name
     
-    # Check pattern: technical_<16hexchars>_<yyyymmdd>.nxs.h5
+    # Check pattern: technical_<16hexchars>[_<distance>cm]_<yyyymmdd>.nxs.h5
     import re
-    pattern = r'^technical_[0-9a-f]{16}_\\d{8}\\.nxs\\.h5$'
+    pattern = r'^technical_[0-9a-f]{16}(?:_[0-9mp]+cm)?_\\d{8}\\.nxs\\.h5$'
     
     return bool(re.match(pattern, name))

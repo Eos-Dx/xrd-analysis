@@ -339,6 +339,13 @@ def append_reference_to_list_attr(
                 # Was empty, create new array
                 obj.attrs[attr_name] = np.array([new_ref], dtype=h5py.ref_dtype)
             else:
+                # Keep list unique by target path.
+                for existing_ref in existing_refs:
+                    try:
+                        if f[existing_ref].name == target_path:
+                            return
+                    except Exception:
+                        continue
                 # Append to existing - convert to list, append, rebuild array with ref dtype
                 ref_list = list(existing_refs) + [new_ref]
                 obj.attrs[attr_name] = np.array(ref_list, dtype=h5py.ref_dtype)

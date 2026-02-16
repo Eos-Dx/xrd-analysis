@@ -220,7 +220,28 @@ class H5ManagementLockingMixin:
                 
                 # Create timestamped archive folder
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
-                archive_folder = archive_base / f"{container_id}_{timestamp}"
+                archive_operator = "unknown"
+                try:
+                    import h5py
+
+                    with h5py.File(h5_file, "r") as f:
+                        raw_operator = (
+                            f.attrs.get("locked_by")
+                            or f.attrs.get("operator_id")
+                        )
+                        if isinstance(raw_operator, bytes):
+                            raw_operator = raw_operator.decode("utf-8", errors="replace")
+                        archive_operator = (
+                            "".join(
+                                ch if ch.isalnum() or ch in ("-", "_") else "_"
+                                for ch in str(raw_operator or "")
+                            ).strip("_")
+                            or "unknown"
+                        )
+                except Exception:
+                    archive_operator = "unknown"
+
+                archive_folder = archive_base / f"{container_id}_{archive_operator}_{timestamp}"
                 archive_folder.mkdir(parents=True, exist_ok=True)
                 
                 # Move .h5 container to archive
@@ -250,7 +271,10 @@ class H5ManagementLockingMixin:
                 # Get patterns from config (detector-specific)
                 file_patterns = None
                 if hasattr(self, 'config') and self.config:
-                    file_patterns = self.config.get('technical_archive_patterns', ['*.txt', '*.dsc', '*.npy'])
+                    file_patterns = self.config.get(
+                        'technical_archive_patterns',
+                        ['*.txt', '*.dsc', '*.npy', '*.poni'],
+                    )
                 
                 try:
                     archive_technical_data_files = container_manager.archive_technical_data_files
@@ -317,13 +341,23 @@ class H5ManagementLockingMixin:
                 
                 # Create timestamped subfolder in archive for this container
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
-                archive_subdir = archive_folder / f"{container_id}_{timestamp}"
+                operator_token = (
+                    "".join(
+                        ch if ch.isalnum() or ch in ("-", "_") else "_"
+                        for ch in str(operator_id or "")
+                    ).strip("_")
+                    or "unknown"
+                )
+                archive_subdir = archive_folder / f"{container_id}_{operator_token}_{timestamp}"
                 
                 # Get file patterns from config (detector-specific)
                 # Default to Advacam patterns if not configured
                 file_patterns = None
                 if hasattr(self, 'config') and self.config:
-                    file_patterns = self.config.get('technical_archive_patterns', ['*.txt', '*.dsc', '*.npy'])
+                    file_patterns = self.config.get(
+                        'technical_archive_patterns',
+                        ['*.txt', '*.dsc', '*.npy', '*.poni'],
+                    )
                 
                 # Use container module function to archive files
                 archived_count = container_manager.archive_technical_data_files(

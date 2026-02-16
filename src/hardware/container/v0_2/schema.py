@@ -33,23 +33,23 @@ NX_CLASS_DATA = "NXdata"
 # ================== Top-Level Group Names ==================
 GROUP_ENTRY = "/entry"
 
-# v0.2 keeps v0.1-like logical layout at root while adding NeXus metadata.
-GROUP_TECHNICAL = "/technical"
+# v0.2 canonical layout lives under /entry to support multiple entries in future.
+GROUP_TECHNICAL = f"{GROUP_ENTRY}/technical"
 GROUP_TECHNICAL_CONFIG = f"{GROUP_TECHNICAL}/config"
 GROUP_TECHNICAL_PONI = f"{GROUP_TECHNICAL}/poni"
 GROUP_INSTRUMENT_DETECTORS = f"{GROUP_TECHNICAL_CONFIG}/detectors"
 
-GROUP_IMAGES = "/images"
+GROUP_IMAGES = f"{GROUP_ENTRY}/images"
 GROUP_IMAGES_ZONES = f"{GROUP_IMAGES}/zones"
 GROUP_IMAGES_MAPPING = f"{GROUP_IMAGES}/mapping"
-GROUP_POINTS = "/points"
-GROUP_MEASUREMENTS = "/measurements"
-GROUP_ANALYTICAL_MEASUREMENTS = "/analytical_measurements"
-GROUP_RUNTIME = "/difra_runtime"
+GROUP_POINTS = f"{GROUP_ENTRY}/points"
+GROUP_MEASUREMENTS = f"{GROUP_ENTRY}/measurements"
+GROUP_ANALYTICAL_MEASUREMENTS = f"{GROUP_ENTRY}/analytical_measurements"
+GROUP_RUNTIME = f"{GROUP_ENTRY}/difra_runtime"
 
-GROUP_SAMPLE = "/sample"
-GROUP_USER = "/user"
-GROUP_INSTRUMENT = "/instrument"
+GROUP_SAMPLE = f"{GROUP_ENTRY}/sample"
+GROUP_USER = f"{GROUP_ENTRY}/user"
+GROUP_INSTRUMENT = f"{GROUP_ENTRY}/instrument"
 
 # NeXus-oriented aliases retained for readability in validators/writers.
 GROUP_CALIBRATION = GROUP_TECHNICAL
@@ -136,6 +136,7 @@ ATTR_DETECTOR_DISTANCE_CM = "detector_distance_cm"
 # Session container specific (required)
 ATTR_SAMPLE_ID = "sample_id"
 ATTR_STUDY_NAME = "study_name"
+ATTR_PROJECT_ID = "project_id"
 ATTR_SESSION_ID = "session_id"
 ATTR_ACQUISITION_DATE = "acquisition_date"
 ATTR_OPERATOR_ID = "operator_id"
@@ -145,6 +146,7 @@ ATTR_BEAM_ENERGY_KEV = "beam_energy_keV"
 
 # Session container specific (optional)
 ATTR_PATIENT_ID = "patient_id"
+ATTR_HUMAN_SUMMARY = "human_summary"
 
 # ================== NeXus Entry Attributes ================
 ATTR_ENTRY_DEFAULT = "default"
@@ -175,9 +177,14 @@ STATUS_ABORTED = "aborted"
 
 # ================== Analytical Measurement Attrs ===========
 ATTR_ANALYSIS_TYPE = "analysis_type"
+ATTR_ANALYSIS_ROLE = "analysis_role"
 ATTR_POINT_REFS = "point_refs"
+ATTR_POINT_IDS = "point_ids"
 ATTR_ANALYTICAL_MEASUREMENT_IDS = "analytical_measurement_ids"
 ANALYSIS_TYPE_ATTENUATION = "attenuation"
+ANALYSIS_ROLE_UNSPECIFIED = "unspecified"
+ANALYSIS_ROLE_I0 = "i0"
+ANALYSIS_ROLE_I = "i"
 
 # ================== Detector-Level Attributes ==============
 ATTR_INTEGRATION_TIME_MS = "integration_time_ms"
@@ -279,12 +286,16 @@ def format_technical_container_filename(
     distance_cm: float = None,
     date_token: str = None,
 ) -> str:
-    """Format technical filename: technical_<id>_<date>.nxs.h5."""
+    """Format technical filename: technical_<id>_<distance>cm_<date>.nxs.h5."""
     if not validate_container_id(container_id):
         raise ValueError(f"Invalid container ID: {container_id}")
 
     date_part = date_token or today_token()
-    return f"technical_{container_id}_{date_part}.nxs.h5"
+    if distance_cm is None:
+        return f"technical_{container_id}_{date_part}.nxs.h5"
+
+    distance_token = f"{float(distance_cm):.2f}".replace(".", "p").replace("-", "m")
+    return f"technical_{container_id}_{distance_token}cm_{date_part}.nxs.h5"
 
 
 def format_session_container_filename(

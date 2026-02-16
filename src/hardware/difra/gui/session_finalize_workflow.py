@@ -30,7 +30,88 @@ class FinalizeSessionResult:
 class SessionFinalizeWorkflow:
     """Finalize active session containers without UI dependencies."""
 
-    DEFAULT_ARCHIVE_PATTERNS = ["*.txt", "*.dsc", "*.npy", "*.t3pa", "*_state.json"]
+    DEFAULT_ARCHIVE_PATTERNS = [
+        "*.txt",
+        "*.dsc",
+        "*.npy",
+        "*.t3pa",
+        "*.poni",
+        "*_state.json",
+    ]
+
+    @staticmethod
+    def _as_text(value: Any, default: str = "") -> str:
+        if value is None:
+            return default
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return str(value)
+
+    @staticmethod
+    def _safe_token(value: str, fallback: str) -> str:
+        token = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in (value or ""))
+        token = token.strip("_")
+        return token or fallback
+
+    @classmethod
+    def ensure_human_readable_metadata(
+        cls,
+        session_path: Path,
+        logger: Optional[Any] = None,
+    ) -> Dict[str, str]:
+        """Ensure session keeps user-readable IDs and summary for archive usage."""
+        with h5py.File(session_path, "a") as h5f:
+            sample = cls._as_text(h5f.attrs.get("sample_id"), "unknown")
+            study = cls._as_text(h5f.attrs.get("study_name"), "UNSPECIFIED")
+            project = cls._as_text(h5f.attrs.get("project_id"), study)
+            operator = cls._as_text(h5f.attrs.get("operator_id"), "unknown")
+            machine = cls._as_text(h5f.attrs.get("machine_name"), "unknown")
+            site = cls._as_text(h5f.attrs.get("site_id"), "unknown")
+            session_id = cls._as_text(h5f.attrs.get("session_id"), "unknown")
+            acquisition_date = cls._as_text(h5f.attrs.get("acquisition_date"), "")
+            created_at = cls._as_text(h5f.attrs.get("creation_timestamp"), "")
+
+            summary = "\n".join(
+                [
+                    f"Sample ID: {sample}",
+                    f"Project ID: {project}",
+                    f"Study Name: {study}",
+                    f"Operator ID: {operator}",
+                    f"Machine: {machine}",
+                    f"Site ID: {site}",
+                    f"Session ID: {session_id}",
+                    f"Acquisition Date: {acquisition_date}",
+                    f"Created At: {created_at}",
+                ]
+            )
+
+            h5f.attrs["project_id"] = project
+            h5f.attrs["human_summary"] = summary
+            if "/entry/sample" in h5f:
+                h5f["/entry/sample"].attrs["project_id"] = project
+            if "/entry/human_summary" in h5f:
+                del h5f["/entry/human_summary"]
+            if "/entry" in h5f:
+                h5f.create_dataset(
+                    "/entry/human_summary",
+                    data=summary,
+                    dtype=h5py.string_dtype(encoding="utf-8"),
+                )
+
+        if logger:
+            logger.info(
+                "Updated human-readable metadata in session container",
+                session_path=str(session_path),
+                sample_id=sample,
+                project_id=project,
+            )
+
+        return {
+            "sample_id": sample,
+            "project_id": project,
+            "operator_id": operator,
+            "machine_name": machine,
+        }
 
     @staticmethod
     def store_json_state_in_container(
@@ -70,6 +151,8 @@ class SessionFinalizeWorkflow:
         cls,
         measurements_folder: Path,
         sample_id: str,
+        project_id: Optional[str] = None,
+        operator_id: Optional[str] = None,
         *,
         config: Optional[Dict[str, Any]] = None,
         include_patterns: Optional[Sequence[str]] = None,
@@ -83,7 +166,19 @@ class SessionFinalizeWorkflow:
         )
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        archive_dest = archive_base / f"{sample_id}_{timestamp}"
+        sample_token = cls._safe_token(sample_id, "sample")
+        project_token = cls._safe_token(project_id or "", "")
+        operator_token = cls._safe_token(operator_id or "", "")
+
+        if project_token and operator_token:
+            archive_name = f"{sample_token}_{project_token}_{operator_token}_{timestamp}"
+        elif project_token:
+            archive_name = f"{sample_token}_{project_token}_{timestamp}"
+        elif operator_token:
+            archive_name = f"{sample_token}_{operator_token}_{timestamp}"
+        else:
+            archive_name = f"{sample_token}_{timestamp}"
+        archive_dest = archive_base / archive_name
         archive_dest.mkdir(parents=True, exist_ok=True)
 
         patterns = list(include_patterns) if include_patterns else cls.DEFAULT_ARCHIVE_PATTERNS
@@ -155,6 +250,11 @@ class SessionFinalizeWorkflow:
         include_patterns: Optional[Sequence[str]] = None,
     ) -> FinalizeSessionResult:
         """Run the full active-session finalization workflow."""
+        readable_meta = cls.ensure_human_readable_metadata(
+            session_path=session_path,
+            logger=logger,
+        )
+
         state_json_embedded = cls.store_json_state_in_container(
             session_path=session_path,
             measurements_folder=measurements_folder,
@@ -170,7 +270,9 @@ class SessionFinalizeWorkflow:
 
         archive_dest, archived_count = cls.archive_measurement_files(
             measurements_folder=measurements_folder,
-            sample_id=sample_id,
+            sample_id=readable_meta.get("sample_id") or sample_id,
+            project_id=readable_meta.get("project_id"),
+            operator_id=readable_meta.get("operator_id"),
             config=config,
             include_patterns=include_patterns,
             logger=logger,

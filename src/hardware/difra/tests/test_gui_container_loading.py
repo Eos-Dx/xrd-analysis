@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import (
     QFileDialog,
 )
 
-from hardware.container.v0_2 import technical_container, writer as session_writer
+from hardware.container.v0_2 import schema, technical_container, writer as session_writer
 from hardware.container.v0_2.container_manager import lock_container
 from hardware.difra.gui.main_window_ext import session_mixin, technical_measurements
 from hardware.difra.gui.main_window_ext.technical import h5_management_mixin
@@ -600,7 +600,7 @@ def test_loading_technical_updates_active_unlocked_session(qapp, tmp_path, monke
     qapp.processEvents()
 
     with h5py.File(session_path, "r") as h5f:
-        source_file = h5f["/entry/calibration_snapshot"].attrs.get("source_file", "")
+        source_file = h5f[schema.GROUP_CALIBRATION_SNAPSHOT].attrs.get("source_file", "")
         if isinstance(source_file, bytes):
             source_file = source_file.decode("utf-8")
         assert source_file == str(technical_b)

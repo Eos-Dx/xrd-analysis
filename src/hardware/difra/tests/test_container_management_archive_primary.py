@@ -192,6 +192,33 @@ def test_find_active_excludes_archived():
         assert found is None
 
 
+def test_archive_technical_data_files_includes_poni_by_default():
+    """Default technical raw archive patterns must include .poni files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        folder = Path(tmpdir)
+        container_path = folder / "technical_demo.nxs.h5"
+        container_path.write_text("demo", encoding="utf-8")
+
+        (folder / "capture.txt").write_text("txt", encoding="utf-8")
+        (folder / "capture.dsc").write_text("dsc", encoding="utf-8")
+        np.save(folder / "capture.npy", np.array([1, 2, 3], dtype=np.int16))
+        (folder / "primary.poni").write_text("Distance: 0.17\n", encoding="utf-8")
+
+        archive_folder = folder / "archive_payload"
+        archived_count = container_manager.archive_technical_data_files(
+            container_path=container_path,
+            archive_folder=archive_folder,
+            file_patterns=None,
+        )
+
+        assert archived_count == 4
+        assert (archive_folder / "capture.txt").exists()
+        assert (archive_folder / "capture.dsc").exists()
+        assert (archive_folder / "capture.npy").exists()
+        assert (archive_folder / "primary.poni").exists()
+        assert not (folder / "primary.poni").exists()
+
+
 # ==================== Primary/Supplementary Tests ====================
 
 def test_set_measurement_primary_status():
@@ -308,4 +335,3 @@ def test_get_primary_measurements():
         assert 'DARK' in primary
         assert 1 in primary['DARK']
         assert 'EMPTY' not in primary or 2 not in primary.get('EMPTY', [])
-

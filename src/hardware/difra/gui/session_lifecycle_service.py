@@ -9,9 +9,54 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import h5py
+
 
 class SessionLifecycleService:
     """Utility methods for lock/archive workflow of session containers."""
+
+    @staticmethod
+    def _decode_attr(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return str(value)
+
+    @staticmethod
+    def _safe_token(value: str, fallback: str = "unknown") -> str:
+        token = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in (value or ""))
+        token = token.strip("_")
+        return token or fallback
+
+    @classmethod
+    def _resolve_operator_id(
+        cls,
+        session_path: Path,
+        explicit_operator_id: Optional[str] = None,
+    ) -> str:
+        if explicit_operator_id:
+            return cls._decode_attr(explicit_operator_id) or "unknown"
+
+        try:
+            with h5py.File(session_path, "r") as h5f:
+                root_operator = cls._decode_attr(h5f.attrs.get("operator_id"))
+                if root_operator:
+                    return root_operator
+
+                user_group = h5f.get("/entry/user")
+                if user_group is not None:
+                    group_operator = cls._decode_attr(user_group.attrs.get("operator_id"))
+                    if group_operator:
+                        return group_operator
+
+                lock_operator = cls._decode_attr(h5f.attrs.get("locked_by"))
+                if lock_operator:
+                    return lock_operator
+        except Exception:
+            pass
+
+        return "unknown"
 
     @staticmethod
     def resolve_archive_folder(
@@ -57,6 +102,7 @@ class SessionLifecycleService:
         cls,
         session_path: Path,
         session_id: Optional[str] = None,
+        operator_id: Optional[str] = None,
         archive_folder: Optional[Path] = None,
         config: Optional[Dict[str, Any]] = None,
         measurements_folder: Optional[Path] = None,
@@ -77,11 +123,13 @@ class SessionLifecycleService:
 
         archive_stamp = timestamp or time.strftime("%Y%m%d_%H%M%S")
         sid = str(session_id or source.stem)
-        target_dir = resolved_archive / f"{sid}_{archive_stamp}"
+        operator = cls._resolve_operator_id(source, explicit_operator_id=operator_id)
+        operator_token = cls._safe_token(operator, fallback="unknown")
+        target_dir = resolved_archive / f"{sid}_{operator_token}_{archive_stamp}"
         suffix = 1
         while target_dir.exists():
             suffix += 1
-            target_dir = resolved_archive / f"{sid}_{archive_stamp}_{suffix}"
+            target_dir = resolved_archive / f"{sid}_{operator_token}_{archive_stamp}_{suffix}"
         target_dir.mkdir(parents=True, exist_ok=False)
 
         destination = target_dir / source.name
