@@ -25,25 +25,11 @@ if sys.platform == 'win32':
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-# CRITICAL: Add PIXet SDK path and import pypixet BEFORE PyQt5
-# This prevents DLL conflicts between PyQt5 (Qt 5) and pypixet (Qt 6)
-# PyQt5 uses Qt 5 DLLs, while pypixet uses Qt 6 DLLs. Once Qt 5 is loaded,
-# Qt 6 DLL initialization fails. So we must load pypixet first.
+# Add PIXet SDK path so pxcore.dll and its dependencies are discoverable.
 pixet_sdk_path = os.environ.get("PIXET_SDK_PATH", r"C:\Program Files\PIXet Pro")
 if os.path.isdir(pixet_sdk_path):
-    # Add to Windows PATH for DLL loading (must be done before any Qt import)
+    # Add to Windows PATH for DLL loading before hardware initialization.
     os.environ['PATH'] = pixet_sdk_path + os.pathsep + os.environ.get('PATH', '')
-    # Add to sys.path for Python module discovery
-    sys.path.insert(0, pixet_sdk_path)
-    try:
-        # Pre-import pypixet to load Qt 6 DLLs before PyQt5 loads Qt 5 DLLs
-        import pypixet
-        _PYPIXET_AVAILABLE = True
-    except ImportError:
-        # pypixet not available - will fall back to dummy detectors
-        _PYPIXET_AVAILABLE = False
-else:
-    _PYPIXET_AVAILABLE = False
 
 kinesis_sdk_path = os.environ.get("KINESIS_SDK_PATH", r"C:\Program Files\Thorlabs\Kinesis")
 if os.path.isdir(kinesis_sdk_path):
