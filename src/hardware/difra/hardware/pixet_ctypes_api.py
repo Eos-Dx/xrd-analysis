@@ -103,6 +103,58 @@ class PixetCtypesAPI:
             raise PxcoreError(f"{fn} failed rc={rc}{suffix}")
         return rc
 
+    def _resolve_logs_dir(self) -> Path:
+        env_logs_dir = os.environ.get("PIXET_LOGS_DIR")
+        candidates: list[Path] = []
+        if env_logs_dir:
+            candidates.append(Path(env_logs_dir))
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            candidates.append(Path(local_app_data) / "PixetPro" / "logs")
+            candidates.append(Path(local_app_data) / "PIXet Pro" / "logs")
+        candidates.append(self.sdk_path / "logs")
+
+        candidates.append(Path.home() / ".pixet" / "logs")
+
+        attempted: list[str] = []
+        for candidate in candidates:
+            attempted.append(str(candidate))
+            try:
+                candidate.mkdir(parents=True, exist_ok=True)
+                return candidate
+            except OSError:
+                continue
+
+        attempted_paths = ", ".join(attempted)
+        raise PxcoreError(
+            f"Unable to create writable PIXet log directory. Tried: {attempted_paths}"
+        )
+    def _resolve_configs_dir(self) -> Path:
+        env_configs_dir = os.environ.get("PIXET_CONFIGS_DIR")
+        candidates: list[Path] = []
+        if env_configs_dir:
+            candidates.append(Path(env_configs_dir))
+
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            candidates.append(Path(local_app_data) / "PixetPro" / "configs")
+            candidates.append(Path(local_app_data) / "PIXet Pro" / "configs")
+        candidates.append(self.sdk_path / "configs")
+
+        attempted: list[str] = []
+        for candidate in candidates:
+            attempted.append(str(candidate))
+            try:
+                candidate.mkdir(parents=True, exist_ok=True)
+                return candidate
+            except OSError:
+                continue
+
+        attempted_paths = ", ".join(attempted)
+        raise PxcoreError(
+            f"Unable to create/read PIXet configs directory. Tried: {attempted_paths}"
+        )
+
     def initialize(self) -> None:
         if self.initialized:
             return
@@ -110,12 +162,11 @@ class PixetCtypesAPI:
         self._dll_dir_ctx = os.add_dll_directory(str(self.sdk_path))
         self.lib = ctypes.CDLL(str(self.dll_path))
         self._bind()
-
-        logs_dir = self.sdk_path / "logs"
-        logs_dir.mkdir(parents=True, exist_ok=True)
+        configs_dir = self._resolve_configs_dir()
+        logs_dir = self._resolve_logs_dir()
         self._check_rc(
             self.lib.pxcSetDirectories(
-                str(self.sdk_path).encode("utf-8"),
+                str(configs_dir).encode("utf-8"),
                 str(logs_dir).encode("utf-8"),
             ),
             "pxcSetDirectories",
