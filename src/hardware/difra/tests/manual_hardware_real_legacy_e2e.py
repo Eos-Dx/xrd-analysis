@@ -12,7 +12,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Dict, Iterator
+from typing import Dict, Iterator, List
 
 import grpc
 import pytest
@@ -27,6 +27,64 @@ from hardware.difra.hardware.hardware_client import DirectHardwareClient
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SIDECAR_SCRIPT = REPO_ROOT / "src" / "hardware" / "difra" / "scripts" / "pixet_sidecar_server.py"
+GLOBAL_CONFIG = REPO_ROOT / "src" / "hardware" / "difra" / "resources" / "config" / "global.json"
+MAIN_CONFIG = REPO_ROOT / "src" / "hardware" / "difra" / "resources" / "config" / "main.json"
+
+
+def _ctx(reason: str) -> hub_pb2.CommandContext:
+    ts = Timestamp()
+    ts.GetCurrentTime()
+    return hub_pb2.CommandContext(
+        command_id=str(uuid.uuid4()),
+        user="pytest",
+        reason=reason,
+        timestamp=ts,
+        measurement_class=hub_pb2.SAMPLE,
+    )
+
+
+def _read_json(path: Path) -> Dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _resolve_setup_config_path() -> Path:
+    override = os.environ.get("DIFRA_REAL_SETUP_CONFIG", "").strip()
+    if override:
+        path = Path(override).expanduser().resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"DIFRA_REAL_SETUP_CONFIG does not exist: {path}")
+        return path
+
+    chosen = MAIN_CONFIG
+    if GLOBAL_CONFIG.exists():
+        try:
+            global_cfg = _read_json(GLOBAL_CONFIG)
+            setup = str(global_cfg.get("default_setup", "")).strip()
+            if setup:
+                setup_path = GLOBAL_CONFIG.parent / "setups" / f"{setup}.json"
+                if setup_path.exists():
+                    chosen = setup_path
+        except Exception:
+            pass
+    return chosen
+
+
+def _active_detector_aliases(config: Dict) -> List[str]:
+    detector_cfgs = list(config.get("detectors", []) or [])
+    active_ids = set(config.get("active_detectors", []) or [])
+    aliases: List[str] = []
+    for det in detector_cfgs:
+        if det.get("id") in active_ids:
+            alias = str(det.get("alias", "")).strip()
+            if alias:
+                aliases.append(alias)
+    return aliases
+
+
+def _free_tcp_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
 
 
 def _list_conda_env_names() -> set[str]:
@@ -94,64 +152,6 @@ def _resolve_legacy_sidecar_command(host: str, port: int) -> list[str]:
     ]
 
 
-def _free_tcp_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
-
-
-def _dummy_dual_detector_config() -> Dict:
-    return {
-        "DEV": True,
-        "detectors": [
-            {
-                "alias": "PRIMARY",
-                "type": "DummyDetector",
-                "id": "DUMMY-DET-1",
-                "size": {"width": 16, "height": 16},
-            },
-            {
-                "alias": "SECONDARY",
-                "type": "DummyDetector",
-                "id": "DUMMY-DET-2",
-                "size": {"width": 16, "height": 16},
-            },
-        ],
-        "dev_active_detectors": ["DUMMY-DET-1", "DUMMY-DET-2"],
-        "active_detectors": [],
-        "translation_stages": [],
-        "dev_active_stages": [],
-        "active_translation_stages": [],
-    }
-
-
-@contextlib.contextmanager
-def _temporary_env(overrides: Dict[str, str]) -> Iterator[None]:
-    original = {k: os.environ.get(k) for k in overrides}
-    try:
-        for key, value in overrides.items():
-            os.environ[key] = str(value)
-        yield
-    finally:
-        for key, old in original.items():
-            if old is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = old
-
-
-def _ctx(reason: str) -> hub_pb2.CommandContext:
-    ts = Timestamp()
-    ts.GetCurrentTime()
-    return hub_pb2.CommandContext(
-        command_id=str(uuid.uuid4()),
-        user="pytest",
-        reason=reason,
-        timestamp=ts,
-        measurement_class=hub_pb2.SAMPLE,
-    )
-
-
 def _sidecar_ping(host: str, port: int, timeout_s: float = 0.5) -> bool:
     payload = {"id": "ping", "cmd": "ping", "args": {}}
     raw = (json.dumps(payload) + "\n").encode("utf-8")
@@ -169,6 +169,21 @@ def _sidecar_ping(host: str, port: int, timeout_s: float = 0.5) -> bool:
 
 
 @contextlib.contextmanager
+def _temporary_env(overrides: Dict[str, str]) -> Iterator[None]:
+    original = {k: os.environ.get(k) for k in overrides}
+    try:
+        for key, value in overrides.items():
+            os.environ[key] = str(value)
+        yield
+    finally:
+        for key, old in original.items():
+            if old is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = old
+
+
+@contextlib.contextmanager
 def _started_sidecar(host: str, port: int) -> Iterator[subprocess.Popen]:
     env = dict(os.environ)
     existing = env.get("PYTHONPATH", "")
@@ -183,7 +198,7 @@ def _started_sidecar(host: str, port: int) -> Iterator[subprocess.Popen]:
         text=True,
     )
     try:
-        deadline = time.time() + 10.0
+        deadline = time.time() + 30.0
         while time.time() < deadline:
             if proc.poll() is not None:
                 out = proc.stdout.read() if proc.stdout else ""
@@ -200,16 +215,28 @@ def _started_sidecar(host: str, port: int) -> Iterator[subprocess.Popen]:
         if proc.poll() is None:
             proc.terminate()
             try:
-                proc.wait(timeout=3.0)
+                proc.wait(timeout=5.0)
             except subprocess.TimeoutExpired:
                 proc.kill()
-                proc.wait(timeout=3.0)
+                proc.wait(timeout=5.0)
 
 
-def test_demo_integration_time_legacy_sidecar_path_is_parallel():
+def _real_config(tmp_path: Path) -> Dict:
+    cfg = _read_json(_resolve_setup_config_path())
+    cfg["DEV"] = False
+    cfg["measurements_folder"] = str(tmp_path / "measurements")
+    return cfg
+
+
+def test_real_hardware_direct_legacy_sidecar_smoke(tmp_path: Path):
     host = "127.0.0.1"
     sidecar_port = _free_tcp_port()
-    config = _dummy_dual_detector_config()
+    config = _real_config(tmp_path)
+    expected_aliases = _active_detector_aliases(config)
+    if not expected_aliases:
+        raise RuntimeError("No active real detectors in selected setup config")
+
+    exposure_s = float(os.environ.get("DIFRA_REAL_HW_EXPOSURE_S", "0.2"))
     env = {
         "DETECTOR_BACKEND": "sidecar",
         "PIXET_SIDECAR_HOST": host,
@@ -220,21 +247,37 @@ def test_demo_integration_time_legacy_sidecar_path_is_parallel():
         with _temporary_env(env):
             client = DirectHardwareClient(config)
             assert client.initialize_detector() is True
-            t0 = time.perf_counter()
-            outputs = client.capture_exposure(exposure_s=1.0, frames=1, timeout_s=10.0)
-            elapsed = time.perf_counter() - t0
+            assert client.initialize_motion() is True
+
+            x, y = client.get_xy_position()
+            moved_x, moved_y = client.move_to(x, y, timeout_s=20.0)
+            assert moved_x == pytest.approx(x, abs=1e-3)
+            assert moved_y == pytest.approx(y, abs=1e-3)
+
+            outputs = client.capture_exposure(
+                exposure_s=exposure_s,
+                frames=1,
+                timeout_s=max(30.0, exposure_s + 20.0),
+            )
             client.deinitialize()
 
-    assert set(outputs.keys()) == {"PRIMARY", "SECONDARY"}
-    # 1s integration for two detectors must be truly parallel with minimal overhead.
-    assert elapsed < 1.1
+    assert set(expected_aliases).issubset(set(outputs.keys()))
+    for alias in expected_aliases:
+        path = Path(outputs[alias])
+        assert path.exists(), f"Missing output for {alias}: {path}"
 
 
-def test_demo_integration_time_grpc_path_is_parallel():
-    async def _scenario() -> float:
+def test_real_hardware_grpc_over_legacy_sidecar_smoke(tmp_path: Path):
+    async def _scenario() -> Dict[str, str]:
         host = "127.0.0.1"
         sidecar_port = _free_tcp_port()
-        config = _dummy_dual_detector_config()
+        config = _real_config(tmp_path)
+        expected_aliases = _active_detector_aliases(config)
+        if not expected_aliases:
+            raise RuntimeError("No active real detectors in selected setup config")
+        exposure_s = float(os.environ.get("DIFRA_REAL_HW_EXPOSURE_S", "0.2"))
+        exposure_ms = max(1, int(round(exposure_s * 1000.0)))
+
         env = {
             "DETECTOR_BACKEND": "sidecar",
             "PIXET_SIDECAR_HOST": host,
@@ -250,38 +293,45 @@ def test_demo_integration_time_grpc_path_is_parallel():
                     await channel.channel_ready()
                     init_stub = hub_pb2_grpc.DeviceInitializationStub(channel)
                     acq_stub = hub_pb2_grpc.AcquisitionStub(channel)
+                    motion_stub = hub_pb2_grpc.MotionStub(channel)
 
-                    init_resp = await init_stub.InitializeDetector(
-                        hub_pb2.InitializeDetectorRequest(ctx=_ctx("init_detector"))
+                    init_detector = await init_stub.InitializeDetector(
+                        hub_pb2.InitializeDetectorRequest(ctx=_ctx("init_detector_real"))
                     )
-                    assert init_resp.initialized is True
+                    init_motion = await init_stub.InitializeMotion(
+                        hub_pb2.InitializeMotionRequest(ctx=_ctx("init_motion_real"))
+                    )
+                    assert init_detector.initialized is True
+                    assert init_motion.initialized is True
 
-                    t0 = time.perf_counter()
-                    await acq_stub.StartExposure(
-                        hub_pb2.StartExposureRequest(
-                            ctx=_ctx("start_exposure"),
-                            exposure_time_ms=1000,
-                            max_timeout_ms=12000,
+                    await motion_stub.MoveTo(
+                        hub_pb2.MoveToRequest(
+                            ctx=_ctx("move_to_real"),
+                            position_mm=0.0,
                         )
                     )
 
+                    await acq_stub.StartExposure(
+                        hub_pb2.StartExposureRequest(
+                            ctx=_ctx("start_exposure_real"),
+                            exposure_time_ms=exposure_ms,
+                            max_timeout_ms=max(exposure_ms + 20000, 30000),
+                        )
+                    )
                     running_states = {
                         hub_pb2.PENDING_ARMED,
                         hub_pb2.RUNNING,
                         hub_pb2.PAUSED,
                         hub_pb2.STOPPING,
                     }
-                    deadline = time.time() + 15.0
+                    deadline = time.time() + 120.0
                     while time.time() < deadline:
                         state = await acq_stub.GetState(hub_pb2.Empty())
                         if int(state.state) not in running_states:
                             break
-                        await asyncio.sleep(0.01)
+                        await asyncio.sleep(0.1)
                     else:
-                        raise TimeoutError("gRPC exposure did not complete in time")
-
-                    # Measure integration runtime only; post-readout is validated separately.
-                    elapsed = time.perf_counter() - t0
+                        raise TimeoutError("Real hardware exposure did not complete in time")
 
                     exposure = await acq_stub.GetLastExposureResult(hub_pb2.Empty())
                     assert bool(exposure.has_result) is True
@@ -301,9 +351,8 @@ def test_demo_integration_time_grpc_path_is_parallel():
                 finally:
                     await server.stop(0)
 
-        assert set(outputs.keys()) == {"PRIMARY", "SECONDARY"}
-        return elapsed
+        assert set(expected_aliases).issubset(set(outputs.keys()))
+        return outputs
 
-    elapsed = asyncio.run(_scenario())
-    # 1s integration for two detectors must be truly parallel with minimal overhead.
-    assert elapsed < 1.1
+    outputs = asyncio.run(_scenario())
+    assert outputs
