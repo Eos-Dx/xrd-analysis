@@ -1,5 +1,7 @@
 import os
 import sys
+import time
+from pathlib import Path
 
 import pytest
 
@@ -94,3 +96,28 @@ def test_dual_path_client_falls_back_to_direct_when_grpc_unavailable():
     x, y = client.move_to(1.0, 1.0, timeout_s=1.0)
     assert x == pytest.approx(1.0, abs=1e-6)
     assert y == pytest.approx(1.0, abs=1e-6)
+
+
+def test_direct_capture_exposure_runs_detectors_in_parallel():
+    class _SleepDetector:
+        def __init__(self, sleep_s: float):
+            self.sleep_s = float(sleep_s)
+
+        def capture_point(self, Nframes, Nseconds, filename_base):
+            time.sleep(self.sleep_s)
+            Path(f"{filename_base}.txt").write_text("ok", encoding="utf-8")
+            return True
+
+    client = DirectHardwareClient(_dummy_config())
+    client._controller.detectors = {
+        "PRIMARY": _SleepDetector(0.8),
+        "SECONDARY": _SleepDetector(0.8),
+    }
+
+    started = time.perf_counter()
+    outputs = client.capture_exposure(exposure_s=0.8, frames=1, timeout_s=5.0)
+    elapsed = time.perf_counter() - started
+
+    assert set(outputs.keys()) == {"PRIMARY", "SECONDARY"}
+    # Sequential would be close to ~1.6s; parallel should stay near single-detector time.
+    assert elapsed < 1.35

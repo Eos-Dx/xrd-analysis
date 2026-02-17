@@ -244,7 +244,8 @@ class DifraServiceState:
         for tick in range(10):
             if move_future.done():
                 break
-            await asyncio.sleep(0.1)
+            # Keep loop latency low so short exposures complete close to requested time.
+            await asyncio.sleep(0.02)
             frac = (tick + 1) / 10.0
             interpolated = old_x + (x_mm - old_x) * frac
             await self.emit_system_event(

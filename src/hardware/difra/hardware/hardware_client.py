@@ -7,6 +7,7 @@ import sys
 import tempfile
 import time
 import uuid
+import concurrent.futures
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -294,13 +295,15 @@ class DirectHardwareClient(HardwareClient):
             raise RuntimeError("Detector is not initialized")
 
         out_dir = Path(tempfile.mkdtemp(prefix="difra_direct_capture_"))
-        outputs: Dict[str, str] = {}
-        for alias, controller in self.detector_controllers.items():
+        nframes = max(int(frames), 1)
+        nseconds = float(exposure_s)
+
+        def _capture_single(alias: str, controller: Any) -> Tuple[str, str]:
             base = out_dir / str(alias).replace(" ", "_")
             ok = bool(
                 controller.capture_point(
-                    Nframes=max(int(frames), 1),
-                    Nseconds=float(exposure_s),
+                    Nframes=nframes,
+                    Nseconds=nseconds,
                     filename_base=str(base),
                 )
             )
@@ -309,15 +312,25 @@ class DirectHardwareClient(HardwareClient):
 
             txt_path = base.with_suffix(".txt")
             if txt_path.exists():
-                outputs[str(alias)] = str(txt_path)
-                continue
+                return str(alias), str(txt_path)
 
             candidates = sorted(out_dir.glob(f"{base.name}.*"))
             if not candidates:
                 raise RuntimeError(
                     f"No detector output produced for alias '{alias}'"
                 )
-            outputs[str(alias)] = str(candidates[0])
+            return str(alias), str(candidates[0])
+
+        outputs: Dict[str, str] = {}
+        max_workers = max(1, len(self.detector_controllers))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = [
+                pool.submit(_capture_single, alias, controller)
+                for alias, controller in self.detector_controllers.items()
+            ]
+            for fut in concurrent.futures.as_completed(futures):
+                alias, path = fut.result()
+                outputs[alias] = path
         return outputs
 
     @property
@@ -496,7 +509,8 @@ class GrpcHardwareClient(HardwareClient):
             state = self._acquisition.GetState(hub_pb2.Empty(), timeout=self._timeout_s)
             if int(state.state) not in running_states:
                 break
-            time.sleep(0.1)
+            # Tighter poll interval keeps end-to-end exposure timing near requested duration.
+            time.sleep(0.02)
         else:
             raise TimeoutError(
                 f"Exposure did not complete within timeout {timeout_s}s"

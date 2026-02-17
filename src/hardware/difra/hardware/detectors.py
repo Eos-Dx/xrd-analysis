@@ -101,14 +101,12 @@ class DummyDetectorController:
     def capture_point(self, Nframes, Nseconds, filename_base):
         # Simulate Pixet-style integrated acquisition across Nframes.
         filename = f"{filename_base}.txt"
-        t = threading.Thread(target=self._dummy_acquire, args=(filename, Nseconds, Nframes))
-        t.start()
-        t.join()
+        self._dummy_acquire(filename, Nseconds, Nframes)
         return True
 
     def _dummy_acquire(self, filename, Nseconds, Nframes=1):
-        # Simulate total acquisition duration
-        time.sleep(float(Nseconds) * max(int(Nframes), 1))
+        target_duration_s = max(float(Nseconds), 0.0) * max(int(Nframes), 1)
+        started_at = time.perf_counter()
         width, height = self.size
 
         # Sum frames to emulate an integrated image (caller may divide by Nframes to average)
@@ -136,6 +134,12 @@ class DummyDetectorController:
         # Generate fake .dsc file (descriptor) to mimic real Advacam/Pixet detector
         dsc_filename = filename.replace(".txt", ".dsc")
         self._generate_fake_dsc(dsc_filename, Nseconds, Nframes, integrated)
+
+        # Keep total wall-clock close to requested integration duration.
+        elapsed = time.perf_counter() - started_at
+        remaining = target_duration_s - elapsed
+        if remaining > 0:
+            time.sleep(remaining)
     
     def _generate_fake_dsc(self, dsc_filename, Nseconds, Nframes, data):
         """Generate a fake .dsc descriptor file to mimic real Advacam detector output.
