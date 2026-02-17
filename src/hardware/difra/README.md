@@ -27,6 +27,42 @@ src\hardware\difra\bin\run_difra.bat
 ./src/hardware/difra/bin/run_difra.sh
 ```
 
+### Runtime Architecture (gRPC + Detector Sidecar)
+
+The current launchers run DiFRA in a protocol-first layout:
+
+1. GUI starts in modern env (`eosdx13`, Python 3.13).
+2. DiFRA gRPC server starts (default: same env as GUI).
+3. PIXet detector sidecar starts in legacy env (`ulster37/ulster38`).
+4. GUI hardware client runs in strict gRPC mode (`HARDWARE_CLIENT_MODE=grpc`, enforced by launchers).
+5. gRPC server handles stage directly and routes detector init/capture through sidecar (`DETECTOR_BACKEND=sidecar`).
+
+Default endpoints:
+- gRPC: `127.0.0.1:50061`
+- Detector sidecar: `127.0.0.1:51001`
+
+Useful environment variables:
+- `DIFRA_GUI_ENV`, `DIFRA_GRPC_ENV`, `DIFRA_SIDECAR_ENV`
+- `DIFRA_GRPC_HOST`, `DIFRA_GRPC_PORT`
+- `PIXET_SIDECAR_HOST`, `PIXET_SIDECAR_PORT`
+- `HARDWARE_CLIENT_MODE` (launchers force `grpc`)
+- `DIFRA_GRPC_CONFIG` (optional JSON config path for gRPC server)
+
+### Installing Python Dependencies (pip)
+
+DiFRA now includes separate pip requirements files per runtime:
+
+- `src/hardware/difra/requirements-ulster37-38.txt` - legacy runtime (`ulster37/ulster38`)
+- `src/hardware/difra/requirements-eosdx13.txt` - modern runtime (`eosdx13`, Python 3.13)
+
+Install with:
+
+```bash
+pip install -r src/hardware/difra/requirements-ulster37-38.txt
+# or
+pip install -r src/hardware/difra/requirements-eosdx13.txt
+```
+
 ### First Launch
 
 1. When DiFRA starts, you'll see a welcome screen with two options:
@@ -171,6 +207,7 @@ src/hardware/difra/resources/config/
 src/hardware/difra/bin/
 ├── run_difra.bat            # Windows launcher
 ├── run_difra.sh             # macOS/Linux launcher
+├── run_difra_dual_env.sh    # macOS/Linux dual-env launcher (gRPC + sidecar)
 └── run_difra_embedded.bat   # Windows embedded version
 ```
 

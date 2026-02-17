@@ -106,6 +106,9 @@ def test_sidecar_core8_and_discovery_flow():
         assert state.locks.device_locked is False
         assert state.locks.session_locked is False
         assert state.locks.technical_container_locked is False
+        exposure = await acq_stub.GetLastExposureResult(hub_pb2.Empty())
+        assert exposure.has_result is True
+        assert bool(exposure.result.data_path) is True
 
         list_commands = await discovery_stub.ListCommands(hub_pb2.Empty())
         command_names = {

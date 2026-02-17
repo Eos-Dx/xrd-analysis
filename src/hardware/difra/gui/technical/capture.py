@@ -1,5 +1,5 @@
 import os
-import threading
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -50,7 +50,6 @@ class CaptureWorker(QObject):
         self._stop_requested = False
 
     def run(self):
-        threads = {}
         results = {}
         movement_started = False
 
@@ -92,14 +91,22 @@ class CaptureWorker(QObject):
                         "Warning: Failed to start continuous movement for AgBH measurement"
                     )
 
-            def run_capture(alias, controller):
-                try:
-                    # Check if stop was requested
-                    if self._stop_requested:
-                        results[alias] = None
-                        return
+            if self.hardware_client is None:
+                raise RuntimeError(
+                    "Hardware client is required for capture; direct detector calls are disabled in GUI."
+                )
 
-                    # Build per-alias filename base according to naming mode
+            raw_outputs = self.hardware_client.capture_exposure(
+                exposure_s=float(self.integration_time),
+                frames=max(int(self.frames), 1),
+                timeout_s=max(30.0, float(self.integration_time) * max(int(self.frames), 1) + 30.0),
+            )
+
+            for alias, controller in self.detector_controller.items():
+                if self._stop_requested:
+                    results[alias] = None
+                    continue
+                try:
                     if self.naming_mode == "attenuation_with":
                         base = f"{self.txt_filename_base}__{alias}_ATTENUATION"
                     elif self.naming_mode == "attenuation_without":
@@ -107,43 +114,36 @@ class CaptureWorker(QObject):
                     else:
                         base = f"{self.txt_filename_base}_{alias}"
 
-                    # Step 1: Detector captures raw data (.txt, .dsc)
-                    success = controller.capture_point(
-                        Nframes=self.frames,
-                        Nseconds=self.integration_time,
-                        filename_base=base,
-                    )
-                    
-                    if success:
-                        # Step 2: Detector converts to container format (.txt -> .npy for v0.2)
-                        raw_file = base + ".txt"
-                        try:
-                            converted_file = controller.convert_to_container_format(
-                                raw_file, 
-                                self.container_version
-                            )
-                            results[alias] = converted_file
-                            print(f"Converted {alias}: {Path(raw_file).name} -> {Path(converted_file).name}")
-                        except Exception as e:
-                            print(f"Error converting {alias} to container format: {e}")
-                            results[alias] = None
-                    else:
+                    src_raw = raw_outputs.get(alias)
+                    if src_raw is None and len(raw_outputs) == 1:
+                        src_raw = next(iter(raw_outputs.values()))
+                    if not src_raw:
                         results[alias] = None
+                        continue
+
+                    src_path = Path(src_raw)
+                    target_txt = Path(base + ".txt")
+                    target_txt.parent.mkdir(parents=True, exist_ok=True)
+                    if src_path.resolve() != target_txt.resolve():
+                        shutil.copy2(src_path, target_txt)
+                        src_dsc = src_path.with_suffix(".dsc")
+                        if src_dsc.exists():
+                            shutil.copy2(src_dsc, target_txt.with_suffix(".dsc"))
+                    else:
+                        src_dsc = src_path.with_suffix(".dsc")
+                        if src_dsc.exists() and not target_txt.with_suffix(".dsc").exists():
+                            shutil.copy2(src_dsc, target_txt.with_suffix(".dsc"))
+
+                    converted_file = controller.convert_to_container_format(
+                        str(target_txt), self.container_version
+                    )
+                    results[alias] = converted_file
+                    print(
+                        f"Converted {alias}: {target_txt.name} -> {Path(converted_file).name}"
+                    )
                 except Exception as e:
                     print(f"Error in capture for {alias}: {e}")
                     results[alias] = None
-
-            # Start detector capture threads
-            for alias, controller in self.detector_controller.items():
-                if self._stop_requested:
-                    break
-                t = threading.Thread(target=run_capture, args=(alias, controller))
-                threads[alias] = t
-                t.start()
-
-            # Wait for all capture threads to complete
-            for t in threads.values():
-                t.join()
 
         except Exception as e:
             print(f"Error during capture operation: {e}")

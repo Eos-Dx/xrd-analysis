@@ -1,27 +1,5 @@
 #!/bin/bash
 
-# Determine repository root (four levels up: bin -> difra -> hardware -> src -> root)
+# Keep this entry-point stable; delegate to dual-env launcher.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-
-CONFIG_PATH="$REPO_ROOT/src/hardware/difra/resources/config/global.json"
-
-# Read conda env name from JSON using Python
-CONDA_ENV=$(python3 -c "import json; print(json.load(open('$CONFIG_PATH'))['conda'])" 2>/dev/null)
-
-if [ -z "$CONDA_ENV" ]; then
-  echo "[ERROR] Could not read 'conda' from $CONFIG_PATH"
-  exit 1
-fi
-
-if ! command -v conda &> /dev/null; then
-  echo "[ERROR] 'conda' was not found on PATH. Please ensure conda is initialized in your shell."
-  exit 1
-fi
-
-echo "[INFO] Starting DiFRA GUI with environment: $CONDA_ENV"
-echo "Repository root: $REPO_ROOT"
-
-# Launch the GUI using unbuffered Python and no conda output capture
-# so runtime errors are streamed immediately to the terminal.
-conda run --no-capture-output -n "$CONDA_ENV" python -u "$REPO_ROOT/src/hardware/difra/gui/main_app.py" "$@"
+exec "$SCRIPT_DIR/run_difra_dual_env.sh" "$@"

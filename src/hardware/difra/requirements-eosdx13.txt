@@ -1,0 +1,43 @@
+# DiFRA dependencies for eosdx13 runtime (Python 3.13).
+#
+# Install:
+#   pip install -r requirements-eosdx13.txt
+#
+# NOTE:
+# - pypixet/pypxproc are vendor SDK binaries and are NOT installed from pip.
+# - Recommended architecture for PIXet hardware: run detector in sidecar env.
+
+# GUI + imaging
+PyQt5
+matplotlib
+seaborn
+Pillow
+opencv-python
+
+# Numeric/science stack
+numpy
+scipy
+pandas
+h5py
+scikit-image
+scikit-learn
+pyfai
+fabio
+
+# gRPC/protobuf line used by current DiFRA protocol tooling
+grpcio>=1.78,<1.79
+grpcio-tools>=1.78,<1.79
+protobuf>=6.33,<7
+
+# Runtime helpers
+click
+requests
+pyserial
+
+# Dev/test tools
+pytest
+black
+flake8
+isort
+coverage
+pre-commit

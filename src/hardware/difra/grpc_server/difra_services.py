@@ -128,7 +128,10 @@ class AcquisitionService(hub_pb2_grpc.AcquisitionServicer):
         )
 
     async def GetLastExposureResult(self, request, context):
-        return hub_pb2.GetExposureResultResponse(has_result=False)
+        result = self.state.get_last_exposure_result()
+        if result is None:
+            return hub_pb2.GetExposureResultResponse(has_result=False)
+        return hub_pb2.GetExposureResultResponse(has_result=True, result=result)
 
     async def StartBackgroundMeasurement(self, request, context):
         return hub_pb2.BackgroundMeasurementResponse(
@@ -187,7 +190,10 @@ class DeviceInitializationService(hub_pb2_grpc.DeviceInitializationServicer):
         self.state = state
 
     async def InitializeDetector(self, request, context):
-        _, detector_ok = await self.state.initialize_hardware()
+        _, detector_ok = await self.state.initialize_hardware(
+            init_stage=False,
+            init_detector=True,
+        )
         return hub_pb2.DetectorStateResponse(
             powered=detector_ok,
             initialized=detector_ok,
@@ -197,7 +203,10 @@ class DeviceInitializationService(hub_pb2_grpc.DeviceInitializationServicer):
         )
 
     async def InitializeMotion(self, request, context):
-        stage_ok, _ = await self.state.initialize_hardware()
+        stage_ok, _ = await self.state.initialize_hardware(
+            init_stage=True,
+            init_detector=False,
+        )
         x, y = await self.state.get_position()
         return hub_pb2.MotionStateResponse(
             powered=stage_ok,
@@ -347,4 +356,3 @@ class StateMonitorService(hub_pb2_grpc.StateMonitorServicer):
 
     async def GetMotionState(self, request, context):
         return (await self.GetFullServerState(request, context)).motion
-

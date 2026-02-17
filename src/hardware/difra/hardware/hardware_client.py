@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import logging
+import os
+import re
 import sys
+import tempfile
+import time
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -131,6 +135,16 @@ class HardwareClient(ABC):
     def get_state(self) -> Dict[str, Any]:
         pass
 
+    @abstractmethod
+    def capture_exposure(
+        self,
+        exposure_s: float,
+        frames: int = 1,
+        timeout_s: float = 120.0,
+    ) -> Dict[str, str]:
+        """Run detector exposure and return raw output paths keyed by detector alias."""
+        pass
+
     @property
     @abstractmethod
     def stage_controller(self) -> Any:
@@ -154,18 +168,31 @@ class DirectHardwareClient(HardwareClient):
         self._motion_initialized = False
         self._detector_initialized = False
 
-    def _initialize_all(self) -> Tuple[bool, bool]:
-        motion_ok, detector_ok = self._controller.initialize()
-        self._motion_initialized = bool(motion_ok)
-        self._detector_initialized = bool(detector_ok)
+    def _initialize_components(
+        self, init_motion: bool, init_detector: bool
+    ) -> Tuple[bool, bool]:
+        motion_ok, detector_ok = self._controller.initialize(
+            init_stage=init_motion,
+            init_detector=init_detector,
+        )
+        if init_motion:
+            self._motion_initialized = bool(motion_ok)
+        if init_detector:
+            self._detector_initialized = bool(detector_ok)
         return self._motion_initialized, self._detector_initialized
 
     def initialize_detector(self) -> bool:
-        _, detector_ok = self._initialize_all()
+        _, detector_ok = self._initialize_components(
+            init_motion=False,
+            init_detector=True,
+        )
         return detector_ok
 
     def initialize_motion(self) -> bool:
-        motion_ok, _ = self._initialize_all()
+        motion_ok, _ = self._initialize_components(
+            init_motion=True,
+            init_detector=False,
+        )
         return motion_ok
 
     def deinitialize(self) -> None:
@@ -256,6 +283,42 @@ class DirectHardwareClient(HardwareClient):
                 "technical_container_locked": False,
             },
         }
+
+    def capture_exposure(
+        self,
+        exposure_s: float,
+        frames: int = 1,
+        timeout_s: float = 120.0,
+    ) -> Dict[str, str]:
+        if not self.detector_controllers:
+            raise RuntimeError("Detector is not initialized")
+
+        out_dir = Path(tempfile.mkdtemp(prefix="difra_direct_capture_"))
+        outputs: Dict[str, str] = {}
+        for alias, controller in self.detector_controllers.items():
+            base = out_dir / str(alias).replace(" ", "_")
+            ok = bool(
+                controller.capture_point(
+                    Nframes=max(int(frames), 1),
+                    Nseconds=float(exposure_s),
+                    filename_base=str(base),
+                )
+            )
+            if not ok:
+                raise RuntimeError(f"Capture failed for detector '{alias}'")
+
+            txt_path = base.with_suffix(".txt")
+            if txt_path.exists():
+                outputs[str(alias)] = str(txt_path)
+                continue
+
+            candidates = sorted(out_dir.glob(f"{base.name}.*"))
+            if not candidates:
+                raise RuntimeError(
+                    f"No detector output produced for alias '{alias}'"
+                )
+            outputs[str(alias)] = str(candidates[0])
+        return outputs
 
     @property
     def stage_controller(self) -> Any:
@@ -401,6 +464,69 @@ class GrpcHardwareClient(HardwareClient):
             },
         }
 
+    def capture_exposure(
+        self,
+        exposure_s: float,
+        frames: int = 1,
+        timeout_s: float = 120.0,
+    ) -> Dict[str, str]:
+        self._wait_channel()
+        total_ms = max(
+            1,
+            int(round(float(exposure_s) * max(int(frames), 1) * 1000.0)),
+        )
+        max_timeout_ms = max(total_ms + 5000, int(float(timeout_s) * 1000.0))
+        self._acquisition.StartExposure(
+            hub_pb2.StartExposureRequest(
+                ctx=_command_context(self._user, "start_exposure"),
+                exposure_time_ms=total_ms,
+                max_timeout_ms=max_timeout_ms,
+            ),
+            timeout=float(timeout_s),
+        )
+
+        running_states = {
+            hub_pb2.PENDING_ARMED,
+            hub_pb2.RUNNING,
+            hub_pb2.PAUSED,
+            hub_pb2.STOPPING,
+        }
+        deadline = time.time() + max(float(timeout_s), float(total_ms) / 1000.0 + 10.0)
+        while time.time() < deadline:
+            state = self._acquisition.GetState(hub_pb2.Empty(), timeout=self._timeout_s)
+            if int(state.state) not in running_states:
+                break
+            time.sleep(0.1)
+        else:
+            raise TimeoutError(
+                f"Exposure did not complete within timeout {timeout_s}s"
+            )
+
+        result = self._acquisition.GetLastExposureResult(
+            hub_pb2.Empty(),
+            timeout=self._timeout_s,
+        )
+        if not bool(result.has_result) or not result.result.data_path:
+            raise RuntimeError("No exposure result was reported by gRPC server")
+
+        result_path = Path(result.result.data_path)
+        stem = result_path.stem
+        match = re.match(r"^([0-9a-fA-F-]{36})_(.+)$", stem)
+        if match:
+            run_id = match.group(1)
+            parent = result_path.parent
+            if parent.exists():
+                txt_files = sorted(parent.glob(f"{run_id}_*.txt"))
+                if txt_files:
+                    outputs: Dict[str, str] = {}
+                    for txt_path in txt_files:
+                        alias_tag = txt_path.stem[len(run_id) + 1 :]
+                        outputs[alias_tag] = str(txt_path)
+                    return outputs
+
+        alias = match.group(2) if match else stem
+        return {alias: str(result_path)}
+
     @property
     def stage_controller(self) -> Any:
         return None
@@ -423,12 +549,31 @@ class DualPathHardwareClient(HardwareClient):
         direct_client: DirectHardwareClient,
         grpc_client: Optional[GrpcHardwareClient],
         mode: str = "dual",
+        sync_direct_detectors: bool = False,
     ):
         self._direct = direct_client
         self._grpc = grpc_client
         self._mode = mode
+        self._sync_direct_detectors = bool(sync_direct_detectors)
         self.last_backend = "direct"
         self.last_fallback_reason = ""
+
+    def _sync_direct_detectors_if_needed(self) -> None:
+        if not self._sync_direct_detectors:
+            return
+        if self._direct.detector_controllers:
+            return
+        try:
+            ok = self._direct.initialize_detector()
+            if not ok:
+                LOGGER.warning(
+                    "Direct detector mirror initialization did not succeed while gRPC detector is active"
+                )
+        except Exception as exc:
+            LOGGER.warning(
+                "Direct detector mirror initialization failed while gRPC detector is active: %s",
+                exc,
+            )
 
     def _call(
         self,
@@ -460,11 +605,14 @@ class DualPathHardwareClient(HardwareClient):
             return direct_call()
 
     def initialize_detector(self) -> bool:
-        return self._call(
+        result = self._call(
             "initialize_detector",
             grpc_call=lambda: self._grpc.initialize_detector(),
             direct_call=self._direct.initialize_detector,
         )
+        if self.last_backend == "grpc" and result:
+            self._sync_direct_detectors_if_needed()
+        return result
 
     def initialize_motion(self) -> bool:
         return self._call(
@@ -526,6 +674,39 @@ class DualPathHardwareClient(HardwareClient):
             direct_call=self._direct.get_state,
         )
 
+    def _normalize_capture_outputs(self, outputs: Dict[str, str]) -> Dict[str, str]:
+        if not outputs:
+            return outputs
+        aliases = list(self._direct.detector_controllers.keys())
+        if not aliases:
+            return outputs
+        by_tag = {str(alias).replace(" ", "_"): str(alias) for alias in aliases}
+        normalized: Dict[str, str] = {}
+        for key, value in outputs.items():
+            normalized[by_tag.get(str(key), str(key))] = value
+        return normalized
+
+    def capture_exposure(
+        self,
+        exposure_s: float,
+        frames: int = 1,
+        timeout_s: float = 120.0,
+    ) -> Dict[str, str]:
+        outputs = self._call(
+            "capture_exposure",
+            grpc_call=lambda: self._grpc.capture_exposure(
+                exposure_s=exposure_s,
+                frames=frames,
+                timeout_s=timeout_s,
+            ),
+            direct_call=lambda: self._direct.capture_exposure(
+                exposure_s=exposure_s,
+                frames=frames,
+                timeout_s=timeout_s,
+            ),
+        )
+        return self._normalize_capture_outputs(outputs)
+
     @property
     def stage_controller(self) -> Any:
         return self._direct.stage_controller
@@ -541,9 +722,22 @@ class DualPathHardwareClient(HardwareClient):
 
 def create_hardware_client(config: Dict[str, Any]) -> HardwareClient:
     protocol_cfg = (config or {}).get("hardware_protocol", {})
-    mode = str(protocol_cfg.get("client_mode", "dual")).lower().strip()
+    detector_backend = str(os.environ.get("DETECTOR_BACKEND", "")).lower().strip()
+    default_mode = "dual"
+    mode_override = str(
+        os.environ.get("HARDWARE_CLIENT_MODE")
+        or os.environ.get("DIFRA_HARDWARE_CLIENT_MODE")
+        or ""
+    ).lower().strip()
+    mode = str(mode_override or protocol_cfg.get("client_mode", default_mode)).lower().strip()
     if mode not in {"dual", "direct", "grpc"}:
-        mode = "dual"
+        mode = default_mode
+
+    sync_direct_detectors_cfg = protocol_cfg.get("sync_direct_detectors")
+    if sync_direct_detectors_cfg is None:
+        sync_direct_detectors = detector_backend in {"sidecar", "socket", "ipc"}
+    else:
+        sync_direct_detectors = bool(sync_direct_detectors_cfg)
 
     direct_client = DirectHardwareClient(config)
 
@@ -567,12 +761,24 @@ def create_hardware_client(config: Dict[str, Any]) -> HardwareClient:
                 direct_client=direct_client,
                 grpc_client=None,
                 mode=mode,
+                sync_direct_detectors=sync_direct_detectors,
             )
 
-        host = str(protocol_cfg.get("grpc_host", "127.0.0.1"))
-        port = int(protocol_cfg.get("grpc_port", 50061))
-        timeout_s = float(protocol_cfg.get("grpc_timeout_s", 3.0))
-        user = str(protocol_cfg.get("grpc_user", "difra_gui"))
+        host = str(
+            os.environ.get("DIFRA_GRPC_HOST")
+            or protocol_cfg.get("grpc_host", "127.0.0.1")
+        )
+        port = int(
+            os.environ.get("DIFRA_GRPC_PORT") or protocol_cfg.get("grpc_port", 50061)
+        )
+        timeout_s = float(
+            os.environ.get("DIFRA_GRPC_TIMEOUT_S")
+            or protocol_cfg.get("grpc_timeout_s", 3.0)
+        )
+        user = str(
+            os.environ.get("DIFRA_GRPC_USER")
+            or protocol_cfg.get("grpc_user", "difra_gui")
+        )
 
         try:
             grpc_client = GrpcHardwareClient(
@@ -594,4 +800,5 @@ def create_hardware_client(config: Dict[str, Any]) -> HardwareClient:
         direct_client=direct_client,
         grpc_client=grpc_client,
         mode=mode,
+        sync_direct_detectors=sync_direct_detectors,
     )

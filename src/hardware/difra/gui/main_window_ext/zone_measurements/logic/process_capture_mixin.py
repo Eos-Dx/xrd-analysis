@@ -1,5 +1,7 @@
 import os
+import shutil
 import time
+from pathlib import Path
 
 from hardware.difra.gui.container_api import get_container_version
 
@@ -206,17 +208,50 @@ class ZoneMeasurementsProcessCaptureMixin:
             self.config if hasattr(self, "config") else None
         )
 
+        if getattr(self, "hardware_client", None) is None:
+            pm.logger.warning(
+                "Hardware client unavailable; skipping attenuation background capture"
+            )
+            self._attenuation_bg_files = None
+            return
+
+        try:
+            raw_outputs = self.hardware_client.capture_exposure(
+                exposure_s=short_t,
+                frames=max(int(frames), 1),
+                timeout_s=max(30.0, float(short_t) * max(int(frames), 1) + 30.0),
+            )
+        except Exception as e:
+            pm.logger.warning(
+                "Hardware client attenuation capture failed",
+                error=str(e),
+            )
+            self._attenuation_bg_files = None
+            return
+
         results = {}
         for alias, controller in self.detector_controller.items():
             try:
                 per_alias_base = f"{group_base}__{alias}_ATTENUATION0"
-                ok = controller.capture_point(Nframes=frames, Nseconds=short_t, filename_base=per_alias_base)
-                txt_path = per_alias_base + ".txt" if ok else None
-                if txt_path and os.path.exists(txt_path):
-                    npy_path = controller.convert_to_container_format(txt_path, container_version)
-                    results[alias] = npy_path
-                else:
+                src_raw = raw_outputs.get(alias)
+                if src_raw is None and len(raw_outputs) == 1:
+                    src_raw = next(iter(raw_outputs.values()))
+                if not src_raw:
                     results[alias] = None
+                    continue
+
+                target_txt = Path(per_alias_base + ".txt")
+                target_txt.parent.mkdir(parents=True, exist_ok=True)
+                src_path = Path(src_raw)
+                if src_path.resolve() != target_txt.resolve():
+                    shutil.copy2(src_path, target_txt)
+                    src_dsc = src_path.with_suffix(".dsc")
+                    if src_dsc.exists():
+                        shutil.copy2(src_dsc, target_txt.with_suffix(".dsc"))
+                npy_path = controller.convert_to_container_format(
+                    str(target_txt), container_version
+                )
+                results[alias] = npy_path
             except Exception as e:
                 pm.logger.warning("Error capturing attenuation background", detector=alias, error=str(e))
                 results[alias] = None

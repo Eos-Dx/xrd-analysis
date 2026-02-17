@@ -1,7 +1,9 @@
 # zone_measurements/attenuation_mixin.py
 
 import os
+import shutil
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 from PyQt5.QtCore import Qt
@@ -141,8 +143,28 @@ class AttenuationMixin:
         
         results = {}
         all_data = {}  # Collect data for all detectors
-        
-        for alias, detector in self.hardware_controller.detectors.items():
+
+        if getattr(self, "hardware_client", None) is None:
+            logger.error(
+                "Hardware client is required for attenuation measurement; direct detector calls are disabled"
+            )
+            return
+
+        try:
+            raw_outputs = self.hardware_client.capture_exposure(
+                exposure_s=float(t_exp),
+                frames=max(int(N), 1),
+                timeout_s=max(30.0, float(t_exp) * max(int(N), 1) + 30.0),
+            )
+        except Exception as e:
+            logger.error(
+                "Attenuation acquisition via hardware client failed",
+                mode=mode,
+                error=str(e),
+            )
+            return
+
+        for alias, detector in self.detector_controller.items():
             center_x, center_y = self.get_beam_center(alias)
             size = detector.size if hasattr(detector, "size") else (256, 256)
             if not (0 <= center_x < size[0] and 0 <= center_y < size[1]):
@@ -160,12 +182,27 @@ class AttenuationMixin:
                 save_folder, f"attenuation_{mode}_{alias}_{timestamp}"
             )
 
-            # Acquire measurement (single call, multiple frames)
-            success = detector.capture_point(
-                Nframes=N, Nseconds=t_exp, filename_base=filename_base
-            )
+            src_raw = raw_outputs.get(alias)
+            if src_raw is None and len(raw_outputs) == 1:
+                src_raw = next(iter(raw_outputs.values()))
+            if not src_raw:
+                logger.error(
+                    "Attenuation acquisition result not found",
+                    mode=mode,
+                    detector=alias,
+                )
+                continue
+
             txt_file = filename_base + ".txt"
-            if not success or not os.path.isfile(txt_file):
+            src_path = Path(src_raw)
+            dst_path = Path(txt_file)
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            if src_path.resolve() != dst_path.resolve():
+                shutil.copy2(src_path, dst_path)
+                src_dsc = src_path.with_suffix(".dsc")
+                if src_dsc.exists():
+                    shutil.copy2(src_dsc, dst_path.with_suffix(".dsc"))
+            elif not os.path.isfile(txt_file):
                 logger.error(
                     "Attenuation acquisition failed or file not found",
                     mode=mode,

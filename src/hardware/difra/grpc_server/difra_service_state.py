@@ -1,6 +1,7 @@
 """DiFRA gRPC sidecar state model and command/readiness logic."""
 
 from . import server as _module
+import tempfile
 
 asyncio = _module.asyncio
 functools = _module.functools
@@ -53,6 +54,7 @@ class DifraServiceState:
         self._active_measurement_class = hub_pb2.MEASUREMENT_CLASS_UNSPECIFIED
         self._pause_gate = asyncio.Event()
         self._pause_gate.set()
+        self._last_exposure_result: Optional[hub_pb2.ExposureResult] = None
 
         self._command_descriptors = self._load_command_descriptors()
 
@@ -174,19 +176,29 @@ class DifraServiceState:
         if self.device_locked:
             raise RuntimeError("DEVICE_LOCKED: hardware key lock active")
 
-    async def initialize_hardware(self) -> Tuple[bool, bool]:
+    async def initialize_hardware(
+        self,
+        init_stage: bool = True,
+        init_detector: bool = True,
+    ) -> Tuple[bool, bool]:
         self._guard_mutating_command()
         async with self._lock:
-            stage_ok, detector_ok = await asyncio.to_thread(self.hardware_controller.initialize)
-            self.stage_controller = self.hardware_controller.stage_controller
-            self.detector_controllers = dict(self.hardware_controller.detectors)
-            self.stage_initialized = bool(stage_ok)
-            self.detector_initialized = bool(detector_ok)
+            stage_ok, detector_ok = await asyncio.to_thread(
+                self.hardware_controller.initialize,
+                init_stage=init_stage,
+                init_detector=init_detector,
+            )
+            if init_stage:
+                self.stage_controller = self.hardware_controller.stage_controller
+                self.stage_initialized = bool(stage_ok)
+            if init_detector:
+                self.detector_controllers = dict(self.hardware_controller.detectors)
+                self.detector_initialized = bool(detector_ok)
             await self._set_state(
-                hub_pb2.IDLE if (stage_ok or detector_ok) else hub_pb2.SAFE,
+                hub_pb2.IDLE if (self.stage_initialized or self.detector_initialized) else hub_pb2.SAFE,
                 "initialize_hardware",
             )
-            return stage_ok, detector_ok
+            return self.stage_initialized, self.detector_initialized
 
     async def deinitialize_hardware(self) -> None:
         async with self._lock:
@@ -351,12 +363,58 @@ class DifraServiceState:
             self._active_run_total_seconds = max(1, int(round(exposure_time_ms / 1000.0)))
             self._active_run_elapsed_seconds = 0
             self._pause_gate.set()
+            self._last_exposure_result = None
 
             await self._set_state(hub_pb2.PENDING_ARMED, "start_exposure_queued")
             self._active_run_task = asyncio.create_task(
                 self._run_exposure(run_id, exposure_time_ms)
             )
             return run_id
+
+    def _capture_detectors(
+        self,
+        run_id: str,
+        exposure_time_ms: int,
+    ) -> Dict[str, str]:
+        if not self.detector_controllers:
+            raise RuntimeError("No initialized detector controllers")
+
+        exposure_s = max(float(exposure_time_ms) / 1000.0, 0.001)
+        base_root = (
+            self.config.get("measurements_folder")
+            or self.config.get("difra_base_folder")
+            or tempfile.gettempdir()
+        )
+        capture_root = Path(base_root) / "grpc_exposures"
+        capture_root.mkdir(parents=True, exist_ok=True)
+
+        outputs: Dict[str, str] = {}
+        for alias, controller in self.detector_controllers.items():
+            alias_tag = str(alias).replace(" ", "_")
+            filename_base = capture_root / f"{run_id}_{alias_tag}"
+            ok = bool(
+                controller.capture_point(
+                    Nframes=1,
+                    Nseconds=exposure_s,
+                    filename_base=str(filename_base),
+                )
+            )
+            if not ok:
+                raise RuntimeError(f"Detector '{alias}' capture failed")
+
+            txt_path = filename_base.with_suffix(".txt")
+            if txt_path.exists():
+                outputs[alias] = str(txt_path)
+                continue
+
+            fallback = sorted(capture_root.glob(f"{filename_base.name}.*"))
+            if not fallback:
+                raise RuntimeError(
+                    f"Detector '{alias}' produced no output for base '{filename_base}'"
+                )
+            outputs[alias] = str(fallback[0])
+
+        return outputs
 
     async def pause_exposure(self) -> None:
         self._guard_mutating_command()
@@ -432,45 +490,66 @@ class DifraServiceState:
             )
         )
 
-        elapsed = 0
-        while elapsed < total_seconds:
-            if self._active_run_abort_requested:
-                break
+        status = "completed"
+        reason = ""
+        captured_files: Dict[str, str] = {}
+        capture_future = asyncio.create_task(
+            asyncio.to_thread(self._capture_detectors, run_id, exposure_time_ms)
+        )
+        loop = asyncio.get_running_loop()
+        started_at = loop.time()
+        last_elapsed = -1
+
+        while not capture_future.done():
             if self._active_run_paused:
                 await self._pause_gate.wait()
                 continue
 
-            slept = 0.0
-            while slept < 1.0:
-                await asyncio.sleep(0.1)
-                slept += 0.1
-                if self._active_run_abort_requested or self._active_run_paused:
-                    break
-            if self._active_run_abort_requested or self._active_run_paused:
-                continue
-
-            elapsed += 1
-            self._active_run_elapsed_seconds = elapsed
-            await self.emit_system_event(
-                hub_pb2.SystemEvent(
-                    timestamp=_now_timestamp(),
-                    run_progress=hub_pb2.RunProgressEvent(
-                        run_id=run_id,
-                        run_type="measurement",
-                        elapsed_seconds=elapsed,
-                        total_seconds=total_seconds,
-                    ),
+            await asyncio.sleep(0.1)
+            elapsed = min(int(loop.time() - started_at), total_seconds)
+            if elapsed > last_elapsed:
+                last_elapsed = elapsed
+                self._active_run_elapsed_seconds = elapsed
+                await self.emit_system_event(
+                    hub_pb2.SystemEvent(
+                        timestamp=_now_timestamp(),
+                        run_progress=hub_pb2.RunProgressEvent(
+                            run_id=run_id,
+                            run_type="measurement",
+                            elapsed_seconds=elapsed,
+                            total_seconds=total_seconds,
+                        ),
+                    )
                 )
-            )
 
-        status = "completed"
-        reason = ""
+        try:
+            captured_files = await capture_future
+        except Exception as exc:
+            status = "failed"
+            reason = str(exc)
+
         if self._active_run_abort_requested:
             status = "interrupted"
             reason = "abort_requested"
         elif self._active_run_stop_requested:
             status = "stopped"
             reason = "stop_requested"
+        elif status == "completed":
+            # proto v1 has a single data_path, so expose the first detector output.
+            first_path = next(iter(captured_files.values()), "")
+            data_size = 0
+            if first_path:
+                try:
+                    data_size = int(Path(first_path).stat().st_size)
+                except Exception:
+                    data_size = 0
+            self._last_exposure_result = hub_pb2.ExposureResult(
+                exposure_time_ms=int(exposure_time_ms),
+                timestamp=_now_timestamp(),
+                data_size=max(data_size, 0),
+                data_path=str(first_path),
+                detector_temp=0.0,
+            )
 
         async with self._lock:
             self._active_run_id = None
@@ -496,6 +575,9 @@ class DifraServiceState:
                 ),
             )
         )
+
+    def get_last_exposure_result(self) -> Optional[hub_pb2.ExposureResult]:
+        return self._last_exposure_result
 
     async def emit_command_lifecycle(
         self,
@@ -691,5 +773,3 @@ class DifraServiceState:
             )
             for desc in self._command_descriptors
         ]
-
-

@@ -1,0 +1,47 @@
+# DiFRA dependencies for legacy runtime (Python 3.7/3.8).
+# Use this file for:
+# - sidecar runtime (legacy pypixet path)
+# - older Ulster environments
+#
+# Install:
+#   pip install -r requirements-ulster37-38.txt
+#
+# NOTE:
+# - pypixet/pypxproc are vendor SDK binaries and are NOT installed from pip.
+# - On Windows, keep PIXet SDK path configured via PIXET_SDK_PATH.
+
+# GUI + imaging
+PyQt5
+matplotlib
+seaborn
+Pillow
+opencv-python
+
+# Numeric/science stack
+numpy
+scipy
+pandas
+h5py
+scikit-image
+scikit-learn
+pyfai
+fabio
+
+# gRPC/protobuf line for legacy runtime compatibility
+grpcio>=1.70,<1.71
+grpcio-tools>=1.70,<1.71
+protobuf>=5.29,<6
+
+# Runtime helpers
+click
+requests
+tomli
+pyserial
+
+# Dev/test tools
+pytest
+black
+flake8
+isort
+coverage
+pre-commit

@@ -1,7 +1,10 @@
 # detectors.py
+import json
 import os
+import socket
 import threading
 import time
+import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -578,3 +581,439 @@ class PixetDetectorController(DetectorController):
             List of patterns for .txt (ASCII data) and .dsc (descriptor)
         """
         return ['*.txt', '*.dsc']
+
+
+class PixetLegacyDetectorController(DetectorController):
+    """Legacy PIXet controller using vendor `pypixet` bindings."""
+
+    def __init__(self, alias, size=(256, 256), config=None):
+        self.alias = alias
+        self.size = tuple(size)  # (width, height)
+        self.config = config or {}
+        self.dev_id = self.config.get("id")
+        self.detector = None
+        self.pixet = None
+        self._stream_thread = None
+        self._streaming = threading.Event()
+
+    def init_detector(self):
+        import sys
+
+        pixet_sdk_path = os.environ.get("PIXET_SDK_PATH") or self.config.get(
+            "pixet_sdk_path"
+        )
+        logger.info(
+            "Initializing legacy Pixet detector (pypixet)",
+            detector=self.alias,
+            device_id=self.dev_id,
+            pixet_sdk_path=pixet_sdk_path,
+        )
+
+        if pixet_sdk_path:
+            if not os.path.isdir(pixet_sdk_path):
+                logger.error(
+                    "Configured PIXET SDK path does not exist",
+                    sdk_path=pixet_sdk_path,
+                    detector=self.alias,
+                    path_exists=False,
+                )
+                return False
+            # Ensure vendor DLL/module path is discoverable.
+            os.environ["PATH"] = pixet_sdk_path + os.pathsep + os.environ.get("PATH", "")
+            if pixet_sdk_path not in sys.path:
+                sys.path.insert(0, pixet_sdk_path)
+        else:
+            logger.warning(
+                "No PIXET SDK path configured",
+                detector=self.alias,
+                hint="Set 'pixet_sdk_path' in detector config or PIXET_SDK_PATH",
+            )
+            return False
+
+        try:
+            import pypixet
+        except ImportError as e:
+            logger.error(
+                "Failed to import pypixet",
+                detector=self.alias,
+                error=str(e),
+                hint="Use Python 3.7 runtime with PIXet SDK python bindings installed",
+            )
+            return False
+
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(pixet_sdk_path)
+            pypixet.start()
+        finally:
+            if os.getcwd() != original_cwd:
+                os.chdir(original_cwd)
+
+        pixet = pypixet.pixet
+        devices = pixet.devices()
+        if not devices or devices[0].fullName() == "FileDevice 0":
+            logger.error("No Pixet devices connected", detector=self.alias)
+            try:
+                pixet.exitPixet()
+                pypixet.exit()
+            except Exception:
+                pass
+            return False
+
+        selected = None
+        for dev in devices:
+            name = dev.fullName()
+            if self.dev_id and self.dev_id in name:
+                selected = dev
+                break
+        if selected is None:
+            selected = devices[0]
+            logger.warning(
+                "Configured Pixet device ID not found; using first detected device",
+                detector=self.alias,
+                requested_device_id=self.dev_id,
+                selected_device=selected.fullName(),
+            )
+
+        self.detector = selected
+        self.pixet = pixet
+        logger.info(
+            "Initialized legacy Pixet detector",
+            detector=self.alias,
+            device_name=selected.fullName(),
+        )
+        return True
+
+    def capture_point(self, Nframes, Nseconds, filename_base):
+        filename = f"{filename_base}.txt"
+        if self.detector is None or self.pixet is None:
+            logger.error("Legacy Pixet detector is not initialized", detector=self.alias)
+            return False
+        try:
+            rc = self.detector.doSimpleIntegralAcquisition(
+                max(int(Nframes), 1),
+                float(Nseconds),
+                self.pixet.PX_FTYPE_AUTODETECT,
+                filename,
+            )
+        except Exception as e:
+            logger.error(
+                "Exception during legacy Pixet acquisition",
+                detector=self.alias,
+                error=str(e),
+            )
+            return False
+        if rc != 0:
+            err = ""
+            try:
+                err = self.detector.lastError()
+            except Exception:
+                pass
+            logger.error(
+                "Legacy Pixet capture error",
+                detector=self.alias,
+                return_code=rc,
+                error=err,
+            )
+            return False
+        logger.info(
+            "Legacy Pixet capture successful",
+            detector=self.alias,
+            frames=Nframes,
+            integration_time=Nseconds,
+        )
+        return True
+
+    def deinit_detector(self):
+        if self.pixet:
+            try:
+                self.pixet.exitPixet()
+                import pypixet
+
+                pypixet.exit()
+            except Exception as e:
+                logger.error(
+                    "Error during legacy Pixet detector deinitialization",
+                    detector=self.alias,
+                    error=str(e),
+                )
+            finally:
+                self.pixet, self.detector = None, None
+
+    def start_stream(self, callback, exposure=0.1, interval=0.0, frames=1):
+        self.stop_stream()
+        self._streaming.set()
+        self._stream_thread = threading.Thread(
+            target=self._stream_loop,
+            args=(callback, exposure, interval, frames),
+            daemon=True,
+        )
+        self._stream_thread.start()
+        logger.info(
+            "Legacy Pixet streaming started",
+            detector=self.alias,
+            exposure=exposure,
+        )
+
+    def stop_stream(self):
+        if self._stream_thread and self._stream_thread.is_alive():
+            self._streaming.clear()
+            self._stream_thread.join(timeout=2.0)
+            logger.info("Legacy Pixet streaming stopped", detector=self.alias)
+        self._stream_thread = None
+
+    def _stream_loop(self, callback, exposure, interval, frames):
+        import tempfile
+
+        while self._streaming.is_set():
+            tmpdir = tempfile.mkdtemp()
+            tmpfile = os.path.join(tmpdir, f"stream_{self.alias}.txt")
+            try:
+                rc = self.detector.doSimpleIntegralAcquisition(
+                    max(int(frames), 1),
+                    float(exposure),
+                    self.pixet.PX_FTYPE_AUTODETECT,
+                    tmpfile,
+                )
+                if rc != 0:
+                    callback({self.alias: None})
+                else:
+                    frame = np.loadtxt(tmpfile)
+                    frame = frame[: self.size[1], : self.size[0]]
+                    callback({self.alias: frame})
+            except Exception as e:
+                logger.warning(
+                    "Legacy Pixet frame capture error during streaming",
+                    detector=self.alias,
+                    error=str(e),
+                )
+                callback({self.alias: None})
+            finally:
+                try:
+                    os.remove(tmpfile)
+                    os.rmdir(tmpdir)
+                except Exception:
+                    pass
+            if interval:
+                time.sleep(interval)
+
+    def convert_to_container_format(
+        self, raw_file_path: str, container_version: str = "0.2"
+    ) -> str:
+        raw_path = Path(raw_file_path)
+        if container_version == "0.2":
+            npy_path = raw_path.with_suffix(".npy")
+            if not npy_path.exists():
+                try:
+                    data = np.loadtxt(raw_path)
+                    np.save(npy_path, data)
+                except Exception as e:
+                    raise RuntimeError(f"Failed to convert {raw_path} to .npy: {e}")
+            return str(npy_path)
+        raise ValueError(
+            f"Detector {self.alias} does not support container version {container_version}"
+        )
+
+    def get_raw_file_patterns(self):
+        return ["*.txt", "*.dsc"]
+
+
+class PixetSidecarError(RuntimeError):
+    """Raised when sidecar communication or command execution fails."""
+
+
+class PixetSidecarDetectorController(DetectorController):
+    """PIXet controller proxying hardware calls to external socket sidecar."""
+
+    def __init__(self, alias, size=(256, 256), config=None):
+        self.alias = alias
+        self.size = tuple(size)
+        self.config = config or {}
+        sidecar_cfg = self.config.get("pixet_sidecar", {}) or {}
+        self.sidecar_host = str(
+            sidecar_cfg.get(
+                "host",
+                self.config.get(
+                    "sidecar_host",
+                    os.environ.get("PIXET_SIDECAR_HOST", "127.0.0.1"),
+                ),
+            )
+        )
+        self.sidecar_port = int(
+            sidecar_cfg.get(
+                "port",
+                self.config.get(
+                    "sidecar_port",
+                    os.environ.get("PIXET_SIDECAR_PORT", "51001"),
+                ),
+            )
+        )
+        self.timeout_s = float(
+            sidecar_cfg.get(
+                "timeout_s",
+                self.config.get(
+                    "sidecar_timeout_s",
+                    os.environ.get("PIXET_SIDECAR_TIMEOUT_S", "10.0"),
+                ),
+            )
+        )
+        self._stream_thread = None
+        self._streaming = threading.Event()
+
+    def _rpc(self, cmd: str, args: dict):
+        req_id = str(uuid.uuid4())
+        payload = (
+            json.dumps(
+                {
+                    "id": req_id,
+                    "cmd": cmd,
+                    "args": args,
+                },
+                ensure_ascii=True,
+            )
+            + "\n"
+        ).encode("utf-8")
+        try:
+            with socket.create_connection(
+                (self.sidecar_host, self.sidecar_port),
+                timeout=self.timeout_s,
+            ) as sock:
+                sock.settimeout(self.timeout_s)
+                sock.sendall(payload)
+
+                response_bytes = b""
+                while b"\n" not in response_bytes:
+                    chunk = sock.recv(65536)
+                    if not chunk:
+                        raise PixetSidecarError("Sidecar closed connection without response")
+                    response_bytes += chunk
+        except Exception as e:
+            raise PixetSidecarError(
+                f"Sidecar connection failed ({self.sidecar_host}:{self.sidecar_port}): {e}"
+            )
+
+        line = response_bytes.split(b"\n", 1)[0]
+        try:
+            response = json.loads(line.decode("utf-8"))
+        except Exception as e:
+            raise PixetSidecarError(f"Invalid sidecar response JSON: {e}")
+
+        if not response.get("ok"):
+            raise PixetSidecarError(response.get("error", "Unknown sidecar error"))
+        return response.get("result")
+
+    def init_detector(self):
+        logger.info(
+            "Initializing Pixet detector via sidecar",
+            detector=self.alias,
+            sidecar_host=self.sidecar_host,
+            sidecar_port=self.sidecar_port,
+        )
+        result = self._rpc(
+            "init_detector",
+            {
+                "alias": self.alias,
+                "size": [int(self.size[0]), int(self.size[1])],
+                "config": dict(self.config),
+            },
+        )
+        initialized = bool((result or {}).get("initialized", False))
+        detected_size = (result or {}).get("size")
+        if (
+            isinstance(detected_size, list)
+            and len(detected_size) == 2
+            and all(isinstance(v, int) for v in detected_size)
+        ):
+            self.size = (int(detected_size[0]), int(detected_size[1]))
+        return initialized
+
+    def capture_point(self, Nframes, Nseconds, filename_base):
+        result = self._rpc(
+            "capture_point",
+            {
+                "alias": self.alias,
+                "Nframes": max(int(Nframes), 1),
+                "Nseconds": float(Nseconds),
+                "filename_base": str(filename_base),
+            },
+        )
+        return bool((result or {}).get("captured", False))
+
+    def deinit_detector(self):
+        try:
+            self._rpc("deinit_detector", {"alias": self.alias})
+        except PixetSidecarError as e:
+            logger.warning(
+                "Sidecar deinit failed",
+                detector=self.alias,
+                error=str(e),
+            )
+
+    def start_stream(self, callback, exposure=0.1, interval=0.0, frames=1):
+        self.stop_stream()
+        self._streaming.set()
+        self._stream_thread = threading.Thread(
+            target=self._stream_loop,
+            args=(callback, exposure, interval, frames),
+            daemon=True,
+        )
+        self._stream_thread.start()
+        logger.info("Sidecar streaming started", detector=self.alias, exposure=exposure)
+
+    def stop_stream(self):
+        if self._stream_thread and self._stream_thread.is_alive():
+            self._streaming.clear()
+            self._stream_thread.join(timeout=2.0)
+            logger.info("Sidecar streaming stopped", detector=self.alias)
+        self._stream_thread = None
+
+    def _stream_loop(self, callback, exposure, interval, frames):
+        while self._streaming.is_set():
+            try:
+                result = self._rpc(
+                    "capture_frame",
+                    {
+                        "alias": self.alias,
+                        "exposure_s": float(exposure),
+                        "frames": max(int(frames), 1),
+                    },
+                )
+                frame_payload = (result or {}).get("frame")
+                if frame_payload is None:
+                    frame = None
+                else:
+                    frame = np.asarray(frame_payload, dtype=np.float64)
+                    if frame.ndim == 2:
+                        frame = frame[: self.size[1], : self.size[0]]
+                    else:
+                        frame = None
+                callback({self.alias: frame})
+            except Exception as e:
+                logger.warning(
+                    "Sidecar frame capture error during streaming",
+                    detector=self.alias,
+                    error=str(e),
+                )
+                callback({self.alias: None})
+            if interval:
+                time.sleep(interval)
+
+    def convert_to_container_format(
+        self, raw_file_path: str, container_version: str = "0.2"
+    ) -> str:
+        raw_path = Path(raw_file_path)
+        if container_version == "0.2":
+            npy_path = raw_path.with_suffix(".npy")
+            if not npy_path.exists():
+                try:
+                    data = np.loadtxt(raw_path)
+                    np.save(npy_path, data)
+                except Exception as e:
+                    raise RuntimeError(f"Failed to convert {raw_path} to .npy: {e}")
+            return str(npy_path)
+        raise ValueError(
+            f"Detector {self.alias} does not support container version {container_version}"
+        )
+
+    def get_raw_file_patterns(self):
+        return ["*.txt", "*.dsc"]
