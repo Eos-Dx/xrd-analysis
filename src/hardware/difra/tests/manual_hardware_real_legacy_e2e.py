@@ -167,7 +167,7 @@ def _free_tcp_port() -> int:
 
 
 def _list_conda_env_names() -> set[str]:
-    conda_exe = shutil.which("conda")
+    conda_exe = shutil.which("conda") or os.environ.get("CONDA_EXE", "").strip()
     if not conda_exe:
         return set()
     try:
@@ -198,12 +198,29 @@ def _resolve_legacy_sidecar_command(host: str, port: int) -> list[str]:
             str(port),
         ]
 
+    conda_exe = shutil.which("conda") or os.environ.get("CONDA_EXE", "").strip()
     requested_env = os.environ.get("DIFRA_LEGACY_ENV", "").strip()
+    if requested_env and conda_exe:
+        return [
+            conda_exe,
+            "run",
+            "--live-stream",
+            "--no-capture-output",
+            "-n",
+            requested_env,
+            "python",
+            "-u",
+            str(SIDECAR_SCRIPT),
+            "--host",
+            host,
+            "--port",
+            str(port),
+        ]
+
     candidate_envs = [requested_env] if requested_env else ["ulster37", "ulster38"]
     available_envs = _list_conda_env_names()
     chosen_env = next((name for name in candidate_envs if name in available_envs), "")
     if chosen_env:
-        conda_exe = shutil.which("conda")
         return [
             conda_exe,
             "run",
@@ -328,7 +345,10 @@ def test_real_hardware_direct_legacy_sidecar_smoke(tmp_path: Path):
         with _temporary_env(env):
             client = DirectHardwareClient(config)
             try:
-                assert client.initialize_detector() is True
+                assert client.initialize_detector() is True, (
+                    "Detector init via legacy sidecar failed. "
+                    "Set DIFRA_LEGACY_ENV or DIFRA_LEGACY_PYTHON to a working legacy runtime."
+                )
                 assert client.initialize_motion() is True
                 _assert_expected_hardware_route(
                     config=config,
@@ -399,7 +419,10 @@ def test_real_hardware_grpc_over_legacy_sidecar_smoke(tmp_path: Path):
                     init_motion = await init_stub.InitializeMotion(
                         hub_pb2.InitializeMotionRequest(ctx=_ctx("init_motion_real"))
                     )
-                    assert init_detector.initialized is True
+                    assert init_detector.initialized is True, (
+                        "Detector init via legacy sidecar failed. "
+                        "Set DIFRA_LEGACY_ENV or DIFRA_LEGACY_PYTHON to a working legacy runtime."
+                    )
                     assert init_motion.initialized is True
                     _assert_expected_hardware_route(
                         config=config,

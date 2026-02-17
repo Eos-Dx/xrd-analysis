@@ -47,26 +47,32 @@ if "%GUI_ENV%"=="" set GUI_ENV=eosdx13
 
 if "%DIFRA_LEGACY_PYTHON%"=="" (
   if "%DIFRA_LEGACY_ENV%"=="" (
-    for /f "usebackq delims=" %%B in (`%CONDA_CMD% info --base`) do set CONDA_BASE=%%B
-    if defined CONDA_BASE (
-      if exist "%CONDA_BASE%\envs\ulster37" (
-        set DIFRA_LEGACY_ENV=ulster37
-      ) else (
-        if exist "%CONDA_BASE%\envs\ulster38" (
-          set DIFRA_LEGACY_ENV=ulster38
-        )
-      )
-    )
-
-    if "%DIFRA_LEGACY_ENV%"=="" (
-      echo [WARN] ulster37/ulster38 not found; tests will use current Python unless DIFRA_LEGACY_PYTHON is set.
+    %CONDA_CMD% run --no-capture-output -n ulster37 python -c "import sys;sys.exit(0)" >nul 2>&1
+    if not errorlevel 1 (
+      set DIFRA_LEGACY_ENV=ulster37
     ) else (
-      echo [INFO] Using legacy env: %DIFRA_LEGACY_ENV%
+      %CONDA_CMD% run --no-capture-output -n ulster38 python -c "import sys;sys.exit(0)" >nul 2>&1
+      if not errorlevel 1 set DIFRA_LEGACY_ENV=ulster38
     )
-  ) else (
-    echo [INFO] Using requested legacy env: %DIFRA_LEGACY_ENV%
   )
+
+  if "%DIFRA_LEGACY_ENV%"=="" (
+    echo [ERROR] No working legacy environment found. Set DIFRA_LEGACY_ENV or DIFRA_LEGACY_PYTHON.
+    exit /b 1
+  )
+
+  %CONDA_CMD% run --no-capture-output -n %DIFRA_LEGACY_ENV% python -c "import sys;sys.exit(0)" >nul 2>&1
+  if errorlevel 1 (
+    echo [ERROR] Requested legacy env '%DIFRA_LEGACY_ENV%' is not runnable.
+    echo [ERROR] Set DIFRA_LEGACY_ENV=ulster37^|ulster38 or DIFRA_LEGACY_PYTHON=path\to\python.exe
+    exit /b 1
+  )
+  echo [INFO] Using legacy env: %DIFRA_LEGACY_ENV%
 ) else (
+  if not exist "%DIFRA_LEGACY_PYTHON%" (
+    echo [ERROR] DIFRA_LEGACY_PYTHON does not exist: %DIFRA_LEGACY_PYTHON%
+    exit /b 1
+  )
   echo [INFO] Using explicit legacy python: %DIFRA_LEGACY_PYTHON%
 )
 
@@ -87,4 +93,3 @@ echo [INFO] Expected route: stage_type=%DIFRA_EXPECT_STAGE_TYPE% stage_class=%DI
 
 set EXIT_CODE=%ERRORLEVEL%
 endlocal & exit /b %EXIT_CODE%
-
