@@ -47,6 +47,8 @@ if errorlevel 1 (
   )
 )
 
+cd /d %REPO_ROOT%
+set PYTHONPATH=%REPO_ROOT%\src;%PYTHONPATH%
 set PYTHONUNBUFFERED=1
 
 echo [INFO] Starting PIXet sidecar in env: %SIDECAR_ENV%

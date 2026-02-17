@@ -77,16 +77,28 @@ if errorlevel 1 (
   )
 )
 
+cd /d %REPO_ROOT%
+set PYTHONPATH=%REPO_ROOT%\src;%PYTHONPATH%
 set PYTHONUNBUFFERED=1
 
-echo [INFO] Starting sidecar env=%SIDECAR_ENV% endpoint=%SIDECAR_HOST%:%SIDECAR_PORT%
-start "DiFRA Sidecar" /B %CONDA_CMD% run --live-stream --no-capture-output -n %SIDECAR_ENV% python -u "%REPO_ROOT%\src\hardware\difra\scripts\pixet_sidecar_server.py" --host %SIDECAR_HOST% --port %SIDECAR_PORT%
-
-echo [INFO] Starting gRPC env=%GRPC_ENV% endpoint=%GRPC_HOST%:%GRPC_PORT% config=%GRPC_CONFIG%
-if "%GRPC_CONFIG%"=="" (
-  start "DiFRA gRPC" /B %CONDA_CMD% run --live-stream --no-capture-output -n %GRPC_ENV% python -u "%REPO_ROOT%\src\hardware\difra\grpc_server\server.py" --host %GRPC_HOST% --port %GRPC_PORT%
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "$h='%SIDECAR_HOST%'; $p=[int]'%SIDECAR_PORT%'; try { $c=New-Object Net.Sockets.TcpClient; $c.Connect($h,$p); $c.Close(); '1' } catch { '0' }"`) do set SIDECAR_IN_USE=%%V
+if "%SIDECAR_IN_USE%"=="1" (
+  echo [WARN] Detector sidecar port already in use at %SIDECAR_HOST%:%SIDECAR_PORT% - reusing existing process.
 ) else (
-  start "DiFRA gRPC" /B %CONDA_CMD% run --live-stream --no-capture-output -n %GRPC_ENV% python -u "%REPO_ROOT%\src\hardware\difra\grpc_server\server.py" --host %GRPC_HOST% --port %GRPC_PORT% --config "%GRPC_CONFIG%"
+  echo [INFO] Starting sidecar env=%SIDECAR_ENV% endpoint=%SIDECAR_HOST%:%SIDECAR_PORT%
+  start "DiFRA Sidecar" /B %CONDA_CMD% run --live-stream --no-capture-output -n %SIDECAR_ENV% python -u "%REPO_ROOT%\src\hardware\difra\scripts\pixet_sidecar_server.py" --host %SIDECAR_HOST% --port %SIDECAR_PORT%
+)
+
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "$h='%GRPC_HOST%'; $p=[int]'%GRPC_PORT%'; try { $c=New-Object Net.Sockets.TcpClient; $c.Connect($h,$p); $c.Close(); '1' } catch { '0' }"`) do set GRPC_IN_USE=%%V
+if "%GRPC_IN_USE%"=="1" (
+  echo [WARN] gRPC port already in use at %GRPC_HOST%:%GRPC_PORT% - reusing existing process.
+) else (
+  echo [INFO] Starting gRPC env=%GRPC_ENV% endpoint=%GRPC_HOST%:%GRPC_PORT% config=%GRPC_CONFIG%
+  if "%GRPC_CONFIG%"=="" (
+    start "DiFRA gRPC" /B %CONDA_CMD% run --live-stream --no-capture-output -n %GRPC_ENV% python -u "%REPO_ROOT%\src\hardware\difra\grpc_server\server.py" --host %GRPC_HOST% --port %GRPC_PORT%
+  ) else (
+    start "DiFRA gRPC" /B %CONDA_CMD% run --live-stream --no-capture-output -n %GRPC_ENV% python -u "%REPO_ROOT%\src\hardware\difra\grpc_server\server.py" --host %GRPC_HOST% --port %GRPC_PORT% --config "%GRPC_CONFIG%"
+  )
 )
 
 REM Wait for sidecar socket readiness

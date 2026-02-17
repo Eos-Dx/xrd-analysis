@@ -5,6 +5,7 @@ set -euo pipefail
 # Determine repository root (four levels up: bin -> difra -> hardware -> src -> root)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+cd "$REPO_ROOT"
 
 CONFIG_PATH="$REPO_ROOT/src/hardware/difra/resources/config/global.json"
 MAIN_CONFIG_PATH="$REPO_ROOT/src/hardware/difra/resources/config/main.json"
@@ -15,6 +16,7 @@ if ! command -v conda >/dev/null 2>&1; then
 fi
 
 export PYTHONUNBUFFERED=1
+export PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 
 GUI_ENV="${DIFRA_GUI_ENV:-}"
 if [ -z "$GUI_ENV" ]; then
@@ -86,6 +88,21 @@ sys.exit(1)
 PY
 }
 
+is_port_open() {
+  python3 - "$1" "$2" <<'PY'
+import socket
+import sys
+
+host = sys.argv[1]
+port = int(sys.argv[2])
+try:
+    with socket.create_connection((host, port), timeout=0.25):
+        sys.exit(0)
+except OSError:
+    sys.exit(1)
+PY
+}
+
 SIDECAR_CMD=(
   conda run --live-stream --no-capture-output -n "$SIDECAR_ENV" \
   python -u "$REPO_ROOT/src/hardware/difra/scripts/pixet_sidecar_server.py" \
@@ -97,13 +114,24 @@ GRPC_CMD=(
   --host "$GRPC_HOST" --port "$GRPC_PORT" --config "$GRPC_CONFIG"
 )
 
-echo "[INFO] Starting sidecar env=$SIDECAR_ENV endpoint=${SIDECAR_HOST}:${SIDECAR_PORT}"
-"${SIDECAR_CMD[@]}" &
-SIDECAR_PID=$!
+SIDECAR_PID=""
+GRPC_PID=""
 
-echo "[INFO] Starting gRPC env=$GRPC_ENV endpoint=${GRPC_HOST}:${GRPC_PORT} config=${GRPC_CONFIG}"
-"${GRPC_CMD[@]}" &
-GRPC_PID=$!
+if is_port_open "$SIDECAR_HOST" "$SIDECAR_PORT"; then
+  echo "[WARN] Detector sidecar port already in use at ${SIDECAR_HOST}:${SIDECAR_PORT}; reusing existing process."
+else
+  echo "[INFO] Starting sidecar env=$SIDECAR_ENV endpoint=${SIDECAR_HOST}:${SIDECAR_PORT}"
+  "${SIDECAR_CMD[@]}" &
+  SIDECAR_PID=$!
+fi
+
+if is_port_open "$GRPC_HOST" "$GRPC_PORT"; then
+  echo "[WARN] gRPC port already in use at ${GRPC_HOST}:${GRPC_PORT}; reusing existing process."
+else
+  echo "[INFO] Starting gRPC env=$GRPC_ENV endpoint=${GRPC_HOST}:${GRPC_PORT} config=${GRPC_CONFIG}"
+  "${GRPC_CMD[@]}" &
+  GRPC_PID=$!
+fi
 
 cleanup() {
   if [ -n "${SIDECAR_PID:-}" ] && kill -0 "$SIDECAR_PID" >/dev/null 2>&1; then
