@@ -2534,3 +2534,11 @@ class SNRTransformer(TransformerMixin):
                 df.at[i, self.residual_col] = resid_out
 
         return df
+
+
+# Re-export spectrokinetic transformers from the canonical module so existing
+# imports from this file can consume the new classes without path changes.
+from xrdanalysis.data_processing.spectrokinetic_transformers import (  # noqa: E402
+    MCRALSTransformer,
+    SpectroSVDTransformer,
+)

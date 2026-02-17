@@ -12,6 +12,7 @@ Welcome to MATUR's documentation!
 
    sop
    xrdanalysis.data_processing
+   spectrokinetic_transformers
 
 Indices and tables
 ==================

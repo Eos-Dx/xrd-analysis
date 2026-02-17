@@ -42,6 +42,13 @@ Transformers
    :members:
    :show-inheritance:
 
+Spectrokinetic Transformers
+------------------------------------------------
+
+.. automodule:: xrdanalysis.data_processing.spectrokinetic_transformers
+   :members:
+   :show-inheritance:
+
 Fourier
 ----------------------------------------------------------
 

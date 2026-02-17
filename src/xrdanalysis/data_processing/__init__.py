@@ -11,3 +11,4 @@ from .faulty_pixel_detection import FaultyPixelDetector
 from .measurement_type_classifier import MeasurementTypeClassifier
 from .splitters import grouped_splitter
 from .transformers import DetectorJoiner
+from .spectrokinetic_transformers import MCRALSTransformer, SpectroSVDTransformer
