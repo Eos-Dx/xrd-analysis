@@ -38,14 +38,14 @@ fi
 
 if [ -z "${DIFRA_LEGACY_PYTHON:-}" ]; then
   if [ -z "${DIFRA_LEGACY_ENV:-}" ]; then
+    CONDA_ENVS_JSON="$(conda env list --json)"
     DIFRA_LEGACY_ENV=$(
-      conda env list --json | python3 - <<'PY'
+      python3 - "$CONDA_ENVS_JSON" <<'PY'
 import json
-import os
 import sys
 from pathlib import Path
 
-payload = json.load(sys.stdin)
+payload = json.loads(sys.argv[1])
 names = {Path(p).name for p in payload.get("envs", [])}
 if "ulster38" in names:
     print("ulster38")
