@@ -26,7 +26,17 @@ if [ -z "$GUI_ENV" ]; then
   GUI_ENV="eosdx13"
 fi
 
-SIDECAR_ENV="${DIFRA_SIDECAR_ENV:-ulster38}"
+if [ -n "${DIFRA_SIDECAR_ENV:-}" ]; then
+  SIDECAR_ENV="${DIFRA_SIDECAR_ENV}"
+else
+  if conda run --live-stream --no-capture-output -n ulster37 python -c "import sys; sys.exit(0)" >/dev/null 2>&1; then
+    SIDECAR_ENV="ulster37"
+  elif conda run --live-stream --no-capture-output -n ulster38 python -c "import sys; sys.exit(0)" >/dev/null 2>&1; then
+    SIDECAR_ENV="ulster38"
+  else
+    SIDECAR_ENV="ulster37"
+  fi
+fi
 SIDECAR_HOST="${PIXET_SIDECAR_HOST:-127.0.0.1}"
 SIDECAR_PORT="${PIXET_SIDECAR_PORT:-51001}"
 GRPC_ENV="${DIFRA_GRPC_ENV:-$GUI_ENV}"
@@ -88,19 +98,37 @@ sys.exit(1)
 PY
 }
 
-is_port_open() {
-  python3 - "$1" "$2" <<'PY'
-import socket
-import sys
+kill_local_listener_on_port() {
+  local host="$1"
+  local port="$2"
+  local label="$3"
+  case "$host" in
+    127.0.0.1|localhost|::1|0.0.0.0)
+      ;;
+    *)
+      echo "[WARN] ${label} host is non-local (${host}); skipping forced restart."
+      return 0
+      ;;
+  esac
 
-host = sys.argv[1]
-port = int(sys.argv[2])
-try:
-    with socket.create_connection((host, port), timeout=0.25):
-        sys.exit(0)
-except OSError:
-    sys.exit(1)
-PY
+  if ! command -v lsof >/dev/null 2>&1; then
+    echo "[WARN] lsof is unavailable; cannot force-restart ${label} on port ${port}."
+    return 0
+  fi
+
+  local pids
+  pids="$( (lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true) | tr '\n' ' ' | sed 's/[[:space:]]*$//' )"
+  if [ -z "$pids" ]; then
+    return 0
+  fi
+
+  echo "[INFO] Restarting ${label}: killing existing listener(s) on ${host}:${port} -> ${pids}"
+  kill $pids >/dev/null 2>&1 || true
+  sleep 0.2
+  pids="$( (lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true) | tr '\n' ' ' | sed 's/[[:space:]]*$//' )"
+  if [ -n "$pids" ]; then
+    kill -9 $pids >/dev/null 2>&1 || true
+  fi
 }
 
 SIDECAR_CMD=(
@@ -117,21 +145,16 @@ GRPC_CMD=(
 SIDECAR_PID=""
 GRPC_PID=""
 
-if is_port_open "$SIDECAR_HOST" "$SIDECAR_PORT"; then
-  echo "[WARN] Detector sidecar port already in use at ${SIDECAR_HOST}:${SIDECAR_PORT}; reusing existing process."
-else
-  echo "[INFO] Starting sidecar env=$SIDECAR_ENV endpoint=${SIDECAR_HOST}:${SIDECAR_PORT}"
-  "${SIDECAR_CMD[@]}" &
-  SIDECAR_PID=$!
-fi
+kill_local_listener_on_port "$SIDECAR_HOST" "$SIDECAR_PORT" "Detector sidecar"
+kill_local_listener_on_port "$GRPC_HOST" "$GRPC_PORT" "DiFRA gRPC"
 
-if is_port_open "$GRPC_HOST" "$GRPC_PORT"; then
-  echo "[WARN] gRPC port already in use at ${GRPC_HOST}:${GRPC_PORT}; reusing existing process."
-else
-  echo "[INFO] Starting gRPC env=$GRPC_ENV endpoint=${GRPC_HOST}:${GRPC_PORT} config=${GRPC_CONFIG}"
-  "${GRPC_CMD[@]}" &
-  GRPC_PID=$!
-fi
+echo "[INFO] Starting sidecar env=$SIDECAR_ENV endpoint=${SIDECAR_HOST}:${SIDECAR_PORT}"
+"${SIDECAR_CMD[@]}" &
+SIDECAR_PID=$!
+
+echo "[INFO] Starting gRPC env=$GRPC_ENV endpoint=${GRPC_HOST}:${GRPC_PORT} config=${GRPC_CONFIG}"
+"${GRPC_CMD[@]}" &
+GRPC_PID=$!
 
 cleanup() {
   if [ -n "${SIDECAR_PID:-}" ] && kill -0 "$SIDECAR_PID" >/dev/null 2>&1; then

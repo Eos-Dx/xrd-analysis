@@ -47,10 +47,10 @@ from pathlib import Path
 
 payload = json.loads(sys.argv[1])
 names = {Path(p).name for p in payload.get("envs", [])}
-if "ulster38" in names:
-    print("ulster38")
-elif "ulster37" in names:
+if "ulster37" in names:
     print("ulster37")
+elif "ulster38" in names:
+    print("ulster38")
 else:
     print("")
 PY

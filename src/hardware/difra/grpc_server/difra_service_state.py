@@ -215,19 +215,27 @@ class DifraServiceState:
             return 0.0, 0.0
         return await asyncio.to_thread(self.stage_controller.get_xy_position)
 
-    async def move_to_x(self, x_mm: float, timeout_s: float = 25.0) -> Tuple[float, float]:
+    async def _move_to_axis_position(
+        self,
+        *,
+        target_x: float,
+        target_y: float,
+        old_axis_position: float,
+        new_axis_position: float,
+        run_type: str,
+        timeout_s: float = 25.0,
+    ) -> Tuple[float, float]:
         self._guard_mutating_command()
         if not self.stage_controller:
             raise RuntimeError("Motion stage is not initialized")
 
-        old_x, old_y = await self.get_position()
         run_id = str(uuid.uuid4())
         await self.emit_system_event(
             hub_pb2.SystemEvent(
                 timestamp=_now_timestamp(),
                 run_started=hub_pb2.RunStartedEvent(
                     run_id=run_id,
-                    run_type="motion",
+                    run_type=run_type,
                     total_seconds=1,
                 ),
             )
@@ -235,8 +243,8 @@ class DifraServiceState:
 
         move_call = functools.partial(
             self.stage_controller.move_stage,
-            x_mm,
-            old_y,
+            target_x,
+            target_y,
             move_timeout=timeout_s,
         )
         move_future = asyncio.create_task(asyncio.to_thread(move_call))
@@ -247,13 +255,15 @@ class DifraServiceState:
             # Keep loop latency low so short exposures complete close to requested time.
             await asyncio.sleep(0.02)
             frac = (tick + 1) / 10.0
-            interpolated = old_x + (x_mm - old_x) * frac
+            interpolated = old_axis_position + (
+                (new_axis_position - old_axis_position) * frac
+            )
             await self.emit_system_event(
                 hub_pb2.SystemEvent(
                     timestamp=_now_timestamp(),
                     run_progress=hub_pb2.RunProgressEvent(
                         run_id=run_id,
-                        run_type="motion",
+                        run_type=run_type,
                         elapsed_seconds=0,
                         total_seconds=1,
                         position_mm=interpolated,
@@ -267,13 +277,35 @@ class DifraServiceState:
                 timestamp=_now_timestamp(),
                 run_completed=hub_pb2.RunCompletedEvent(
                     run_id=run_id,
-                    run_type="motion",
+                    run_type=run_type,
                     status="completed",
                     reason="",
                 ),
             )
         )
         return float(new_x), float(new_y)
+
+    async def move_to_x(self, x_mm: float, timeout_s: float = 25.0) -> Tuple[float, float]:
+        old_x, old_y = await self.get_position()
+        return await self._move_to_axis_position(
+            target_x=float(x_mm),
+            target_y=float(old_y),
+            old_axis_position=float(old_x),
+            new_axis_position=float(x_mm),
+            run_type="motion_x",
+            timeout_s=timeout_s,
+        )
+
+    async def move_to_y(self, y_mm: float, timeout_s: float = 25.0) -> Tuple[float, float]:
+        old_x, old_y = await self.get_position()
+        return await self._move_to_axis_position(
+            target_x=float(old_x),
+            target_y=float(y_mm),
+            old_axis_position=float(old_y),
+            new_axis_position=float(y_mm),
+            run_type="motion_y",
+            timeout_s=timeout_s,
+        )
 
     async def home(self, timeout_s: float = 25.0) -> Tuple[float, float]:
         self._guard_mutating_command()

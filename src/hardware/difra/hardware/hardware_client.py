@@ -92,6 +92,21 @@ def _command_context(user: str, reason: str) -> hub_pb2.CommandContext:
     )
 
 
+def _normalize_axis(axis: Any) -> str:
+    if isinstance(axis, str):
+        value = axis.strip().lower()
+        if value in {"x", "axis_x", "axis:x", "axis=1", "1"}:
+            return "x"
+        if value in {"y", "axis_y", "axis:y", "axis=2", "2"}:
+            return "y"
+    if isinstance(axis, int):
+        if axis == 1:
+            return "x"
+        if axis == 2:
+            return "y"
+    raise ValueError(f"Invalid axis '{axis}'. Use axis name x/y or axis number 1/2.")
+
+
 @dataclass
 class CommandReadiness:
     ready: bool
@@ -114,8 +129,8 @@ class HardwareClient(ABC):
     @abstractmethod
     def move_to(
         self,
-        x_mm: float,
-        y_mm: Optional[float] = None,
+        position_mm: float,
+        axis: Any,
         timeout_s: float = 25.0,
     ) -> Tuple[float, float]:
         pass
@@ -203,15 +218,21 @@ class DirectHardwareClient(HardwareClient):
 
     def move_to(
         self,
-        x_mm: float,
-        y_mm: Optional[float] = None,
+        position_mm: float,
+        axis: Any,
         timeout_s: float = 25.0,
     ) -> Tuple[float, float]:
         if self.stage_controller is None:
             raise RuntimeError("Motion stage is not initialized")
-        if y_mm is None:
-            _, y_mm = self._controller.get_xy_position()
-        return self.stage_controller.move_stage(x_mm, y_mm, move_timeout=timeout_s)
+        axis_name = _normalize_axis(axis)
+        current_x, current_y = self._controller.get_xy_position()
+        if axis_name == "x":
+            return self.stage_controller.move_stage(
+                float(position_mm), float(current_y), move_timeout=timeout_s
+            )
+        return self.stage_controller.move_stage(
+            float(current_x), float(position_mm), move_timeout=timeout_s
+        )
 
     def home(self, timeout_s: float = 25.0) -> Tuple[float, float]:
         if self.stage_controller is None:
@@ -414,24 +435,39 @@ class GrpcHardwareClient(HardwareClient):
 
     def move_to(
         self,
-        x_mm: float,
-        y_mm: Optional[float] = None,
+        position_mm: float,
+        axis: Any,
         timeout_s: float = 25.0,
     ) -> Tuple[float, float]:
         self._wait_channel()
-        _, current_y = self.get_xy_position()
-        if y_mm is not None and abs(y_mm - current_y) > 1e-6:
-            raise NotImplementedError(
-                "Protocol v1 MoveTo is single-axis; y-axis move requires direct fallback"
-            )
+        axis_name = _normalize_axis(axis)
+        before_x, before_y = self.get_xy_position()
+        target = float(position_mm)
         self._motion.MoveTo(
             hub_pb2.MoveToRequest(
-                ctx=_command_context(self._user, "move_to"),
-                position_mm=float(x_mm),
+                ctx=_command_context(self._user, f"move_to axis:{axis_name}"),
+                position_mm=target,
             ),
             timeout=float(timeout_s),
         )
-        return self.get_xy_position()
+        after_x, after_y = self.get_xy_position()
+        tolerance_mm = float(os.environ.get("DIFRA_MOVE_AXIS_TOL_MM", "0.05"))
+        if axis_name == "x":
+            if abs(after_x - target) > tolerance_mm:
+                raise RuntimeError(
+                    f"Motion.MoveTo(axis=x) target mismatch: requested x={target:.4f}, got x={after_x:.4f}"
+                )
+        else:
+            if abs(after_y - target) > tolerance_mm:
+                if abs(after_x - target) <= tolerance_mm and abs(after_y - before_y) <= tolerance_mm:
+                    raise RuntimeError(
+                        "Motion.MoveTo(axis=y) was applied to X axis. "
+                        "Stale gRPC server detected; restart launcher to refresh sidecars."
+                    )
+                raise RuntimeError(
+                    f"Motion.MoveTo(axis=y) target mismatch: requested y={target:.4f}, got y={after_y:.4f}"
+                )
+        return after_x, after_y
 
     def home(self, timeout_s: float = 25.0) -> Tuple[float, float]:
         self._wait_channel()
@@ -646,17 +682,17 @@ class DualPathHardwareClient(HardwareClient):
 
     def move_to(
         self,
-        x_mm: float,
-        y_mm: Optional[float] = None,
+        position_mm: float,
+        axis: Any,
         timeout_s: float = 25.0,
     ) -> Tuple[float, float]:
         return self._call(
             "move_to",
             grpc_call=lambda: self._grpc.move_to(
-                x_mm=x_mm, y_mm=y_mm, timeout_s=timeout_s
+                position_mm=position_mm, axis=axis, timeout_s=timeout_s
             ),
             direct_call=lambda: self._direct.move_to(
-                x_mm=x_mm, y_mm=y_mm, timeout_s=timeout_s
+                position_mm=position_mm, axis=axis, timeout_s=timeout_s
             ),
         )
 

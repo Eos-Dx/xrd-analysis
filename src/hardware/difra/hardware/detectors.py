@@ -139,7 +139,11 @@ class DummyDetectorController:
         elapsed = time.perf_counter() - started_at
         remaining = target_duration_s - elapsed
         if remaining > 0:
-            time.sleep(remaining)
+            # Use a short active tail to reduce sleep overshoot jitter on 1s captures.
+            if remaining > 0.003:
+                time.sleep(remaining - 0.0015)
+            while (time.perf_counter() - started_at) < target_duration_s:
+                pass
     
     def _generate_fake_dsc(self, dsc_filename, Nseconds, Nframes, data):
         """Generate a fake .dsc descriptor file to mimic real Advacam detector output.

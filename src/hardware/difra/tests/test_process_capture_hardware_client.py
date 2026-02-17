@@ -48,10 +48,18 @@ class _StubStageController:
 class _StubHardwareClient:
     def __init__(self):
         self.calls = []
+        self._x = 0.0
+        self._y = 0.0
 
-    def move_to(self, x_mm, y_mm, timeout_s=25.0):
-        self.calls.append((x_mm, y_mm, timeout_s))
-        return x_mm, y_mm
+    def move_to(self, position_mm, axis, timeout_s=25.0):
+        self.calls.append((position_mm, axis, timeout_s))
+        if axis == "x":
+            self._x = float(position_mm)
+        elif axis == "y":
+            self._y = float(position_mm)
+        else:
+            raise ValueError(f"Unexpected axis: {axis}")
+        return self._x, self._y
 
 
 class _Harness(ZoneMeasurementsProcessCaptureMixin):
@@ -65,7 +73,10 @@ def test_move_stage_prefers_hardware_client():
 
     out = h._move_stage(1.5, -2.0, timeout_s=7.0)
     assert out == (1.5, -2.0)
-    assert h.hardware_client.calls == [(1.5, -2.0, 7.0)]
+    assert h.hardware_client.calls == [
+        (1.5, "x", 7.0),
+        (-2.0, "y", 7.0),
+    ]
     assert h.stage_controller.calls == []
 
 

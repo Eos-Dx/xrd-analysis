@@ -259,7 +259,9 @@ class StageControlMixin:
         y = self.yPosSpin.value()
         logging.info("Stage goto operation started: target position (%.3f, %.3f)", x, y)
         try:
-            new_x, new_y = self._ensure_hardware_client().move_to(x, y, timeout_s=25)
+            client = self._ensure_hardware_client()
+            client.move_to(x, axis="x", timeout_s=25)
+            new_x, new_y = client.move_to(y, axis="y", timeout_s=25)
             self.update_xy_pos()
             logging.info("Successfully moved to goto position: (%.3f, %.3f)", new_x, new_y)
         except TimeoutError:
@@ -309,9 +311,9 @@ class StageControlMixin:
             logging.info(
                 "Moving to configured home position: (%.3f, %.3f)", home_x, home_y
             )
-            new_x, new_y = self._ensure_hardware_client().move_to(
-                home_x, home_y, timeout_s=25
-            )
+            client = self._ensure_hardware_client()
+            client.move_to(home_x, axis="x", timeout_s=25)
+            new_x, new_y = client.move_to(home_y, axis="y", timeout_s=25)
             logging.info(
                 "Successfully moved to home position: (%.3f, %.3f)", new_x, new_y
             )
@@ -347,9 +349,9 @@ class StageControlMixin:
             logging.info(
                 "Moving to configured load position: (%.3f, %.3f)", load_x, load_y
             )
-            new_x, new_y = self._ensure_hardware_client().move_to(
-                load_x, load_y, timeout_s=25
-            )
+            client = self._ensure_hardware_client()
+            client.move_to(load_x, axis="x", timeout_s=25)
+            new_x, new_y = client.move_to(load_y, axis="y", timeout_s=25)
             logging.info(
                 "Successfully moved to load position: (%.3f, %.3f)", new_x, new_y
             )

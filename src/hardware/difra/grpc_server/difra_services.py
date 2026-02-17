@@ -148,17 +148,70 @@ class MotionService(hub_pb2_grpc.MotionServicer):
     def __init__(self, state: DifraServiceState):
         self.state = state
 
+    @staticmethod
+    def _axis_from_reason(reason: str):
+        text = str(reason or "").lower()
+        if (
+            ("axis:x" in text)
+            or ("axis=x" in text)
+            or ("axis_x" in text)
+            or ("axis=1" in text)
+            or ("axis 1" in text)
+            or (" x-axis" in text)
+            or ("axis x" in text)
+        ):
+            return "x"
+        if (
+            ("axis:y" in text)
+            or ("axis=y" in text)
+            or ("axis_y" in text)
+            or ("axis=2" in text)
+            or ("axis 2" in text)
+            or (" y-axis" in text)
+            or ("axis y" in text)
+        ):
+            return "y"
+        return None
+
     async def MoveTo(self, request, context):
+        if not request.HasField("ctx"):
+            await context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "Protocol v1 MoveTo requires axis in ctx.reason",
+            )
+        axis = self._axis_from_reason(request.ctx.reason)
+        if axis is None:
+            await context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "MoveTo requires axis hint in ctx.reason: axis:x|axis:y|axis=1|axis=2",
+            )
         try:
-            await self.state.move_to_x(request.position_mm)
+            if axis == "y":
+                await self.state.move_to_y(request.position_mm)
+            else:
+                await self.state.move_to_x(request.position_mm)
         except Exception as exc:
             await context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(exc))
         return hub_pb2.Empty()
 
     async def MoveRelative(self, request, context):
-        x, _ = await self.state.get_position()
+        if not request.HasField("ctx"):
+            await context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "Protocol v1 MoveRelative requires axis in ctx.reason",
+            )
+        axis = self._axis_from_reason(request.ctx.reason)
+        if axis is None:
+            await context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "MoveRelative requires axis hint in ctx.reason: axis:x|axis:y|axis=1|axis=2",
+            )
         try:
-            await self.state.move_to_x(x + request.distance_mm)
+            x, y = await self.state.get_position()
+            if axis == "y":
+                await self.state.move_to_y(y + request.distance_mm)
+            else:
+                await self.state.move_to_x(x + request.distance_mm)
         except Exception as exc:
             await context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(exc))
         return hub_pb2.Empty()

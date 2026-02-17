@@ -15,7 +15,8 @@ def _pm():
 class ZoneMeasurementsProcessCaptureMixin:
     def _move_stage(self, x_mm: float, y_mm: float, timeout_s: float):
         if getattr(self, "hardware_client", None) is not None:
-            return self.hardware_client.move_to(x_mm, y_mm, timeout_s=timeout_s)
+            self.hardware_client.move_to(x_mm, axis="x", timeout_s=timeout_s)
+            return self.hardware_client.move_to(y_mm, axis="y", timeout_s=timeout_s)
         if hasattr(self, "stage_controller") and self.stage_controller is not None:
             return self.stage_controller.move_stage(x_mm, y_mm, move_timeout=timeout_s)
         raise RuntimeError("Stage not initialized")

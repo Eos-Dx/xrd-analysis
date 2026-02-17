@@ -120,7 +120,7 @@ def _resolve_legacy_sidecar_command(host: str, port: int) -> list[str]:
         ]
 
     requested_env = os.environ.get("DIFRA_LEGACY_ENV", "").strip()
-    candidate_envs = [requested_env] if requested_env else ["ulster38", "ulster37"]
+    candidate_envs = [requested_env] if requested_env else ["ulster37", "ulster38"]
     available_envs = _list_conda_env_names()
     chosen_env = next((name for name in candidate_envs if name in available_envs), "")
     if chosen_env:
@@ -250,7 +250,8 @@ def test_real_hardware_direct_legacy_sidecar_smoke(tmp_path: Path):
             assert client.initialize_motion() is True
 
             x, y = client.get_xy_position()
-            moved_x, moved_y = client.move_to(x, y, timeout_s=20.0)
+            client.move_to(x, axis="x", timeout_s=20.0)
+            moved_x, moved_y = client.move_to(y, axis="y", timeout_s=20.0)
             assert moved_x == pytest.approx(x, abs=1e-3)
             assert moved_y == pytest.approx(y, abs=1e-3)
 
@@ -306,7 +307,7 @@ def test_real_hardware_grpc_over_legacy_sidecar_smoke(tmp_path: Path):
 
                     await motion_stub.MoveTo(
                         hub_pb2.MoveToRequest(
-                            ctx=_ctx("move_to_real"),
+                            ctx=_ctx("move_to_real axis:x"),
                             position_mm=0.0,
                         )
                     )

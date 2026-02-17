@@ -88,7 +88,9 @@ def test_sidecar_core8_and_discovery_flow():
         assert init_motion.initialized is True
         assert init_detector.initialized is True
 
-        await motion_stub.MoveTo(hub_pb2.MoveToRequest(ctx=_ctx("move"), position_mm=3.0))
+        await motion_stub.MoveTo(
+            hub_pb2.MoveToRequest(ctx=_ctx("move axis:x"), position_mm=3.0)
+        )
         motion_state = await state_stub.GetMotionState(hub_pb2.Empty())
         assert motion_state.position_x == pytest.approx(3.0, abs=1e-3)
 
@@ -164,7 +166,7 @@ def test_sidecar_reports_limit_violations():
 
         with pytest.raises(grpc.aio.AioRpcError) as exc_info:
             await motion_stub.MoveTo(
-                hub_pb2.MoveToRequest(ctx=_ctx("move_limit"), position_mm=999.0)
+                hub_pb2.MoveToRequest(ctx=_ctx("move_limit axis:x"), position_mm=999.0)
             )
 
         assert exc_info.value.code() == grpc.StatusCode.FAILED_PRECONDITION
@@ -231,5 +233,82 @@ def test_sidecar_pause_resume_and_incident_stream():
 
         await channel.close()
         await server.stop(0)
+
+    asyncio.run(_scenario())
+
+
+def test_motion_move_to_and_move_relative_support_axis_hints():
+    async def _scenario():
+        server = DifraGrpcServer(config=_dummy_config(), host="127.0.0.1", port=0)
+        await server.start()
+        try:
+            channel = grpc.aio.insecure_channel(f"127.0.0.1:{server.bound_port}")
+            await channel.channel_ready()
+            init_stub = hub_pb2_grpc.DeviceInitializationStub(channel)
+            motion_stub = hub_pb2_grpc.MotionStub(channel)
+            state_stub = hub_pb2_grpc.StateMonitorStub(channel)
+
+            init_motion = await init_stub.InitializeMotion(
+                hub_pb2.InitializeMotionRequest(ctx=_ctx("init_motion"))
+            )
+            assert init_motion.initialized is True
+
+            await motion_stub.MoveTo(
+                hub_pb2.MoveToRequest(ctx=_ctx("move_to_x axis=1"), position_mm=2.5)
+            )
+            await motion_stub.MoveTo(
+                hub_pb2.MoveToRequest(ctx=_ctx("move_to_y axis=2"), position_mm=-1.5)
+            )
+            await motion_stub.MoveRelative(
+                hub_pb2.MoveRelativeRequest(
+                    ctx=_ctx("move_relative_y axis:y"),
+                    distance_mm=0.5,
+                )
+            )
+
+            motion_state = await state_stub.GetMotionState(hub_pb2.Empty())
+            assert motion_state.position_x == pytest.approx(2.5, abs=1e-3)
+            assert motion_state.position_y == pytest.approx(-1.0, abs=1e-3)
+
+            await channel.close()
+        finally:
+            await server.stop(0)
+
+    asyncio.run(_scenario())
+
+
+def test_motion_commands_require_axis_hint_in_context_reason():
+    async def _scenario():
+        server = DifraGrpcServer(config=_dummy_config(), host="127.0.0.1", port=0)
+        await server.start()
+        try:
+            channel = grpc.aio.insecure_channel(f"127.0.0.1:{server.bound_port}")
+            await channel.channel_ready()
+            init_stub = hub_pb2_grpc.DeviceInitializationStub(channel)
+            motion_stub = hub_pb2_grpc.MotionStub(channel)
+
+            init_motion = await init_stub.InitializeMotion(
+                hub_pb2.InitializeMotionRequest(ctx=_ctx("init_motion"))
+            )
+            assert init_motion.initialized is True
+
+            with pytest.raises(grpc.aio.AioRpcError) as exc_move_to:
+                await motion_stub.MoveTo(
+                    hub_pb2.MoveToRequest(ctx=_ctx("missing_axis"), position_mm=1.0)
+                )
+            assert exc_move_to.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+
+            with pytest.raises(grpc.aio.AioRpcError) as exc_move_relative:
+                await motion_stub.MoveRelative(
+                    hub_pb2.MoveRelativeRequest(
+                        ctx=_ctx("missing_axis"),
+                        distance_mm=1.0,
+                    )
+                )
+            assert exc_move_relative.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+
+            await channel.close()
+        finally:
+            await server.stop(0)
 
     asyncio.run(_scenario())

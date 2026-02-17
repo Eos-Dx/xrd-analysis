@@ -55,7 +55,9 @@ def test_direct_hardware_client_motion_and_detector_flow():
     assert client.initialize_motion() is True
     assert client.initialize_detector() is True
 
-    x, y = client.move_to(2.5, -1.5, timeout_s=2.0)
+    x, y = client.move_to(2.5, axis="x", timeout_s=2.0)
+    assert x == pytest.approx(2.5, abs=1e-6)
+    x, y = client.move_to(-1.5, axis="y", timeout_s=2.0)
     assert x == pytest.approx(2.5, abs=1e-6)
     assert y == pytest.approx(-1.5, abs=1e-6)
 
@@ -93,7 +95,9 @@ def test_dual_path_client_falls_back_to_direct_when_grpc_unavailable():
     assert client.initialize_detector() is True
     assert client.last_backend == "direct"
 
-    x, y = client.move_to(1.0, 1.0, timeout_s=1.0)
+    x, y = client.move_to(1.0, axis="x", timeout_s=1.0)
+    assert x == pytest.approx(1.0, abs=1e-6)
+    x, y = client.move_to(1.0, axis="y", timeout_s=1.0)
     assert x == pytest.approx(1.0, abs=1e-6)
     assert y == pytest.approx(1.0, abs=1e-6)
 

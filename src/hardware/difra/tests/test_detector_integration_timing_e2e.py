@@ -62,7 +62,7 @@ def _resolve_legacy_sidecar_command(host: str, port: int) -> list[str]:
         ]
 
     requested_env = os.environ.get("DIFRA_LEGACY_ENV", "").strip()
-    candidate_envs = [requested_env] if requested_env else ["ulster38", "ulster37"]
+    candidate_envs = [requested_env] if requested_env else ["ulster37", "ulster38"]
     available_envs = _list_conda_env_names()
     chosen_env = next((name for name in candidate_envs if name in available_envs), "")
     if chosen_env:
