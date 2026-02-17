@@ -37,8 +37,8 @@ from hardware.difra.hardware.detectors import (
 class SidecarState:
     def __init__(self) -> None:
         self.controllers: Dict[str, Any] = {}
-        # pypixet runtime is effectively process-global; serialize all hardware ops.
-        self.op_lock = threading.RLock()
+        self.controller_locks: Dict[str, threading.RLock] = {}
+        self.map_lock = threading.RLock()
 
 
 STATE = SidecarState()
@@ -66,7 +66,7 @@ def _resolve_detector_kind(args: Dict[str, Any]) -> str:
 
 def _get_or_create_controller(args: Dict[str, Any]):
     alias = _require_alias(args)
-    with STATE.op_lock:
+    with STATE.map_lock:
         ctrl = STATE.controllers.get(alias)
         if ctrl is not None:
             return ctrl
@@ -91,7 +91,17 @@ def _get_or_create_controller(args: Dict[str, Any]):
                 config=config,
             )
         STATE.controllers[alias] = ctrl
+        STATE.controller_locks[alias] = threading.RLock()
         return ctrl
+
+
+def _get_controller_lock(alias: str) -> threading.RLock:
+    with STATE.map_lock:
+        lock = STATE.controller_locks.get(alias)
+        if lock is None:
+            lock = threading.RLock()
+            STATE.controller_locks[alias] = lock
+        return lock
 
 
 def _cleanup_temp_capture(base_path: str) -> None:
@@ -108,7 +118,8 @@ def _dispatch(cmd: str, args: Dict[str, Any]) -> Any:
 
     if cmd == "init_detector":
         ctrl = _get_or_create_controller(args)
-        with STATE.op_lock:
+        alias = _require_alias(args)
+        with _get_controller_lock(alias):
             ok = bool(ctrl.init_detector())
             return {
                 "initialized": ok,
@@ -117,21 +128,24 @@ def _dispatch(cmd: str, args: Dict[str, Any]) -> Any:
 
     if cmd == "deinit_detector":
         alias = _require_alias(args)
-        with STATE.op_lock:
+        with STATE.map_lock:
             ctrl = STATE.controllers.pop(alias, None)
+            lock = STATE.controller_locks.pop(alias, threading.RLock())
+        with lock:
             if ctrl is not None:
                 ctrl.deinit_detector()
         return {"deinitialized": True}
 
     if cmd == "capture_point":
         ctrl = _get_or_create_controller(args)
+        alias = _require_alias(args)
         nframes = max(int(args.get("Nframes", 1)), 1)
         nseconds = float(args.get("Nseconds", 0.1))
         filename_base = str(args.get("filename_base", "")).strip()
         if not filename_base:
             raise ValueError("Missing required field: filename_base")
 
-        with STATE.op_lock:
+        with _get_controller_lock(alias):
             ok = bool(
                 ctrl.capture_point(
                     Nframes=nframes,
@@ -143,6 +157,7 @@ def _dispatch(cmd: str, args: Dict[str, Any]) -> Any:
 
     if cmd == "capture_frame":
         ctrl = _get_or_create_controller(args)
+        alias = _require_alias(args)
         exposure_s = float(args.get("exposure_s", 0.1))
         frames = max(int(args.get("frames", 1)), 1)
 
@@ -153,7 +168,7 @@ def _dispatch(cmd: str, args: Dict[str, Any]) -> Any:
         _cleanup_temp_capture(base_path)
 
         try:
-            with STATE.op_lock:
+            with _get_controller_lock(alias):
                 ok = bool(
                     ctrl.capture_point(
                         Nframes=frames,
@@ -169,10 +184,13 @@ def _dispatch(cmd: str, args: Dict[str, Any]) -> Any:
             _cleanup_temp_capture(base_path)
 
     if cmd == "shutdown":
-        with STATE.op_lock:
+        with STATE.map_lock:
             aliases = list(STATE.controllers.keys())
-            for alias in aliases:
+        for alias in aliases:
+            with STATE.map_lock:
                 ctrl = STATE.controllers.pop(alias, None)
+                lock = STATE.controller_locks.pop(alias, threading.RLock())
+            with lock:
                 if ctrl is not None:
                     ctrl.deinit_detector()
         return {"shutdown": True}

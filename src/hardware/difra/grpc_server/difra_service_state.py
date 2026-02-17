@@ -1,6 +1,7 @@
 """DiFRA gRPC sidecar state model and command/readiness logic."""
 
 from . import server as _module
+import concurrent.futures
 import tempfile
 
 asyncio = _module.asyncio
@@ -388,8 +389,7 @@ class DifraServiceState:
         capture_root = Path(base_root) / "grpc_exposures"
         capture_root.mkdir(parents=True, exist_ok=True)
 
-        outputs: Dict[str, str] = {}
-        for alias, controller in self.detector_controllers.items():
+        def _capture_single(alias: str, controller: Any) -> Tuple[str, str]:
             alias_tag = str(alias).replace(" ", "_")
             filename_base = capture_root / f"{run_id}_{alias_tag}"
             ok = bool(
@@ -404,16 +404,25 @@ class DifraServiceState:
 
             txt_path = filename_base.with_suffix(".txt")
             if txt_path.exists():
-                outputs[alias] = str(txt_path)
-                continue
+                return alias, str(txt_path)
 
             fallback = sorted(capture_root.glob(f"{filename_base.name}.*"))
             if not fallback:
                 raise RuntimeError(
                     f"Detector '{alias}' produced no output for base '{filename_base}'"
                 )
-            outputs[alias] = str(fallback[0])
+            return alias, str(fallback[0])
 
+        outputs: Dict[str, str] = {}
+        max_workers = max(1, len(self.detector_controllers))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = [
+                pool.submit(_capture_single, alias, controller)
+                for alias, controller in self.detector_controllers.items()
+            ]
+            for fut in concurrent.futures.as_completed(futures):
+                alias, path = fut.result()
+                outputs[alias] = path
         return outputs
 
     async def pause_exposure(self) -> None:
