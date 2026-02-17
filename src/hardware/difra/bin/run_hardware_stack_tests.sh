@@ -70,8 +70,12 @@ fi
 
 export PYTHONUNBUFFERED=1
 export PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+export DIFRA_EXPECT_STAGE_TYPE="${DIFRA_EXPECT_STAGE_TYPE:-Kinesis}"
+export DIFRA_EXPECT_STAGE_CLASS="${DIFRA_EXPECT_STAGE_CLASS:-XYStageLibController}"
+export DIFRA_EXPECT_DETECTOR_CLASS="${DIFRA_EXPECT_DETECTOR_CLASS:-PixetSidecarDetectorController}"
 
 echo "[INFO] Running hardware stack tests in GUI env: $GUI_ENV"
+echo "[INFO] Expected route: stage_type=$DIFRA_EXPECT_STAGE_TYPE stage_class=$DIFRA_EXPECT_STAGE_CLASS detector_class=$DIFRA_EXPECT_DETECTOR_CLASS"
 conda run --live-stream --no-capture-output -n "$GUI_ENV" \
   python -m pytest -q -s \
   "$REPO_ROOT/src/hardware/difra/tests/test_detector_integration_timing_e2e.py" \

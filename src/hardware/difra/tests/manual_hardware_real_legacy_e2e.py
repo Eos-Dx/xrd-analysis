@@ -81,6 +81,85 @@ def _active_detector_aliases(config: Dict) -> List[str]:
     return aliases
 
 
+def _active_stage_type(config: Dict) -> str:
+    stages = list(config.get("translation_stages", []) or [])
+    active_ids = set(config.get("active_translation_stages", []) or [])
+    for stage in stages:
+        if stage.get("id") in active_ids:
+            return str(stage.get("type", "")).strip()
+    return str(stages[0].get("type", "")).strip() if stages else ""
+
+
+def _assert_expected_hardware_route(
+    config: Dict,
+    stage_controller: object,
+    detector_controllers: Dict[str, object],
+) -> None:
+    expected_stage_type = os.environ.get("DIFRA_EXPECT_STAGE_TYPE", "Kinesis").strip()
+    if expected_stage_type:
+        active_stage_type = _active_stage_type(config)
+        assert (
+            active_stage_type == expected_stage_type
+        ), f"Expected active stage type '{expected_stage_type}', got '{active_stage_type}'"
+
+    expected_stage_class = os.environ.get(
+        "DIFRA_EXPECT_STAGE_CLASS", "XYStageLibController"
+    ).strip()
+    if expected_stage_class:
+        actual_stage_class = type(stage_controller).__name__
+        assert (
+            actual_stage_class == expected_stage_class
+        ), f"Expected stage controller '{expected_stage_class}', got '{actual_stage_class}'"
+
+    expected_detector_class = os.environ.get(
+        "DIFRA_EXPECT_DETECTOR_CLASS", "PixetSidecarDetectorController"
+    ).strip()
+    if expected_detector_class:
+        assert detector_controllers, "No detector controllers initialized"
+        bad = {
+            alias: type(ctrl).__name__
+            for alias, ctrl in detector_controllers.items()
+            if type(ctrl).__name__ != expected_detector_class
+        }
+        assert not bad, f"Detector route mismatch (expected {expected_detector_class}): {bad}"
+
+
+def _active_stage_limits(config: Dict) -> Dict[str, tuple[float, float]]:
+    stages = list(config.get("translation_stages", []) or [])
+    active_ids = set(config.get("active_translation_stages", []) or [])
+    selected = None
+    for stage in stages:
+        if stage.get("id") in active_ids:
+            selected = stage
+            break
+    if selected is None and stages:
+        selected = stages[0]
+    if selected is None:
+        raise RuntimeError("No translation stage configured in selected setup config")
+
+    limits_cfg = (selected.get("settings", {}) or {}).get("limits_mm", {}) or {}
+    try:
+        x_limits = tuple(float(v) for v in limits_cfg.get("x", (-14.0, 14.0)))
+        y_limits = tuple(float(v) for v in limits_cfg.get("y", (-14.0, 14.0)))
+        if len(x_limits) != 2 or len(y_limits) != 2:
+            raise ValueError("Invalid limits shape")
+    except Exception as exc:
+        raise RuntimeError(f"Invalid stage limits in config: {exc}") from exc
+    return {"x": (x_limits[0], x_limits[1]), "y": (y_limits[0], y_limits[1])}
+
+
+def _safe_axis_target(current: float, limits: tuple[float, float], delta: float) -> float:
+    lo, hi = float(limits[0]), float(limits[1])
+    candidate = float(current) + float(delta)
+    if lo <= candidate <= hi:
+        return candidate
+    candidate = float(current) - float(delta)
+    if lo <= candidate <= hi:
+        return candidate
+    margin = 0.1
+    return min(max(float(current), lo + margin), hi - margin)
+
+
 def _free_tcp_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -236,6 +315,8 @@ def test_real_hardware_direct_legacy_sidecar_smoke(tmp_path: Path):
     if not expected_aliases:
         raise RuntimeError("No active real detectors in selected setup config")
 
+    stage_delta_mm = float(os.environ.get("DIFRA_REAL_HW_STAGE_DELTA_MM", "0.5"))
+    stage_limits = _active_stage_limits(config)
     exposure_s = float(os.environ.get("DIFRA_REAL_HW_EXPOSURE_S", "0.2"))
     env = {
         "DETECTOR_BACKEND": "sidecar",
@@ -246,21 +327,35 @@ def test_real_hardware_direct_legacy_sidecar_smoke(tmp_path: Path):
     with _started_sidecar(host, sidecar_port):
         with _temporary_env(env):
             client = DirectHardwareClient(config)
-            assert client.initialize_detector() is True
-            assert client.initialize_motion() is True
+            try:
+                assert client.initialize_detector() is True
+                assert client.initialize_motion() is True
+                _assert_expected_hardware_route(
+                    config=config,
+                    stage_controller=client.stage_controller,
+                    detector_controllers=client.detector_controllers,
+                )
 
-            x, y = client.get_xy_position()
-            client.move_to(x, axis="x", timeout_s=20.0)
-            moved_x, moved_y = client.move_to(y, axis="y", timeout_s=20.0)
-            assert moved_x == pytest.approx(x, abs=1e-3)
-            assert moved_y == pytest.approx(y, abs=1e-3)
+                start_x, start_y = client.get_xy_position()
+                target_x = _safe_axis_target(start_x, stage_limits["x"], stage_delta_mm)
+                target_y = _safe_axis_target(start_y, stage_limits["y"], stage_delta_mm)
 
-            outputs = client.capture_exposure(
-                exposure_s=exposure_s,
-                frames=1,
-                timeout_s=max(30.0, exposure_s + 20.0),
-            )
-            client.deinitialize()
+                moved_x, moved_y = client.move_to(target_x, axis="x", timeout_s=20.0)
+                assert moved_x == pytest.approx(target_x, abs=1e-3)
+                moved_x, moved_y = client.move_to(target_y, axis="y", timeout_s=20.0)
+                assert moved_y == pytest.approx(target_y, abs=1e-3)
+
+                outputs = client.capture_exposure(
+                    exposure_s=exposure_s,
+                    frames=1,
+                    timeout_s=max(30.0, exposure_s + 20.0),
+                )
+
+                # Return to initial position to keep physical state stable for subsequent tests.
+                client.move_to(start_x, axis="x", timeout_s=20.0)
+                client.move_to(start_y, axis="y", timeout_s=20.0)
+            finally:
+                client.deinitialize()
 
     assert set(expected_aliases).issubset(set(outputs.keys()))
     for alias in expected_aliases:
@@ -273,6 +368,8 @@ def test_real_hardware_grpc_over_legacy_sidecar_smoke(tmp_path: Path):
         host = "127.0.0.1"
         sidecar_port = _free_tcp_port()
         config = _real_config(tmp_path)
+        stage_limits = _active_stage_limits(config)
+        stage_delta_mm = float(os.environ.get("DIFRA_REAL_HW_STAGE_DELTA_MM", "0.5"))
         expected_aliases = _active_detector_aliases(config)
         if not expected_aliases:
             raise RuntimeError("No active real detectors in selected setup config")
@@ -304,13 +401,34 @@ def test_real_hardware_grpc_over_legacy_sidecar_smoke(tmp_path: Path):
                     )
                     assert init_detector.initialized is True
                     assert init_motion.initialized is True
+                    _assert_expected_hardware_route(
+                        config=config,
+                        stage_controller=server.state.stage_controller,
+                        detector_controllers=server.state.detector_controllers,
+                    )
+
+                    state_stub = hub_pb2_grpc.StateMonitorStub(channel)
+                    motion_state = await state_stub.GetMotionState(hub_pb2.Empty())
+                    start_x = float(motion_state.position_x)
+                    start_y = float(motion_state.position_y)
+                    target_x = _safe_axis_target(start_x, stage_limits["x"], stage_delta_mm)
+                    target_y = _safe_axis_target(start_y, stage_limits["y"], stage_delta_mm)
 
                     await motion_stub.MoveTo(
                         hub_pb2.MoveToRequest(
-                            ctx=_ctx("move_to_real axis:x"),
-                            position_mm=0.0,
+                            ctx=_ctx("move_to_real_x axis:x"),
+                            position_mm=target_x,
                         )
                     )
+                    await motion_stub.MoveTo(
+                        hub_pb2.MoveToRequest(
+                            ctx=_ctx("move_to_real_y axis:y"),
+                            position_mm=target_y,
+                        )
+                    )
+                    motion_state = await state_stub.GetMotionState(hub_pb2.Empty())
+                    assert float(motion_state.position_x) == pytest.approx(target_x, abs=1e-3)
+                    assert float(motion_state.position_y) == pytest.approx(target_y, abs=1e-3)
 
                     await acq_stub.StartExposure(
                         hub_pb2.StartExposureRequest(
@@ -348,6 +466,19 @@ def test_real_hardware_grpc_over_legacy_sidecar_smoke(tmp_path: Path):
                         p.stem[len(run_id) + 1 :]: str(p)
                         for p in txt_files
                     }
+
+                    await motion_stub.MoveTo(
+                        hub_pb2.MoveToRequest(
+                            ctx=_ctx("restore_real_x axis:x"),
+                            position_mm=start_x,
+                        )
+                    )
+                    await motion_stub.MoveTo(
+                        hub_pb2.MoveToRequest(
+                            ctx=_ctx("restore_real_y axis:y"),
+                            position_mm=start_y,
+                        )
+                    )
                     await channel.close()
                 finally:
                     await server.stop(0)
