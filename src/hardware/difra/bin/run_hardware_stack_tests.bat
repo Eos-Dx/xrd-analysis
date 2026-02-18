@@ -47,7 +47,7 @@ if "%GUI_ENV%"=="" set GUI_ENV=eosdx13
 
 if "%DIFRA_LEGACY_PYTHON%"=="" (
   if "%DIFRA_LEGACY_ENV%"=="" (
-    %CONDA_CMD% run --no-capture-output -n ulster37 python -c "import sys;sys.exit(0)" >nul 2>&1
+    %CONDA_CMD% run -n ulster37 python -c "import sys;sys.exit(0)" >nul 2>&1
     if not errorlevel 1 (
       set DIFRA_LEGACY_ENV=ulster37
     )
@@ -60,7 +60,7 @@ if "%DIFRA_LEGACY_PYTHON%"=="" (
     exit /b 1
   )
 
-  %CONDA_CMD% run --no-capture-output -n %DIFRA_LEGACY_ENV% python -c "import sys;sys.exit(0)" >nul 2>&1
+  %CONDA_CMD% run -n %DIFRA_LEGACY_ENV% python -c "import sys;sys.exit(0)" >nul 2>&1
   if errorlevel 1 (
     echo [ERROR] Requested legacy env '%DIFRA_LEGACY_ENV%' is not runnable.
     echo [ERROR] Set DIFRA_LEGACY_ENV=ulster37 or DIFRA_LEGACY_PYTHON=path\to\python.exe
@@ -68,7 +68,7 @@ if "%DIFRA_LEGACY_PYTHON%"=="" (
   )
 
   set LEGACY_PY=
-  for /f "usebackq delims=" %%V in (`%CONDA_CMD% run --no-capture-output -n %DIFRA_LEGACY_ENV% python -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2^>nul`) do set LEGACY_PY=%%V
+  for /f "usebackq delims=" %%V in (`%CONDA_CMD% run -n %DIFRA_LEGACY_ENV% python -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2^>nul`) do set LEGACY_PY=%%V
   if /I not "%LEGACY_PY%"=="3.7" (
     echo [ERROR] Legacy env '%DIFRA_LEGACY_ENV%' must be Python 3.7, found %LEGACY_PY%.
     exit /b 1
@@ -98,7 +98,7 @@ set PYTHONPATH=%REPO_ROOT%\src;%PYTHONPATH%
 echo [INFO] Running hardware stack tests in GUI env: %GUI_ENV%
 echo [INFO] Expected route: stage_type=%DIFRA_EXPECT_STAGE_TYPE% stage_class=%DIFRA_EXPECT_STAGE_CLASS% detector_class=%DIFRA_EXPECT_DETECTOR_CLASS%
 
-%CONDA_CMD% run --live-stream --no-capture-output -n %GUI_ENV% python -m pytest -q -s ^
+%CONDA_CMD% run -n %GUI_ENV% python -m pytest -q -s ^
   "%REPO_ROOT%\src\hardware\difra\tests\test_detector_integration_timing_e2e.py" ^
   "%REPO_ROOT%\src\hardware\difra\tests\manual_hardware_real_legacy_e2e.py"
 
