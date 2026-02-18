@@ -78,7 +78,7 @@ if errorlevel 1 (
 )
 
 set SIDECAR_PY_EXE=
-for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$conda='%CONDA_CMD%'; $conda=$conda.Trim('\"'); $target='%SIDECAR_ENV%'.ToLowerInvariant(); try { $payload=& $conda env list --json | ConvertFrom-Json } catch { exit 0 }; foreach($p in ($payload.envs | Where-Object { $_ })) { if ([System.IO.Path]::GetFileName($p).ToLowerInvariant() -eq $target) { $py=Join-Path $p 'python.exe'; if (Test-Path $py) { Write-Output $py }; break } }"`) do set SIDECAR_PY_EXE=%%P
+call :resolve_env_python "%SIDECAR_ENV%" SIDECAR_PY_EXE
 if "%SIDECAR_PY_EXE%"=="" (
   echo [ERROR] Sidecar env '%SIDECAR_ENV%' is not available.
   echo [ERROR] Install/create legacy ulster37 ^(Python 3.7^) or set DIFRA_SIDECAR_ENV.
@@ -93,14 +93,14 @@ if /I not "%SIDECAR_PY%"=="3.7" (
 )
 
 set GRPC_PY_EXE=
-for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$conda='%CONDA_CMD%'; $conda=$conda.Trim('\"'); $target='%GRPC_ENV%'.ToLowerInvariant(); try { $payload=& $conda env list --json | ConvertFrom-Json } catch { exit 0 }; foreach($p in ($payload.envs | Where-Object { $_ })) { if ([System.IO.Path]::GetFileName($p).ToLowerInvariant() -eq $target) { $py=Join-Path $p 'python.exe'; if (Test-Path $py) { Write-Output $py }; break } }"`) do set GRPC_PY_EXE=%%P
+call :resolve_env_python "%GRPC_ENV%" GRPC_PY_EXE
 if "%GRPC_PY_EXE%"=="" (
   echo [ERROR] gRPC env '%GRPC_ENV%' is not available.
   exit /b 1
 )
 
 set GUI_PY_EXE=
-for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$conda='%CONDA_CMD%'; $conda=$conda.Trim('\"'); $target='%GUI_ENV%'.ToLowerInvariant(); try { $payload=& $conda env list --json | ConvertFrom-Json } catch { exit 0 }; foreach($p in ($payload.envs | Where-Object { $_ })) { if ([System.IO.Path]::GetFileName($p).ToLowerInvariant() -eq $target) { $py=Join-Path $p 'python.exe'; if (Test-Path $py) { Write-Output $py }; break } }"`) do set GUI_PY_EXE=%%P
+call :resolve_env_python "%GUI_ENV%" GUI_PY_EXE
 if "%GUI_PY_EXE%"=="" (
   echo [ERROR] GUI env '%GUI_ENV%' is not available.
   exit /b 1
@@ -155,3 +155,22 @@ echo [INFO] Starting DiFRA GUI env=%GUI_ENV% mode=%HARDWARE_CLIENT_MODE% grpc=%D
 "%GUI_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\gui\main_app.py" %*
 
 endlocal
+goto :eof
+
+:resolve_env_python
+setlocal
+set "TARGET_ENV=%~1"
+set "ENV_PATH="
+
+for /f "tokens=1,2,3*" %%A in ('%CONDA_CMD% info --envs 2^>nul') do (
+  if /I "%%A"=="%TARGET_ENV%" set "ENV_PATH=%%B"
+  if /I "%%B"=="*" if /I "%%A"=="%TARGET_ENV%" set "ENV_PATH=%%C"
+)
+
+if defined ENV_PATH (
+  if exist "%ENV_PATH%\python.exe" (
+    endlocal & set "%~2=%ENV_PATH%\python.exe" & exit /b 0
+  )
+)
+
+endlocal & set "%~2=" & exit /b 0
