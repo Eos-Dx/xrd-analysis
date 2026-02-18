@@ -49,6 +49,43 @@ def _build_synthetic_matrix(
     return delay, wav, c, s, mat
 
 
+def _load_keele_i_vs_q_standard_df() -> pd.DataFrame:
+    fixture = (
+        Path(__file__).resolve().parent
+        / "fixtures"
+        / "skana"
+        / "I_vs_q_100samples.dat"
+    )
+    raw = pd.read_csv(fixture, sep=r"\s+")
+
+    q_axis = raw["q"].to_numpy(dtype=float)
+    delay_axis = np.asarray([float(c) for c in raw.columns if c != "q"], dtype=float)
+    spectro_matrix = raw.drop(columns=["q"]).to_numpy(dtype=float).T
+
+    return pd.DataFrame(
+        {
+            "spectro_matrix": [spectro_matrix],
+            "delay_axis": [delay_axis],
+            "wavelength_axis": [q_axis],
+        }
+    )
+
+
+def _load_keele_component_profiles() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    fixture_dir = Path(__file__).resolve().parent / "fixtures" / "skana"
+    fat = pd.read_csv(fixture_dir / "xrd_component_fat.txt", sep=r"\s+")
+    water = pd.read_csv(fixture_dir / "xrd_component_water.txt", sep=r"\s+")
+
+    x_fat = fat.iloc[:, 0].to_numpy(dtype=float)
+    x_water = water.iloc[:, 0].to_numpy(dtype=float)
+    if not np.allclose(x_fat, x_water):
+        raise ValueError("Fat and water component profiles must share the same x-axis.")
+
+    fat_profile = fat.iloc[:, 1].to_numpy(dtype=float)
+    water_profile = water.iloc[:, 1].to_numpy(dtype=float)
+    return x_fat, fat_profile, water_profile
+
+
 def test_svd_lof_and_residual_curve_known_low_rank():
     delay, wav, _c, _s, mat = _build_synthetic_matrix(n_comp=2, noise=0.0)
 
@@ -348,6 +385,169 @@ def test_mcrals_group_tile_delay_splits_c_back_to_each_row():
     assert c0.shape[1] == 2
     assert c1.shape[1] == 2
     assert np.allclose(s0, s1)
+
+
+@pytest.mark.parametrize("n_components", [2, 3, 4])
+def test_keele_standard_data_svd_then_mcrals_components(n_components: int):
+    df = _load_keele_i_vs_q_standard_df()
+    row_in = df.iloc[0]
+    mat_in = row_in["spectro_matrix"]
+    delay = row_in["delay_axis"]
+    wav = row_in["wavelength_axis"]
+
+    pipe = MLPipeline(
+        data_wrangling_steps=[
+            ("svd", SpectroSVDTransformer(max_rank=10)),
+            (
+                "als",
+                MCRALSTransformer(
+                    n_components=n_components,
+                    init_method="svd",
+                    maxiter=200,
+                    thresh=1e-5,
+                    nonneg_s=True,
+                    nonneg_c=True,
+                ),
+            ),
+        ],
+        preprocessing_steps=[],
+        estimator=None,
+    )
+
+    out = pipe.transform(df)
+    row = out.iloc[0]
+
+    assert row["svd_u"].shape[0] == delay.size
+    assert row["svd_vt"].shape[1] == wav.size
+    assert len(row["svd_lof_curve"]) == 10
+    assert 1 <= int(row["svd_recommended_rank"]) <= 10
+
+    assert row["als_C"].shape == (delay.size, n_components)
+    assert row["als_S"].shape == (wav.size, n_components)
+    assert row["als_model"].shape == mat_in.shape
+    assert row["als_residual"].shape == mat_in.shape
+    assert bool(row["als_converged"])
+    assert np.isfinite(float(row["als_lof_pct"]))
+    assert np.isfinite(float(row["als_rss"]))
+
+
+@pytest.mark.parametrize("init_method", ["svd", "pca", "nmf", "seq"])
+@pytest.mark.parametrize("norm_mode", ["intensity", "l1"])
+def test_keele_fixed_profiles_three_components_init_and_constraints(
+    init_method: str,
+    norm_mode: str,
+):
+    df = _load_keele_i_vs_q_standard_df()
+    row_in = df.iloc[0]
+    wav = row_in["wavelength_axis"]
+
+    x_ref, fat_profile, water_profile = _load_keele_component_profiles()
+    fixed = np.column_stack([fat_profile, water_profile])
+    expected_fixed_interp = np.column_stack(
+        [
+            np.interp(wav, x_ref, fat_profile),
+            np.interp(wav, x_ref, water_profile),
+        ]
+    )
+
+    tr = MCRALSTransformer(
+        n_components=3,
+        init_method=init_method,
+        maxiter=180,
+        thresh=1e-5,
+        fixed_spectra=fixed,
+        fixed_wavelength_axis=x_ref,
+        interpolate_fixed=True,
+        hard_s0=True,
+        nonneg_c=True,
+        nonneg_s=[True, True, False],
+        norm_s=True,
+        norm_mode=norm_mode,
+        sum_norm=False,
+        random_state=42,
+    )
+    out = tr.transform(df)
+    row = out.iloc[0]
+    s = np.asarray(row["als_S"], dtype=float)
+
+    assert bool(row["als_converged"])
+    assert row["als_C"].shape[1] == 3
+    assert s.shape[1] == 3
+
+    # Hard fixed spectra should be preserved exactly after interpolation.
+    assert np.allclose(s[:, :2], expected_fixed_interp, atol=1e-12)
+    assert float(np.min(s[:, 0])) >= -1e-12
+    assert float(np.min(s[:, 1])) >= -1e-12
+
+    assert row["als_meta"]["init_method"] == init_method
+    assert row["als_meta"]["constraints"]["nonneg_s"] == [True, True, False]
+    assert row["als_meta"]["constraints"]["norm_mode"] == norm_mode
+
+    third = s[:, 2]
+    assert np.isfinite(third).all()
+    assert float(np.max(np.abs(third))) > 0.0
+    if norm_mode == "l1":
+        assert np.isclose(float(np.sum(np.abs(third))), 1.0, atol=1e-8)
+    else:
+        assert np.isclose(float(np.max(np.abs(third))), 1.0, atol=1e-8)
+
+
+@pytest.mark.parametrize("norm_mode", ["intensity", "l1"])
+def test_keele_fixed_profiles_restart_initialization(norm_mode: str):
+    df = _load_keele_i_vs_q_standard_df()
+    wav = np.asarray(df.iloc[0]["wavelength_axis"], dtype=float)
+
+    x_ref, fat_profile, water_profile = _load_keele_component_profiles()
+    fixed = np.column_stack([fat_profile, water_profile])
+    expected_fixed_interp = np.column_stack(
+        [
+            np.interp(wav, x_ref, fat_profile),
+            np.interp(wav, x_ref, water_profile),
+        ]
+    )
+
+    base = MCRALSTransformer(
+        n_components=3,
+        init_method="svd",
+        maxiter=180,
+        thresh=1e-5,
+        fixed_spectra=fixed,
+        fixed_wavelength_axis=x_ref,
+        interpolate_fixed=True,
+        hard_s0=True,
+        nonneg_c=True,
+        nonneg_s=[True, True, False],
+        norm_s=True,
+        norm_mode=norm_mode,
+        sum_norm=False,
+        random_state=42,
+    )
+    base_row = base.transform(df).iloc[0]
+
+    restart = MCRALSTransformer(
+        n_components=3,
+        init_method="restart",
+        restart_result=base._last_result,
+        maxiter=60,
+        thresh=1e-5,
+        fixed_spectra=fixed,
+        fixed_wavelength_axis=x_ref,
+        interpolate_fixed=True,
+        hard_s0=True,
+        nonneg_c=True,
+        nonneg_s=[True, True, False],
+        norm_s=True,
+        norm_mode=norm_mode,
+        sum_norm=False,
+        random_state=42,
+    )
+    restart_row = restart.transform(df).iloc[0]
+    s_restart = np.asarray(restart_row["als_S"], dtype=float)
+
+    assert bool(restart_row["als_converged"])
+    assert restart_row["als_meta"]["init_method"] == "restart"
+    assert np.allclose(s_restart[:, :2], expected_fixed_interp, atol=1e-12)
+    assert float(restart_row["als_lof_pct"]) <= float(base_row["als_lof_pct"]) + 1e-3
 
 
 def test_optional_parity_fixture_if_available():

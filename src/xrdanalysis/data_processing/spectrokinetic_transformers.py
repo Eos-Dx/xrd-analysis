@@ -12,7 +12,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 import numpy as np
 import pandas as pd
 from scipy.optimize import nnls
-from sklearn.base import TransformerMixin
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import NMF
 from sklearn.isotonic import IsotonicRegression
 
@@ -819,7 +819,7 @@ def run_als_iteration(
     )
 
 
-class SpectroSVDTransformer(TransformerMixin):
+class SpectroSVDTransformer(TransformerMixin, BaseEstimator):
     """SVD transformer for matrix-per-row spectrokinetic data."""
 
     def __init__(
@@ -843,6 +843,8 @@ class SpectroSVDTransformer(TransformerMixin):
     def fit(self, x: pd.DataFrame, y=None):
         _ = x
         _ = y
+        # Mark as fitted for sklearn>=1.6 Pipeline fitted-state checks.
+        self.is_fitted_ = True
         return self
 
     def _extract_masked_matrix(self, row: pd.Series) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -938,7 +940,7 @@ class SpectroSVDTransformer(TransformerMixin):
         return out
 
 
-class MCRALSTransformer(TransformerMixin):
+class MCRALSTransformer(TransformerMixin, BaseEstimator):
     """MCR-ALS transformer for matrix-per-row spectrokinetic data."""
 
     def __init__(
@@ -1031,6 +1033,8 @@ class MCRALSTransformer(TransformerMixin):
     def fit(self, x: pd.DataFrame, y=None):
         _ = x
         _ = y
+        # Mark as fitted for sklearn>=1.6 Pipeline fitted-state checks.
+        self.is_fitted_ = True
         return self
 
     def _extract_masked_matrix(self, row: pd.Series) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
