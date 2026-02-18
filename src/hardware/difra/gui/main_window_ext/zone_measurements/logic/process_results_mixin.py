@@ -13,6 +13,18 @@ def _pm():
 
 
 class ZoneMeasurementsProcessResultsMixin:
+    def _append_capture_log(self, message: str):
+        try:
+            self._append_measurement_log(f"[CAPTURE] {message}")
+        except Exception:
+            pass
+
+    def _append_session_log(self, message: str):
+        try:
+            self._append_measurement_log(f"[SESSION] {message}")
+        except Exception:
+            pass
+
     def on_capture_finished(self, success: bool, result_files: dict):
         pm = _pm()
         current_index = self.current_measurement_sorted_index
@@ -21,6 +33,7 @@ class ZoneMeasurementsProcessResultsMixin:
 
         if not success:
             pm.logger.error("Measurement capture failed")
+            marked_failed = False
             if (
                 session_manager is not None
                 and hasattr(session_manager, "is_session_active")
@@ -33,20 +46,22 @@ class ZoneMeasurementsProcessResultsMixin:
                         reason="capture_failed",
                         timestamp_end=time.strftime("%Y-%m-%d %H:%M:%S"),
                     )
+                    marked_failed = True
                 except Exception:
                     pm.logger.warning("Failed to mark failed measurement in session container", exc_info=True)
-            try:
-                self._append_measurement_log("Normal: capture failed")
-            except Exception:
-                pass
+            self._append_capture_log(f"Point {point_index_1based}: capture failed")
+            if marked_failed:
+                self._append_session_log(
+                    f"Point {point_index_1based}: marked failed in session container"
+                )
+            else:
+                self._append_session_log(
+                    f"Point {point_index_1based}: capture failed before session write"
+                )
             return
 
         pm.logger.info("Measurement capture successful", files=list(result_files.keys()))
-        try:
-            self._append_measurement_log("Normal: capture finished")
-            self._append_measurement_log("[DEBUG] Post-processing started")
-        except Exception:
-            pass
+        self._append_capture_log(f"Point {point_index_1based}: capture complete")
 
         detector_lookup = {d["alias"]: d for d in self.config["detectors"]}
         measurements = self.state_measurements.get("measurements_meta", {})
@@ -80,25 +95,18 @@ class ZoneMeasurementsProcessResultsMixin:
 
         self.state_measurements["measurements_meta"] = measurements
 
-        try:
-            self._append_measurement_log("[DEBUG] Saving state file")
-        except Exception:
-            pass
-
         with open(self.state_path_measurements, "w") as f:
             json.dump(self.state_measurements, f, indent=4)
 
-        try:
-            self._append_measurement_log("[DEBUG] State saved")
-            self._append_measurement_log("[DEBUG] Checking H5 session")
-        except Exception:
-            pass
+        pm.logger.info(
+            "Measurement state file updated",
+            state_file=str(self.state_path_measurements),
+            entries=len(measurements),
+        )
+        self._append_capture_log("Measurement metadata saved to state file")
 
         if session_manager is not None and hasattr(session_manager, "is_session_active") and session_manager.is_session_active():
-            try:
-                self._append_measurement_log("[DEBUG] Writing to H5")
-            except Exception:
-                pass
+            self._append_session_log(f"Point {point_index_1based}: writing to session container")
             try:
                 pm.logger.info(f"=== ADDING MEASUREMENT TO H5 (Point {point_index_1based}) ===")
                 pm.logger.info(f"Session path: {session_manager.session_path}")
@@ -207,10 +215,9 @@ class ZoneMeasurementsProcessResultsMixin:
                         raw_files=raw_files_by_detector_id if raw_files_by_detector_id else None,
                     )
                 pm.logger.info(f"✓ Measurement added to H5 container for point {point_index_1based}")
-                try:
-                    self._append_measurement_log("[DEBUG] H5 write complete")
-                except Exception:
-                    pass
+                self._append_session_log(
+                    f"Point {point_index_1based}: saved to session ({len(all_data)} detector(s))"
+                )
             except Exception as e:
                 pm.logger.error("=" * 60)
                 pm.logger.error("✗ CRITICAL ERROR: Failed to add measurement to H5")
@@ -224,6 +231,9 @@ class ZoneMeasurementsProcessResultsMixin:
                 )
                 pm.logger.error("=" * 60, exc_info=True)
                 pm.logger.warning("Continuing measurement workflow despite H5 write failure...")
+                self._append_session_log(
+                    f"Point {point_index_1based}: session write failed ({type(e).__name__})"
+                )
                 if hasattr(session_manager, "fail_point_measurement"):
                     try:
                         session_manager.fail_point_measurement(
@@ -231,28 +241,19 @@ class ZoneMeasurementsProcessResultsMixin:
                             reason=f"h5_write_failed:{type(e).__name__}",
                             timestamp_end=time.strftime("%Y-%m-%d %H:%M:%S"),
                         )
+                        self._append_session_log(
+                            f"Point {point_index_1based}: marked failed after session write error"
+                        )
                     except Exception:
                         pm.logger.warning("Failed to persist failed status for point measurement", exc_info=True)
         else:
             pm.logger.warning("⚠ Session manager not active - measurements will NOT be saved to H5!")
-            try:
-                self._append_measurement_log("[DEBUG] No H5 session active")
-            except Exception:
-                pass
-
-        try:
-            self._append_measurement_log("[DEBUG] Spawning worker thread")
-        except Exception:
-            pass
+            self._append_session_log("No active session container; point saved to files only")
 
         pm.logger.info("Spawning measurement thread for post-processing...")
         current_row = self.sorted_indices[self.current_measurement_sorted_index]
         self.spawn_measurement_thread(current_row, result_files)
-
-        try:
-            self._append_measurement_log("[DEBUG] Updating UI colors")
-        except Exception:
-            pass
+        self._append_capture_log("Post-processing started")
 
         pm.logger.info("Updating UI visual feedback...")
         green_brush = pm.QColor(0, 255, 0)
@@ -265,13 +266,9 @@ class ZoneMeasurementsProcessResultsMixin:
         except Exception as e:
             pm.logger.warning("Error updating zone item color", error=str(e))
 
-        try:
-            self._append_measurement_log("[DEBUG] Scheduling next point")
-        except Exception:
-            pass
-
         pm.logger.info("Scheduling measurement_finished in 1000ms...")
         pm.QTimer.singleShot(1000, self.measurement_finished)
+        self._append_capture_log("Next point scheduled")
         pm.logger.info("<<< on_capture_finished complete")
 
     def spawn_measurement_thread(self, row, file_map):
@@ -331,6 +328,7 @@ class ZoneMeasurementsProcessResultsMixin:
         else:
             if self.current_measurement_sorted_index >= self.total_points:
                 pm.logger.info("=== ALL MEASUREMENT POINTS COMPLETED ===")
+                self._append_capture_log("Measurement sequence complete")
                 self.pause_btn.setEnabled(False)
                 self.stop_btn.setEnabled(False)
                 self.start_btn.setEnabled(True)

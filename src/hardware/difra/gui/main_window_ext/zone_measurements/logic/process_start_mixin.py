@@ -13,6 +13,18 @@ def _pm():
 
 
 class ZoneMeasurementsProcessStartMixin:
+    def _append_capture_log(self, message: str):
+        try:
+            self._append_measurement_log(f"[CAPTURE] {message}")
+        except Exception:
+            pass
+
+    def _append_session_log(self, message: str):
+        try:
+            self._append_measurement_log(f"[SESSION] {message}")
+        except Exception:
+            pass
+
     def _ensure_writable_session_for_measurement(self) -> bool:
         pm = _pm()
 
@@ -89,6 +101,11 @@ class ZoneMeasurementsProcessStartMixin:
         self.manual_save_state()
         self.measurement_folder = Path(self.folderLineEdit.text().strip())
         self.state_path_measurements = self.measurement_folder / f"{self.fileNameLineEdit.text()}_state.json"
+        pm.logger.info(
+            "Measurement start requested",
+            measurement_folder=str(self.measurement_folder),
+            state_file=str(self.state_path_measurements),
+        )
 
         if not self.measurement_folder.exists():
             pm.QMessageBox.warning(
@@ -96,12 +113,15 @@ class ZoneMeasurementsProcessStartMixin:
                 "Folder Error",
                 "Selected folder does not exist. Please select the correct folder.",
             )
+            self._append_capture_log("Start failed: save folder does not exist")
             return
 
         if not self._ensure_writable_session_for_measurement():
+            self._append_session_log("Start cancelled: no writable session container")
             return
 
         if not self._confirm_poni_settings_before_measurement():
+            self._append_capture_log("Start cancelled: PONI confirmation rejected")
             return
 
         try:
@@ -112,6 +132,7 @@ class ZoneMeasurementsProcessStartMixin:
                 session_manager=getattr(self, "session_manager", None),
             )
             if d.exec_() != d.Accepted:
+                self._append_capture_log("Start cancelled: preflight checklist not confirmed")
                 return
         except Exception as e:
             pm.logger.warning("Preflight dialog failed; proceeding without it", error=str(e))
@@ -148,6 +169,7 @@ class ZoneMeasurementsProcessStartMixin:
 
         if self.pointsTable.rowCount() == 0:
             pm.logger.warning("No points available for measurement")
+            self._append_capture_log("Start cancelled: no measurement points")
             return
 
         self.start_btn.setEnabled(False)
@@ -195,10 +217,9 @@ class ZoneMeasurementsProcessStartMixin:
             total_points=self.total_points,
             integration_time=self.integration_time,
         )
-        try:
-            self._append_measurement_log(f"Start: {self.total_points} points, T={self.integration_time:.2f}s")
-        except Exception:
-            pass
+        self._append_capture_log(
+            f"Start: {self.total_points} points, T={self.integration_time:.2f}s"
+        )
 
         try:
             if hasattr(self, "_get_stage_limits"):
@@ -248,6 +269,9 @@ class ZoneMeasurementsProcessStartMixin:
                 f"Filtered measurement points: {len(measurement_points)} valid, "
                 f"{len(skipped_points)} skipped due to axis limits"
             )
+            self._append_capture_log(
+                f"Filtered points: {len(measurement_points)} valid, {len(skipped_points)} skipped"
+            )
 
         if not measurement_points:
             pm.logger.error("No valid measurement points within axis limits")
@@ -255,8 +279,9 @@ class ZoneMeasurementsProcessStartMixin:
                 self,
                 "No Valid Points",
                 f"All measurement points exceed the axis limits of X[{x_min:.1f},{x_max:.1f}] and Y[{y_min:.1f},{y_max:.1f}] mm. "
-                "Please adjust your measurement grid.",
-            )
+                    "Please adjust your measurement grid.",
+                )
+            self._append_capture_log("Start failed: all points are outside stage limits")
             return
 
         self.state["measurement_points"] = measurement_points
@@ -303,8 +328,14 @@ class ZoneMeasurementsProcessStartMixin:
 
                 pm.logger.info("=== SESSION CONTAINER POPULATION ===")
                 pm.logger.info(f"Adding {len(points_for_session)} points to session container...")
+                self._append_session_log(
+                    f"Initializing session container: {len(points_for_session)} points"
+                )
                 self.session_manager.add_points(points_for_session)
                 pm.logger.info(f"✓ Added {len(points_for_session)} points to session container")
+                self._append_session_log(
+                    f"Session points written: {len(points_for_session)}"
+                )
 
                 if hasattr(self, "_add_zones_to_session"):
                     pm.logger.info("Adding zones to session container...")
@@ -312,6 +343,7 @@ class ZoneMeasurementsProcessStartMixin:
                     pm.logger.info(f"Found {num_shapes} shapes in state")
                     self._add_zones_to_session()
                     pm.logger.info("✓ Zones processing complete")
+                    self._append_session_log(f"Session zones synced: {num_shapes}")
                 else:
                     pm.logger.warning("⚠ _add_zones_to_session method not found")
 
@@ -319,11 +351,16 @@ class ZoneMeasurementsProcessStartMixin:
                     pm.logger.info("Adding mapping to session container...")
                     self._add_mapping_to_session()
                     pm.logger.info("✓ Mapping added")
+                    self._append_session_log("Session image mapping updated")
                 else:
                     pm.logger.warning("⚠ _add_mapping_to_session method not found")
 
                 pm.logger.info("=== SESSION CONTAINER INITIALIZED ===")
+                self._append_session_log("Session container initialization complete")
             except Exception as e:
                 pm.logger.error(f"Failed to add points to session container: {e}", exc_info=True)
+                self._append_session_log(
+                    f"Session initialization failed: {type(e).__name__}"
+                )
 
         self.measure_next_point()

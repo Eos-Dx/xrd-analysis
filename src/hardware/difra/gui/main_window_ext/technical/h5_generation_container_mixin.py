@@ -54,6 +54,11 @@ class H5GenerationContainerMixin:
                 "Selected save folder is not writable. Choose a different folder.",
             )
             return
+        logger.info(
+            "Technical container generation requested: rows=%d folder=%s",
+            len(rows),
+            folder,
+        )
 
         aux_measurements = {}
         primary_measurements = {}  # Track which measurements are marked as primary: {(type, alias): [is_prim1, is_prim2, ...]}
@@ -261,6 +266,13 @@ class H5GenerationContainerMixin:
                 poni_data[alias] = (poni_content, poni_filename or f"{alias}.poni")
             else:
                 missing_poni.append(alias)
+        logger.info(
+            "Technical container inputs prepared: aliases=%s types=%s with_poni=%d missing_poni=%d",
+            list(aliases_to_check),
+            sorted(list(aux_measurements.keys())),
+            len(poni_data),
+            len(missing_poni),
+        )
 
         if missing_poni:
             res = QMessageBox.question(
@@ -372,6 +384,12 @@ class H5GenerationContainerMixin:
                 self, "HDF5 Write Error", f"Failed to generate HDF5 container:\n{e}"
             )
             return
+        logger.info(
+            "Technical container generated: id=%s temp=%s aliases=%s",
+            container_id,
+            str(temp_file_path),
+            list(aliases_to_check),
+        )
 
         self._log_technical_event(
             f"Technical HDF5 generated in temp: {os.path.basename(temp_file_path)}"
@@ -393,17 +411,33 @@ class H5GenerationContainerMixin:
                 f"Copied to storage: {os.path.basename(storage_file_path)}"
             )
             final_path = storage_file_path
+            logger.info(
+                "Technical container copied to storage: id=%s path=%s",
+                container_id,
+                str(storage_file_path),
+            )
         except Exception as e:
             logger.warning(f"Failed to copy to storage folder: {e}")
             self._log_technical_event(
                 f"Warning: Could not copy to storage folder, file remains in temp: {temp_file_path}"
             )
             final_path = temp_file_path
+            logger.warning(
+                "Technical container copy to storage failed, using temp file: id=%s temp=%s error=%s",
+                container_id,
+                str(temp_file_path),
+                str(e),
+            )
         
         # Auto-validate container if configured
         should_validate = self.config.get("validate_containers_before_locking", True)
         if should_validate:
             self._log_technical_event("Auto-validating generated container...")
+            logger.info(
+                "Technical container auto-validation requested: id=%s path=%s",
+                container_id,
+                str(final_path),
+            )
             self._validate_and_prompt_lock(final_path, container_id)
         else:
             QMessageBox.information(

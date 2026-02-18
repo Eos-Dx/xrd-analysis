@@ -45,10 +45,24 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
         if isinstance(value, bytes):
             return value.decode("utf-8", errors="replace")
         return value
+
+    def _append_compact_log(self, category: str, message: str):
+        try:
+            if hasattr(self, "_append_measurement_log"):
+                self._append_measurement_log(f"[{category}] {message}")
+        except Exception:
+            pass
+
+    def _append_session_log(self, message: str):
+        self._append_compact_log("SESSION", message)
+
+    def _append_technical_log(self, message: str):
+        self._append_compact_log("TECH", message)
     
     def init_session_manager(self):
         """Initialize SessionManager and add UI actions."""
         logger.info("Initializing SessionManager")
+        self._append_session_log("Initializing session manager")
         
         # Initialize operator manager first
         self.operator_manager = OperatorManager()
@@ -69,6 +83,7 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
         self.add_session_menu_actions()
         
         logger.info("SessionManager initialized")
+        self._append_session_log("Session manager ready")
     
     def add_session_menu_actions(self):
         """Add session-related actions to File menu."""
@@ -144,6 +159,7 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
     
     def on_new_session(self):
         """Handle New Session action."""
+        self._append_session_log("New session requested")
         # Check if session already active
         if self.session_manager.is_session_active():
             reply = QMessageBox.question(
@@ -194,6 +210,9 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
                 logger.info(
                     f"Created new session: {session_id} for sample {params['sample_id']}"
                 )
+                self._append_session_log(
+                    f"Created session {session_path.name} for sample {params['sample_id']}"
+                )
                 
                 # Update UI
                 self.update_session_status()
@@ -205,6 +224,7 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
                     f"Failed to create session:\n\n{str(e)}",
                 )
                 logger.error(f"Failed to create session: {e}", exc_info=True)
+                self._append_session_log(f"Session creation failed: {type(e).__name__}")
     
     def on_close_session(self):
         """Handle Close Session action."""
@@ -226,6 +246,7 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
         )
         
         if reply == QMessageBox.Yes:
+            closed_sample = self.session_manager.sample_id
             self.session_manager.close_session()
             QMessageBox.information(
                 self,
@@ -233,6 +254,7 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
                 "Session closed successfully.",
             )
             logger.info("Session closed by user")
+            self._append_session_log(f"Closed session for sample {closed_sample}")
             
             # Update UI
             self.update_session_status()
@@ -367,6 +389,7 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
                 "Session Locked",
                 "Active session is locked. Technical data cannot be updated.",
             )
+            self._append_technical_log("Technical update skipped: active session is locked")
             return
 
         reply = QMessageBox.question(
@@ -378,6 +401,7 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
             QMessageBox.No,
         )
         if reply != QMessageBox.Yes:
+            self._append_technical_log("Technical update cancelled by user")
             return
 
         try:
@@ -393,6 +417,9 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
                 "Updated session technical data from loaded container: "
                 f"session={self.session_manager.session_path} technical={technical_path}"
             )
+            self._append_technical_log(
+                f"Session updated from technical container: {Path(technical_path).name} ({status})"
+            )
         except Exception as e:
             QMessageBox.critical(
                 self,
@@ -402,6 +429,9 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
             logger.error(
                 f"Failed technical update from loaded container: {e}",
                 exc_info=True,
+            )
+            self._append_technical_log(
+                f"Technical update failed: {type(e).__name__}"
             )
 
 class NewSessionDialog(QDialog):

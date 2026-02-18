@@ -1,12 +1,94 @@
 # zone_measurements/logic/stage_control_mixin.py
 
 import logging
+import os
 from typing import Dict, Optional, Tuple
 
 from PyQt5.QtCore import Qt
 
 
 class StageControlMixin:
+    def _append_hw_log(self, message: str) -> None:
+        try:
+            self._append_measurement_log(f"[HW] {message}")
+        except Exception:
+            pass
+
+    @staticmethod
+    def _detector_protocol_from_class(controller_class_name: str) -> str:
+        if controller_class_name == "PixetSidecarDetectorController":
+            return "legacy-sidecar"
+        if controller_class_name == "PixetLegacyDetectorController":
+            return "legacy-direct"
+        if controller_class_name == "PixetDetectorController":
+            return "ctypes-direct"
+        if controller_class_name == "DummyDetectorController":
+            return "demo"
+        return "direct"
+
+    @staticmethod
+    def _stage_protocol_from_class(controller_class_name: str) -> str:
+        if controller_class_name == "XYStageLibController":
+            return "ctypes-dll"
+        if controller_class_name == "MarlinStageController":
+            return "serial"
+        if controller_class_name == "DummyStageController":
+            return "demo"
+        return "direct"
+
+    def _log_hardware_init_details(self, client, stage_ok: bool, det_ok: bool, source: str) -> None:
+        backend_mode = str(getattr(client, "last_backend", "grpc")).strip() or "grpc"
+        detector_backend = str(os.environ.get("DETECTOR_BACKEND", "")).strip() or "unset"
+
+        stage_cls = (
+            client.stage_controller.__class__.__name__
+            if getattr(client, "stage_controller", None) is not None
+            else "None"
+        )
+        stage_protocol = self._stage_protocol_from_class(stage_cls)
+        stage_cfg = self._selected_stage_config()
+        stage_type = stage_cfg.get("type", "unknown")
+        stage_alias = stage_cfg.get("alias", "unknown")
+
+        logging.info(
+            "Hardware init (%s): stage_ok=%s detector_ok=%s backend=%s stage_alias=%s stage_type=%s stage_class=%s stage_protocol=%s detector_backend=%s",
+            source,
+            stage_ok,
+            det_ok,
+            backend_mode,
+            stage_alias,
+            stage_type,
+            stage_cls,
+            stage_protocol,
+            detector_backend,
+        )
+        self._append_hw_log(
+            f"Stage {stage_alias}: {stage_type} via {stage_protocol} ({stage_cls})"
+        )
+
+        detector_cfg_by_alias = {
+            str(det.get("alias", "")): det for det in self.config.get("detectors", [])
+        }
+        for alias, controller in (getattr(client, "detector_controllers", {}) or {}).items():
+            cls_name = controller.__class__.__name__
+            det_protocol = self._detector_protocol_from_class(cls_name)
+            det_cfg = detector_cfg_by_alias.get(str(alias), {})
+            det_type = det_cfg.get("type", "unknown")
+            det_id = det_cfg.get("id", "unknown")
+            logging.info(
+                "Detector active (%s): alias=%s id=%s type=%s class=%s protocol=%s backend=%s",
+                source,
+                alias,
+                det_id,
+                det_type,
+                cls_name,
+                det_protocol,
+                detector_backend,
+            )
+            self._append_hw_log(
+                f"Detector {alias}: {det_type} via {det_protocol} ({cls_name})"
+            )
+
     def _ensure_hardware_client(self):
         if getattr(self, "hardware_client", None) is None:
             from hardware.difra.hardware.hardware_client import create_hardware_client
@@ -123,6 +205,12 @@ class StageControlMixin:
         self.xyStageIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
         self.cameraIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
         self.initializeBtn.setText("Deinitialize Hardware")
+        self._log_hardware_init_details(
+            client,
+            stage_ok=stage_initialized,
+            det_ok=detector_initialized,
+            source="sync",
+        )
         if not getattr(self, "hardware_initialized", False):
             self.hardware_initialized = True
             if hasattr(self, "hardware_state_changed"):
@@ -143,10 +231,12 @@ class StageControlMixin:
 
             try:
                 client = self._ensure_hardware_client()
+                self._append_hw_log("Initializing hardware...")
                 res_xystage = client.initialize_motion()
                 res_det = client.initialize_detector()
             except Exception as exc:
                 logging.exception("Hardware initialization failed")
+                self._append_hw_log(f"Initialization failed: {exc}")
                 QMessageBox.warning(
                     self,
                     "Hardware Initialization Failed",
@@ -171,6 +261,12 @@ class StageControlMixin:
 
             ok = bool(res_xystage and res_det)
             self._apply_readiness_to_controls(ok)
+            self._log_hardware_init_details(
+                client,
+                stage_ok=res_xystage,
+                det_ok=res_det,
+                source="user-init",
+            )
 
             if ok:
                 self.refresh_detector_tabs_for_mode_switch()
@@ -178,7 +274,9 @@ class StageControlMixin:
                 self.hardware_initialized = True
                 if hasattr(self, "hardware_state_changed"):
                     self.hardware_state_changed.emit(True)
+                self._append_hw_log("Initialization complete")
             else:
+                self._append_hw_log("Initialization incomplete (stage/detector failed)")
                 QMessageBox.warning(
                     self,
                     "Hardware Initialization Failed",
@@ -187,9 +285,11 @@ class StageControlMixin:
                 )
         else:
             try:
+                self._append_hw_log("Deinitializing hardware...")
                 self._ensure_hardware_client().deinitialize()
             except Exception as exc:
                 logging.warning("Error deinitializing hardware: %s", exc)
+                self._append_hw_log(f"Deinitialize warning: {exc}")
 
             self.clear_detector_param_tabs()
             self.xyStageIndicator.setStyleSheet(
@@ -212,6 +312,7 @@ class StageControlMixin:
             self.hardware_initialized = False
             if hasattr(self, "hardware_state_changed"):
                 self.hardware_state_changed.emit(False)
+            self._append_hw_log("Deinitialized")
 
     def update_xy_pos(self):
         """
@@ -299,8 +400,10 @@ class StageControlMixin:
             new_x, new_y = client.move_to(y, axis="y", timeout_s=25)
             self.update_xy_pos()
             logging.info("Successfully moved to goto position: (%.3f, %.3f)", new_x, new_y)
+            self._append_hw_log(f"MoveTo complete: ({new_x:.3f}, {new_y:.3f}) mm")
         except TimeoutError:
             logging.error("Stage movement timeout occurred during goto operation")
+            self._append_hw_log("MoveTo timeout")
             QMessageBox.warning(
                 self,
                 "Stage Timeout",
@@ -327,6 +430,7 @@ class StageControlMixin:
                     QMessageBox.warning(self, "Stage Move Error", str(exc))
             except Exception:
                 QMessageBox.warning(self, "Stage Move Error", str(exc))
+            self._append_hw_log(f"MoveTo error: {exc}")
 
     def home_stage_button_clicked(self):
         """
@@ -353,8 +457,10 @@ class StageControlMixin:
                 "Successfully moved to home position: (%.3f, %.3f)", new_x, new_y
             )
             self.update_xy_pos()
+            self._append_hw_log(f"Home complete: ({new_x:.3f}, {new_y:.3f}) mm")
         except TimeoutError:
             logging.error("Stage movement timeout occurred during home operation")
+            self._append_hw_log("Home timeout")
             QMessageBox.warning(
                 self,
                 "Stage Timeout",
@@ -362,6 +468,7 @@ class StageControlMixin:
             )
         except Exception as exc:
             logging.error("Error during home operation: %s", exc)
+            self._append_hw_log(f"Home error: {exc}")
             QMessageBox.warning(
                 self, "Stage Error", f"Error moving to home position: {str(exc)}"
             )
@@ -391,8 +498,10 @@ class StageControlMixin:
                 "Successfully moved to load position: (%.3f, %.3f)", new_x, new_y
             )
             self.update_xy_pos()
+            self._append_hw_log(f"Load complete: ({new_x:.3f}, {new_y:.3f}) mm")
         except TimeoutError:
             logging.error("Stage movement timeout occurred during load operation")
+            self._append_hw_log("Load timeout")
             QMessageBox.warning(
                 self,
                 "Stage Timeout",
@@ -400,6 +509,7 @@ class StageControlMixin:
             )
         except Exception as exc:
             logging.error("Error during load operation: %s", exc)
+            self._append_hw_log(f"Load error: {exc}")
             QMessageBox.warning(
                 self, "Stage Error", f"Error moving to load position: {str(exc)}"
             )

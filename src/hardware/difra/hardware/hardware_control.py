@@ -1,4 +1,5 @@
 # hardware_control.py
+import logging
 import os
 
 from hardware.difra.hardware.detectors import (
@@ -28,6 +29,8 @@ STAGE_CLASSES = {
     "Marlin": MarlinStageController,
     "DummyStage": DummyStageController,
 }
+
+logger = logging.getLogger(__name__)
 
 
 class HardwareController:
@@ -85,23 +88,44 @@ class HardwareController:
                         )
                     os.environ["DETECTOR_BACKEND"] = "sidecar"
                     os.environ["PIXET_BACKEND"] = "sidecar"
-                    return "PixetSidecar", PixetSidecarDetectorController
+                    return "PixetSidecar", PixetSidecarDetectorController, "legacy-sidecar"
 
                 if detector_backend in {"sidecar", "socket", "ipc"} and det_type in {
                     "Pixet",
                     "DummyDetector",
                 }:
-                    return "PixetSidecar", PixetSidecarDetectorController
-                return det_type, DETECTOR_CLASSES.get(det_type)
+                    return "PixetSidecar", PixetSidecarDetectorController, "legacy-sidecar"
+
+                protocol = "direct"
+                if det_type == "Pixet":
+                    protocol = "ctypes-direct"
+                elif det_type == "PixetLegacy":
+                    protocol = "legacy-direct"
+                elif det_type == "DummyDetector":
+                    protocol = "demo"
+                return det_type, DETECTOR_CLASSES.get(det_type), protocol
 
             self.detectors = {}
             for det_cfg in selected_detectors:
-                det_type, det_class = _resolve_detector_class(det_cfg)
+                det_type, det_class, protocol = _resolve_detector_class(det_cfg)
                 if not det_class:
                     print(f"⚠ Unknown detector type: {det_type}")
                     continue
                 alias = det_cfg.get("alias", det_cfg["id"])
                 size = (det_cfg["size"]["width"], det_cfg["size"]["height"])
+                backend = str(os.environ.get("DETECTOR_BACKEND", "")).lower().strip() or "unset"
+                logger.info(
+                    "Detector init requested: alias=%s id=%s cfg_type=%s resolved_type=%s class=%s protocol=%s backend=%s size=%sx%s",
+                    alias,
+                    det_cfg.get("id", "unknown"),
+                    det_cfg.get("type", "unknown"),
+                    det_type,
+                    getattr(det_class, "__name__", str(det_class)),
+                    protocol,
+                    backend,
+                    size[0],
+                    size[1],
+                )
                 try:
                     if det_type == "DummyDetector":
                         controller = det_class(alias=alias, size=size)
@@ -113,10 +137,30 @@ class HardwareController:
                     if success:
                         self.detectors[alias] = controller
                         print(f"✓ Detector '{alias}' ({det_type}) initialized successfully")
+                        logger.info(
+                            "Detector initialized: alias=%s class=%s protocol=%s",
+                            alias,
+                            controller.__class__.__name__,
+                            protocol,
+                        )
                     else:
                         print(f"✗ Detector '{alias}' ({det_type}) failed to initialize")
+                        logger.error(
+                            "Detector initialization failed: alias=%s type=%s class=%s protocol=%s",
+                            alias,
+                            det_type,
+                            getattr(det_class, "__name__", str(det_class)),
+                            protocol,
+                        )
                 except Exception as e:
                     print(f"✗ Error initializing detector '{alias}' ({det_type}): {e}")
+                    logger.exception(
+                        "Detector initialization error: alias=%s type=%s class=%s protocol=%s",
+                        alias,
+                        det_type,
+                        getattr(det_class, "__name__", str(det_class)),
+                        protocol,
+                    )
 
             detector_success = bool(self.detectors)
 
@@ -149,13 +193,48 @@ class HardwareController:
                 else:
                     try:
                         self.stage_controller = stage_class(config=selected_stage)
+                        if stage_type == "Kinesis":
+                            stage_protocol = "ctypes-dll"
+                        elif stage_type == "Marlin":
+                            stage_protocol = "serial"
+                        elif stage_type == "DummyStage":
+                            stage_protocol = "demo"
+                        else:
+                            stage_protocol = "direct"
+                        logger.info(
+                            "Stage init requested: alias=%s id=%s type=%s class=%s protocol=%s",
+                            selected_stage.get("alias", "unknown"),
+                            selected_stage.get("id", "unknown"),
+                            stage_type,
+                            stage_class.__name__,
+                            stage_protocol,
+                        )
                         stage_success = self.stage_controller.init_stage()
                         if stage_success:
                             print(f"✓ Stage '{selected_stage.get('alias')}' ({stage_type}) initialized successfully")
+                            logger.info(
+                                "Stage initialized: alias=%s class=%s protocol=%s",
+                                selected_stage.get("alias", "unknown"),
+                                self.stage_controller.__class__.__name__,
+                                stage_protocol,
+                            )
                         else:
                             print(f"✗ Stage '{selected_stage.get('alias')}' ({stage_type}) failed to initialize")
+                            logger.error(
+                                "Stage initialization failed: alias=%s type=%s class=%s protocol=%s",
+                                selected_stage.get("alias", "unknown"),
+                                stage_type,
+                                stage_class.__name__,
+                                stage_protocol,
+                            )
                     except Exception as e:
                         print(f"✗ Error initializing stage '{selected_stage.get('alias')}' ({stage_type}): {e}")
+                        logger.exception(
+                            "Stage initialization error: alias=%s type=%s class=%s",
+                            selected_stage.get("alias", "unknown"),
+                            stage_type,
+                            stage_class.__name__ if stage_class else "unknown",
+                        )
                         stage_success = False
             else:
                 print("⚠ No translation stage selected.")
@@ -163,19 +242,33 @@ class HardwareController:
 
         # Consider hardware initialized if at least one component succeeded
         self.hardware_initialized = stage_success or detector_success
+        logger.info(
+            "Hardware initialize summary: stage_success=%s detector_success=%s mode=%s active_detectors=%d",
+            stage_success,
+            detector_success,
+            "demo" if dev_mode else "production",
+            len(self.detectors),
+        )
         return stage_success, detector_success
 
     def deinitialize(self):
+        logger.info(
+            "Hardware deinitialize requested: stage_present=%s detectors=%d",
+            bool(self.stage_controller),
+            len(self.detectors),
+        )
         if self.stage_controller:
             try:
                 self.stage_controller.deinit()
             except Exception as e:
                 print(f"[Stage Deinit Error] {e}")
+                logger.exception("Stage deinitialize error")
         for alias, detector in self.detectors.items():
             try:
                 detector.deinit_detector()
             except Exception as e:
                 print(f"[Detector '{alias}' Deinit Error] {e}")
+                logger.exception("Detector deinitialize error: alias=%s", alias)
         self.hardware_initialized = False
 
     def get_xy_position(self):

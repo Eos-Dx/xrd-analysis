@@ -321,6 +321,12 @@ class H5ManagementLockingMixin:
         
         # Lock the container
         try:
+            logger.info(
+                "Locking technical container: id=%s path=%s operator=%s",
+                container_id,
+                str(container_path),
+                str(operator_id),
+            )
             bundle_path = None
             container_manager.lock_technical_container(
                 Path(container_path),
@@ -330,6 +336,11 @@ class H5ManagementLockingMixin:
             
             self._log_technical_event(
                 f"Container {container_id} locked by {operator_id}"
+            )
+            logger.info(
+                "Technical container locked: id=%s operator=%s",
+                container_id,
+                str(operator_id),
             )
             
             # After successful locking, archive data files
@@ -370,6 +381,12 @@ class H5ManagementLockingMixin:
                     self._log_technical_event(
                         f"Archived {archived_count} data file(s) to {archive_subdir.name}"
                     )
+                logger.info(
+                    "Archived technical container companion files: id=%s archived=%d folder=%s",
+                    container_id,
+                    int(archived_count),
+                    str(archive_subdir),
+                )
 
                 try:
                     from hardware.container import create_container_bundle
@@ -383,6 +400,11 @@ class H5ManagementLockingMixin:
                     )
                     self._log_technical_event(
                         f"Created container ZIP bundle: {Path(bundle_path).name}"
+                    )
+                    logger.info(
+                        "Created technical container ZIP bundle: id=%s zip=%s",
+                        container_id,
+                        str(bundle_path),
                     )
                 except Exception as zip_error:
                     logger.warning(f"Failed to create technical ZIP bundle: {zip_error}")
@@ -413,4 +435,10 @@ class H5ManagementLockingMixin:
                 f"Failed to lock container:\n{e}\n\nContainer location: {container_path}"
             )
             self._log_technical_event(f"Failed to lock container: {e}")
+            logger.error(
+                "Technical container lock failed: id=%s path=%s error=%s",
+                container_id,
+                str(container_path),
+                str(e),
+            )
     

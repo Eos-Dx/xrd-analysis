@@ -185,11 +185,19 @@ class SessionWorkspaceMixin:
                 f"image_loaded={restored_image} shapes={len(restored_shapes)} "
                 f"points={len(restored_points)}"
             )
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log(
+                    f"Workspace restored from session: shapes={len(restored_shapes)}, points={len(restored_points)}"
+                )
         except Exception as exc:
             logger.warning(
                 f"Session workspace restore failed for {session_path}: {exc}",
                 exc_info=True,
             )
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log(
+                    f"Workspace restore failed: {type(exc).__name__}"
+                )
 
     def _extract_current_image_array(self):
         """Read current sample image into numpy array for session sync."""
@@ -320,10 +328,16 @@ class SessionWorkspaceMixin:
                         physical_coordinates_mm=[0.0, 0.0],
                         point_status=schema.POINT_STATUS_PENDING,
                     )
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log("Session workspace snapshot updated")
 
         except Exception as exc:
             logger.warning(
                 f"Workspace snapshot sync to session failed: {exc}",
                 exc_info=True,
             )
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log(
+                    f"Session workspace sync failed: {type(exc).__name__}"
+                )
     

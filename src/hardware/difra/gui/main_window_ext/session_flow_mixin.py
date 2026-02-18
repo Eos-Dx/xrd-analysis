@@ -105,6 +105,10 @@ class SessionFlowMixin:
                             point_index,
                             measurement_path,
                         )
+                        if hasattr(self, "_append_session_log"):
+                            self._append_session_log(
+                                f"Recovered point {point_index} from existing detector files"
+                            )
                     except Exception as exc:
                         logger.warning(
                             "Failed to recover point %s from files, marking for re-measurement: %s",
@@ -121,6 +125,10 @@ class SessionFlowMixin:
                         measurement_path=measurement_path,
                         reason="user_selected_remeasure",
                     )
+                    if hasattr(self, "_append_session_log"):
+                        self._append_session_log(
+                            f"Point {point_index} marked for re-measurement"
+                        )
                 continue
 
             expected_text = ", ".join(expected_aliases) if expected_aliases else "not configured"
@@ -142,6 +150,10 @@ class SessionFlowMixin:
                 measurement_path=measurement_path,
                 reason="recovery_missing_or_unreadable_files",
             )
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log(
+                    f"Point {point_index} marked for re-measurement (missing files)"
+                )
 
     def _handle_session_replacement(self) -> bool:
         """Handle replacement of existing session with error checking.
@@ -207,6 +219,10 @@ class SessionFlowMixin:
             
             if reply == QMessageBox.Yes:
                 self.session_manager.close_session()
+                if hasattr(self, "_append_session_log"):
+                    self._append_session_log(
+                        f"Closed finalized session {sample_id} before replacement"
+                    )
                 return True
             else:
                 return False
@@ -244,6 +260,8 @@ class SessionFlowMixin:
         
         if clicked_button == cancel_btn:
             logger.info("User cancelled session replacement")
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log("Session replacement cancelled")
             return False
         
         # Determine error status
@@ -266,6 +284,10 @@ class SessionFlowMixin:
             logger.info(
                 f"Session {session_id} marked as created_by_error: {error_reason}"
             )
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log(
+                    f"Session {sample_id} marked as error before archive"
+                )
         
         # Close session and archive with metadata
         try:
@@ -296,6 +318,8 @@ class SessionFlowMixin:
                 f"Failed to archive session:\n{e}",
             )
             logger.error(f"Failed to archive session: {e}", exc_info=True)
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log(f"Failed to archive session: {type(e).__name__}")
             return False
     
     def _archive_session_container(self, session_path: Path, session_id: str, 
@@ -318,8 +342,16 @@ class SessionFlowMixin:
                 f"Archived session container: {session_path.name} -> {destination.parent.name}/"
                 + (f" [ERROR: {error_reason}]" if created_by_error else "")
             )
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log(
+                    f"Archived session container: {session_path.name}"
+                )
         except Exception as e:
             logger.error(f"Failed to move session to archive: {e}")
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log(
+                    f"Session archive failed: {type(e).__name__}"
+                )
             raise
     
     def _handle_new_sample_image(self, image_path: str):
@@ -340,6 +372,8 @@ class SessionFlowMixin:
         if self.session_manager.is_session_active():
             if not self._handle_session_replacement():
                 # User cancelled replacement
+                if hasattr(self, "_append_session_log"):
+                    self._append_session_log("New sample load cancelled")
                 return
         
         # Show dialog to get sample information
@@ -392,6 +426,8 @@ class SessionFlowMixin:
                             image_type="sample",
                         )
                         logger.info(f"Added sample image to session container")
+                        if hasattr(self, "_append_session_log"):
+                            self._append_session_log("Sample image saved to session container")
                     else:
                         logger.warning(f"Failed to load image as array: {image_path}")
                         
@@ -415,6 +451,10 @@ class SessionFlowMixin:
                     f"Created new session: {session_id} for sample {params['sample_id']} "
                     f"with image: {image_path}"
                 )
+                if hasattr(self, "_append_session_log"):
+                    self._append_session_log(
+                        f"Created session {session_path.name} for sample {params['sample_id']}"
+                    )
                 
                 # Update UI
                 self.update_session_status()
@@ -426,8 +466,14 @@ class SessionFlowMixin:
                     f"Failed to create session:\n\n{str(e)}",
                 )
                 logger.error(f"Failed to create session: {e}", exc_info=True)
+                if hasattr(self, "_append_session_log"):
+                    self._append_session_log(
+                        f"Session creation failed during new sample flow: {type(e).__name__}"
+                    )
         else:
             logger.info("User cancelled session creation")
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log("Session creation cancelled by user")
     
     def _add_zones_to_session(self):
         """Add zones from state to session container.
@@ -559,6 +605,8 @@ class SessionFlowMixin:
                 "No session is currently active.",
             )
             return
+        if hasattr(self, "_append_session_log"):
+            self._append_session_log("Finalizing active session container")
         
         # Get session info
         info = self.session_manager.get_session_info()
@@ -602,6 +650,10 @@ class SessionFlowMixin:
                 logger.info(
                     f"Session finalized and locked: {session_path.name}"
                 )
+                if hasattr(self, "_append_session_log"):
+                    self._append_session_log(
+                        f"Session finalized and locked: {session_path.name}"
+                    )
                 
                 # Show success message with container location
                 QMessageBox.information(
@@ -624,6 +676,10 @@ class SessionFlowMixin:
                     f"Failed to finalize session:\n\n{str(e)}",
                 )
                 logger.error(f"Failed to finalize session: {e}", exc_info=True)
+                if hasattr(self, "_append_session_log"):
+                    self._append_session_log(
+                        f"Session finalization failed: {type(e).__name__}"
+                    )
     
     def on_restore_session(self):
         """Open an existing session container (including locked ones) for analysis."""
@@ -643,6 +699,8 @@ class SessionFlowMixin:
                 return
             
             self.session_manager.close_session()
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log("Closed current session before restore")
         
         # Get session file from user
         file_path, _ = QFileDialog.getOpenFileName(
@@ -664,6 +722,8 @@ class SessionFlowMixin:
                 f"Container file not found:\n{file_path}",
             )
             return
+        if hasattr(self, "_append_session_log"):
+            self._append_session_log(f"Opening existing session container: {file_path.name}")
         
         try:
             import h5py
@@ -732,6 +792,11 @@ class SessionFlowMixin:
                 is_locked,
                 str(file_path),
             )
+            if hasattr(self, "_append_session_log"):
+                mode = "read-only" if is_locked else "editable"
+                self._append_session_log(
+                    f"Opened session container {file_path.name} ({mode})"
+                )
 
             # Restore workspace data from session container when UI supports it.
             self._restore_session_workspace_from_container(file_path)
@@ -766,3 +831,7 @@ class SessionFlowMixin:
                 f"Failed to open session container:\n\n{str(e)}",
             )
             logger.error(f"Failed to open session container: {e}", exc_info=True)
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log(
+                    f"Failed to open session container: {type(e).__name__}"
+                )

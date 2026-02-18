@@ -332,6 +332,6 @@ class TechnicalMeasurementsMixin(
 
     def _log_technical_event(self, message: str):
         try:
-            self._append_measurement_log(f"[Technical] {message}")
+            self._append_measurement_log(f"[TECH] {message}")
         except Exception:
-            print(f"[Technical] {message}")
+            print(f"[TECH] {message}")
