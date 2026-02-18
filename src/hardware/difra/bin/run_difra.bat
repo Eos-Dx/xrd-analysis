@@ -81,14 +81,7 @@ set SIDECAR_PY_EXE=
 call :resolve_env_python "%SIDECAR_ENV%" SIDECAR_PY_EXE
 if "%SIDECAR_PY_EXE%"=="" (
   echo [ERROR] Sidecar env '%SIDECAR_ENV%' is not available.
-  echo [ERROR] Install/create legacy ulster37 ^(Python 3.7^) or set DIFRA_SIDECAR_ENV.
-  exit /b 1
-)
-set SIDECAR_PY=
-for /f "usebackq delims=" %%V in (`"%SIDECAR_PY_EXE%" -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2^>nul`) do set SIDECAR_PY=%%V
-if /I not "%SIDECAR_PY%"=="3.7" (
-  echo [ERROR] Sidecar env '%SIDECAR_ENV%' must be Python 3.7, found %SIDECAR_PY%.
-  echo [ERROR] Use legacy ulster37-like environment for Pixet sidecar.
+  echo [ERROR] Install/create legacy ulster37 or set DIFRA_SIDECAR_ENV.
   exit /b 1
 )
 
