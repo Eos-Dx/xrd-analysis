@@ -46,34 +46,31 @@ if "%GUI_ENV%"=="" (
 if "%GUI_ENV%"=="" set GUI_ENV=eosdx13
 
 if "%DIFRA_LEGACY_PYTHON%"=="" (
-  if "%DIFRA_LEGACY_ENV%"=="" (
-    %CONDA_CMD% run -n ulster37 python -c "import sys;sys.exit(0)" >nul 2>&1
-    if not errorlevel 1 (
-      set DIFRA_LEGACY_ENV=ulster37
-    )
-  )
+  if "%DIFRA_LEGACY_ENV%"=="" set DIFRA_LEGACY_ENV=ulster37
 
-  if "%DIFRA_LEGACY_ENV%"=="" (
+  set LEGACY_ENV_PATH=
+  for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$conda='%CONDA_CMD%'; $conda=$conda.Trim('\"'); try { $payload=& $conda env list --json | ConvertFrom-Json } catch { exit 0 }; $target='%DIFRA_LEGACY_ENV%'.ToLowerInvariant(); foreach($p in ($payload.envs | Where-Object { $_ })) { if ([System.IO.Path]::GetFileName($p).ToLowerInvariant() -eq $target) { Write-Output $p; break } }"`) do set LEGACY_ENV_PATH=%%P
+
+  if "%LEGACY_ENV_PATH%"=="" (
     echo [ERROR] No working legacy environment found.
     echo [ERROR] Expected legacy sidecar env: ulster37 ^(Python 3.7^).
     echo [ERROR] Set DIFRA_LEGACY_ENV=ulster37 or DIFRA_LEGACY_PYTHON=path\to\python.exe.
     exit /b 1
   )
 
-  %CONDA_CMD% run -n %DIFRA_LEGACY_ENV% python -c "import sys;sys.exit(0)" >nul 2>&1
-  if errorlevel 1 (
-    echo [ERROR] Requested legacy env '%DIFRA_LEGACY_ENV%' is not runnable.
-    echo [ERROR] Set DIFRA_LEGACY_ENV=ulster37 or DIFRA_LEGACY_PYTHON=path\to\python.exe
+  set DIFRA_LEGACY_PYTHON=%LEGACY_ENV_PATH%\python.exe
+  if not exist "%DIFRA_LEGACY_PYTHON%" (
+    echo [ERROR] Legacy env '%DIFRA_LEGACY_ENV%' resolved to '%LEGACY_ENV_PATH%', but python.exe is missing.
     exit /b 1
   )
 
-  set LEGACY_PY=
-  for /f "usebackq delims=" %%V in (`%CONDA_CMD% run -n %DIFRA_LEGACY_ENV% python -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2^>nul`) do set LEGACY_PY=%%V
+  for /f "usebackq delims=" %%V in (`"%DIFRA_LEGACY_PYTHON%" -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2^>nul`) do set LEGACY_PY=%%V
   if /I not "%LEGACY_PY%"=="3.7" (
     echo [ERROR] Legacy env '%DIFRA_LEGACY_ENV%' must be Python 3.7, found %LEGACY_PY%.
     exit /b 1
   )
   echo [INFO] Using legacy env: %DIFRA_LEGACY_ENV%
+  echo [INFO] Using legacy python: %DIFRA_LEGACY_PYTHON%
 ) else (
   if not exist "%DIFRA_LEGACY_PYTHON%" (
     echo [ERROR] DIFRA_LEGACY_PYTHON does not exist: %DIFRA_LEGACY_PYTHON%
