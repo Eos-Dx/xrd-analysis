@@ -121,11 +121,11 @@ if "%GRPC_CONFIG%"=="" (
 )
 
 REM Wait for sidecar socket readiness
-powershell -NoProfile -Command "$h='%SIDECAR_HOST%'; $p=[int]'%SIDECAR_PORT%'; $ok=$false; for($i=0;$i -lt 100;$i++){ try { $c=New-Object Net.Sockets.TcpClient; $c.Connect($h,$p); $c.Close(); $ok=$true; break } catch { Start-Sleep -Milliseconds 100 } }; if(-not $ok){ Write-Error \"Sidecar did not become ready at $h:$p\"; exit 1 }"
+powershell -NoProfile -Command "$h='%SIDECAR_HOST%'; $p=[int]'%SIDECAR_PORT%'; $ok=$false; for($i=0;$i -lt 100;$i++){ try { $c=New-Object Net.Sockets.TcpClient; $c.Connect($h,$p); $c.Close(); $ok=$true; break } catch { Start-Sleep -Milliseconds 100 } }; if(-not $ok){ Write-Error \"Sidecar did not become ready at $($h):$p\"; exit 1 }"
 if errorlevel 1 exit /b 1
 
 REM Wait for gRPC readiness
-powershell -NoProfile -Command "$h='%GRPC_HOST%'; $p=[int]'%GRPC_PORT%'; $ok=$false; for($i=0;$i -lt 100;$i++){ try { $c=New-Object Net.Sockets.TcpClient; $c.Connect($h,$p); $c.Close(); $ok=$true; break } catch { Start-Sleep -Milliseconds 100 } }; if(-not $ok){ Write-Error \"gRPC did not become ready at $h:$p\"; exit 1 }"
+powershell -NoProfile -Command "$h='%GRPC_HOST%'; $p=[int]'%GRPC_PORT%'; $ok=$false; for($i=0;$i -lt 100;$i++){ try { $c=New-Object Net.Sockets.TcpClient; $c.Connect($h,$p); $c.Close(); $ok=$true; break } catch { Start-Sleep -Milliseconds 100 } }; if(-not $ok){ Write-Error \"gRPC did not become ready at $($h):$p\"; exit 1 }"
 if errorlevel 1 exit /b 1
 
 set PIXET_BACKEND=sidecar
