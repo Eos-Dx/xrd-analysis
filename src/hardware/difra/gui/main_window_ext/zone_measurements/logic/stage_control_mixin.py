@@ -144,9 +144,22 @@ class StageControlMixin:
         ):
             x = self.xPosSpin.value()
             y = self.yPosSpin.value()
+            rt_active = False
+            try:
+                rt_active = bool(
+                    hasattr(self, "rtBtn")
+                    and self.rtBtn is not None
+                    and self.rtBtn.isChecked()
+                )
+            except Exception:
+                rt_active = False
             logging.info(
                 f"Stage goto operation started: target position ({x:.3f}, {y:.3f})"
             )
+            if rt_active:
+                logging.warning(
+                    "Stage move requested while RT display is active; this synchronous operation may temporarily block UI updates"
+                )
             try:
                 new_x, new_y = self.stage_controller.move_stage(x, y, move_timeout=25)
                 # Update position display and beam cross (but keep user's target values in spinboxes)
@@ -205,6 +218,17 @@ class StageControlMixin:
         from PyQt5.QtWidgets import QMessageBox
 
         logging.info("Stage home operation started")
+        try:
+            if (
+                hasattr(self, "rtBtn")
+                and self.rtBtn is not None
+                and self.rtBtn.isChecked()
+            ):
+                logging.warning(
+                    "Home move requested while RT display is active; this synchronous operation may temporarily block UI updates"
+                )
+        except Exception:
+            pass
         if hasattr(self, "stage_controller") and self.stage_controller is not None:
             try:
                 # Get home coordinates from controller configuration
@@ -242,6 +266,17 @@ class StageControlMixin:
         from PyQt5.QtWidgets import QMessageBox
 
         logging.info("Stage load position operation started")
+        try:
+            if (
+                hasattr(self, "rtBtn")
+                and self.rtBtn is not None
+                and self.rtBtn.isChecked()
+            ):
+                logging.warning(
+                    "Load move requested while RT display is active; this synchronous operation may temporarily block UI updates"
+                )
+        except Exception:
+            pass
         if hasattr(self, "stage_controller") and self.stage_controller is not None:
             try:
                 # Get load coordinates from controller configuration

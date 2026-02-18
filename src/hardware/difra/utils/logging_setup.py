@@ -1,5 +1,6 @@
 """Enhanced logging setup for Ulster application."""
 
+import faulthandler
 import json
 import logging
 import logging.handlers
@@ -119,6 +120,7 @@ def _default_log_path(app_name: str = "Ulster") -> Path:
 
 # Global context filter instance
 _context_filter = ContextFilter()
+_fault_log_handle = None
 
 
 def setup_logging(
@@ -214,6 +216,21 @@ def setup_logging(
 
     sys.excepthook = _excepthook
 
+    # Install threading exception hook so background-thread crashes are always logged.
+    if hasattr(threading, "excepthook"):
+        def _threading_excepthook(args):
+            logging.getLogger("uncaught.thread").critical(
+                "Uncaught exception in thread '%s'",
+                getattr(args.thread, "name", "unknown"),
+                exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+                extra={"operation": "uncaught_thread_exception"},
+            )
+
+        threading.excepthook = _threading_excepthook
+
+    # Enable low-level fault dumps (segfault, abort, etc.) to a sibling file.
+    _setup_fault_handler(log_path)
+
     # Redirect stdout/stderr if requested
     if capture_stdio:
         _setup_stdio_capture()
@@ -236,6 +253,33 @@ def setup_logging(
     )
 
     return log_path.resolve()
+
+
+def _setup_fault_handler(log_path: Path):
+    """Enable faulthandler output to a persistent crash log file."""
+    global _fault_log_handle
+
+    if not hasattr(faulthandler, "enable"):
+        return
+
+    # Avoid reopening/reinstalling on repeated setup calls.
+    if _fault_log_handle is not None:
+        return
+
+    try:
+        crash_log = Path(log_path).with_suffix(".crash.log")
+        crash_log.parent.mkdir(parents=True, exist_ok=True)
+        # Line-buffered text handle: keeps output available after abrupt failures.
+        _fault_log_handle = open(crash_log, "a", encoding="utf-8", buffering=1)
+        faulthandler.enable(file=_fault_log_handle, all_threads=True)
+        logging.getLogger("setup").info(
+            "Fault handler enabled",
+            extra={"operation": "fault_handler_setup", "crash_log": str(crash_log)},
+        )
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "Fault handler setup failed", exc_info=True
+        )
 
 
 def _setup_stdio_capture():

@@ -1,9 +1,11 @@
 import json
+import logging
 import os
 import queue
 import re
 import subprocess
 import sys
+import threading
 import time
 import uuid
 
@@ -142,6 +144,7 @@ except Exception:  # pragma: no cover - test stubs
 # These will be imported only when actually needed
 _TECHNICAL_IMPORTS_AVAILABLE = None  # None = not yet tested
 _technical_modules = {}
+logger = logging.getLogger(__name__)
 
 def _get_technical_imports():
     """Lazy import of technical modules to avoid startup crashes."""
@@ -564,16 +567,22 @@ class TechnicalMeasurementsMixin(_ZoneMeasurementsMixin):
                     lambda msg: self._log_technical_event(f"Movement error: {msg}")
                 )
                 self._log_technical_event("Continuous movement controller initialized")
-                print("Continuous movement controller initialized")
+                logger.info("Continuous movement controller initialized")
             else:
                 self._log_technical_event(
                     "No stage controller available for continuous movement"
                 )
-                print("No stage controller available for continuous movement")
+                logger.warning("No stage controller available for continuous movement")
         except ImportError as e:
-            print(f"Failed to import continuous movement controller: {e}")
+            logger.error(
+                "Failed to import continuous movement controller",
+                exc_info=True,
+            )
         except Exception as e:
-            print(f"Error initializing continuous movement controller: {e}")
+            logger.error(
+                "Error initializing continuous movement controller",
+                exc_info=True,
+            )
 
     def _browse_folder(self):
         f = QFileDialog.getExistingDirectory(self, "Select Folder")
@@ -1105,14 +1114,24 @@ fi
             )
 
     def _toggle_realtime(self, checked: bool):
-        if checked:
-            self._log_technical_event("Starting real-time measurement display")
-            self._start_realtime()
-            self.rtBtn.setText("Stop RT")
-        else:
-            self._log_technical_event("Stopping real-time measurement display")
-            self._stop_realtime()
-            self.rtBtn.setText("Real-time")
+        try:
+            if checked:
+                self._log_technical_event("Starting real-time measurement display")
+                self._start_realtime()
+                self.rtBtn.setText("Stop RT")
+            else:
+                self._log_technical_event("Stopping real-time measurement display")
+                self._stop_realtime()
+                self.rtBtn.setText("Real-time")
+        except Exception:
+            logger.exception("Failed to toggle real-time mode")
+            self._log_technical_event("RT toggle failed; see application logs")
+            try:
+                self.rtBtn.blockSignals(True)
+                self.rtBtn.setChecked(False)
+                self.rtBtn.setText("Real-time")
+            finally:
+                self.rtBtn.blockSignals(False)
 
     # ---- Deletion of selected Aux rows via Delete key (no file removal) ----
     def delete_selected_aux_rows(self):
@@ -1149,8 +1168,14 @@ fi
         return super().eventFilter(source, event)
 
     def _start_realtime(self):
+        if getattr(self, "_rt_active", False):
+            logger.warning("RT start requested while already active")
+            return
+
         exposure = float(self.integrationTimeSpin.value())
         self._rt_queue = queue.Queue()
+        self._rt_lock = threading.Lock()
+        self._rt_active = True
 
         plt.ion()
         detector_aliases = list(self.detector_controller.keys())
@@ -1178,43 +1203,79 @@ fi
         self._plot_timer.start()
 
         def callback(frames_dict):
-            # Cache most recent frame per alias
-            for alias, frame in frames_dict.items():
-                self._rt_last_frame[alias] = frame
-            self._rt_queue.put(True)  # Just a signal to the timer
+            try:
+                # Cache most recent frame per alias
+                with self._rt_lock:
+                    for alias, frame in frames_dict.items():
+                        self._rt_last_frame[alias] = frame
+                self._rt_queue.put(True)  # Just a signal to the timer
+            except Exception:
+                logger.exception("RT callback failed")
 
         # Start stream on all detectors
-        for controller in self.detector_controller.values():
-            controller.start_stream(
-                callback=callback, exposure=exposure, interval=0.0, frames=1
-            )
+        try:
+            for alias, controller in self.detector_controller.items():
+                logger.info("Starting detector RT stream", extra={"detector": alias})
+                controller.start_stream(
+                    callback=callback, exposure=exposure, interval=0.0, frames=1
+                )
+            logger.info("RT stream started", extra={"detectors": detector_aliases})
+        except Exception:
+            logger.exception("Failed to start detector RT stream")
+            self._rt_active = False
+            raise
 
     def _rt_plot_tick(self):
-        # Drain the queue (we only need to plot once per timer tick)
-        while True:
+        if not getattr(self, "_rt_active", False):
+            return
+        try:
+            # Drain the queue (we only need to plot once per timer tick)
+            while True:
+                try:
+                    _ = self._rt_queue.get_nowait()
+                except queue.Empty:
+                    break
+            # Update all subplots with their latest frame
+            with self._rt_lock:
+                frames_snapshot = dict(self._rt_last_frame)
+            for alias in self._rt_img:
+                frame = frames_snapshot.get(alias)
+                if frame is not None:
+                    self._rt_img[alias].set_data(frame)
+                    self._rt_img[alias].set_clim(frame.min(), frame.max())
+            self._rt_fig.canvas.draw_idle()
+        except Exception:
+            logger.exception("RT plot tick failed; stopping RT")
             try:
-                _ = self._rt_queue.get_nowait()
-            except queue.Empty:
-                break
-        # Update all subplots with their latest frame
-        for alias in self._rt_img:
-            frame = self._rt_last_frame.get(alias)
-            if frame is not None:
-                self._rt_img[alias].set_data(frame)
-                self._rt_img[alias].set_clim(frame.min(), frame.max())
-        self._rt_fig.canvas.draw_idle()
+                self._stop_realtime()
+            except Exception:
+                logger.exception("Failed to stop RT after plot-tick failure")
 
     def _stop_realtime(self):
-        for controller in self.detector_controller.values():
-            controller.stop_stream()
-        if hasattr(self, "_plot_timer"):
-            self._plot_timer.stop()
-            del self._plot_timer
-        import matplotlib.pyplot as plt
+        if not getattr(self, "_rt_active", False):
+            return
+        self._rt_active = False
+        try:
+            for alias, controller in self.detector_controller.items():
+                try:
+                    controller.stop_stream()
+                    logger.info("Stopped detector RT stream", extra={"detector": alias})
+                except Exception:
+                    logger.exception("Failed to stop detector RT stream")
+            if hasattr(self, "_plot_timer"):
+                self._plot_timer.stop()
+                del self._plot_timer
+            import matplotlib.pyplot as plt
 
-        plt.close(self._rt_fig)
-        del self._rt_queue
-        del self._rt_last_frame
+            if hasattr(self, "_rt_fig"):
+                plt.close(self._rt_fig)
+        finally:
+            if hasattr(self, "_rt_queue"):
+                del self._rt_queue
+            if hasattr(self, "_rt_last_frame"):
+                del self._rt_last_frame
+            if hasattr(self, "_rt_lock"):
+                del self._rt_lock
 
     # -------------------- Helpers for Aux Table --------------------
     def _get_active_detector_aliases(self):
