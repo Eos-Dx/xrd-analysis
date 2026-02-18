@@ -77,16 +77,32 @@ if errorlevel 1 (
   )
 )
 
-set SIDECAR_PY=
-for /f "usebackq delims=" %%V in (`%CONDA_CMD% run --live-stream --no-capture-output -n %SIDECAR_ENV% python -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2^>nul`) do set SIDECAR_PY=%%V
-if "%SIDECAR_PY%"=="" (
+set SIDECAR_PY_EXE=
+for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$conda='%CONDA_CMD%'; $conda=$conda.Trim('\"'); $target='%SIDECAR_ENV%'.ToLowerInvariant(); try { $payload=& $conda env list --json | ConvertFrom-Json } catch { exit 0 }; foreach($p in ($payload.envs | Where-Object { $_ })) { if ([System.IO.Path]::GetFileName($p).ToLowerInvariant() -eq $target) { $py=Join-Path $p 'python.exe'; if (Test-Path $py) { Write-Output $py }; break } }"`) do set SIDECAR_PY_EXE=%%P
+if "%SIDECAR_PY_EXE%"=="" (
   echo [ERROR] Sidecar env '%SIDECAR_ENV%' is not available.
   echo [ERROR] Install/create legacy ulster37 ^(Python 3.7^) or set DIFRA_SIDECAR_ENV.
   exit /b 1
 )
+set SIDECAR_PY=
+for /f "usebackq delims=" %%V in (`"%SIDECAR_PY_EXE%" -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2^>nul`) do set SIDECAR_PY=%%V
 if /I not "%SIDECAR_PY%"=="3.7" (
   echo [ERROR] Sidecar env '%SIDECAR_ENV%' must be Python 3.7, found %SIDECAR_PY%.
   echo [ERROR] Use legacy ulster37-like environment for Pixet sidecar.
+  exit /b 1
+)
+
+set GRPC_PY_EXE=
+for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$conda='%CONDA_CMD%'; $conda=$conda.Trim('\"'); $target='%GRPC_ENV%'.ToLowerInvariant(); try { $payload=& $conda env list --json | ConvertFrom-Json } catch { exit 0 }; foreach($p in ($payload.envs | Where-Object { $_ })) { if ([System.IO.Path]::GetFileName($p).ToLowerInvariant() -eq $target) { $py=Join-Path $p 'python.exe'; if (Test-Path $py) { Write-Output $py }; break } }"`) do set GRPC_PY_EXE=%%P
+if "%GRPC_PY_EXE%"=="" (
+  echo [ERROR] gRPC env '%GRPC_ENV%' is not available.
+  exit /b 1
+)
+
+set GUI_PY_EXE=
+for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$conda='%CONDA_CMD%'; $conda=$conda.Trim('\"'); $target='%GUI_ENV%'.ToLowerInvariant(); try { $payload=& $conda env list --json | ConvertFrom-Json } catch { exit 0 }; foreach($p in ($payload.envs | Where-Object { $_ })) { if ([System.IO.Path]::GetFileName($p).ToLowerInvariant() -eq $target) { $py=Join-Path $p 'python.exe'; if (Test-Path $py) { Write-Output $py }; break } }"`) do set GUI_PY_EXE=%%P
+if "%GUI_PY_EXE%"=="" (
+  echo [ERROR] GUI env '%GUI_ENV%' is not available.
   exit /b 1
 )
 
@@ -111,13 +127,13 @@ if /I "%GRPC_HOST%"=="127.0.0.1" (
 )
 
 echo [INFO] Starting sidecar env=%SIDECAR_ENV% endpoint=%SIDECAR_HOST%:%SIDECAR_PORT%
-start "DiFRA Sidecar" /B %CONDA_CMD% run --live-stream --no-capture-output -n %SIDECAR_ENV% python -u "%REPO_ROOT%\src\hardware\difra\scripts\pixet_sidecar_server.py" --host %SIDECAR_HOST% --port %SIDECAR_PORT%
+start "DiFRA Sidecar" /B "%SIDECAR_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\scripts\pixet_sidecar_server.py" --host %SIDECAR_HOST% --port %SIDECAR_PORT%
 
 echo [INFO] Starting gRPC env=%GRPC_ENV% endpoint=%GRPC_HOST%:%GRPC_PORT% config=%GRPC_CONFIG%
 if "%GRPC_CONFIG%"=="" (
-  start "DiFRA gRPC" /B %CONDA_CMD% run --live-stream --no-capture-output -n %GRPC_ENV% python -u "%REPO_ROOT%\src\hardware\difra\grpc_server\server.py" --host %GRPC_HOST% --port %GRPC_PORT%
+  start "DiFRA gRPC" /B "%GRPC_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\grpc_server\server.py" --host %GRPC_HOST% --port %GRPC_PORT%
 ) else (
-  start "DiFRA gRPC" /B %CONDA_CMD% run --live-stream --no-capture-output -n %GRPC_ENV% python -u "%REPO_ROOT%\src\hardware\difra\grpc_server\server.py" --host %GRPC_HOST% --port %GRPC_PORT% --config "%GRPC_CONFIG%"
+  start "DiFRA gRPC" /B "%GRPC_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\grpc_server\server.py" --host %GRPC_HOST% --port %GRPC_PORT% --config "%GRPC_CONFIG%"
 )
 
 REM Wait for sidecar socket readiness
@@ -136,6 +152,6 @@ set DIFRA_GRPC_HOST=%GRPC_HOST%
 set DIFRA_GRPC_PORT=%GRPC_PORT%
 
 echo [INFO] Starting DiFRA GUI env=%GUI_ENV% mode=%HARDWARE_CLIENT_MODE% grpc=%DIFRA_GRPC_HOST%:%DIFRA_GRPC_PORT% detector_backend=%DETECTOR_BACKEND%
-%CONDA_CMD% run --live-stream --no-capture-output -n %GUI_ENV% python -u "%REPO_ROOT%\src\hardware\difra\gui\main_app.py" %*
+"%GUI_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\gui\main_app.py" %*
 
 endlocal
