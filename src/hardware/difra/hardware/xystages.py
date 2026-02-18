@@ -686,6 +686,9 @@ class XYStageLibController(BaseStageController):
 
     def get_xy_position(self):
         with self._io_lock:
+            self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
+            self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
+            time.sleep(0.05)
             x_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.x_chan))
             y_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.y_chan))
             return x_dev / self.scaling_factor, y_dev / self.scaling_factor

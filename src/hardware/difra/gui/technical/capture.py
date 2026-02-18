@@ -17,6 +17,33 @@ from xrdanalysis.data_processing.azimuthal_integration import (
 from xrdanalysis.data_processing.utility_functions import create_mask
 
 
+def _load_measurement_array(measurement_filename: str) -> np.ndarray:
+    path = Path(str(measurement_filename))
+    if not path.exists():
+        raise FileNotFoundError(f"Measurement file does not exist: {path}")
+
+    suffix = path.suffix.lower()
+    if suffix == ".txt":
+        loaders = (np.loadtxt, np.load)
+    elif suffix == ".npy":
+        loaders = (np.load, np.loadtxt)
+    else:
+        loaders = (np.load, np.loadtxt)
+
+    last_error = None
+    for loader in loaders:
+        try:
+            data = loader(path)
+            arr = np.asarray(data, dtype=float)
+            if arr.ndim != 2:
+                raise ValueError(f"Expected 2D array, got shape {arr.shape}")
+            return arr
+        except Exception as exc:
+            last_error = exc
+
+    raise RuntimeError(f"Failed to load measurement file '{path}': {last_error}")
+
+
 class CaptureWorker(QObject):
     finished = pyqtSignal(bool, dict)  # success, {alias: converted_file_path}
 
@@ -211,7 +238,7 @@ def show_measurement_window(
     import matplotlib.pyplot as plt
 
     # Load data
-    data = np.load(measurement_filename)
+    data = _load_measurement_array(measurement_filename)
 
     # Choose integrator
     if poni_text:
@@ -260,8 +287,7 @@ def show_measurement_window(
 
         cake, _, _ = ai.integrate2d(data, 200, npt_azim=180, mask=mask)
     except Exception as e:
-        print(f"Error integrating data: {e}")
-        return None
+        raise RuntimeError(f"Error integrating data for '{measurement_filename}': {e}")
 
     # Create dialog and layout
     try:
@@ -409,9 +435,9 @@ def compute_hf_score_from_cake(
     from a 2D 'cake' integration array.
     """
     try:
-        data = np.load(measurement_filename)
+        data = _load_measurement_array(measurement_filename)
     except Exception as e:
-        print(e)
+        print(f"Failed to load measurement '{measurement_filename}': {e}")
         return -1
 
     # Choose integrator

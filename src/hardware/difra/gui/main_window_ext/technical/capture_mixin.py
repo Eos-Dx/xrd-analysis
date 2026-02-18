@@ -230,10 +230,27 @@ class TechnicalCaptureMixin:
         if not file_item:
             return
         file_path = file_item.data(tm.Qt.UserRole)
+        resolved_path = str(file_path or "").strip()
+        if resolved_path and not os.path.exists(resolved_path):
+            folder = (self.folderLE.text() or "").strip()
+            candidate = os.path.join(folder, os.path.basename(resolved_path)) if folder else ""
+            if candidate and os.path.exists(candidate):
+                resolved_path = candidate
 
         self._log_technical_event(
-            f"Opening measurement file: {os.path.basename(file_path) if file_path else 'Unknown'}"
+            f"Opening measurement file: {os.path.basename(resolved_path) if resolved_path else 'Unknown'}"
         )
+
+        if not resolved_path or not os.path.exists(resolved_path):
+            tm.QMessageBox.warning(
+                self,
+                "File Not Found",
+                f"Measurement file is missing:\n{resolved_path or str(file_path)}",
+            )
+            self._log_technical_event(
+                f"Cannot open measurement: missing file {resolved_path or str(file_path)}"
+            )
+            return
 
         alias_cb = self.auxTable.cellWidget(row, self.AUX_COL_ALIAS)
         alias = None
@@ -258,7 +275,17 @@ class TechnicalCaptureMixin:
             return
 
         show_measurement_window = self._get_technical_module("show_measurement_window")
-        show_measurement_window(file_path, self.masks.get(alias), self.ponis.get(alias), self)
+        try:
+            show_measurement_window(
+                resolved_path, self.masks.get(alias), self.ponis.get(alias), self
+            )
+        except Exception as exc:
+            self._log_technical_event(f"Failed to open measurement window: {exc}")
+            tm.QMessageBox.warning(
+                self,
+                "Open Measurement Failed",
+                f"Could not open measurement file:\n{resolved_path}\n\nError: {exc}",
+            )
 
     def run_pyfai(self):
         self._log_technical_event("Starting PyFAI calibration...")

@@ -98,6 +98,41 @@ class StageControlMixin:
         if hasattr(self, "loadPosBtn"):
             self.loadPosBtn.setEnabled(hardware_ok and move_ready)
 
+    def sync_hardware_state_from_backend(self) -> None:
+        """Mirror backend initialization state in UI if stack is already running."""
+        try:
+            client = self._ensure_hardware_client()
+            readiness = client.get_command_readiness()
+        except Exception as exc:
+            logging.debug("Backend state sync skipped: %s", exc)
+            return
+
+        motion_item = readiness.get(("DeviceInitialization", "InitializeMotion"))
+        detector_item = readiness.get(("DeviceInitialization", "InitializeDetector"))
+        stage_initialized = bool(motion_item is not None and not motion_item.ready)
+        detector_initialized = bool(detector_item is not None and not detector_item.ready)
+        hardware_ok = bool(stage_initialized and detector_initialized)
+
+        self._apply_readiness_to_controls(hardware_ok)
+        if not hardware_ok:
+            return
+
+        self.hardware_controller = client.hardware_controller
+        self.stage_controller = client.stage_controller
+        self.detector_controller = client.detector_controllers
+        self.xyStageIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
+        self.cameraIndicator.setStyleSheet("background-color: green; border-radius: 10px;")
+        self.initializeBtn.setText("Deinitialize Hardware")
+        if not getattr(self, "hardware_initialized", False):
+            self.hardware_initialized = True
+            if hasattr(self, "hardware_state_changed"):
+                self.hardware_state_changed.emit(True)
+            try:
+                self.refresh_detector_tabs_for_mode_switch()
+            except Exception as exc:
+                logging.debug("Detector tab refresh during backend sync failed: %s", exc)
+        self.update_xy_pos()
+
     def toggle_hardware(self):
         """
         Toggle hardware initialization state and keep GUI routed through a dual-path

@@ -288,7 +288,9 @@ class ZoneMeasurementsUIMixin:
 
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
-        self.xyTimer.start(10000)
+        self.xyTimer.start(1000)
+        self.update_xy_pos()
+        QTimer.singleShot(300, self.sync_hardware_state_from_backend)
 
     def _create_distance_buttons(self, layout):
         """

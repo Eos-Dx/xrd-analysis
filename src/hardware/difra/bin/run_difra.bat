@@ -160,9 +160,13 @@ set DIFRA_GRPC_PORT=%GRPC_PORT%
 echo [INFO] Starting DiFRA GUI env=%GUI_ENV% mode=%HARDWARE_CLIENT_MODE% grpc=%DIFRA_GRPC_HOST%:%DIFRA_GRPC_PORT% detector_backend=%DETECTOR_BACKEND%
 set "PATH=%GUI_LAUNCH_PATH%"
 "%GUI_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\gui\main_app.py" %*
+set "GUI_EXIT_CODE=%ERRORLEVEL%"
+set "PATH=%ORIGINAL_PATH%"
 
-endlocal
-goto :eof
+call :stop_local_listener "%SIDECAR_HOST%" "%SIDECAR_PORT%" "Detector sidecar"
+call :stop_local_listener "%GRPC_HOST%" "%GRPC_PORT%" "DiFRA gRPC server"
+
+endlocal & exit /b %GUI_EXIT_CODE%
 
 :resolve_env_python
 setlocal
@@ -181,3 +185,20 @@ if defined ENV_PATH (
 )
 
 endlocal & set "%~2=" & exit /b 0
+
+:stop_local_listener
+setlocal
+set "TARGET_HOST=%~1"
+set "TARGET_PORT=%~2"
+set "TARGET_LABEL=%~3"
+
+if /I "%TARGET_HOST%"=="127.0.0.1" goto :do_stop_listener
+if /I "%TARGET_HOST%"=="localhost" goto :do_stop_listener
+if /I "%TARGET_HOST%"=="::1" goto :do_stop_listener
+if /I "%TARGET_HOST%"=="0.0.0.0" goto :do_stop_listener
+echo [WARN] %TARGET_LABEL% host is non-local ^(%TARGET_HOST%^) - skipping stop.
+endlocal & exit /b 0
+
+:do_stop_listener
+powershell -NoProfile -Command "$p=[int]'%TARGET_PORT%'; try { $ids=Get-NetTCPConnection -State Listen -LocalPort $p -ErrorAction Stop | Select-Object -ExpandProperty OwningProcess -Unique; foreach($id in $ids){ try { Stop-Process -Id $id -Force -ErrorAction Stop; Write-Host ('[INFO] Stopped process PID ' + $id + ' on port ' + $p) } catch {} } } catch {}"
+endlocal & exit /b 0
