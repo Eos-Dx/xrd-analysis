@@ -99,6 +99,15 @@ if "%GUI_PY_EXE%"=="" (
   exit /b 1
 )
 
+for %%I in ("%SIDECAR_PY_EXE%") do set "SIDECAR_ENV_ROOT=%%~dpI"
+for %%I in ("%GRPC_PY_EXE%") do set "GRPC_ENV_ROOT=%%~dpI"
+for %%I in ("%GUI_PY_EXE%") do set "GUI_ENV_ROOT=%%~dpI"
+
+set "ORIGINAL_PATH=%PATH%"
+set "SIDECAR_LAUNCH_PATH=%SIDECAR_ENV_ROOT%;%SIDECAR_ENV_ROOT%Library\mingw-w64\bin;%SIDECAR_ENV_ROOT%Library\usr\bin;%SIDECAR_ENV_ROOT%Library\bin;%SIDECAR_ENV_ROOT%Scripts;%SIDECAR_ENV_ROOT%bin;%ORIGINAL_PATH%"
+set "GRPC_LAUNCH_PATH=%GRPC_ENV_ROOT%;%GRPC_ENV_ROOT%Library\mingw-w64\bin;%GRPC_ENV_ROOT%Library\usr\bin;%GRPC_ENV_ROOT%Library\bin;%GRPC_ENV_ROOT%Scripts;%GRPC_ENV_ROOT%bin;%ORIGINAL_PATH%"
+set "GUI_LAUNCH_PATH=%GUI_ENV_ROOT%;%GUI_ENV_ROOT%Library\mingw-w64\bin;%GUI_ENV_ROOT%Library\usr\bin;%GUI_ENV_ROOT%Library\bin;%GUI_ENV_ROOT%Scripts;%GUI_ENV_ROOT%bin;%ORIGINAL_PATH%"
+
 cd /d %REPO_ROOT%
 set PYTHONPATH=%REPO_ROOT%\src;%PYTHONPATH%
 set PYTHONUNBUFFERED=1
@@ -120,14 +129,18 @@ if /I "%GRPC_HOST%"=="127.0.0.1" (
 )
 
 echo [INFO] Starting sidecar env=%SIDECAR_ENV% endpoint=%SIDECAR_HOST%:%SIDECAR_PORT%
+set "PATH=%SIDECAR_LAUNCH_PATH%"
 start "DiFRA Sidecar" /B "%SIDECAR_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\scripts\pixet_sidecar_server.py" --host %SIDECAR_HOST% --port %SIDECAR_PORT%
+set "PATH=%ORIGINAL_PATH%"
 
 echo [INFO] Starting gRPC env=%GRPC_ENV% endpoint=%GRPC_HOST%:%GRPC_PORT% config=%GRPC_CONFIG%
+set "PATH=%GRPC_LAUNCH_PATH%"
 if "%GRPC_CONFIG%"=="" (
   start "DiFRA gRPC" /B "%GRPC_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\grpc_server\server.py" --host %GRPC_HOST% --port %GRPC_PORT%
 ) else (
   start "DiFRA gRPC" /B "%GRPC_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\grpc_server\server.py" --host %GRPC_HOST% --port %GRPC_PORT% --config "%GRPC_CONFIG%"
 )
+set "PATH=%ORIGINAL_PATH%"
 
 REM Wait for sidecar socket readiness
 powershell -NoProfile -Command "$h='%SIDECAR_HOST%'; $p=[int]'%SIDECAR_PORT%'; $ok=$false; for($i=0;$i -lt 100;$i++){ try { $c=New-Object Net.Sockets.TcpClient; $c.Connect($h,$p); $c.Close(); $ok=$true; break } catch { Start-Sleep -Milliseconds 100 } }; if(-not $ok){ Write-Error \"Sidecar did not become ready at $($h):$p\"; exit 1 }"
@@ -145,6 +158,7 @@ set DIFRA_GRPC_HOST=%GRPC_HOST%
 set DIFRA_GRPC_PORT=%GRPC_PORT%
 
 echo [INFO] Starting DiFRA GUI env=%GUI_ENV% mode=%HARDWARE_CLIENT_MODE% grpc=%DIFRA_GRPC_HOST%:%DIFRA_GRPC_PORT% detector_backend=%DETECTOR_BACKEND%
+set "PATH=%GUI_LAUNCH_PATH%"
 "%GUI_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\gui\main_app.py" %*
 
 endlocal
