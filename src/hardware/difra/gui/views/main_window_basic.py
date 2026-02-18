@@ -457,3 +457,8 @@ class MainWindowBasic(QMainWindow):
             QMessageBox.critical(self, "Error", f"Cannot write config file:\n{e}")
             return
         self.update_dev_visuals()
+        if hasattr(self, "on_config_mode_changed"):
+            try:
+                self.on_config_mode_changed(new_dev)
+            except Exception as exc:
+                logger.warning("Failed to apply mode switch updates", error=str(exc))

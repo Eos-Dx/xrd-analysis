@@ -237,10 +237,27 @@ def show_measurement_window(
         result = ai.integrate1d(
             data, npt, unit="q_nm^-1", error_model="azimuthal", mask=mask
         )
-        radial = result.radial
-        intensity = result.intensity
-        std = result.std
-        sigma = result.sigma
+        radial = np.asarray(result.radial, dtype=float).reshape(-1)
+        intensity = np.asarray(result.intensity, dtype=float).reshape(-1)
+        std = np.asarray(result.std, dtype=float).reshape(-1)
+        sigma = np.asarray(result.sigma, dtype=float).reshape(-1)
+
+        min_len = min(radial.size, intensity.size, std.size, sigma.size)
+        if min_len <= 0:
+            raise ValueError("Integration produced empty radial/intensity arrays")
+        radial = radial[:min_len]
+        intensity = intensity[:min_len]
+        std = std[:min_len]
+        sigma = sigma[:min_len]
+
+        finite = np.isfinite(radial) & np.isfinite(intensity)
+        if not np.any(finite):
+            raise ValueError("Integration produced only NaN/Inf values")
+        radial = radial[finite]
+        intensity = intensity[finite]
+        std = std[finite]
+        sigma = sigma[finite]
+
         cake, _, _ = ai.integrate2d(data, 200, npt_azim=180, mask=mask)
     except Exception as e:
         print(f"Error integrating data: {e}")
@@ -297,7 +314,7 @@ def show_measurement_window(
     ax2.errorbar(
         radial,
         intensity,
-        yerr=sigma,
+        yerr=np.where(np.isfinite(sigma) & (sigma >= 0), sigma, np.nan),
         fmt="-o",
         markersize=3,
         linewidth=1,
@@ -306,9 +323,19 @@ def show_measurement_window(
         capthick=1,
         label="Intensity ± σ",
     )
-    xmin, xmax = radial.min(), radial.max()
-    ax2.set_xlim(xmin, xmax * 1.3)
-    ax2.set_yscale("log")
+    xmin = float(np.nanmin(radial))
+    xmax = float(np.nanmax(radial))
+    xright = xmax * 1.3 if xmax > 0 else xmax + 1.0
+    if (not np.isfinite(xmin)) or (not np.isfinite(xright)) or (xright <= xmin):
+        xleft = 0.0
+        xright = max(1.0, abs(xmax)) * 1.3
+    else:
+        xleft = xmin
+    ax2.set_xlim(xleft, xright)
+    if np.any(np.isfinite(intensity) & (intensity > 0)):
+        ax2.set_yscale("log")
+    else:
+        ax2.set_yscale("linear")
     ax2.set_title("Azimuthal Integration")
     ax2.set_xlabel("q (nm⁻¹)")
     ax2.set_ylabel("Intensity")
@@ -327,7 +354,13 @@ def show_measurement_window(
     ax_std.tick_params(labelsize="x-small", axis="both", which="both")
 
     # 4) inset for SNR = I / σ (below the std inset)
-    snr = intensity / sigma
+    safe_sigma = np.where(np.isfinite(sigma) & (sigma > 0), sigma, np.nan)
+    snr = np.divide(
+        intensity,
+        safe_sigma,
+        out=np.full_like(intensity, np.nan, dtype=float),
+        where=np.isfinite(safe_sigma),
+    )
     ax_snr = inset_axes(
         ax2,
         width="30%",

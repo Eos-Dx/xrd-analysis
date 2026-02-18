@@ -24,8 +24,9 @@ CoreCommandDescriptor = _module.CoreCommandDescriptor
 
 
 class DifraServiceState:
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], config_path: Optional[str] = None):
         self.config = config
+        self._config_path = str(config_path) if config_path else None
         self.hardware_controller = HardwareController(config)
         self.stage_controller = None
         self.detector_controllers: Dict[str, Any] = {}
@@ -58,6 +59,22 @@ class DifraServiceState:
         self._last_exposure_result: Optional[hub_pb2.ExposureResult] = None
 
         self._command_descriptors = self._load_command_descriptors()
+
+    def _reload_config_from_disk(self) -> None:
+        if not self._config_path:
+            return
+        try:
+            refreshed = _module.load_difra_config(self._config_path)
+        except Exception as exc:
+            print(f"[WARN] Failed to reload gRPC config from {self._config_path}: {exc}")
+            return
+
+        self.config = refreshed
+        self.hardware_controller = HardwareController(refreshed)
+        self.stage_controller = None
+        self.detector_controllers = {}
+        self.stage_initialized = False
+        self.detector_initialized = False
 
     def _protocol_command_dir(self) -> Path:
         return Path(__file__).resolve().parents[2] / "protocol" / "commands" / "v1"
@@ -184,6 +201,8 @@ class DifraServiceState:
     ) -> Tuple[bool, bool]:
         self._guard_mutating_command()
         async with self._lock:
+            if not self.stage_initialized and not self.detector_initialized:
+                self._reload_config_from_disk()
             stage_ok, detector_ok = await asyncio.to_thread(
                 self.hardware_controller.initialize,
                 init_stage=init_stage,

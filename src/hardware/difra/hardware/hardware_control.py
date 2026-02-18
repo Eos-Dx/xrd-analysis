@@ -53,7 +53,7 @@ class HardwareController:
         return aliases
 
     def initialize(self, init_stage: bool = True, init_detector: bool = True):
-        dev_mode = self.config.get("DEV", True)
+        dev_mode = self.config.get("DEV", False)
         detector_success = bool(self.detectors)
         stage_success = bool(self.stage_controller)
 

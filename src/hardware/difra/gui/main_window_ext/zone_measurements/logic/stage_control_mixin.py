@@ -19,7 +19,7 @@ class StageControlMixin:
         stages = cfg.get("translation_stages", [])
         selected_ids = (
             cfg.get("dev_active_stages", [])
-            if cfg.get("DEV", True)
+            if cfg.get("DEV", False)
             else cfg.get("active_translation_stages", [])
         )
         for stage in stages:

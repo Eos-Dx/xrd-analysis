@@ -71,10 +71,17 @@ from hardware.difra.grpc_server.difra_services import (
 
 
 class DifraGrpcServer:
-    def __init__(self, config: Dict[str, Any], host: str = "127.0.0.1", port: int = 50061):
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        host: str = "127.0.0.1",
+        port: int = 50061,
+        config_path: Optional[str] = None,
+    ):
         self.config = config
         self.host = host
         self.port = port
+        self.config_path = config_path
 
         detector_backend = str(os.environ.get("DETECTOR_BACKEND", "")).lower().strip()
         if detector_backend not in {"sidecar", "socket", "ipc"}:
@@ -84,7 +91,7 @@ class DifraGrpcServer:
             os.environ["DETECTOR_BACKEND"] = "sidecar"
             os.environ["PIXET_BACKEND"] = "sidecar"
 
-        self.state = DifraServiceState(config)
+        self.state = DifraServiceState(config, config_path=config_path)
         self.server = grpc.aio.server()
 
         hub_pb2_grpc.add_AcquisitionServicer_to_server(
@@ -115,14 +122,51 @@ class DifraGrpcServer:
 
 
 async def start_grpc_server(
-    config: Dict[str, Any], host: str = "127.0.0.1", port: int = 50061
+    config: Dict[str, Any],
+    host: str = "127.0.0.1",
+    port: int = 50061,
+    config_path: Optional[str] = None,
 ) -> DifraGrpcServer:
-    server = DifraGrpcServer(config=config, host=host, port=port)
+    server = DifraGrpcServer(
+        config=config,
+        host=host,
+        port=port,
+        config_path=config_path,
+    )
     await server.start()
     return server
 
 
 def load_difra_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    def _read_json(path: Path) -> Dict[str, Any]:
+        if not path.exists():
+            return {}
+        return json.loads(path.read_text())
+
+    def _merged_setup_config(setup_path: Path) -> Dict[str, Any]:
+        config_root = setup_path.parent.parent
+        global_path = config_root / "global.json"
+        merged = _read_json(global_path)
+        merged.update(_read_json(setup_path))
+
+        folder_keys = (
+            "difra_base_folder",
+            "technical_folder",
+            "technical_archive_folder",
+            "measurements_folder",
+            "measurements_archive_folder",
+        )
+        if os.name == "nt":
+            main_name = "main_win.json" if os.name == "nt" else "main.json"
+            legacy_path = config_root / main_name
+            if not legacy_path.exists():
+                legacy_path = config_root / "main.json"
+            legacy_cfg = _read_json(legacy_path)
+            for key in folder_keys:
+                if legacy_cfg.get(key):
+                    merged[key] = legacy_cfg[key]
+        return merged
+
     if config_path:
         path = Path(config_path)
     else:
@@ -134,12 +178,19 @@ def load_difra_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"DiFRA config not found: {path}")
 
-    return json.loads(path.read_text())
+    if path.parent.name == "setups":
+        return _merged_setup_config(path)
+    return _read_json(path)
 
 
 async def _serve_forever(config_path: Optional[str], host: str, port: int) -> None:
     config = load_difra_config(config_path)
-    server = await start_grpc_server(config=config, host=host, port=port)
+    server = await start_grpc_server(
+        config=config,
+        host=host,
+        port=port,
+        config_path=config_path,
+    )
     try:
         await server.server.wait_for_termination()
     finally:
