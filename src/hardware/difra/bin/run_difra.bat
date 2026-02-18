@@ -81,7 +81,7 @@ set SIDECAR_PY=
 for /f "usebackq delims=" %%V in (`%CONDA_CMD% run --live-stream --no-capture-output -n %SIDECAR_ENV% python -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2^>nul`) do set SIDECAR_PY=%%V
 if "%SIDECAR_PY%"=="" (
   echo [ERROR] Sidecar env '%SIDECAR_ENV%' is not available.
-  echo [ERROR] Install/create legacy ulster37 (Python 3.7) or set DIFRA_SIDECAR_ENV.
+  echo [ERROR] Install/create legacy ulster37 ^(Python 3.7^) or set DIFRA_SIDECAR_ENV.
   exit /b 1
 )
 if /I not "%SIDECAR_PY%"=="3.7" (
