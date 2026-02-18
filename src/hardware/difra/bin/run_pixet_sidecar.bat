@@ -51,6 +51,17 @@ cd /d %REPO_ROOT%
 set PYTHONPATH=%REPO_ROOT%\src;%PYTHONPATH%
 set PYTHONUNBUFFERED=1
 
+set SIDECAR_PY=
+for /f "usebackq delims=" %%V in (`%CONDA_CMD% run --live-stream --no-capture-output -n %SIDECAR_ENV% python -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2^>nul`) do set SIDECAR_PY=%%V
+if "%SIDECAR_PY%"=="" (
+  echo [ERROR] Sidecar env '%SIDECAR_ENV%' is not available.
+  exit /b 1
+)
+if /I not "%SIDECAR_PY%"=="3.7" (
+  echo [ERROR] Sidecar env '%SIDECAR_ENV%' must be Python 3.7, found %SIDECAR_PY%.
+  exit /b 1
+)
+
 echo [INFO] Starting PIXet sidecar in env: %SIDECAR_ENV%
 echo [INFO] Sidecar endpoint: %SIDECAR_HOST%:%SIDECAR_PORT%
 

@@ -26,16 +26,21 @@ if [ -z "$GUI_ENV" ]; then
   GUI_ENV="eosdx13"
 fi
 
-if [ -n "${DIFRA_SIDECAR_ENV:-}" ]; then
-  SIDECAR_ENV="${DIFRA_SIDECAR_ENV}"
-else
-  if conda run --live-stream --no-capture-output -n ulster37 python -c "import sys; sys.exit(0)" >/dev/null 2>&1; then
-    SIDECAR_ENV="ulster37"
-  elif conda run --live-stream --no-capture-output -n ulster38 python -c "import sys; sys.exit(0)" >/dev/null 2>&1; then
-    SIDECAR_ENV="ulster38"
-  else
-    SIDECAR_ENV="ulster37"
-  fi
+SIDECAR_ENV="${DIFRA_SIDECAR_ENV:-ulster37}"
+if ! conda run --live-stream --no-capture-output -n "$SIDECAR_ENV" python -c "import sys; sys.exit(0)" >/dev/null 2>&1; then
+  echo "[ERROR] Sidecar env '$SIDECAR_ENV' is not available."
+  echo "[ERROR] Install/create the legacy env (expected: ulster37 / Python 3.7) or set DIFRA_SIDECAR_ENV."
+  exit 1
+fi
+SIDECAR_PY_VERSION="$(
+  conda run --live-stream --no-capture-output -n "$SIDECAR_ENV" \
+    python -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" \
+    2>/dev/null | tail -n 1
+)"
+if [ "$SIDECAR_PY_VERSION" != "3.7" ]; then
+  echo "[ERROR] Sidecar env '$SIDECAR_ENV' must be Python 3.7, found '$SIDECAR_PY_VERSION'."
+  echo "[ERROR] Use legacy ulster37-like environment for Pixet sidecar."
+  exit 1
 fi
 SIDECAR_HOST="${PIXET_SIDECAR_HOST:-127.0.0.1}"
 SIDECAR_PORT="${PIXET_SIDECAR_PORT:-51001}"

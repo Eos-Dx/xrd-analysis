@@ -68,7 +68,7 @@ class HardwareController:
             selected_detectors = [d for d in detector_list if d["id"] in selected_ids]
 
             def _resolve_detector_class(det_cfg):
-                det_type = det_cfg.get("type")
+                det_type = str(det_cfg.get("type", "")).strip()
                 env_detector_backend = str(
                     os.environ.get("DETECTOR_BACKEND", "")
                 ).lower().strip()
@@ -76,21 +76,22 @@ class HardwareController:
                     env_detector_backend
                     or det_cfg.get("detector_backend", det_cfg.get("backend", ""))
                 ).lower().strip()
+
+                if det_type in {"Pixet", "PixetLegacy", "PixetSidecar"}:
+                    if detector_backend not in {"sidecar", "socket", "ipc"}:
+                        print(
+                            "⚠ Pixet detectors are restricted to legacy sidecar mode; "
+                            f"forcing DETECTOR_BACKEND=sidecar (was '{detector_backend or 'unset'}')."
+                        )
+                    os.environ["DETECTOR_BACKEND"] = "sidecar"
+                    os.environ["PIXET_BACKEND"] = "sidecar"
+                    return "PixetSidecar", PixetSidecarDetectorController
+
                 if detector_backend in {"sidecar", "socket", "ipc"} and det_type in {
                     "Pixet",
                     "DummyDetector",
                 }:
                     return "PixetSidecar", PixetSidecarDetectorController
-                if det_type == "Pixet":
-                    env_backend = str(os.environ.get("PIXET_BACKEND", "")).lower().strip()
-                    backend = str(
-                        env_backend
-                        or det_cfg.get("pixet_backend", det_cfg.get("backend", "ctypes"))
-                    ).lower().strip()
-                    if backend in {"legacy", "pypixet", "py37"}:
-                        return "PixetLegacy", PixetLegacyDetectorController
-                    if backend in {"sidecar", "socket", "ipc"}:
-                        return "PixetSidecar", PixetSidecarDetectorController
                 return det_type, DETECTOR_CLASSES.get(det_type)
 
             self.detectors = {}

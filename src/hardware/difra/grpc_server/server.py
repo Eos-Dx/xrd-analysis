@@ -75,6 +75,15 @@ class DifraGrpcServer:
         self.config = config
         self.host = host
         self.port = port
+
+        detector_backend = str(os.environ.get("DETECTOR_BACKEND", "")).lower().strip()
+        if detector_backend not in {"sidecar", "socket", "ipc"}:
+            print(
+                f"[WARN] DETECTOR_BACKEND={detector_backend or 'unset'} is not allowed; forcing sidecar"
+            )
+            os.environ["DETECTOR_BACKEND"] = "sidecar"
+            os.environ["PIXET_BACKEND"] = "sidecar"
+
         self.state = DifraServiceState(config)
         self.server = grpc.aio.server()
 

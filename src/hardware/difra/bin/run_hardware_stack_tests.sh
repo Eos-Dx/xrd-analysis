@@ -49,8 +49,6 @@ payload = json.loads(sys.argv[1])
 names = {Path(p).name for p in payload.get("envs", [])}
 if "ulster37" in names:
     print("ulster37")
-elif "ulster38" in names:
-    print("ulster38")
 else:
     print("")
 PY
@@ -59,12 +57,28 @@ PY
       export DIFRA_LEGACY_ENV
       echo "[INFO] Using legacy env: $DIFRA_LEGACY_ENV"
     else
-      echo "[WARN] ulster38/ulster37 not found; tests will use current Python unless DIFRA_LEGACY_PYTHON is set."
+      echo "[ERROR] Legacy sidecar env 'ulster37' not found."
+      echo "[ERROR] Set DIFRA_LEGACY_ENV=ulster37 or DIFRA_LEGACY_PYTHON to Python 3.7."
+      exit 1
     fi
   else
     echo "[INFO] Using requested legacy env: $DIFRA_LEGACY_ENV"
   fi
+  LEGACY_PY_VERSION="$(
+    conda run --no-capture-output -n "$DIFRA_LEGACY_ENV" \
+      python -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" \
+      2>/dev/null | tail -n 1
+  )"
+  if [ "$LEGACY_PY_VERSION" != "3.7" ]; then
+    echo "[ERROR] Legacy env '$DIFRA_LEGACY_ENV' must be Python 3.7, found '$LEGACY_PY_VERSION'."
+    exit 1
+  fi
 else
+  LEGACY_PY_VERSION="$("$DIFRA_LEGACY_PYTHON" -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2>/dev/null || true)"
+  if [ "$LEGACY_PY_VERSION" != "3.7" ]; then
+    echo "[ERROR] DIFRA_LEGACY_PYTHON must be Python 3.7, found '$LEGACY_PY_VERSION'."
+    exit 1
+  fi
   echo "[INFO] Using explicit legacy python: $DIFRA_LEGACY_PYTHON"
 fi
 

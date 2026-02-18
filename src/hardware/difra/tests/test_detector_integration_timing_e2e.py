@@ -80,10 +80,36 @@ def _resolve_legacy_sidecar_command(host: str, port: int) -> list[str]:
             str(port),
         ]
 
-    candidate_envs = [requested_env] if requested_env else ["ulster37", "ulster38"]
+    candidate_envs = [requested_env] if requested_env else ["ulster37"]
     available_envs = _list_conda_env_names()
     chosen_env = next((name for name in candidate_envs if name in available_envs), "")
     if chosen_env:
+        try:
+            version_check = subprocess.run(
+                [
+                    conda_exe,
+                    "run",
+                    "--no-capture-output",
+                    "-n",
+                    chosen_env,
+                    "python",
+                    "-c",
+                    "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            py_ver = (version_check.stdout or "").strip().splitlines()[-1]
+            if py_ver != "3.7":
+                raise RuntimeError(
+                    f"Legacy env '{chosen_env}' must be Python 3.7, found '{py_ver}'"
+                )
+        except Exception as exc:
+            raise RuntimeError(
+                "Legacy sidecar runtime validation failed. "
+                "Set DIFRA_LEGACY_ENV=ulster37 or DIFRA_LEGACY_PYTHON to Python 3.7."
+            ) from exc
         return [
             conda_exe,
             "run",
@@ -100,15 +126,10 @@ def _resolve_legacy_sidecar_command(host: str, port: int) -> list[str]:
             str(port),
         ]
 
-    return [
-        sys.executable,
-        "-u",
-        str(SIDECAR_SCRIPT),
-        "--host",
-        host,
-        "--port",
-        str(port),
-    ]
+    raise RuntimeError(
+        "No valid legacy sidecar runtime found. "
+        "Set DIFRA_LEGACY_ENV=ulster37 or DIFRA_LEGACY_PYTHON to Python 3.7."
+    )
 
 
 def _free_tcp_port() -> int:

@@ -139,6 +139,7 @@ class DummyStageController(BaseStageController):
     def __init__(self, config):
         self._x = 0.0
         self._y = 0.0
+        self._io_lock = threading.RLock()
         self.alias = config.get("alias", "DUMMY")
         self.id = config.get("id", "DUMMY-000")
         self._limits = self._parse_limits(config)
@@ -149,29 +150,32 @@ class DummyStageController(BaseStageController):
         return True
 
     def home_stage(self, timeout_s=45):
-        logging.info(f"Dummy stage '{self.alias}' homing operation started")
-        print(f"Dummy stage '{self.alias}' homing.")
-        time.sleep(1)
-        self._x, self._y = 0.0, 0.0
-        return self._x, self._y
+        with self._io_lock:
+            logging.info(f"Dummy stage '{self.alias}' homing operation started")
+            print(f"Dummy stage '{self.alias}' homing.")
+            time.sleep(1)
+            self._x, self._y = 0.0, 0.0
+            return self._x, self._y
 
     def move_stage(self, x_mm, y_mm, move_timeout=20):
-        # Check axis limits before moving
-        self._check_axis_limits(x_mm, y_mm)
+        with self._io_lock:
+            # Check axis limits before moving
+            self._check_axis_limits(x_mm, y_mm)
 
-        logging.info(
-            f"Dummy stage '{self.alias}' move operation started: target ({x_mm:.3f}, {y_mm:.3f})"
-        )
-        print(f"Dummy stage moving to X={x_mm}, Y={y_mm}")
-        time.sleep(0.25)
-        self._x, self._y = x_mm, y_mm
-        logging.info(
-            f"Dummy stage '{self.alias}' move completed successfully to ({x_mm:.3f}, {y_mm:.3f})"
-        )
-        return self._x, self._y
+            logging.info(
+                f"Dummy stage '{self.alias}' move operation started: target ({x_mm:.3f}, {y_mm:.3f})"
+            )
+            print(f"Dummy stage moving to X={x_mm}, Y={y_mm}")
+            time.sleep(0.25)
+            self._x, self._y = x_mm, y_mm
+            logging.info(
+                f"Dummy stage '{self.alias}' move completed successfully to ({x_mm:.3f}, {y_mm:.3f})"
+            )
+            return self._x, self._y
 
     def get_xy_position(self):
-        return self._x, self._y
+        with self._io_lock:
+            return self._x, self._y
 
     def deinit(self):
         print(f"Dummy stage '{self.alias}' deinitialized.")
@@ -213,6 +217,7 @@ class MarlinStageController(BaseStageController):
         self.timeout = timeout
         self.feedrate = feedrate
         self.homing_timeout = homing_timeout
+        self._io_lock = threading.RLock()
 
         self.ser = None
         self.ser_thread = None
@@ -257,69 +262,73 @@ class MarlinStageController(BaseStageController):
         Returns:
             True if successful (or if not waiting for ok), False on timeout
         """
-        if not self.ser or not self.ser.is_open:
-            raise RuntimeError(f"Serial port not open on '{self.alias}'")
+        with self._io_lock:
+            if not self.ser or not self.ser.is_open:
+                raise RuntimeError(f"Serial port not open on '{self.alias}'")
 
-        lines = command.strip().splitlines()
-        for line in lines:
-            cmd = line.strip()
-            if not cmd:
-                continue
-            try:
-                self.ser.write((cmd + "\n").encode())
-                time.sleep(0.02)  # Small delay between commands
-                logging.debug(f"Sent to '{self.alias}': {cmd}")
-            except Exception as e:
-                logging.error(f"Error sending command to '{self.alias}': {e}")
-                raise
+            lines = command.strip().splitlines()
+            for line in lines:
+                cmd = line.strip()
+                if not cmd:
+                    continue
+                try:
+                    self.ser.write((cmd + "\n").encode())
+                    time.sleep(0.02)  # Small delay between commands
+                    logging.debug(f"Sent to '{self.alias}': {cmd}")
+                except Exception as e:
+                    logging.error(f"Error sending command to '{self.alias}': {e}")
+                    raise
 
-        if wait_for_ok:
-            start = time.time()
-            while time.time() - start < timeout:
-                if not self.out_q.empty():
-                    response = self.out_q.get()
-                    if "ok" in response.lower():
-                        return True
-                time.sleep(0.05)
-            logging.warning(f"Timeout waiting for 'ok' from '{self.alias}'")
-            return False
+            if wait_for_ok:
+                start = time.time()
+                while time.time() - start < timeout:
+                    if not self.out_q.empty():
+                        response = self.out_q.get()
+                        if "ok" in response.lower():
+                            return True
+                    time.sleep(0.05)
+                logging.warning(f"Timeout waiting for 'ok' from '{self.alias}'")
+                return False
 
-        return True
+            return True
 
     def _request_position(self):
         """Request current position via M114 and parse response."""
-        # Clear queue before requesting
-        while not self.out_q.empty():
-            self.out_q.get()
+        with self._io_lock:
+            # Clear queue before requesting
+            while not self.out_q.empty():
+                self.out_q.get()
 
-        self._send_gcode("M114", wait_for_ok=False)
-        time.sleep(0.1)
+            self._send_gcode("M114", wait_for_ok=False)
+            time.sleep(0.1)
 
-        # Parse position from response
-        start = time.time()
-        while time.time() - start < 2.0:
-            if not self.out_q.empty():
-                line = self.out_q.get()
-                if line.startswith("X:"):
-                    try:
-                        parts = line.split()
-                        for i, part in enumerate(parts):
-                            if part.startswith("X:") and (
-                                i == 0 or parts[i - 1] != "Count"
-                            ):
-                                self._x = float(part[2:])
-                            elif part.startswith("Y:") and (
-                                i == 0 or parts[i - 1] != "Count"
-                            ):
-                                self._y = float(part[2:])
-                            if part == "Count":
-                                break
-                        return self._x, self._y
-                    except (ValueError, IndexError) as e:
-                        logging.warning(f"Error parsing position from '{self.alias}': {e}")
-            time.sleep(0.05)
+            # Parse position from response
+            start = time.time()
+            while time.time() - start < 2.0:
+                if not self.out_q.empty():
+                    line = self.out_q.get()
+                    if line.startswith("X:"):
+                        try:
+                            parts = line.split()
+                            for i, part in enumerate(parts):
+                                if part.startswith("X:") and (
+                                    i == 0 or parts[i - 1] != "Count"
+                                ):
+                                    self._x = float(part[2:])
+                                elif part.startswith("Y:") and (
+                                    i == 0 or parts[i - 1] != "Count"
+                                ):
+                                    self._y = float(part[2:])
+                                if part == "Count":
+                                    break
+                            return self._x, self._y
+                        except (ValueError, IndexError) as e:
+                            logging.warning(
+                                f"Error parsing position from '{self.alias}': {e}"
+                            )
+                time.sleep(0.05)
 
-        return self._x, self._y
+            return self._x, self._y
 
     def init_stage(self):
         """
@@ -371,26 +380,29 @@ class MarlinStageController(BaseStageController):
         Returns:
             tuple: (x_mm, y_mm) position after homing
         """
-        logging.info(f"Marlin stage '{self.alias}' homing operation started")
-        print(f"Marlin stage '{self.alias}' homing...")
+        with self._io_lock:
+            logging.info(f"Marlin stage '{self.alias}' homing operation started")
+            print(f"Marlin stage '{self.alias}' homing...")
 
-        # Send homing command
-        self._send_gcode("G28 X Y", wait_for_ok=False)
+            # Send homing command
+            self._send_gcode("G28 X Y", wait_for_ok=False)
 
-        # Wait for homing to complete
-        time.sleep(min(timeout_s, self.homing_timeout))
+            # Wait for homing to complete
+            time.sleep(min(timeout_s, self.homing_timeout))
 
-        # Update position to home
-        self._x, self._y = 0.0, 0.0
+            # Update position to home
+            self._x, self._y = 0.0, 0.0
 
-        # Request actual position from controller
-        pos = self._request_position()
+            # Request actual position from controller
+            pos = self._request_position()
 
-        print(f"Marlin stage '{self.alias}' homed to X={self._x:.3f}, Y={self._y:.3f}")
-        logging.info(
-            f"Marlin stage '{self.alias}' homing completed at ({self._x:.3f}, {self._y:.3f})"
-        )
-        return pos
+            print(
+                f"Marlin stage '{self.alias}' homed to X={self._x:.3f}, Y={self._y:.3f}"
+            )
+            logging.info(
+                f"Marlin stage '{self.alias}' homing completed at ({self._x:.3f}, {self._y:.3f})"
+            )
+            return pos
 
     def move_stage(self, x_mm, y_mm, move_timeout=20):
         """
@@ -404,39 +416,42 @@ class MarlinStageController(BaseStageController):
         Returns:
             tuple: (x_mm, y_mm) final position
         """
-        # Check axis limits before moving
-        self._check_axis_limits(x_mm, y_mm)
+        with self._io_lock:
+            # Check axis limits before moving
+            self._check_axis_limits(x_mm, y_mm)
 
-        logging.info(
-            f"Marlin stage '{self.alias}' move operation started: target ({x_mm:.3f}, {y_mm:.3f})"
-        )
+            logging.info(
+                f"Marlin stage '{self.alias}' move operation started: target ({x_mm:.3f}, {y_mm:.3f})"
+            )
 
-        # Calculate movement time based on distance and feedrate
-        start_x, start_y = self._x, self._y
-        dx = abs(x_mm - start_x)
-        dy = abs(y_mm - start_y)
-        max_distance = max(dx, dy)
-        estimated_time = (max_distance / (self.feedrate / 60.0)) + 0.5  # Add buffer
+            # Calculate movement time based on distance and feedrate
+            start_x, start_y = self._x, self._y
+            dx = abs(x_mm - start_x)
+            dy = abs(y_mm - start_y)
+            max_distance = max(dx, dy)
+            estimated_time = (max_distance / (self.feedrate / 60.0)) + 0.5  # Add buffer
 
-        # Send move command
-        cmd = f"G90\nG0 X{x_mm:.3f} Y{y_mm:.3f} F{self.feedrate}"
-        self._send_gcode(cmd, wait_for_ok=False)
+            # Send move command
+            cmd = f"G90\nG0 X{x_mm:.3f} Y{y_mm:.3f} F{self.feedrate}"
+            self._send_gcode(cmd, wait_for_ok=False)
 
-        # Wait for movement to complete
-        time.sleep(min(estimated_time, move_timeout))
+            # Wait for movement to complete
+            time.sleep(min(estimated_time, move_timeout))
 
-        # Update internal position
-        self._x = x_mm
-        self._y = y_mm
+            # Update internal position
+            self._x = x_mm
+            self._y = y_mm
 
-        # Request actual position
-        final_pos = self._request_position()
+            # Request actual position
+            final_pos = self._request_position()
 
-        print(f"Marlin stage '{self.alias}' moved to X={self._x:.3f}, Y={self._y:.3f}")
-        logging.info(
-            f"Marlin stage '{self.alias}' move completed successfully to ({self._x:.3f}, {self._y:.3f})"
-        )
-        return final_pos
+            print(
+                f"Marlin stage '{self.alias}' moved to X={self._x:.3f}, Y={self._y:.3f}"
+            )
+            logging.info(
+                f"Marlin stage '{self.alias}' move completed successfully to ({self._x:.3f}, {self._y:.3f})"
+            )
+            return final_pos
 
     def get_xy_position(self):
         """
@@ -445,7 +460,8 @@ class MarlinStageController(BaseStageController):
         Returns:
             tuple: (x_mm, y_mm) current position
         """
-        return self._request_position()
+        with self._io_lock:
+            return self._request_position()
 
     def emergency_stop(self):
         """Send emergency stop command (M112)."""
@@ -488,6 +504,7 @@ class XYStageLibController(BaseStageController):
         sim=False,
         poll_interval_ms=250,
     ):
+        self.config = config or {}
         self.serial = config["id"].encode()
         self.alias = config.get("alias", "XY_STAGE")
         self.x_chan = x_chan
@@ -496,16 +513,73 @@ class XYStageLibController(BaseStageController):
         self.sim = sim
         self.poll_interval_ms = poll_interval_ms
         self.lib = None
+        self._kinesis_sdk_path = self._resolve_kinesis_sdk_path(self.config)
+        self._io_lock = threading.RLock()
         self._limits = self._parse_limits(config)
         self._positions = self._parse_home_load(config)
 
+    def _resolve_kinesis_sdk_path(self, config):
+        candidates = []
+
+        env_path = str(os.environ.get("KINESIS_SDK_PATH", "")).strip()
+        if env_path:
+            candidates.append(env_path)
+
+        cfg_path = str((config or {}).get("kinesis_sdk_path", "")).strip()
+        if cfg_path:
+            candidates.append(cfg_path)
+
+        settings_path = str(
+            ((config or {}).get("settings", {}) or {}).get("kinesis_sdk_path", "")
+        ).strip()
+        if settings_path:
+            candidates.append(settings_path)
+
+        candidates.extend(
+            [
+                r"C:\Program Files\Thorlabs\Kinesis",
+                r"C:\Program Files (x86)\Thorlabs\Kinesis",
+            ]
+        )
+
+        program_files = str(os.environ.get("ProgramFiles", "")).strip()
+        if program_files:
+            candidates.append(os.path.join(program_files, "Thorlabs", "Kinesis"))
+
+        program_files_x86 = str(os.environ.get("ProgramFiles(x86)", "")).strip()
+        if program_files_x86:
+            candidates.append(os.path.join(program_files_x86, "Thorlabs", "Kinesis"))
+
+        seen = set()
+        for path in candidates:
+            normalized = os.path.normpath(path)
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            dll_path = os.path.join(
+                normalized, "Thorlabs.MotionControl.Benchtop.DCServo.dll"
+            )
+            if os.path.isdir(normalized) and os.path.isfile(dll_path):
+                return normalized
+        return ""
+
     def init_stage(self):
         try:
+            if not self._kinesis_sdk_path:
+                print(
+                    "Error during stage init: unable to locate Thorlabs Kinesis SDK "
+                    "(set KINESIS_SDK_PATH to folder containing Thorlabs.MotionControl.Benchtop.DCServo.dll)"
+                )
+                return False
+
+            dll_name = "Thorlabs.MotionControl.Benchtop.DCServo.dll"
+            dll_path = os.path.join(self._kinesis_sdk_path, dll_name)
             if sys.version_info < (3, 8):
-                os.chdir(r"C:\Program Files\Thorlabs\Kinesis")
+                os.chdir(self._kinesis_sdk_path)
+                self.lib = CDLL(dll_path if os.path.isfile(dll_path) else dll_name)
             else:
-                os.add_dll_directory(r"C:\Program Files\Thorlabs\Kinesis")
-            self.lib = CDLL("Thorlabs.MotionControl.Benchtop.DCServo.dll")
+                os.add_dll_directory(self._kinesis_sdk_path)
+                self.lib = CDLL(dll_path if os.path.isfile(dll_path) else dll_name)
 
             if self.sim:
                 self.lib.TLI_InitializeSimulations()
@@ -534,72 +608,87 @@ class XYStageLibController(BaseStageController):
             return False
 
     def home_stage(self, timeout_s=45):
-        logging.info(f"Real stage '{self.alias}' homing operation started")
-        self.lib.BDC_Home(c_char_p(self.serial), c_short(self.x_chan))
-        self.lib.BDC_Home(c_char_p(self.serial), c_short(self.y_chan))
-        start = time.time()
-        while time.time() - start < timeout_s:
-            self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
-            self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
-            time.sleep(0.5)
-            x_dev = self.lib.BDC_GetPosition(
-                c_char_p(self.serial), c_short(self.x_chan)
+        with self._io_lock:
+            logging.info(
+                "Real stage homing operation started",
+                extra={
+                    "stage_alias": self.alias,
+                    "thread_name": threading.current_thread().name,
+                },
             )
-            y_dev = self.lib.BDC_GetPosition(
-                c_char_p(self.serial), c_short(self.y_chan)
-            )
-            if abs(x_dev) + abs(y_dev) <= 3:
-                x_mm = x_dev / self.scaling_factor
-                y_mm = y_dev / self.scaling_factor
-                print(f"Stage homed to X={x_mm:.3f}, Y={y_mm:.3f}")
-                return x_mm, y_mm
-        raise TimeoutError("Stage homing timed out")
+            self.lib.BDC_Home(c_char_p(self.serial), c_short(self.x_chan))
+            self.lib.BDC_Home(c_char_p(self.serial), c_short(self.y_chan))
+            start = time.time()
+            while time.time() - start < timeout_s:
+                self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
+                self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
+                time.sleep(0.5)
+                x_dev = self.lib.BDC_GetPosition(
+                    c_char_p(self.serial), c_short(self.x_chan)
+                )
+                y_dev = self.lib.BDC_GetPosition(
+                    c_char_p(self.serial), c_short(self.y_chan)
+                )
+                if abs(x_dev) + abs(y_dev) <= 3:
+                    x_mm = x_dev / self.scaling_factor
+                    y_mm = y_dev / self.scaling_factor
+                    print(f"Stage homed to X={x_mm:.3f}, Y={y_mm:.3f}")
+                    return x_mm, y_mm
+            raise TimeoutError("Stage homing timed out")
 
     def move_stage(self, x_mm, y_mm, move_timeout=20):
-        # Check axis limits before moving
-        self._check_axis_limits(x_mm, y_mm)
+        with self._io_lock:
+            # Check axis limits before moving
+            self._check_axis_limits(x_mm, y_mm)
 
-        logging.info(
-            f"Real stage '{self.alias}' move operation started: target ({x_mm:.3f}, {y_mm:.3f})"
-        )
-        x_dev = int(x_mm * self.scaling_factor)
-        y_dev = int(y_mm * self.scaling_factor)
-        self.lib.BDC_SetMoveAbsolutePosition(
-            c_char_p(self.serial), c_short(self.x_chan), c_int(x_dev)
-        )
-        self.lib.BDC_SetMoveAbsolutePosition(
-            c_char_p(self.serial), c_short(self.y_chan), c_int(y_dev)
-        )
-        time.sleep(0.25)
-        self.lib.BDC_MoveAbsolute(c_char_p(self.serial), c_short(self.x_chan))
-        self.lib.BDC_MoveAbsolute(c_char_p(self.serial), c_short(self.y_chan))
-        start = time.time()
-        while time.time() - start < move_timeout:
-            self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
-            self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
-            time.sleep(0.5)
-            curr_x_dev = self.lib.BDC_GetPosition(
-                c_char_p(self.serial), c_short(self.x_chan)
+            logging.info(
+                "Real stage move operation started",
+                extra={
+                    "stage_alias": self.alias,
+                    "target_x_mm": x_mm,
+                    "target_y_mm": y_mm,
+                    "thread_name": threading.current_thread().name,
+                },
             )
-            curr_y_dev = self.lib.BDC_GetPosition(
-                c_char_p(self.serial), c_short(self.y_chan)
+            x_dev = int(x_mm * self.scaling_factor)
+            y_dev = int(y_mm * self.scaling_factor)
+            self.lib.BDC_SetMoveAbsolutePosition(
+                c_char_p(self.serial), c_short(self.x_chan), c_int(x_dev)
             )
-            if abs(curr_x_dev - x_dev) + abs(curr_y_dev - y_dev) <= 1000:
-                x_mm = curr_x_dev / self.scaling_factor
-                y_mm = curr_y_dev / self.scaling_factor
-                print(f"Stage moved to X={x_mm:.3f}, Y={y_mm:.3f}")
-                return x_mm, y_mm
-        # Log timeout error with details
-        logging.error(
-            f"Real stage '{self.alias}' move operation timed out after {move_timeout}s. "
-            f"Target: ({x_mm:.3f}, {y_mm:.3f}). Please check hardware and try again."
-        )
-        raise TimeoutError(f"Stage move timed out after {move_timeout} seconds")
+            self.lib.BDC_SetMoveAbsolutePosition(
+                c_char_p(self.serial), c_short(self.y_chan), c_int(y_dev)
+            )
+            time.sleep(0.25)
+            self.lib.BDC_MoveAbsolute(c_char_p(self.serial), c_short(self.x_chan))
+            self.lib.BDC_MoveAbsolute(c_char_p(self.serial), c_short(self.y_chan))
+            start = time.time()
+            while time.time() - start < move_timeout:
+                self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
+                self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
+                time.sleep(0.5)
+                curr_x_dev = self.lib.BDC_GetPosition(
+                    c_char_p(self.serial), c_short(self.x_chan)
+                )
+                curr_y_dev = self.lib.BDC_GetPosition(
+                    c_char_p(self.serial), c_short(self.y_chan)
+                )
+                if abs(curr_x_dev - x_dev) + abs(curr_y_dev - y_dev) <= 1000:
+                    x_mm = curr_x_dev / self.scaling_factor
+                    y_mm = curr_y_dev / self.scaling_factor
+                    print(f"Stage moved to X={x_mm:.3f}, Y={y_mm:.3f}")
+                    return x_mm, y_mm
+            # Log timeout error with details
+            logging.error(
+                f"Real stage '{self.alias}' move operation timed out after {move_timeout}s. "
+                f"Target: ({x_mm:.3f}, {y_mm:.3f}). Please check hardware and try again."
+            )
+            raise TimeoutError(f"Stage move timed out after {move_timeout} seconds")
 
     def get_xy_position(self):
-        x_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.x_chan))
-        y_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.y_chan))
-        return x_dev / self.scaling_factor, y_dev / self.scaling_factor
+        with self._io_lock:
+            x_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.x_chan))
+            y_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.y_chan))
+            return x_dev / self.scaling_factor, y_dev / self.scaling_factor
 
     def deinit(self):
         try:

@@ -33,7 +33,7 @@ The current launchers run DiFRA in a protocol-first layout:
 
 1. GUI starts in modern env (`eosdx13`, Python 3.13).
 2. DiFRA gRPC server starts (default: same env as GUI).
-3. PIXet detector sidecar starts in legacy env (`ulster37/ulster38`).
+3. PIXet detector sidecar starts in legacy env (`ulster37`, Python 3.7).
 4. GUI hardware client runs in strict gRPC mode (`HARDWARE_CLIENT_MODE=grpc`, enforced by launchers).
 5. gRPC server handles stage directly and routes detector init/capture through sidecar (`DETECTOR_BACKEND=sidecar`).
 
@@ -52,7 +52,7 @@ Useful environment variables:
 
 DiFRA now includes separate pip requirements files per runtime:
 
-- `src/hardware/difra/requirements-ulster37-38.txt` - legacy runtime (`ulster37/ulster38`)
+- `src/hardware/difra/requirements-ulster37-38.txt` - legacy runtime (sidecar target: `ulster37`, Python 3.7)
 - `src/hardware/difra/requirements-eosdx13.txt` - modern runtime (`eosdx13`, Python 3.13)
 
 Install with:

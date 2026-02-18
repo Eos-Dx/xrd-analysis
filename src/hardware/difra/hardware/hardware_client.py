@@ -773,15 +773,30 @@ class DualPathHardwareClient(HardwareClient):
 def create_hardware_client(config: Dict[str, Any]) -> HardwareClient:
     protocol_cfg = (config or {}).get("hardware_protocol", {})
     detector_backend = str(os.environ.get("DETECTOR_BACKEND", "")).lower().strip()
-    default_mode = "dual"
+    if detector_backend not in {"sidecar", "socket", "ipc"}:
+        LOGGER.warning(
+            "Detector backend '%s' is not allowed; forcing sidecar.",
+            detector_backend or "unset",
+        )
+        os.environ["DETECTOR_BACKEND"] = "sidecar"
+        os.environ["PIXET_BACKEND"] = "sidecar"
+        detector_backend = "sidecar"
+
+    default_mode = "grpc"
     mode_override = str(
         os.environ.get("HARDWARE_CLIENT_MODE")
         or os.environ.get("DIFRA_HARDWARE_CLIENT_MODE")
         or ""
     ).lower().strip()
-    mode = str(mode_override or protocol_cfg.get("client_mode", default_mode)).lower().strip()
-    if mode not in {"dual", "direct", "grpc"}:
-        mode = default_mode
+    requested_mode = str(
+        mode_override or protocol_cfg.get("client_mode", default_mode)
+    ).lower().strip()
+    if requested_mode != "grpc":
+        LOGGER.warning(
+            "Hardware client mode '%s' is not allowed; forcing grpc.",
+            requested_mode or "unset",
+        )
+    mode = "grpc"
 
     sync_direct_detectors_cfg = protocol_cfg.get("sync_direct_detectors")
     if sync_direct_detectors_cfg is None:
