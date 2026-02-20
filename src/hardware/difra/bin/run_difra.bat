@@ -112,6 +112,12 @@ cd /d %REPO_ROOT%
 set PYTHONPATH=%REPO_ROOT%\src;%PYTHONPATH%
 set PYTHONUNBUFFERED=1
 
+set LAUNCHER_PID=
+for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$ppid=(Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID)).ParentProcessId; Write-Output $ppid"`) do set LAUNCHER_PID=%%P
+if "%LAUNCHER_PID%"=="" (
+  echo [WARN] Could not determine launcher PID; sidecar owner watchdog disabled.
+)
+
 if /I "%SIDECAR_HOST%"=="127.0.0.1" (
   powershell -NoProfile -Command "$p=[int]'%SIDECAR_PORT%'; try { $ids=Get-NetTCPConnection -State Listen -LocalPort $p -ErrorAction Stop | Select-Object -ExpandProperty OwningProcess -Unique; foreach($id in $ids){ try { Stop-Process -Id $id -Force -ErrorAction Stop; Write-Host ('[INFO] Restarting detector sidecar: killed PID ' + $id + ' on port ' + $p) } catch {} } } catch {}"
 ) else if /I "%SIDECAR_HOST%"=="localhost" (
@@ -130,7 +136,11 @@ if /I "%GRPC_HOST%"=="127.0.0.1" (
 
 echo [INFO] Starting sidecar env=%SIDECAR_ENV% endpoint=%SIDECAR_HOST%:%SIDECAR_PORT%
 set "PATH=%SIDECAR_LAUNCH_PATH%"
-start "DiFRA Sidecar" /B "%SIDECAR_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\scripts\pixet_sidecar_server.py" --host %SIDECAR_HOST% --port %SIDECAR_PORT%
+if "%LAUNCHER_PID%"=="" (
+  start "DiFRA Sidecar" /B "%SIDECAR_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\scripts\pixet_sidecar_server.py" --host %SIDECAR_HOST% --port %SIDECAR_PORT%
+) else (
+  start "DiFRA Sidecar" /B "%SIDECAR_PY_EXE%" -u "%REPO_ROOT%\src\hardware\difra\scripts\pixet_sidecar_server.py" --host %SIDECAR_HOST% --port %SIDECAR_PORT% --owner-pid %LAUNCHER_PID%
+)
 set "PATH=%ORIGINAL_PATH%"
 
 echo [INFO] Starting gRPC env=%GRPC_ENV% endpoint=%GRPC_HOST%:%GRPC_PORT% config=%GRPC_CONFIG%

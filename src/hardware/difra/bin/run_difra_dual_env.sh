@@ -129,7 +129,7 @@ kill_local_listener_on_port() {
 SIDECAR_CMD=(
   conda run --live-stream --no-capture-output -n "$SIDECAR_ENV" \
   python -u "$REPO_ROOT/src/hardware/difra/scripts/pixet_sidecar_server.py" \
-  --host "$SIDECAR_HOST" --port "$SIDECAR_PORT"
+  --host "$SIDECAR_HOST" --port "$SIDECAR_PORT" --owner-pid "$$"
 )
 GRPC_CMD=(
   conda run --live-stream --no-capture-output -n "$GRPC_ENV" \

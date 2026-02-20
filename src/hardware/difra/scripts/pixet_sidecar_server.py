@@ -227,23 +227,89 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     daemon_threads = True
 
 
+def _pid_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _start_owner_watchdog(
+    server: ThreadedTCPServer,
+    owner_pid: int,
+    check_interval_s: float,
+    stop_event: threading.Event,
+) -> None:
+    if owner_pid <= 0:
+        return
+
+    interval = max(float(check_interval_s), 0.2)
+
+    def _watch_owner() -> None:
+        while not stop_event.wait(interval):
+            if _pid_alive(owner_pid):
+                continue
+            print(
+                "[pixet-sidecar] owner pid %s is not alive; shutting down" % owner_pid
+            )
+            try:
+                _dispatch("shutdown", {})
+            except Exception:
+                pass
+            try:
+                server.shutdown()
+            except Exception:
+                pass
+            return
+
+    thread = threading.Thread(target=_watch_owner, name="owner-watchdog", daemon=True)
+    thread.start()
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run PIXet socket sidecar server.")
     parser.add_argument("--host", default="127.0.0.1", help="Bind host.")
     parser.add_argument("--port", type=int, default=51001, help="Bind port.")
+    parser.add_argument(
+        "--owner-pid",
+        type=int,
+        default=0,
+        help="Optional owner PID; sidecar exits when this process is gone.",
+    )
+    parser.add_argument(
+        "--owner-check-interval-s",
+        type=float,
+        default=1.0,
+        help="Seconds between owner PID checks.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    stop_event = threading.Event()
     with ThreadedTCPServer((args.host, int(args.port)), JsonLineHandler) as server:
         print(
             "[pixet-sidecar] listening on %s:%s pid=%s"
             % (args.host, args.port, os.getpid())
         )
+        _start_owner_watchdog(
+            server=server,
+            owner_pid=int(args.owner_pid),
+            check_interval_s=float(args.owner_check_interval_s),
+            stop_event=stop_event,
+        )
         try:
             server.serve_forever()
         finally:
+            stop_event.set()
             try:
                 _dispatch("shutdown", {})
             except Exception:
