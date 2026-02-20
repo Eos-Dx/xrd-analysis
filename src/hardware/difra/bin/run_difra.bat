@@ -112,10 +112,19 @@ cd /d %REPO_ROOT%
 set PYTHONPATH=%REPO_ROOT%\src;%PYTHONPATH%
 set PYTHONUNBUFFERED=1
 
+set SIDECAR_OWNER_WATCHDOG=%DIFRA_SIDECAR_OWNER_WATCHDOG%
+if "%SIDECAR_OWNER_WATCHDOG%"=="" set SIDECAR_OWNER_WATCHDOG=0
+
 set LAUNCHER_PID=
-for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$ppid=(Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID)).ParentProcessId; Write-Output $ppid"`) do set LAUNCHER_PID=%%P
-if "%LAUNCHER_PID%"=="" (
-  echo [WARN] Could not determine launcher PID; sidecar owner watchdog disabled.
+if "%SIDECAR_OWNER_WATCHDOG%"=="1" (
+  for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$p=Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID); if($p -and $p.ParentProcessId){ $pp=Get-CimInstance Win32_Process -Filter ('ProcessId=' + $p.ParentProcessId); if($pp){ Write-Output $pp.ParentProcessId } }"`) do set LAUNCHER_PID=%%P
+  if "%LAUNCHER_PID%"=="" (
+    echo [WARN] Could not determine launcher PID; sidecar owner watchdog disabled.
+  ) else (
+    echo [INFO] Sidecar owner watchdog enabled ^(owner pid=%LAUNCHER_PID%^).
+  )
+) else (
+  echo [INFO] Sidecar owner watchdog disabled on Windows ^(set DIFRA_SIDECAR_OWNER_WATCHDOG=1 to enable^).
 )
 
 if /I "%SIDECAR_HOST%"=="127.0.0.1" (

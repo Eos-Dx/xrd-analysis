@@ -60,6 +60,14 @@ class HardwareController:
         detector_success = bool(self.detectors)
         stage_success = bool(self.stage_controller)
 
+        if dev_mode:
+            logger.warning(
+                "DEV mode is enabled: using dev_active_detectors/dev_active_stages"
+            )
+            print(
+                "[WARN] DEV mode is enabled. Hardware selection uses dev_active_detectors/dev_active_stages."
+            )
+
         if init_detector:
             # --- Initialize Detectors ---
             detector_list = self.config.get("detectors", [])
@@ -80,6 +88,10 @@ class HardwareController:
                     or det_cfg.get("detector_backend", det_cfg.get("backend", ""))
                 ).lower().strip()
 
+                # Dummy detector should stay local/demo even when detector backend is sidecar.
+                if det_type == "DummyDetector":
+                    return "DummyDetector", DummyDetectorController, "demo"
+
                 if det_type in {"Pixet", "PixetLegacy", "PixetSidecar"}:
                     if detector_backend not in {"sidecar", "socket", "ipc"}:
                         print(
@@ -92,7 +104,6 @@ class HardwareController:
 
                 if detector_backend in {"sidecar", "socket", "ipc"} and det_type in {
                     "Pixet",
-                    "DummyDetector",
                 }:
                     return "PixetSidecar", PixetSidecarDetectorController, "legacy-sidecar"
 
