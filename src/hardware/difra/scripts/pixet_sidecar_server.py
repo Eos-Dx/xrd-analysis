@@ -230,6 +230,42 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 def _pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
+
+    # Windows does not reliably support os.kill(pid, 0) as a liveness probe.
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            STILL_ACTIVE = 259
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            handle = kernel32.OpenProcess(
+                PROCESS_QUERY_LIMITED_INFORMATION,
+                False,
+                int(pid),
+            )
+            if handle:
+                exit_code = ctypes.c_ulong()
+                ok = kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+                kernel32.CloseHandle(handle)
+                if ok:
+                    return int(exit_code.value) == STILL_ACTIVE
+                # Inconclusive check: prefer keeping sidecar alive.
+                return True
+
+            err = ctypes.get_last_error()
+            # Access denied usually means process exists but is protected.
+            if err == 5:
+                return True
+            # Invalid parameter / not found.
+            if err in (87, 1168):
+                return False
+            # Inconclusive check: prefer keeping sidecar alive.
+            return True
+        except Exception:
+            # Conservative fallback: do not terminate sidecar on probe failure.
+            return True
+
     try:
         os.kill(pid, 0)
     except ProcessLookupError:

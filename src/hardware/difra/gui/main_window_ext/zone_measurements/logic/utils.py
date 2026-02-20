@@ -25,6 +25,11 @@ class ZoneMeasurementsUtilsMixin:
         Converts stage X/Y coordinates in mm to image pixel coordinates.
         Uses instance variables for real position, scaling, and center.
         """
+        if not hasattr(self, "real_x_pos_mm") or not hasattr(self, "real_y_pos_mm"):
+            return -1.0, -1.0
+        if not hasattr(self, "pixel_to_mm_ratio") or not hasattr(self, "include_center"):
+            return -1.0, -1.0
+
         x = (
             self.real_x_pos_mm.value() - x_mm
         ) * self.pixel_to_mm_ratio + self.include_center[0]

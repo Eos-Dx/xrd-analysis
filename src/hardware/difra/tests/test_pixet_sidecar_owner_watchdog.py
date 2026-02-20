@@ -79,3 +79,49 @@ def test_sidecar_exits_when_owner_process_exits():
             except subprocess.TimeoutExpired:
                 sidecar_proc.kill()
                 sidecar_proc.wait(timeout=2.0)
+
+
+def test_sidecar_with_live_owner_does_not_exit_immediately():
+    owner_proc = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(2.0)"]
+    )
+    port = _free_tcp_port()
+    sidecar_proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-u",
+            str(SIDECAR_SCRIPT),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "--owner-pid",
+            str(owner_proc.pid),
+            "--owner-check-interval-s",
+            "0.1",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+
+    try:
+        _wait_for_port("127.0.0.1", port, timeout_s=5.0)
+        time.sleep(0.6)
+        assert sidecar_proc.poll() is None
+    finally:
+        if owner_proc.poll() is None:
+            owner_proc.terminate()
+            try:
+                owner_proc.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                owner_proc.kill()
+                owner_proc.wait(timeout=2.0)
+
+        if sidecar_proc.poll() is None:
+            sidecar_proc.terminate()
+            try:
+                sidecar_proc.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                sidecar_proc.kill()
+                sidecar_proc.wait(timeout=2.0)
