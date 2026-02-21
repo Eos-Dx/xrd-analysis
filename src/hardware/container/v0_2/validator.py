@@ -169,6 +169,15 @@ class SessionContainerValidator:
             ]:
                 if attr not in point.attrs:
                     self._add("WARNING", point_path, f"Missing attribute: {attr}")
+            if schema.ATTR_THICKNESS not in point.attrs:
+                self._add("ERROR", point_path, f"Missing attribute: {schema.ATTR_THICKNESS}")
+            else:
+                thickness = point.attrs.get(schema.ATTR_THICKNESS)
+                if isinstance(thickness, bytes):
+                    thickness = thickness.decode("utf-8", errors="replace")
+                thickness = str(thickness).strip()
+                if not thickness:
+                    self._add("ERROR", point_path, f"Empty attribute: {schema.ATTR_THICKNESS}")
             if schema.ATTR_ANALYTICAL_MEASUREMENT_IDS not in point.attrs:
                 self._add(
                     "WARNING",

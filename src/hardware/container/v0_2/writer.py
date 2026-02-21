@@ -581,12 +581,19 @@ def add_point(
     pixel_coordinates: List[float],
     physical_coordinates_mm: List[float],
     point_status: str = schema.POINT_STATUS_PENDING,
+    thickness: Optional[str] = schema.THICKNESS_UNKNOWN,
 ) -> str:
     point_id = schema.format_point_id(point_index)
     point_path = f"{schema.GROUP_POINTS}/{point_id}"
 
     utils.create_group_if_missing(file_path, point_path)
     _set_nx_class(file_path, point_path, schema.NX_CLASS_COLLECTION)
+
+    thickness_value = (
+        str(thickness).strip()
+        if thickness is not None and str(thickness).strip()
+        else schema.THICKNESS_UNKNOWN
+    )
 
     utils.set_attrs(
         file_path=file_path,
@@ -595,6 +602,7 @@ def add_point(
             schema.ATTR_PIXEL_COORDINATES: np.array(pixel_coordinates),
             schema.ATTR_PHYSICAL_COORDINATES_MM: np.array(physical_coordinates_mm),
             schema.ATTR_POINT_STATUS: point_status,
+            schema.ATTR_THICKNESS: thickness_value,
         },
     )
 

@@ -198,10 +198,12 @@ ATTR_PIXEL_COORDINATES = "pixel_coordinates"
 ATTR_PHYSICAL_COORDINATES_MM = "physical_coordinates_mm"
 ATTR_POINT_STATUS = "point_status"
 ATTR_ANALYTICAL_MEASUREMENT_REFS = "analytical_measurement_refs"
+ATTR_THICKNESS = "thickness"
 
 POINT_STATUS_PENDING = "pending"
 POINT_STATUS_MEASURED = "measured"
 POINT_STATUS_SKIPPED = "skipped"
+THICKNESS_UNKNOWN = "unknown"
 
 # ================== Image Attributes =======================
 ATTR_IMAGE_TYPE = "image_type"
