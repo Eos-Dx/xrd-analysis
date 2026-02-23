@@ -257,12 +257,16 @@ class StageControlMixin:
         backend_mode = str(getattr(client, "last_backend", "grpc")).strip() or "grpc"
         detector_backend = str(os.environ.get("DETECTOR_BACKEND", "")).strip() or "unset"
 
-        stage_cls = (
-            client.stage_controller.__class__.__name__
-            if getattr(client, "stage_controller", None) is not None
-            else "None"
-        )
-        stage_protocol = self._stage_protocol_from_class(stage_cls)
+        stage_controller = getattr(client, "stage_controller", None)
+        if stage_controller is not None:
+            stage_cls = stage_controller.__class__.__name__
+            stage_protocol = self._stage_protocol_from_class(stage_cls)
+        elif backend_mode == "grpc" and stage_ok:
+            stage_cls = "GrpcMotionProxy"
+            stage_protocol = "grpc"
+        else:
+            stage_cls = "None"
+            stage_protocol = "direct"
         stage_cfg = self._selected_stage_config()
         stage_type = stage_cfg.get("type", "unknown")
         stage_alias = stage_cfg.get("alias", "unknown")

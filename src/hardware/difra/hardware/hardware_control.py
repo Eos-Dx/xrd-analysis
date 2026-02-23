@@ -253,10 +253,14 @@ class HardwareController:
 
         # Consider hardware initialized if at least one component succeeded
         self.hardware_initialized = stage_success or detector_success
+        stage_summary = "skipped" if not init_stage else str(stage_success)
+        detector_summary = "skipped" if not init_detector else str(detector_success)
         logger.info(
-            "Hardware initialize summary: stage_success=%s detector_success=%s mode=%s active_detectors=%d",
-            stage_success,
-            detector_success,
+            "Hardware initialize summary: init_stage=%s init_detector=%s stage=%s detector=%s mode=%s active_detectors=%d",
+            init_stage,
+            init_detector,
+            stage_summary,
+            detector_summary,
             "demo" if dev_mode else "production",
             len(self.detectors),
         )
