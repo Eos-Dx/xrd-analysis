@@ -854,6 +854,7 @@ class SessionManager:
                 - pixel_coordinates: [x_px, y_px]
                 - physical_coordinates_mm: [x_mm, y_mm]
                 - point_status: Optional status (default "pending")
+                - thickness: Optional thickness value (default "unknown")
                 
         Returns:
             List of point group paths
@@ -868,6 +869,7 @@ class SessionManager:
                 pixel_coordinates=point["pixel_coordinates"],
                 physical_coordinates_mm=point["physical_coordinates_mm"],
                 point_status=point.get("point_status", "pending"),
+                thickness=point.get("thickness", "unknown"),
             )
             paths.append(path)
 

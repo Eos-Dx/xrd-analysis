@@ -166,6 +166,7 @@ Key attrs:
 - `pixel_coordinates`
 - `physical_coordinates_mm`
 - `point_status`
+- `thickness` (required; use `unknown` when not measured, e.g. current DiFRA flow)
 - `analytical_measurement_ids`
 - `analytical_measurement_refs`
 

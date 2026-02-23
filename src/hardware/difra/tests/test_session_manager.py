@@ -15,6 +15,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from hardware.difra.gui.session_manager import SessionManager
 from hardware.container.v0_2 import schema
+from hardware.container.v0_2 import validator as session_validator
 from hardware.container.v0_2.technical_container import generate_from_aux_table
 from hardware.container.v0_2.container_manager import lock_container
 
@@ -134,6 +135,82 @@ def test_session_manager_add_points(temp_dir, technical_container):
     
     paths = manager.add_points(points)
     assert len(paths) == 2
+    with h5py.File(manager.session_path, "r") as session_file:
+        assert (
+            session_file[f"{schema.GROUP_POINTS}/pt_001"].attrs[schema.ATTR_THICKNESS]
+            == schema.THICKNESS_UNKNOWN
+        )
+        assert (
+            session_file[f"{schema.GROUP_POINTS}/pt_002"].attrs[schema.ATTR_THICKNESS]
+            == schema.THICKNESS_UNKNOWN
+        )
+
+
+def test_session_manager_add_points_persists_explicit_thickness(temp_dir, technical_container):
+    """Test explicit thickness values on points are persisted."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_001",
+        distance_cm=17.0,
+    )
+
+    points = [
+        {
+            "pixel_coordinates": [100, 200],
+            "physical_coordinates_mm": [10.0, 20.0],
+            "thickness": "1.25mm",
+        },
+        {
+            "pixel_coordinates": [150, 250],
+            "physical_coordinates_mm": [15.0, 25.0],
+            "thickness": "2.0mm",
+        },
+    ]
+    manager.add_points(points)
+
+    with h5py.File(manager.session_path, "r") as session_file:
+        assert (
+            session_file[f"{schema.GROUP_POINTS}/pt_001"].attrs[schema.ATTR_THICKNESS]
+            == "1.25mm"
+        )
+        assert (
+            session_file[f"{schema.GROUP_POINTS}/pt_002"].attrs[schema.ATTR_THICKNESS]
+            == "2.0mm"
+        )
+
+
+def test_session_validator_rejects_point_without_thickness(temp_dir, technical_container):
+    """Session validator must fail when point thickness attribute is missing."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_001",
+        distance_cm=17.0,
+    )
+    manager.add_points(
+        [
+            {
+                "pixel_coordinates": [100, 200],
+                "physical_coordinates_mm": [10.0, 20.0],
+            }
+        ]
+    )
+
+    point_path = f"{schema.GROUP_POINTS}/pt_001"
+    with h5py.File(manager.session_path, "a") as session_file:
+        del session_file[point_path].attrs[schema.ATTR_THICKNESS]
+
+    is_valid, errors = session_validator.SessionContainerValidator(
+        manager.session_path
+    ).validate()
+    assert is_valid is False
+    assert any(
+        err.severity == "ERROR"
+        and err.path == point_path
+        and schema.ATTR_THICKNESS in err.message
+        for err in errors
+    )
 
 
 def test_session_manager_attenuation_workflow(temp_dir, technical_container):
