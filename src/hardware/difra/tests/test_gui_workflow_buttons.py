@@ -379,6 +379,10 @@ def test_gui_button_driven_technical_workflow(qapp, tmp_path, monkeypatch):
 
             detector_groups = sorted(name for name in event_group.keys() if name.startswith("det_"))
             assert detector_groups == ["det_primary", "det_secondary"]
+            for detector_group_name in detector_groups:
+                detector_group = event_group[detector_group_name]
+                assert float(detector_group.attrs.get(schema.ATTR_INTEGRATION_TIME_MS)) == 1000.0
+                assert int(detector_group.attrs.get(schema.ATTR_N_FRAMES)) == 1
 
         assert type_counts == {"AGBH": 1, "EMPTY": 1, "BACKGROUND": 1, "DARK": 1}
 

@@ -50,7 +50,12 @@ class TechnicalAuxTableMixin:
 
         return metadata
 
-    def _get_aux_row_metadata(self, row: int, fallback_path: str = ""):
+    def _get_aux_row_metadata(
+        self,
+        row: int,
+        fallback_path: str = "",
+        include_filename_fallback: bool = True,
+    ):
         tm = _tm()
         metadata = {}
         file_path = fallback_path
@@ -66,9 +71,10 @@ class TechnicalAuxTableMixin:
         except Exception:
             pass
 
-        parsed = self._extract_capture_metadata_from_path(str(file_path or ""))
-        for key, value in parsed.items():
-            metadata.setdefault(key, value)
+        if include_filename_fallback:
+            parsed = self._extract_capture_metadata_from_path(str(file_path or ""))
+            for key, value in parsed.items():
+                metadata.setdefault(key, value)
 
         return metadata
 
@@ -362,10 +368,19 @@ class TechnicalAuxTableMixin:
     def _make_type_combobox(self):
         tm = _tm()
         cb = tm.QComboBox()
-        cb.addItem(self.NO_SELECTION_LABEL, None)
-        for t in self.TYPE_OPTIONS:
-            cb.addItem(t, t)
-        cb.currentTextChanged.connect(self._on_type_changed)
+        try:
+            from PyQt5.QtWidgets import QComboBox as _QtComboBox, QWidget as _QtWidget
+
+            if not isinstance(cb, _QtWidget):
+                cb = _QtComboBox()
+        except Exception:
+            pass
+        if hasattr(cb, "addItem"):
+            cb.addItem(self.NO_SELECTION_LABEL, None)
+            for t in self.TYPE_OPTIONS:
+                cb.addItem(t, t)
+        if hasattr(cb, "currentTextChanged"):
+            cb.currentTextChanged.connect(self._on_type_changed)
         return cb
 
     def _on_type_changed(self, new_type):
@@ -426,13 +441,22 @@ class TechnicalAuxTableMixin:
     def _make_alias_combobox(self, preselect=None):
         tm = _tm()
         cb = tm.QComboBox()
-        cb.addItem(self.NO_SELECTION_LABEL, None)
-        for alias in self._get_active_detector_aliases():
-            cb.addItem(alias, alias)
+        try:
+            from PyQt5.QtWidgets import QComboBox as _QtComboBox, QWidget as _QtWidget
+
+            if not isinstance(cb, _QtWidget):
+                cb = _QtComboBox()
+        except Exception:
+            pass
+        if hasattr(cb, "addItem"):
+            cb.addItem(self.NO_SELECTION_LABEL, None)
+            for alias in self._get_active_detector_aliases():
+                cb.addItem(alias, alias)
         if preselect:
-            idx = cb.findText(preselect)
-            if idx >= 0:
-                cb.setCurrentIndex(idx)
+            if hasattr(cb, "findText") and hasattr(cb, "setCurrentIndex"):
+                idx = cb.findText(preselect)
+                if idx >= 0:
+                    cb.setCurrentIndex(idx)
         return cb
 
     def refresh_aux_table_alias_models(self):

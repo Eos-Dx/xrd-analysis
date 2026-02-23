@@ -184,6 +184,16 @@ Wavelength: {wavelength}
         meta = {}
         technical_event_metadata = {}
         seen_pairs = set()  # (type, alias)
+        gui_integration_ms = None
+        gui_n_frames = None
+        try:
+            gui_integration_ms = float(self.integrationTimeSpin.value()) * 1000.0
+        except Exception:
+            gui_integration_ms = None
+        try:
+            gui_n_frames = int(self.captureFramesSpin.value())
+        except Exception:
+            gui_n_frames = None
 
         # Get active detector aliases for validation
         try:
@@ -238,9 +248,19 @@ Wavelength: {wavelength}
                 return
             dst[al] = base
             try:
-                row_metadata = self._get_aux_row_metadata(row, str(file_path))
+                row_metadata = self._get_aux_row_metadata(
+                    row,
+                    str(file_path),
+                    include_filename_fallback=False,
+                )
             except Exception:
                 row_metadata = {}
+            if not isinstance(row_metadata, dict):
+                row_metadata = {}
+            if row_metadata.get("integration_time_ms") is None and gui_integration_ms is not None:
+                row_metadata["integration_time_ms"] = gui_integration_ms
+            if row_metadata.get("n_frames") is None and gui_n_frames is not None:
+                row_metadata["n_frames"] = gui_n_frames
             if isinstance(row_metadata, dict) and row_metadata:
                 technical_event_metadata.setdefault(typ, {})[al] = row_metadata
             seen_pairs.add(pair)

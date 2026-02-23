@@ -62,6 +62,16 @@ class H5GenerationContainerMixin:
 
         aux_measurements = {}
         primary_measurements = {}  # Track which measurements are marked as primary: {(type, alias): [is_prim1, is_prim2, ...]}
+        gui_integration_ms = None
+        gui_n_frames = None
+        try:
+            gui_integration_ms = float(self.integrationTimeSpin.value()) * 1000.0
+        except Exception:
+            gui_integration_ms = None
+        try:
+            gui_n_frames = int(self.captureFramesSpin.value())
+        except Exception:
+            gui_n_frames = None
 
         # Get active detector aliases for validation
         try:
@@ -134,13 +144,21 @@ class H5GenerationContainerMixin:
             if is_primary:
                 entry = {"file_path": file_path}
                 try:
-                    row_metadata = self._get_aux_row_metadata(row, str(file_path))
+                    row_metadata = self._get_aux_row_metadata(
+                        row,
+                        str(file_path),
+                        include_filename_fallback=False,
+                    )
                 except Exception:
                     row_metadata = {}
                 if isinstance(row_metadata, dict):
                     for key, value in row_metadata.items():
                         if value is not None:
                             entry[key] = value
+                if entry.get("integration_time_ms") is None and gui_integration_ms is not None:
+                    entry["integration_time_ms"] = gui_integration_ms
+                if entry.get("n_frames") is None and gui_n_frames is not None:
+                    entry["n_frames"] = gui_n_frames
                 aux_measurements.setdefault(typ, {})[alias] = entry
             
             # Track primary/supplementary status for this row
