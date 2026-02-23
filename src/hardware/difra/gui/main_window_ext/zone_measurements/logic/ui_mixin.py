@@ -86,6 +86,9 @@ class ZoneMeasurementsUIMixin:
         self.start_btn.setEnabled(False)
         self.pause_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
+        self._sidecar_locked = False
+        self._sidecar_alive = False
+        self._sidecar_lock_reason = ""
         buttonLayout.addWidget(self.initializeBtn)
         buttonLayout.addWidget(self.start_btn)
         buttonLayout.addWidget(self.pause_btn)
@@ -111,6 +114,21 @@ class ZoneMeasurementsUIMixin:
         )
         statusLayout.addWidget(cameraLabel)
         statusLayout.addWidget(self.cameraIndicator)
+        sidecarLabel = QLabel("A2K Sidecar:")
+        self.sidecarIndicator = QLabel()
+        self.sidecarIndicator.setFixedSize(16, 16)
+        self.sidecarIndicator.setStyleSheet(
+            "background-color: gray; border-radius: 8px;"
+        )
+        self.sidecarStatusLabel = QLabel("N/A")
+        try:
+            self.sidecarStatusLabel.setStyleSheet("color: #666; font-size: 10px;")
+        except Exception:
+            pass
+        statusLayout.addWidget(sidecarLabel)
+        statusLayout.addWidget(self.sidecarIndicator)
+        statusLayout.addWidget(self.sidecarStatusLabel)
+        statusLayout.addStretch()
         self.homeBtn = QPushButton("Home")
         self.homeBtn.clicked.connect(self.home_stage_button_clicked)
         try:
@@ -289,7 +307,11 @@ class ZoneMeasurementsUIMixin:
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
         self.xyTimer.start(1000)
+        self.sidecarHeartbeatTimer = QTimer(self)
+        self.sidecarHeartbeatTimer.timeout.connect(self.refresh_sidecar_status)
+        self.sidecarHeartbeatTimer.start(1000)
         self.update_xy_pos()
+        self.refresh_sidecar_status()
         QTimer.singleShot(300, self.sync_hardware_state_from_backend)
 
     def _create_distance_buttons(self, layout):

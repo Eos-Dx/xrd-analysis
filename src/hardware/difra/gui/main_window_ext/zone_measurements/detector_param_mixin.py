@@ -392,15 +392,45 @@ Wavelength: {wavelength}
         # Update the config DEV flag if needed
         self.config["DEV"] = dev_mode
 
+        # If hardware is running, force a clean deinit first so next init picks the
+        # selected mode's active_* settings (dev_* vs production active_*).
+        if getattr(self, "hardware_initialized", False):
+            try:
+                if hasattr(self, "_append_measurement_log"):
+                    self._append_measurement_log(
+                        "[HW] Mode switch detected; deinitializing hardware to apply new profile"
+                    )
+            except Exception:
+                pass
+            try:
+                if hasattr(self, "toggle_hardware"):
+                    self.toggle_hardware()  # deinitialize branch
+            except Exception as exc:
+                print(f"Warning: failed to deinitialize during mode switch: {exc}")
+
+        # Always drop runtime handles so next initialize builds a fresh client/controller
+        # against current config mode.
+        try:
+            self.hardware_client = None
+        except Exception:
+            pass
+        try:
+            self.hardware_controller = None
+            self.stage_controller = None
+            self.detector_controller = None
+        except Exception:
+            pass
+
         # Refresh detector tabs immediately for the new mode
         self.refresh_detector_tabs_for_mode_switch()
 
-        # If hardware is already initialized, we may want to reinitialize it
-        # to switch to the correct detector controllers
-        if getattr(self, "hardware_initialized", False):
-            print(
-                "Hardware is initialized. Consider reinitializing to switch detector controllers."
-            )
-            # Optionally auto-reinitialize:
-            # self.toggle_hardware()  # deinitialize
-            # self.toggle_hardware()  # reinitialize with new mode
+        # Refresh sidecar status/locks for the new detector profile if supported.
+        try:
+            if hasattr(self, "refresh_sidecar_status"):
+                self.refresh_sidecar_status(show_message=False)
+        except Exception as exc:
+            print(f"Warning: failed to refresh sidecar status after mode switch: {exc}")
+
+        print(
+            "Mode switch applied. Next hardware initialization will use current mode settings."
+        )

@@ -1,18 +1,235 @@
 # zone_measurements/logic/stage_control_mixin.py
 
+import json
 import logging
 import os
-from typing import Dict, Optional, Tuple
+import socket
+import time
+import uuid
+from typing import Dict, List, Optional, Tuple
 
 from PyQt5.QtCore import Qt
 
 
 class StageControlMixin:
+    _PIXET_DETECTOR_TYPES = {"Pixet", "PixetLegacy", "PixetSidecar"}
+
     def _append_hw_log(self, message: str) -> None:
         try:
             self._append_measurement_log(f"[HW] {message}")
         except Exception:
             pass
+
+    @staticmethod
+    def _active_detector_configs(config: Dict) -> List[Dict]:
+        cfg = config or {}
+        detectors = list(cfg.get("detectors", []) or [])
+        dev_mode = bool(cfg.get("DEV", False))
+        selected_ids = (
+            cfg.get("dev_active_detectors", [])
+            if dev_mode
+            else cfg.get("active_detectors", [])
+        )
+        return [det for det in detectors if det.get("id") in selected_ids]
+
+    @classmethod
+    def _is_sidecar_required_for_config(cls, config: Dict) -> bool:
+        for det in cls._active_detector_configs(config):
+            det_type = str(det.get("type", "")).strip()
+            if det_type in cls._PIXET_DETECTOR_TYPES:
+                return True
+        return False
+
+    @classmethod
+    def _resolve_sidecar_endpoint_for_config(
+        cls, config: Dict, env: Optional[Dict[str, str]] = None
+    ) -> Tuple[str, int]:
+        env_vars = env if env is not None else os.environ
+
+        host_env = str(env_vars.get("PIXET_SIDECAR_HOST", "")).strip()
+        port_env_raw = str(env_vars.get("PIXET_SIDECAR_PORT", "")).strip()
+        try:
+            port_env = int(port_env_raw) if port_env_raw else 0
+        except Exception:
+            port_env = 0
+
+        if host_env and port_env > 0:
+            return host_env, port_env
+
+        for det in cls._active_detector_configs(config):
+            det_type = str(det.get("type", "")).strip()
+            if det_type not in cls._PIXET_DETECTOR_TYPES:
+                continue
+            sidecar_cfg = det.get("pixet_sidecar", {}) or {}
+            host_cfg = str(
+                sidecar_cfg.get("host", det.get("sidecar_host", ""))
+            ).strip()
+            port_cfg_raw = str(
+                sidecar_cfg.get("port", det.get("sidecar_port", ""))
+            ).strip()
+            try:
+                port_cfg = int(port_cfg_raw) if port_cfg_raw else 0
+            except Exception:
+                port_cfg = 0
+
+            host = host_env or host_cfg or "127.0.0.1"
+            port = port_env if port_env > 0 else (port_cfg if port_cfg > 0 else 51001)
+            return host, port
+
+        host = host_env or "127.0.0.1"
+        port = port_env if port_env > 0 else 51001
+        return host, port
+
+    @staticmethod
+    def _probe_sidecar_endpoint(
+        host: str, port: int, timeout_s: float = 0.35
+    ) -> Tuple[bool, str, float]:
+        start = time.perf_counter()
+        req = {
+            "id": f"gui-heartbeat-{uuid.uuid4().hex[:8]}",
+            "cmd": "ping",
+            "args": {},
+        }
+        payload = (json.dumps(req, ensure_ascii=True) + "\n").encode("utf-8")
+        try:
+            with socket.create_connection((host, int(port)), timeout=timeout_s) as sock:
+                sock.settimeout(timeout_s)
+                sock.sendall(payload)
+                response_bytes = b""
+                while b"\n" not in response_bytes:
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        elapsed = (time.perf_counter() - start) * 1000.0
+                        return False, "connection closed by sidecar", elapsed
+                    response_bytes += chunk
+            line = response_bytes.split(b"\n", 1)[0]
+            response = json.loads(line.decode("utf-8"))
+            if not bool(response.get("ok", False)):
+                elapsed = (time.perf_counter() - start) * 1000.0
+                return False, str(response.get("error", "sidecar ping failed")), elapsed
+            result = response.get("result", {}) or {}
+            status = str(result.get("status", "")).strip().lower()
+            elapsed = (time.perf_counter() - start) * 1000.0
+            if status != "ok":
+                return False, f"unexpected ping status: {status or 'missing'}", elapsed
+            return True, "ok", elapsed
+        except Exception as exc:
+            elapsed = (time.perf_counter() - start) * 1000.0
+            return False, str(exc), elapsed
+
+    def _set_sidecar_indicator(
+        self,
+        *,
+        required: bool,
+        alive: bool,
+        host: str,
+        port: int,
+        latency_ms: Optional[float],
+        error: str = "",
+    ) -> None:
+        if not hasattr(self, "sidecarIndicator") or not hasattr(self, "sidecarStatusLabel"):
+            return
+
+        if not required:
+            self.sidecarIndicator.setStyleSheet(
+                "background-color: gray; border-radius: 8px;"
+            )
+            self.sidecarStatusLabel.setText("N/A (no PIXET sidecar detector active)")
+            return
+
+        endpoint = f"{host}:{port}"
+        if alive:
+            self.sidecarIndicator.setStyleSheet(
+                "background-color: green; border-radius: 8px;"
+            )
+            hb = f"{latency_ms:.0f}ms" if latency_ms is not None else "n/a"
+            self.sidecarStatusLabel.setText(f"ACTIVE {endpoint} | hb {hb}")
+            return
+
+        self.sidecarIndicator.setStyleSheet(
+            "background-color: red; border-radius: 8px;"
+        )
+        err = error.strip() or "heartbeat failed"
+        self.sidecarStatusLabel.setText(f"DOWN {endpoint} | {err}")
+
+    def _set_sidecar_lock_state(self, locked: bool, reason: str = "") -> None:
+        previous = bool(getattr(self, "_sidecar_locked", False))
+        self._sidecar_locked = bool(locked)
+        self._sidecar_lock_reason = str(reason or "")
+        if previous == self._sidecar_locked:
+            return
+
+        if self._sidecar_locked:
+            self._append_hw_log(
+                f"A2K sidecar heartbeat lost; measurement controls locked ({self._sidecar_lock_reason or 'unknown'})"
+            )
+            if hasattr(self, "hardware_state_changed"):
+                self.hardware_state_changed.emit(False)
+        else:
+            self._append_hw_log("A2K sidecar heartbeat restored")
+            if hasattr(self, "hardware_state_changed") and getattr(
+                self, "hardware_initialized", False
+            ):
+                self.hardware_state_changed.emit(True)
+
+    def refresh_sidecar_status(self, show_message: bool = False) -> bool:
+        required = self._is_sidecar_required_for_config(getattr(self, "config", {}))
+        host, port = self._resolve_sidecar_endpoint_for_config(
+            getattr(self, "config", {})
+        )
+
+        if not required:
+            self._set_sidecar_indicator(
+                required=False,
+                alive=True,
+                host=host,
+                port=port,
+                latency_ms=None,
+                error="",
+            )
+            self._set_sidecar_lock_state(False, "")
+            self._sidecar_alive = True
+            return True
+
+        previous_alive = bool(getattr(self, "_sidecar_alive", False))
+        was_locked = bool(getattr(self, "_sidecar_locked", False))
+        alive, error, latency_ms = self._probe_sidecar_endpoint(host, port)
+        self._sidecar_alive = bool(alive)
+        self._set_sidecar_indicator(
+            required=True,
+            alive=alive,
+            host=host,
+            port=port,
+            latency_ms=latency_ms,
+            error=error,
+        )
+        if alive:
+            self._set_sidecar_lock_state(False, "")
+            if was_locked and hasattr(self, "_apply_readiness_to_controls"):
+                self._apply_readiness_to_controls(bool(getattr(self, "hardware_initialized", False)))
+            return True
+
+        self._set_sidecar_lock_state(True, error)
+        if (not was_locked) and hasattr(self, "_apply_readiness_to_controls"):
+            self._apply_readiness_to_controls(False)
+
+        should_warn = bool(show_message) or (
+            bool(getattr(self, "hardware_initialized", False)) and previous_alive
+        )
+        if should_warn:
+            try:
+                from PyQt5.QtWidgets import QMessageBox
+
+                QMessageBox.warning(
+                    self,
+                    "A2K Sidecar Disconnected",
+                    f"Detector sidecar heartbeat failed at {host}:{port}.\n\n"
+                    f"Reason: {error}\n\n"
+                    "Measurement controls are locked until sidecar is active again.",
+                )
+            except Exception:
+                pass
+        return False
 
     @staticmethod
     def _detector_protocol_from_class(controller_class_name: str) -> str:
@@ -152,6 +369,8 @@ class StageControlMixin:
         }
 
     def _apply_readiness_to_controls(self, hardware_ok: bool) -> None:
+        sidecar_ok = not bool(getattr(self, "_sidecar_locked", False))
+        effective_ok = bool(hardware_ok and sidecar_ok)
         move_ready = hardware_ok
         home_ready = hardware_ok
         exposure_ready = hardware_ok
@@ -169,19 +388,20 @@ class StageControlMixin:
         except Exception as exc:
             logging.debug("Failed to fetch command readiness: %s", exc)
 
-        self.start_btn.setEnabled(hardware_ok and exposure_ready and move_ready)
+        self.start_btn.setEnabled(effective_ok and exposure_ready and move_ready)
         self.pause_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
-        self.xPosSpin.setEnabled(hardware_ok and move_ready)
-        self.yPosSpin.setEnabled(hardware_ok and move_ready)
-        self.gotoBtn.setEnabled(hardware_ok and move_ready)
+        self.xPosSpin.setEnabled(effective_ok and move_ready)
+        self.yPosSpin.setEnabled(effective_ok and move_ready)
+        self.gotoBtn.setEnabled(effective_ok and move_ready)
         if hasattr(self, "homeBtn"):
-            self.homeBtn.setEnabled(hardware_ok and home_ready)
+            self.homeBtn.setEnabled(effective_ok and home_ready)
         if hasattr(self, "loadPosBtn"):
-            self.loadPosBtn.setEnabled(hardware_ok and move_ready)
+            self.loadPosBtn.setEnabled(effective_ok and move_ready)
 
     def sync_hardware_state_from_backend(self) -> None:
         """Mirror backend initialization state in UI if stack is already running."""
+        self.refresh_sidecar_status(show_message=False)
         try:
             client = self._ensure_hardware_client()
             readiness = client.get_command_readiness()
@@ -228,6 +448,10 @@ class StageControlMixin:
         """
         if not getattr(self, "hardware_initialized", False):
             from PyQt5.QtWidgets import QMessageBox
+
+            if not self.refresh_sidecar_status(show_message=True):
+                self._append_hw_log("Initialize blocked: A2K sidecar heartbeat unavailable")
+                return
 
             try:
                 client = self._ensure_hardware_client()

@@ -107,6 +107,13 @@ class ZoneMeasurementsProcessStartMixin:
             state_file=str(self.state_path_measurements),
         )
 
+        if hasattr(self, "refresh_sidecar_status"):
+            if not self.refresh_sidecar_status(show_message=True):
+                self._append_capture_log(
+                    "Start cancelled: A2K sidecar heartbeat unavailable"
+                )
+                return
+
         if not self.measurement_folder.exists():
             pm.QMessageBox.warning(
                 self,
