@@ -182,6 +182,7 @@ Wavelength: {wavelength}
                 return
 
         meta = {}
+        technical_event_metadata = {}
         seen_pairs = set()  # (type, alias)
 
         # Get active detector aliases for validation
@@ -236,6 +237,12 @@ Wavelength: {wavelength}
                 )
                 return
             dst[al] = base
+            try:
+                row_metadata = self._get_aux_row_metadata(row, str(file_path))
+            except Exception:
+                row_metadata = {}
+            if isinstance(row_metadata, dict) and row_metadata:
+                technical_event_metadata.setdefault(typ, {})[al] = row_metadata
             seen_pairs.add(pair)
 
         # Enforce completeness: all REQUIRED measurement types must be present, and for each alias
@@ -280,6 +287,9 @@ Wavelength: {wavelength}
                 + "\n".join(missing_pairs),
             )
             return
+
+        if technical_event_metadata:
+            meta["TECHNICAL_EVENT_METADATA"] = technical_event_metadata
 
         # Get unique aliases from selected measurements for PONI file selection
         unique_aliases = set()

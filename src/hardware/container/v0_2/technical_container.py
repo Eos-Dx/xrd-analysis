@@ -2,8 +2,9 @@
 
 import json
 import os
+import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -208,23 +209,42 @@ def add_technical_event(
         detector_path = f"{event_path}/{role}"
         utils.create_group_if_missing(file_path, detector_path)
 
-        utils.set_attrs(
-            file_path,
-            detector_path,
-            {
-                schema.ATTR_NX_CLASS: schema.NX_CLASS_DETECTOR,
-                schema.ATTR_TECHNICAL_TYPE: technical_type,
-                schema.ATTR_TIMESTAMP: meas_data.get("timestamp", timestamp),
-                schema.ATTR_DETECTOR_ID: meas_data.get("detector_id", alias),
-                schema.ATTR_DETECTOR_ALIAS: alias,
-                **(
-                    {"poni_path": f"{schema.GROUP_TECHNICAL_PONI}/poni_{role[4:]}"}
-                    if technical_type == schema.TECHNICAL_TYPE_AGBH
-                    else {}
-                ),
-                **({"source_file": meas_data.get("source_file")} if meas_data.get("source_file") else {}),
-            },
-        )
+        detector_attrs = {
+            schema.ATTR_NX_CLASS: schema.NX_CLASS_DETECTOR,
+            schema.ATTR_TECHNICAL_TYPE: technical_type,
+            schema.ATTR_TIMESTAMP: meas_data.get("timestamp", timestamp),
+            schema.ATTR_DETECTOR_ID: meas_data.get("detector_id", alias),
+            schema.ATTR_DETECTOR_ALIAS: alias,
+            **(
+                {"poni_path": f"{schema.GROUP_TECHNICAL_PONI}/poni_{role[4:]}"}
+                if technical_type == schema.TECHNICAL_TYPE_AGBH
+                else {}
+            ),
+            **({"source_file": meas_data.get("source_file")} if meas_data.get("source_file") else {}),
+        }
+
+        integration_time_ms = meas_data.get(schema.ATTR_INTEGRATION_TIME_MS)
+        if integration_time_ms is not None:
+            try:
+                detector_attrs[schema.ATTR_INTEGRATION_TIME_MS] = float(integration_time_ms)
+            except Exception:
+                pass
+
+        n_frames = meas_data.get(schema.ATTR_N_FRAMES)
+        if n_frames is not None:
+            try:
+                detector_attrs[schema.ATTR_N_FRAMES] = int(n_frames)
+            except Exception:
+                pass
+
+        thickness = meas_data.get(schema.ATTR_THICKNESS)
+        if thickness is not None:
+            try:
+                detector_attrs[schema.ATTR_THICKNESS] = float(thickness)
+            except Exception:
+                detector_attrs[schema.ATTR_THICKNESS] = str(thickness)
+
+        utils.set_attrs(file_path, detector_path, detector_attrs)
 
         if isinstance(distances_cm, dict):
             detector_distance_cm = distances_cm.get(alias, event_distance_cm)
@@ -310,14 +330,116 @@ def link_poni_to_event(
     )
 
 
+def _parse_capture_metadata_from_filename(file_path: str) -> Dict[str, Any]:
+    metadata: Dict[str, Any] = {}
+    stem = Path(str(file_path)).stem
+
+    integration_match = re.search(
+        r"(?:^|_)(\d+(?:\.\d+)?)s(?:_|$)",
+        stem,
+        flags=re.IGNORECASE,
+    )
+    if integration_match:
+        try:
+            metadata[schema.ATTR_INTEGRATION_TIME_MS] = (
+                float(integration_match.group(1)) * 1000.0
+            )
+        except Exception:
+            pass
+
+    frames_match = re.search(r"(?:^|_)(\d+)frames(?:_|$)", stem, flags=re.IGNORECASE)
+    if frames_match:
+        try:
+            metadata[schema.ATTR_N_FRAMES] = int(frames_match.group(1))
+        except Exception:
+            pass
+
+    thickness_match = re.search(
+        r"(?:^|_)(\d+(?:\.\d+)?)mm(?:_|$)",
+        stem,
+        flags=re.IGNORECASE,
+    )
+    if thickness_match:
+        try:
+            metadata[schema.ATTR_THICKNESS] = float(thickness_match.group(1))
+        except Exception:
+            pass
+
+    return metadata
+
+
+def _normalize_aux_measurement_entry(
+    entry: Union[str, Dict[str, Any]],
+    *,
+    default_thickness_mm: Optional[float] = None,
+) -> Tuple[str, Dict[str, Any]]:
+    if isinstance(entry, str):
+        file_path = entry
+        metadata: Dict[str, Any] = {}
+    elif isinstance(entry, dict):
+        file_path = (
+            entry.get("file_path")
+            or entry.get("path")
+            or entry.get("source_file")
+            or ""
+        )
+        metadata = {}
+        embedded = entry.get("metadata")
+        if isinstance(embedded, dict):
+            metadata.update(embedded)
+        for key in (
+            schema.ATTR_INTEGRATION_TIME_MS,
+            "integration_time_s",
+            schema.ATTR_N_FRAMES,
+            "frames",
+            schema.ATTR_THICKNESS,
+            "thickness_mm",
+        ):
+            if key in entry and entry[key] is not None:
+                metadata[key] = entry[key]
+    else:
+        raise ValueError(f"Unsupported measurement entry type: {type(entry)!r}")
+
+    file_path = str(file_path)
+    parsed = _parse_capture_metadata_from_filename(file_path)
+    for key, value in parsed.items():
+        metadata.setdefault(key, value)
+
+    if "integration_time_s" in metadata and schema.ATTR_INTEGRATION_TIME_MS not in metadata:
+        try:
+            metadata[schema.ATTR_INTEGRATION_TIME_MS] = (
+                float(metadata.pop("integration_time_s")) * 1000.0
+            )
+        except Exception:
+            metadata.pop("integration_time_s", None)
+
+    if "frames" in metadata and schema.ATTR_N_FRAMES not in metadata:
+        try:
+            metadata[schema.ATTR_N_FRAMES] = int(metadata.pop("frames"))
+        except Exception:
+            metadata.pop("frames", None)
+
+    if "thickness_mm" in metadata and schema.ATTR_THICKNESS not in metadata:
+        try:
+            metadata[schema.ATTR_THICKNESS] = float(metadata.pop("thickness_mm"))
+        except Exception:
+            metadata.pop("thickness_mm", None)
+
+    if default_thickness_mm is not None and schema.ATTR_THICKNESS not in metadata:
+        metadata[schema.ATTR_THICKNESS] = float(default_thickness_mm)
+
+    return file_path, metadata
+
+
 def generate_from_aux_table(
     folder: Union[str, Path],
-    aux_measurements: Dict[str, Dict[str, str]],
+    aux_measurements: Dict[str, Dict[str, Union[str, Dict[str, Any]]]],
     poni_data: Dict[str, Tuple[str, str]],
     detector_config: List[Dict],
     active_detector_ids: List[str],
     distances_cm: Union[float, Dict[str, float]],
     poni_distances_cm: Optional[Union[float, Dict[str, float]]] = None,
+    technical_thickness_mm: Optional[float] = None,
     container_id: Optional[str] = None,
     validate_poni: bool = True,
     poni_tolerance_percent: float = 5.0,
@@ -394,7 +516,11 @@ def generate_from_aux_table(
         alias_files = aux_measurements[tech_type]
         measurements = {}
 
-        for alias, file_path_str in alias_files.items():
+        for alias, measurement_entry in alias_files.items():
+            file_path_str, capture_metadata = _normalize_aux_measurement_entry(
+                measurement_entry,
+                default_thickness_mm=technical_thickness_mm,
+            )
             if not file_path_str.endswith(".npy"):
                 raise ValueError(
                     f"Container v0.2 requires .npy files for detector '{alias}'. Got: {file_path_str}"
@@ -407,6 +533,11 @@ def generate_from_aux_table(
                 "detector_id": detector_id,
                 "timestamp": schema.now_timestamp(),
                 "source_file": file_path_str,
+                schema.ATTR_INTEGRATION_TIME_MS: capture_metadata.get(
+                    schema.ATTR_INTEGRATION_TIME_MS
+                ),
+                schema.ATTR_N_FRAMES: capture_metadata.get(schema.ATTR_N_FRAMES),
+                schema.ATTR_THICKNESS: capture_metadata.get(schema.ATTR_THICKNESS),
             }
 
         if measurements:

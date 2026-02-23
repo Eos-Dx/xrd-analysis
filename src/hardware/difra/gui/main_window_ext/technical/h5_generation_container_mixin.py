@@ -132,7 +132,16 @@ class H5GenerationContainerMixin:
             # 
             # If this is a primary measurement, it will be used for H5
             if is_primary:
-                aux_measurements.setdefault(typ, {})[alias] = file_path
+                entry = {"file_path": file_path}
+                try:
+                    row_metadata = self._get_aux_row_metadata(row, str(file_path))
+                except Exception:
+                    row_metadata = {}
+                if isinstance(row_metadata, dict):
+                    for key, value in row_metadata.items():
+                        if value is not None:
+                            entry[key] = value
+                aux_measurements.setdefault(typ, {})[alias] = entry
             
             # Track primary/supplementary status for this row
             pair = (typ, alias)
@@ -206,6 +215,24 @@ class H5GenerationContainerMixin:
                 "\n\nPlease uncheck some primary selections before generating H5.",
             )
             return
+
+        default_thickness_mm, accepted = self._prompt_technical_thickness_mm(
+            default_mm=float(getattr(self, "_last_technical_thickness_mm", 0.0) or 0.0)
+        )
+        if not accepted:
+            self._log_technical_event("Technical HDF5 generation cancelled (thickness prompt)")
+            return
+        if default_thickness_mm is not None:
+            self._last_technical_thickness_mm = float(default_thickness_mm)
+            for type_map in aux_measurements.values():
+                if not isinstance(type_map, dict):
+                    continue
+                for alias, entry in list(type_map.items()):
+                    if not isinstance(entry, dict):
+                        entry = {"file_path": entry}
+                    if entry.get("thickness") in (None, ""):
+                        entry["thickness"] = float(default_thickness_mm)
+                    type_map[alias] = entry
 
         # Collect PONI data (prefer file selection, fallback to in-memory PONI)
         poni_data = {}
@@ -372,6 +399,7 @@ class H5GenerationContainerMixin:
                 active_detector_ids=self._get_active_detector_ids(),
                 distances_cm=user_distances_cm,  # Pass per-detector distances dict
                 poni_distances_cm=poni_distances_cm if poni_distances_cm else None,  # Pass per-detector PONI distances
+                technical_thickness_mm=default_thickness_mm,
                 producer_software=str(self.config.get("producer_software") or "difra"),
                 producer_version=str(
                     self.config.get("producer_version")
@@ -445,3 +473,19 @@ class H5GenerationContainerMixin:
                 "HDF5 Generated",
                 f"Container generated successfully!\n\nLocation: {final_path}\n\nContainer ID: {container_id}",
             )
+
+    def _prompt_technical_thickness_mm(self, default_mm: float = 0.0):
+        thickness_mm, ok = QInputDialog.getDouble(
+            self,
+            "Technical Thickness",
+            "Enter technical thickness in mm (0 = unknown/not applicable):",
+            float(default_mm or 0.0),
+            0.0,
+            100000.0,
+            3,
+        )
+        if not ok:
+            return None, False
+        if float(thickness_mm) <= 0.0:
+            return None, True
+        return float(thickness_mm), True

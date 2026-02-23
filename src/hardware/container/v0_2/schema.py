@@ -192,6 +192,7 @@ ANALYSIS_ROLE_I = "i"
 
 # ================== Detector-Level Attributes ==============
 ATTR_INTEGRATION_TIME_MS = "integration_time_ms"
+ATTR_N_FRAMES = "n_frames"
 
 # ================== Point Attributes =======================
 ATTR_PIXEL_COORDINATES = "pixel_coordinates"

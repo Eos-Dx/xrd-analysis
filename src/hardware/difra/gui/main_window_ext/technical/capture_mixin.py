@@ -73,6 +73,10 @@ class TechnicalCaptureMixin:
             f"Starting {typ} capture: integration_time={integration_time_s}s, frames={frames}, "
             f"continuous_movement={enable_continuous_movement}, radius={movement_radius}mm"
         )
+        self._pending_aux_capture_metadata = {
+            "integration_time_ms": integration_time_s * 1000.0,
+            "n_frames": frames,
+        }
 
         container_version = get_container_version(
             self.config if hasattr(self, "config") else None
@@ -141,7 +145,10 @@ class TechnicalCaptureMixin:
             average_frames=False,
         )
         worker.add_aux_item.connect(self._add_aux_item_to_list)
-        worker.run()
+        try:
+            worker.run()
+        finally:
+            self._pending_aux_capture_metadata = None
 
     def measure_aux(self):
         tm = _tm()

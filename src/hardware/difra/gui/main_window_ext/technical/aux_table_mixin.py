@@ -12,6 +12,66 @@ def _tm():
 
 
 class TechnicalAuxTableMixin:
+    def _extract_capture_metadata_from_path(self, file_path: str):
+        metadata = {}
+        if not file_path:
+            return metadata
+
+        stem = Path(str(file_path)).stem
+
+        integration_match = re.search(
+            r"(?:^|_)(\d+(?:\.\d+)?)s(?:_|$)",
+            stem,
+            flags=re.IGNORECASE,
+        )
+        if integration_match:
+            try:
+                metadata["integration_time_ms"] = float(integration_match.group(1)) * 1000.0
+            except Exception:
+                pass
+
+        frames_match = re.search(r"(?:^|_)(\d+)frames(?:_|$)", stem, flags=re.IGNORECASE)
+        if frames_match:
+            try:
+                metadata["n_frames"] = int(frames_match.group(1))
+            except Exception:
+                pass
+
+        thickness_match = re.search(
+            r"(?:^|_)(\d+(?:\.\d+)?)mm(?:_|$)",
+            stem,
+            flags=re.IGNORECASE,
+        )
+        if thickness_match:
+            try:
+                metadata["thickness"] = float(thickness_match.group(1))
+            except Exception:
+                pass
+
+        return metadata
+
+    def _get_aux_row_metadata(self, row: int, fallback_path: str = ""):
+        tm = _tm()
+        metadata = {}
+        file_path = fallback_path
+
+        try:
+            file_item = self.auxTable.item(row, self.AUX_COL_FILE)
+            if file_item is not None:
+                if not file_path:
+                    file_path = file_item.data(tm.Qt.UserRole) or ""
+                stored = file_item.data(tm.Qt.UserRole + 1)
+                if isinstance(stored, dict):
+                    metadata.update(stored)
+        except Exception:
+            pass
+
+        parsed = self._extract_capture_metadata_from_path(str(file_path or ""))
+        for key, value in parsed.items():
+            metadata.setdefault(key, value)
+
+        return metadata
+
     def _add_aux_item_to_list(self, alias, npy_path):
         tm = _tm()
 
@@ -43,6 +103,14 @@ class TechnicalAuxTableMixin:
         file_item = tm.QTableWidgetItem(display)
         file_item.setFlags(tm.Qt.ItemIsSelectable | tm.Qt.ItemIsEnabled)
         file_item.setData(tm.Qt.UserRole, str(npy_path))
+        metadata = self._extract_capture_metadata_from_path(str(npy_path))
+        pending_metadata = getattr(self, "_pending_aux_capture_metadata", None)
+        if isinstance(pending_metadata, dict):
+            for key, value in pending_metadata.items():
+                if value is not None:
+                    metadata[key] = value
+        if metadata:
+            file_item.setData(tm.Qt.UserRole + 1, metadata)
         self.auxTable.setItem(row, 1, file_item)
 
         type_cb = self._make_type_combobox()
@@ -207,6 +275,7 @@ class TechnicalAuxTableMixin:
                         "type": type_text,
                         "alias": alias_text,
                         "is_primary": is_primary,
+                        "capture_metadata": self._get_aux_row_metadata(r, str(file_path or "")),
                     }
                 )
         except Exception as e:
@@ -237,6 +306,11 @@ class TechnicalAuxTableMixin:
                             primary_checkbox = primary_widget.findChild(tm.QCheckBox)
                             if primary_checkbox is not None:
                                 primary_checkbox.setChecked(True)
+                    capture_metadata = row.get("capture_metadata")
+                    if isinstance(capture_metadata, dict):
+                        file_item = self.auxTable.item(rix, self.AUX_COL_FILE)
+                        if file_item is not None:
+                            file_item.setData(tm.Qt.UserRole + 1, capture_metadata)
                 except Exception:
                     pass
         except Exception as e:

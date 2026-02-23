@@ -246,6 +246,11 @@ def _patch_message_boxes(monkeypatch):
         monkeypatch.setattr(module.QMessageBox, "information", staticmethod(_information))
         monkeypatch.setattr(module.QMessageBox, "warning", staticmethod(_warning))
         monkeypatch.setattr(module.QMessageBox, "critical", staticmethod(_critical))
+    monkeypatch.setattr(
+        h5_generation_mixin.QInputDialog,
+        "getDouble",
+        staticmethod(lambda *args, **kwargs: (0.0, True)),
+    )
 
     return dialogs
 
