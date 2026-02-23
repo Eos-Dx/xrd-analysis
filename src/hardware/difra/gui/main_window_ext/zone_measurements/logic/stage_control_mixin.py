@@ -653,7 +653,7 @@ class StageControlMixin:
         self._manual_motion_thread.start()
 
         self._manual_motion_poll_timer = QTimer(self)
-        self._manual_motion_poll_timer.setInterval(250)
+        self._manual_motion_poll_timer.setInterval(500)
 
         def _poll():
             try:
