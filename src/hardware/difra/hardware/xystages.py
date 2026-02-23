@@ -515,6 +515,9 @@ class XYStageLibController(BaseStageController):
         self.lib = None
         self._kinesis_sdk_path = self._resolve_kinesis_sdk_path(self.config)
         self._io_lock = threading.RLock()
+        self._pos_cache_lock = threading.RLock()
+        self._last_x_mm = 0.0
+        self._last_y_mm = 0.0
         self._limits = self._parse_limits(config)
         self._positions = self._parse_home_load(config)
 
@@ -601,6 +604,13 @@ class XYStageLibController(BaseStageController):
             self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.x_chan))
             self.lib.BDC_EnableChannel(c_char_p(self.serial), c_short(self.y_chan))
             time.sleep(0.5)
+            try:
+                x_mm, y_mm = self.get_xy_position()
+                with self._pos_cache_lock:
+                    self._last_x_mm = float(x_mm)
+                    self._last_y_mm = float(y_mm)
+            except Exception:
+                pass
             print(f"Stage '{self.alias}' initialized.")
             return True
         except Exception as e:
@@ -672,6 +682,9 @@ class XYStageLibController(BaseStageController):
                 curr_y_dev = self.lib.BDC_GetPosition(
                     c_char_p(self.serial), c_short(self.y_chan)
                 )
+                with self._pos_cache_lock:
+                    self._last_x_mm = curr_x_dev / self.scaling_factor
+                    self._last_y_mm = curr_y_dev / self.scaling_factor
                 if abs(curr_x_dev - x_dev) + abs(curr_y_dev - y_dev) <= 1000:
                     x_mm = curr_x_dev / self.scaling_factor
                     y_mm = curr_y_dev / self.scaling_factor
@@ -685,13 +698,24 @@ class XYStageLibController(BaseStageController):
             raise TimeoutError(f"Stage move timed out after {move_timeout} seconds")
 
     def get_xy_position(self):
-        with self._io_lock:
+        acquired = self._io_lock.acquire(timeout=0.05)
+        if not acquired:
+            with self._pos_cache_lock:
+                return float(self._last_x_mm), float(self._last_y_mm)
+        try:
             self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.x_chan))
             self.lib.BDC_RequestPosition(c_char_p(self.serial), c_short(self.y_chan))
             time.sleep(0.05)
             x_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.x_chan))
             y_dev = self.lib.BDC_GetPosition(c_char_p(self.serial), c_short(self.y_chan))
-            return x_dev / self.scaling_factor, y_dev / self.scaling_factor
+            x_mm = x_dev / self.scaling_factor
+            y_mm = y_dev / self.scaling_factor
+            with self._pos_cache_lock:
+                self._last_x_mm = x_mm
+                self._last_y_mm = y_mm
+            return x_mm, y_mm
+        finally:
+            self._io_lock.release()
 
     def deinit(self):
         try:

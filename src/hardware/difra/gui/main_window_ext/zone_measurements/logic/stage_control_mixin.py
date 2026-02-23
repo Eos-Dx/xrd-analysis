@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import socket
+import threading
 import time
 import uuid
 from typing import Dict, List, Optional, Tuple
@@ -606,6 +607,80 @@ class StageControlMixin:
         else:
             self.image_view.points_dict["beam"] = []
 
+    def _set_manual_motion_controls_enabled(self, enabled: bool) -> None:
+        controls = ("gotoBtn", "homeBtn", "loadPosBtn", "initializeBtn")
+        for name in controls:
+            widget = getattr(self, name, None)
+            if widget is None:
+                continue
+            try:
+                widget.setEnabled(bool(enabled))
+            except Exception:
+                pass
+
+    def _start_manual_motion_async(
+        self,
+        *,
+        label: str,
+        worker_fn,
+        on_success,
+        on_error,
+    ) -> None:
+        from PyQt5.QtCore import QTimer
+
+        if getattr(self, "_manual_motion_in_progress", False):
+            return
+        self._manual_motion_in_progress = True
+        self._manual_motion_done = False
+        self._manual_motion_error = None
+        self._manual_motion_result = None
+        self._manual_motion_label = str(label)
+        self._set_manual_motion_controls_enabled(False)
+
+        def _worker():
+            try:
+                self._manual_motion_result = worker_fn()
+            except Exception as exc:
+                self._manual_motion_error = exc
+            finally:
+                self._manual_motion_done = True
+
+        self._manual_motion_thread = threading.Thread(
+            target=_worker,
+            name=f"manual-motion-{label}",
+            daemon=True,
+        )
+        self._manual_motion_thread.start()
+
+        self._manual_motion_poll_timer = QTimer(self)
+        self._manual_motion_poll_timer.setInterval(250)
+
+        def _poll():
+            try:
+                self.update_xy_pos()
+            except Exception:
+                pass
+
+            if not getattr(self, "_manual_motion_done", False):
+                return
+
+            self._manual_motion_poll_timer.stop()
+            self._manual_motion_poll_timer.deleteLater()
+            self._manual_motion_poll_timer = None
+            self._manual_motion_in_progress = False
+            self._set_manual_motion_controls_enabled(True)
+
+            err = getattr(self, "_manual_motion_error", None)
+            if err is not None:
+                on_error(err)
+                return
+
+            res = getattr(self, "_manual_motion_result", None)
+            on_success(res)
+
+        self._manual_motion_poll_timer.timeout.connect(_poll)
+        self._manual_motion_poll_timer.start()
+
     def goto_stage_position(self):
         """
         Moves the stage to the user-specified X/Y coordinates.
@@ -622,22 +697,33 @@ class StageControlMixin:
         x = self.xPosSpin.value()
         y = self.yPosSpin.value()
         logging.info("Stage goto operation started: target position (%.3f, %.3f)", x, y)
-        try:
+
+        def _worker():
             client = self._ensure_hardware_client()
             client.move_to(x, axis="x", timeout_s=25)
-            new_x, new_y = client.move_to(y, axis="y", timeout_s=25)
+            return client.move_to(y, axis="y", timeout_s=25)
+
+        def _on_success(res):
+            try:
+                new_x, new_y = res
+            except Exception:
+                new_x, new_y = self.hardware_client.get_xy_position()
             self.update_xy_pos()
-            logging.info("Successfully moved to goto position: (%.3f, %.3f)", new_x, new_y)
-            self._append_hw_log(f"MoveTo complete: ({new_x:.3f}, {new_y:.3f}) mm")
-        except TimeoutError:
-            logging.error("Stage movement timeout occurred during goto operation")
-            self._append_hw_log("MoveTo timeout")
-            QMessageBox.warning(
-                self,
-                "Stage Timeout",
-                "Stage movement timed out. Please check the hardware and try again.",
+            logging.info(
+                "Successfully moved to goto position: (%.3f, %.3f)", new_x, new_y
             )
-        except Exception as exc:
+            self._append_hw_log(f"MoveTo complete: ({new_x:.3f}, {new_y:.3f}) mm")
+
+        def _on_error(exc):
+            if isinstance(exc, TimeoutError):
+                logging.error("Stage movement timeout occurred during goto operation")
+                self._append_hw_log("MoveTo timeout")
+                QMessageBox.warning(
+                    self,
+                    "Stage Timeout",
+                    "Stage movement timed out. Please check the hardware and try again.",
+                )
+                return
             try:
                 from hardware.difra.hardware.xystages import StageAxisLimitError
 
@@ -660,6 +746,13 @@ class StageControlMixin:
                 QMessageBox.warning(self, "Stage Move Error", str(exc))
             self._append_hw_log(f"MoveTo error: {exc}")
 
+        self._start_manual_motion_async(
+            label="goto",
+            worker_fn=_worker,
+            on_success=_on_success,
+            on_error=_on_error,
+        )
+
     def home_stage_button_clicked(self):
         """
         Moves the XY stage to the configured home position.
@@ -678,24 +771,46 @@ class StageControlMixin:
             logging.info(
                 "Moving to configured home position: (%.3f, %.3f)", home_x, home_y
             )
-            client = self._ensure_hardware_client()
-            client.move_to(home_x, axis="x", timeout_s=25)
-            new_x, new_y = client.move_to(home_y, axis="y", timeout_s=25)
-            logging.info(
-                "Successfully moved to home position: (%.3f, %.3f)", new_x, new_y
-            )
-            self.update_xy_pos()
-            self._append_hw_log(f"Home complete: ({new_x:.3f}, {new_y:.3f}) mm")
-        except TimeoutError:
-            logging.error("Stage movement timeout occurred during home operation")
-            self._append_hw_log("Home timeout")
-            QMessageBox.warning(
-                self,
-                "Stage Timeout",
-                "Stage movement timed out. Please check the hardware and try again.",
+            def _worker():
+                client = self._ensure_hardware_client()
+                client.move_to(home_x, axis="x", timeout_s=25)
+                return client.move_to(home_y, axis="y", timeout_s=25)
+
+            def _on_success(res):
+                try:
+                    new_x, new_y = res
+                except Exception:
+                    new_x, new_y = self.hardware_client.get_xy_position()
+                logging.info(
+                    "Successfully moved to home position: (%.3f, %.3f)", new_x, new_y
+                )
+                self.update_xy_pos()
+                self._append_hw_log(f"Home complete: ({new_x:.3f}, {new_y:.3f}) mm")
+
+            def _on_error(exc):
+                if isinstance(exc, TimeoutError):
+                    logging.error("Stage movement timeout occurred during home operation")
+                    self._append_hw_log("Home timeout")
+                    QMessageBox.warning(
+                        self,
+                        "Stage Timeout",
+                        "Stage movement timed out. Please check the hardware and try again.",
+                    )
+                    return
+                logging.error("Error during home operation: %s", exc)
+                self._append_hw_log(f"Home error: {exc}")
+                QMessageBox.warning(
+                    self, "Stage Error", f"Error moving to home position: {str(exc)}"
+                )
+
+            self._start_manual_motion_async(
+                label="home",
+                worker_fn=_worker,
+                on_success=_on_success,
+                on_error=_on_error,
             )
         except Exception as exc:
-            logging.error("Error during home operation: %s", exc)
+            logging.error("Error preparing home operation: %s", exc)
             self._append_hw_log(f"Home error: {exc}")
             QMessageBox.warning(
                 self, "Stage Error", f"Error moving to home position: {str(exc)}"
@@ -719,24 +834,46 @@ class StageControlMixin:
             logging.info(
                 "Moving to configured load position: (%.3f, %.3f)", load_x, load_y
             )
-            client = self._ensure_hardware_client()
-            client.move_to(load_x, axis="x", timeout_s=25)
-            new_x, new_y = client.move_to(load_y, axis="y", timeout_s=25)
-            logging.info(
-                "Successfully moved to load position: (%.3f, %.3f)", new_x, new_y
-            )
-            self.update_xy_pos()
-            self._append_hw_log(f"Load complete: ({new_x:.3f}, {new_y:.3f}) mm")
-        except TimeoutError:
-            logging.error("Stage movement timeout occurred during load operation")
-            self._append_hw_log("Load timeout")
-            QMessageBox.warning(
-                self,
-                "Stage Timeout",
-                "Stage movement timed out. Please check the hardware and try again. That's SAD",
+            def _worker():
+                client = self._ensure_hardware_client()
+                client.move_to(load_x, axis="x", timeout_s=25)
+                return client.move_to(load_y, axis="y", timeout_s=25)
+
+            def _on_success(res):
+                try:
+                    new_x, new_y = res
+                except Exception:
+                    new_x, new_y = self.hardware_client.get_xy_position()
+                logging.info(
+                    "Successfully moved to load position: (%.3f, %.3f)", new_x, new_y
+                )
+                self.update_xy_pos()
+                self._append_hw_log(f"Load complete: ({new_x:.3f}, {new_y:.3f}) mm")
+
+            def _on_error(exc):
+                if isinstance(exc, TimeoutError):
+                    logging.error("Stage movement timeout occurred during load operation")
+                    self._append_hw_log("Load timeout")
+                    QMessageBox.warning(
+                        self,
+                        "Stage Timeout",
+                        "Stage movement timed out. Please check the hardware and try again.",
+                    )
+                    return
+                logging.error("Error during load operation: %s", exc)
+                self._append_hw_log(f"Load error: {exc}")
+                QMessageBox.warning(
+                    self, "Stage Error", f"Error moving to load position: {str(exc)}"
+                )
+
+            self._start_manual_motion_async(
+                label="load",
+                worker_fn=_worker,
+                on_success=_on_success,
+                on_error=_on_error,
             )
         except Exception as exc:
-            logging.error("Error during load operation: %s", exc)
+            logging.error("Error preparing load operation: %s", exc)
             self._append_hw_log(f"Load error: {exc}")
             QMessageBox.warning(
                 self, "Stage Error", f"Error moving to load position: {str(exc)}"

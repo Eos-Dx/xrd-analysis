@@ -306,7 +306,7 @@ class ZoneMeasurementsUIMixin:
 
         self.xyTimer = QTimer(self)
         self.xyTimer.timeout.connect(self.update_xy_pos)
-        self.xyTimer.start(1000)
+        self.xyTimer.start(500)
         self.sidecarHeartbeatTimer = QTimer(self)
         self.sidecarHeartbeatTimer.timeout.connect(self.refresh_sidecar_status)
         self.sidecarHeartbeatTimer.start(1000)
