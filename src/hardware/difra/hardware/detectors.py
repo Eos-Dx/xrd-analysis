@@ -8,6 +8,7 @@ import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 
@@ -877,7 +878,7 @@ class PixetSidecarDetectorController(DetectorController):
         self._stream_thread = None
         self._streaming = threading.Event()
 
-    def _rpc(self, cmd: str, args: dict, timeout_s: float | None = None):
+    def _rpc(self, cmd: str, args: dict, timeout_s: Optional[float] = None):
         req_id = str(uuid.uuid4())
         payload = (
             json.dumps(
