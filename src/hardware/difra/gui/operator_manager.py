@@ -5,6 +5,8 @@ Provides dialog for operator selection/creation on startup.
 """
 
 import json
+import hashlib
+import hmac
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -17,12 +19,21 @@ from PyQt5.QtWidgets import (
     QGroupBox,
     QLabel,
     QLineEdit,
+    QInputDialog,
     QMessageBox,
     QPushButton,
     QVBoxLayout,
 )
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_MODIFICATION_PASSWORD_HASH = (
+    "64ae5ac9f98ac4a2bb67a66cc913909022d4d0bb7d673fcf76d1999c33debd93"
+)
+
+
+def _hash_password(password: str) -> str:
+    return hashlib.sha256(str(password).encode("utf-8")).hexdigest()
 
 
 class OperatorManager:
@@ -41,6 +52,7 @@ class OperatorManager:
         self.config_path = Path(config_path)
         self.operators: Dict[str, Dict[str, str]] = {}
         self.current_operator_id: Optional[str] = None
+        self.operator_modify_password_hash: str = DEFAULT_MODIFICATION_PASSWORD_HASH
         
         # Load operators from file
         self.load_operators()
@@ -57,6 +69,13 @@ class OperatorManager:
                 data = json.load(f)
                 self.operators = data.get('operators', {})
                 self.current_operator_id = data.get('current_operator_id')
+                loaded_hash = data.get("operator_modify_password_hash")
+                if isinstance(loaded_hash, str) and loaded_hash.strip():
+                    self.operator_modify_password_hash = loaded_hash.strip()
+                else:
+                    self.operator_modify_password_hash = DEFAULT_MODIFICATION_PASSWORD_HASH
+                    # Persist upgraded config format (without plaintext password).
+                    self.save_operators()
             
             logger.info(f"Loaded {len(self.operators)} operators from {self.config_path}")
         
@@ -81,6 +100,7 @@ class OperatorManager:
             }
         }
         self.current_operator_id = "default_operator"
+        self.operator_modify_password_hash = DEFAULT_MODIFICATION_PASSWORD_HASH
         
         # Ensure directory exists
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -95,6 +115,7 @@ class OperatorManager:
             data = {
                 "operators": self.operators,
                 "current_operator_id": self.current_operator_id,
+                "operator_modify_password_hash": self.operator_modify_password_hash,
             }
             
             with open(self.config_path, 'w', encoding='utf-8') as f:
@@ -231,6 +252,13 @@ class OperatorManager:
             return name
         return operator_id
 
+    def verify_modify_password(self, password: str) -> bool:
+        if not password:
+            return False
+        expected = str(self.operator_modify_password_hash or "").strip()
+        provided = _hash_password(password)
+        return bool(expected) and hmac.compare_digest(expected, provided)
+
 
 class OperatorSelectionDialog(QDialog):
     """Dialog for selecting or creating an operator on startup."""
@@ -279,6 +307,11 @@ class OperatorSelectionDialog(QDialog):
         new_operator_btn = QPushButton("Create New Operator...")
         new_operator_btn.clicked.connect(self._on_create_new_operator)
         layout.addWidget(new_operator_btn)
+
+        # Modify selected operator button
+        edit_operator_btn = QPushButton("Modify Selected Operator...")
+        edit_operator_btn.clicked.connect(self._on_edit_operator)
+        layout.addWidget(edit_operator_btn)
         
         # Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -361,6 +394,25 @@ class OperatorSelectionDialog(QDialog):
                 if self.operator_combo.itemData(i) == new_operator_id:
                     self.operator_combo.setCurrentIndex(i)
                     break
+
+    def _on_edit_operator(self):
+        operator_id = self.operator_combo.currentData()
+        if not operator_id:
+            QMessageBox.warning(self, "No Operator Selected", "Please select an operator to modify.")
+            return
+
+        dialog = NewOperatorDialog(
+            self.operator_manager,
+            self,
+            existing_operator_id=str(operator_id),
+        )
+        if dialog.exec_() == QDialog.Accepted:
+            updated_operator_id = dialog.get_operator_id() or str(operator_id)
+            self._populate_operator_combo()
+            for i in range(self.operator_combo.count()):
+                if self.operator_combo.itemData(i) == updated_operator_id:
+                    self.operator_combo.setCurrentIndex(i)
+                    break
     
     def _on_accept(self):
         """Validate and accept."""
@@ -393,13 +445,19 @@ class OperatorSelectionDialog(QDialog):
 class NewOperatorDialog(QDialog):
     """Dialog for creating a new operator."""
     
-    def __init__(self, operator_manager: OperatorManager, parent=None):
+    def __init__(
+        self,
+        operator_manager: OperatorManager,
+        parent=None,
+        existing_operator_id: Optional[str] = None,
+    ):
         super().__init__(parent)
         
         self.operator_manager = operator_manager
         self.new_operator_id: Optional[str] = None
+        self._existing_operator_id: Optional[str] = existing_operator_id
         
-        self.setWindowTitle("Create New Operator")
+        self.setWindowTitle("Modify Operator" if existing_operator_id else "Create New Operator")
         self.setModal(True)
         self.setMinimumWidth(400)
         
@@ -450,6 +508,35 @@ class NewOperatorDialog(QDialog):
         buttons.accepted.connect(self._on_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+
+        if self._existing_operator_id:
+            self._load_operator_for_edit(self._existing_operator_id)
+
+    def _load_operator_for_edit(self, operator_id: str) -> None:
+        operator = self.operator_manager.get_operator(operator_id)
+        if not operator:
+            return
+        self.id_edit.setText(operator_id)
+        self.id_edit.setReadOnly(True)
+        self.name_edit.setText(str(operator.get("name", "")))
+        self.surname_edit.setText(str(operator.get("surname", "")))
+        self.email_edit.setText(str(operator.get("email", "")))
+        self.phone_edit.setText(str(operator.get("phone", "")))
+        self.institution_edit.setText(str(operator.get("institution", "")))
+
+    def _confirm_modify_password(self) -> bool:
+        password, ok = QInputDialog.getText(
+            self,
+            "Password Required",
+            "Enter password to modify operator data:",
+            QLineEdit.Password,
+        )
+        if not ok:
+            return False
+        if not self.operator_manager.verify_modify_password(password):
+            QMessageBox.warning(self, "Invalid Password", "Incorrect password.")
+            return False
+        return True
     
     def _on_accept(self):
         """Validate and accept."""
@@ -475,18 +562,18 @@ class NewOperatorDialog(QDialog):
             QMessageBox.warning(self, "Missing Field", "Please enter an Email.")
             return
         
-        # Check if operator ID already exists
-        if self.operator_manager.get_operator(operator_id):
-            reply = QMessageBox.question(
+        if self._existing_operator_id and operator_id != self._existing_operator_id:
+            QMessageBox.warning(
                 self,
-                "Operator Exists",
-                f"Operator ID '{operator_id}' already exists.\n\nOverwrite with new information?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
+                "Operator ID Locked",
+                "Operator ID cannot be changed in modify mode.",
             )
-            
-            if reply == QMessageBox.No:
-                return
+            return
+
+        existing = self.operator_manager.get_operator(operator_id)
+        is_modify = existing is not None
+        if is_modify and not self._confirm_modify_password():
+            return
         
         # Add operator
         try:
@@ -503,8 +590,12 @@ class NewOperatorDialog(QDialog):
             
             QMessageBox.information(
                 self,
-                "Operator Created",
-                f"Operator '{name} {surname}' created successfully!",
+                "Operator Updated" if is_modify else "Operator Created",
+                (
+                    f"Operator '{name} {surname}' updated successfully!"
+                    if is_modify
+                    else f"Operator '{name} {surname}' created successfully!"
+                ),
             )
             
             self.accept()

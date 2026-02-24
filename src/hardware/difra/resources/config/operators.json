@@ -15,5 +15,6 @@
       "institution": ""
     }
   },
-  "current_operator_id": "sad1"
+  "current_operator_id": "sad1",
+  "operator_modify_password_hash": "64ae5ac9f98ac4a2bb67a66cc913909022d4d0bb7d673fcf76d1999c33debd93"
 }
