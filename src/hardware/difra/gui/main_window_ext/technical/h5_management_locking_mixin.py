@@ -340,61 +340,70 @@ class H5ManagementLockingMixin:
         return updated
 
     def create_new_technical_container(self):
-        """Archive existing technical containers and clear technical measurements table."""
-        from .helpers import _get_technical_storage_folder
-
-        if QMessageBox.question(
-            self,
-            "Create New Technical Container",
-            "Archive existing technical container(s) and clear current technical measurements table?\n\n"
-            "This keeps old containers in archive and starts a fresh table.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.Yes,
-        ) != QMessageBox.Yes:
-            return
-
-        folders_to_archive = []
-        try:
-            active_folder = (self.folderLE.text() or "").strip()
-            if active_folder:
-                folders_to_archive.append(Path(active_folder))
-        except Exception:
-            pass
-
-        try:
-            storage_folder = Path(
-                _get_technical_storage_folder(
-                    self.config if hasattr(self, "config") else None
+        """Legacy API kept for compatibility; uses container-first creation flow."""
+        if hasattr(self, "_create_new_active_technical_container"):
+            created = self._create_new_active_technical_container(clear_table=True)
+            if created is not None:
+                QMessageBox.information(
+                    self,
+                    "Technical Container",
+                    f"Created new technical container:\n{created}",
                 )
-            )
-            folders_to_archive.append(storage_folder)
-        except Exception:
-            pass
-
-        seen = set()
-        archived_total = 0
-        for folder in folders_to_archive:
-            folder = Path(folder)
-            key = str(folder.resolve()) if folder.exists() else str(folder)
-            if key in seen:
-                continue
-            seen.add(key)
-            archived_total += int(self._archive_existing_containers(str(folder)))
-
-        if hasattr(self, "auxTable") and self.auxTable is not None:
-            self.auxTable.setRowCount(0)
-        if hasattr(self, "auxNameLE"):
-            self.auxNameLE.clear()
-
-        self._log_technical_event(
-            f"New technical container workflow started: archived {archived_total} existing container(s); table cleared"
-        )
+            return
         QMessageBox.information(
             self,
-            "New Technical Container",
-            "Technical measurements table cleared.\n"
-            f"Archived containers: {archived_total}",
+            "Removed Workflow",
+            "Legacy 'New Container' flow is removed.",
         )
+
+    def lock_active_technical_container(self):
+        """Lock currently active technical container."""
+        import h5py
+
+        if hasattr(self, "_sync_active_technical_container_from_table"):
+            self._sync_active_technical_container_from_table(show_errors=True)
+
+        active_path = getattr(self, "_active_technical_container_path", "")
+        active_path = str(active_path or "").strip()
+        if not active_path:
+            QMessageBox.warning(
+                self,
+                "No Active Container",
+                "No active technical container loaded or created.",
+            )
+            return
+
+        container_path = Path(active_path)
+        if not container_path.exists():
+            QMessageBox.warning(
+                self,
+                "Container Missing",
+                f"Technical container not found:\n{container_path}",
+            )
+            return
+
+        container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
+        if container_manager.is_container_locked(container_path):
+            QMessageBox.information(
+                self,
+                "Already Locked",
+                f"Container is already locked:\n{container_path.name}",
+            )
+            return
+
+        container_id = container_path.stem
+        try:
+            with h5py.File(container_path, "r") as h5f:
+                raw_id = h5f.attrs.get("container_id")
+                if isinstance(raw_id, bytes):
+                    raw_id = raw_id.decode("utf-8", errors="replace")
+                if raw_id:
+                    container_id = str(raw_id)
+        except Exception:
+            pass
+
+        self._lock_container(str(container_path), container_id)
+        self._active_technical_container_locked = True
     
     def _lock_container(self, container_path: str, container_id: str):
         """Lock the technical container and archive raw data.
@@ -422,7 +431,6 @@ class H5ManagementLockingMixin:
                 str(container_path),
                 str(operator_id),
             )
-            bundle_path = None
             container_manager.lock_technical_container(
                 Path(container_path),
                 locked_by=operator_id,
@@ -483,36 +491,11 @@ class H5ManagementLockingMixin:
                     int(archived_count),
                     str(archive_subdir),
                 )
-
-                try:
-                    from hardware.container import create_container_bundle
-
-                    output_zip = archive_subdir.with_suffix(".zip")
-                    bundle_path = create_container_bundle(
-                        container_file=Path(container_path),
-                        source_folder=archive_subdir if archive_subdir.exists() else None,
-                        output_zip=output_zip,
-                        source_arcname=archive_subdir.name,
-                    )
-                    self._log_technical_event(
-                        f"Created container ZIP bundle: {Path(bundle_path).name}"
-                    )
-                    logger.info(
-                        "Created technical container ZIP bundle: id=%s zip=%s",
-                        container_id,
-                        str(bundle_path),
-                    )
-                except Exception as zip_error:
-                    logger.warning(f"Failed to create technical ZIP bundle: {zip_error}")
-                    self._log_technical_event(
-                        f"Warning: Could not create ZIP bundle: {zip_error}"
-                    )
             except Exception as e:
                 logger.warning(f"Failed to archive data files: {e}")
                 self._log_technical_event(f"Warning: Could not archive data files: {e}")
                 # Non-fatal - container is still locked
             
-            bundle_line = f"ZIP bundle: {bundle_path}\n" if bundle_path else ""
             QMessageBox.information(
                 self,
                 "Container Locked",
@@ -521,7 +504,6 @@ class H5ManagementLockingMixin:
                 f"Locked by: {operator_id}\n"
                 f"Location: {container_path}\n"
                 f"Raw data archived: {archived_count} file(s)\n\n"
-                f"{bundle_line}"
                 f"This container is now ready for session measurements.",
             )
         except Exception as e:

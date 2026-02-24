@@ -147,6 +147,8 @@ class TechnicalCaptureMixin:
         worker.add_aux_item.connect(self._add_aux_item_to_list)
         try:
             worker.run()
+            if hasattr(self, "_sync_active_technical_container_from_table"):
+                self._sync_active_technical_container_from_table(show_errors=True)
         finally:
             self._pending_aux_capture_metadata = None
 
@@ -162,67 +164,16 @@ class TechnicalCaptureMixin:
             )
             return
 
-        folder = (self.folderLE.text() or "").strip()
-        if folder and os.path.isdir(folder):
-            try:
-                from hardware.difra.utils.technical_h5_archival import (
-                    TechnicalH5Archival,
-                    format_archival_summary,
+        if hasattr(self, "_ensure_active_technical_container_available"):
+            ready = self._ensure_active_technical_container_available(
+                for_edit=True,
+                prompt_on_locked=True,
+            )
+            if not ready:
+                self._log_technical_event(
+                    "Aux measurement cancelled: technical container is not editable"
                 )
-
-                containers = TechnicalH5Archival.find_h5_containers(folder)
-                if containers:
-                    container_list = "\n".join([f"  • {c.name}" for c in containers[:5]])
-                    if len(containers) > 5:
-                        container_list += f"\n  ... and {len(containers) - 5} more"
-
-                    message = (
-                        f"Found {len(containers)} existing HDF5 container(s) in:\n"
-                        f"{folder}\n\n"
-                        f"{container_list}\n\n"
-                        f"These will be moved to '{TechnicalH5Archival.STORAGE_SUBFOLDER}' "
-                        f"folder and associated .npy files will be cleaned up.\n\n"
-                        "Do you want to archive them before starting new measurements?"
-                    )
-
-                    reply = tm.QMessageBox.question(
-                        self,
-                        "Archive Existing Containers?",
-                        message,
-                        tm.QMessageBox.Yes | tm.QMessageBox.No | tm.QMessageBox.Cancel,
-                        tm.QMessageBox.Yes,
-                    )
-
-                    if reply == tm.QMessageBox.Cancel:
-                        self._log_technical_event("Aux measurement cancelled by user")
-                        return
-                    if reply == tm.QMessageBox.Yes:
-                        self._log_technical_event(f"Archiving {len(containers)} HDF5 container(s)...")
-                        try:
-                            aliases = self._get_active_detector_aliases()
-                        except Exception:
-                            aliases = ["PRIMARY", "SECONDARY"]
-
-                        measurement_types = ["DARK", "EMPTY", "BACKGROUND", "AGBH", "WATER", "SPECIAL"]
-                        archived, cleaned, errors = TechnicalH5Archival.archive_all_and_cleanup(
-                            folder,
-                            measurement_types=measurement_types,
-                            aliases=aliases,
-                            add_timestamp=True,
-                        )
-                        summary = format_archival_summary(archived, cleaned, errors)
-                        self._log_technical_event(f"Archival complete: {archived} archived, {cleaned} cleaned")
-                        tm.QMessageBox.information(
-                            self,
-                            "Archival Complete",
-                            f"Archival Summary:\n\n{summary}",
-                        )
-                    else:
-                        self._log_technical_event("User chose to skip archival")
-                        logger.info("User skipped HDF5 container archival")
-            except Exception as e:
-                logger.error(f"Error checking for existing containers: {e}", exc_info=True)
-                self._log_technical_event(f"Warning: Failed to check for existing containers: {e}")
+                return
 
         self._log_technical_event("Starting auxiliary measurement...")
         self._aux_start = time.time()
@@ -238,7 +189,8 @@ class TechnicalCaptureMixin:
             return
         file_path = file_item.data(tm.Qt.UserRole)
         resolved_path = str(file_path or "").strip()
-        if resolved_path and not os.path.exists(resolved_path):
+        is_h5_ref = resolved_path.startswith("h5ref://")
+        if resolved_path and not is_h5_ref and not os.path.exists(resolved_path):
             folder = (self.folderLE.text() or "").strip()
             candidate = os.path.join(folder, os.path.basename(resolved_path)) if folder else ""
             if candidate and os.path.exists(candidate):
@@ -248,7 +200,7 @@ class TechnicalCaptureMixin:
             f"Opening measurement file: {os.path.basename(resolved_path) if resolved_path else 'Unknown'}"
         )
 
-        if not resolved_path or not os.path.exists(resolved_path):
+        if not resolved_path or (not is_h5_ref and not os.path.exists(resolved_path)):
             tm.QMessageBox.warning(
                 self,
                 "File Not Found",

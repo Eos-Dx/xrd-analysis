@@ -2,8 +2,6 @@ import os
 import re
 from pathlib import Path
 
-import numpy as np
-
 
 def _tm():
     from hardware.difra.gui.main_window_ext import technical_measurements as tm
@@ -12,6 +10,16 @@ def _tm():
 
 
 class TechnicalAuxTableMixin:
+    @staticmethod
+    def _aux_metadata_role():
+        tm = _tm()
+        return tm.Qt.UserRole + 1
+
+    @staticmethod
+    def _aux_source_info_role():
+        tm = _tm()
+        return tm.Qt.UserRole + 2
+
     def _extract_capture_metadata_from_path(self, file_path: str):
         metadata = {}
         if not file_path:
@@ -65,7 +73,7 @@ class TechnicalAuxTableMixin:
             if file_item is not None:
                 if not file_path:
                     file_path = file_item.data(tm.Qt.UserRole) or ""
-                stored = file_item.data(tm.Qt.UserRole + 1)
+                stored = file_item.data(self._aux_metadata_role())
                 if isinstance(stored, dict):
                     metadata.update(stored)
         except Exception:
@@ -78,11 +86,23 @@ class TechnicalAuxTableMixin:
 
         return metadata
 
-    def _add_aux_item_to_list(self, alias, npy_path):
+    def _add_aux_item_to_list(
+        self,
+        alias,
+        npy_path,
+        *,
+        source_kind: str = "file",
+        source_container: str = "",
+        source_dataset: str = "",
+        technical_type: str = None,
+        is_primary: bool = False,
+        source_row_id: str = "",
+        explicit_metadata: dict = None,
+    ):
         tm = _tm()
 
         try:
-            if not self._validate_timestamp_before_alias(npy_path):
+            if source_kind == "file" and not self._validate_timestamp_before_alias(npy_path):
                 tm.QMessageBox.warning(
                     self,
                     "Filename format",
@@ -96,8 +116,9 @@ class TechnicalAuxTableMixin:
         self.auxTable.insertRow(row)
 
         primary_checkbox = tm.QCheckBox()
-        primary_checkbox.setChecked(False)
+        primary_checkbox.setChecked(bool(is_primary))
         primary_checkbox.setToolTip("Mark as primary measurement (unchecked = supplementary)")
+        primary_checkbox.stateChanged.connect(self._on_aux_row_updated)
         checkbox_widget = tm.QWidget()
         checkbox_layout = tm.QHBoxLayout(checkbox_widget)
         checkbox_layout.addWidget(primary_checkbox)
@@ -105,18 +126,37 @@ class TechnicalAuxTableMixin:
         checkbox_layout.setContentsMargins(0, 0, 0, 0)
         self.auxTable.setCellWidget(row, 0, checkbox_widget)
 
-        display = f"{alias}: {Path(npy_path).name}"
+        source_ref = str(npy_path or "")
+        if source_kind == "container" and source_container and source_dataset:
+            source_ref = f"h5ref://{source_container}#{source_dataset}"
+
+        display_name = Path(str(npy_path or "")).name or source_row_id or "from_container"
+        display = f"{alias}: {display_name}"
         file_item = tm.QTableWidgetItem(display)
         file_item.setFlags(tm.Qt.ItemIsSelectable | tm.Qt.ItemIsEnabled)
-        file_item.setData(tm.Qt.UserRole, str(npy_path))
+        file_item.setData(tm.Qt.UserRole, source_ref)
         metadata = self._extract_capture_metadata_from_path(str(npy_path))
         pending_metadata = getattr(self, "_pending_aux_capture_metadata", None)
         if isinstance(pending_metadata, dict):
             for key, value in pending_metadata.items():
                 if value is not None:
                     metadata[key] = value
+        if isinstance(explicit_metadata, dict):
+            for key, value in explicit_metadata.items():
+                if value is not None:
+                    metadata[key] = value
         if metadata:
-            file_item.setData(tm.Qt.UserRole + 1, metadata)
+            file_item.setData(self._aux_metadata_role(), metadata)
+        file_item.setData(
+            self._aux_source_info_role(),
+            {
+                "source_kind": str(source_kind or "file"),
+                "source_path": str(npy_path or ""),
+                "container_path": str(source_container or ""),
+                "dataset_path": str(source_dataset or ""),
+                "row_id": str(source_row_id or ""),
+            },
+        )
         self.auxTable.setItem(row, 1, file_item)
 
         type_cb = self._make_type_combobox()
@@ -124,20 +164,34 @@ class TechnicalAuxTableMixin:
 
         alias_cb = self._make_alias_combobox(preselect=alias)
         self.auxTable.setCellWidget(row, 3, alias_cb)
+        if hasattr(alias_cb, "currentTextChanged"):
+            alias_cb.currentTextChanged.connect(self._on_aux_row_updated)
+
+        if technical_type:
+            idx = type_cb.findText(technical_type) if hasattr(type_cb, "findText") else -1
+            if idx >= 0:
+                type_cb.setCurrentIndex(idx)
 
         try:
-            inferred_type = self._infer_type_from_filename(npy_path)
+            inferred_type = (
+                technical_type
+                if technical_type
+                else self._infer_type_from_filename(str(npy_path or ""))
+            )
             if inferred_type:
                 type_cb = self.auxTable.cellWidget(row, 2)
                 if type_cb and hasattr(type_cb, "findText"):
-                    idx = type_cb.findText(inferred_type)
-                    if idx >= 0:
-                        type_cb.setCurrentIndex(idx)
-                        self._log_technical_event(
-                            f"Added {inferred_type} measurement: {alias} ({os.path.basename(npy_path)})"
-                        )
+                        idx = type_cb.findText(inferred_type)
+                        if idx >= 0:
+                            type_cb.setCurrentIndex(idx)
+                            self._log_technical_event(
+                                f"Added {inferred_type} measurement: {alias} "
+                                f"({os.path.basename(str(npy_path or ''))})"
+                            )
         except Exception:
             pass
+
+        self._on_aux_row_updated()
 
     def _file_base(self, typ: str) -> str:
         le = getattr(self, f"{typ.lower()}NameLE")
@@ -186,55 +240,15 @@ class TechnicalAuxTableMixin:
 
     def load_technical_files(self):
         tm = _tm()
-        files, _ = tm.QFileDialog.getOpenFileNames(
+        tm.QMessageBox.information(
             self,
-            "Load Technical Measurement Files",
-            str(self.folderLE.text() or ""),
-            "NumPy Arrays (*.npy);;Text Files (*.txt);;All Files (*)",
+            "Removed Workflow",
+            "Loading technical data directly from files is removed.\n"
+            "Use technical container workflow: set distances, measure, and load containers.",
         )
-        if not files:
-            return
-
-        self._log_technical_event(f"Loading {len(files)} technical files...")
-
-        for fpath in files:
-            path_to_use = fpath
-            try:
-                if fpath.lower().endswith(".txt"):
-                    data = np.loadtxt(fpath)
-                    npy_path = os.path.splitext(fpath)[0] + ".npy"
-                    np.save(npy_path, data)
-                    path_to_use = npy_path
-            except Exception as e:
-                tm.QMessageBox.warning(
-                    self,
-                    "Conversion failed",
-                    f"Failed to convert TXT to NPY for:\n{fpath}\nError: {e}",
-                )
-                continue
-
-            if not self._validate_timestamp_before_alias(path_to_use):
-                tm.QMessageBox.warning(
-                    self,
-                    "Filename format",
-                    "File name should include timestamp before detector alias\n"
-                    "Expected pattern like: name_YYYYMMDD_HHMMSS_..._ALIAS.ext",
-                )
-
-            alias = self._infer_alias_from_filename(path_to_use)
-            self._add_aux_item_to_list(alias, path_to_use)
-
-            try:
-                inferred_type = self._infer_type_from_filename(path_to_use)
-                if inferred_type:
-                    row_idx = self.auxTable.rowCount() - 1
-                    type_cb = self.auxTable.cellWidget(row_idx, 2)
-                    if type_cb and hasattr(type_cb, "findText"):
-                        idx = type_cb.findText(inferred_type)
-                        if idx >= 0:
-                            type_cb.setCurrentIndex(idx)
-            except Exception:
-                pass
+        self._log_technical_event(
+            "Load files action is removed; technical workflow is container-first"
+        )
 
     def build_aux_state(self):
         tm = _tm()
@@ -245,6 +259,11 @@ class TechnicalAuxTableMixin:
             for r in range(self.auxTable.rowCount()):
                 file_item = self.auxTable.item(r, self.AUX_COL_FILE)
                 file_path = file_item.data(tm.Qt.UserRole) if file_item is not None else None
+                source_info = (
+                    file_item.data(self._aux_source_info_role())
+                    if file_item is not None
+                    else {}
+                )
 
                 is_primary = False
                 primary_widget = self.auxTable.cellWidget(r, self.AUX_COL_PRIMARY)
@@ -282,6 +301,7 @@ class TechnicalAuxTableMixin:
                         "alias": alias_text,
                         "is_primary": is_primary,
                         "capture_metadata": self._get_aux_row_metadata(r, str(file_path or "")),
+                        "source_info": source_info if isinstance(source_info, dict) else {},
                     }
                 )
         except Exception as e:
@@ -293,11 +313,27 @@ class TechnicalAuxTableMixin:
         try:
             if not hasattr(self, "auxTable") or self.auxTable is None:
                 return
+            self._restoring_aux_table = True
             self.auxTable.setRowCount(0)
             for row in rows or []:
                 fpath = row.get("file_path")
                 alias = row.get("alias") or self._infer_alias_from_filename(fpath or "")
-                self._add_aux_item_to_list(alias or "", fpath or "")
+                source_info = row.get("source_info") if isinstance(row, dict) else {}
+                if not isinstance(source_info, dict):
+                    source_info = {}
+                self._add_aux_item_to_list(
+                    alias or "",
+                    fpath or "",
+                    source_kind=source_info.get("source_kind", "file"),
+                    source_container=source_info.get("container_path", ""),
+                    source_dataset=source_info.get("dataset_path", ""),
+                    technical_type=row.get("type"),
+                    is_primary=bool(row.get("is_primary")),
+                    source_row_id=source_info.get("row_id", ""),
+                    explicit_metadata=row.get("capture_metadata")
+                    if isinstance(row.get("capture_metadata"), dict)
+                    else None,
+                )
                 try:
                     rix = self.auxTable.rowCount() - 1
                     type_cb = self.auxTable.cellWidget(rix, self.AUX_COL_TYPE)
@@ -316,10 +352,13 @@ class TechnicalAuxTableMixin:
                     if isinstance(capture_metadata, dict):
                         file_item = self.auxTable.item(rix, self.AUX_COL_FILE)
                         if file_item is not None:
-                            file_item.setData(tm.Qt.UserRole + 1, capture_metadata)
+                            file_item.setData(self._aux_metadata_role(), capture_metadata)
                 except Exception:
                     pass
+            self._restoring_aux_table = False
+            self._on_aux_row_updated()
         except Exception as e:
+            self._restoring_aux_table = False
             print(f"Error restoring aux rows: {e}")
 
     def delete_selected_aux_rows(self):
@@ -337,6 +376,7 @@ class TechnicalAuxTableMixin:
                     self.auxTable.removeRow(r)
                 except Exception:
                     pass
+            self._on_aux_row_updated()
         except Exception as e:
             print(f"Error deleting selected aux rows: {e}")
 
@@ -385,9 +425,6 @@ class TechnicalAuxTableMixin:
 
     def _on_type_changed(self, new_type):
         tm = _tm()
-        if new_type == self.NO_SELECTION_LABEL:
-            return
-
         sender = self.sender()
         if not isinstance(sender, tm.QComboBox):
             return
@@ -400,17 +437,30 @@ class TechnicalAuxTableMixin:
         if trigger_row is None:
             return
 
+        if new_type == self.NO_SELECTION_LABEL:
+            self._on_aux_row_updated()
+            return
+
         file_item = self.auxTable.item(trigger_row, 1)
         if not file_item:
+            self._on_aux_row_updated()
             return
 
         file_path = file_item.data(tm.Qt.UserRole)
         if not file_path:
+            self._on_aux_row_updated()
+            return
+
+        # Auto-sync type across detector aliases for the same captured file only for
+        # regular file-backed rows. Container-backed rows use explicit row identity.
+        if str(file_path).startswith("h5ref://"):
+            self._on_aux_row_updated()
             return
 
         base_name = Path(file_path).stem
         parts = base_name.split("_")
         if len(parts) < 2:
+            self._on_aux_row_updated()
             return
         measurement_name = "_".join(parts[:-1])
 
@@ -437,6 +487,7 @@ class TechnicalAuxTableMixin:
                     type_cb.setCurrentText(new_type)
                     type_cb.blockSignals(False)
                     self._log_technical_event(f"Auto-synced type to {new_type} for row {row + 1}")
+        self._on_aux_row_updated()
 
     def _make_alias_combobox(self, preselect=None):
         tm = _tm()
@@ -457,7 +508,20 @@ class TechnicalAuxTableMixin:
                 idx = cb.findText(preselect)
                 if idx >= 0:
                     cb.setCurrentIndex(idx)
+        if hasattr(cb, "currentTextChanged"):
+            cb.currentTextChanged.connect(self._on_aux_row_updated)
         return cb
+
+    def _on_aux_row_updated(self, *_args):
+        """Notify container workflow that table state changed."""
+        if getattr(self, "_restoring_aux_table", False):
+            return
+        sync_fn = getattr(self, "_sync_active_technical_container_from_table", None)
+        if callable(sync_fn):
+            try:
+                sync_fn()
+            except Exception:
+                pass
 
     def refresh_aux_table_alias_models(self):
         aliases = self._get_active_detector_aliases()

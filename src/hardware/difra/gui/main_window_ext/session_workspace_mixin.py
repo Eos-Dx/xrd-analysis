@@ -180,6 +180,9 @@ class SessionWorkspaceMixin:
             if hasattr(self, "update_coordinates"):
                 self.update_coordinates()
 
+            # Rebuild per-point measurement history from session container datasets.
+            self._restore_measurement_history_from_session(session_path)
+
             logger.info(
                 f"Restored workspace from session container: session={session_path} "
                 f"image_loaded={restored_image} shapes={len(restored_shapes)} "
@@ -198,6 +201,88 @@ class SessionWorkspaceMixin:
                 self._append_session_log(
                     f"Workspace restore failed: {type(exc).__name__}"
                 )
+
+    def _restore_measurement_history_from_session(self, session_path: Path):
+        """Populate per-point measurement widgets from session container payloads."""
+        if not hasattr(self, "measurement_widgets"):
+            self.measurement_widgets = {}
+        if not hasattr(self, "add_measurement_widget_to_panel"):
+            return
+
+        try:
+            import h5py
+
+            schema = get_schema(self.config if hasattr(self, "config") else None)
+            detector_id_to_alias = {}
+            for detector_cfg in (self.config or {}).get("detectors", []):
+                detector_id = detector_cfg.get("id")
+                detector_alias = detector_cfg.get("alias")
+                if detector_id and detector_alias:
+                    detector_id_to_alias[str(detector_id)] = str(detector_alias)
+
+            with h5py.File(session_path, "r") as h5f:
+                measurements_group = h5f.get(schema.GROUP_MEASUREMENTS)
+                if measurements_group is None:
+                    return
+
+                for point_group_name in sorted(measurements_group.keys()):
+                    if not str(point_group_name).startswith("pt_"):
+                        continue
+                    try:
+                        point_index = int(str(point_group_name).split("_")[-1])
+                    except Exception:
+                        continue
+
+                    self.add_measurement_widget_to_panel(point_index)
+                    widget = self.measurement_widgets.get(point_index)
+                    if widget is None:
+                        continue
+
+                    point_group = measurements_group[point_group_name]
+                    for meas_name in sorted(point_group.keys()):
+                        meas_group = point_group[meas_name]
+                        timestamp = self._decode_attr(
+                            meas_group.attrs.get(schema.ATTR_TIMESTAMP, "")
+                        )
+                        results = {}
+                        for detector_group_name in sorted(meas_group.keys()):
+                            if not str(detector_group_name).startswith("det_"):
+                                continue
+                            detector_group = meas_group[detector_group_name]
+                            detector_alias = self._decode_attr(
+                                detector_group.attrs.get(
+                                    schema.ATTR_DETECTOR_ALIAS,
+                                    "",
+                                )
+                            )
+                            if not detector_alias:
+                                detector_id = self._decode_attr(
+                                    detector_group.attrs.get(schema.ATTR_DETECTOR_ID, "")
+                                )
+                                detector_alias = detector_id_to_alias.get(
+                                    str(detector_id), str(detector_group_name).replace("det_", "").upper()
+                                )
+
+                            dataset_name = schema.DATASET_PROCESSED_SIGNAL
+                            if dataset_name not in detector_group:
+                                continue
+                            dataset_path = (
+                                f"{schema.GROUP_MEASUREMENTS}/{point_group_name}/"
+                                f"{meas_name}/{detector_group_name}/{dataset_name}"
+                            )
+                            h5_ref = f"h5ref://{session_path}#{dataset_path}"
+                            results[str(detector_alias)] = {
+                                "filename": h5_ref,
+                                "goodness": None,
+                            }
+
+                        if results:
+                            widget.add_measurement(results, timestamp or "from container")
+        except Exception as exc:
+            logger.warning(
+                f"Failed to restore measurement history from session container {session_path}: {exc}",
+                exc_info=True,
+            )
 
     def _extract_current_image_array(self):
         """Read current sample image into numpy array for session sync."""

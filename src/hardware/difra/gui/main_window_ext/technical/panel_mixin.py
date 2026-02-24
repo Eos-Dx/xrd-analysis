@@ -148,42 +148,25 @@ class TechnicalPanelMixin:
         actions_layout.setSpacing(4)
         actions_layout.addWidget(tm.QLabel("Actions:"))
 
-        self.load_files_btn = tm.QPushButton("Load Files…")
-        self.load_files_btn.setToolTip("Load existing technical measurement files into the table")
-        self.load_files_btn.clicked.connect(self.load_technical_files)
-        actions_layout.addWidget(self.load_files_btn)
-
-        self.load_h5_btn = tm.QPushButton("Load H5")
-        self.load_h5_btn.setToolTip("Load and validate existing technical HDF5 container")
+        self.load_h5_btn = tm.QPushButton("Load Container…")
+        self.load_h5_btn.setToolTip("Load an existing technical HDF5 container")
         self.load_h5_btn.clicked.connect(self.load_technical_h5)
         actions_layout.addWidget(self.load_h5_btn)
-
-        self.validate_btn = tm.QPushButton("Validate")
-        self.validate_btn.setToolTip("Validate existing technical HDF5 container without loading")
-        self.validate_btn.clicked.connect(self.validate_technical_h5)
-        actions_layout.addWidget(self.validate_btn)
 
         self.dist_btn = tm.QPushButton("Distances...")
         self.dist_btn.setToolTip("Configure detector distances for technical measurements")
         self.dist_btn.clicked.connect(self.configure_detector_distances)
         actions_layout.addWidget(self.dist_btn)
 
+        self.lock_h5_btn = tm.QPushButton("Lock Container")
+        self.lock_h5_btn.setToolTip("Lock active technical container for production use")
+        self.lock_h5_btn.clicked.connect(self.lock_active_technical_container)
+        actions_layout.addWidget(self.lock_h5_btn)
+
         self.pyfai_btn = tm.QPushButton("PyFAI")
         self.pyfai_btn.setToolTip("Run pyfai-calib2 in this folder")
         self.pyfai_btn.clicked.connect(self.run_pyfai)
         actions_layout.addWidget(self.pyfai_btn)
-
-        self.gen_h5_btn = tm.QPushButton("Gen H5")
-        self.gen_h5_btn.setToolTip("Generate technical_<id>.h5 HDF5 container from all table rows")
-        self.gen_h5_btn.clicked.connect(self.generate_technical_h5)
-        actions_layout.addWidget(self.gen_h5_btn)
-
-        self.new_h5_btn = tm.QPushButton("New Container")
-        self.new_h5_btn.setToolTip(
-            "Archive existing technical container(s) and clear table for a new container"
-        )
-        self.new_h5_btn.clicked.connect(self.create_new_technical_container)
-        actions_layout.addWidget(self.new_h5_btn)
 
         outer.addLayout(actions_layout)
 
@@ -232,10 +215,10 @@ class TechnicalPanelMixin:
             self.framesSpin,
             self.rtBtn,
         ]
-        if hasattr(self, "load_files_btn"):
-            self.load_files_btn.setEnabled(True)
         if hasattr(self, "load_h5_btn"):
             self.load_h5_btn.setEnabled(True)
+        if hasattr(self, "lock_h5_btn"):
+            self.lock_h5_btn.setEnabled(True)
 
         for w in widgets:
             w.setEnabled(enable)
@@ -249,10 +232,8 @@ class TechnicalPanelMixin:
             self.auxBtn.setEnabled(has_distances)
         if hasattr(self, "pyfai_btn"):
             self.pyfai_btn.setEnabled(has_distances)
-        if hasattr(self, "gen_h5_btn"):
-            self.gen_h5_btn.setEnabled(has_distances)
-        if hasattr(self, "validate_btn"):
-            self.validate_btn.setEnabled(has_distances)
+        if hasattr(self, "lock_h5_btn"):
+            self.lock_h5_btn.setEnabled(has_distances)
 
         if not has_distances and hasattr(self, "auxBtn"):
             self.auxBtn.setStyleSheet("color: gray;")
@@ -320,6 +301,11 @@ class TechnicalPanelMixin:
             self._log_technical_event(f"Configured distances: {dist_str}")
             self._update_window_title_with_distances()
             self._update_distance_dependent_controls()
+            if hasattr(self, "_on_detector_distances_updated"):
+                try:
+                    self._on_detector_distances_updated()
+                except Exception as exc:
+                    logger.warning("Distance update hook failed: %s", exc, exc_info=True)
 
             tm.QMessageBox.information(
                 self,

@@ -6,9 +6,11 @@ from typing import List
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QCheckBox,
+    QFileDialog,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QMessageBox,
     QPushButton,
     QTableWidget,
@@ -80,6 +82,12 @@ class SessionTabMixin:
         self.refresh_sessions_btn.clicked.connect(self._refresh_session_container_lists)
         queue_btn_layout.addWidget(self.refresh_sessions_btn)
 
+        self.load_session_from_path_btn = QPushButton("Load Container…")
+        self.load_session_from_path_btn.clicked.connect(
+            self._on_load_session_container_from_dialog
+        )
+        queue_btn_layout.addWidget(self.load_session_from_path_btn)
+
         self.select_all_sessions_btn = QPushButton("Select All")
         self.select_all_sessions_btn.clicked.connect(
             lambda: self._set_all_pending_selection(True)
@@ -116,6 +124,10 @@ class SessionTabMixin:
             ]
         )
         self.pending_sessions_table.setColumnHidden(7, True)
+        self.pending_sessions_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.pending_sessions_table.customContextMenuRequested.connect(
+            self._show_pending_sessions_context_menu
+        )
         queue_layout.addWidget(self.pending_sessions_table)
 
         layout.addWidget(queue_group)
@@ -133,6 +145,10 @@ class SessionTabMixin:
             ["File", "Sample", "Study", "Operator", "Created", "Archived", "Path"]
         )
         self.archived_sessions_table.setColumnHidden(6, True)
+        self.archived_sessions_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.archived_sessions_table.customContextMenuRequested.connect(
+            self._show_archived_sessions_context_menu
+        )
         archive_layout.addWidget(self.archived_sessions_table)
 
         layout.addWidget(archive_group)
@@ -225,6 +241,77 @@ class SessionTabMixin:
             if path_item is not None:
                 containers.append(Path(path_item.text()))
         return containers
+
+    def _path_from_table_row(self, table: QTableWidget, row: int, path_col: int):
+        if row < 0:
+            return None
+        path_item = table.item(row, path_col)
+        if path_item is None:
+            return None
+        raw = (path_item.text() or "").strip()
+        if not raw:
+            return None
+        return Path(raw)
+
+    def _open_session_container_path(self, container_path: Path):
+        if container_path is None:
+            return
+        if not container_path.exists():
+            QMessageBox.warning(
+                self,
+                "Container Missing",
+                f"Session container not found:\n{container_path}",
+            )
+            return
+        if hasattr(self, "load_session_container_from_path"):
+            self.load_session_container_from_path(container_path)
+        else:
+            QMessageBox.warning(
+                self,
+                "Load Not Available",
+                "Session loading API is not available in this window build.",
+            )
+
+    def _show_pending_sessions_context_menu(self, pos):
+        table = self.pending_sessions_table
+        row = table.rowAt(pos.y())
+        if row < 0:
+            return
+        container_path = self._path_from_table_row(table, row, 7)
+        if container_path is None:
+            return
+
+        menu = QMenu(table)
+        load_action = menu.addAction("Load Container")
+        selected = menu.exec_(table.viewport().mapToGlobal(pos))
+        if selected == load_action:
+            self._open_session_container_path(container_path)
+
+    def _show_archived_sessions_context_menu(self, pos):
+        table = self.archived_sessions_table
+        row = table.rowAt(pos.y())
+        if row < 0:
+            return
+        container_path = self._path_from_table_row(table, row, 6)
+        if container_path is None:
+            return
+
+        menu = QMenu(table)
+        load_action = menu.addAction("Load Container")
+        selected = menu.exec_(table.viewport().mapToGlobal(pos))
+        if selected == load_action:
+            self._open_session_container_path(container_path)
+
+    def _on_load_session_container_from_dialog(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open Session Container",
+            str(self._get_measurements_folder_for_queue()),
+            "NeXus HDF5 Files (*.nxs.h5 *.h5);;All Files (*)",
+        )
+        if not file_path:
+            return
+        self._open_session_container_path(Path(file_path))
 
     def _send_and_archive_sessions(self, container_paths: List[Path]):
         if not container_paths:

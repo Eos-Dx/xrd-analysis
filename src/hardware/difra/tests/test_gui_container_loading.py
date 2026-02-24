@@ -280,7 +280,8 @@ def test_load_technical_h5_sets_primary_and_types(qapp, tmp_path, monkeypatch):
         assert file_item is not None
         source_value = file_item.data(Qt.UserRole)
         assert isinstance(source_value, str)
-        assert source_value.endswith(".npy")
+        assert source_value.startswith("h5ref://")
+        assert "/processed_signal" in source_value
 
     assert type_counts == {"DARK": 2, "EMPTY": 2, "BACKGROUND": 2, "AGBH": 2}
 
@@ -315,21 +316,8 @@ def test_load_technical_files_without_container(qapp, tmp_path, monkeypatch):
     harness.load_technical_files()
     qapp.processEvents()
 
-    assert harness.auxTable.rowCount() == len(raw_files)
-
-    seen_types = set()
-    seen_files = set()
-    for row in range(harness.auxTable.rowCount()):
-        type_cb = harness.auxTable.cellWidget(row, 2)
-        seen_types.add(type_cb.currentText())
-
-        file_item = harness.auxTable.item(row, 1)
-        source_value = file_item.data(Qt.UserRole)
-        seen_files.add(source_value)
-        assert source_value in raw_files
-
-    assert seen_types == {"DARK", "EMPTY", "BACKGROUND", "AGBH"}
-    assert seen_files == set(raw_files)
+    # File-based loading is removed in container-first workflow.
+    assert harness.auxTable.rowCount() == 0
 
 
 def test_open_existing_session_container_updates_state(qapp, tmp_path, monkeypatch):

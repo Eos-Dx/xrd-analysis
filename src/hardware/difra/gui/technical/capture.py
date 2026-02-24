@@ -18,7 +18,32 @@ from xrdanalysis.data_processing.utility_functions import create_mask
 
 
 def _load_measurement_array(measurement_filename: str) -> np.ndarray:
-    path = Path(str(measurement_filename))
+    value = str(measurement_filename or "").strip()
+    if value.startswith("h5ref://"):
+        # Format: h5ref://<absolute-container-path>#<dataset_path>
+        import h5py
+
+        payload = value[len("h5ref://") :]
+        container_path, sep, dataset_path = payload.partition("#")
+        if not sep or not container_path or not dataset_path:
+            raise ValueError(f"Invalid H5 reference: {measurement_filename}")
+
+        container = Path(container_path)
+        if not container.exists():
+            raise FileNotFoundError(f"H5 container does not exist: {container}")
+
+        with h5py.File(container, "r") as h5f:
+            if dataset_path not in h5f:
+                raise KeyError(
+                    f"Dataset not found in container: {container}#{dataset_path}"
+                )
+            data = h5f[dataset_path][()]
+            arr = np.asarray(data, dtype=float)
+            if arr.ndim != 2:
+                raise ValueError(f"Expected 2D array, got shape {arr.shape}")
+            return arr
+
+    path = Path(value)
     if not path.exists():
         raise FileNotFoundError(f"Measurement file does not exist: {path}")
 

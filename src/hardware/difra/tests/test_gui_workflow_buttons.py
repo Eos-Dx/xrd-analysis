@@ -12,7 +12,6 @@ This test exercises a full user path:
 """
 
 import os
-import zipfile
 from pathlib import Path
 
 import h5py
@@ -390,13 +389,13 @@ def test_gui_button_driven_technical_workflow(qapp, tmp_path, monkeypatch):
         assert "poni_primary" in poni_group
         assert "poni_secondary" in poni_group
 
-    # Lock workflow should create archive folder and ZIP bundle
+    # Lock workflow archives raw files without ZIP bundling.
     archive_zips = sorted(archive_dir.glob("*.zip"))
-    assert archive_zips, f"No ZIP bundle found in archive dir: {archive_dir}"
-    with zipfile.ZipFile(archive_zips[-1], "r") as zf:
-        names = set(zf.namelist())
-        assert container_path.name in names
-        assert any(name.endswith(".npy") for name in names)
+    assert not archive_zips, f"Unexpected ZIP bundle(s): {archive_zips}"
+    archive_subdirs = [p for p in archive_dir.glob("*") if p.is_dir()]
+    assert archive_subdirs, f"No archive subfolder created in {archive_dir}"
+    archived_npy = sorted(archive_subdirs[-1].glob("*.npy"))
+    assert archived_npy, "Expected archived raw .npy files in technical archive folder"
 
     # No critical dialog should have been shown
     assert not dialogs["critical"], f"Unexpected critical dialogs: {dialogs['critical']}"

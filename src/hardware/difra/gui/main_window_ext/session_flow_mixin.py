@@ -681,77 +681,111 @@ class SessionFlowMixin:
                         f"Session finalization failed: {type(e).__name__}"
                     )
     
-    def on_restore_session(self):
-        """Open an existing session container (including locked ones) for analysis."""
-        from pathlib import Path
-        
-        # Close current session if active
-        if self.session_manager.is_session_active():
-            reply = QMessageBox.question(
-                self,
-                "Close Current Session?",
-                f"Close current session '{self.session_manager.sample_id}' and open existing session?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
-            )
-            
-            if reply == QMessageBox.No:
-                return
-            
+    def _prepare_for_session_container_switch(self, target_path: Path) -> bool:
+        """Ensure active session can be replaced according to lock policy."""
+        if not hasattr(self, "session_manager") or self.session_manager is None:
+            return True
+        if not self.session_manager.is_session_active():
+            return True
+
+        current_path = Path(self.session_manager.session_path)
+        try:
+            if current_path.resolve() == Path(target_path).resolve():
+                return True
+        except Exception:
+            pass
+
+        container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
+        current_locked = bool(container_manager.is_container_locked(current_path))
+
+        if current_locked:
             self.session_manager.close_session()
             if hasattr(self, "_append_session_log"):
-                self._append_session_log("Closed current session before restore")
-        
-        # Get session file from user
-        file_path, _ = QFileDialog.getOpenFileName(
+                self._append_session_log(
+                    f"Closed active locked session before loading {Path(target_path).name}"
+                )
+            return True
+
+        info = {}
+        try:
+            info = self.session_manager.get_session_info() or {}
+        except Exception:
+            info = {}
+
+        sample_id = info.get("sample_id") or self.session_manager.sample_id or "UNKNOWN"
+        reply = QMessageBox.question(
             self,
-            "Open Session Container",
-            str(Path.home()),
-            "NeXus HDF5 Files (*.nxs.h5 *.h5);;All Files (*)",
+            "Active Session In Progress",
+            "Active session container is still under construction (unlocked):\n\n"
+            f"Sample ID: {sample_id}\n"
+            f"Container: {current_path.name}\n\n"
+            "To load another session container, the active one must be locked first.\n\n"
+            "Lock current session and continue?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
         )
-        
-        if not file_path:
-            return
-        
+        if reply != QMessageBox.Yes:
+            return False
+
+        try:
+            lock_user = getattr(self.session_manager, "operator_id", None)
+            SessionLifecycleActions.finalize_session_container(
+                session_path=current_path,
+                container_manager=container_manager,
+                lock_user=lock_user,
+            )
+            self.session_manager.close_session()
+            if hasattr(self, "_append_session_log"):
+                self._append_session_log(
+                    f"Locked and closed active session before loading {Path(target_path).name}"
+                )
+            return True
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Lock Failed",
+                f"Failed to lock active session before switching containers:\n\n{exc}",
+            )
+            logger.error("Failed to lock active session before load: %s", exc, exc_info=True)
+            return False
+
+    def load_session_container_from_path(self, file_path: Path) -> bool:
+        """Load a session container from an explicit path."""
         file_path = Path(file_path)
-        
         if not file_path.exists():
             QMessageBox.critical(
                 self,
                 "File Not Found",
                 f"Container file not found:\n{file_path}",
             )
-            return
+            return False
+
+        if not self._prepare_for_session_container_switch(file_path):
+            return False
+
         if hasattr(self, "_append_session_log"):
             self._append_session_log(f"Opening existing session container: {file_path.name}")
-        
+
         try:
             import h5py
+
             schema = get_schema(self.config if hasattr(self, "config") else None)
             container_manager = get_container_manager(self.config if hasattr(self, "config") else None)
-            
-            # Check if locked
             is_locked = container_manager.is_container_locked(file_path)
-            
-            # Open container to read metadata
-            with h5py.File(file_path, 'r') as f:
-                sample_id = self._decode_attr(f.attrs.get(schema.ATTR_SAMPLE_ID, 'Unknown'))
-                study_name = self._decode_attr(f.attrs.get(schema.ATTR_STUDY_NAME, 'UNSPECIFIED'))
-                session_id = self._decode_attr(f.attrs.get(schema.ATTR_SESSION_ID, 'Unknown'))
-                operator_id = self._decode_attr(f.attrs.get(schema.ATTR_OPERATOR_ID, 'Unknown'))
+
+            with h5py.File(file_path, "r") as f:
+                sample_id = self._decode_attr(f.attrs.get(schema.ATTR_SAMPLE_ID, "Unknown"))
+                study_name = self._decode_attr(f.attrs.get(schema.ATTR_STUDY_NAME, "UNSPECIFIED"))
+                session_id = self._decode_attr(f.attrs.get(schema.ATTR_SESSION_ID, "Unknown"))
+                operator_id = self._decode_attr(f.attrs.get(schema.ATTR_OPERATOR_ID, "Unknown"))
                 distance_cm = f.attrs.get(schema.ATTR_DISTANCE_CM, None)
                 beam_energy_kev = f.attrs.get(schema.ATTR_BEAM_ENERGY_KEV, None)
-                
-                # Count points and measurements
                 num_points = len(f.get(schema.GROUP_POINTS, {}).keys())
-                
-                # Get all measurements
                 meas_group = f.get(schema.GROUP_MEASUREMENTS, {})
                 num_measurements = 0
                 for point_group in meas_group.values():
                     num_measurements += len(list(point_group.keys()))
-            
-            # Show container info
+
             lock_status = "🔒 LOCKED (read-only)" if is_locked else "🔓 Unlocked (editable)"
             msg = (
                 f"Container Information:\n\n"
@@ -764,28 +798,16 @@ class SessionFlowMixin:
                 f"  Points: {num_points}\n"
                 f"  Measurements: {num_measurements}\n\n"
             )
-            
+
             if distance_cm is not None:
                 msg += f"Distance: {distance_cm} cm\n"
             if beam_energy_kev is not None:
                 msg += f"Beam Energy: {beam_energy_kev} keV\n\n"
-            
-            if is_locked:
-                msg += "This container is locked and will be opened in read-only mode.\n"
-                msg += "You can analyze the data but cannot add new measurements."
-            else:
-                msg += "This container is unlocked. You can add new measurements."
-            
-            QMessageBox.information(
-                self,
-                "Session Container Opened",
-                msg,
-                QMessageBox.Ok
-            )
-            
-            # Load session manager state from container metadata.
+
+            QMessageBox.information(self, "Session Container Opened", msg, QMessageBox.Ok)
+
             self.session_manager.open_existing_session(file_path)
-            
+
             logger.info(
                 "Opened existing session container: sample_id=%s locked=%s path=%s",
                 sample_id,
@@ -798,24 +820,19 @@ class SessionFlowMixin:
                     f"Opened session container {file_path.name} ({mode})"
                 )
 
-            # Restore workspace data from session container when UI supports it.
             self._restore_session_workspace_from_container(file_path)
 
-            # If technical table exists, restore from embedded calibration snapshot data.
             if hasattr(self, "_populate_aux_table_from_h5"):
                 try:
-                    self._populate_aux_table_from_h5(str(file_path))
+                    self._populate_aux_table_from_h5(str(file_path), set_active=False)
                 except Exception as tech_restore_error:
                     logger.warning(
                         f"Failed to restore technical table from session: {tech_restore_error}"
                     )
 
-            # Recover in-progress points from on-disk files or mark for re-measurement.
             self._handle_incomplete_measurements_after_restore(file_path)
-            
-            # Update UI
             self.update_session_status()
-            
+
             QMessageBox.information(
                 self,
                 "Container Ready",
@@ -823,7 +840,7 @@ class SessionFlowMixin:
                 f"You can now analyze the data in DIFRA.\n\n"
                 f"Note: {'Read-only mode (locked)' if is_locked else 'Editable mode'}",
             )
-            
+            return True
         except Exception as e:
             QMessageBox.critical(
                 self,
@@ -835,3 +852,16 @@ class SessionFlowMixin:
                 self._append_session_log(
                     f"Failed to open session container: {type(e).__name__}"
                 )
+            return False
+
+    def on_restore_session(self):
+        """Open an existing session container (including locked ones) for analysis."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open Session Container",
+            str(Path.home()),
+            "NeXus HDF5 Files (*.nxs.h5 *.h5);;All Files (*)",
+        )
+        if not file_path:
+            return
+        self.load_session_container_from_path(Path(file_path))
