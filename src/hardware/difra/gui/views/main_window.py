@@ -119,9 +119,24 @@ class MainWindow(
             self.add_rotation_actions_to_tool_bar()
             logger.debug("Rotation actions created")
 
-            logger.debug("Loading default masks and ponis...")
-            self.load_default_masks_and_ponis()
-            logger.debug("Default masks and ponis loaded")
+            detector_tabs_enabled = False
+            try:
+                detector_tabs_enabled = bool(
+                    hasattr(self, "_are_detector_param_tabs_enabled")
+                    and self._are_detector_param_tabs_enabled()
+                )
+            except Exception:
+                detector_tabs_enabled = False
+
+            if detector_tabs_enabled:
+                logger.debug("Loading default masks and ponis...")
+                self.load_default_masks_and_ponis()
+                logger.debug("Default masks and ponis loaded")
+            else:
+                self.masks = {}
+                self.ponis = {}
+                self.poni_files = {}
+                logger.debug("Detector tabs disabled; skipping default masks/ponis preload")
             
             # Set a callback so that when shapes change, the shape table updates.
             self.image_view.shape_updated_callback = self.update_shape_table

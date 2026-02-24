@@ -297,8 +297,36 @@ class H5ManagementLoadingMixin:
         
         # Track loaded items for logging
         loaded_count = 0
+        loaded_poni = {}
+        loaded_poni_files = {}
         
         with h5py.File(h5_path, "r") as f:
+            poni_group = f.get(schema.GROUP_TECHNICAL_PONI)
+            if poni_group is not None:
+                for ds_name in sorted(poni_group.keys()):
+                    try:
+                        ds = poni_group[ds_name]
+                        poni_blob = ds[()]
+                        if isinstance(poni_blob, bytes):
+                            poni_text = poni_blob.decode("utf-8", errors="replace")
+                        else:
+                            poni_text = str(poni_blob)
+
+                        alias = _as_text(ds.attrs.get(schema.ATTR_DETECTOR_ALIAS, "")).strip()
+                        if not alias and str(ds_name).startswith("poni_"):
+                            alias = str(ds_name)[5:].upper()
+                        if not alias:
+                            continue
+
+                        poni_filename = _as_text(ds.attrs.get("poni_filename", "")).strip()
+                        loaded_poni[alias] = poni_text
+                        loaded_poni_files[alias] = {
+                            "path": "",
+                            "name": poni_filename or f"{alias}.poni",
+                        }
+                    except Exception as poni_err:
+                        logger.warning(f"Failed to parse PONI dataset '{ds_name}': {poni_err}")
+
             tech_group = f.get(schema.GROUP_TECHNICAL)
             if tech_group is None:
                 tech_group = f.get(f"{schema.GROUP_CALIBRATION_SNAPSHOT}/events")
@@ -418,6 +446,17 @@ class H5ManagementLoadingMixin:
                 self._update_window_title_with_distances()
             if hasattr(self, '_update_distance_dependent_controls'):
                 self._update_distance_dependent_controls()
+
+        if loaded_poni:
+            if not isinstance(getattr(self, "ponis", None), dict):
+                self.ponis = {}
+            if not isinstance(getattr(self, "poni_files", None), dict):
+                self.poni_files = {}
+            self.ponis.update(loaded_poni)
+            self.poni_files.update(loaded_poni_files)
+            self._log_technical_event(
+                f"Loaded PONI calibration from container for aliases: {', '.join(sorted(loaded_poni.keys()))}"
+            )
         
         # Final summary
         row_count = self.auxTable.rowCount()

@@ -491,15 +491,15 @@ def archive_technical_data_files(
     Args:
         container_path: Path to the technical container .h5 file
         archive_folder: Path to archive folder (will be created if needed)
-        file_patterns: List of file patterns to archive (e.g., ['*.txt', '*.dsc', '*.npy', '*.poni'])
-                      If None, defaults to ['*.txt', '*.dsc', '*.npy', '*.poni'] for Advacam detectors
+        file_patterns: List of file patterns to archive (e.g., ['*.txt', '*.dsc', '*.npy', '*.poni', '*_state.json'])
+                      If None, defaults to ['*.txt', '*.dsc', '*.npy', '*.poni', '*_state.json'] for Advacam detectors
     
     Returns:
         Number of files archived
     
     Example:
         # For Advacam detectors
-        archive_technical_data_files(container, archive, ['*.txt', '*.dsc', '*.npy', '*.poni'])
+        archive_technical_data_files(container, archive, ['*.txt', '*.dsc', '*.npy', '*.poni', '*_state.json'])
         
         # For Bruker detectors (hypothetical)
         archive_technical_data_files(container, archive, ['*.raw', '*.brml'])
@@ -510,7 +510,7 @@ def archive_technical_data_files(
     
     # Default patterns for Advacam detectors
     if file_patterns is None:
-        file_patterns = ['*.txt', '*.dsc', '*.npy', '*.poni']
+        file_patterns = ['*.txt', '*.dsc', '*.npy', '*.poni', '*_state.json']
     
     # Create archive folder
     archive_folder.mkdir(parents=True, exist_ok=True)

@@ -203,6 +203,7 @@ def test_archive_technical_data_files_includes_poni_by_default():
         (folder / "capture.dsc").write_text("dsc", encoding="utf-8")
         np.save(folder / "capture.npy", np.array([1, 2, 3], dtype=np.int16))
         (folder / "primary.poni").write_text("Distance: 0.17\n", encoding="utf-8")
+        (folder / "capture_state.json").write_text('{"ok": true}', encoding="utf-8")
 
         archive_folder = folder / "archive_payload"
         archived_count = container_manager.archive_technical_data_files(
@@ -211,11 +212,12 @@ def test_archive_technical_data_files_includes_poni_by_default():
             file_patterns=None,
         )
 
-        assert archived_count == 4
+        assert archived_count == 5
         assert (archive_folder / "capture.txt").exists()
         assert (archive_folder / "capture.dsc").exists()
         assert (archive_folder / "capture.npy").exists()
         assert (archive_folder / "primary.poni").exists()
+        assert (archive_folder / "capture_state.json").exists()
         assert not (folder / "primary.poni").exists()
 
 

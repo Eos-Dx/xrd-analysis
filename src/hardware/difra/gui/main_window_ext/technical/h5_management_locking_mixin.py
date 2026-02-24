@@ -273,7 +273,7 @@ class H5ManagementLockingMixin:
                 if hasattr(self, 'config') and self.config:
                     file_patterns = self.config.get(
                         'technical_archive_patterns',
-                        ['*.txt', '*.dsc', '*.npy', '*.poni'],
+                        ['*.txt', '*.dsc', '*.npy', '*.poni', '*_state.json'],
                     )
                 
                 try:
@@ -462,7 +462,7 @@ class H5ManagementLockingMixin:
                 if hasattr(self, 'config') and self.config:
                     file_patterns = self.config.get(
                         'technical_archive_patterns',
-                        ['*.txt', '*.dsc', '*.npy', '*.poni'],
+                        ['*.txt', '*.dsc', '*.npy', '*.poni', '*_state.json'],
                     )
                 
                 # Use container module function to archive files

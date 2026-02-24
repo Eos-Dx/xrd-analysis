@@ -382,9 +382,18 @@ Wavelength: {wavelength}
         This can be called manually or automatically when config changes."""
         print("Refreshing detector tabs for mode switch...")
 
-        # Reload masks and ponis for new active detectors
-        self.load_default_masks_and_ponis()
         self._detector_param_tabs_enabled = self._are_detector_param_tabs_enabled()
+        if self._detector_param_tabs_enabled:
+            # Reload masks/ponis only when detector tabs are enabled.
+            self.load_default_masks_and_ponis()
+        else:
+            # Technical container is the source of truth for calibration metadata.
+            if not isinstance(getattr(self, "masks", None), dict):
+                self.masks = {}
+            if not isinstance(getattr(self, "ponis", None), dict):
+                self.ponis = {}
+            if not isinstance(getattr(self, "poni_files", None), dict):
+                self.poni_files = {}
 
         # Rebuild the tabs with new detector aliases
         if self._detector_param_tabs_enabled:
