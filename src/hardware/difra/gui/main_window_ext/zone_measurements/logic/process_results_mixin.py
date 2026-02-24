@@ -490,65 +490,9 @@ class ZoneMeasurementsProcessResultsMixin:
                 "Missing PONI Calibration",
                 "PONI calibration must be set for detectors: "
                 + ", ".join(missing)
-                + "\nOpen the detector tabs and set PONI files before starting measurements.",
+                + "\nLoad/select a valid technical container before starting measurements.",
             )
             return False
 
-        if not active_aliases:
-            return True
-
-        poni_status = []
-        for alias in active_aliases:
-            meta = poni_files.get(alias, {})
-            path = meta.get("path")
-            name = meta.get("name") or "Default/Embedded PONI"
-
-            if path:
-                status = "✓ File exists" if Path(path).exists() else "⚠ File missing"
-                poni_status.append(f"• {alias}: {name}\n  {status}: {path}")
-            else:
-                poni_status.append(f"• {alias}: {name}\n  ✓ Using embedded data")
-
-        status_text = "\n\n".join(poni_status)
-
-        try:
-            parent = (
-                self
-                if hasattr(self, "isWidgetType")
-                and callable(getattr(self, "isWidgetType"))
-                and self.isWidgetType()
-                else None
-            )
-        except Exception:
-            parent = None
-        msg = pm.QMessageBox(parent)
-        msg.setWindowTitle("Confirm PONI Settings")
-        msg.setIcon(pm.QMessageBox.Question)
-        msg.setText(
-            "Current PONI calibration settings:\n\n"
-            f"{status_text}\n\n"
-            "Do you want to start measurements with these settings?"
-        )
-
-        start_button = msg.addButton("Start Measurements", pm.QMessageBox.AcceptRole)
-        update_button = msg.addButton("Update PONI Settings", pm.QMessageBox.RejectRole)
-        msg.addButton("Cancel", pm.QMessageBox.RejectRole)
-
-        msg.setDefaultButton(start_button)
-        msg.exec_()
-
-        clicked = msg.clickedButton()
-        if clicked == start_button:
-            return True
-        if clicked == update_button:
-            if hasattr(self, "tabs") and hasattr(self, "detector_tabs"):
-                first_detector_tab = None
-                min_index = float("inf")
-                for _alias, tab_info in self.detector_tabs.items():
-                    if tab_info["index"] < min_index:
-                        min_index = tab_info["index"]
-                        first_detector_tab = tab_info["index"]
-                if first_detector_tab is not None:
-                    self.tabs.setCurrentIndex(first_detector_tab)
-            return False
-        return False
+        # No confirmation popup: start measurements immediately when required PONI exists.
+        return True
