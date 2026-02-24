@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 from hardware.difra.gui.session_lifecycle_service import SessionLifecycleService
+from hardware.difra.gui.session_old_format_exporter import SessionOldFormatExporter
 
 
 @dataclass
@@ -15,6 +16,8 @@ class SendArchiveResult:
     failed: List[str] = field(default_factory=list)
     archived_paths: List[Path] = field(default_factory=list)
     archived_active_session: bool = False
+    old_format_paths: List[Path] = field(default_factory=list)
+    old_format_failed: List[str] = field(default_factory=list)
 
 
 class SessionLifecycleActions:
@@ -43,6 +46,8 @@ class SessionLifecycleActions:
         active_session_path: Optional[Path] = None,
         lock_user: Optional[str] = None,
         session_ids: Optional[Dict[str, str]] = None,
+        config: Optional[Dict[str, Any]] = None,
+        export_old_format: bool = True,
     ) -> SendArchiveResult:
         """Lock (if needed) and archive selected session containers."""
         result = SendArchiveResult()
@@ -81,6 +86,19 @@ class SessionLifecycleActions:
                 )
                 result.archived_paths.append(archived_path)
                 result.moved += 1
+
+                if export_old_format:
+                    try:
+                        summary = SessionOldFormatExporter.export_from_session_container(
+                            archived_path,
+                            config=config,
+                            archive_folder=archive_folder,
+                        )
+                        result.old_format_paths.append(summary.export_dir)
+                    except Exception as exc:
+                        result.old_format_failed.append(
+                            f"{candidate.name}: {exc}"
+                        )
 
                 if was_active:
                     result.archived_active_session = True

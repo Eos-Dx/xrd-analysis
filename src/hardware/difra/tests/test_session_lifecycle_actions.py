@@ -42,6 +42,7 @@ def test_finalize_session_container_locks_once(tmp_path):
 def test_send_and_archive_session_containers_tracks_active_session(tmp_path):
     measurements = tmp_path / "measurements"
     archive_folder = tmp_path / "archive" / "measurements"
+    old_format_folder = tmp_path / "Data" / "difra" / "Old_format"
     sid_a, path_a = _create_session_file(measurements, "SAMPLE_A")
     sid_b, path_b = _create_session_file(measurements, "SAMPLE_B")
 
@@ -52,6 +53,7 @@ def test_send_and_archive_session_containers_tracks_active_session(tmp_path):
         active_session_path=path_a,
         lock_user="sad",
         session_ids={str(path_a): sid_a, str(path_b): sid_b},
+        config={"old_format_export_folder": str(old_format_folder)},
     )
 
     assert result.failed == []
@@ -59,6 +61,10 @@ def test_send_and_archive_session_containers_tracks_active_session(tmp_path):
     assert result.archived_active_session is True
     assert len(result.archived_paths) == 2
     assert all(path.exists() for path in result.archived_paths)
+    assert result.old_format_failed == []
+    assert len(result.old_format_paths) == 2
+    assert all(path.exists() for path in result.old_format_paths)
+    assert all(path.parent == old_format_folder for path in result.old_format_paths)
     assert path_a.exists() is False
     assert path_b.exists() is False
     parent_names = {p.parent.name for p in result.archived_paths}

@@ -111,6 +111,7 @@ def test_session_queue_send_selected_and_all(qapp, tmp_path, monkeypatch):
     measurements_folder = tmp_path / "measurements"
     measurements_folder.mkdir(parents=True, exist_ok=True)
     archive_folder = tmp_path / "archive" / "measurements"
+    old_format_folder = tmp_path / "Data" / "difra" / "Old_format"
     first_session = _create_session_file(measurements_folder, "SAMPLE_A", "STUDY_A")
     second_session = _create_session_file(measurements_folder, "SAMPLE_B", "STUDY_B")
 
@@ -124,6 +125,7 @@ def test_session_queue_send_selected_and_all(qapp, tmp_path, monkeypatch):
         config={
             "measurements_folder": str(measurements_folder),
             "measurements_archive_folder": str(archive_folder),
+            "old_format_export_folder": str(old_format_folder),
         },
         session_manager=session_manager,
     )
@@ -142,6 +144,8 @@ def test_session_queue_send_selected_and_all(qapp, tmp_path, monkeypatch):
     # Selected one was moved + locked and removed from queue
     assert harness.pending_sessions_table.rowCount() == 1
     assert harness.archived_sessions_table.rowCount() == 1
+    old_dirs = [path for path in old_format_folder.glob("*") if path.is_dir()]
+    assert len(old_dirs) == 1
     archived_files = sorted(archive_folder.rglob("session_*.nxs.h5"))
     assert len(archived_files) == 1
     with h5py.File(archived_files[0], "r") as h5f:
@@ -158,6 +162,8 @@ def test_session_queue_send_selected_and_all(qapp, tmp_path, monkeypatch):
 
     assert harness.pending_sessions_table.rowCount() == 0
     assert harness.archived_sessions_table.rowCount() == 2
+    old_dirs = [path for path in old_format_folder.glob("*") if path.is_dir()]
+    assert len(old_dirs) == 2
     archived_files = sorted(archive_folder.rglob("session_*.nxs.h5"))
     assert len(archived_files) == 2
     for archived in archived_files:
@@ -174,6 +180,7 @@ def test_session_tab_close_finalize_active_session(qapp, tmp_path, monkeypatch):
     measurements_folder = tmp_path / "measurements"
     measurements_folder.mkdir(parents=True, exist_ok=True)
     archive_folder = tmp_path / "archive" / "measurements"
+    old_format_folder = tmp_path / "Data" / "difra" / "Old_format"
 
     active_session = _create_session_file(measurements_folder, "SAMPLE_FINAL", "STUDY_FINAL")
     (measurements_folder / "SAMPLE_FINAL_state.json").write_text('{"demo": true}')
@@ -190,6 +197,7 @@ def test_session_tab_close_finalize_active_session(qapp, tmp_path, monkeypatch):
         config={
             "measurements_folder": str(measurements_folder),
             "measurements_archive_folder": str(archive_folder),
+            "old_format_export_folder": str(old_format_folder),
         },
         session_manager=session_manager,
     )
@@ -200,13 +208,13 @@ def test_session_tab_close_finalize_active_session(qapp, tmp_path, monkeypatch):
     qapp.processEvents()
 
     assert session_manager.close_calls == 1
-    assert is_container_locked(active_session) is True
+    assert active_session.exists() is False
+    archived_sessions = sorted(archive_folder.rglob("session_*.nxs.h5"))
+    assert archived_sessions, "Expected archived session container after finalize"
+    assert is_container_locked(archived_sessions[-1]) is True
 
-    archived_dirs = sorted(
-        path for path in archive_folder.glob("SAMPLE_FINAL_*") if path.is_dir()
-    )
-    assert archived_dirs, "Expected archived measurement folder for finalized session"
-    archived_dir = archived_dirs[-1]
+    archived_dir = archived_sessions[-1].parent
+    assert archived_dir.exists() is True
     assert (archived_dir / "SAMPLE_FINAL_state.json").exists() is True
     assert (archived_dir / "capture.txt").exists() is True
     assert (archived_dir / "capture.npy").exists() is True

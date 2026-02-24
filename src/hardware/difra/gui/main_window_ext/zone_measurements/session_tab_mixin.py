@@ -360,18 +360,30 @@ class SessionTabMixin:
             active_session_path=active_session_path,
             lock_user=lock_user,
             session_ids=batch_session_ids,
+            config=self.config if hasattr(self, "config") else None,
         )
 
         if workflow_result.archived_active_session and hasattr(self, "session_manager"):
             self.session_manager.close_session()
 
         summary = [f"Sent+archived {workflow_result.moved} session container(s)."]
+        summary.append(f"Old-format exports: {len(workflow_result.old_format_paths)}")
+        if workflow_result.old_format_paths:
+            summary.append(f"Old-format folder: {workflow_result.old_format_paths[-1]}")
         if workflow_result.failed:
             summary.append("")
             summary.append("Failures:")
             summary.extend(workflow_result.failed[:8])
             if len(workflow_result.failed) > 8:
                 summary.append(f"... and {len(workflow_result.failed) - 8} more")
+        if workflow_result.old_format_failed:
+            summary.append("")
+            summary.append("Old-format export failures:")
+            summary.extend(workflow_result.old_format_failed[:8])
+            if len(workflow_result.old_format_failed) > 8:
+                summary.append(
+                    f"... and {len(workflow_result.old_format_failed) - 8} more"
+                )
 
         QMessageBox.information(self, "Session Send Queue", "\n".join(summary))
         self._refresh_session_container_lists()
