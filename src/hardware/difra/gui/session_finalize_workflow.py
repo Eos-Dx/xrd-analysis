@@ -108,6 +108,7 @@ class SessionFinalizeWorkflow:
 
         return {
             "sample_id": sample,
+            "study_name": study,
             "project_id": project,
             "operator_id": operator,
             "machine_name": machine,
@@ -151,6 +152,7 @@ class SessionFinalizeWorkflow:
         cls,
         measurements_folder: Path,
         sample_id: str,
+        study_name: Optional[str] = None,
         project_id: Optional[str] = None,
         operator_id: Optional[str] = None,
         *,
@@ -167,17 +169,8 @@ class SessionFinalizeWorkflow:
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         sample_token = cls._safe_token(sample_id, "sample")
-        project_token = cls._safe_token(project_id or "", "")
-        operator_token = cls._safe_token(operator_id or "", "")
-
-        if project_token and operator_token:
-            archive_name = f"{sample_token}_{project_token}_{operator_token}_{timestamp}"
-        elif project_token:
-            archive_name = f"{sample_token}_{project_token}_{timestamp}"
-        elif operator_token:
-            archive_name = f"{sample_token}_{operator_token}_{timestamp}"
-        else:
-            archive_name = f"{sample_token}_{timestamp}"
+        study_token = cls._safe_token(study_name or project_id or "UNSPECIFIED", "UNSPECIFIED")
+        archive_name = f"{sample_token}_{study_token}_{timestamp}"
         archive_dest = archive_base / archive_name
         archive_dest.mkdir(parents=True, exist_ok=True)
 
@@ -212,6 +205,32 @@ class SessionFinalizeWorkflow:
                 archive_folder=str(archive_dest),
             )
         return archive_dest, archived_count
+
+    @staticmethod
+    def archive_session_container_into_folder(
+        session_path: Path,
+        archive_folder: Path,
+        logger: Optional[Any] = None,
+    ) -> Path:
+        """Move locked session container into the same archive folder as raw files."""
+        source = Path(session_path)
+        archive_folder = Path(archive_folder)
+        archive_folder.mkdir(parents=True, exist_ok=True)
+
+        destination = archive_folder / source.name
+        suffix = 1
+        while destination.exists():
+            suffix += 1
+            destination = archive_folder / f"{source.stem}_{suffix}{source.suffix}"
+
+        shutil.move(str(source), str(destination))
+        if logger:
+            logger.info(
+                "Archived locked session container",
+                source=str(source),
+                destination=str(destination),
+            )
+        return destination
 
     @staticmethod
     def create_session_bundle_zip(
@@ -271,6 +290,7 @@ class SessionFinalizeWorkflow:
         archive_dest, archived_count = cls.archive_measurement_files(
             measurements_folder=measurements_folder,
             sample_id=readable_meta.get("sample_id") or sample_id,
+            study_name=readable_meta.get("study_name"),
             project_id=readable_meta.get("project_id"),
             operator_id=readable_meta.get("operator_id"),
             config=config,
@@ -284,8 +304,14 @@ class SessionFinalizeWorkflow:
             logger=logger,
         )
 
+        archived_session_path = cls.archive_session_container_into_folder(
+            session_path=session_path,
+            archive_folder=archive_dest,
+            logger=logger,
+        )
+
         return FinalizeSessionResult(
-            session_path=Path(session_path),
+            session_path=Path(archived_session_path),
             archive_dest=archive_dest,
             archived_count=archived_count,
             bundle_path=bundle_path,

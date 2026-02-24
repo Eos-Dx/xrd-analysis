@@ -33,15 +33,24 @@ def _get_create_mask():
 class DetectorParamMixin:
     """Handles detector tabs with PONI/mask settings, one tab per active detector alias."""
 
+    def _are_detector_param_tabs_enabled(self) -> bool:
+        cfg = getattr(self, "config", {}) or {}
+        ui_cfg = cfg.get("ui", {}) if isinstance(cfg.get("ui", {}), dict) else {}
+        return bool(ui_cfg.get("show_detector_param_tabs", cfg.get("show_detector_param_tabs", False)))
+
     def setup_detector_param_tabs(self):
         """Creates detector tabs based on active detector aliases."""
         # Store references to detector tabs for rebuilding
         if not hasattr(self, "detector_tabs"):
             self.detector_tabs = {}
+        self._detector_param_tabs_enabled = self._are_detector_param_tabs_enabled()
 
     def populate_detector_param_tabs(self):
         """Creates one tab per active detector alias with PONI/mask settings."""
         self.clear_detector_param_tabs()
+        self._detector_param_tabs_enabled = self._are_detector_param_tabs_enabled()
+        if not self._detector_param_tabs_enabled:
+            return
 
         try:
             self.detector_aliases = self.hardware_controller.active_detector_aliases
@@ -375,9 +384,13 @@ Wavelength: {wavelength}
 
         # Reload masks and ponis for new active detectors
         self.load_default_masks_and_ponis()
+        self._detector_param_tabs_enabled = self._are_detector_param_tabs_enabled()
 
         # Rebuild the tabs with new detector aliases
-        self.populate_detector_param_tabs()
+        if self._detector_param_tabs_enabled:
+            self.populate_detector_param_tabs()
+        else:
+            self.clear_detector_param_tabs()
 
         print(
             f"Detector tabs refreshed. Active detectors: {getattr(self, 'detector_aliases', [])}"

@@ -718,10 +718,20 @@ class XYStageLibController(BaseStageController):
             self._io_lock.release()
 
     def deinit(self):
+        lib = getattr(self, "lib", None)
+        if lib is None:
+            print(f"Stage '{self.alias}' already deinitialized.")
+            return
+
         try:
-            self.lib.BDC_Close(c_char_p(self.serial))
+            try:
+                lib.BDC_StopPolling(c_char_p(self.serial), c_short(self.x_chan))
+                lib.BDC_StopPolling(c_char_p(self.serial), c_short(self.y_chan))
+            except Exception:
+                pass
+            lib.BDC_Close(c_char_p(self.serial))
             if self.sim:
-                self.lib.TLI_UninitializeSimulations()
+                lib.TLI_UninitializeSimulations()
             print(f"Stage '{self.alias}' deinitialized.")
         except Exception as e:
             print(f"Stage deinit error: {e}")

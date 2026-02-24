@@ -62,6 +62,7 @@ def test_archive_measurement_files_moves_only_matching_patterns(tmp_path):
     archive_dest, archived_count = SessionFinalizeWorkflow.archive_measurement_files(
         measurements_folder=measurements,
         sample_id="SAMPLE_PAT",
+        study_name="STUDY_A",
         operator_id="sad",
         config={"measurements_archive_folder": str(tmp_path / "archive" / "measurements")},
     )
@@ -76,7 +77,7 @@ def test_archive_measurement_files_moves_only_matching_patterns(tmp_path):
     assert (archive_dest / "sample.poni").exists() is True
     assert (archive_dest / "SAMPLE_PAT_state.json").exists() is True
     assert (archive_dest / "nested" / "nested.txt").exists() is True
-    assert "_sad_" in archive_dest.name
+    assert archive_dest.name.startswith("SAMPLE_PAT_STUDY_A_")
 
 
 def test_finalize_session_runs_lock_archive_and_bundle(tmp_path):
@@ -95,11 +96,13 @@ def test_finalize_session_runs_lock_archive_and_bundle(tmp_path):
         config={"measurements_archive_folder": str(tmp_path / "archive" / "measurements")},
     )
 
-    assert result.session_path == session_path
+    assert result.session_path.parent == result.archive_dest
+    assert result.session_path.name == session_path.name
     assert result.state_json_embedded is True
     assert result.archive_dest.exists() is True
     assert result.archived_count == 2
-    assert "_sad_" in result.archive_dest.name
-    assert container_manager.is_container_locked(session_path) is True
+    assert result.archive_dest.name.startswith("SAMPLE_FINAL_STUDY_A_")
+    assert session_path.exists() is False
+    assert container_manager.is_container_locked(result.session_path) is True
     assert result.bundle_path is not None
     assert result.bundle_path.exists() is True

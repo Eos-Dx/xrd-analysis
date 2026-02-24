@@ -178,6 +178,13 @@ class TechnicalPanelMixin:
         self.gen_h5_btn.clicked.connect(self.generate_technical_h5)
         actions_layout.addWidget(self.gen_h5_btn)
 
+        self.new_h5_btn = tm.QPushButton("New Container")
+        self.new_h5_btn.setToolTip(
+            "Archive existing technical container(s) and clear table for a new container"
+        )
+        self.new_h5_btn.clicked.connect(self.create_new_technical_container)
+        actions_layout.addWidget(self.new_h5_btn)
+
         outer.addLayout(actions_layout)
 
         rt_layout = tm.QHBoxLayout()

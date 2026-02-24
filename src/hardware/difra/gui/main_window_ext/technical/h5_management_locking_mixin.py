@@ -300,6 +300,101 @@ class H5ManagementLockingMixin:
                 self._log_technical_event(f"Warning: Could not archive {h5_file.name}: {e}")
         
         return archived_count
+
+    def _update_aux_table_paths_after_archive(self, archive_folder: Path) -> int:
+        """Remap aux table file paths to archived locations for visualization."""
+        try:
+            from hardware.difra.gui.main_window_ext import technical_measurements as tm
+        except Exception:
+            return 0
+
+        if not hasattr(self, "auxTable") or self.auxTable is None:
+            return 0
+
+        updated = 0
+        archive_folder = Path(archive_folder)
+        for row in range(self.auxTable.rowCount()):
+            file_item = self.auxTable.item(row, 1)
+            if file_item is None:
+                continue
+
+            old_path = str(file_item.data(tm.Qt.UserRole) or "").strip()
+            if not old_path:
+                continue
+
+            old_file = Path(old_path)
+            if old_file.exists():
+                continue
+
+            candidate = archive_folder / old_file.name
+            if not candidate.exists():
+                continue
+
+            file_item.setData(tm.Qt.UserRole, str(candidate))
+            updated += 1
+
+        if updated > 0:
+            self._log_technical_event(
+                f"Updated {updated} technical table path(s) to archive folder: {archive_folder.name}"
+            )
+        return updated
+
+    def create_new_technical_container(self):
+        """Archive existing technical containers and clear technical measurements table."""
+        from .helpers import _get_technical_storage_folder
+
+        if QMessageBox.question(
+            self,
+            "Create New Technical Container",
+            "Archive existing technical container(s) and clear current technical measurements table?\n\n"
+            "This keeps old containers in archive and starts a fresh table.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        ) != QMessageBox.Yes:
+            return
+
+        folders_to_archive = []
+        try:
+            active_folder = (self.folderLE.text() or "").strip()
+            if active_folder:
+                folders_to_archive.append(Path(active_folder))
+        except Exception:
+            pass
+
+        try:
+            storage_folder = Path(
+                _get_technical_storage_folder(
+                    self.config if hasattr(self, "config") else None
+                )
+            )
+            folders_to_archive.append(storage_folder)
+        except Exception:
+            pass
+
+        seen = set()
+        archived_total = 0
+        for folder in folders_to_archive:
+            folder = Path(folder)
+            key = str(folder.resolve()) if folder.exists() else str(folder)
+            if key in seen:
+                continue
+            seen.add(key)
+            archived_total += int(self._archive_existing_containers(str(folder)))
+
+        if hasattr(self, "auxTable") and self.auxTable is not None:
+            self.auxTable.setRowCount(0)
+        if hasattr(self, "auxNameLE"):
+            self.auxNameLE.clear()
+
+        self._log_technical_event(
+            f"New technical container workflow started: archived {archived_total} existing container(s); table cleared"
+        )
+        QMessageBox.information(
+            self,
+            "New Technical Container",
+            "Technical measurements table cleared.\n"
+            f"Archived containers: {archived_total}",
+        )
     
     def _lock_container(self, container_path: str, container_id: str):
         """Lock the technical container and archive raw data.
@@ -376,6 +471,7 @@ class H5ManagementLockingMixin:
                     archive_folder=archive_subdir,
                     file_patterns=file_patterns
                 )
+                self._update_aux_table_paths_after_archive(archive_subdir)
                 
                 if archived_count > 0:
                     self._log_technical_event(
