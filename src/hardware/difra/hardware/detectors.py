@@ -865,10 +865,19 @@ class PixetSidecarDetectorController(DetectorController):
                 ),
             )
         )
+        self.capture_timeout_pad_s = float(
+            sidecar_cfg.get(
+                "capture_timeout_pad_s",
+                self.config.get(
+                    "sidecar_capture_timeout_pad_s",
+                    os.environ.get("PIXET_SIDECAR_CAPTURE_TIMEOUT_PAD_S", "30.0"),
+                ),
+            )
+        )
         self._stream_thread = None
         self._streaming = threading.Event()
 
-    def _rpc(self, cmd: str, args: dict):
+    def _rpc(self, cmd: str, args: dict, timeout_s: float | None = None):
         req_id = str(uuid.uuid4())
         payload = (
             json.dumps(
@@ -881,12 +890,14 @@ class PixetSidecarDetectorController(DetectorController):
             )
             + "\n"
         ).encode("utf-8")
+        rpc_timeout_s = float(timeout_s) if timeout_s is not None else float(self.timeout_s)
+        rpc_timeout_s = max(rpc_timeout_s, 0.1)
         try:
             with socket.create_connection(
                 (self.sidecar_host, self.sidecar_port),
-                timeout=self.timeout_s,
+                timeout=rpc_timeout_s,
             ) as sock:
-                sock.settimeout(self.timeout_s)
+                sock.settimeout(rpc_timeout_s)
                 sock.sendall(payload)
 
                 response_bytes = b""
@@ -936,14 +947,22 @@ class PixetSidecarDetectorController(DetectorController):
         return initialized
 
     def capture_point(self, Nframes, Nseconds, filename_base):
+        nframes = max(int(Nframes), 1)
+        nseconds = float(Nseconds)
+        expected_capture_s = max(nseconds, 0.0) * nframes
+        capture_timeout_s = max(
+            self.timeout_s,
+            expected_capture_s + self.capture_timeout_pad_s,
+        )
         result = self._rpc(
             "capture_point",
             {
                 "alias": self.alias,
-                "Nframes": max(int(Nframes), 1),
-                "Nseconds": float(Nseconds),
+                "Nframes": nframes,
+                "Nseconds": nseconds,
                 "filename_base": str(filename_base),
             },
+            timeout_s=capture_timeout_s,
         )
         return bool((result or {}).get("captured", False))
 
