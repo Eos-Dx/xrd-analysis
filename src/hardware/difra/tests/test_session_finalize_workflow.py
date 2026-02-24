@@ -77,12 +77,12 @@ def test_archive_measurement_files_moves_only_matching_patterns(tmp_path):
     assert (archive_dest / "sample.poni").exists() is True
     assert (archive_dest / "SAMPLE_PAT_state.json").exists() is True
     assert (archive_dest / "nested" / "nested.txt").exists() is True
-    assert archive_dest.name.startswith("SAMPLE_PAT_STUDY_A_")
+    assert archive_dest.name.startswith("session_sad_SAMPLE_PAT_STUDY_A_")
 
 
 def test_finalize_session_runs_lock_archive_and_bundle(tmp_path):
     measurements = tmp_path / "measurements"
-    _sid, session_path = _create_session_file(measurements, "SAMPLE_FINAL")
+    session_id, session_path = _create_session_file(measurements, "SAMPLE_FINAL")
 
     (measurements / "SAMPLE_FINAL_state.json").write_text('{"meta": true}')
     (measurements / "raw.txt").write_text("raw")
@@ -101,7 +101,7 @@ def test_finalize_session_runs_lock_archive_and_bundle(tmp_path):
     assert result.state_json_embedded is True
     assert result.archive_dest.exists() is True
     assert result.archived_count == 2
-    assert result.archive_dest.name.startswith("SAMPLE_FINAL_STUDY_A_")
+    assert result.archive_dest.name.startswith(f"{session_id}_sad_SAMPLE_FINAL_STUDY_A_")
     assert session_path.exists() is False
     assert container_manager.is_container_locked(result.session_path) is True
     assert result.bundle_path is not None

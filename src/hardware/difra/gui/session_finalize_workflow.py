@@ -112,6 +112,7 @@ class SessionFinalizeWorkflow:
             "project_id": project,
             "operator_id": operator,
             "machine_name": machine,
+            "session_id": session_id,
         }
 
     @staticmethod
@@ -152,6 +153,7 @@ class SessionFinalizeWorkflow:
         cls,
         measurements_folder: Path,
         sample_id: str,
+        session_id: Optional[str] = None,
         study_name: Optional[str] = None,
         project_id: Optional[str] = None,
         operator_id: Optional[str] = None,
@@ -168,9 +170,14 @@ class SessionFinalizeWorkflow:
         )
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
+        date_token, time_token = timestamp.split("_", 1)
+        session_token = cls._safe_token(session_id or "session", "session")
+        operator_token = cls._safe_token(operator_id or "unknown", "unknown")
         sample_token = cls._safe_token(sample_id, "sample")
         study_token = cls._safe_token(study_name or project_id or "UNSPECIFIED", "UNSPECIFIED")
-        archive_name = f"{sample_token}_{study_token}_{timestamp}"
+        archive_name = (
+            f"{session_token}_{operator_token}_{sample_token}_{study_token}_{date_token}_{time_token}"
+        )
         archive_dest = archive_base / archive_name
         archive_dest.mkdir(parents=True, exist_ok=True)
 
@@ -290,6 +297,7 @@ class SessionFinalizeWorkflow:
         archive_dest, archived_count = cls.archive_measurement_files(
             measurements_folder=measurements_folder,
             sample_id=readable_meta.get("sample_id") or sample_id,
+            session_id=readable_meta.get("session_id"),
             study_name=readable_meta.get("study_name"),
             project_id=readable_meta.get("project_id"),
             operator_id=readable_meta.get("operator_id"),
