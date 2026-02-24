@@ -101,7 +101,12 @@ class TechnicalCaptureMixin:
 
         def _cleanup(success, result_files, t=typ):
             try:
-                self._on_capture_done(success, result_files, t)
+                self._on_capture_done(
+                    success,
+                    result_files,
+                    t,
+                    error_messages=getattr(worker, "error_messages", None),
+                )
             except Exception as e:
                 logger.error(f"Error in _on_capture_done for {t}: {e}", exc_info=True)
             finally:
@@ -117,10 +122,30 @@ class TechnicalCaptureMixin:
             self._capture_workers = []
         self._capture_workers.append(worker)
 
-    def _on_capture_done(self, success: bool, result_files: dict, typ: str):
+    def _on_capture_done(
+        self,
+        success: bool,
+        result_files: dict,
+        typ: str,
+        error_messages=None,
+    ):
         if not success:
-            self._log_technical_event(f"{typ} capture failed")
-            logger.warning(f"[{typ}] capture failed")
+            details = [
+                str(msg).strip()
+                for msg in (error_messages or [])
+                if str(msg).strip()
+            ]
+            if details:
+                joined = " | ".join(details[:3])
+                self._log_technical_event(f"{typ} capture failed: {joined}")
+            else:
+                self._log_technical_event(f"{typ} capture failed")
+            logger.warning(
+                "[%s] capture failed; details=%s; result_files=%s",
+                typ,
+                details,
+                result_files,
+            )
             self._aux_timer.stop()
             self._aux_status.setText("")
             return

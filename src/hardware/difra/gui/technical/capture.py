@@ -1,5 +1,6 @@
 import os
 import shutil
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -15,6 +16,8 @@ from xrdanalysis.data_processing.azimuthal_integration import (
     initialize_azimuthal_integrator_poni_text,
 )
 from xrdanalysis.data_processing.utility_functions import create_mask
+
+logger = logging.getLogger(__name__)
 
 
 def _load_measurement_array(measurement_filename: str) -> np.ndarray:
@@ -100,6 +103,14 @@ class CaptureWorker(QObject):
         self.movement_radius = movement_radius
         self.container_version = container_version or get_container_version(None)
         self._stop_requested = False
+        self.error_messages = []
+
+    def _record_error(self, message: str, exc: Exception = None) -> None:
+        self.error_messages.append(message)
+        if exc is None:
+            logger.error(message)
+        else:
+            logger.error("%s: %s", message, exc, exc_info=True)
 
     def run(self):
         results = {}
@@ -135,13 +146,19 @@ class CaptureWorker(QObject):
                 )
 
                 if movement_started:
-                    print(
-                        f"Started continuous movement for AgBH measurement (center: {center_x:.3f}, {center_y:.3f}, radius: {self.movement_radius}mm)"
+                    logger.info(
+                        "Started continuous movement for technical measurement "
+                        "(center: %.3f, %.3f, radius: %.3fmm)",
+                        center_x,
+                        center_y,
+                        float(self.movement_radius),
                     )
                 else:
-                    print(
-                        "Warning: Failed to start continuous movement for AgBH measurement"
+                    message = (
+                        "Failed to start continuous movement for technical measurement"
                     )
+                    logger.warning(message)
+                    self.error_messages.append(message)
 
             if self.hardware_client is None:
                 raise RuntimeError(
@@ -170,6 +187,10 @@ class CaptureWorker(QObject):
                     if src_raw is None and len(raw_outputs) == 1:
                         src_raw = next(iter(raw_outputs.values()))
                     if not src_raw:
+                        self._record_error(
+                            f"No raw output for detector '{alias}'. "
+                            f"Available output aliases: {sorted(raw_outputs.keys())}"
+                        )
                         results[alias] = None
                         continue
 
@@ -190,15 +211,21 @@ class CaptureWorker(QObject):
                         str(target_txt), self.container_version
                     )
                     results[alias] = converted_file
-                    print(
-                        f"Converted {alias}: {target_txt.name} -> {Path(converted_file).name}"
+                    logger.info(
+                        "Converted technical capture for %s: %s -> %s",
+                        alias,
+                        target_txt.name,
+                        Path(converted_file).name,
                     )
                 except Exception as e:
-                    print(f"Error in capture for {alias}: {e}")
+                    self._record_error(
+                        f"Error while processing detector '{alias}' output",
+                        e,
+                    )
                     results[alias] = None
 
         except Exception as e:
-            print(f"Error during capture operation: {e}")
+            self._record_error("Error during capture operation", e)
             results = {alias: None for alias in self.detector_controller.keys()}
 
         finally:
@@ -208,15 +235,17 @@ class CaptureWorker(QObject):
                     self.continuous_movement_controller.stop_movement(
                         return_to_origin=True
                     )
-                    print(
+                    logger.info(
                         "Stopped continuous movement and returned to original position"
                     )
                 except Exception as e:
-                    print(f"Error stopping continuous movement: {e}")
+                    self._record_error("Error stopping continuous movement", e)
 
         overall_success = (
             all(r is not None for r in results.values()) and not self._stop_requested
         )
+        if not overall_success and not self.error_messages:
+            self.error_messages.append("Capture failed without explicit error details.")
         self.finished.emit(overall_success, results)
 
     def stop(self):
@@ -230,9 +259,11 @@ class CaptureWorker(QObject):
         ):
             try:
                 self.continuous_movement_controller.stop_movement(return_to_origin=True)
-                print("Stopped continuous movement due to capture stop request")
+                logger.info("Stopped continuous movement due to capture stop request")
             except Exception as e:
-                print(f"Error stopping continuous movement during stop request: {e}")
+                self._record_error(
+                    "Error stopping continuous movement during stop request", e
+                )
 
 def validate_folder(path: str):
     if not path:
