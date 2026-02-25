@@ -369,7 +369,17 @@ class H5ManagementLoadingMixin:
             with h5py.File(active_path, "a") as h5f:
                 if schema.GROUP_TECHNICAL in h5f:
                     del h5f[schema.GROUP_TECHNICAL]
-                h5f.create_group(schema.GROUP_TECHNICAL)
+                technical_group = h5f.create_group(schema.GROUP_TECHNICAL)
+                technical_group.attrs[schema.ATTR_NX_CLASS] = schema.NX_CLASS_COLLECTION
+
+                config_group = h5f.create_group(schema.GROUP_TECHNICAL_CONFIG)
+                config_group.attrs[schema.ATTR_NX_CLASS] = schema.NX_CLASS_INSTRUMENT
+
+                detectors_group = h5f.create_group(schema.GROUP_INSTRUMENT_DETECTORS)
+                detectors_group.attrs[schema.ATTR_NX_CLASS] = schema.NX_CLASS_COLLECTION
+
+                poni_group = h5f.create_group(schema.GROUP_TECHNICAL_PONI)
+                poni_group.attrs[schema.ATTR_NX_CLASS] = schema.NX_CLASS_COLLECTION
 
             distances_by_alias = self._distance_map_by_alias()
             if distances_by_alias:
