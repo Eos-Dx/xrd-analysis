@@ -10,6 +10,35 @@ logger = _session_module.logger
 
 
 class SessionWorkspaceMixin:
+    def _load_image_array_from_path(self, image_path):
+        """Load image from disk and normalize color channels to RGB/RGBA."""
+        if not image_path:
+            return None
+
+        try:
+            import cv2
+
+            image_array = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
+            if image_array is not None:
+                if image_array.ndim == 3:
+                    channels = int(image_array.shape[2])
+                    if channels == 3:
+                        image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
+                    elif channels == 4:
+                        image_array = cv2.cvtColor(image_array, cv2.COLOR_BGRA2RGBA)
+                return image_array
+        except Exception:
+            pass
+
+        try:
+            import numpy as np
+            from PIL import Image
+
+            return np.array(Image.open(image_path))
+        except Exception as exc:
+            logger.warning(f"Failed to load image for session sync: {exc}")
+            return None
+
     def _set_image_from_array(self, image_array):
         """Render numpy image array into image_view when available."""
         if not hasattr(self, "image_view"):
@@ -293,23 +322,7 @@ class SessionWorkspaceMixin:
         if not image_path:
             return None
 
-        try:
-            import cv2
-
-            image_array = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
-            if image_array is not None:
-                return image_array
-        except Exception:
-            pass
-
-        try:
-            import numpy as np
-            from PIL import Image
-
-            return np.array(Image.open(image_path))
-        except Exception as exc:
-            logger.warning(f"Failed to load current image for session sync: {exc}")
-            return None
+        return self._load_image_array_from_path(image_path)
 
     def sync_workspace_to_session_container(self, state=None):
         """Persist image/zones/points snapshot into active unlocked session container."""

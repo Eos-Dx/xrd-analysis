@@ -112,6 +112,58 @@ def test_session_manager_create_session_with_study(temp_dir, technical_container
         assert session_file.attrs.get(schema.ATTR_STUDY_NAME) == "STUDY_X"
 
 
+def test_session_manager_falls_back_to_locked_technical_container(
+    temp_dir, technical_container, monkeypatch
+):
+    """If primary distance lookup returns unlocked container, use locked match."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+
+    # Create a second container at same distance but keep it unlocked.
+    dark_file = temp_dir / "dark_unlocked.npy"
+    np.save(dark_file, np.random.rand(128, 128).astype(np.float32))
+    _unlocked_id, unlocked_path = generate_from_aux_table(
+        folder=temp_dir,
+        aux_measurements={"DARK": {"DET1": str(dark_file)}},
+        poni_data={
+            "DET1": (
+                "Detector: AdvaPIX\n"
+                "PixelSize1: 5.500e-05\n"
+                "PixelSize2: 5.500e-05\n"
+                "Distance: 0.170000\n",
+                "DET1_unlocked.poni",
+            )
+        },
+        detector_config=[
+            {
+                "id": "DET1",
+                "alias": "DET1",
+                "type": "AdvaPIX",
+                "size": [128, 128],
+                "pixel_size_um": 55.0,
+            }
+        ],
+        active_detector_ids=["DET1"],
+        distances_cm=17.0,
+        validate_poni=True,
+    )
+
+    # Simulate container-manager lookup picking an unlocked candidate first.
+    monkeypatch.setattr(
+        manager.container_manager,
+        "find_active_technical_container",
+        lambda folder, distance_cm, tolerance_cm=0.5: Path(unlocked_path),
+    )
+
+    _session_id, session_path = manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_FALLBACK_LOCKED",
+        distance_cm=17.0,
+    )
+
+    assert session_path.exists()
+    assert manager.technical_container_path == Path(technical_container)
+
+
 def test_session_manager_add_points(temp_dir, technical_container):
     """Test adding points to session."""
     manager = SessionManager(config={"technical_folder": str(temp_dir)})

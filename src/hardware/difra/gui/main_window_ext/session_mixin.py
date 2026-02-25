@@ -192,6 +192,9 @@ class SessionMixin(SessionWorkspaceMixin, SessionFlowMixin):
                 session_id, session_path = self.session_manager.create_session(
                     folder=session_folder,
                     distance_cm=params['distance_cm'],
+                    technical_container_path=getattr(
+                        self, "_active_technical_container_path", None
+                    ),
                     sample_id=params['sample_id'],
                     operator_id=params.get('operator_id'),
                     # Any other schema attributes can be passed from params

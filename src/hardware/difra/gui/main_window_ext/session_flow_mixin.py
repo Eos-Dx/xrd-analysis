@@ -364,8 +364,6 @@ class SessionFlowMixin:
             image_path: Path to the loaded/captured image
         """
         from pathlib import Path
-        import numpy as np
-        from PyQt5.QtGui import QPixmap
         from hardware.difra.gui.main_window_ext.session_mixin import NewSessionDialog
         
         # Check if session already active - show detailed dialog
@@ -394,6 +392,9 @@ class SessionFlowMixin:
                 session_id, session_path = self.session_manager.create_session(
                     folder=session_folder,
                     distance_cm=params['distance_cm'],
+                    technical_container_path=getattr(
+                        self, "_active_technical_container_path", None
+                    ),
                     sample_id=params['sample_id'],
                     operator_id=params.get('operator_id'),
                     # Pass all other schema attributes from params
@@ -402,23 +403,10 @@ class SessionFlowMixin:
                 
                 # Add image to session container
                 try:
-                    # Load image as numpy array
-                    pixmap = QPixmap(image_path)
-                    from PyQt5.QtCore import QBuffer, QIODevice
-                    import cv2
-                    
-                    # Convert QPixmap to numpy array via cv2
-                    # For now, store the image path - actual conversion can be done later
-                    # if needed, or we can store the raw image file
-                    
-                    # Simple approach: read image with cv2 or PIL
-                    try:
-                        import cv2
-                        image_array = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-                    except ImportError:
-                        from PIL import Image
-                        image_array = np.array(Image.open(image_path).convert('L'))
-                    
+                    image_array = None
+                    if hasattr(self, "_load_image_array_from_path"):
+                        image_array = self._load_image_array_from_path(image_path)
+
                     if image_array is not None:
                         self.session_manager.add_sample_image(
                             image_data=image_array,

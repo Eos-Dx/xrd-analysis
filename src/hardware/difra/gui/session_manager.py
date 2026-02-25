@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
+import h5py
 from hardware.difra.gui.container_api import get_container_module
 from hardware.difra.gui.session_manager_measurement_ops_mixin import (
     SessionManagerMeasurementOpsMixin,
@@ -138,11 +139,56 @@ class SessionManager(SessionManagerRecoveryMixin, SessionManagerMeasurementOpsMi
     def is_session_active(self) -> bool:
         """Check if a session is currently active."""
         return self.session_path is not None and self.session_path.exists()
+
+    def _find_locked_technical_container_for_distance(
+        self,
+        folder: Path,
+        distance_cm: float,
+        tolerance_cm: float = 0.5,
+    ) -> Optional[Path]:
+        """Find newest locked technical container matching distance."""
+        folder = Path(folder)
+        if not folder.exists():
+            return None
+
+        candidates = []
+        seen = set()
+        for pattern in ("technical_*.nxs.h5", "technical_*.h5"):
+            for tech_path in folder.glob(pattern):
+                if "archive" in tech_path.parts:
+                    continue
+                if not tech_path.is_file():
+                    continue
+
+                key = str(tech_path.resolve())
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                try:
+                    with h5py.File(tech_path, "r") as h5f:
+                        file_distance = float(h5f.attrs.get("distance_cm", float("nan")))
+                except Exception:
+                    continue
+
+                if abs(file_distance - float(distance_cm)) > float(tolerance_cm):
+                    continue
+                if not self.container_manager.is_container_locked(tech_path):
+                    continue
+
+                candidates.append(tech_path)
+
+        if not candidates:
+            return None
+
+        candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        return candidates[0]
     
     def create_session(
         self,
         folder: Path,
         distance_cm: float,
+        technical_container_path: Optional[str] = None,
         **session_attrs,
     ) -> Tuple[str, Path]:
         """Create a new session container.
@@ -165,6 +211,8 @@ class SessionManager(SessionManagerRecoveryMixin, SessionManagerMeasurementOpsMi
         Args:
             folder: Directory for session container (measurements folder)
             distance_cm: Sample-detector distance (for technical container lookup)
+            technical_container_path: Optional explicit technical container path
+                (preferred when GUI has an active selected container)
             **session_attrs: All session attributes as keyword arguments
             
         Returns:
@@ -182,18 +230,44 @@ class SessionManager(SessionManagerRecoveryMixin, SessionManagerMeasurementOpsMi
         # Get technical folder from config
         technical_folder = self._get_technical_folder()
         
-        # Find active technical container for this distance in technical folder
-        tech_path = find_active_technical_container(
-            folder=technical_folder,
-            distance_cm=distance_cm,
-        )
-        
+        # Prefer explicit active technical container from UI when provided.
+        explicit_tech_path = str(technical_container_path or "").strip()
+        if explicit_tech_path:
+            tech_path = Path(explicit_tech_path)
+            if not tech_path.exists():
+                raise RuntimeError(
+                    f"Selected technical container was not found: {tech_path}\n"
+                    "Please load or create a technical container and try again."
+                )
+        else:
+            # Find active technical container for this distance in technical folder
+            tech_path = find_active_technical_container(
+                folder=technical_folder,
+                distance_cm=distance_cm,
+            )
+
         if not tech_path:
             raise RuntimeError(
                 f"No technical container found for distance {distance_cm} cm. "
                 "Please create technical measurements first."
             )
-        
+
+        # If distance-based lookup returned an unlocked container while a locked one
+        # exists for the same distance, automatically pick the locked candidate.
+        if not explicit_tech_path and not is_container_locked(tech_path):
+            locked_match = self._find_locked_technical_container_for_distance(
+                folder=technical_folder,
+                distance_cm=distance_cm,
+            )
+            if locked_match is not None and Path(locked_match) != Path(tech_path):
+                logger.warning(
+                    "Distance lookup returned unlocked technical container; using locked match instead",
+                    requested_distance_cm=float(distance_cm),
+                    unlocked_container=str(tech_path),
+                    locked_container=str(locked_match),
+                )
+                tech_path = locked_match
+
         if not is_container_locked(tech_path):
             raise RuntimeError(
                 f"Technical container is not locked: {tech_path}\n"
