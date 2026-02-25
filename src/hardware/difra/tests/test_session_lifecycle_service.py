@@ -90,4 +90,7 @@ def test_archive_session_container_moves_file_to_timestamped_folder(tmp_path):
     assert session_path.exists() is False
     assert destination.exists() is True
     assert destination.name.startswith("session_")
-    assert destination.parent.name == f"{session_id}_sad_20260216_123000"
+    assert (
+        destination.parent.name
+        == f"{session_id}_sad_SAMPLE_Z_STUDY_A_20260216_123000"
+    )

@@ -398,6 +398,141 @@ def test_session_manager_link_attenuation_start_point(temp_dir, technical_contai
         assert len(refs_pt3) == 0
 
 
+def test_open_existing_session_restores_attenuation_counters(temp_dir, technical_container):
+    """Opening existing session should restore attenuation counters from container."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_RESTORE_ATTEN",
+        distance_cm=17.0,
+    )
+    manager.add_points(
+        [{"pixel_coordinates": [100, 200], "physical_coordinates_mm": [10.0, 20.0]}]
+    )
+
+    manager.add_attenuation_measurement(
+        measurement_data={"DET1": np.random.randint(800, 1000, (32, 32), dtype=np.uint16)},
+        detector_metadata={"DET1": {"integration_time_ms": 50.0}},
+        poni_alias_map={"DET1": "DET1"},
+        mode="without",
+    )
+    manager.add_attenuation_measurement(
+        measurement_data={"DET1": np.random.randint(400, 600, (32, 32), dtype=np.uint16)},
+        detector_metadata={"DET1": {"integration_time_ms": 50.0}},
+        poni_alias_map={"DET1": "DET1"},
+        mode="with",
+    )
+    session_path = Path(manager.session_path)
+    manager.close_session()
+
+    restored = SessionManager(config={"technical_folder": str(temp_dir)})
+    info = restored.open_existing_session(session_path)
+
+    assert restored.i0_counter == 1
+    assert restored.i_counter == 2
+    assert info["i0_recorded"] is True
+    assert info["i_recorded"] is True
+    assert info["attenuation_complete"] is True
+
+
+def test_open_existing_session_restores_i0_without_i(temp_dir, technical_container):
+    """Existing I0 without I should restore as partial attenuation state."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_RESTORE_I0_ONLY",
+        distance_cm=17.0,
+    )
+    manager.add_points(
+        [{"pixel_coordinates": [100, 200], "physical_coordinates_mm": [10.0, 20.0]}]
+    )
+
+    manager.add_attenuation_measurement(
+        measurement_data={"DET1": np.random.randint(800, 1000, (32, 32), dtype=np.uint16)},
+        detector_metadata={"DET1": {"integration_time_ms": 50.0}},
+        poni_alias_map={"DET1": "DET1"},
+        mode="without",
+    )
+    session_path = Path(manager.session_path)
+    manager.close_session()
+
+    restored = SessionManager(config={"technical_folder": str(temp_dir)})
+    info = restored.open_existing_session(session_path)
+
+    assert restored.i0_counter == 1
+    assert restored.i_counter is None
+    assert info["i0_recorded"] is True
+    assert info["i_recorded"] is False
+    assert info["attenuation_complete"] is False
+
+
+def test_session_manager_mark_point_skipped_persists_reason(temp_dir, technical_container):
+    """Skipped points should persist both status and skip reason in session container."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_SKIP_REASON",
+        distance_cm=17.0,
+    )
+    manager.add_points(
+        [{"pixel_coordinates": [100, 200], "physical_coordinates_mm": [10.0, 20.0]}]
+    )
+
+    manager.mark_point_skipped(point_index=1, reason="operator_requested_skip")
+
+    with h5py.File(manager.session_path, "r") as session_file:
+        point = session_file[f"{schema.GROUP_POINTS}/pt_001"]
+        assert point.attrs[schema.ATTR_POINT_STATUS] == schema.POINT_STATUS_SKIPPED
+        assert point.attrs[schema.ATTR_SKIP_REASON] == "operator_requested_skip"
+
+
+def test_session_manager_delete_unmeasured_point_removes_from_container(
+    temp_dir, technical_container
+):
+    """Unmeasured point deletion should remove point entry from active session container."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_DELETE_PENDING",
+        distance_cm=17.0,
+    )
+    manager.add_points(
+        [
+            {"pixel_coordinates": [100, 200], "physical_coordinates_mm": [10.0, 20.0]},
+            {"pixel_coordinates": [110, 210], "physical_coordinates_mm": [11.0, 21.0]},
+        ]
+    )
+
+    deleted = manager.delete_point(point_index=2)
+    assert deleted is True
+
+    with h5py.File(manager.session_path, "r") as session_file:
+        assert f"{schema.GROUP_POINTS}/pt_001" in session_file
+        assert f"{schema.GROUP_POINTS}/pt_002" not in session_file
+
+
+def test_session_manager_delete_measured_point_is_rejected(temp_dir, technical_container):
+    """Measured points must not be deletable; they should be skipped instead."""
+    manager = SessionManager(config={"technical_folder": str(temp_dir)})
+    manager.create_session(
+        folder=temp_dir,
+        sample_id="TEST_SAMPLE_DELETE_MEASURED",
+        distance_cm=17.0,
+    )
+    manager.add_points(
+        [{"pixel_coordinates": [100, 200], "physical_coordinates_mm": [10.0, 20.0]}]
+    )
+    manager.add_measurement(
+        point_index=1,
+        measurement_data={"DET1": np.random.randint(0, 100, (64, 64), dtype=np.uint16)},
+        detector_metadata={"DET1": {"integration_time_ms": 1000.0}},
+        poni_alias_map={"DET1": "DET1"},
+    )
+
+    with pytest.raises(RuntimeError, match="cannot be deleted"):
+        manager.delete_point(point_index=1)
+
+
 def test_session_manager_add_measurement(temp_dir, technical_container):
     """Test adding regular measurements."""
     manager = SessionManager(config={"technical_folder": str(temp_dir)})

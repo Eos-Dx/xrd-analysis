@@ -101,7 +101,9 @@ def test_finalize_session_runs_lock_archive_and_bundle(tmp_path):
     assert result.state_json_embedded is True
     assert result.archive_dest.exists() is True
     assert result.archived_count == 2
-    assert result.archive_dest.name.startswith(f"{session_id}_sad_SAMPLE_FINAL_STUDY_A_")
+    assert result.archive_dest.name.startswith(
+        f"{session_id}_sad_SAMPLE_FINAL_STUDY_A_"
+    )
     assert session_path.exists() is False
     assert container_manager.is_container_locked(result.session_path) is True
     assert result.bundle_path is not None

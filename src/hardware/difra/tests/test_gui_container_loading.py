@@ -1,6 +1,7 @@
 """GUI-level tests for loading technical and session containers."""
 
 import os
+import json
 from collections import Counter
 from pathlib import Path
 
@@ -354,6 +355,66 @@ def test_open_existing_session_container_updates_state(qapp, tmp_path, monkeypat
     assert harness.status_updates == 1
 
 
+def test_restore_session_enables_attenuation_checkbox_when_i0_exists(
+    qapp, tmp_path, monkeypatch
+):
+    _patch_non_blocking_dialogs(monkeypatch)
+
+    technical_folder = tmp_path / "technical_restore_i0"
+    technical_path = _make_technical_container(technical_folder)
+    lock_container(technical_path, user_id="sad")
+
+    config = {
+        "technical_folder": str(technical_folder),
+        "operator_id": "sad",
+        "site_id": "ULSTER",
+        "machine_name": "DIFRA_TEST",
+        "beam_energy_kev": 17.5,
+    }
+    manager = SessionManager(config=config)
+    _session_id, session_path = manager.create_session(
+        folder=tmp_path / "sessions_restore_i0",
+        distance_cm=17.0,
+        sample_id="SAMPLE_RESTORE_I0",
+        study_name="RESTORE_STUDY",
+        operator_id="sad",
+        site_id="ULSTER",
+        machine_name="DIFRA_TEST",
+        beam_energy_keV=17.5,
+        acquisition_date="2026-02-25",
+    )
+    manager.add_points(
+        [{"pixel_coordinates": [10.0, 12.0], "physical_coordinates_mm": [0.0, 0.0]}]
+    )
+    manager.add_attenuation_measurement(
+        measurement_data={
+            "det_primary": np.random.randint(100, 200, (8, 8), dtype=np.uint16)
+        },
+        detector_metadata={"det_primary": {"integration_time_ms": 50.0}},
+        poni_alias_map={"PRIMARY": "det_primary"},
+        mode="without",
+    )
+    manager.close_session()
+
+    harness = _SessionLoadHarness(config=config)
+    harness.attenuationCheckBox = QCheckBox("Attenuation")
+    harness.attenuationCheckBox.setChecked(False)
+    harness.show()
+    qapp.processEvents()
+
+    monkeypatch.setattr(
+        session_mixin.QFileDialog,
+        "getOpenFileName",
+        staticmethod(lambda *a, **k: (str(session_path), "NeXus HDF5 Files (*.nxs.h5)")),
+    )
+
+    harness.on_restore_session()
+    qapp.processEvents()
+
+    assert harness.session_manager.i0_counter is not None
+    assert harness.attenuationCheckBox.isChecked() is True
+
+
 def test_aux_state_roundtrip_uses_current_columns(qapp, tmp_path, monkeypatch):
     _patch_non_blocking_dialogs(monkeypatch)
 
@@ -506,11 +567,29 @@ def test_sync_workspace_snapshot_to_unlocked_session(qapp, tmp_path, monkeypatch
         acquisition_date="2026-02-13",
     )
 
-    monkeypatch.setattr(
-        harness,
-        "_extract_current_image_array",
-        lambda: np.full((24, 24), 123, dtype=np.uint8),
-    )
+    class _Spin:
+        def __init__(self, value):
+            self._value = float(value)
+
+        def value(self):
+            return float(self._value)
+
+        def setValue(self, value):
+            self._value = float(value)
+
+    harness.include_center = (100.0, 200.0)
+    harness.real_x_pos_mm = _Spin(1.5)
+    harness.real_y_pos_mm = _Spin(-2.0)
+
+    image_calls = {"count": 0}
+
+    def _image_source():
+        image_calls["count"] += 1
+        if image_calls["count"] == 1:
+            return np.full((24, 24), 123, dtype=np.uint8)
+        return np.full((24, 24), 200, dtype=np.uint8)
+
+    monkeypatch.setattr(harness, "_extract_current_image_array", _image_source)
     harness.state = {
         "shapes": [
             {
@@ -533,15 +612,112 @@ def test_sync_workspace_snapshot_to_unlocked_session(qapp, tmp_path, monkeypatch
     }
 
     harness.sync_workspace_to_session_container(state=harness.state)
+    harness.sync_workspace_to_session_container(state=harness.state)
 
     with h5py.File(session_path, "r") as h5f:
         assert "/entry/images/img_001" in h5f
         assert len(h5f["/entry/images/zones"].keys()) == 2
         assert len(h5f["/entry/points"].keys()) == 5
-        mapping = h5f["/entry/images/mapping/mapping"][()]
-        if isinstance(mapping, bytes):
-            mapping = mapping.decode("utf-8")
-        assert "ratio" in mapping
+        image_data = h5f["/entry/images/img_001/data"][()]
+        assert int(image_data[0, 0]) == 123
+
+        mapping_raw = h5f["/entry/images/mapping/mapping"][()]
+        if isinstance(mapping_raw, bytes):
+            mapping_raw = mapping_raw.decode("utf-8")
+        mapping = json.loads(mapping_raw)
+        conversion = mapping.get("pixel_to_mm_conversion", {})
+        assert float(conversion["ratio"]) == pytest.approx(2.0)
+        assert conversion.get("include_center_px") == [100.0, 200.0]
+        assert conversion.get("stage_reference_mm") == [1.5, -2.0]
+
+        pt_001 = h5f["/entry/points/pt_001"]
+        px = pt_001.attrs["pixel_coordinates"]
+        mm = pt_001.attrs["physical_coordinates_mm"]
+        expected_x = 1.5 - (float(px[0]) - 100.0) / 2.0
+        expected_y = -2.0 - (float(px[1]) - 200.0) / 2.0
+        assert float(mm[0]) == pytest.approx(expected_x)
+        assert float(mm[1]) == pytest.approx(expected_y)
+
+    assert image_calls["count"] == 1
+
+
+def test_restore_session_reapplies_mapping_origin_from_container(qapp, tmp_path, monkeypatch):
+    _patch_non_blocking_dialogs(monkeypatch)
+
+    technical_folder = tmp_path / "technical_restore_mapping"
+    technical_path = _make_technical_container(technical_folder)
+    lock_container(technical_path, user_id="sad")
+
+    config = {
+        "technical_folder": str(technical_folder),
+        "operator_id": "sad",
+        "site_id": "ULSTER",
+        "machine_name": "DIFRA_TEST",
+        "beam_energy_kev": 17.5,
+    }
+    harness = _SessionRestoreHarness(config=config)
+    harness.show()
+    qapp.processEvents()
+
+    _session_id, session_path = harness.session_manager.create_session(
+        folder=tmp_path / "sessions_restore_mapping",
+        distance_cm=17.0,
+        sample_id="RESTORE_MAP_SAMPLE",
+        study_name="RESTORE_MAP_STUDY",
+        operator_id="sad",
+        site_id="ULSTER",
+        machine_name="DIFRA_TEST",
+        beam_energy_keV=17.5,
+        acquisition_date="2026-02-13",
+    )
+
+    class _Spin:
+        def __init__(self, value):
+            self._value = float(value)
+
+        def value(self):
+            return float(self._value)
+
+        def setValue(self, value):
+            self._value = float(value)
+
+    harness.include_center = (123.0, 234.0)
+    harness.real_x_pos_mm = _Spin(7.25)
+    harness.real_y_pos_mm = _Spin(-3.75)
+    harness.pixel_to_mm_ratio = 9.5
+    monkeypatch.setattr(
+        harness,
+        "_extract_current_image_array",
+        lambda: np.full((8, 8), 50, dtype=np.uint8),
+    )
+    harness.state = {
+        "shapes": [
+            {
+                "id": 1,
+                "type": "circle",
+                "role": "include",
+                "geometry": {"x": 10, "y": 20, "width": 30, "height": 30},
+            }
+        ],
+        "zone_points": [
+            {"id": 1, "x": 11, "y": 22, "type": "generated", "radius": 5},
+            {"id": 2, "x": 33, "y": 44, "type": "generated", "radius": 5},
+        ],
+    }
+    harness.sync_workspace_to_session_container(state=harness.state)
+
+    # Overwrite UI values to verify restore applies container mapping.
+    harness.include_center = (0.0, 0.0)
+    harness.real_x_pos_mm.setValue(0.0)
+    harness.real_y_pos_mm.setValue(0.0)
+    harness.pixel_to_mm_ratio = 1.0
+
+    harness._restore_session_workspace_from_container(Path(session_path))
+
+    assert harness.pixel_to_mm_ratio == pytest.approx(9.5)
+    assert harness.include_center == pytest.approx((123.0, 234.0))
+    assert harness.real_x_pos_mm.value() == pytest.approx(7.25)
+    assert harness.real_y_pos_mm.value() == pytest.approx(-3.75)
 
 
 def test_loading_technical_updates_active_unlocked_session(qapp, tmp_path, monkeypatch):

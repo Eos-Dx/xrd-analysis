@@ -402,7 +402,7 @@ class TestMeasurementPointFiltering(unittest.TestCase):
         self.mock_processor.manual_save_state = Mock()
         self.mock_processor.measure_next_point = Mock()
 
-    def create_mock_point_at_position(self, x_mm, y_mm):
+    def create_mock_point_at_position(self, x_mm, y_mm, uid=None):
         """Create a mock point at the specified position in mm."""
         mock_point = Mock()
         mock_rect = Mock()
@@ -412,6 +412,18 @@ class TestMeasurementPointFiltering(unittest.TestCase):
         mock_center.y.return_value = y_mm * self.mock_processor.pixel_to_mm_ratio
         mock_rect.center.return_value = mock_center
         mock_point.sceneBoundingRect.return_value = mock_rect
+        data_store = {}
+        if uid is not None:
+            data_store[2] = uid
+
+        def _data(key):
+            return data_store.get(key)
+
+        def _set_data(key, value):
+            data_store[key] = value
+
+        mock_point.data.side_effect = _data
+        mock_point.setData.side_effect = _set_data
         return mock_point
 
     @patch("pathlib.Path.exists")
@@ -699,6 +711,311 @@ class TestMeasurementPointFiltering(unittest.TestCase):
         session_manager.add_points.assert_not_called()
         proc.measure_next_point.assert_called_once()
 
+    @patch("pathlib.Path.exists")
+    @patch("hardware.difra.hardware.auxiliary.encode_image_to_base64")
+    @patch("builtins.open", create=True)
+    @patch("json.dump")
+    def test_existing_session_points_are_reused_when_filtered_subset_is_measured(
+        self, mock_json_dump, mock_open, mock_encode, mock_exists
+    ):
+        """When session already has points, filtered measurement subset must map to original point IDs."""
+        import h5py
+        import tempfile
+
+        mock_exists.return_value = True
+        mock_encode.return_value = "base64_image_data"
+
+        test_points_data = [
+            (-10.0, 0.0),  # valid
+            (20.0, 0.0),   # skipped
+            (-8.0, 0.0),   # valid
+            (22.0, 0.0),   # skipped
+            (-6.0, 0.0),   # valid
+            (24.0, 0.0),   # skipped
+            (-4.0, 0.0),   # valid
+            (-2.0, 0.0),   # valid
+            (0.0, 0.0),    # valid
+            (2.0, 0.0),    # valid
+        ]
+        mock_points = [self.create_mock_point_at_position(x, y) for x, y in test_points_data]
+        self.mock_processor.image_view.points_dict["generated"]["points"] = mock_points
+
+        import importlib.util
+
+        pm_path = os.path.join(
+            SRC_ROOT,
+            "hardware",
+            "difra",
+            "gui",
+            "main_window_ext",
+            "zone_measurements",
+            "logic",
+            "process_mixin.py",
+        )
+        spec = importlib.util.spec_from_file_location("process_mixin_direct", pm_path)
+        pm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pm)
+        ZoneMeasurementsProcessMixin = pm.ZoneMeasurementsProcessMixin
+
+        ProcCls = type("Proc", (ZoneMeasurementsProcessMixin,), {})
+        proc = ProcCls()
+        proc.config = {"detectors": []}
+        proc.folderLineEdit = self.mock_processor.folderLineEdit
+        proc.fileNameLineEdit = self.mock_processor.fileNameLineEdit
+        proc.pointsTable = self.mock_processor.pointsTable
+        proc.start_btn = self.mock_processor.start_btn
+        proc.pause_btn = self.mock_processor.pause_btn
+        proc.stop_btn = self.mock_processor.stop_btn
+        proc.progressBar = self.mock_processor.progressBar
+        proc.timeRemainingLabel = self.mock_processor.timeRemainingLabel
+        proc.image_view = self.mock_processor.image_view
+        proc.real_x_pos_mm = self.mock_processor.real_x_pos_mm
+        proc.real_y_pos_mm = self.mock_processor.real_y_pos_mm
+        proc.include_center = self.mock_processor.include_center
+        proc.pixel_to_mm_ratio = self.mock_processor.pixel_to_mm_ratio
+        proc.state = {}
+        proc.state_measurements = {}
+        proc.manual_save_state = Mock()
+        proc.measure_next_point = Mock()
+        proc.integrationSpinBox = self.mock_processor.integrationSpinBox
+
+        class _Stage:
+            def get_limits(self_inner):
+                return {"x": (-14.0, 14.0), "y": (-14.0, 14.0)}
+
+        proc.stage_controller = _Stage()
+
+        class _Schema:
+            GROUP_POINTS = "/entry/points"
+            ATTR_POINT_STATUS = "point_status"
+            POINT_STATUS_MEASURED = "measured"
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            session_path = os.path.join(tmp_dir, "existing_points_session.nxs.h5")
+            with h5py.File(session_path, "w") as h5f:
+                points_group = h5f.create_group(_Schema.GROUP_POINTS)
+                for idx in range(1, 11):
+                    point_group = points_group.create_group("pt_{0:03d}".format(idx))
+                    point_group.attrs[_Schema.ATTR_POINT_STATUS] = "pending"
+
+            session_manager = Mock()
+            session_manager.is_session_active.return_value = True
+            session_manager.is_locked.return_value = False
+            session_manager.session_path = session_path
+            session_manager.schema = _Schema()
+            session_manager.add_points = Mock()
+            proc.session_manager = session_manager
+
+            with patch("copy.copy") as mock_copy:
+                mock_copy.return_value = {}
+                with patch.object(pm.QMessageBox, "question", return_value=pm.QMessageBox.Yes):
+                    proc.start_measurements()
+
+        self.assertEqual(proc.total_points, 7)
+        self.assertEqual(
+            proc._session_point_indices,
+            [int(idx) + 1 for idx in proc.sorted_indices],
+        )
+        session_manager.add_points.assert_not_called()
+        proc.measure_next_point.assert_called_once()
+
+    @patch("pathlib.Path.exists")
+    @patch("hardware.difra.hardware.auxiliary.encode_image_to_base64")
+    @patch("builtins.open", create=True)
+    @patch("json.dump")
+    def test_restore_resume_uses_point_uid_mapping_when_point_order_changes(
+        self, mock_json_dump, mock_open, mock_encode, mock_exists
+    ):
+        """Resume should map pending points by persisted UID even if GUI point list order differs."""
+        import h5py
+        import tempfile
+
+        mock_exists.return_value = True
+        mock_encode.return_value = "base64_image_data"
+
+        # GUI list order is intentionally shuffled vs session point index order.
+        point_specs = [
+            (3.0, 3.0, "3_cccccccc"),
+            (1.0, 1.0, "1_aaaaaaaa"),
+            (2.0, 2.0, "2_bbbbbbbb"),
+        ]
+        mock_points = [
+            self.create_mock_point_at_position(x, y, uid=uid)
+            for x, y, uid in point_specs
+        ]
+        self.mock_processor.image_view.points_dict["generated"]["points"] = mock_points
+
+        import importlib.util
+
+        pm_path = os.path.join(
+            SRC_ROOT,
+            "hardware",
+            "difra",
+            "gui",
+            "main_window_ext",
+            "zone_measurements",
+            "logic",
+            "process_mixin.py",
+        )
+        spec = importlib.util.spec_from_file_location("process_mixin_direct", pm_path)
+        pm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pm)
+        ZoneMeasurementsProcessMixin = pm.ZoneMeasurementsProcessMixin
+
+        ProcCls = type("Proc", (ZoneMeasurementsProcessMixin,), {})
+        proc = ProcCls()
+        proc.config = {"detectors": []}
+        proc.folderLineEdit = self.mock_processor.folderLineEdit
+        proc.fileNameLineEdit = self.mock_processor.fileNameLineEdit
+        proc.pointsTable = self.mock_processor.pointsTable
+        proc.start_btn = self.mock_processor.start_btn
+        proc.pause_btn = self.mock_processor.pause_btn
+        proc.stop_btn = self.mock_processor.stop_btn
+        proc.progressBar = self.mock_processor.progressBar
+        proc.timeRemainingLabel = self.mock_processor.timeRemainingLabel
+        proc.image_view = self.mock_processor.image_view
+        proc.real_x_pos_mm = self.mock_processor.real_x_pos_mm
+        proc.real_y_pos_mm = self.mock_processor.real_y_pos_mm
+        proc.include_center = self.mock_processor.include_center
+        proc.pixel_to_mm_ratio = self.mock_processor.pixel_to_mm_ratio
+        proc.state = {}
+        proc.state_measurements = {}
+        proc.manual_save_state = Mock()
+        proc.measure_next_point = Mock()
+        proc.integrationSpinBox = self.mock_processor.integrationSpinBox
+
+        class _Stage:
+            def get_limits(self_inner):
+                return {"x": (-14.0, 14.0), "y": (-14.0, 14.0)}
+
+        proc.stage_controller = _Stage()
+
+        class _Schema:
+            GROUP_POINTS = "/entry/points"
+            ATTR_POINT_STATUS = "point_status"
+            POINT_STATUS_MEASURED = "measured"
+            ATTR_PHYSICAL_COORDINATES_MM = "physical_coordinates_mm"
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            session_path = os.path.join(tmp_dir, "uid_resume_session.nxs.h5")
+            with h5py.File(session_path, "w") as h5f:
+                points_group = h5f.create_group(_Schema.GROUP_POINTS)
+
+                pt1 = points_group.create_group("pt_001")
+                pt1.attrs[_Schema.ATTR_POINT_STATUS] = "measured"
+                pt1.attrs[_Schema.ATTR_PHYSICAL_COORDINATES_MM] = [1.0, 1.0]
+                pt1.attrs["point_uid"] = "1_aaaaaaaa"
+
+                pt2 = points_group.create_group("pt_002")
+                pt2.attrs[_Schema.ATTR_POINT_STATUS] = "pending"
+                pt2.attrs[_Schema.ATTR_PHYSICAL_COORDINATES_MM] = [2.0, 2.0]
+                pt2.attrs["point_uid"] = "2_bbbbbbbb"
+
+                pt3 = points_group.create_group("pt_003")
+                pt3.attrs[_Schema.ATTR_POINT_STATUS] = "pending"
+                pt3.attrs[_Schema.ATTR_PHYSICAL_COORDINATES_MM] = [3.0, 3.0]
+                pt3.attrs["point_uid"] = "3_cccccccc"
+
+            session_manager = Mock()
+            session_manager.is_session_active.return_value = True
+            session_manager.is_locked.return_value = False
+            session_manager.session_path = session_path
+            session_manager.schema = _Schema()
+            session_manager.add_points = Mock()
+            proc.session_manager = session_manager
+
+            with patch("copy.copy") as mock_copy:
+                mock_copy.return_value = {}
+                with patch.object(pm.QMessageBox, "question", return_value=pm.QMessageBox.Yes):
+                    proc.start_measurements()
+
+        self.assertEqual(proc.total_points, 2)
+        self.assertEqual(proc._session_point_indices, [2, 3])
+        resumed_uids = [pt["unique_id"] for pt in proc.state_measurements["measurement_points"]]
+        self.assertEqual(resumed_uids, ["2_bbbbbbbb", "3_cccccccc"])
+        session_manager.add_points.assert_not_called()
+        proc.measure_next_point.assert_called_once()
+
+    @patch("pathlib.Path.exists")
+    @patch("hardware.difra.hardware.auxiliary.encode_image_to_base64")
+    @patch("builtins.open", create=True)
+    @patch("json.dump")
+    def test_restore_session_reuses_existing_i0_and_skips_background_capture(
+        self, mock_json_dump, mock_open, mock_encode, mock_exists
+    ):
+        """When restored session already has I0, start should not capture I0 again."""
+        mock_exists.return_value = True
+        mock_encode.return_value = "base64_image_data"
+
+        self.mock_processor.image_view.points_dict["generated"]["points"] = [
+            self.create_mock_point_at_position(1.0, 1.0)
+        ]
+
+        import importlib.util
+
+        pm_path = os.path.join(
+            SRC_ROOT,
+            "hardware",
+            "difra",
+            "gui",
+            "main_window_ext",
+            "zone_measurements",
+            "logic",
+            "process_mixin.py",
+        )
+        spec = importlib.util.spec_from_file_location("process_mixin_direct", pm_path)
+        pm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pm)
+        ZoneMeasurementsProcessMixin = pm.ZoneMeasurementsProcessMixin
+
+        ProcCls = type("Proc", (ZoneMeasurementsProcessMixin,), {})
+        proc = ProcCls()
+        proc.config = {"detectors": []}
+        proc.folderLineEdit = self.mock_processor.folderLineEdit
+        proc.fileNameLineEdit = self.mock_processor.fileNameLineEdit
+        proc.pointsTable = self.mock_processor.pointsTable
+        proc.start_btn = self.mock_processor.start_btn
+        proc.pause_btn = self.mock_processor.pause_btn
+        proc.stop_btn = self.mock_processor.stop_btn
+        proc.progressBar = self.mock_processor.progressBar
+        proc.timeRemainingLabel = self.mock_processor.timeRemainingLabel
+        proc.image_view = self.mock_processor.image_view
+        proc.real_x_pos_mm = self.mock_processor.real_x_pos_mm
+        proc.real_y_pos_mm = self.mock_processor.real_y_pos_mm
+        proc.include_center = self.mock_processor.include_center
+        proc.pixel_to_mm_ratio = self.mock_processor.pixel_to_mm_ratio
+        proc.state = {}
+        proc.state_measurements = {}
+        proc.manual_save_state = Mock()
+        proc.measure_next_point = Mock()
+        proc.integrationSpinBox = self.mock_processor.integrationSpinBox
+        proc.attenuationCheckBox = Mock()
+        proc.attenuationCheckBox.isChecked.return_value = True
+        proc._capture_attenuation_background = Mock()
+
+        class _Stage:
+            def get_limits(self_inner):
+                return {"x": (-14.0, 14.0), "y": (-14.0, 14.0)}
+
+        proc.stage_controller = _Stage()
+
+        session_manager = Mock()
+        session_manager.is_session_active.return_value = True
+        session_manager.is_locked.return_value = False
+        session_manager.i0_counter = 7
+        session_manager.session_path = None
+        session_manager.schema = None
+        session_manager.add_points = Mock()
+        proc.session_manager = session_manager
+
+        with patch("copy.copy") as mock_copy:
+            mock_copy.return_value = {}
+            proc.start_measurements()
+
+        proc._capture_attenuation_background.assert_not_called()
+        assert bool(getattr(proc, "_reuse_existing_i0_from_session", False)) is True
+        proc.measure_next_point.assert_called_once()
+
     def test_valid_points_preserve_order(self):
         """Test that valid points preserve their relative order after filtering."""
         test_points_data = [
@@ -762,6 +1079,36 @@ class TestMeasurementPointFiltering(unittest.TestCase):
 
         self.assertEqual(payload["value"], 7)
         self.assertEqual(payload["nested"]["arr"], [1, 2, 3])
+
+    def test_measurement_point_uid_format_is_counter_plus_8hex(self):
+        """Point unique_id should be '<integer_counter>_<8 hex symbols>' and unique."""
+        import importlib.util
+        import re
+
+        pm_path = os.path.join(
+            SRC_ROOT,
+            "hardware",
+            "difra",
+            "gui",
+            "main_window_ext",
+            "zone_measurements",
+            "logic",
+            "process_mixin.py",
+        )
+        spec = importlib.util.spec_from_file_location("process_mixin_direct", pm_path)
+        pm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pm)
+        ZoneMeasurementsProcessMixin = pm.ZoneMeasurementsProcessMixin
+
+        ProcCls = type("Proc", (ZoneMeasurementsProcessMixin,), {})
+        proc = ProcCls()
+
+        ids = [proc._new_measurement_point_uid(i + 1) for i in range(64)]
+        assert len(ids) == len(set(ids))
+        pattern = re.compile(r"^\d+_[0-9a-f]{8}$")
+        for i, uid in enumerate(ids, start=1):
+            assert pattern.match(uid), uid
+            assert uid.startswith(f"{i}_")
 
 
 if __name__ == "__main__":
