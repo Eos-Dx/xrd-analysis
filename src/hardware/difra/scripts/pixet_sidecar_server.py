@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """PIXet sidecar server (Python 3.7+) using plain TCP sockets + JSON lines.
 
+Development note:
+- Keep sidecar code compatible with legacy Python <= 3.8.
+
 Protocol (request/response):
 - Request:  {"id": "...", "cmd": "...", "args": {...}}
 - Response: {"id": "...", "ok": true,  "result": ...}

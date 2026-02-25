@@ -14,39 +14,41 @@ class UlsterLogger:
         self._logger = get_logger(name)
         self.name = name
 
-    def debug(self, msg: str, **kwargs):
+    def debug(self, msg: str, *args, **kwargs):
         """Log debug message with context."""
-        self._logger.debug(msg, extra=kwargs)
+        self._logger.debug(msg, *args, extra=kwargs)
 
-    def info(self, msg: str, **kwargs):
+    def info(self, msg: str, *args, **kwargs):
         """Log info message with context."""
-        self._logger.info(msg, extra=kwargs)
+        self._logger.info(msg, *args, extra=kwargs)
 
-    def warning(self, msg: str, **kwargs):
+    def warning(self, msg: str, *args, **kwargs):
         """Log warning message with context."""
-        self._logger.warning(msg, extra=kwargs)
+        self._logger.warning(msg, *args, extra=kwargs)
 
-    def error(self, msg: str, exc_info: bool = False, **kwargs):
+    def error(self, msg: str, *args, exc_info: bool = False, **kwargs):
         """Log error message with context."""
-        self._logger.error(msg, exc_info=exc_info, extra=kwargs)
+        self._logger.error(msg, *args, exc_info=exc_info, extra=kwargs)
 
-    def exception(self, msg: str, **kwargs):
+    def exception(self, msg: str, *args, **kwargs):
         """Log exception with traceback."""
-        self._logger.exception(msg, extra=kwargs)
+        self._logger.exception(msg, *args, extra=kwargs)
 
-    def critical(self, msg: str, **kwargs):
+    def critical(self, msg: str, *args, **kwargs):
         """Log critical message with context."""
-        self._logger.critical(msg, extra=kwargs)
+        self._logger.critical(msg, *args, extra=kwargs)
 
-    def hardware_state(self, state: str, msg: str, **kwargs):
+    def hardware_state(self, state: str, msg: str, *args, **kwargs):
         """Log message with hardware state context."""
         with log_context(hardware_state=state):
-            self._logger.info(msg, extra=kwargs)
+            self._logger.info(msg, *args, extra=kwargs)
 
-    def measurement(self, measurement_id: str, msg: str, level: str = "info", **kwargs):
+    def measurement(
+        self, measurement_id: str, msg: str, *args, level: str = "info", **kwargs
+    ):
         """Log message with measurement context."""
         with log_context(measurement_id=measurement_id):
-            getattr(self._logger, level)(msg, extra=kwargs)
+            getattr(self._logger, level)(msg, *args, extra=kwargs)
 
     def operation_start(self, operation: str, **kwargs):
         """Log start of an operation."""

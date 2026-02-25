@@ -106,7 +106,11 @@ Layout=1x1
                 file_type="descriptor",
             )
         except Exception as e:
-            logger.warning("Failed to generate .dsc file: %s", e, detector=self.alias)
+            logger.warning(
+                "Failed to generate .dsc file",
+                detector=self.alias,
+                error=str(e),
+            )
 
     @with_logging("detector_deinit")
     def deinit_detector(self):
@@ -160,8 +164,8 @@ Layout=1x1
                     data = np.loadtxt(raw_path)
                     np.save(npy_path, data)
                     logger.info(
-                        "Converted for container v%s",
-                        container_version,
+                        "Converted detector output for container format",
+                        container_version=container_version,
                         detector=self.alias,
                         input_file=raw_path.name,
                         output_file=npy_path.name,

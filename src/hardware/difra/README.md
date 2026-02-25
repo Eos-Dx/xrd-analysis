@@ -37,6 +37,9 @@ The current launchers run DiFRA in a protocol-first layout:
 4. GUI hardware client runs in strict gRPC mode (`HARDWARE_CLIENT_MODE=grpc`, enforced by launchers).
 5. gRPC server handles stage directly and routes detector init/capture through sidecar (`DETECTOR_BACKEND=sidecar`).
 
+Sidecar development rule:
+- Any code added under the sidecar path must remain compatible with legacy Python `<=3.8` (target runtime is currently Python 3.7).
+
 Default endpoints:
 - gRPC: `127.0.0.1:50061`
 - Detector sidecar: `127.0.0.1:51001`
