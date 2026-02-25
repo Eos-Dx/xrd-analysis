@@ -76,7 +76,10 @@ class ZoneMeasurementsProcessResultsMixin:
         if 0 <= current_index < len(measurement_points):
             point_unique_id = measurement_points[current_index].get("unique_id")
         if not point_unique_id:
-            point_unique_id = f"resume_pt_{point_index_1based:03d}"
+            if hasattr(self, "_new_measurement_point_uid"):
+                point_unique_id = self._new_measurement_point_uid(point_index_1based)
+            else:
+                point_unique_id = f"{int(point_index_1based)}_00000000"
             pm.logger.warning(
                 "Measurement point metadata index mismatch; using fallback unique_id",
                 current_index=int(current_index),
@@ -367,6 +370,8 @@ class ZoneMeasurementsProcessResultsMixin:
                 self.pause_btn.setEnabled(False)
                 self.stop_btn.setEnabled(False)
                 self.start_btn.setEnabled(True)
+                if hasattr(self, "skip_btn") and self.skip_btn is not None:
+                    self.skip_btn.setEnabled(False)
             else:
                 pm.logger.warning(f"Measurement stopped: paused={self.paused}, stopped={self.stopped}")
 
@@ -494,6 +499,40 @@ class ZoneMeasurementsProcessResultsMixin:
             pm.logger.info("Measurements resumed")
             self.measure_next_point()
 
+    def skip_current_point(self):
+        pm = _pm()
+        if getattr(self, "stopped", False):
+            return
+        total_points = int(getattr(self, "total_points", 0))
+        current = int(getattr(self, "current_measurement_sorted_index", 0))
+        if total_points <= 0 or current >= total_points:
+            return
+        sorted_indices = list(getattr(self, "sorted_indices", []) or [])
+        if current >= len(sorted_indices):
+            return
+
+        from PyQt5.QtWidgets import QInputDialog
+
+        reason, ok = QInputDialog.getText(
+            self,
+            "Skip Point",
+            "Skip reason:",
+        )
+        if not ok:
+            return
+        reason = str(reason or "").strip() or "user_skipped"
+
+        row = int(sorted_indices[current])
+        skip_impl = getattr(self, "_skip_point_by_row", None)
+        if callable(skip_impl):
+            changed = bool(skip_impl(row=row, reason=reason))
+            if changed:
+                self._append_capture_log(
+                    f"Point {current + 1}: skipped ({reason})"
+                )
+        else:
+            pm.logger.warning("Skip requested but _skip_point_by_row is unavailable")
+
     def stop_measurements(self):
         pm = _pm()
         self.stopped = True
@@ -505,6 +544,8 @@ class ZoneMeasurementsProcessResultsMixin:
         self.pause_btn.setText("Pause")
         self.pause_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
+        if hasattr(self, "skip_btn") and self.skip_btn is not None:
+            self.skip_btn.setEnabled(False)
         pm.logger.info("Measurements stopped and reset")
 
     def _confirm_poni_settings_before_measurement(self):

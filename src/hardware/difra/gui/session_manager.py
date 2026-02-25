@@ -45,6 +45,114 @@ class SessionManager(SessionManagerRecoveryMixin, SessionManagerMeasurementOpsMi
         if isinstance(value, bytes):
             return value.decode("utf-8", errors="replace")
         return str(value)
+
+    @staticmethod
+    def _safe_int(value):
+        try:
+            return int(value)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _counter_from_measurement_name(name: str):
+        try:
+            return int(str(name).split("_")[-1])
+        except Exception:
+            return None
+
+    def _restore_attenuation_counters_from_h5(self, h5f) -> None:
+        """Restore attenuation counters from analytical measurements in an existing session."""
+        self.i0_counter = None
+        self.i_counter = None
+
+        ana_group_path = getattr(
+            self.schema, "GROUP_ANALYTICAL_MEASUREMENTS", "/analytical_measurements"
+        )
+        ana_group = h5f.get(ana_group_path)
+        if ana_group is None:
+            return
+
+        role_attr_name = getattr(self.schema, "ATTR_ANALYSIS_ROLE", "analysis_role")
+        type_attr_name = getattr(self.schema, "ATTR_ANALYSIS_TYPE", "analysis_type")
+        counter_attr_name = getattr(
+            self.schema, "ATTR_MEASUREMENT_COUNTER", "measurement_counter"
+        )
+        attenuation_type = str(
+            getattr(self.schema, "ANALYSIS_TYPE_ATTENUATION", "attenuation")
+        ).strip().lower()
+        role_i0 = str(getattr(self.schema, "ANALYSIS_ROLE_I0", "i0")).strip().lower()
+        role_i = str(getattr(self.schema, "ANALYSIS_ROLE_I", "i")).strip().lower()
+
+        i0_candidates = []
+        i_candidates = []
+
+        for ana_id in sorted(ana_group.keys()):
+            ana_group_item = ana_group[ana_id]
+            counter = self._safe_int(ana_group_item.attrs.get(counter_attr_name))
+            if counter is None:
+                counter = self._counter_from_measurement_name(str(ana_id))
+            if counter is None:
+                continue
+
+            analysis_type = self._as_text(
+                ana_group_item.attrs.get(type_attr_name), ""
+            ).strip().lower()
+            analysis_role = self._as_text(
+                ana_group_item.attrs.get(role_attr_name), ""
+            ).strip().lower()
+
+            is_attenuation = (
+                analysis_type == attenuation_type
+                or analysis_type.startswith("attenuation")
+                or analysis_role in {role_i0, role_i}
+            )
+            if not is_attenuation:
+                continue
+
+            is_i0 = (
+                analysis_role in {role_i0, "without", "without_sample"}
+                or analysis_type
+                in {
+                    "attenuation_i0",
+                    "attenuation_without",
+                    "attenuation_without_sample",
+                }
+            )
+            is_i = (
+                analysis_role in {role_i, "with", "with_sample"}
+                or analysis_type
+                in {
+                    "attenuation_i",
+                    "attenuation_with",
+                    "attenuation_with_sample",
+                }
+            )
+
+            if is_i0:
+                i0_candidates.append(counter)
+                continue
+            if is_i:
+                i_candidates.append(counter)
+                continue
+
+            # Legacy fallback (no explicit role): first attenuation is I0, later ones are I.
+            if not i0_candidates:
+                i0_candidates.append(counter)
+            else:
+                i_candidates.append(counter)
+
+        if i0_candidates:
+            self.i0_counter = max(i0_candidates)
+        if i_candidates:
+            self.i_counter = max(i_candidates)
+
+        if self.i0_counter is not None or self.i_counter is not None:
+            logger.info(
+                "Restored attenuation counters from existing session",
+                session_path=str(self.session_path),
+                i0_counter=self.i0_counter,
+                i_counter=self.i_counter,
+            )
     
     def __init__(self, config: Optional[Dict] = None):
         """Initialize SessionManager.
@@ -446,6 +554,8 @@ class SessionManager(SessionManagerRecoveryMixin, SessionManagerMeasurementOpsMi
                 self.technical_container_path = Path(source) if source else None
             else:
                 self.technical_container_path = None
+
+            self._restore_attenuation_counters_from_h5(f)
 
         # Rebuild pending map from in-progress measurements for crash recovery.
         incomplete = self._load_incomplete_measurements_from_container(session_file)

@@ -618,11 +618,26 @@ def update_point_status(
     file_path: Union[str, Path],
     point_index: int,
     point_status: str,
+    skip_reason: Optional[str] = None,
 ) -> None:
     point_id = schema.format_point_id(point_index)
     point_path = f"{schema.GROUP_POINTS}/{point_id}"
 
-    utils.set_attrs(file_path=file_path, path=point_path, attrs={schema.ATTR_POINT_STATUS: point_status})
+    attrs = {schema.ATTR_POINT_STATUS: point_status}
+    if point_status == schema.POINT_STATUS_SKIPPED:
+        reason_text = str(skip_reason or "").strip() or "unspecified"
+        attrs[schema.ATTR_SKIP_REASON] = reason_text
+    utils.set_attrs(file_path=file_path, path=point_path, attrs=attrs)
+
+    # Keep skip_reason only for skipped points.
+    if point_status != schema.POINT_STATUS_SKIPPED:
+        try:
+            with utils.open_h5_append(file_path) as f:
+                point = f[point_path]
+                if schema.ATTR_SKIP_REASON in point.attrs:
+                    del point.attrs[schema.ATTR_SKIP_REASON]
+        except Exception:
+            pass
 
 
 def get_next_measurement_counter(file_path: Union[str, Path]) -> int:

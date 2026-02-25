@@ -85,6 +85,18 @@ class SessionManagerMeasurementOpsMixin:
                 point_status=point.get("point_status", "pending"),
                 thickness=point.get("thickness", "unknown"),
             )
+            point_uid = str(point.get("point_uid") or "").strip()
+            if point_uid:
+                try:
+                    import h5py
+
+                    with h5py.File(self.session_path, "a") as h5f:
+                        h5f[path].attrs["point_uid"] = point_uid
+                except Exception:
+                    logger.warning(
+                        "Failed to persist point UID into session point attrs",
+                        point_index=int(idx),
+                    )
             paths.append(path)
 
         self.log_event(
@@ -328,6 +340,106 @@ class SessionManagerMeasurementOpsMixin:
             path=meas_path,
         )
         return meas_path
+
+    def mark_point_skipped(
+        self,
+        point_index: int,
+        reason: Optional[str] = None,
+    ) -> None:
+        """Mark point as skipped and persist skip reason."""
+        self._check_active()
+        if self.is_locked():
+            raise RuntimeError("Cannot mark point skipped: session container is locked.")
+
+        skip_reason = str(reason or "").strip() or "user_skipped"
+
+        # If there is an in-progress measurement for this point, terminate it first.
+        pending_path = self._pending_measurements.pop(point_index, None)
+        if pending_path:
+            fail_measurement = getattr(self.writer, "fail_measurement", None)
+            if callable(fail_measurement):
+                fail_measurement(
+                    file_path=self.session_path,
+                    measurement_path=pending_path,
+                    failure_reason=f"skipped:{skip_reason}",
+                    timestamp_end=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    measurement_status=self.schema.STATUS_ABORTED,
+                )
+
+        try:
+            self.writer.update_point_status(
+                file_path=self.session_path,
+                point_index=point_index,
+                point_status=self.schema.POINT_STATUS_SKIPPED,
+                skip_reason=skip_reason,
+            )
+        except TypeError:
+            # Backward compatibility for writer versions without skip_reason support.
+            self.writer.update_point_status(
+                file_path=self.session_path,
+                point_index=point_index,
+                point_status=self.schema.POINT_STATUS_SKIPPED,
+            )
+        self.log_event(
+            message="Point marked skipped",
+            event_type="point_skipped",
+            level="WARNING",
+            details={"point_index": point_index, "reason": skip_reason},
+        )
+        logger.info(
+            "Marked point as skipped",
+            point_index=point_index,
+            reason=skip_reason,
+        )
+
+    def delete_point(
+        self,
+        point_index: int,
+    ) -> bool:
+        """Delete an unmeasured point from session container."""
+        self._check_active()
+        if self.is_locked():
+            raise RuntimeError("Cannot delete point: session container is locked.")
+
+        import h5py
+
+        point_id = self.schema.format_point_id(point_index)
+        point_path = f"{self.schema.GROUP_POINTS}/{point_id}"
+        measurements_point_path = f"{self.schema.GROUP_MEASUREMENTS}/{point_id}"
+
+        with h5py.File(self.session_path, "a") as h5f:
+            if point_path not in h5f:
+                return False
+
+            point_group = h5f[point_path]
+            point_status = self._as_text(
+                point_group.attrs.get(self.schema.ATTR_POINT_STATUS, "")
+            ).strip().lower()
+            measured_status = str(self.schema.POINT_STATUS_MEASURED).strip().lower()
+            if point_status == measured_status:
+                raise RuntimeError(
+                    f"Point {point_index} is measured and cannot be deleted. Mark it skipped instead."
+                )
+
+            # Do not delete points that already contain finished measurements.
+            if measurements_point_path in h5f and len(h5f[measurements_point_path].keys()) > 0:
+                raise RuntimeError(
+                    f"Point {point_index} has measurement records and cannot be deleted. Mark it skipped instead."
+                )
+
+            if measurements_point_path in h5f:
+                del h5f[measurements_point_path]
+            del h5f[point_path]
+
+        self._pending_measurements.pop(point_index, None)
+        self.log_event(
+            message="Point deleted from session container",
+            event_type="point_deleted",
+            level="WARNING",
+            details={"point_index": point_index},
+        )
+        logger.info("Deleted point from session container", point_index=point_index)
+        return True
 
     def add_measurement(
         self,

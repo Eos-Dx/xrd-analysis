@@ -198,6 +198,7 @@ ATTR_N_FRAMES = "n_frames"
 ATTR_PIXEL_COORDINATES = "pixel_coordinates"
 ATTR_PHYSICAL_COORDINATES_MM = "physical_coordinates_mm"
 ATTR_POINT_STATUS = "point_status"
+ATTR_SKIP_REASON = "skip_reason"
 ATTR_ANALYTICAL_MEASUREMENT_REFS = "analytical_measurement_refs"
 ATTR_THICKNESS = "thickness"
 

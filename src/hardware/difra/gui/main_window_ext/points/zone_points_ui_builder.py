@@ -1,7 +1,7 @@
 """UI builder for zone points functionality."""
 
 import math
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from PyQt5.QtCore import QPointF
 from PyQt5.QtWidgets import (
@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
 
 from hardware.difra.gui.main_window_ext.points.zone_geometry import (
     sample_points_in_circle,
+    sample_points_in_ellipse,
     sample_points_in_rect,
 )
 
@@ -168,43 +169,142 @@ class ZonePointsGeometry:
 
     @staticmethod
     def get_shape_bounds_and_candidates(
-        include_shape, shrink_factor: float
+        include_shape,
+        shrink_factor: float,
+        edge_clearance_px: float = 0.0,
     ) -> Tuple[List[Tuple[float, float]], float, Tuple[float, float, float, float]]:
         """Get candidate points and bounds for a shape."""
-        if hasattr(include_shape, "center") and hasattr(include_shape, "radius"):
-            return ZonePointsGeometry._get_circle_candidates(
-                include_shape, shrink_factor
+        ellipse_params = ZonePointsGeometry._extract_ellipse_params(include_shape)
+        if ellipse_params is not None:
+            center, radius_x, radius_y = ellipse_params
+            return ZonePointsGeometry._get_ellipse_candidates(
+                center,
+                radius_x,
+                radius_y,
+                shrink_factor,
+                edge_clearance_px=edge_clearance_px,
             )
-        else:
-            return ZonePointsGeometry._get_rect_candidates(include_shape, shrink_factor)
+        return ZonePointsGeometry._get_rect_candidates(
+            include_shape,
+            shrink_factor,
+            edge_clearance_px=edge_clearance_px,
+        )
+
+    @staticmethod
+    def _extract_ellipse_params(
+        include_shape,
+    ) -> Optional[Tuple[Tuple[float, float], float, float]]:
+        """Return ``((center_x, center_y), radius_x, radius_y)`` for ellipse-like shapes."""
+        # Preferred interface used by ResizableZoneItem.
+        get_center = getattr(include_shape, "get_center", None)
+        get_radius = getattr(include_shape, "get_radius", None)
+        if callable(get_center) and callable(get_radius):
+            try:
+                center = get_center()
+                radius = float(get_radius())
+                if center is not None and len(center) >= 2 and radius > 0:
+                    return (float(center[0]), float(center[1])), radius, radius
+            except Exception:
+                pass
+
+        # Backward-compatible dynamic attributes.
+        if hasattr(include_shape, "center") and hasattr(include_shape, "radius"):
+            try:
+                center = include_shape.center
+                radius = float(include_shape.radius)
+                if center is not None and len(center) >= 2 and radius > 0:
+                    return (float(center[0]), float(center[1])), radius, radius
+            except Exception:
+                pass
+
+        # Fallback for generic ellipse items (QGraphicsEllipseItem or subclasses).
+        class_name = include_shape.__class__.__name__.lower()
+        is_ellipse_like = ("ellipse" in class_name) or ("circle" in class_name)
+        if is_ellipse_like:
+            try:
+                if hasattr(include_shape, "sceneBoundingRect"):
+                    rect = include_shape.sceneBoundingRect()
+                elif hasattr(include_shape, "rect") and callable(include_shape.rect):
+                    rect = include_shape.rect()
+                else:
+                    return None
+
+                w = float(rect.width())
+                h = float(rect.height())
+                if w > 0 and h > 0:
+                    cx = float(rect.x()) + w / 2.0
+                    cy = float(rect.y()) + h / 2.0
+                    return (cx, cy), w / 2.0, h / 2.0
+            except Exception:
+                pass
+
+        return None
+
+    @staticmethod
+    def _get_ellipse_candidates(
+        center: Tuple[float, float],
+        radius_x: float,
+        radius_y: float,
+        shrink_factor: float,
+        edge_clearance_px: float = 0.0,
+    ) -> Tuple[List[Tuple[float, float]], float, Tuple[float, float, float, float]]:
+        """Get candidates for ellipse/circle shape."""
+        shrink_factor = max(0.0, min(1.0, float(shrink_factor)))
+        clearance = max(0.0, float(edge_clearance_px))
+        radius_x = max(0.0, radius_x * shrink_factor - clearance)
+        radius_y = max(0.0, radius_y * shrink_factor - clearance)
+        candidates = sample_points_in_ellipse(
+            center, radius_x, radius_y, ZonePointsConstants.MAX_CANDIDATES
+        )
+        area = math.pi * radius_x * radius_y
+        bounds = (
+            center[0] - radius_x,
+            center[1] - radius_y,
+            center[0] + radius_x,
+            center[1] + radius_y,
+        )
+        return candidates, area, bounds
 
     @staticmethod
     def _get_circle_candidates(
-        include_shape, shrink_factor: float
+        center: Tuple[float, float], radius: float, shrink_factor: float
     ) -> Tuple[List[Tuple[float, float]], float, Tuple[float, float, float, float]]:
         """Get candidates for circular shape."""
-        center = include_shape.center
-        radius = include_shape.radius * shrink_factor
-        candidates = sample_points_in_circle(
-            center, radius, ZonePointsConstants.MAX_CANDIDATES
-        )
-        area = math.pi * (radius**2)
-        bounds = (
-            center[0] - radius,
-            center[1] - radius,
-            center[0] + radius,
-            center[1] + radius,
+        candidates, area, bounds = ZonePointsGeometry._get_ellipse_candidates(
+            center,
+            radius,
+            radius,
+            shrink_factor,
+            edge_clearance_px=0.0,
         )
         return candidates, area, bounds
 
     @staticmethod
     def _get_rect_candidates(
-        include_shape, shrink_factor: float
+        include_shape,
+        shrink_factor: float,
+        edge_clearance_px: float = 0.0,
     ) -> Tuple[List[Tuple[float, float]], float, Tuple[float, float, float, float]]:
         """Get candidates for rectangular shape."""
+        shrink_factor = max(0.0, min(1.0, float(shrink_factor)))
+        clearance = max(0.0, float(edge_clearance_px))
         rect = include_shape.boundingRect()
         x_min, y_min = rect.x(), rect.y()
         x_max, y_max = x_min + rect.width(), y_min + rect.height()
+        center_x = (x_min + x_max) / 2.0
+        center_y = (y_min + y_max) / 2.0
+        half_w = (rect.width() * shrink_factor) / 2.0
+        half_h = (rect.height() * shrink_factor) / 2.0
+        x_min, x_max = center_x - half_w, center_x + half_w
+        y_min, y_max = center_y - half_h, center_y + half_h
+        x_min += clearance
+        x_max -= clearance
+        y_min += clearance
+        y_max -= clearance
+        if x_min > x_max:
+            x_min = x_max = center_x
+        if y_min > y_max:
+            y_min = y_max = center_y
         candidates = sample_points_in_rect(
             x_min, y_min, x_max, y_max, ZonePointsConstants.MAX_CANDIDATES
         )

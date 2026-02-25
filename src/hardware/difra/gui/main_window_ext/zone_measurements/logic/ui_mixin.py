@@ -77,6 +77,12 @@ class ZoneMeasurementsUIMixin:
             self.pause_btn.setMaximumHeight(28)
         except Exception:
             pass
+        self.skip_btn = QPushButton("Skip")
+        self.skip_btn.clicked.connect(self.skip_current_point)
+        try:
+            self.skip_btn.setMaximumHeight(28)
+        except Exception:
+            pass
         self.stop_btn = QPushButton("Stop")
         self.stop_btn.clicked.connect(self.stop_measurements)
         try:
@@ -85,6 +91,7 @@ class ZoneMeasurementsUIMixin:
             pass
         self.start_btn.setEnabled(False)
         self.pause_btn.setEnabled(False)
+        self.skip_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
         self._sidecar_locked = False
         self._sidecar_alive = False
@@ -92,6 +99,7 @@ class ZoneMeasurementsUIMixin:
         buttonLayout.addWidget(self.initializeBtn)
         buttonLayout.addWidget(self.start_btn)
         buttonLayout.addWidget(self.pause_btn)
+        buttonLayout.addWidget(self.skip_btn)
         buttonLayout.addWidget(self.stop_btn)
         meas_layout.addLayout(buttonLayout)
 

@@ -367,6 +367,7 @@ class SessionTabMixin:
             self.session_manager.close_session()
 
         summary = [f"Sent+archived {workflow_result.moved} session container(s)."]
+        summary.append(f"Cleaned measurement artifacts: {workflow_result.cleaned_artifacts}")
         summary.append(f"Old-format exports: {len(workflow_result.old_format_paths)}")
         if workflow_result.old_format_paths:
             summary.append(f"Old-format folder: {workflow_result.old_format_paths[-1]}")

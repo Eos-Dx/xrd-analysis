@@ -438,7 +438,9 @@ class DifraServiceState:
             or self.config.get("difra_base_folder")
             or tempfile.gettempdir()
         )
-        capture_root = Path(base_root) / "grpc_exposures"
+        # Keep gRPC raw outputs in the main measurements folder so the GUI
+        # does not maintain a parallel "grpc_exposures" subtree.
+        capture_root = Path(base_root)
         capture_root.mkdir(parents=True, exist_ok=True)
 
         def _capture_single(alias: str, controller: Any) -> Tuple[str, str]:

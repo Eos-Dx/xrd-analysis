@@ -58,6 +58,69 @@ class SessionLifecycleService:
 
         return "unknown"
 
+    @classmethod
+    def _resolve_archive_metadata(
+        cls,
+        session_path: Path,
+        explicit_session_id: Optional[str] = None,
+        explicit_operator_id: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Resolve session/operator/sample/project tokens for archive naming."""
+        data = {
+            "session_id": cls._decode_attr(explicit_session_id) or "",
+            "operator_id": cls._decode_attr(explicit_operator_id) or "",
+            "sample_id": "",
+            "project_id": "",
+            "study_name": "",
+        }
+
+        try:
+            with h5py.File(session_path, "r") as h5f:
+                if not data["session_id"]:
+                    data["session_id"] = cls._decode_attr(h5f.attrs.get("session_id"))
+                if not data["operator_id"]:
+                    data["operator_id"] = cls._decode_attr(h5f.attrs.get("operator_id"))
+                data["sample_id"] = cls._decode_attr(h5f.attrs.get("sample_id"))
+                data["project_id"] = cls._decode_attr(h5f.attrs.get("project_id"))
+                data["study_name"] = cls._decode_attr(h5f.attrs.get("study_name"))
+
+                if not data["operator_id"]:
+                    user_group = h5f.get("/entry/user")
+                    if user_group is not None:
+                        data["operator_id"] = cls._decode_attr(
+                            user_group.attrs.get("operator_id")
+                        )
+                if not data["sample_id"]:
+                    sample_group = h5f.get("/entry/sample")
+                    if sample_group is not None:
+                        data["sample_id"] = cls._decode_attr(
+                            sample_group.attrs.get("sample_id")
+                        )
+                if not data["project_id"]:
+                    if data["study_name"]:
+                        data["project_id"] = data["study_name"]
+                    else:
+                        sample_group = h5f.get("/entry/sample")
+                        if sample_group is not None:
+                            data["project_id"] = cls._decode_attr(
+                                sample_group.attrs.get("project_id")
+                            )
+                if not data["operator_id"]:
+                    data["operator_id"] = cls._decode_attr(h5f.attrs.get("locked_by"))
+        except Exception:
+            pass
+
+        if not data["session_id"]:
+            data["session_id"] = str(session_path.stem)
+        if not data["operator_id"]:
+            data["operator_id"] = "unknown"
+        if not data["sample_id"]:
+            data["sample_id"] = "UNKNOWN"
+        if not data["project_id"]:
+            data["project_id"] = "UNSPECIFIED"
+
+        return data
+
     @staticmethod
     def resolve_archive_folder(
         config: Optional[Dict[str, Any]] = None,
@@ -122,14 +185,28 @@ class SessionLifecycleService:
         resolved_archive.mkdir(parents=True, exist_ok=True)
 
         archive_stamp = timestamp or time.strftime("%Y%m%d_%H%M%S")
-        sid = str(session_id or source.stem)
-        operator = cls._resolve_operator_id(source, explicit_operator_id=operator_id)
-        operator_token = cls._safe_token(operator, fallback="unknown")
-        target_dir = resolved_archive / f"{sid}_{operator_token}_{archive_stamp}"
+        metadata = cls._resolve_archive_metadata(
+            source,
+            explicit_session_id=session_id,
+            explicit_operator_id=operator_id,
+        )
+        sid_token = cls._safe_token(metadata.get("session_id"), fallback="session")
+        operator_token = cls._safe_token(
+            metadata.get("operator_id"), fallback="unknown"
+        )
+        sample_token = cls._safe_token(metadata.get("sample_id"), fallback="UNKNOWN")
+        project_token = cls._safe_token(
+            metadata.get("project_id"), fallback="UNSPECIFIED"
+        )
+        target_dir = resolved_archive / (
+            f"{sid_token}_{operator_token}_{sample_token}_{project_token}_{archive_stamp}"
+        )
         suffix = 1
         while target_dir.exists():
             suffix += 1
-            target_dir = resolved_archive / f"{sid}_{operator_token}_{archive_stamp}_{suffix}"
+            target_dir = resolved_archive / (
+                f"{sid_token}_{operator_token}_{sample_token}_{project_token}_{archive_stamp}_{suffix}"
+            )
         target_dir.mkdir(parents=True, exist_ok=False)
 
         destination = target_dir / source.name

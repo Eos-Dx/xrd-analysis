@@ -31,7 +31,11 @@ class ZonePointsRenderer:
 
     @staticmethod
     def create_point_item(
-        x: float, y: float, point_id: int, point_type: str = "generated"
+        x: float,
+        y: float,
+        point_id: int,
+        point_type: str = "generated",
+        point_uid: Optional[str] = None,
     ) -> HoverableEllipseItem:
         """Create a point (red/blue dot) item."""
         radius = ZonePointsConstants.POINT_RADIUS
@@ -54,6 +58,8 @@ class ZonePointsRenderer:
         )
         item.setData(0, point_type)
         item.setData(1, point_id)
+        if point_uid:
+            item.setData(2, str(point_uid))
 
         return item
 

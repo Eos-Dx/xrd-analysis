@@ -174,9 +174,12 @@ class SessionFinalizeWorkflow:
         session_token = cls._safe_token(session_id or "session", "session")
         operator_token = cls._safe_token(operator_id or "unknown", "unknown")
         sample_token = cls._safe_token(sample_id, "sample")
-        study_token = cls._safe_token(study_name or project_id or "UNSPECIFIED", "UNSPECIFIED")
+        project_token = cls._safe_token(
+            project_id or study_name or "UNSPECIFIED",
+            "UNSPECIFIED",
+        )
         archive_name = (
-            f"{session_token}_{operator_token}_{sample_token}_{study_token}_{date_token}_{time_token}"
+            f"{session_token}_{operator_token}_{sample_token}_{project_token}_{date_token}_{time_token}"
         )
         archive_dest = archive_base / archive_name
         archive_dest.mkdir(parents=True, exist_ok=True)

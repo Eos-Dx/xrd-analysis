@@ -4,6 +4,7 @@ import os
 import shutil
 from datetime import datetime
 from pathlib import Path
+from collections import Counter
 
 import numpy as np
 from PyQt5.QtCore import Qt
@@ -28,6 +29,40 @@ from hardware.difra.gui.container_api import get_container_version
 from hardware.difra.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
+
+
+def _place_raw_capture_file(src_raw: str, target_txt: Path, allow_move: bool = True) -> None:
+    """Place raw detector output at target path, preferring move over copy."""
+    src_path = Path(src_raw)
+    target_txt = Path(target_txt)
+    target_txt.parent.mkdir(parents=True, exist_ok=True)
+    src_dsc = src_path.with_suffix(".dsc")
+    dst_dsc = target_txt.with_suffix(".dsc")
+
+    if src_path.resolve() == target_txt.resolve():
+        if src_dsc.exists() and not dst_dsc.exists():
+            shutil.copy2(src_dsc, dst_dsc)
+        return
+
+    moved = False
+    if allow_move:
+        try:
+            shutil.move(str(src_path), str(target_txt))
+            moved = True
+        except Exception:
+            moved = False
+
+    if not moved:
+        shutil.copy2(src_path, target_txt)
+
+    if src_dsc.exists():
+        if moved:
+            try:
+                shutil.move(str(src_dsc), str(dst_dsc))
+            except Exception:
+                shutil.copy2(src_dsc, dst_dsc)
+        else:
+            shutil.copy2(src_dsc, dst_dsc)
 
 
 class AttenuationMixin:
@@ -164,6 +199,17 @@ class AttenuationMixin:
             )
             return
 
+        source_usage = Counter()
+        fallback_single = next(iter(raw_outputs.values())) if len(raw_outputs) == 1 else None
+        for alias in self.detector_controller.keys():
+            src_raw = raw_outputs.get(alias) or fallback_single
+            if not src_raw:
+                continue
+            try:
+                source_usage[str(Path(src_raw).resolve())] += 1
+            except Exception:
+                source_usage[str(src_raw)] += 1
+
         for alias, detector in self.detector_controller.items():
             center_x, center_y = self.get_beam_center(alias)
             size = detector.size if hasattr(detector, "size") else (256, 256)
@@ -196,13 +242,12 @@ class AttenuationMixin:
             txt_file = filename_base + ".txt"
             src_path = Path(src_raw)
             dst_path = Path(txt_file)
-            dst_path.parent.mkdir(parents=True, exist_ok=True)
-            if src_path.resolve() != dst_path.resolve():
-                shutil.copy2(src_path, dst_path)
-                src_dsc = src_path.with_suffix(".dsc")
-                if src_dsc.exists():
-                    shutil.copy2(src_dsc, dst_path.with_suffix(".dsc"))
-            elif not os.path.isfile(txt_file):
+            key = str(src_path.resolve())
+            allow_move = source_usage.get(key, 0) <= 1
+            _place_raw_capture_file(src_raw=src_raw, target_txt=dst_path, allow_move=allow_move)
+            if key in source_usage and source_usage[key] > 0:
+                source_usage[key] -= 1
+            if not os.path.isfile(txt_file):
                 logger.error(
                     "Attenuation acquisition failed or file not found",
                     mode=mode,

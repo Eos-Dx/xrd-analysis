@@ -33,6 +33,34 @@ class SessionFlowMixin:
 
         return session_path.parent
 
+    def _sync_attenuation_controls_after_restore(self, session_info: dict) -> None:
+        """Enable attenuation checkbox when restored session already contains attenuation data."""
+        if not hasattr(self, "attenuationCheckBox"):
+            return
+
+        has_prior_attenuation = bool(
+            session_info.get("i0_recorded")
+            or session_info.get("i_recorded")
+            or session_info.get("attenuation_complete")
+        )
+        if not has_prior_attenuation:
+            return
+
+        try:
+            self.attenuationCheckBox.setChecked(True)
+        except Exception:
+            return
+
+        if hasattr(self, "_append_session_log"):
+            if session_info.get("i0_recorded"):
+                self._append_session_log(
+                    "Restored attenuation state: I0 already exists in session"
+                )
+            else:
+                self._append_session_log(
+                    "Restored attenuation state from existing session"
+                )
+
     def _handle_incomplete_measurements_after_restore(self, session_path: Path):
         """Recover in-progress measurements from on-disk files or mark for re-measurement."""
         session_manager = getattr(self, "session_manager", None)
@@ -556,10 +584,29 @@ class SessionFlowMixin:
             # Find sample_holder zone ID (first zone with sample_holder role)
             sample_holder_zone_id = "zone_001"  # Default to first zone
             
+            include_center = getattr(self, "include_center", (0.0, 0.0))
+            if not isinstance(include_center, (list, tuple)) or len(include_center) < 2:
+                include_center = (0.0, 0.0)
+            ref_x_mm = 0.0
+            ref_y_mm = 0.0
+            if hasattr(self, "real_x_pos_mm") and hasattr(self.real_x_pos_mm, "value"):
+                try:
+                    ref_x_mm = float(self.real_x_pos_mm.value())
+                except Exception:
+                    ref_x_mm = 0.0
+            if hasattr(self, "real_y_pos_mm") and hasattr(self.real_y_pos_mm, "value"):
+                try:
+                    ref_y_mm = float(self.real_y_pos_mm.value())
+                except Exception:
+                    ref_y_mm = 0.0
+
             # Create pixel-to-mm conversion dict
             pixel_to_mm_conversion = {
                 "ratio": float(self.pixel_to_mm_ratio),
                 "units": "mm/pixel",
+                "include_center_px": [float(include_center[0]), float(include_center[1])],
+                "stage_reference_mm": [float(ref_x_mm), float(ref_y_mm)],
+                "formula": "x_mm = ref_x_mm - (x_px - center_x_px) / ratio",
             }
             
             # Add orientation if available
@@ -794,7 +841,10 @@ class SessionFlowMixin:
 
             QMessageBox.information(self, "Session Container Opened", msg, QMessageBox.Ok)
 
-            self.session_manager.open_existing_session(file_path)
+            session_info = self.session_manager.open_existing_session(file_path)
+            if not isinstance(session_info, dict):
+                session_info = {}
+            self._sync_attenuation_controls_after_restore(session_info)
 
             logger.info(
                 "Opened existing session container: sample_id=%s locked=%s path=%s",

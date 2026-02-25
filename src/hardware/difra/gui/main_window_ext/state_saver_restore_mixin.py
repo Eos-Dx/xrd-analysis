@@ -3,7 +3,6 @@
 from . import state_saver_extension as _module
 
 base64 = _module.base64
-hashlib = _module.hashlib
 json = _module.json
 os = _module.os
 shutil = _module.shutil
@@ -284,11 +283,17 @@ class StateSaverRestoreMixin:
 
         for pt in points:
             x, y, pt_type, pt_id = pt["x"], pt["y"], pt["type"], pt.get("id")
+            pt_uid = pt.get("uid")
 
             # assign an id if missing
             if pt_id is None:
                 pt_id = self.next_point_id
                 self.next_point_id += 1
+            if not pt_uid:
+                try:
+                    pt_uid = f"{int(pt_id)}_{os.urandom(4).hex()}"
+                except Exception:
+                    pt_uid = f"0_{os.urandom(4).hex()}"
 
             if use_new_system:
                 # Use new ZonePointsRenderer system
@@ -302,7 +307,9 @@ class StateSaverRestoreMixin:
                 else:
                     radius = 5  # Default radius for generated points
 
-                point_item = ZonePointsRenderer.create_point_item(x, y, pt_id, pt_type)
+                point_item = ZonePointsRenderer.create_point_item(
+                    x, y, pt_id, pt_type, point_uid=pt_uid
+                )
                 zone_item = ZonePointsRenderer.create_zone_item(x, y, radius)
 
                 self.image_view.scene.addItem(zone_item)
@@ -323,6 +330,7 @@ class StateSaverRestoreMixin:
                     )
                     marker.setData(0, "user")
                     marker.setData(1, pt_id)  # <-- always set id
+                    marker.setData(2, pt_uid)
                     marker.setPos(x, y)
                     self.image_view.scene.addItem(marker)
                     self.image_view.points_dict["user"]["points"].append(marker)
@@ -344,6 +352,7 @@ class StateSaverRestoreMixin:
                     )
                     marker.setData(0, "generated")
                     marker.setData(1, pt_id)  # <-- always set id
+                    marker.setData(2, pt_uid)
                     self.image_view.scene.addItem(marker)
                     self.image_view.points_dict["generated"]["points"].append(marker)
 
@@ -405,11 +414,29 @@ class StateSaverRestoreMixin:
         all_points_sorted = sorted(all_points, key=lambda tup: (tup[1], tup[2]))
         measurement_points = []
         for idx, (pt_idx, x_mm, y_mm) in enumerate(all_points_sorted):
-            id_str = f"{idx}:{pt_idx}:{x_mm:.6f}:{y_mm:.6f}"
-            unique_id = hashlib.md5(id_str.encode("utf-8")).hexdigest()[:16]
+            point_item = (
+                generated_points[pt_idx]
+                if pt_idx < len(generated_points)
+                else user_points[pt_idx - len(generated_points)]
+            )
+            uid = None
+            try:
+                existing = point_item.data(2)
+                if isinstance(existing, bytes):
+                    existing = existing.decode("utf-8", errors="replace")
+                if isinstance(existing, str) and existing.strip():
+                    uid = existing.strip()
+            except Exception:
+                uid = None
+            if not uid:
+                uid = f"{idx + 1}_{os.urandom(4).hex()}"
+                try:
+                    point_item.setData(2, uid)
+                except Exception:
+                    pass
             measurement_points.append(
                 {
-                    "unique_id": unique_id,
+                    "unique_id": uid,
                     "index": idx,
                     "point_index": pt_idx,
                     "x": x_mm,

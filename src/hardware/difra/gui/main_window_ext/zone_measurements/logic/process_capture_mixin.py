@@ -2,6 +2,7 @@ import os
 import shutil
 import time
 from pathlib import Path
+from collections import Counter
 
 from hardware.difra.gui.container_api import get_container_version
 
@@ -10,6 +11,40 @@ def _pm():
     from hardware.difra.gui.main_window_ext.zone_measurements.logic import process_mixin as pm
 
     return pm
+
+
+def _place_raw_capture_file(src_raw: str, target_txt: Path, allow_move: bool = True) -> None:
+    """Place raw detector output at target path, preferring move over copy."""
+    src_path = Path(src_raw)
+    target_txt = Path(target_txt)
+    target_txt.parent.mkdir(parents=True, exist_ok=True)
+    src_dsc = src_path.with_suffix(".dsc")
+    dst_dsc = target_txt.with_suffix(".dsc")
+
+    if src_path.resolve() == target_txt.resolve():
+        if src_dsc.exists() and not dst_dsc.exists():
+            shutil.copy2(src_dsc, dst_dsc)
+        return
+
+    moved = False
+    if allow_move:
+        try:
+            shutil.move(str(src_path), str(target_txt))
+            moved = True
+        except Exception:
+            moved = False
+
+    if not moved:
+        shutil.copy2(src_path, target_txt)
+
+    if src_dsc.exists():
+        if moved:
+            try:
+                shutil.move(str(src_dsc), str(dst_dsc))
+            except Exception:
+                shutil.copy2(src_dsc, dst_dsc)
+        else:
+            shutil.copy2(src_dsc, dst_dsc)
 
 
 class ZoneMeasurementsProcessCaptureMixin:
@@ -103,6 +138,8 @@ class ZoneMeasurementsProcessCaptureMixin:
             self.start_btn.setEnabled(True)
             self.pause_btn.setEnabled(False)
             self.stop_btn.setEnabled(False)
+            if hasattr(self, "skip_btn") and self.skip_btn is not None:
+                self.skip_btn.setEnabled(False)
             return
 
         index = self.sorted_indices[self.current_measurement_sorted_index]
@@ -339,6 +376,17 @@ class ZoneMeasurementsProcessCaptureMixin:
             self._attenuation_bg_files = None
             return
 
+        source_usage = Counter()
+        fallback_single = next(iter(raw_outputs.values())) if len(raw_outputs) == 1 else None
+        for alias in self.detector_controller.keys():
+            src_raw = raw_outputs.get(alias) or fallback_single
+            if not src_raw:
+                continue
+            try:
+                source_usage[str(Path(src_raw).resolve())] += 1
+            except Exception:
+                source_usage[str(src_raw)] += 1
+
         results = {}
         for alias, controller in self.detector_controller.items():
             try:
@@ -351,13 +399,12 @@ class ZoneMeasurementsProcessCaptureMixin:
                     continue
 
                 target_txt = Path(per_alias_base + ".txt")
-                target_txt.parent.mkdir(parents=True, exist_ok=True)
                 src_path = Path(src_raw)
-                if src_path.resolve() != target_txt.resolve():
-                    shutil.copy2(src_path, target_txt)
-                    src_dsc = src_path.with_suffix(".dsc")
-                    if src_dsc.exists():
-                        shutil.copy2(src_dsc, target_txt.with_suffix(".dsc"))
+                key = str(src_path.resolve())
+                allow_move = source_usage.get(key, 0) <= 1
+                _place_raw_capture_file(src_raw=src_raw, target_txt=target_txt, allow_move=allow_move)
+                if key in source_usage and source_usage[key] > 0:
+                    source_usage[key] -= 1
                 npy_path = controller.convert_to_container_format(
                     str(target_txt), container_version
                 )
@@ -439,12 +486,16 @@ class ZoneMeasurementsProcessCaptureMixin:
         pm = _pm()
         frames = int(getattr(self, "attenFramesSpin", None).value()) if hasattr(self, "attenFramesSpin") else 100
         short_t = float(getattr(self, "attenTimeSpin", None).value()) if hasattr(self, "attenTimeSpin") else 0.00005
+        reuse_existing_i0 = bool(getattr(self, "_reuse_existing_i0_from_session", False))
 
         if getattr(self, "_attenuation_bg_files", None):
             try:
                 self._record_attenuation_files("without_sample", self._attenuation_bg_files)
             except Exception:
                 pass
+        elif reuse_existing_i0:
+            pm.logger.info("Using previously recorded I0 from restored session")
+            self._append_capture_log("I0 reused from session container")
         else:
             pm.QMessageBox.warning(
                 self,

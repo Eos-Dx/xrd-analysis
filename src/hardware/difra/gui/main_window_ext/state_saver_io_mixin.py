@@ -334,6 +334,7 @@ class StateSaverIOMixin:
                         "y": center.y(),
                         "type": t,
                         "id": pt.data(1),
+                        "uid": pt.data(2),
                         "radius": radius,
                     }
                 )

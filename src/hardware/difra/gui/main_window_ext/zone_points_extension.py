@@ -1,5 +1,6 @@
 """Main zone points extension functionality."""
 
+import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 from PyQt5 import sip
@@ -8,7 +9,10 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
     QDockWidget,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
+    QMenu,
+    QMessageBox,
     QSplitter,
     QTableWidgetItem,
     QTreeWidget,
@@ -171,6 +175,10 @@ class ZonePointsMixin:
             self.on_points_table_selection
         )
         self.pointsTable.installEventFilter(self)
+        self.pointsTable.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.pointsTable.customContextMenuRequested.connect(
+            self._show_points_table_context_menu
+        )
 
     def update_conversion_label(self):
         self.conversionLabel.setText(f"Conversion: {self.pixel_to_mm_ratio:.2f} px/mm")
@@ -183,6 +191,8 @@ class ZonePointsMixin:
         n_points = self.pointCountSpinBox.value()
         shrink_percent = self.shrinkSpinBox.value()
         shrink_factor = (100 - shrink_percent) / 100.0
+        # Keep generated point centers visually away from the include border.
+        edge_clearance_px = float(ZonePointsConstants.POINT_RADIUS)
 
         # Get shapes for inclusion and exclusion
         include_shape, exclude_shapes = self._get_inclusion_exclusion_shapes()
@@ -192,7 +202,7 @@ class ZonePointsMixin:
 
         # Generate candidate points
         candidates, area = self._generate_candidate_points(
-            include_shape, exclude_shapes, shrink_factor
+            include_shape, exclude_shapes, shrink_factor, edge_clearance_px
         )
         if not candidates:
             print("No candidate points found in allowed region.")
@@ -235,12 +245,18 @@ class ZonePointsMixin:
         return include_shape, exclude_shapes
 
     def _generate_candidate_points(
-        self, include_shape, exclude_shapes: List, shrink_factor: float
+        self,
+        include_shape,
+        exclude_shapes: List,
+        shrink_factor: float,
+        edge_clearance_px: float = 0.0,
     ) -> Tuple[List[Tuple[float, float]], float]:
         """Generate and filter candidate points based on shapes."""
         # Get initial candidates and area using geometry helper
         candidates, area, bounds = ZonePointsGeometry.get_shape_bounds_and_candidates(
-            include_shape, shrink_factor
+            include_shape,
+            shrink_factor,
+            edge_clearance_px=edge_clearance_px,
         )
 
         # Filter candidates by inclusion/exclusion shapes
@@ -271,8 +287,10 @@ class ZonePointsMixin:
             self.image_view.points_dict["generated"]["zones"].append(zone_item)
 
             # Create and add point (foreground dot)
+            point_id = self.next_point_id
+            point_uid = self._new_point_uid(point_id)
             point_item = ZonePointsRenderer.create_point_item(
-                x, y, self.next_point_id, "generated"
+                x, y, point_id, "generated", point_uid=point_uid
             )
             self.next_point_id += 1
             self.image_view.scene.addItem(point_item)
@@ -337,6 +355,375 @@ class ZonePointsMixin:
                 if user_row < len(self.image_view.points_dict["user"]["points"]):
                     item = self.image_view.points_dict["user"]["points"][user_row]
                     item.setBrush(ZonePointsConstants.POINT_COLOR_SELECTED)
+
+    def _measurement_sequence_active(self) -> bool:
+        try:
+            return (
+                int(getattr(self, "total_points", 0)) > 0
+                and hasattr(self, "start_btn")
+                and not self.start_btn.isEnabled()
+            )
+        except Exception:
+            return False
+
+    def _show_points_table_context_menu(self, pos):
+        if not hasattr(self, "pointsTable") or self.pointsTable is None:
+            return
+
+        menu = QMenu(self.pointsTable)
+        delete_action = menu.addAction("Delete Selected Point(s)")
+        skip_action = menu.addAction("Mark Selected as Skipped...")
+        chosen = menu.exec_(self.pointsTable.viewport().mapToGlobal(pos))
+        if chosen == delete_action:
+            self.delete_selected_points()
+        elif chosen == skip_action:
+            self.mark_selected_points_skipped()
+
+    def _prompt_skip_reason(self, title: str, prompt: str) -> Optional[str]:
+        reason, ok = QInputDialog.getText(self, title, prompt)
+        if not ok:
+            return None
+        return str(reason or "").strip() or "user_skipped"
+
+    def _find_sorted_position_for_row(self, row: int) -> Optional[int]:
+        sorted_indices = list(getattr(self, "sorted_indices", []) or [])
+        for pos, idx in enumerate(sorted_indices):
+            if int(idx) == int(row):
+                return pos
+        return None
+
+    def _session_point_index_for_row(self, row: int) -> int:
+        pos = self._find_sorted_position_for_row(row)
+        mapped = getattr(self, "_session_point_indices", None)
+        if pos is not None and isinstance(mapped, (list, tuple)) and pos < len(mapped):
+            try:
+                return int(mapped[pos])
+            except Exception:
+                pass
+        return int(row) + 1
+
+    def _point_has_measurements(self, point_id: Optional[int]) -> bool:
+        if point_id is None:
+            return False
+        widget = getattr(self, "measurement_widgets", {}).get(point_id)
+        if widget is None:
+            return False
+        try:
+            return len(getattr(widget, "measurements", []) or []) > 0
+        except Exception:
+            return False
+
+    def _is_row_measured(self, row: int, point_id: Optional[int]) -> bool:
+        if self._point_has_measurements(point_id):
+            return True
+
+        sorted_pos = self._find_sorted_position_for_row(row)
+        if sorted_pos is not None:
+            try:
+                return sorted_pos < int(getattr(self, "current_measurement_sorted_index", 0))
+            except Exception:
+                return False
+        return False
+
+    def _append_skipped_point_record(
+        self, row: int, point_id: Optional[int], reason: str
+    ) -> None:
+        x_mm = None
+        y_mm = None
+        try:
+            x_item = self.pointsTable.item(row, 3)
+            y_item = self.pointsTable.item(row, 4)
+            if x_item is not None:
+                txt = str(x_item.text() or "").strip()
+                if txt and txt != "N/A":
+                    x_mm = float(txt)
+            if y_item is not None:
+                txt = str(y_item.text() or "").strip()
+                if txt and txt != "N/A":
+                    y_mm = float(txt)
+        except Exception:
+            pass
+
+        payload = {
+            "point_index": int(row),
+            "point_id": int(point_id) if point_id is not None else None,
+            "x": x_mm,
+            "y": y_mm,
+            "reason": str(reason),
+        }
+        for container_name in ("state", "state_measurements"):
+            container = getattr(self, container_name, None)
+            if not isinstance(container, dict):
+                continue
+            skipped = list(container.get("skipped_points", []) or [])
+            skipped = [
+                item
+                for item in skipped
+                if int(item.get("point_index", -1)) != int(row)
+            ]
+            skipped.append(dict(payload))
+            container["skipped_points"] = skipped
+
+    def _apply_skipped_visual(self, point_id: Optional[int]) -> None:
+        if point_id is None:
+            return
+
+        skip_point_color = QColor(255, 165, 0)
+        skip_zone_color = QColor(255, 165, 0)
+        skip_zone_color.setAlphaF(0.18)
+
+        gp = self.image_view.points_dict["generated"]["points"]
+        gz = self.image_view.points_dict["generated"]["zones"]
+        up = self.image_view.points_dict["user"]["points"]
+        uz = self.image_view.points_dict["user"]["zones"]
+
+        for i, item in enumerate(gp):
+            if sip.isdeleted(item):
+                continue
+            if item.data(1) == point_id:
+                item.setBrush(skip_point_color)
+                if i < len(gz) and not sip.isdeleted(gz[i]):
+                    gz[i].setBrush(skip_zone_color)
+                return
+
+        for i, item in enumerate(up):
+            if sip.isdeleted(item):
+                continue
+            if item.data(1) == point_id:
+                item.setBrush(skip_point_color)
+                if i < len(uz) and not sip.isdeleted(uz[i]):
+                    uz[i].setBrush(skip_zone_color)
+                return
+
+    def _remove_row_from_active_measurement_plan(self, row: int) -> None:
+        sorted_indices = list(getattr(self, "sorted_indices", []) or [])
+        pos = self._find_sorted_position_for_row(row)
+        if pos is not None and 0 <= pos < len(sorted_indices):
+            sorted_indices.pop(pos)
+        for idx, value in enumerate(sorted_indices):
+            if int(value) > int(row):
+                sorted_indices[idx] = int(value) - 1
+        self.sorted_indices = sorted_indices
+
+        mapped = getattr(self, "_session_point_indices", None)
+        if isinstance(mapped, list) and pos is not None and 0 <= pos < len(mapped):
+            mapped.pop(pos)
+
+        for container_name in ("state", "state_measurements"):
+            container = getattr(self, container_name, None)
+            if not isinstance(container, dict):
+                continue
+            points = container.get("measurement_points", None)
+            if not isinstance(points, list):
+                continue
+            if pos is not None and 0 <= pos < len(points):
+                points.pop(pos)
+            for point in points:
+                try:
+                    pidx = int(point.get("point_index", -1))
+                    if pidx > int(row):
+                        point["point_index"] = pidx - 1
+                except Exception:
+                    continue
+
+        current_idx = int(getattr(self, "current_measurement_sorted_index", 0))
+        if pos is not None and pos < current_idx:
+            current_idx -= 1
+        if current_idx < 0:
+            current_idx = 0
+        self.current_measurement_sorted_index = current_idx
+        self.total_points = len(self.sorted_indices)
+
+        try:
+            self.progressBar.setMaximum(self.total_points)
+            self.progressBar.setValue(min(self.current_measurement_sorted_index, self.total_points))
+        except Exception:
+            pass
+
+        if self.total_points <= 0:
+            if hasattr(self, "_append_capture_log"):
+                self._append_capture_log("Measurement sequence complete")
+            if hasattr(self, "_set_measurement_controls_idle"):
+                self._set_measurement_controls_idle()
+            elif hasattr(self, "start_btn"):
+                self.start_btn.setEnabled(True)
+
+    def _skip_point_by_row(self, row: int, reason: str) -> bool:
+        reason = str(reason or "").strip() or "user_skipped"
+        sorted_pos = self._find_sorted_position_for_row(row)
+        current_idx = int(getattr(self, "current_measurement_sorted_index", 0))
+        is_current = sorted_pos is not None and sorted_pos == current_idx
+
+        capture_thread = getattr(self, "capture_thread", None)
+        if is_current and capture_thread is not None and hasattr(capture_thread, "isRunning"):
+            try:
+                if capture_thread.isRunning():
+                    QMessageBox.warning(
+                        self,
+                        "Skip Busy Point",
+                        "Current point capture is already running. Skip it after capture finishes.",
+                    )
+                    return False
+            except Exception:
+                pass
+
+        point_id = None
+        id_item = self.pointsTable.item(row, 0)
+        if id_item is not None:
+            try:
+                point_id = int(id_item.text())
+            except Exception:
+                point_id = None
+
+        session_point_index = self._session_point_index_for_row(row)
+        session_manager = getattr(self, "session_manager", None)
+        if (
+            session_manager is not None
+            and hasattr(session_manager, "is_session_active")
+            and session_manager.is_session_active()
+            and hasattr(session_manager, "mark_point_skipped")
+        ):
+            try:
+                session_manager.mark_point_skipped(
+                    point_index=session_point_index,
+                    reason=reason,
+                )
+            except Exception as exc:
+                QMessageBox.warning(
+                    self,
+                    "Skip Failed",
+                    f"Failed to mark point as skipped in session container:\n{exc}",
+                )
+                return False
+
+        self._append_skipped_point_record(row=row, point_id=point_id, reason=reason)
+        self._apply_skipped_visual(point_id)
+
+        if self._measurement_sequence_active():
+            self._remove_row_from_active_measurement_plan(row)
+            if (
+                is_current
+                and not bool(getattr(self, "paused", False))
+                and not bool(getattr(self, "stopped", False))
+                and int(getattr(self, "total_points", 0)) > int(getattr(self, "current_measurement_sorted_index", 0))
+                and hasattr(self, "measure_next_point")
+            ):
+                self.measure_next_point()
+
+        if hasattr(self, "_append_measurement_log"):
+            self._append_measurement_log(f"[CAPTURE] Point skipped (reason: {reason})")
+        return True
+
+    def _delete_row_and_container_point(self, row: int, point_id: Optional[int]) -> bool:
+        if point_id is None:
+            return False
+
+        sorted_pos = self._find_sorted_position_for_row(row)
+        current_idx = int(getattr(self, "current_measurement_sorted_index", 0))
+        is_current = sorted_pos is not None and sorted_pos == current_idx
+        capture_thread = getattr(self, "capture_thread", None)
+        if is_current and capture_thread is not None and hasattr(capture_thread, "isRunning"):
+            try:
+                if capture_thread.isRunning():
+                    QMessageBox.warning(
+                        self,
+                        "Delete Busy Point",
+                        "Current point capture is already running and cannot be deleted now.",
+                    )
+                    return False
+            except Exception:
+                pass
+
+        session_manager = getattr(self, "session_manager", None)
+        if (
+            session_manager is not None
+            and hasattr(session_manager, "is_session_active")
+            and session_manager.is_session_active()
+            and hasattr(session_manager, "delete_point")
+        ):
+            session_point_index = self._session_point_index_for_row(row)
+            try:
+                deleted = bool(session_manager.delete_point(point_index=session_point_index))
+                if not deleted:
+                    # Point may not be seeded into container yet (e.g. before first Start).
+                    pass
+            except Exception as exc:
+                QMessageBox.warning(
+                    self,
+                    "Delete Failed",
+                    f"Cannot delete this point from the session container:\n{exc}",
+                )
+                return False
+
+        if self._measurement_sequence_active():
+            self._remove_row_from_active_measurement_plan(row)
+            if (
+                is_current
+                and not bool(getattr(self, "paused", False))
+                and not bool(getattr(self, "stopped", False))
+                and int(getattr(self, "total_points", 0)) > int(getattr(self, "current_measurement_sorted_index", 0))
+                and hasattr(self, "measure_next_point")
+            ):
+                self.measure_next_point()
+
+        self._remove_point_items_by_id(point_id)
+        self.remove_measurement_widget_from_panel(point_id)
+        return True
+
+    def _request_delete_point_by_id(self, point_id: int) -> bool:
+        row = None
+        if hasattr(self, "pointsTable") and self.pointsTable is not None:
+            for idx in range(self.pointsTable.rowCount()):
+                item = self.pointsTable.item(idx, 0)
+                if item is None:
+                    continue
+                try:
+                    if int(item.text()) == int(point_id):
+                        row = idx
+                        break
+                except Exception:
+                    continue
+
+        if row is None:
+            return False
+
+        measured = self._is_row_measured(row=row, point_id=point_id)
+        if measured:
+            reason = self._prompt_skip_reason(
+                "Point Already Measured",
+                "This point is already measured and cannot be deleted.\n"
+                "Provide skip reason to mark it as SKIPPED:",
+            )
+            if reason is None:
+                return False
+            changed = self._skip_point_by_row(row=row, reason=reason)
+            if changed:
+                self.update_points_table()
+            return changed
+
+        changed = self._delete_row_and_container_point(row=row, point_id=point_id)
+        if changed:
+            self.update_points_table()
+        return changed
+
+    def mark_selected_points_skipped(self):
+        selected_rows = sorted(
+            {ix.row() for ix in self.pointsTable.selectedIndexes()},
+            reverse=True,
+        )
+        if not selected_rows:
+            return
+
+        reason = self._prompt_skip_reason("Skip Selected Points", "Skip reason:")
+        if reason is None:
+            return
+
+        changed_any = False
+        for row in selected_rows:
+            changed_any = self._skip_point_by_row(row=row, reason=reason) or changed_any
+
+        if changed_any:
+            self.update_points_table()
 
     def eventFilter(self, source, event):
         # Safety check: ensure pointsTable exists before comparing
@@ -597,8 +984,7 @@ class ZonePointsMixin:
         self.measurement_widgets.pop(point_id, None)
 
     def delete_selected_points(self):
-        """Delete selected points and preserve measurement widget history."""
-        # 1) Get selected rows and extract point IDs to delete
+        """Delete selected points, enforcing measured/skipped rules."""
         selected_rows = sorted(
             {ix.row() for ix in self.pointsTable.selectedIndexes()},
             reverse=True,
@@ -606,29 +992,50 @@ class ZonePointsMixin:
         if not selected_rows:
             return
 
-        # 2) Collect point IDs that will be deleted
-        pids_to_delete = set()
+        active_measurement = self._measurement_sequence_active()
+        skip_reason_for_measured = None
+        changed_any = False
+
         for r in selected_rows:
             id_item = self.pointsTable.item(r, 0)
-            if id_item is not None:
-                try:
-                    pid = int(id_item.text())
-                    pids_to_delete.add(pid)
-                except (ValueError, TypeError):
-                    pass
+            if id_item is None:
+                continue
+            try:
+                pid = int(id_item.text())
+            except (ValueError, TypeError):
+                continue
 
-        print(f"Deleting point IDs: {pids_to_delete}")
+            measured = self._is_row_measured(row=r, point_id=pid)
+            if measured:
+                if skip_reason_for_measured is None:
+                    skip_reason_for_measured = self._prompt_skip_reason(
+                        "Measured Point",
+                        "Measured points cannot be deleted.\n"
+                        "Provide reason to mark selected measured point(s) as SKIPPED:",
+                    )
+                    if skip_reason_for_measured is None:
+                        continue
+                changed_any = (
+                    self._skip_point_by_row(
+                        row=r,
+                        reason=skip_reason_for_measured,
+                    )
+                    or changed_any
+                )
+                continue
 
-        # 3) Remove points from scene by ID (not by index to avoid shifting issues)
-        for pid in pids_to_delete:
-            self._remove_point_items_by_id(pid)
+            changed_any = (
+                self._delete_row_and_container_point(row=r, point_id=pid)
+                or changed_any
+            )
 
-        # 4) Remove deleted point IDs from measurement widgets (right panel)
-        for pid in pids_to_delete:
-            self.remove_measurement_widget_from_panel(pid)
+            # When measuring is active, removing any pending point from the plan
+            # effectively "deletes" it from upcoming sequence.
+            if active_measurement and hasattr(self, "_append_measurement_log"):
+                self._append_measurement_log(f"[CAPTURE] Point #{pid} deleted from pending plan")
 
-        # 5) Rebuild the table with remaining points
-        self.update_points_table()
+        if changed_any:
+            self.update_points_table()
 
     def delete_all_points(self):
         for item in self.image_view.points_dict["generated"]["points"]:
@@ -683,3 +1090,10 @@ class ZonePointsMixin:
             if w is not None and not sip.isdeleted(w):
                 snap[pid] = list(getattr(w, "measurements", []))
         return snap
+    @staticmethod
+    def _new_point_uid(counter: int) -> str:
+        try:
+            counter_int = int(counter)
+        except Exception:
+            counter_int = 0
+        return f"{counter_int}_{uuid.uuid4().hex[:8]}"

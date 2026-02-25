@@ -2,6 +2,7 @@ import os
 import shutil
 import logging
 from pathlib import Path
+from collections import Counter
 
 import numpy as np
 import seaborn as sns
@@ -70,6 +71,40 @@ def _load_measurement_array(measurement_filename: str) -> np.ndarray:
             last_error = exc
 
     raise RuntimeError(f"Failed to load measurement file '{path}': {last_error}")
+
+
+def _place_raw_capture_file(src_raw: str, target_txt: Path, allow_move: bool = True) -> None:
+    """Place raw detector output at target path, preferring move over copy."""
+    src_path = Path(src_raw)
+    target_txt = Path(target_txt)
+    target_txt.parent.mkdir(parents=True, exist_ok=True)
+    src_dsc = src_path.with_suffix(".dsc")
+    dst_dsc = target_txt.with_suffix(".dsc")
+
+    if src_path.resolve() == target_txt.resolve():
+        if src_dsc.exists() and not dst_dsc.exists():
+            shutil.copy2(src_dsc, dst_dsc)
+        return
+
+    moved = False
+    if allow_move:
+        try:
+            shutil.move(str(src_path), str(target_txt))
+            moved = True
+        except Exception:
+            moved = False
+
+    if not moved:
+        shutil.copy2(src_path, target_txt)
+
+    if src_dsc.exists():
+        if moved:
+            try:
+                shutil.move(str(src_dsc), str(dst_dsc))
+            except Exception:
+                shutil.copy2(src_dsc, dst_dsc)
+        else:
+            shutil.copy2(src_dsc, dst_dsc)
 
 
 class CaptureWorker(QObject):
@@ -171,6 +206,17 @@ class CaptureWorker(QObject):
                 timeout_s=max(30.0, float(self.integration_time) * max(int(self.frames), 1) + 30.0),
             )
 
+            source_usage = Counter()
+            fallback_single = next(iter(raw_outputs.values())) if len(raw_outputs) == 1 else None
+            for alias in self.detector_controller.keys():
+                src_raw = raw_outputs.get(alias) or fallback_single
+                if not src_raw:
+                    continue
+                try:
+                    source_usage[str(Path(src_raw).resolve())] += 1
+                except Exception:
+                    source_usage[str(src_raw)] += 1
+
             for alias, controller in self.detector_controller.items():
                 if self._stop_requested:
                     results[alias] = None
@@ -196,16 +242,11 @@ class CaptureWorker(QObject):
 
                     src_path = Path(src_raw)
                     target_txt = Path(base + ".txt")
-                    target_txt.parent.mkdir(parents=True, exist_ok=True)
-                    if src_path.resolve() != target_txt.resolve():
-                        shutil.copy2(src_path, target_txt)
-                        src_dsc = src_path.with_suffix(".dsc")
-                        if src_dsc.exists():
-                            shutil.copy2(src_dsc, target_txt.with_suffix(".dsc"))
-                    else:
-                        src_dsc = src_path.with_suffix(".dsc")
-                        if src_dsc.exists() and not target_txt.with_suffix(".dsc").exists():
-                            shutil.copy2(src_dsc, target_txt.with_suffix(".dsc"))
+                    key = str(src_path.resolve())
+                    allow_move = source_usage.get(key, 0) <= 1
+                    _place_raw_capture_file(src_raw=src_raw, target_txt=target_txt, allow_move=allow_move)
+                    if key in source_usage and source_usage[key] > 0:
+                        source_usage[key] -= 1
 
                     converted_file = controller.convert_to_container_format(
                         str(target_txt), self.container_version

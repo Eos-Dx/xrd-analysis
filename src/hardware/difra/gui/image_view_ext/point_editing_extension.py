@@ -1,4 +1,5 @@
 import copy
+import uuid
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QPen
@@ -72,10 +73,13 @@ class PointEditingMixin:
             main_window = self.window()
             # ---- Assign a unique ID! ----
             if hasattr(main_window, "next_point_id"):
-                pt_item.setData(1, main_window.next_point_id)
+                point_id = int(main_window.next_point_id)
+                pt_item.setData(1, point_id)
+                pt_item.setData(2, f"{point_id}_{uuid.uuid4().hex[:8]}")
                 main_window.next_point_id += 1
             else:
                 pt_item.setData(1, 1)  # fallback if missing
+                pt_item.setData(2, f"1_{uuid.uuid4().hex[:8]}")
 
             pt_item.hoverCallback = getattr(
                 main_window, "pointHoverChanged", lambda item, hovered: None
@@ -94,14 +98,28 @@ class PointEditingMixin:
                 dx = pos.x() - center.x()
                 dy = pos.y() - center.y()
                 if (dx * dx + dy * dy) ** 0.5 < threshold:
-                    idx = self.points_dict["user"]["points"].index(pt)
-                    if idx < len(self.points_dict["user"]["zones"]):
-                        zone_item = self.points_dict["user"]["zones"].pop(idx)
-                        self.scene.removeItem(zone_item)
-                    self.scene.removeItem(pt)
-                    self.points_dict["user"]["points"].remove(pt)
-                    self.scene.update()
-                    self.window().update_points_table()
+                    main_window = self.window()
+                    point_id = pt.data(1)
+                    policy_applied = False
+                    if (
+                        main_window is not None
+                        and hasattr(main_window, "_request_delete_point_by_id")
+                        and point_id is not None
+                    ):
+                        policy_applied = True
+                        try:
+                            main_window._request_delete_point_by_id(int(point_id))
+                        except Exception:
+                            pass
+                    if not policy_applied:
+                        idx = self.points_dict["user"]["points"].index(pt)
+                        if idx < len(self.points_dict["user"]["zones"]):
+                            zone_item = self.points_dict["user"]["zones"].pop(idx)
+                            self.scene.removeItem(zone_item)
+                        self.scene.removeItem(pt)
+                        self.points_dict["user"]["points"].remove(pt)
+                        self.scene.update()
+                        self.window().update_points_table()
                     break
         else:
             super().mouseDoubleClickEvent(event)

@@ -398,6 +398,8 @@ class StageControlMixin(StageManualMotionMixin):
         self.start_btn.setEnabled(effective_ok and exposure_ready and move_ready)
         self.pause_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
+        if hasattr(self, "skip_btn") and self.skip_btn is not None:
+            self.skip_btn.setEnabled(False)
         self.xPosSpin.setEnabled(effective_ok and move_ready)
         self.yPosSpin.setEnabled(effective_ok and move_ready)
         self.gotoBtn.setEnabled(effective_ok and move_ready)
@@ -532,6 +534,8 @@ class StageControlMixin(StageManualMotionMixin):
             self.start_btn.setEnabled(False)
             self.pause_btn.setEnabled(False)
             self.stop_btn.setEnabled(False)
+            if hasattr(self, "skip_btn") and self.skip_btn is not None:
+                self.skip_btn.setEnabled(False)
             self.xPosSpin.setEnabled(False)
             self.yPosSpin.setEnabled(False)
             self.gotoBtn.setEnabled(False)

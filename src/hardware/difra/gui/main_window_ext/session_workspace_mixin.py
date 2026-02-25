@@ -10,6 +10,111 @@ logger = _session_module.logger
 
 
 class SessionWorkspaceMixin:
+    @staticmethod
+    def _normalize_xy_pair(value):
+        if isinstance(value, (list, tuple)) and len(value) >= 2:
+            try:
+                return (float(value[0]), float(value[1]))
+            except Exception:
+                return None
+        return None
+
+    def _set_spin_value_if_present(self, attr_name: str, value: float):
+        widget = getattr(self, attr_name, None)
+        if widget is None:
+            return
+        setter = getattr(widget, "setValue", None)
+        if callable(setter):
+            try:
+                setter(float(value))
+            except Exception:
+                pass
+
+    def _get_stage_reference_mm(self):
+        ref_x = 0.0
+        ref_y = 0.0
+
+        x_widget = getattr(self, "real_x_pos_mm", None)
+        y_widget = getattr(self, "real_y_pos_mm", None)
+        x_value = getattr(x_widget, "value", None)
+        y_value = getattr(y_widget, "value", None)
+        if callable(x_value):
+            try:
+                ref_x = float(x_value())
+            except Exception:
+                ref_x = 0.0
+        if callable(y_value):
+            try:
+                ref_y = float(y_value())
+            except Exception:
+                ref_y = 0.0
+
+        return ref_x, ref_y
+
+    def _get_include_center_px(self):
+        center = self._normalize_xy_pair(getattr(self, "include_center", None))
+        if center is not None:
+            return center
+        return (0.0, 0.0)
+
+    def _pixel_to_physical_mm(self, x_px: float, y_px: float):
+        try:
+            ratio = float(getattr(self, "pixel_to_mm_ratio", 0.0))
+        except Exception:
+            ratio = 0.0
+        if ratio == 0.0:
+            return (0.0, 0.0)
+
+        center_x, center_y = self._get_include_center_px()
+        ref_x_mm, ref_y_mm = self._get_stage_reference_mm()
+        x_mm = ref_x_mm - (float(x_px) - center_x) / ratio
+        y_mm = ref_y_mm - (float(y_px) - center_y) / ratio
+        return (float(x_mm), float(y_mm))
+
+    def _build_mapping_conversion_payload(self):
+        try:
+            ratio = float(getattr(self, "pixel_to_mm_ratio", 0.0))
+        except Exception:
+            ratio = 0.0
+        center_x, center_y = self._get_include_center_px()
+        ref_x_mm, ref_y_mm = self._get_stage_reference_mm()
+
+        return {
+            "ratio": ratio,
+            "units": "mm/pixel",
+            "include_center_px": [float(center_x), float(center_y)],
+            "stage_reference_mm": [float(ref_x_mm), float(ref_y_mm)],
+            "formula": "x_mm = ref_x_mm - (x_px - center_x_px) / ratio",
+        }
+
+    def _image_file_signature(self):
+        if not hasattr(self, "image_view"):
+            return None
+        image_path = getattr(self.image_view, "current_image_path", None)
+        if not image_path:
+            return None
+
+        path = Path(str(image_path))
+        if not path.exists():
+            return {"path": str(path), "missing": True}
+
+        try:
+            stat = path.stat()
+            return {
+                "path": str(path.resolve()),
+                "size": int(stat.st_size),
+                "mtime_ns": int(stat.st_mtime_ns),
+            }
+        except Exception:
+            return {"path": str(path)}
+
+    @staticmethod
+    def _sync_signature(payload):
+        import hashlib
+
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+        return hashlib.md5(encoded.encode("utf-8")).hexdigest()
+
     def _load_image_array_from_path(self, image_path):
         """Load image from disk and normalize color channels to RGB/RGBA."""
         if not image_path:
@@ -90,6 +195,8 @@ class SessionWorkspaceMixin:
             restored_points = []
             restored_image = False
             restored_ratio = None
+            restored_include_center = None
+            restored_stage_reference = None
 
             with h5py.File(session_path, "r") as h5f:
                 # Restore sample image (use first available image dataset)
@@ -169,6 +276,9 @@ class SessionWorkspaceMixin:
                         if len(pixel_coords) < 2:
                             continue
                         point_index = int(point_id.split("_")[-1])
+                        point_uid = self._decode_attr(
+                            point_group.attrs.get("point_uid", "")
+                        )
                         restored_points.append(
                             {
                                 "id": point_index,
@@ -176,6 +286,7 @@ class SessionWorkspaceMixin:
                                 "y": float(pixel_coords[1]),
                                 "type": "generated",
                                 "radius": 5.0,
+                                "uid": point_uid if point_uid else None,
                             }
                         )
 
@@ -187,13 +298,22 @@ class SessionWorkspaceMixin:
                         mapping_raw = mapping_raw.decode("utf-8", errors="replace")
                     mapping = json.loads(mapping_raw)
                     conversion = mapping.get("pixel_to_mm_conversion", {})
-                    if "ratio" in conversion:
-                        restored_ratio = float(conversion["ratio"])
+                    if isinstance(conversion, dict):
+                        if "ratio" in conversion:
+                            restored_ratio = float(conversion["ratio"])
+                        restored_include_center = self._normalize_xy_pair(
+                            conversion.get("include_center_px")
+                            or conversion.get("center_px")
+                            or conversion.get("image_center_px")
+                        )
+                        restored_stage_reference = self._normalize_xy_pair(
+                            conversion.get("stage_reference_mm")
+                            or conversion.get("reference_mm")
+                            or conversion.get("stage_origin_mm")
+                        )
 
             self.state["shapes"] = restored_shapes
             self.state["zone_points"] = restored_points
-            if restored_ratio is not None:
-                self.pixel_to_mm_ratio = restored_ratio
 
             if hasattr(self, "_restore_shapes"):
                 self._restore_shapes(restored_shapes)
@@ -206,6 +326,21 @@ class SessionWorkspaceMixin:
                 self.update_points_table()
             if hasattr(self, "update_shape_table"):
                 self.update_shape_table()
+
+            # Apply mapping fields after shape-table updates so inferred defaults
+            # do not override container-restored calibration origin.
+            if restored_ratio is not None:
+                self.pixel_to_mm_ratio = restored_ratio
+            if restored_include_center is not None:
+                self.include_center = (
+                    float(restored_include_center[0]),
+                    float(restored_include_center[1]),
+                )
+            if restored_stage_reference is not None:
+                self._set_spin_value_if_present("real_x_pos_mm", restored_stage_reference[0])
+                self._set_spin_value_if_present("real_y_pos_mm", restored_stage_reference[1])
+            if hasattr(self, "update_conversion_label"):
+                self.update_conversion_label()
             if hasattr(self, "update_coordinates"):
                 self.update_coordinates()
 
@@ -342,66 +477,25 @@ class SessionWorkspaceMixin:
             writer = get_writer(self.config if hasattr(self, "config") else None)
 
             session_path = self.session_manager.session_path
-
-            image_array = self._extract_current_image_array()
-            if image_array is not None:
-                with h5py.File(session_path, "a") as h5f:
-                    if schema.GROUP_IMAGES in h5f and "img_001" in h5f[schema.GROUP_IMAGES]:
-                        del h5f[f"{schema.GROUP_IMAGES}/img_001"]
-                writer.add_image(
-                    file_path=session_path,
-                    image_index=1,
-                    image_data=image_array,
-                    image_type="sample",
-                )
+            session_path_str = str(session_path)
+            if getattr(self, "_session_sync_cache_session_path", None) != session_path_str:
+                self._session_sync_cache_session_path = session_path_str
+                self._session_sync_shapes_sig = None
+                self._session_sync_mapping_sig = None
+                self._session_sync_points_sig = None
+                self._session_sync_last_image_sig = None
 
             shapes = state.get("shapes", [])
-            with h5py.File(session_path, "a") as h5f:
-                if schema.GROUP_IMAGES_ZONES in h5f:
-                    del h5f[schema.GROUP_IMAGES_ZONES]
-                h5f.create_group(schema.GROUP_IMAGES_ZONES)
+            points = state.get("zone_points", [])
+            mapping_conversion = self._build_mapping_conversion_payload()
+            image_sig = self._image_file_signature()
 
-            for zone_index, shape in enumerate(shapes, start=1):
-                role = str(shape.get("role", "include")).lower()
-                zone_role = "exclude" if role == "exclude" else "sample_holder"
-                shape_type = str(shape.get("type", "circle")).lower()
-                geometry = shape.get("geometry", {})
-                geometry_px = [
-                    float(geometry.get("x", 0)),
-                    float(geometry.get("y", 0)),
-                    float(geometry.get("width", 0)),
-                    float(geometry.get("height", 0)),
-                ]
-                holder_diameter_mm = None
-                if zone_role == "sample_holder" and hasattr(self, "pixel_to_mm_ratio"):
-                    diameter_px = max(geometry_px[2], geometry_px[3])
-                    if getattr(self, "pixel_to_mm_ratio", 0):
-                        holder_diameter_mm = diameter_px / float(self.pixel_to_mm_ratio)
-
-                writer.add_zone(
-                    file_path=session_path,
-                    zone_index=zone_index,
-                    zone_role=zone_role,
-                    geometry_px=geometry_px,
-                    shape=shape_type,
-                    holder_diameter_mm=holder_diameter_mm,
-                )
-
-            if hasattr(self, "pixel_to_mm_ratio"):
-                writer.add_image_mapping(
-                    file_path=session_path,
-                    sample_holder_zone_id="zone_001",
-                    pixel_to_mm_conversion={
-                        "ratio": float(self.pixel_to_mm_ratio),
-                        "units": "mm/pixel",
-                    },
-                    orientation="standard",
-                    mapping_version=schema.SCHEMA_VERSION,
-                )
-
-            # Only rewrite points while there are no recorded measurements.
-            has_measurements = False
             with h5py.File(session_path, "r") as h5f:
+                image_exists = f"{schema.GROUP_IMAGES}/img_001/data" in h5f
+                zones_exist = schema.GROUP_IMAGES_ZONES in h5f
+                mapping_exists = f"{schema.GROUP_IMAGES_MAPPING}/mapping" in h5f
+                points_exist = schema.GROUP_POINTS in h5f
+                has_measurements = False
                 measurements = h5f.get(schema.GROUP_MEASUREMENTS)
                 if measurements:
                     for point_group in measurements.values():
@@ -409,24 +503,126 @@ class SessionWorkspaceMixin:
                             has_measurements = True
                             break
 
-            if not has_measurements:
-                points = state.get("zone_points", [])
+            shapes_sig = self._sync_signature({"shapes": shapes})
+            mapping_sig = self._sync_signature({"mapping": mapping_conversion})
+            points_sig = self._sync_signature({"points": points})
+
+            needs_shapes_sync = (not zones_exist) or (shapes_sig != getattr(self, "_session_sync_shapes_sig", None))
+            needs_mapping_sync = (not mapping_exists) or (mapping_sig != getattr(self, "_session_sync_mapping_sig", None))
+            effective_points_sig = points_sig if not has_measurements else "__points_locked_after_measurements__"
+            needs_points_sync = (not has_measurements) and (
+                (not points_exist) or (points_sig != getattr(self, "_session_sync_points_sig", None))
+            )
+            needs_image_sync = not image_exists
+
+            overall_sig = self._sync_signature(
+                {
+                    "session": session_path_str,
+                    "image_sig": image_sig,
+                    "image_exists": image_exists,
+                    "shapes_sig": shapes_sig,
+                    "mapping_sig": mapping_sig,
+                    "effective_points_sig": effective_points_sig,
+                }
+            )
+            if overall_sig == getattr(self, "_session_sync_overall_sig", None):
+                return
+
+            did_write = False
+            if needs_image_sync:
+                image_array = self._extract_current_image_array()
+                if image_array is not None:
+                    writer.add_image(
+                        file_path=session_path,
+                        image_index=1,
+                        image_data=image_array,
+                        image_type="sample",
+                    )
+                    did_write = True
+            else:
+                last_image_sig = getattr(self, "_session_sync_last_image_sig", None)
+                if (
+                    image_sig is not None
+                    and last_image_sig is not None
+                    and image_sig != last_image_sig
+                ):
+                    logger.warning(
+                        "Session image is immutable after first write; ignoring changed source image path"
+                    )
+
+            if needs_shapes_sync:
+                with h5py.File(session_path, "a") as h5f:
+                    if schema.GROUP_IMAGES_ZONES in h5f:
+                        del h5f[schema.GROUP_IMAGES_ZONES]
+                    h5f.create_group(schema.GROUP_IMAGES_ZONES)
+                did_write = True
+
+                for zone_index, shape in enumerate(shapes, start=1):
+                    role = str(shape.get("role", "include")).lower()
+                    zone_role = "exclude" if role == "exclude" else "sample_holder"
+                    shape_type = str(shape.get("type", "circle")).lower()
+                    geometry = shape.get("geometry", {})
+                    geometry_px = [
+                        float(geometry.get("x", 0)),
+                        float(geometry.get("y", 0)),
+                        float(geometry.get("width", 0)),
+                        float(geometry.get("height", 0)),
+                    ]
+                    holder_diameter_mm = None
+                    if zone_role == "sample_holder" and hasattr(self, "pixel_to_mm_ratio"):
+                        diameter_px = max(geometry_px[2], geometry_px[3])
+                        if getattr(self, "pixel_to_mm_ratio", 0):
+                            holder_diameter_mm = diameter_px / float(self.pixel_to_mm_ratio)
+
+                    writer.add_zone(
+                        file_path=session_path,
+                        zone_index=zone_index,
+                        zone_role=zone_role,
+                        geometry_px=geometry_px,
+                        shape=shape_type,
+                        holder_diameter_mm=holder_diameter_mm,
+                    )
+
+            if needs_mapping_sync and hasattr(self, "pixel_to_mm_ratio"):
+                writer.add_image_mapping(
+                    file_path=session_path,
+                    sample_holder_zone_id="zone_001",
+                    pixel_to_mm_conversion=mapping_conversion,
+                    orientation="standard",
+                    mapping_version=schema.SCHEMA_VERSION,
+                )
+                did_write = True
+
+            if needs_points_sync:
                 with h5py.File(session_path, "a") as h5f:
                     if schema.GROUP_POINTS in h5f:
                         del h5f[schema.GROUP_POINTS]
                     h5f.create_group(schema.GROUP_POINTS)
+                did_write = True
 
                 for point_index, point in enumerate(points, start=1):
                     x = float(point.get("x", 0))
                     y = float(point.get("y", 0))
-                    writer.add_point(
+                    x_mm, y_mm = self._pixel_to_physical_mm(x, y)
+                    point_path = writer.add_point(
                         file_path=session_path,
                         point_index=point_index,
                         pixel_coordinates=[x, y],
-                        physical_coordinates_mm=[0.0, 0.0],
+                        physical_coordinates_mm=[x_mm, y_mm],
                         point_status=schema.POINT_STATUS_PENDING,
                     )
-            if hasattr(self, "_append_session_log"):
+                    point_uid = str(point.get("uid") or "").strip()
+                    if point_uid:
+                        with h5py.File(session_path, "a") as h5f:
+                            h5f[point_path].attrs["point_uid"] = point_uid
+
+            self._session_sync_shapes_sig = shapes_sig
+            self._session_sync_mapping_sig = mapping_sig
+            self._session_sync_points_sig = effective_points_sig
+            self._session_sync_last_image_sig = image_sig
+            self._session_sync_overall_sig = overall_sig
+
+            if did_write and hasattr(self, "_append_session_log"):
                 self._append_session_log("Session workspace snapshot updated")
 
         except Exception as exc:

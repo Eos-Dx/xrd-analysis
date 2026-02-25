@@ -1,4 +1,3 @@
-import hashlib
 import json
 import time
 import uuid
@@ -52,6 +51,64 @@ class ZoneMeasurementsProcessStartMixin:
             return list(value)
         return str(value)
 
+    @staticmethod
+    def _new_measurement_point_uid(counter: int) -> str:
+        """Return point UID as '<integer_counter>_<8 hex symbols>'."""
+        try:
+            counter_int = int(counter)
+        except Exception:
+            counter_int = 0
+        return f"{counter_int}_{uuid.uuid4().hex[:8]}"
+
+    def _point_item_uid(self, point_item, counter: int) -> str:
+        """Read or assign stable point UID on graphics item (data key 2)."""
+        try:
+            existing = point_item.data(2)
+            if isinstance(existing, bytes):
+                existing = existing.decode("utf-8", errors="replace")
+            if isinstance(existing, str) and existing.strip():
+                return existing.strip()
+        except Exception:
+            pass
+
+        uid = self._new_measurement_point_uid(counter)
+        try:
+            point_item.setData(2, uid)
+        except Exception:
+            pass
+        return uid
+
+    @staticmethod
+    def _point_distance_sq(p1, p2) -> float:
+        if p1 is None or p2 is None:
+            return float("inf")
+        try:
+            dx = float(p1[0]) - float(p2[0])
+            dy = float(p1[1]) - float(p2[1])
+            return dx * dx + dy * dy
+        except Exception:
+            return float("inf")
+
+    def _session_has_i0_measurement(self) -> bool:
+        """Return True when active session already has an I0 attenuation measurement."""
+        session_manager = getattr(self, "session_manager", None)
+        if session_manager is None:
+            return False
+
+        try:
+            if (
+                not hasattr(session_manager, "is_session_active")
+                or not session_manager.is_session_active()
+            ):
+                return False
+        except Exception:
+            return False
+
+        try:
+            return getattr(session_manager, "i0_counter", None) is not None
+        except Exception:
+            return False
+
     def _dump_state_measurements(self):
         """Write state_measurements JSON with numpy-safe serialization."""
         if not hasattr(self, "state_path_measurements") or not self.state_path_measurements:
@@ -68,6 +125,8 @@ class ZoneMeasurementsProcessStartMixin:
         self.start_btn.setEnabled(True)
         self.pause_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
+        if hasattr(self, "skip_btn") and self.skip_btn is not None:
+            self.skip_btn.setEnabled(False)
         self.paused = False
         self.stopped = False
 
@@ -148,14 +207,42 @@ class ZoneMeasurementsProcessStartMixin:
                     status = self._as_text(
                         point_group.attrs.get(schema.ATTR_POINT_STATUS, "")
                     ).strip().lower()
-                    session_points.append((point_index, status))
+                    point_uid = self._as_text(
+                        point_group.attrs.get("point_uid", "")
+                    ).strip()
+                    physical = point_group.attrs.get(
+                        getattr(schema, "ATTR_PHYSICAL_COORDINATES_MM", "physical_coordinates_mm"),
+                        None,
+                    )
+                    physical_xy = None
+                    try:
+                        if physical is not None and len(physical) >= 2:
+                            physical_xy = (float(physical[0]), float(physical[1]))
+                    except Exception:
+                        physical_xy = None
+                    session_points.append(
+                        {
+                            "point_index": int(point_index),
+                            "status": status,
+                            "point_uid": point_uid,
+                            "physical_xy": physical_xy,
+                        }
+                    )
 
             if not session_points:
                 return default_plan
 
-            if len(session_points) != len(measurement_points):
+            has_session_uids = any(
+                str(sp.get("point_uid") or "").strip() for sp in session_points
+            )
+            has_session_coords = any(sp.get("physical_xy") is not None for sp in session_points)
+            if (
+                len(session_points) != len(measurement_points)
+                and not has_session_uids
+                and not has_session_coords
+            ):
                 pm.logger.warning(
-                    "Session/GUI point count mismatch; rebuilding session points from current grid",
+                    "Session/GUI point count mismatch without UID/coordinate metadata; rebuilding session points from current grid",
                     session_points=int(len(session_points)),
                     gui_points=int(len(measurement_points)),
                 )
@@ -163,9 +250,9 @@ class ZoneMeasurementsProcessStartMixin:
 
             measured_status = self._as_text(schema.POINT_STATUS_MEASURED).strip().lower()
             pending_indices = [
-                int(point_index)
-                for point_index, status in session_points
-                if status != measured_status
+                int(sp["point_index"])
+                for sp in session_points
+                if sp["status"] != measured_status
             ]
             measured_count = len(session_points) - len(pending_indices)
 
@@ -178,22 +265,90 @@ class ZoneMeasurementsProcessStartMixin:
                     "measured_count": measured_count,
                 }
 
+            measurement_uid_to_idx = {}
+            for idx, mp in enumerate(measurement_points):
+                uid = str(mp.get("unique_id") or "").strip()
+                if uid and uid not in measurement_uid_to_idx:
+                    measurement_uid_to_idx[uid] = idx
+
+            session_to_measure_idx = {}
+            used_indices = set()
+
+            # 1) Exact UID matching when available (robust across restore/reorder).
+            for sp in session_points:
+                sp_idx = int(sp["point_index"])
+                sp_uid = str(sp.get("point_uid") or "").strip()
+                if not sp_uid:
+                    continue
+                mp_idx = measurement_uid_to_idx.get(sp_uid)
+                if mp_idx is None or mp_idx in used_indices:
+                    continue
+                session_to_measure_idx[sp_idx] = mp_idx
+                used_indices.add(mp_idx)
+
+            # 2) Coordinate nearest-neighbour fallback.
+            for sp in session_points:
+                sp_idx = int(sp["point_index"])
+                if sp_idx in session_to_measure_idx:
+                    continue
+                sp_xy = sp.get("physical_xy")
+                if sp_xy is None:
+                    continue
+
+                best_idx = None
+                best_d2 = float("inf")
+                for idx, mp in enumerate(measurement_points):
+                    if idx in used_indices:
+                        continue
+                    d2 = self._point_distance_sq(sp_xy, (mp.get("x"), mp.get("y")))
+                    if d2 < best_d2:
+                        best_d2 = d2
+                        best_idx = idx
+
+                if best_idx is not None:
+                    session_to_measure_idx[sp_idx] = best_idx
+                    used_indices.add(best_idx)
+
+            # 3) Index fallback for any remaining points.
+            for sp in session_points:
+                sp_idx = int(sp["point_index"])
+                if sp_idx in session_to_measure_idx:
+                    continue
+                pos = sp_idx - 1
+                if 0 <= pos < len(measurement_points) and pos not in used_indices:
+                    session_to_measure_idx[sp_idx] = pos
+                    used_indices.add(pos)
+
             resumed_points = []
+            resumed_session_indices = []
             for session_point_index in pending_indices:
-                if not (1 <= session_point_index <= len(measurement_points)):
-                    pm.logger.warning(
-                        "Session point index is out of bounds for current grid; rebuilding points",
-                        session_point_index=int(session_point_index),
-                        gui_points=int(len(measurement_points)),
-                    )
-                    return default_plan
-                resumed_points.append(measurement_points[session_point_index - 1])
+                mp_idx = session_to_measure_idx.get(int(session_point_index))
+                if mp_idx is None:
+                    continue
+                resumed_points.append(measurement_points[mp_idx])
+                resumed_session_indices.append(int(session_point_index))
+
+            if len(resumed_points) != len(pending_indices):
+                pm.logger.warning(
+                    "Resume mapping could not match all pending points; using mapped subset",
+                    pending_points=int(len(pending_indices)),
+                    mapped_points=int(len(resumed_points)),
+                    session_points=int(len(session_points)),
+                    gui_points=int(len(measurement_points)),
+                )
+
+            if not resumed_points:
+                pm.logger.warning(
+                    "No pending session points could be mapped; rebuilding from current grid",
+                    pending_points=int(len(pending_indices)),
+                )
+                return default_plan
 
             return {
                 **default_plan,
                 "mode": "resume",
                 "measurement_points": resumed_points,
-                "session_point_indices": pending_indices,
+                "session_point_indices": resumed_session_indices,
                 "measured_count": measured_count,
             }
         except Exception as exc:
@@ -203,6 +358,31 @@ class ZoneMeasurementsProcessStartMixin:
                 exc_info=True,
             )
             return default_plan
+
+    def _existing_session_point_count(self) -> int:
+        session_manager = getattr(self, "session_manager", None)
+        if session_manager is None:
+            return 0
+        if not hasattr(session_manager, "is_session_active") or not session_manager.is_session_active():
+            return 0
+
+        session_path = getattr(session_manager, "session_path", None)
+        schema = getattr(session_manager, "schema", None)
+        if not session_path or schema is None:
+            return 0
+
+        try:
+            import h5py
+
+            with h5py.File(session_path, "r") as h5f:
+                points_group = h5f.get(schema.GROUP_POINTS)
+                if points_group is None:
+                    return 0
+                return int(
+                    len([name for name in points_group.keys() if str(name).startswith("pt_")])
+                )
+        except Exception:
+            return 0
 
     def _ensure_writable_session_for_measurement(self) -> bool:
         pm = _pm()
@@ -360,6 +540,8 @@ class ZoneMeasurementsProcessStartMixin:
         self.start_btn.setEnabled(False)
         self.pause_btn.setEnabled(True)
         self.stop_btn.setEnabled(True)
+        if hasattr(self, "skip_btn") and self.skip_btn is not None:
+            self.skip_btn.setEnabled(True)
         self.stopped = False
         self.paused = False
         self._session_point_indices = []
@@ -371,13 +553,15 @@ class ZoneMeasurementsProcessStartMixin:
             center = item.sceneBoundingRect().center()
             x_mm = self.real_x_pos_mm.value() - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
             y_mm = self.real_y_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
-            all_points.append((i, x_mm, y_mm))
+            uid = self._point_item_uid(item, i + 1)
+            all_points.append((i, x_mm, y_mm, uid))
         offset = len(generated_points)
         for j, item in enumerate(user_points):
             center = item.sceneBoundingRect().center()
             x_mm = self.real_x_pos_mm.value() - (center.x() - self.include_center[0]) / self.pixel_to_mm_ratio
             y_mm = self.real_y_pos_mm.value() - (center.y() - self.include_center[1]) / self.pixel_to_mm_ratio
-            all_points.append((offset + j, x_mm, y_mm))
+            uid = self._point_item_uid(item, offset + j + 1)
+            all_points.append((offset + j, x_mm, y_mm, uid))
         all_points_sorted = sorted(all_points, key=lambda tup: (tup[1], tup[2]))
         self.sorted_indices = [tup[0] for tup in all_points_sorted]
         self.total_points = len(self.sorted_indices)
@@ -418,10 +602,9 @@ class ZoneMeasurementsProcessStartMixin:
         skipped_points = []
         valid_idx = 0
 
-        for _orig_idx, (pt_idx, x_mm, y_mm) in enumerate(all_points_sorted):
+        for _orig_idx, (pt_idx, x_mm, y_mm, point_uid) in enumerate(all_points_sorted):
             if (x_min <= x_mm <= x_max) and (y_min <= y_mm <= y_max):
-                id_str = f"{valid_idx}:{pt_idx}:{x_mm:.6f}:{y_mm:.6f}"
-                unique_id = hashlib.md5(id_str.encode("utf-8")).hexdigest()[:16]
+                unique_id = str(point_uid).strip() if point_uid else self._new_measurement_point_uid(valid_idx + 1)
                 measurement_points.append(
                     {
                         "unique_id": unique_id,
@@ -535,8 +718,37 @@ class ZoneMeasurementsProcessStartMixin:
                 session_plan.get("session_point_indices", []) or []
             )
 
+        # Default plan uses compact 1..N mapping; when an active session already
+        # contains seeded points we must remap by original point indices.
+        if session_plan.get("mode") == "new":
+            existing_points_count = self._existing_session_point_count()
+            if existing_points_count > 0:
+                self._session_point_indices = []
+
         if not self._session_point_indices:
-            self._session_point_indices = [idx for idx in range(1, len(measurement_points) + 1)]
+            mapped_from_original = []
+            existing_points_count = self._existing_session_point_count()
+            if existing_points_count > 0:
+                for i, mp in enumerate(measurement_points):
+                    try:
+                        original_idx = int(mp.get("point_index", i))
+                    except Exception:
+                        continue
+                    session_point_index = original_idx + 1
+                    if 1 <= session_point_index <= existing_points_count:
+                        mapped_from_original.append(session_point_index)
+                if len(mapped_from_original) == len(measurement_points):
+                    self._session_point_indices = mapped_from_original
+                    pm.logger.info(
+                        "Mapped measurement order to existing session points",
+                        mapped_points=int(len(self._session_point_indices)),
+                        session_points=int(existing_points_count),
+                    )
+
+            if not self._session_point_indices:
+                self._session_point_indices = [
+                    idx for idx in range(1, len(measurement_points) + 1)
+                ]
 
         if not measurement_points:
             pm.logger.info("No pending measurement points after resume filtering")
@@ -544,9 +756,18 @@ class ZoneMeasurementsProcessStartMixin:
             self._set_measurement_controls_idle()
             return
 
+        self._reuse_existing_i0_from_session = False
         try:
             if hasattr(self, "attenuationCheckBox") and self.attenuationCheckBox.isChecked():
-                self._capture_attenuation_background()
+                if self._session_has_i0_measurement():
+                    self._reuse_existing_i0_from_session = True
+                    pm.logger.info(
+                        "Skipping I0 background capture: session already contains I0 measurement",
+                        i0_counter=getattr(getattr(self, "session_manager", None), "i0_counter", None),
+                    )
+                    self._append_capture_log("I0 already recorded in session; reusing existing I0")
+                else:
+                    self._capture_attenuation_background()
         except Exception as e:
             pm.logger.warning(
                 "Failed to capture attenuation background; will continue without it",
@@ -574,6 +795,25 @@ class ZoneMeasurementsProcessStartMixin:
         if hasattr(self, "session_manager") and self.session_manager.is_session_active():
             try:
                 pm.logger.info("=== SESSION CONTAINER POPULATION ===")
+                existing_points_count = self._existing_session_point_count()
+                if should_seed_session_points and existing_points_count > 0:
+                    should_seed_session_points = False
+                    if not self._session_point_indices:
+                        mapped_indices = []
+                        for idx, mp in enumerate(measurement_points):
+                            try:
+                                mapped_indices.append(int(mp.get("point_index", idx)) + 1)
+                            except Exception:
+                                mapped_indices.append(int(idx) + 1)
+                        self._session_point_indices = mapped_indices
+                    pm.logger.info(
+                        "Session already contains points; skipping point regeneration",
+                        existing_points=int(existing_points_count),
+                        planned_points=int(len(measurement_points)),
+                    )
+                    self._append_session_log(
+                        f"Session points already exist ({existing_points_count}); reusing them"
+                    )
                 if should_seed_session_points:
                     points_for_session = []
                     for pt in measurement_points:
@@ -594,6 +834,7 @@ class ZoneMeasurementsProcessStartMixin:
                             {
                                 "pixel_coordinates": [float(pixel_x), float(pixel_y)],
                                 "physical_coordinates_mm": [pt["x"], pt["y"]],
+                                "point_uid": str(pt.get("unique_id") or ""),
                             }
                         )
 

@@ -185,6 +185,28 @@ class SessionContainerValidator:
                     f"Missing attribute: {schema.ATTR_ANALYTICAL_MEASUREMENT_IDS}",
                 )
 
+            point_status = point.attrs.get(schema.ATTR_POINT_STATUS, "")
+            if isinstance(point_status, bytes):
+                point_status = point_status.decode("utf-8", errors="replace")
+            point_status = str(point_status).strip().lower()
+            if point_status == str(schema.POINT_STATUS_SKIPPED).strip().lower():
+                if schema.ATTR_SKIP_REASON not in point.attrs:
+                    self._add(
+                        "ERROR",
+                        point_path,
+                        f"Missing attribute for skipped point: {schema.ATTR_SKIP_REASON}",
+                    )
+                else:
+                    skip_reason = point.attrs.get(schema.ATTR_SKIP_REASON, "")
+                    if isinstance(skip_reason, bytes):
+                        skip_reason = skip_reason.decode("utf-8", errors="replace")
+                    if not str(skip_reason).strip():
+                        self._add(
+                            "ERROR",
+                            point_path,
+                            f"Empty attribute for skipped point: {schema.ATTR_SKIP_REASON}",
+                        )
+
     def _validate_measurements(self, f: h5py.File):
         if schema.GROUP_MEASUREMENTS not in f:
             return
