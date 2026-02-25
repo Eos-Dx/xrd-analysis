@@ -28,7 +28,11 @@ class ZoneMeasurementsProcessResultsMixin:
     def on_capture_finished(self, success: bool, result_files: dict):
         pm = _pm()
         current_index = self.current_measurement_sorted_index
-        point_index_1based = current_index + 1
+        point_index_1based = (
+            self._current_session_point_index()
+            if hasattr(self, "_current_session_point_index")
+            else current_index + 1
+        )
         session_manager = getattr(self, "session_manager", None)
 
         if not success:
@@ -65,10 +69,20 @@ class ZoneMeasurementsProcessResultsMixin:
 
         detector_lookup = {d["alias"]: d for d in self.config["detectors"]}
         measurements = self.state_measurements.get("measurements_meta", {})
-        measurement_points = self.state_measurements["measurement_points"]
+        measurement_points = self.state_measurements.get("measurement_points", [])
         x = self._x_mm
         y = self._y_mm
-        point_unique_id = measurement_points[current_index]["unique_id"]
+        point_unique_id = None
+        if 0 <= current_index < len(measurement_points):
+            point_unique_id = measurement_points[current_index].get("unique_id")
+        if not point_unique_id:
+            point_unique_id = f"resume_pt_{point_index_1based:03d}"
+            pm.logger.warning(
+                "Measurement point metadata index mismatch; using fallback unique_id",
+                current_index=int(current_index),
+                measurement_points_count=int(len(measurement_points)),
+                session_point_index=int(point_index_1based),
+            )
 
         for alias, npy_filename in result_files.items():
             if not npy_filename:
@@ -95,8 +109,21 @@ class ZoneMeasurementsProcessResultsMixin:
 
         self.state_measurements["measurements_meta"] = measurements
 
-        with open(self.state_path_measurements, "w") as f:
-            json.dump(self.state_measurements, f, indent=4)
+        try:
+            if hasattr(self, "_dump_state_measurements"):
+                self._dump_state_measurements()
+            else:
+                with open(self.state_path_measurements, "w") as f:
+                    json.dump(self.state_measurements, f, indent=4)
+        except Exception as exc:
+            pm.logger.warning(
+                "Failed to persist measurement state file",
+                error=str(exc),
+                exc_info=True,
+            )
+            self._append_capture_log(
+                f"Warning: failed to persist state file ({type(exc).__name__})"
+            )
 
         pm.logger.info(
             "Measurement state file updated",
@@ -251,9 +278,17 @@ class ZoneMeasurementsProcessResultsMixin:
             self._append_session_log("No active session container; point saved to files only")
 
         pm.logger.info("Spawning measurement thread for post-processing...")
-        current_row = self.sorted_indices[self.current_measurement_sorted_index]
-        self.spawn_measurement_thread(current_row, result_files)
-        self._append_capture_log("Post-processing started")
+        if self.current_measurement_sorted_index < len(self.sorted_indices):
+            current_row = self.sorted_indices[self.current_measurement_sorted_index]
+            self.spawn_measurement_thread(current_row, result_files)
+            self._append_capture_log("Post-processing started")
+        else:
+            pm.logger.warning(
+                "Skipped post-processing thread due to point index mismatch",
+                current_index=int(self.current_measurement_sorted_index),
+                sorted_indices_count=int(len(self.sorted_indices)),
+            )
+            self._append_capture_log("Post-processing skipped due to point index mismatch")
 
         pm.logger.info("Updating UI visual feedback...")
         green_brush = pm.QColor(0, 255, 0)

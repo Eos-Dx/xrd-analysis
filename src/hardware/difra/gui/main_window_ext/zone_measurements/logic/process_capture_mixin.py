@@ -25,6 +25,20 @@ class ZoneMeasurementsProcessCaptureMixin:
         except Exception:
             pass
 
+    def _current_session_point_index(self) -> int:
+        try:
+            current_index = int(getattr(self, "current_measurement_sorted_index", 0))
+        except Exception:
+            current_index = 0
+
+        mapped = getattr(self, "_session_point_indices", None)
+        if isinstance(mapped, (list, tuple)) and 0 <= current_index < len(mapped):
+            try:
+                return int(mapped[current_index])
+            except Exception:
+                pass
+        return current_index + 1
+
     def _move_stage(self, x_mm: float, y_mm: float, timeout_s: float):
         pm = _pm()
         if getattr(self, "hardware_client", None) is not None:
@@ -67,8 +81,25 @@ class ZoneMeasurementsProcessCaptureMixin:
         if self.paused:
             pm.logger.debug("Measurement is paused. Waiting for resume")
             return
-        if self.current_measurement_sorted_index >= self.total_points:
+        sorted_count = len(getattr(self, "sorted_indices", []) or [])
+        if sorted_count != int(getattr(self, "total_points", 0)):
+            pm.logger.warning(
+                "Measurement point count mismatch; syncing to sorted indices",
+                total_points=int(getattr(self, "total_points", 0)),
+                sorted_indices_count=int(sorted_count),
+            )
+            self.total_points = sorted_count
+            try:
+                self.progressBar.setMaximum(self.total_points)
+            except Exception:
+                pass
+
+        if self.current_measurement_sorted_index >= sorted_count:
             pm.logger.info("All points measured")
+            try:
+                self.progressBar.setValue(sorted_count)
+            except Exception:
+                pass
             self.start_btn.setEnabled(True)
             self.pause_btn.setEnabled(False)
             self.stop_btn.setEnabled(False)
@@ -159,6 +190,7 @@ class ZoneMeasurementsProcessCaptureMixin:
             return
 
         point_index_1based = self.current_measurement_sorted_index + 1
+        session_point_index = self._current_session_point_index()
         self._append_capture_log(
             f"Normal capture start: point {point_index_1based}/{self.total_points}, t={self.integration_time:.3f}s"
         )
@@ -172,16 +204,16 @@ class ZoneMeasurementsProcessCaptureMixin:
         ):
             try:
                 session_manager.begin_point_measurement(
-                    point_index=self.current_measurement_sorted_index + 1,
+                    point_index=session_point_index,
                     timestamp_start=time.strftime("%Y-%m-%d %H:%M:%S"),
                 )
-                self._append_session_log(f"Point {point_index_1based}: opened in session container")
+                self._append_session_log(f"Point {session_point_index}: opened in session container")
                 if hasattr(session_manager, "log_event"):
                     session_manager.log_event(
                         message="Normal detector capture started",
                         event_type="capture_started",
                         details={
-                            "point_index": self.current_measurement_sorted_index + 1,
+                            "point_index": session_point_index,
                             "x_mm": float(getattr(self, "_x_mm", 0.0)),
                             "y_mm": float(getattr(self, "_y_mm", 0.0)),
                             "integration_time_s": float(getattr(self, "integration_time", 0.0)),
@@ -193,7 +225,7 @@ class ZoneMeasurementsProcessCaptureMixin:
                     error=str(exc),
                 )
                 self._append_session_log(
-                    f"Point {point_index_1based}: failed to mark session start ({type(exc).__name__})"
+                    f"Point {session_point_index}: failed to mark session start ({type(exc).__name__})"
                 )
 
         container_version = get_container_version(
@@ -393,10 +425,13 @@ class ZoneMeasurementsProcessCaptureMixin:
             entry = att.setdefault(uid, {})
             entry[key] = files or {}
             if hasattr(self, "state_path_measurements") and self.state_path_measurements:
-                import json
+                if hasattr(self, "_dump_state_measurements"):
+                    self._dump_state_measurements()
+                else:
+                    import json
 
-                with open(self.state_path_measurements, "w") as f:
-                    json.dump(self.state_measurements, f, indent=4)
+                    with open(self.state_path_measurements, "w") as f:
+                        json.dump(self.state_measurements, f, indent=4)
         except Exception as e:
             print(f"Warning: failed to record attenuation files: {e}")
 
@@ -498,19 +533,20 @@ class ZoneMeasurementsProcessCaptureMixin:
                             poni_alias_map=poni_alias_map,
                             mode="with",
                         )
+                        session_point_index = self._current_session_point_index()
                         self._append_session_log(
-                            f"I saved to session container at point {self.current_measurement_sorted_index + 1}"
+                            f"I saved to session container at point {session_point_index}"
                         )
                         try:
                             self.session_manager.link_attenuation_to_points(
                                 num_points=1,
-                                start_point_idx=self.current_measurement_sorted_index + 1,
+                                start_point_idx=session_point_index,
                             )
                             pm.logger.info(
-                                f"Linked attenuation to point {self.current_measurement_sorted_index}"
+                                f"Linked attenuation to point {session_point_index}"
                             )
                             self._append_session_log(
-                                f"Attenuation linked to point {self.current_measurement_sorted_index + 1}"
+                                f"Attenuation linked to point {session_point_index}"
                             )
                         except Exception as e:
                             pm.logger.warning(f"Failed to link attenuation to point: {e}", exc_info=True)
@@ -519,7 +555,7 @@ class ZoneMeasurementsProcessCaptureMixin:
                             )
 
                         pm.logger.info(
-                            f"Added I (with sample) to session container at point {self.current_measurement_sorted_index}",
+                            f"Added I (with sample) to session container at point {session_point_index}",
                             detectors=list(all_data.keys()),
                         )
                 except Exception as e:

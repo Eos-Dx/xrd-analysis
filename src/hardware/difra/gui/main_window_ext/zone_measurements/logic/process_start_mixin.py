@@ -25,6 +25,185 @@ class ZoneMeasurementsProcessStartMixin:
         except Exception:
             pass
 
+    @staticmethod
+    def _as_text(value) -> str:
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        if value is None:
+            return ""
+        return str(value)
+
+    @staticmethod
+    def _json_default(value):
+        """Convert numpy/path-like objects to JSON-serializable values."""
+        try:
+            import numpy as np
+
+            if isinstance(value, np.generic):
+                return value.item()
+            if isinstance(value, np.ndarray):
+                return value.tolist()
+        except Exception:
+            pass
+
+        if isinstance(value, Path):
+            return str(value)
+        if isinstance(value, set):
+            return list(value)
+        return str(value)
+
+    def _dump_state_measurements(self):
+        """Write state_measurements JSON with numpy-safe serialization."""
+        if not hasattr(self, "state_path_measurements") or not self.state_path_measurements:
+            return
+        with open(self.state_path_measurements, "w") as f:
+            json.dump(
+                self.state_measurements,
+                f,
+                indent=4,
+                default=self._json_default,
+            )
+
+    def _set_measurement_controls_idle(self):
+        self.start_btn.setEnabled(True)
+        self.pause_btn.setEnabled(False)
+        self.stop_btn.setEnabled(False)
+        self.paused = False
+        self.stopped = False
+
+    def _choose_resume_or_remeasure(self, measured_count: int, pending_count: int) -> str:
+        pm = _pm()
+        reply = pm.QMessageBox.question(
+            self,
+            "Restored Session Detected",
+            (
+                "Loaded session already contains measurements.\n\n"
+                f"Measured points: {measured_count}\n"
+                f"Pending points: {pending_count}\n\n"
+                "Yes: continue pending points only.\n"
+                "No: re-measure all points (existing measurements will be kept)."
+            ),
+            pm.QMessageBox.Yes | pm.QMessageBox.No,
+            pm.QMessageBox.Yes,
+        )
+        if reply == pm.QMessageBox.Yes:
+            return "resume"
+        return "remeasure"
+
+    def _confirm_remeasure_completed_session(self, total_points: int) -> bool:
+        pm = _pm()
+        reply = pm.QMessageBox.question(
+            self,
+            "Session Already Complete",
+            (
+                "All points in the restored session are already measured.\n\n"
+                f"Total measured points: {total_points}\n\n"
+                "Re-measure all points?\n"
+                "(Existing measurements will be kept.)"
+            ),
+            pm.QMessageBox.Yes | pm.QMessageBox.No,
+            pm.QMessageBox.No,
+        )
+        return reply == pm.QMessageBox.Yes
+
+    def _resolve_session_point_plan(self, measurement_points):
+        pm = _pm()
+
+        default_plan = {
+            "mode": "new",
+            "measurement_points": list(measurement_points),
+            "session_point_indices": [idx for idx in range(1, len(measurement_points) + 1)],
+            "measured_count": 0,
+        }
+
+        session_manager = getattr(self, "session_manager", None)
+        if session_manager is None:
+            return default_plan
+        if not hasattr(session_manager, "is_session_active") or not session_manager.is_session_active():
+            return default_plan
+
+        session_path = getattr(session_manager, "session_path", None)
+        schema = getattr(session_manager, "schema", None)
+        if not session_path or schema is None:
+            return default_plan
+
+        try:
+            import h5py
+
+            session_points = []
+            with h5py.File(session_path, "r") as h5f:
+                points_group = h5f.get(schema.GROUP_POINTS)
+                if points_group is None:
+                    return default_plan
+
+                for point_id in sorted(points_group.keys()):
+                    point_name = str(point_id)
+                    if not point_name.startswith("pt_"):
+                        continue
+                    try:
+                        point_index = int(point_name.split("_")[-1])
+                    except Exception:
+                        continue
+                    point_group = points_group[point_id]
+                    status = self._as_text(
+                        point_group.attrs.get(schema.ATTR_POINT_STATUS, "")
+                    ).strip().lower()
+                    session_points.append((point_index, status))
+
+            if not session_points:
+                return default_plan
+
+            if len(session_points) != len(measurement_points):
+                pm.logger.warning(
+                    "Session/GUI point count mismatch; rebuilding session points from current grid",
+                    session_points=int(len(session_points)),
+                    gui_points=int(len(measurement_points)),
+                )
+                return default_plan
+
+            measured_status = self._as_text(schema.POINT_STATUS_MEASURED).strip().lower()
+            pending_indices = [
+                int(point_index)
+                for point_index, status in session_points
+                if status != measured_status
+            ]
+            measured_count = len(session_points) - len(pending_indices)
+
+            if not pending_indices:
+                return {
+                    **default_plan,
+                    "mode": "complete",
+                    "measurement_points": [],
+                    "session_point_indices": [],
+                    "measured_count": measured_count,
+                }
+
+            resumed_points = []
+            for session_point_index in pending_indices:
+                if not (1 <= session_point_index <= len(measurement_points)):
+                    pm.logger.warning(
+                        "Session point index is out of bounds for current grid; rebuilding points",
+                        session_point_index=int(session_point_index),
+                        gui_points=int(len(measurement_points)),
+                    )
+                    return default_plan
+                resumed_points.append(measurement_points[session_point_index - 1])
+
+            return {
+                **default_plan,
+                "mode": "resume",
+                "measurement_points": resumed_points,
+                "session_point_indices": pending_indices,
+                "measured_count": measured_count,
+            }
+        except Exception as exc:
+            pm.logger.warning(
+                "Failed to inspect existing session points for resume; starting from full point set",
+                error=str(exc),
+                exc_info=True,
+            )
+            return default_plan
+
     def _ensure_writable_session_for_measurement(self) -> bool:
         pm = _pm()
 
@@ -169,8 +348,7 @@ class ZoneMeasurementsProcessStartMixin:
             from hardware.difra.hardware.auxiliary import encode_image_to_base64
 
             self.state_measurements["image_base64"] = encode_image_to_base64(self.image_view.current_image_path)
-            with open(self.state_path_measurements, "w") as f:
-                json.dump(self.state_measurements, f, indent=4)
+            self._dump_state_measurements()
         except Exception as e:
             pm.logger.error("Error saving state with encoded image", error=str(e))
 
@@ -184,15 +362,7 @@ class ZoneMeasurementsProcessStartMixin:
         self.stop_btn.setEnabled(True)
         self.stopped = False
         self.paused = False
-
-        try:
-            if hasattr(self, "attenuationCheckBox") and self.attenuationCheckBox.isChecked():
-                self._capture_attenuation_background()
-        except Exception as e:
-            pm.logger.warning(
-                "Failed to capture attenuation background; will continue without it",
-                error=str(e),
-            )
+        self._session_point_indices = []
 
         generated_points = self.image_view.points_dict["generated"]["points"]
         user_points = self.image_view.points_dict["user"]["points"]
@@ -270,6 +440,10 @@ class ZoneMeasurementsProcessStartMixin:
                 )
 
         self.sorted_indices = [mp["point_index"] for mp in measurement_points]
+        self.total_points = len(self.sorted_indices)
+        self.progressBar.setMaximum(self.total_points)
+        self.initial_estimate = self.total_points * self.integration_time
+        self.timeRemainingLabel.setText(f"Estimated time: {self.initial_estimate:.0f} sec")
 
         if skipped_points:
             pm.logger.info(
@@ -288,8 +462,96 @@ class ZoneMeasurementsProcessStartMixin:
                 f"All measurement points exceed the axis limits of X[{x_min:.1f},{x_max:.1f}] and Y[{y_min:.1f},{y_max:.1f}] mm. "
                     "Please adjust your measurement grid.",
                 )
+            self._set_measurement_controls_idle()
             self._append_capture_log("Start failed: all points are outside stage limits")
             return
+
+        full_measurement_points = list(measurement_points)
+        session_plan = self._resolve_session_point_plan(measurement_points)
+        should_seed_session_points = True
+        if session_plan.get("mode") == "resume":
+            measured_count = int(session_plan.get("measured_count", 0))
+            pending_count = int(len(session_plan.get("measurement_points", []) or []))
+            choice = self._choose_resume_or_remeasure(
+                measured_count=measured_count,
+                pending_count=pending_count,
+            )
+            if choice == "resume":
+                measurement_points = list(session_plan.get("measurement_points", []) or [])
+                should_seed_session_points = False
+                self._session_point_indices = list(
+                    session_plan.get("session_point_indices", []) or []
+                )
+                pm.logger.info(
+                    "Resuming restored session with pending points only",
+                    measured_points=measured_count,
+                    pending_points=int(len(measurement_points)),
+                )
+                self._append_session_log(
+                    f"Resume mode: {measured_count} point(s) already measured, "
+                    f"{len(measurement_points)} pending"
+                )
+            else:
+                measurement_points = full_measurement_points
+                should_seed_session_points = False
+                self._session_point_indices = [
+                    idx for idx in range(1, len(measurement_points) + 1)
+                ]
+                pm.logger.info(
+                    "User selected full re-measurement for restored session",
+                    total_points=int(len(measurement_points)),
+                )
+                self._append_session_log(
+                    "Re-measure mode: all points will be captured again"
+                )
+
+            self.sorted_indices = [mp["point_index"] for mp in measurement_points]
+            self.total_points = len(self.sorted_indices)
+            self.progressBar.setMaximum(self.total_points)
+            self.initial_estimate = self.total_points * self.integration_time
+            self.timeRemainingLabel.setText(f"Estimated time: {self.initial_estimate:.0f} sec")
+        elif session_plan.get("mode") == "complete":
+            if not self._confirm_remeasure_completed_session(total_points=len(full_measurement_points)):
+                pm.logger.info("Restore start skipped: all session points already measured")
+                self._append_capture_log("Start skipped: restored session already complete")
+                self._set_measurement_controls_idle()
+                return
+
+            measurement_points = full_measurement_points
+            should_seed_session_points = False
+            self._session_point_indices = [
+                idx for idx in range(1, len(measurement_points) + 1)
+            ]
+            self.sorted_indices = [mp["point_index"] for mp in measurement_points]
+            self.total_points = len(self.sorted_indices)
+            self.progressBar.setMaximum(self.total_points)
+            self.initial_estimate = self.total_points * self.integration_time
+            self.timeRemainingLabel.setText(f"Estimated time: {self.initial_estimate:.0f} sec")
+            self._append_session_log(
+                "Re-measure mode: completed session will be measured again"
+            )
+        else:
+            self._session_point_indices = list(
+                session_plan.get("session_point_indices", []) or []
+            )
+
+        if not self._session_point_indices:
+            self._session_point_indices = [idx for idx in range(1, len(measurement_points) + 1)]
+
+        if not measurement_points:
+            pm.logger.info("No pending measurement points after resume filtering")
+            self._append_capture_log("Start skipped: no pending points after filtering")
+            self._set_measurement_controls_idle()
+            return
+
+        try:
+            if hasattr(self, "attenuationCheckBox") and self.attenuationCheckBox.isChecked():
+                self._capture_attenuation_background()
+        except Exception as e:
+            pm.logger.warning(
+                "Failed to capture attenuation background; will continue without it",
+                error=str(e),
+            )
 
         self.state["measurement_points"] = measurement_points
         self.state["skipped_points"] = [
@@ -311,38 +573,46 @@ class ZoneMeasurementsProcessStartMixin:
 
         if hasattr(self, "session_manager") and self.session_manager.is_session_active():
             try:
-                points_for_session = []
-                for pt in measurement_points:
-                    pt_idx = pt["point_index"]
-                    gp = self.image_view.points_dict["generated"]["points"]
-                    up = self.image_view.points_dict["user"]["points"]
-
-                    if pt_idx < len(gp):
-                        point_item = gp[pt_idx]
-                    else:
-                        user_idx = pt_idx - len(gp)
-                        point_item = up[user_idx]
-
-                    center = point_item.sceneBoundingRect().center()
-                    pixel_x = center.x()
-                    pixel_y = center.y()
-                    points_for_session.append(
-                        {
-                            "pixel_coordinates": [float(pixel_x), float(pixel_y)],
-                            "physical_coordinates_mm": [pt["x"], pt["y"]],
-                        }
-                    )
-
                 pm.logger.info("=== SESSION CONTAINER POPULATION ===")
-                pm.logger.info(f"Adding {len(points_for_session)} points to session container...")
-                self._append_session_log(
-                    f"Initializing session container: {len(points_for_session)} points"
-                )
-                self.session_manager.add_points(points_for_session)
-                pm.logger.info(f"✓ Added {len(points_for_session)} points to session container")
-                self._append_session_log(
-                    f"Session points written: {len(points_for_session)}"
-                )
+                if should_seed_session_points:
+                    points_for_session = []
+                    for pt in measurement_points:
+                        pt_idx = pt["point_index"]
+                        gp = self.image_view.points_dict["generated"]["points"]
+                        up = self.image_view.points_dict["user"]["points"]
+
+                        if pt_idx < len(gp):
+                            point_item = gp[pt_idx]
+                        else:
+                            user_idx = pt_idx - len(gp)
+                            point_item = up[user_idx]
+
+                        center = point_item.sceneBoundingRect().center()
+                        pixel_x = center.x()
+                        pixel_y = center.y()
+                        points_for_session.append(
+                            {
+                                "pixel_coordinates": [float(pixel_x), float(pixel_y)],
+                                "physical_coordinates_mm": [pt["x"], pt["y"]],
+                            }
+                        )
+
+                    pm.logger.info(f"Adding {len(points_for_session)} points to session container...")
+                    self._append_session_log(
+                        f"Initializing session container: {len(points_for_session)} points"
+                    )
+                    self.session_manager.add_points(points_for_session)
+                    pm.logger.info(f"✓ Added {len(points_for_session)} points to session container")
+                    self._append_session_log(
+                        f"Session points written: {len(points_for_session)}"
+                    )
+                else:
+                    pm.logger.info(
+                        "Reusing existing points from session; skipping point regeneration"
+                    )
+                    self._append_session_log(
+                        "Session points reused from existing container"
+                    )
 
                 if hasattr(self, "_add_zones_to_session"):
                     pm.logger.info("Adding zones to session container...")

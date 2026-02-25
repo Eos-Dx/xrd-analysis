@@ -600,6 +600,105 @@ class TestMeasurementPointFiltering(unittest.TestCase):
             # Check that measure_next_point was NOT called
             proc.measure_next_point.assert_not_called()
 
+    @patch("pathlib.Path.exists")
+    @patch("hardware.difra.hardware.auxiliary.encode_image_to_base64")
+    @patch("builtins.open", create=True)
+    @patch("json.dump")
+    def test_restore_session_resumes_only_pending_points(
+        self, mock_json_dump, mock_open, mock_encode, mock_exists
+    ):
+        """Restored sessions should measure only pending points and keep session indexing."""
+        import h5py
+        import tempfile
+
+        mock_exists.return_value = True
+        mock_encode.return_value = "base64_image_data"
+
+        test_points_data = [
+            (1.0, 1.0),
+            (2.0, 2.0),
+            (3.0, 3.0),
+        ]
+        mock_points = [self.create_mock_point_at_position(x, y) for x, y in test_points_data]
+        self.mock_processor.image_view.points_dict["generated"]["points"] = mock_points
+
+        import importlib.util
+
+        pm_path = os.path.join(
+            SRC_ROOT,
+            "hardware",
+            "difra",
+            "gui",
+            "main_window_ext",
+            "zone_measurements",
+            "logic",
+            "process_mixin.py",
+        )
+        spec = importlib.util.spec_from_file_location("process_mixin_direct", pm_path)
+        pm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pm)
+        ZoneMeasurementsProcessMixin = pm.ZoneMeasurementsProcessMixin
+
+        ProcCls = type("Proc", (ZoneMeasurementsProcessMixin,), {})
+        proc = ProcCls()
+        proc.config = {"detectors": []}
+        proc.folderLineEdit = self.mock_processor.folderLineEdit
+        proc.fileNameLineEdit = self.mock_processor.fileNameLineEdit
+        proc.pointsTable = self.mock_processor.pointsTable
+        proc.start_btn = self.mock_processor.start_btn
+        proc.pause_btn = self.mock_processor.pause_btn
+        proc.stop_btn = self.mock_processor.stop_btn
+        proc.progressBar = self.mock_processor.progressBar
+        proc.timeRemainingLabel = self.mock_processor.timeRemainingLabel
+        proc.image_view = self.mock_processor.image_view
+        proc.real_x_pos_mm = self.mock_processor.real_x_pos_mm
+        proc.real_y_pos_mm = self.mock_processor.real_y_pos_mm
+        proc.include_center = self.mock_processor.include_center
+        proc.pixel_to_mm_ratio = self.mock_processor.pixel_to_mm_ratio
+        proc.state = {}
+        proc.state_measurements = {}
+        proc.manual_save_state = Mock()
+        proc.measure_next_point = Mock()
+        proc.integrationSpinBox = self.mock_processor.integrationSpinBox
+
+        class _Stage:
+            def get_limits(self_inner):
+                return {"x": (-14.0, 14.0), "y": (-14.0, 14.0)}
+
+        proc.stage_controller = _Stage()
+
+        class _Schema:
+            GROUP_POINTS = "/entry/points"
+            ATTR_POINT_STATUS = "point_status"
+            POINT_STATUS_MEASURED = "measured"
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            session_path = os.path.join(tmp_dir, "restored_session.nxs.h5")
+            with h5py.File(session_path, "w") as h5f:
+                points_group = h5f.create_group(_Schema.GROUP_POINTS)
+                for idx, status in enumerate(("measured", "measured", "pending"), start=1):
+                    point_group = points_group.create_group("pt_{0:03d}".format(idx))
+                    point_group.attrs[_Schema.ATTR_POINT_STATUS] = status
+
+            session_manager = Mock()
+            session_manager.is_session_active.return_value = True
+            session_manager.is_locked.return_value = False
+            session_manager.session_path = session_path
+            session_manager.schema = _Schema()
+            session_manager.add_points = Mock()
+            proc.session_manager = session_manager
+
+            with patch("copy.copy") as mock_copy:
+                mock_copy.return_value = {}
+                with patch.object(pm.QMessageBox, "question", return_value=pm.QMessageBox.Yes):
+                    proc.start_measurements()
+
+        self.assertEqual(proc.total_points, 1)
+        self.assertEqual(proc.sorted_indices, [0])
+        self.assertEqual(proc._session_point_indices, [3])
+        session_manager.add_points.assert_not_called()
+        proc.measure_next_point.assert_called_once()
+
     def test_valid_points_preserve_order(self):
         """Test that valid points preserve their relative order after filtering."""
         test_points_data = [
@@ -622,6 +721,47 @@ class TestMeasurementPointFiltering(unittest.TestCase):
 
         self.assertEqual(valid_indices, [0, 2, 4])
         self.assertEqual(skipped_indices, [1, 3])
+
+    def test_state_measurements_json_dump_handles_numpy_scalars(self):
+        """State dump should serialize numpy scalar/array values without crashing."""
+        import importlib.util
+        import json as std_json
+        import tempfile
+        from pathlib import Path
+
+        import numpy as np
+
+        pm_path = os.path.join(
+            SRC_ROOT,
+            "hardware",
+            "difra",
+            "gui",
+            "main_window_ext",
+            "zone_measurements",
+            "logic",
+            "process_mixin.py",
+        )
+        spec = importlib.util.spec_from_file_location("process_mixin_direct", pm_path)
+        pm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pm)
+        ZoneMeasurementsProcessMixin = pm.ZoneMeasurementsProcessMixin
+
+        ProcCls = type("Proc", (ZoneMeasurementsProcessMixin,), {})
+        proc = ProcCls()
+        proc.state_measurements = {
+            "value": np.int64(7),
+            "nested": {"arr": np.array([1, 2, 3], dtype=np.int64)},
+        }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out_path = Path(tmp_dir) / "state.json"
+            proc.state_path_measurements = out_path
+            proc._dump_state_measurements()
+
+            payload = std_json.loads(out_path.read_text())
+
+        self.assertEqual(payload["value"], 7)
+        self.assertEqual(payload["nested"]["arr"], [1, 2, 3])
 
 
 if __name__ == "__main__":
