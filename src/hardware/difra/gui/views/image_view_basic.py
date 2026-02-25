@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QRectF
+from PyQt5.QtCore import QRectF, Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsView
 
@@ -8,6 +8,7 @@ class ImageViewBasic(QGraphicsView):
     def __init__(self, parent=None):
         self.scene = QGraphicsScene()
         super().__init__(self.scene, parent)
+        self.setFocusPolicy(Qt.StrongFocus)
         self.image_item = None
         self.current_pixmap = None
         # New attributes to store state:

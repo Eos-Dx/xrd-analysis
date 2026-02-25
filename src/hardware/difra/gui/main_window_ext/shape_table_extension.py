@@ -24,6 +24,8 @@ class ShapeTableMixin:
         self.shapeTable.setEditTriggers(
             QAbstractItemView.DoubleClicked | QAbstractItemView.SelectedClicked
         )
+        self.shapeTable.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.shapeTable.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.shapeTable.cellChanged.connect(self.onShapeTableCellChanged)
         self.shapeDock.setWidget(self.shapeTable)
         self.addDockWidget(Qt.RightDockWidgetArea, self.shapeDock)
@@ -36,19 +38,29 @@ class ShapeTableMixin:
 
     def onShapeTableContextMenu(self, pos):
         item = self.shapeTable.itemAt(pos)
-        if item:
-            row = item.row()
-            menu = QMenu(self.shapeTable)
-            includeAct = menu.addAction("Include")
-            excludeAct = menu.addAction("Exclude")
-            sampleHolderAct = menu.addAction("Sample Holder")
-            action = menu.exec_(self.shapeTable.viewport().mapToGlobal(pos))
-            if action == includeAct:
-                self.update_shape_role(row, "include")
-            elif action == excludeAct:
-                self.update_shape_role(row, "exclude")
-            elif action == sampleHolderAct:
-                self.update_shape_role(row, "sample holder")
+        if not item:
+            return
+
+        row = item.row()
+        model_index = self.shapeTable.model().index(row, 0)
+        if not self.shapeTable.selectionModel().isRowSelected(row, model_index):
+            self.shapeTable.selectRow(row)
+
+        menu = QMenu(self.shapeTable)
+        includeAct = menu.addAction("Include")
+        excludeAct = menu.addAction("Exclude")
+        sampleHolderAct = menu.addAction("Sample Holder")
+        menu.addSeparator()
+        deleteAct = menu.addAction("Delete")
+        action = menu.exec_(self.shapeTable.viewport().mapToGlobal(pos))
+        if action == includeAct:
+            self.update_shape_role(row, "include")
+        elif action == excludeAct:
+            self.update_shape_role(row, "exclude")
+        elif action == sampleHolderAct:
+            self.update_shape_role(row, "sample holder")
+        elif action == deleteAct:
+            self.delete_shapes_from_table()
 
     def apply_shape_role(self, shape_info):
         """Update the appearance of the shape based on its role."""
@@ -217,24 +229,31 @@ class ShapeTableMixin:
     def delete_shapes_from_table(self):
         # Delete selected rows from the table and remove corresponding shapes from the image view.
         selected_rows = sorted(
-            {index.row() for index in self.shapeTable.selectedIndexes()},
+            {index.row() for index in self.shapeTable.selectionModel().selectedRows()},
             reverse=True,
         )
+        if not selected_rows:
+            selected_rows = sorted(
+                {index.row() for index in self.shapeTable.selectedIndexes()},
+                reverse=True,
+            )
         for row in selected_rows:
             try:
                 shape_id = int(self.shapeTable.item(row, 0).text())
             except Exception:
                 continue
-            for shape_info in self.image_view.shapes:
+            for shape_info in list(self.image_view.shapes):
                 if shape_info["id"] == shape_id:
-                    self.image_view.scene.removeItem(shape_info["item"])
-                    # Also remove extra items if present.
-                    if "diagonals" in shape_info:
-                        for item in shape_info["diagonals"]:
-                            self.image_view.scene.removeItem(item)
-                    if "center_marker" in shape_info:
-                        self.image_view.scene.removeItem(shape_info["center_marker"])
-                    self.image_view.shapes.remove(shape_info)
+                    shape_item = shape_info.get("item")
+                    if shape_item is not None:
+                        self.image_view.scene.removeItem(shape_item)
+                    for extra_item in shape_info.get("diagonals") or []:
+                        self.image_view.scene.removeItem(extra_item)
+                    center_marker = shape_info.get("center_marker")
+                    if center_marker is not None:
+                        self.image_view.scene.removeItem(center_marker)
+                    if shape_info in self.image_view.shapes:
+                        self.image_view.shapes.remove(shape_info)
                     break
         self.update_shape_table()
 

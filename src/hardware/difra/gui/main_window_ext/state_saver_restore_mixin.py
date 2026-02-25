@@ -221,6 +221,10 @@ class StateSaverRestoreMixin:
                 if s_type.lower() in ["ellipse", "circle"]
                 else QGraphicsRectItem(x, y, w, h)
             )
+            item.setFlags(
+                QGraphicsEllipseItem.ItemIsSelectable
+                | QGraphicsEllipseItem.ItemIsMovable
+            )
             pen = (
                 QPen(
                     QColor(
