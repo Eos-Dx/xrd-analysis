@@ -65,11 +65,16 @@ class ImageView(ZoomMixin, DrawingMixin, PointEditingMixin, ImageViewBasic):
 
     def delete_selected_points(self) -> bool:
         main_window = self.window()
-        if main_window is None or not hasattr(main_window, "_request_delete_point_by_id"):
+        if main_window is None:
+            return False
+        has_uid_api = hasattr(main_window, "_request_delete_point_by_uid")
+        has_id_api = hasattr(main_window, "_request_delete_point_by_id")
+        if not has_uid_api and not has_id_api:
             return False
 
         selected_items = list(self.scene.selectedItems() or [])
-        point_ids = []
+        point_refs = []
+        seen_refs = set()
         for item in selected_items:
             if item is self.image_item:
                 continue
@@ -77,25 +82,37 @@ class ImageView(ZoomMixin, DrawingMixin, PointEditingMixin, ImageViewBasic):
                 continue
             try:
                 point_type = item.data(0)
+                point_uid = str(item.data(2) or "").strip()
                 point_id = item.data(1)
             except Exception:
                 continue
             if point_type not in ("generated", "user"):
                 continue
-            if point_id is None:
+            if point_uid:
+                key = ("uid", point_uid)
+                if key not in seen_refs:
+                    seen_refs.add(key)
+                    point_refs.append(key)
                 continue
-            try:
-                point_ids.append(int(point_id))
-            except Exception:
-                continue
+            if point_id is not None:
+                try:
+                    key = ("id", int(point_id))
+                except Exception:
+                    continue
+                if key not in seen_refs:
+                    seen_refs.add(key)
+                    point_refs.append(key)
 
-        if not point_ids:
+        if not point_refs:
             return False
 
         changed = False
-        for point_id in point_ids:
+        for ref_type, ref_value in point_refs:
             try:
-                changed = bool(main_window._request_delete_point_by_id(point_id)) or changed
+                if ref_type == "uid" and has_uid_api:
+                    changed = bool(main_window._request_delete_point_by_uid(ref_value)) or changed
+                elif has_id_api:
+                    changed = bool(main_window._request_delete_point_by_id(ref_value)) or changed
             except Exception:
                 continue
         return changed

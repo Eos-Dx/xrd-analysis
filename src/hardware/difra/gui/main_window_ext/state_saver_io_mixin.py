@@ -296,6 +296,7 @@ class StateSaverIOMixin:
                 result.append(
                     {
                         "id": s.get("id"),
+                        "uid": s.get("uid"),
                         "type": s.get("type"),
                         "role": s.get("role", "include"),
                         "geometry": {

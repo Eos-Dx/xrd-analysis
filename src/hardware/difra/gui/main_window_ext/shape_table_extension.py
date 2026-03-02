@@ -1,3 +1,5 @@
+import uuid
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor, QPen
 from PyQt5.QtWidgets import (
@@ -138,10 +140,19 @@ class ShapeTableMixin:
 
     def update_shape_role(self, row, role):
         try:
-            shape_id = int(self.shapeTable.item(row, 0).text())
+            item = self.shapeTable.item(row, 0)
+            shape_uid = (
+                str(item.data(Qt.UserRole)).strip()
+                if item is not None and item.data(Qt.UserRole) is not None
+                else ""
+            )
+            if not shape_uid:
+                return
             # Update the role in shape_info and apply appearance changes.
             for shape_info in self.image_view.shapes:
-                if shape_info["id"] == shape_id:
+                if not shape_info.get("uid"):
+                    shape_info["uid"] = f"sh_{uuid.uuid4().hex}"
+                if shape_uid and str(shape_info.get("uid", "")).strip() == shape_uid:
                     shape_info["role"] = role
                     # Remove "isNew" flag if present.
                     shape_info.pop("isNew", None)
@@ -167,11 +178,13 @@ class ShapeTableMixin:
             role = shape_info["role"]
             item = shape_info.get("item")
             rect = item.rect() if hasattr(item, "rect") else item.boundingRect()
+            if not shape_info.get("uid"):
+                shape_info["uid"] = f"sh_{uuid.uuid4().hex}"
 
             # Update table cells.
-            self.shapeTable.setItem(
-                row, 0, QTableWidgetItem(str(shape_info.get("id", "")))
-            )
+            id_item = QTableWidgetItem(str(shape_info.get("id", "")))
+            id_item.setData(Qt.UserRole, str(shape_info.get("uid")))
+            self.shapeTable.setItem(row, 0, id_item)
             self.shapeTable.setItem(
                 row, 1, QTableWidgetItem(shape_info.get("type", ""))
             )
@@ -201,9 +214,18 @@ class ShapeTableMixin:
         try:
             # Only allow editing for geometry columns.
             if column in [2, 3, 4, 5]:
-                shape_id = int(self.shapeTable.item(row, 0).text())
+                item0 = self.shapeTable.item(row, 0)
+                shape_uid = (
+                    str(item0.data(Qt.UserRole)).strip()
+                    if item0 is not None and item0.data(Qt.UserRole) is not None
+                    else ""
+                )
+                if not shape_uid:
+                    return
                 for shape_info in self.image_view.shapes:
-                    if shape_info["id"] == shape_id:
+                    if not shape_info.get("uid"):
+                        shape_info["uid"] = f"sh_{uuid.uuid4().hex}"
+                    if shape_uid and str(shape_info.get("uid", "")).strip() == shape_uid:
                         item = shape_info["item"]
                         x = float(self.shapeTable.item(row, 2).text())
                         y = float(self.shapeTable.item(row, 3).text())
@@ -239,11 +261,20 @@ class ShapeTableMixin:
             )
         for row in selected_rows:
             try:
-                shape_id = int(self.shapeTable.item(row, 0).text())
+                item = self.shapeTable.item(row, 0)
+                shape_uid = (
+                    str(item.data(Qt.UserRole)).strip()
+                    if item is not None and item.data(Qt.UserRole) is not None
+                    else ""
+                )
             except Exception:
                 continue
+            if not shape_uid:
+                continue
             for shape_info in list(self.image_view.shapes):
-                if shape_info["id"] == shape_id:
+                if not shape_info.get("uid"):
+                    shape_info["uid"] = f"sh_{uuid.uuid4().hex}"
+                if shape_uid and str(shape_info.get("uid", "")).strip() == shape_uid:
                     shape_item = shape_info.get("item")
                     if shape_item is not None:
                         self.image_view.scene.removeItem(shape_item)

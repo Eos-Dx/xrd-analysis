@@ -1,3 +1,5 @@
+import uuid
+
 from PyQt5.QtCore import QRectF, Qt
 from PyQt5.QtGui import QPen
 from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsItem, QGraphicsRectItem
@@ -84,6 +86,7 @@ class DrawingMixin:
                 if self.current_shape:
                     shape_info = {
                         "id": self.shape_counter,
+                        "uid": f"sh_{uuid.uuid4().hex}",
                         "type": (
                             "Rectangle" if self.drawing_mode == "rect" else "Circle"
                         ),

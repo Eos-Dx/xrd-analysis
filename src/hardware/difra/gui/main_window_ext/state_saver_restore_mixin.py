@@ -202,8 +202,24 @@ class StateSaverRestoreMixin:
 
     def _restore_shapes(self, shapes):
         self.image_view.shapes = []
+        used_ids = set()
+        used_uids = set()
         for i, shape in enumerate(shapes):
-            shape_id = shape.get("id", 0) + 100 + i
+            raw_id = shape.get("id", None)
+            try:
+                shape_id = int(raw_id) if raw_id is not None else i + 1
+            except Exception:
+                shape_id = i + 1
+            while shape_id in used_ids:
+                shape_id += 1
+            used_ids.add(shape_id)
+            raw_uid = str(shape.get("uid") or "").strip()
+            if not raw_uid:
+                raw_uid = f"sh_{os.urandom(16).hex()}"
+            shape_uid = raw_uid
+            while shape_uid in used_uids:
+                shape_uid = f"sh_{os.urandom(16).hex()}"
+            used_uids.add(shape_uid)
             s_type, role, geo = (
                 shape.get("type"),
                 shape.get("role", "include"),
@@ -241,6 +257,7 @@ class StateSaverRestoreMixin:
             self.image_view.shapes.append(
                 {
                     "id": shape_id,
+                    "uid": shape_uid,
                     "type": s_type,
                     "role": role,
                     "item": item,
@@ -251,6 +268,13 @@ class StateSaverRestoreMixin:
                     ),
                 }
             )
+        try:
+            if hasattr(self.image_view, "shape_counter"):
+                self.image_view.shape_counter = (
+                    max(used_ids) + 1 if used_ids else 1
+                )
+        except Exception:
+            pass
 
     # --- state_saver_extension.py ---
 

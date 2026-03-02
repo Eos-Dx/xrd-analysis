@@ -402,10 +402,96 @@ class ZonePointsMixin:
                 pass
         return int(row) + 1
 
-    def _point_has_measurements(self, point_id: Optional[int]) -> bool:
-        if point_id is None:
+    @staticmethod
+    def _display_id_from_uid(point_uid: Optional[str]) -> Optional[int]:
+        uid = str(point_uid or "").strip()
+        if not uid:
+            return None
+        prefix = uid.split("_", 1)[0]
+        try:
+            return int(prefix)
+        except Exception:
+            return None
+
+    def _get_point_identity_from_row(
+        self,
+        row: int,
+    ) -> Tuple[Optional[str], Optional[int]]:
+        point_uid: Optional[str] = None
+        point_display_id: Optional[int] = None
+        point_item = None
+
+        if hasattr(self, "pointsTable") and self.pointsTable is not None:
+            id_item = self.pointsTable.item(row, 0)
+            if id_item is not None:
+                uid_data = id_item.data(Qt.UserRole + 1)
+                if uid_data is not None:
+                    uid_txt = str(uid_data).strip()
+                    if uid_txt:
+                        point_uid = uid_txt
+                display_role = id_item.data(Qt.UserRole)
+                if display_role is not None:
+                    try:
+                        point_display_id = int(display_role)
+                    except Exception:
+                        point_display_id = None
+                if point_display_id is None:
+                    try:
+                        txt = str(id_item.text() or "").strip()
+                        if txt:
+                            point_display_id = int(txt)
+                    except Exception:
+                        point_display_id = None
+
+        try:
+            gp = self.image_view.points_dict["generated"]["points"]
+            up = self.image_view.points_dict["user"]["points"]
+            if row < len(gp):
+                point_item = gp[row]
+            else:
+                urow = row - len(gp)
+                if 0 <= urow < len(up):
+                    point_item = up[urow]
+        except Exception:
+            point_item = None
+
+        if point_item is not None and not sip.isdeleted(point_item):
+            if point_display_id is None:
+                try:
+                    pid = point_item.data(1)
+                    if pid is not None:
+                        point_display_id = int(pid)
+                except Exception:
+                    point_display_id = None
+
+            if not point_uid:
+                try:
+                    uid_data = point_item.data(2)
+                    if uid_data is not None:
+                        uid_txt = str(uid_data).strip()
+                        if uid_txt:
+                            point_uid = uid_txt
+                except Exception:
+                    point_uid = None
+
+        if point_display_id is None and point_uid:
+            point_display_id = self._display_id_from_uid(point_uid)
+
+        if not point_uid and point_display_id is not None:
+            point_uid = self._new_point_uid(point_display_id)
+            try:
+                if point_item is not None and not sip.isdeleted(point_item):
+                    point_item.setData(2, point_uid)
+            except Exception:
+                pass
+
+        return point_uid, point_display_id
+
+    def _point_has_measurements(self, point_uid: Optional[str]) -> bool:
+        point_uid = str(point_uid or "").strip()
+        if not point_uid:
             return False
-        widget = getattr(self, "measurement_widgets", {}).get(point_id)
+        widget = getattr(self, "measurement_widgets", {}).get(point_uid)
         if widget is None:
             return False
         try:
@@ -413,8 +499,8 @@ class ZonePointsMixin:
         except Exception:
             return False
 
-    def _is_row_measured(self, row: int, point_id: Optional[int]) -> bool:
-        if self._point_has_measurements(point_id):
+    def _is_row_measured(self, row: int, point_uid: Optional[str]) -> bool:
+        if self._point_has_measurements(point_uid):
             return True
 
         sorted_pos = self._find_sorted_position_for_row(row)
@@ -426,7 +512,11 @@ class ZonePointsMixin:
         return False
 
     def _append_skipped_point_record(
-        self, row: int, point_id: Optional[int], reason: str
+        self,
+        row: int,
+        point_uid: Optional[str],
+        point_display_id: Optional[int],
+        reason: str,
     ) -> None:
         x_mm = None
         y_mm = None
@@ -446,7 +536,8 @@ class ZonePointsMixin:
 
         payload = {
             "point_index": int(row),
-            "point_id": int(point_id) if point_id is not None else None,
+            "point_uid": str(point_uid or "").strip() or None,
+            "point_id": int(point_display_id) if point_display_id is not None else None,
             "x": x_mm,
             "y": y_mm,
             "reason": str(reason),
@@ -464,8 +555,9 @@ class ZonePointsMixin:
             skipped.append(dict(payload))
             container["skipped_points"] = skipped
 
-    def _apply_skipped_visual(self, point_id: Optional[int]) -> None:
-        if point_id is None:
+    def _apply_skipped_visual(self, point_uid: Optional[str]) -> None:
+        point_uid = str(point_uid or "").strip()
+        if not point_uid:
             return
 
         skip_point_color = QColor(255, 165, 0)
@@ -480,7 +572,7 @@ class ZonePointsMixin:
         for i, item in enumerate(gp):
             if sip.isdeleted(item):
                 continue
-            if item.data(1) == point_id:
+            if str(item.data(2) or "").strip() == point_uid:
                 item.setBrush(skip_point_color)
                 if i < len(gz) and not sip.isdeleted(gz[i]):
                     gz[i].setBrush(skip_zone_color)
@@ -489,7 +581,7 @@ class ZonePointsMixin:
         for i, item in enumerate(up):
             if sip.isdeleted(item):
                 continue
-            if item.data(1) == point_id:
+            if str(item.data(2) or "").strip() == point_uid:
                 item.setBrush(skip_point_color)
                 if i < len(uz) and not sip.isdeleted(uz[i]):
                     uz[i].setBrush(skip_zone_color)
@@ -567,13 +659,7 @@ class ZonePointsMixin:
             except Exception:
                 pass
 
-        point_id = None
-        id_item = self.pointsTable.item(row, 0)
-        if id_item is not None:
-            try:
-                point_id = int(id_item.text())
-            except Exception:
-                point_id = None
+        point_uid, point_display_id = self._get_point_identity_from_row(row)
 
         session_point_index = self._session_point_index_for_row(row)
         session_manager = getattr(self, "session_manager", None)
@@ -596,8 +682,13 @@ class ZonePointsMixin:
                 )
                 return False
 
-        self._append_skipped_point_record(row=row, point_id=point_id, reason=reason)
-        self._apply_skipped_visual(point_id)
+        self._append_skipped_point_record(
+            row=row,
+            point_uid=point_uid,
+            point_display_id=point_display_id,
+            reason=reason,
+        )
+        self._apply_skipped_visual(point_uid)
 
         if self._measurement_sequence_active():
             self._remove_row_from_active_measurement_plan(row)
@@ -614,8 +705,14 @@ class ZonePointsMixin:
             self._append_measurement_log(f"[CAPTURE] Point skipped (reason: {reason})")
         return True
 
-    def _delete_row_and_container_point(self, row: int, point_id: Optional[int]) -> bool:
-        if point_id is None:
+    def _delete_row_and_container_point(
+        self,
+        row: int,
+        point_uid: Optional[str],
+        point_display_id: Optional[int],
+    ) -> bool:
+        point_uid = str(point_uid or "").strip()
+        if not point_uid:
             return False
 
         sorted_pos = self._find_sorted_position_for_row(row)
@@ -666,28 +763,28 @@ class ZonePointsMixin:
             ):
                 self.measure_next_point()
 
-        self._remove_point_items_by_id(point_id)
-        self.remove_measurement_widget_from_panel(point_id)
+        self._remove_point_items_by_uid(point_uid, point_display_id=point_display_id)
+        self.remove_measurement_widget_from_panel(point_uid)
         return True
 
-    def _request_delete_point_by_id(self, point_id: int) -> bool:
+    def _request_delete_point_by_uid(self, point_uid: str) -> bool:
+        target_uid = str(point_uid or "").strip()
+        if not target_uid:
+            return False
+
         row = None
         if hasattr(self, "pointsTable") and self.pointsTable is not None:
             for idx in range(self.pointsTable.rowCount()):
-                item = self.pointsTable.item(idx, 0)
-                if item is None:
-                    continue
-                try:
-                    if int(item.text()) == int(point_id):
-                        row = idx
-                        break
-                except Exception:
-                    continue
+                uid, _display = self._get_point_identity_from_row(idx)
+                if uid == target_uid:
+                    row = idx
+                    break
 
         if row is None:
             return False
 
-        measured = self._is_row_measured(row=row, point_id=point_id)
+        point_uid, point_display_id = self._get_point_identity_from_row(row)
+        measured = self._is_row_measured(row=row, point_uid=point_uid)
         if measured:
             reason = self._prompt_skip_reason(
                 "Point Already Measured",
@@ -701,7 +798,50 @@ class ZonePointsMixin:
                 self.update_points_table()
             return changed
 
-        changed = self._delete_row_and_container_point(row=row, point_id=point_id)
+        changed = self._delete_row_and_container_point(
+            row=row,
+            point_uid=point_uid,
+            point_display_id=point_display_id,
+        )
+        if changed:
+            self.update_points_table()
+        return changed
+
+    def _request_delete_point_by_id(self, point_id: int) -> bool:
+        row = None
+        if hasattr(self, "pointsTable") and self.pointsTable is not None:
+            for idx in range(self.pointsTable.rowCount()):
+                _uid, display_id = self._get_point_identity_from_row(idx)
+                try:
+                    if display_id is not None and int(display_id) == int(point_id):
+                        row = idx
+                        break
+                except Exception:
+                    continue
+
+        if row is None:
+            return False
+
+        point_uid, point_display_id = self._get_point_identity_from_row(row)
+        measured = self._is_row_measured(row=row, point_uid=point_uid)
+        if measured:
+            reason = self._prompt_skip_reason(
+                "Point Already Measured",
+                "This point is already measured and cannot be deleted.\n"
+                "Provide skip reason to mark it as SKIPPED:",
+            )
+            if reason is None:
+                return False
+            changed = self._skip_point_by_row(row=row, reason=reason)
+            if changed:
+                self.update_points_table()
+            return changed
+
+        changed = self._delete_row_and_container_point(
+            row=row,
+            point_uid=point_uid,
+            point_display_id=point_display_id,
+        )
         if changed:
             self.update_points_table()
         return changed
@@ -751,13 +891,17 @@ class ZonePointsMixin:
                 points = self._build_points_snapshot()
                 self.pointsTable.setRowCount(len(points))
 
-                for idx, (x, y, ptype, point_id) in enumerate(points):
+                for idx, (x, y, ptype, point_id, point_uid) in enumerate(points):
                     from PyQt5.QtWidgets import QTableWidgetItem
 
+                    id_item = QTableWidgetItem("" if point_id is None else str(point_id))
+                    if point_id is not None:
+                        id_item.setData(Qt.UserRole, int(point_id))
+                    id_item.setData(Qt.UserRole + 1, str(point_uid))
                     self.pointsTable.setItem(
                         idx,
                         0,
-                        QTableWidgetItem("" if point_id is None else str(point_id)),
+                        id_item,
                     )
                     self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
                     self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
@@ -820,11 +964,62 @@ class ZonePointsMixin:
 
             traceback.print_exc()
 
+    def _normalize_point_item_identity(
+        self,
+        point_item,
+        fallback_display_id: int,
+        used_uids: set,
+    ) -> Tuple[Optional[int], str]:
+        point_display_id: Optional[int] = None
+        point_uid = ""
+
+        try:
+            pid = point_item.data(1)
+            if pid is not None:
+                point_display_id = int(pid)
+        except Exception:
+            point_display_id = None
+
+        if point_display_id is None:
+            point_display_id = int(fallback_display_id)
+            try:
+                point_item.setData(1, point_display_id)
+            except Exception:
+                pass
+
+        try:
+            uid_data = point_item.data(2)
+            if uid_data is not None:
+                point_uid = str(uid_data).strip()
+        except Exception:
+            point_uid = ""
+
+        if not point_uid:
+            point_uid = self._new_point_uid(point_display_id)
+
+        while point_uid in used_uids:
+            point_uid = self._new_point_uid(point_display_id)
+        used_uids.add(point_uid)
+
+        try:
+            point_item.setData(2, point_uid)
+        except Exception:
+            pass
+
+        try:
+            self.next_point_id = max(int(getattr(self, "next_point_id", 1)), int(point_display_id) + 1)
+        except Exception:
+            pass
+
+        return point_display_id, point_uid
+
     def _build_points_snapshot(
         self,
-    ) -> List[Tuple[float, float, str, Optional[int]]]:
+    ) -> List[Tuple[float, float, str, Optional[int], str]]:
         """Build a snapshot of all current points with their data."""
         points = []
+        used_uids = set()
+        fallback_display_id = 1
 
         # Safety check - ensure image_view and points_dict exist
         if not hasattr(self, "image_view") or not hasattr(
@@ -840,15 +1035,21 @@ class ZonePointsMixin:
                     if item is None or sip.isdeleted(item):
                         continue
                     c = item.sceneBoundingRect().center()
-                    pid = item.data(1)
+                    pid, point_uid = self._normalize_point_item_identity(
+                        item,
+                        fallback_display_id=fallback_display_id,
+                        used_uids=used_uids,
+                    )
                     points.append(
                         (
                             c.x(),
                             c.y(),
                             "generated",
                             int(pid) if pid is not None else None,
+                            point_uid,
                         )
                     )
+                    fallback_display_id = max(fallback_display_id + 1, int(pid) + 1 if pid is not None else fallback_display_id + 1)
                 except Exception as e:
                     print(f"Error processing generated point: {e}")
                     continue
@@ -859,15 +1060,21 @@ class ZonePointsMixin:
                     if item is None or sip.isdeleted(item):
                         continue
                     c = item.sceneBoundingRect().center()
-                    pid = item.data(1)
+                    pid, point_uid = self._normalize_point_item_identity(
+                        item,
+                        fallback_display_id=fallback_display_id,
+                        used_uids=used_uids,
+                    )
                     points.append(
                         (
                             c.x(),
                             c.y(),
                             "user",
                             int(pid) if pid is not None else None,
+                            point_uid,
                         )
                     )
+                    fallback_display_id = max(fallback_display_id + 1, int(pid) + 1 if pid is not None else fallback_display_id + 1)
                 except Exception as e:
                     print(f"Error processing user point: {e}")
                     continue
@@ -878,30 +1085,35 @@ class ZonePointsMixin:
         return points
 
     def _cleanup_deleted_widgets(
-        self, points: List[Tuple[float, float, str, Optional[int]]]
+        self, points: List[Tuple[float, float, str, Optional[int], str]]
     ):
         """Clean up measurement widgets for points that no longer exist."""
-        current_point_ids = {pid for (_, _, _, pid) in points if pid is not None}
+        current_point_uids = {str(uid).strip() for (_, _, _, _pid, uid) in points if str(uid).strip()}
 
-        # Remove widgets for deleted points
-        for pid in list(self.measurement_widgets.keys()):
-            if pid not in current_point_ids:
-                widget = self.measurement_widgets.pop(pid)
-                if widget and not sip.isdeleted(widget):
-                    widget.setParent(None)
-                    widget.deleteLater()
-                    print(f"Cleaned up widget for deleted point ID {pid}")
+        # Remove widgets/tree items for deleted points
+        stale_uids = set(getattr(self, "measurement_widgets", {}).keys()) | set(
+            getattr(self, "_measurement_items", {}).keys()
+        )
+        for point_uid in list(stale_uids):
+            uid_txt = str(point_uid).strip()
+            if uid_txt and uid_txt not in current_point_uids:
+                self.remove_measurement_widget_from_panel(uid_txt)
+                print(f"Cleaned up widget for deleted point UID {uid_txt}")
 
     def _populate_table_rows(
-        self, points: List[Tuple[float, float, str, Optional[int]]]
+        self, points: List[Tuple[float, float, str, Optional[int], str]]
     ):
         """Populate table rows with point data and reattach measurement widgets."""
-        for idx, (x, y, ptype, point_id) in enumerate(points):
+        for idx, (x, y, ptype, point_id, point_uid) in enumerate(points):
             # Set basic point data
+            id_item = QTableWidgetItem("" if point_id is None else str(point_id))
+            if point_id is not None:
+                id_item.setData(Qt.UserRole, int(point_id))
+            id_item.setData(Qt.UserRole + 1, str(point_uid))
             self.pointsTable.setItem(
                 idx,
                 0,
-                QTableWidgetItem("" if point_id is None else str(point_id)),
+                id_item,
             )
             self.pointsTable.setItem(idx, 1, QTableWidgetItem(f"{x:.2f}"))
             self.pointsTable.setItem(idx, 2, QTableWidgetItem(f"{y:.2f}"))
@@ -924,47 +1136,67 @@ class ZonePointsMixin:
 
             # Do not attach measurement widgets in the table anymore. They live in the right panel.
 
-    def _attach_measurement_widget(self, row_index: int, point_id: Optional[int]):
+    def _attach_measurement_widget(self, row_index: int, point_uid: Optional[str]):
         """Deprecated for table. Measurement widgets are managed in the right panel."""
-        if point_id is None:
+        if not point_uid:
             return
         # No-op: widgets are added via add_measurement_widget_to_panel
 
-    def _create_measurement_widget(self, point_id: int) -> Any:
+    def _format_point_label(self, point_uid: Optional[str], point_display_id: Optional[int]) -> str:
+        if point_display_id is not None:
+            return f"Point #{point_display_id}"
+        parsed = self._display_id_from_uid(point_uid)
+        if parsed is not None:
+            return f"Point #{parsed}"
+        uid_text = str(point_uid or "").strip()
+        return f"Point {uid_text[:8]}" if uid_text else "Point"
+
+    def _create_measurement_widget(self, point_uid: str, point_display_id: Optional[int]) -> Any:
         """Create a new measurement widget for a point."""
         return MeasurementHistoryWidget(
             masks=getattr(self, "masks", {}),
             ponis=getattr(self, "ponis", {}),
             parent=self,
-            point_id=point_id,
+            point_id=point_display_id if point_display_id is not None else point_uid,
         )
 
-    def add_measurement_widget_to_panel(self, point_id: int):
+    def add_measurement_widget_to_panel(self, point_uid: str, point_display_id: Optional[int] = None):
         """Add a measurement widget for a point to the right tree (if not exists)."""
         if getattr(self, "_restoring_state", False):
             return
+        point_uid = str(point_uid or "").strip()
+        if not point_uid:
+            return
+        if point_display_id is None:
+            point_display_id = self._display_id_from_uid(point_uid)
         # If already exists, do nothing
-        if point_id in self._measurement_items:
+        if point_uid in self._measurement_items:
             top_item, child_item, w = self._measurement_items.get(
-                point_id, (None, None, None)
+                point_uid, (None, None, None)
             )
             if w is not None and not sip.isdeleted(w):
                 return
         # Create tree items
-        top_item = QTreeWidgetItem(self.measurementsTree, [f"Point #{point_id}"])
+        top_item = QTreeWidgetItem(
+            self.measurementsTree,
+            [self._format_point_label(point_uid=point_uid, point_display_id=point_display_id)],
+        )
         child_item = QTreeWidgetItem(top_item, [""])
         self.measurementsTree.addTopLevelItem(top_item)
         top_item.setExpanded(True)
         # Create widget and place into child row, column 0
-        w = self._create_measurement_widget(point_id)
+        w = self._create_measurement_widget(point_uid, point_display_id)
         self.measurementsTree.setItemWidget(child_item, 0, w)
-        self.measurement_widgets[point_id] = w
-        self._measurement_items[point_id] = (top_item, child_item, w)
+        self.measurement_widgets[point_uid] = w
+        self._measurement_items[point_uid] = (top_item, child_item, w)
 
-    def remove_measurement_widget_from_panel(self, point_id: int):
+    def remove_measurement_widget_from_panel(self, point_uid: str):
         """Remove the measurement widget and its items from the tree."""
+        point_uid = str(point_uid or "").strip()
+        if not point_uid:
+            return
         top_item, child_item, w = self._measurement_items.pop(
-            point_id, (None, None, None)
+            point_uid, (None, None, None)
         )
         if w and not sip.isdeleted(w):
             try:
@@ -981,7 +1213,7 @@ class ZonePointsMixin:
                     self.measurementsTree.takeTopLevelItem(index)
             except Exception:
                 pass
-        self.measurement_widgets.pop(point_id, None)
+        self.measurement_widgets.pop(point_uid, None)
 
     def delete_selected_points(self):
         """Delete selected points, enforcing measured/skipped rules."""
@@ -997,15 +1229,11 @@ class ZonePointsMixin:
         changed_any = False
 
         for r in selected_rows:
-            id_item = self.pointsTable.item(r, 0)
-            if id_item is None:
-                continue
-            try:
-                pid = int(id_item.text())
-            except (ValueError, TypeError):
+            point_uid, point_display_id = self._get_point_identity_from_row(r)
+            if not point_uid:
                 continue
 
-            measured = self._is_row_measured(row=r, point_id=pid)
+            measured = self._is_row_measured(row=r, point_uid=point_uid)
             if measured:
                 if skip_reason_for_measured is None:
                     skip_reason_for_measured = self._prompt_skip_reason(
@@ -1025,14 +1253,25 @@ class ZonePointsMixin:
                 continue
 
             changed_any = (
-                self._delete_row_and_container_point(row=r, point_id=pid)
+                self._delete_row_and_container_point(
+                    row=r,
+                    point_uid=point_uid,
+                    point_display_id=point_display_id,
+                )
                 or changed_any
             )
 
             # When measuring is active, removing any pending point from the plan
             # effectively "deletes" it from upcoming sequence.
             if active_measurement and hasattr(self, "_append_measurement_log"):
-                self._append_measurement_log(f"[CAPTURE] Point #{pid} deleted from pending plan")
+                point_label = (
+                    f"#{point_display_id}"
+                    if point_display_id is not None
+                    else str(point_uid)
+                )
+                self._append_measurement_log(
+                    f"[CAPTURE] Point {point_label} deleted from pending plan"
+                )
 
         if changed_any:
             self.update_points_table()
@@ -1057,12 +1296,25 @@ class ZonePointsMixin:
         self.next_point_id = 1
         self.update_points_table()
 
-    def _remove_point_items_by_id(self, point_id):
+    def _remove_point_items_by_uid(self, point_uid: str, point_display_id: Optional[int] = None):
+        point_uid = str(point_uid or "").strip()
+        if not point_uid and point_display_id is None:
+            return
+
         # Try generated first
         gp = self.image_view.points_dict["generated"]["points"]
         gz = self.image_view.points_dict["generated"]["zones"]
         for i, item in enumerate(gp):
-            if not sip.isdeleted(item) and item.data(1) == point_id:
+            if sip.isdeleted(item):
+                continue
+            uid_match = str(item.data(2) or "").strip() == point_uid if point_uid else False
+            id_match = False
+            if point_display_id is not None:
+                try:
+                    id_match = int(item.data(1)) == int(point_display_id)
+                except Exception:
+                    id_match = False
+            if uid_match or id_match:
                 # remove both point and its matching zone
                 point_item = gp.pop(i)
                 zone_item = gz.pop(i) if i < len(gz) else None
@@ -1075,7 +1327,16 @@ class ZonePointsMixin:
         up = self.image_view.points_dict["user"]["points"]
         uz = self.image_view.points_dict["user"]["zones"]
         for i, item in enumerate(up):
-            if not sip.isdeleted(item) and item.data(1) == point_id:
+            if sip.isdeleted(item):
+                continue
+            uid_match = str(item.data(2) or "").strip() == point_uid if point_uid else False
+            id_match = False
+            if point_display_id is not None:
+                try:
+                    id_match = int(item.data(1)) == int(point_display_id)
+                except Exception:
+                    id_match = False
+            if uid_match or id_match:
                 point_item = up.pop(i)
                 zone_item = uz.pop(i) if i < len(uz) else None
                 if zone_item:
@@ -1083,12 +1344,19 @@ class ZonePointsMixin:
                 self.safe_remove_item(point_item)
                 return
 
+    def _remove_point_items_by_id(self, point_id):
+        try:
+            point_display_id = int(point_id)
+        except Exception:
+            return
+        self._remove_point_items_by_uid("", point_display_id=point_display_id)
+
     def _snapshot_history_widgets(self):
-        """Return {point_id: [measurement_dict, ...]} from existing widgets."""
+        """Return {point_uid: [measurement_dict, ...]} from existing widgets."""
         snap = {}
-        for pid, w in list(getattr(self, "measurement_widgets", {}).items()):
+        for point_uid, w in list(getattr(self, "measurement_widgets", {}).items()):
             if w is not None and not sip.isdeleted(w):
-                snap[pid] = list(getattr(w, "measurements", []))
+                snap[point_uid] = list(getattr(w, "measurements", []))
         return snap
     @staticmethod
     def _new_point_uid(counter: int) -> str:

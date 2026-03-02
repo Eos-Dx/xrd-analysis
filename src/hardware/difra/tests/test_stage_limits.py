@@ -940,6 +940,117 @@ class TestMeasurementPointFiltering(unittest.TestCase):
     @patch("hardware.difra.hardware.auxiliary.encode_image_to_base64")
     @patch("builtins.open", create=True)
     @patch("json.dump")
+    @patch("PyQt5.QtWidgets.QMessageBox.warning")
+    def test_restore_resume_cancels_when_pending_points_cannot_be_fully_mapped(
+        self,
+        mock_warning,
+        mock_json_dump,
+        mock_open,
+        mock_encode,
+        mock_exists,
+    ):
+        """Resume should cancel when some pending session points cannot be mapped."""
+        import h5py
+        import tempfile
+
+        mock_exists.return_value = True
+        mock_encode.return_value = "base64_image_data"
+
+        point_specs = [
+            (1.0, 1.0, "1_aaaaaaaa"),
+            (2.0, 2.0, "2_bbbbbbbb"),
+            (3.0, 3.0, "3_cccccccc"),
+            (20.0, 20.0, "4_dddddddd"),  # filtered out by stage limits
+        ]
+        mock_points = [
+            self.create_mock_point_at_position(x, y, uid=uid)
+            for x, y, uid in point_specs
+        ]
+        self.mock_processor.image_view.points_dict["generated"]["points"] = mock_points
+
+        import importlib.util
+
+        pm_path = os.path.join(
+            SRC_ROOT,
+            "hardware",
+            "difra",
+            "gui",
+            "main_window_ext",
+            "zone_measurements",
+            "logic",
+            "process_mixin.py",
+        )
+        spec = importlib.util.spec_from_file_location("process_mixin_direct", pm_path)
+        pm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pm)
+        ZoneMeasurementsProcessMixin = pm.ZoneMeasurementsProcessMixin
+
+        ProcCls = type("Proc", (ZoneMeasurementsProcessMixin,), {})
+        proc = ProcCls()
+        proc.config = {"detectors": []}
+        proc.folderLineEdit = self.mock_processor.folderLineEdit
+        proc.fileNameLineEdit = self.mock_processor.fileNameLineEdit
+        proc.pointsTable = self.mock_processor.pointsTable
+        proc.start_btn = self.mock_processor.start_btn
+        proc.pause_btn = self.mock_processor.pause_btn
+        proc.stop_btn = self.mock_processor.stop_btn
+        proc.progressBar = self.mock_processor.progressBar
+        proc.timeRemainingLabel = self.mock_processor.timeRemainingLabel
+        proc.image_view = self.mock_processor.image_view
+        proc.real_x_pos_mm = self.mock_processor.real_x_pos_mm
+        proc.real_y_pos_mm = self.mock_processor.real_y_pos_mm
+        proc.include_center = self.mock_processor.include_center
+        proc.pixel_to_mm_ratio = self.mock_processor.pixel_to_mm_ratio
+        proc.state = {}
+        proc.state_measurements = {}
+        proc.manual_save_state = Mock()
+        proc.measure_next_point = Mock()
+        proc.integrationSpinBox = self.mock_processor.integrationSpinBox
+
+        class _Stage:
+            def get_limits(self_inner):
+                return {"x": (-14.0, 14.0), "y": (-14.0, 14.0)}
+
+        proc.stage_controller = _Stage()
+
+        class _Schema:
+            GROUP_POINTS = "/entry/points"
+            ATTR_POINT_STATUS = "point_status"
+            POINT_STATUS_MEASURED = "measured"
+            ATTR_PHYSICAL_COORDINATES_MM = "physical_coordinates_mm"
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            session_path = os.path.join(tmp_dir, "resume_mapping_incomplete.nxs.h5")
+            with h5py.File(session_path, "w") as h5f:
+                points_group = h5f.create_group(_Schema.GROUP_POINTS)
+                for idx, (x, y, uid) in enumerate(point_specs, start=1):
+                    pt = points_group.create_group(f"pt_{idx:03d}")
+                    pt.attrs[_Schema.ATTR_POINT_STATUS] = "pending"
+                    pt.attrs[_Schema.ATTR_PHYSICAL_COORDINATES_MM] = [x, y]
+                    pt.attrs["point_uid"] = uid
+
+            session_manager = Mock()
+            session_manager.is_session_active.return_value = True
+            session_manager.is_locked.return_value = False
+            session_manager.session_path = session_path
+            session_manager.schema = _Schema()
+            session_manager.add_points = Mock()
+            proc.session_manager = session_manager
+
+            with patch("copy.copy") as mock_copy:
+                mock_copy.return_value = {}
+                proc.start_measurements()
+
+        mock_warning.assert_called()
+        title = mock_warning.call_args[0][1]
+        self.assertIn("Resume Mapping Incomplete", title)
+        proc.measure_next_point.assert_not_called()
+
+
+    @patch("pathlib.Path.exists")
+    @patch("hardware.difra.hardware.auxiliary.encode_image_to_base64")
+    @patch("builtins.open", create=True)
+    @patch("json.dump")
     def test_restore_session_reuses_existing_i0_and_skips_background_capture(
         self, mock_json_dump, mock_open, mock_encode, mock_exists
     ):

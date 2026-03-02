@@ -3,13 +3,17 @@
 import math
 from typing import List, Optional, Tuple
 
-from PyQt5.QtCore import QPointF
+from PyQt5.QtCore import QPointF, QSize, Qt
 from PyQt5.QtWidgets import (
+    QApplication,
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QSpinBox,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QTableWidget,
 )
 
@@ -136,6 +140,11 @@ class ZonePointsUIBuilder:
         """Create the points table."""
         table = QTableWidget(0, len(ZonePointsConstants.TABLE_COLUMNS))
         table.setHorizontalHeaderLabels(ZonePointsConstants.TABLE_COLUMNS)
+        table.setItemDelegateForColumn(0, PointIdentityDelegate(table))
+        try:
+            table.verticalHeader().setDefaultSectionSize(42)
+        except Exception:
+            pass
         return table
 
     @staticmethod
@@ -326,3 +335,64 @@ class ZonePointsGeometry:
                 continue
             filtered.append(pt)
         return filtered
+
+
+class PointIdentityDelegate(QStyledItemDelegate):
+    """Render point display number and UID in a compact two-line style."""
+
+    def paint(self, painter, option, index):
+        if index.column() != 0:
+            super().paint(painter, option, index)
+            return
+
+        style_option = QStyleOptionViewItem(option)
+        self.initStyleOption(style_option, index)
+        style_option.text = ""
+
+        style = (
+            style_option.widget.style()
+            if style_option.widget is not None
+            else QApplication.style()
+        )
+        style.drawControl(
+            QStyle.CE_ItemViewItem, style_option, painter, style_option.widget
+        )
+
+        display_text = str(index.data(Qt.DisplayRole) or "").strip()
+        uid_text = str(index.data(Qt.UserRole + 1) or "").strip()
+        if not uid_text:
+            uid_text = "uid: -"
+
+        painter.save()
+        content_rect = style.subElementRect(
+            QStyle.SE_ItemViewItemText, style_option, style_option.widget
+        )
+
+        number_font = style_option.font
+        number_font.setBold(True)
+        number_font.setPointSize(max(8, number_font.pointSize()))
+        painter.setFont(number_font)
+        number_color = style_option.palette.color(
+            style_option.palette.HighlightedText
+            if option.state & QStyle.State_Selected
+            else style_option.palette.Text
+        )
+        painter.setPen(number_color)
+        top_rect = content_rect.adjusted(0, 1, 0, -18)
+        painter.drawText(top_rect, Qt.AlignLeft | Qt.AlignVCenter, display_text)
+
+        uid_font = style_option.font
+        uid_font.setPointSize(max(7, uid_font.pointSize() - 1))
+        painter.setFont(uid_font)
+        if option.state & QStyle.State_Selected:
+            uid_color = style_option.palette.color(style_option.palette.HighlightedText)
+        else:
+            uid_color = Qt.gray
+        painter.setPen(uid_color)
+        bottom_rect = content_rect.adjusted(0, 18, 0, 0)
+        painter.drawText(bottom_rect, Qt.AlignLeft | Qt.AlignVCenter, uid_text)
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        base = super().sizeHint(option, index)
+        return QSize(base.width(), max(base.height(), 40))

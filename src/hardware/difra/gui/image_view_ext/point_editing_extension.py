@@ -100,17 +100,21 @@ class PointEditingMixin:
                 if (dx * dx + dy * dy) ** 0.5 < threshold:
                     main_window = self.window()
                     point_id = pt.data(1)
+                    point_uid = str(pt.data(2) or "").strip()
                     policy_applied = False
-                    if (
-                        main_window is not None
-                        and hasattr(main_window, "_request_delete_point_by_id")
-                        and point_id is not None
-                    ):
-                        policy_applied = True
-                        try:
-                            main_window._request_delete_point_by_id(int(point_id))
-                        except Exception:
-                            pass
+                    if main_window is not None:
+                        if point_uid and hasattr(main_window, "_request_delete_point_by_uid"):
+                            policy_applied = True
+                            try:
+                                main_window._request_delete_point_by_uid(point_uid)
+                            except Exception:
+                                pass
+                        elif hasattr(main_window, "_request_delete_point_by_id") and point_id is not None:
+                            policy_applied = True
+                            try:
+                                main_window._request_delete_point_by_id(int(point_id))
+                            except Exception:
+                                pass
                     if not policy_applied:
                         idx = self.points_dict["user"]["points"].index(pt)
                         if idx < len(self.points_dict["user"]["zones"]):
