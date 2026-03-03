@@ -10,6 +10,22 @@ def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def test_package_version_is_020():
+    expected = "0.2.0"
+
+    primary = tomllib.loads(_read_text(ROOT / "pyproject.toml"))
+    assert primary["tool"]["poetry"]["version"] == expected
+
+    modern = tomllib.loads(_read_text(ROOT / "pyproject-py311.toml"))
+    assert modern["tool"]["poetry"]["version"] == expected
+
+    legacy = tomllib.loads(_read_text(ROOT / "pyproject-py37.toml"))
+    assert legacy["tool"]["poetry"]["version"] == expected
+
+    setup_text = _read_text(ROOT / "setup.py")
+    assert 'version="0.2.0"' in setup_text
+
+
 def test_primary_pyproject_supports_python_313():
     pyproject = tomllib.loads(_read_text(ROOT / "pyproject.toml"))
     python_spec = pyproject["tool"]["poetry"]["dependencies"]["python"]

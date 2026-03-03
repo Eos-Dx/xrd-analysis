@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "xrdanalysis"
-version = "0.1.0"
+version = "0.2.0"
 description = "XRD analysis and EOSDX d2xc hardware control"
 authors = ["EOSDX <devnull@example.com>"]
 readme = "README.md"
