@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("37", "311")]
+    [ValidateSet("37", "311", "313")]
     [string]$PythonVersion
 )
 
@@ -19,9 +19,17 @@ switch ($PythonVersion) {
     "311" {
         Copy-Item "pyproject-py311.toml" "pyproject.toml" -Force
         Copy-Item "poetry-py311.lock" "poetry.lock" -Force
-        Write-Host "✅ Switched to Python 3.11 configuration" -ForegroundColor Green
-        Write-Host "📝 Remember to activate your Python 3.11 conda environment:" -ForegroundColor Yellow
-        Write-Host "   conda activate eosdx" -ForegroundColor Cyan
+        Write-Host "✅ Switched to the modern Python configuration (compatible with 3.11-3.13)" -ForegroundColor Green
+        Write-Host "📝 Recommended Conda environment:" -ForegroundColor Yellow
+        Write-Host "   conda activate eosdx13" -ForegroundColor Cyan
+        Write-Host "   poetry env use python" -ForegroundColor Cyan
+    }
+    "313" {
+        Copy-Item "pyproject-py311.toml" "pyproject.toml" -Force
+        Copy-Item "poetry-py311.lock" "poetry.lock" -Force
+        Write-Host "✅ Switched to the modern Python configuration (compatible with 3.11-3.13)" -ForegroundColor Green
+        Write-Host "📝 Recommended Conda environment:" -ForegroundColor Yellow
+        Write-Host "   conda activate eosdx13" -ForegroundColor Cyan
         Write-Host "   poetry env use python" -ForegroundColor Cyan
     }
 }

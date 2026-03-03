@@ -8,6 +8,7 @@ setup(
     description="Repository for collaboration of EOSDX team",
     packages=find_packages("src"),
     package_dir={"": "src"},
+    python_requires=">=3.11,<3.14",
     author="EOSDX",
     license="",
 )

@@ -10,45 +10,45 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.12"
-# Core scientific stack (modern versions for Python 3.11)
+python = ">=3.11,<3.14"
+# Core scientific stack (modern versions for Python 3.11-3.13)
 numpy = "1.26.4"
-scipy = "1.13.0"
-pandas = "2.2.2"
-matplotlib = "3.8.4"
+scipy = "1.17.0"
+pandas = "3.0.0"
+matplotlib = "3.10.8"
 seaborn = "0.13.2"
-joblib = "*"
-h5py = "3.11.0"
+joblib = "1.5.3"
+h5py = "3.15.1"
 # Imaging and machine learning
-scikit-image = "0.22.0"
-scikit-learn = "1.5.0"
+scikit-image = "0.26.0"
+scikit-learn = "1.8.0"
 # XRD specific
-pyFAI = "2024.5.0"
+pyFAI = "2025.12.1"
 # Optimization / ML frameworks (modern versions)
 lightgbm = "*"
 xgboost = "2.0.3"
 shap = "0.45.1"
 umap-learn = "0.5.7"
 # Utilities
-requests = "*"
+requests = "2.32.5"
 # UI for d2xc
-PyQt5 = "*"
+PyQt5 = "5.15.11"
 # OpenCV
-opencv-python = "*"
+opencv-python = "4.13.0"
 # Experiment tracking and tuning
 mlflow = "2.13.0"
 optuna = "*"
-click = "8.1.7"
+click = "8.3.1"
 # Additional modern packages
 hydra-core = "1.3.2"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "8.2.1"
-black = "24.4.2"
-flake8 = "7.0.0"
-isort = "5.13.2"
-pre-commit = "3.7.1"
-coverage = "7.5.1"
+pytest = "9.0.2"
+black = "26.1.0"
+flake8 = "7.3.0"
+isort = "7.0.0"
+pre-commit = "4.5.1"
+coverage = "7.13.4"
 interrogate = "1.7.0"
 numpydoc = "1.7.0"
 sphinx = "7.3.7"

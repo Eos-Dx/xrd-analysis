@@ -15,9 +15,9 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: false
-          activate-environment: eosdx
+          activate-environment: eosdx13
           environment-file: environment.yml
-          python-version: "3.11.7"  # specify your Python version
+          python-version: "3.13"  # keep docs build aligned with the supported runtime
 
       - name: Install local package
         shell: bash -l {0}

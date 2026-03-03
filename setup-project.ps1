@@ -30,10 +30,10 @@ $envName = Read-Host "\n🧪 Enter Conda environment name [default: $defaultEnv]
 if ([string]::IsNullOrWhiteSpace($envName)) { $envName = $defaultEnv }
 Write-Host "📦 Environment will be: $envName" -ForegroundColor Cyan
 
-# 3) Choose Python version (3.7 or 3.11)
+# 3) Choose Python version (3.7 or 3.13)
 Write-Host "\n🤔 Choose Python version:" -ForegroundColor Blue
 Write-Host "1) Python 3.7 (Legacy/d2xc compatible)"
-Write-Host "2) Python 3.11 (Modern)"
+Write-Host "2) Python 3.13 (Modern)"
 $pyChoice = $null
 do {
     $pyChoice = Read-Host "Enter choice (1 or 2)"
@@ -41,7 +41,7 @@ do {
 
 switch ($pyChoice) {
     "1" { $pyVersion = "3.7"; $shortVersion = "37"; $configType = "Python 3.7 (Legacy/d2xc compatible)" }
-    "2" { $pyVersion = "3.11"; $shortVersion = "311"; $configType = "Python 3.11 (Modern)" }
+    "2" { $pyVersion = "3.13"; $shortVersion = "311"; $configType = "Python 3.13 (Modern)" }
 }
 
 # 4) Create Conda environment (if missing)
@@ -70,7 +70,7 @@ switch ($shortVersion) {
         Copy-Item "poetry-py37.lock" "poetry.lock" -Force
     }
     "311" {
-        Write-Host "⚙️  Configuring for Python 3.11..." -ForegroundColor Yellow
+        Write-Host "⚙️  Configuring for the modern Python compatibility profile..." -ForegroundColor Yellow
         Copy-Item "pyproject-py311.toml" "pyproject.toml" -Force
         Copy-Item "poetry-py311.lock" "poetry.lock" -Force
     }
