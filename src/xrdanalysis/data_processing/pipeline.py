@@ -136,16 +136,30 @@ class MLPipeline:
 
         data_wrangling_pipeline = Pipeline(self.data_wrangling_steps)
 
-        # Fit then transform to comply with sklearn Pipeline API (avoids FutureWarning)
-        # Wrangling transformers are expected to be stateless or safe to fit on full data.
+        # Prefer fit_transform for sklearn>=1.8 compatibility.
+        # Calling Pipeline.transform() after fit() now triggers stricter
+        # fitted/tag checks on the final transformer, which breaks older
+        # stateless custom transformers. Wrangling steps are designed to run
+        # on the full dataset, so a single fit_transform is the correct path.
         try:
-            data_wrangling_pipeline.fit(data)
-        except Exception:
-            # If any wrangling step has no fit, proceed to transform directly
-            pass
+            data_wrangled = data_wrangling_pipeline.fit_transform(data)
+        except AttributeError:
+            # Fallback for transformers that only implement transform.
+            data_wrangled = data
+            for _step_name, _transformer in self.data_wrangling_steps:
+                if hasattr(_transformer, "fit_transform"):
+                    try:
+                        data_wrangled = _transformer.fit_transform(data_wrangled)
+                        continue
+                    except TypeError:
+                        data_wrangled = _transformer.fit_transform(
+                            data_wrangled, None
+                        )
+                        continue
 
-        # Apply wrangling pipeline to the full dataset
-        data_wrangled = data_wrangling_pipeline.transform(data)
+                if hasattr(_transformer, "fit"):
+                    _transformer.fit(data_wrangled)
+                data_wrangled = _transformer.transform(data_wrangled)
 
         # Collect stats from transformers if requested
         if stat:

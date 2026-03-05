@@ -9,9 +9,10 @@ import pandas as pd
 import re
 from typing import Dict, Tuple, Union, Any
 from pathlib import Path
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
-class MeasurementTypeClassifier:
+class MeasurementTypeClassifier(TransformerMixin, BaseEstimator):
     """
     Classify measurements by type based on detector distance read from PONI files.
     
@@ -137,6 +138,7 @@ class MeasurementTypeClassifier:
         -------
         self
         """
+        self.is_fitted_ = True
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -192,10 +194,6 @@ class MeasurementTypeClassifier:
                 print(f"  {k}: {v}")
         
         return df
-
-    def fit_transform(self, df: pd.DataFrame, y=None) -> pd.DataFrame:
-        """Fit and transform in one step (convenience method)."""
-        return self.fit(df, y).transform(df)
 
     def get_stats(self) -> Dict:
         """Get classification statistics from last transform."""

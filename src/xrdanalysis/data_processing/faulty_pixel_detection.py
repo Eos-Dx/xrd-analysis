@@ -12,9 +12,10 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from typing import Tuple, Set, Dict, Optional
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
-class FaultyPixelDetector:
+class FaultyPixelDetector(TransformerMixin, BaseEstimator):
     """
     Detect faulty pixels independently for primary and secondary detectors.
     
@@ -453,6 +454,11 @@ class FaultyPixelDetector:
         self.stats_ = stats
         
         return df
+
+    def fit(self, df: pd.DataFrame, y=None):
+        """Stateless fit for sklearn compatibility."""
+        self.is_fitted_ = True
+        return self
     
     def fit_transform(self, df: pd.DataFrame, y=None) -> pd.DataFrame:
         """Fit and transform (no-op fit, just transform)."""
