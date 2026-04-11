@@ -32,6 +32,7 @@ from typing import Hashable, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import StratifiedShuffleSplit
 
 
 def _combine_strata_row(row: pd.Series, cols: Sequence[str]) -> Tuple:
@@ -266,3 +267,152 @@ def grouped_splitter(
         )
 
     return X_train, X_test, y_train, y_test
+
+
+def _series_to_bool_array(series: pd.Series) -> np.ndarray:
+    """Convert a row-level label series to a boolean NumPy array."""
+    if pd.api.types.is_bool_dtype(series):
+        return series.fillna(False).to_numpy(dtype=bool)
+    text = pd.Series(series).astype(str).str.strip().str.lower()
+    return text.isin(["true", "1", "yes", "cancer", "positive"]).to_numpy(dtype=bool)
+
+
+def _collapse_bool_label_any_positive(series: pd.Series) -> bool:
+    """Collapse row-level labels to a single group label using any-positive logic."""
+    vals = _series_to_bool_array(pd.Series(series))
+    return bool(np.any(vals)) if vals.size > 0 else False
+
+
+def make_repeated_patient_splits(
+    X: pd.DataFrame,
+    *,
+    patient_col: str = "patientId",
+    label_col: str = "target_cancer_bn",
+    n_splits: int = 70,
+    test_size: float = 0.3,
+    random_state: Optional[int] = 32,
+):
+    """
+    Build repeated stratified train/test patient splits.
+
+    This helper first collapses row-level labels to a single patient-level label
+    using any-positive logic, then applies StratifiedShuffleSplit on the unique
+    patient table. It returns split metadata rather than row subsets, which is
+    useful for repeated ROC experiments where multiple datasets must reuse the
+    exact same patient-held-out split definition.
+    """
+    if patient_col not in X.columns:
+        raise KeyError(f"Required patient column '{patient_col}' not found in X.")
+    if label_col not in X.columns:
+        raise KeyError(f"Required label column '{label_col}' not found in X.")
+    if not (0.0 < float(test_size) < 1.0):
+        raise ValueError("test_size must be in (0,1)")
+    if len(X) == 0:
+        return [], pd.DataFrame(columns=[patient_col, label_col])
+
+    patient_rows = []
+    for patient_id, group_df in X.groupby(patient_col, sort=True):
+        patient_rows.append(
+            {
+                str(patient_col): str(patient_id),
+                str(label_col): _collapse_bool_label_any_positive(group_df[label_col]),
+            }
+        )
+    patient_df = pd.DataFrame(patient_rows)
+    labels = patient_df[label_col].astype(int).to_numpy()
+    if np.unique(labels).size < 2:
+        raise ValueError("Need at least two patient-level classes to build stratified patient splits.")
+
+    splitter = StratifiedShuffleSplit(
+        n_splits=int(n_splits),
+        test_size=float(test_size),
+        random_state=int(random_state) if random_state is not None else None,
+    )
+    patient_values = patient_df[patient_col].astype(str).to_numpy()
+    splits = []
+    for split_idx, (train_idx, test_idx) in enumerate(splitter.split(patient_values, labels), start=1):
+        splits.append(
+            {
+                "split_index": int(split_idx),
+                "train_patients": patient_values[train_idx].tolist(),
+                "test_patients": patient_values[test_idx].tolist(),
+            }
+        )
+    return splits, patient_df
+
+
+def patient_splitter(
+    X: pd.DataFrame,
+    y: pd.Series,
+    *,
+    patient_col: str = "patientId",
+    test_size: float = 0.25,
+    random_state: Optional[int] = None,
+    print_debug: bool = False,
+    **kwargs,
+):
+    """
+    Split X,y into train/test such that no patient appears in both sets,
+    while stratification is performed at the patient level.
+
+    Row-level labels are first collapsed to one label per patient using
+    any-positive logic. A single StratifiedShuffleSplit is then performed on
+    the unique patient table, and the resulting patient IDs are expanded back
+    to row subsets.
+    """
+    _ = kwargs
+    if patient_col not in X.columns:
+        raise KeyError(f"Required patient column '{patient_col}' not found in X.")
+    if len(X) != len(y):
+        raise ValueError("X and y must have the same length.")
+    if not (0.0 < float(test_size) < 1.0):
+        raise ValueError("test_size must be in (0,1)")
+
+    X_local = X.copy()
+    y_series = pd.Series(y, index=X_local.index)
+    patient_rows = []
+    for patient_id, group_idx in X_local.groupby(patient_col, sort=True).groups.items():
+        patient_rows.append(
+            {
+                str(patient_col): str(patient_id),
+                "_patient_label": _collapse_bool_label_any_positive(y_series.loc[group_idx]),
+            }
+        )
+    patient_df = pd.DataFrame(patient_rows)
+    labels = patient_df["_patient_label"].astype(int).to_numpy()
+    if np.unique(labels).size < 2:
+        raise ValueError("Need at least two patient-level classes to build stratified patient split.")
+
+    splitter = StratifiedShuffleSplit(
+        n_splits=1,
+        test_size=float(test_size),
+        random_state=int(random_state) if random_state is not None else None,
+    )
+    patient_values = patient_df[patient_col].astype(str).to_numpy()
+    train_idx, test_idx = next(splitter.split(patient_values, labels))
+    train_patients = set(patient_values[train_idx].tolist())
+    test_patients = set(patient_values[test_idx].tolist())
+
+    is_test = X_local[patient_col].astype(str).isin(test_patients)
+    X_test = X_local.loc[is_test]
+    y_test = y_series.loc[is_test]
+    X_train = X_local.loc[~is_test]
+    y_train = y_series.loc[~is_test]
+
+    if print_debug:
+        print("Patient split summary:")
+        print(
+            f"Rows: total={len(X_local)}, test={len(X_test)}, train={len(X_train)}, "
+            f"test_ratio={(len(X_test) / len(X_local)) if len(X_local) else 0.0:.3f}"
+        )
+        print(
+            f"Patients: total={patient_df.shape[0]}, test={len(test_patients)}, train={len(train_patients)}"
+        )
+        print("Patient labels (train):", patient_df.iloc[train_idx]["_patient_label"].value_counts().to_dict())
+        print("Patient labels (test):", patient_df.iloc[test_idx]["_patient_label"].value_counts().to_dict())
+
+    if len(X_train) == 0 or len(X_test) == 0:
+        raise ValueError("Empty train or test split; adjust test_size or check patient grouping.")
+
+    return X_train, X_test, y_train, y_test
+

@@ -9,6 +9,6 @@ from .calibration_corrections import (
 from .detector_joining import join_detectors
 from .faulty_pixel_detection import FaultyPixelDetector
 from .measurement_type_classifier import MeasurementTypeClassifier
-from .splitters import grouped_splitter
+from .splitters import grouped_splitter, make_repeated_patient_splits, patient_splitter
 from .transformers import ColumnNormalizer, DetectorJoiner, RuleBasedProfileFilter
 from .spectrokinetic_transformers import MCRALSTransformer, SpectroSVDTransformer
