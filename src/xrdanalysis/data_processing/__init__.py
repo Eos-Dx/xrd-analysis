@@ -6,6 +6,13 @@ from .calibration_corrections import (
     compute_calib_correction_profiles,
     correct_with_calib_profiles,
 )
+from .cleaning_pipeline import (
+    ColumnValueFilter,
+    DataFrameQueryFilter,
+    DataFrameCleaningPipeline,
+    DataFramePipelineResult,
+    DataFrameStageArtifact,
+)
 from .detector_joining import join_detectors
 from .faulty_pixel_detection import FaultyPixelDetector
 from .measurement_type_classifier import MeasurementTypeClassifier

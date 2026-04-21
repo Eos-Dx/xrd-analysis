@@ -72,6 +72,9 @@ def h5_to_df(file_path):
             # Process calibrations
             for ds_name in calibration_group:
                 dataset = calibration_group[ds_name]
+                if not isinstance(dataset, h5py.Dataset):
+                    # Ignore service groups such as _special calibration payloads.
+                    continue
                 cal_data = {f"calib_{key}": dataset.attrs[key] for key in dataset.attrs}
                 cal_data["measurement_data"] = dataset[...]
                 cal_data["cal_name"] = ds_name
@@ -82,6 +85,10 @@ def h5_to_df(file_path):
             # Process measurements
             for ds_name in measurements_group:
                 dataset = measurements_group[ds_name]
+                if not isinstance(dataset, h5py.Dataset):
+                    # Human_One containers can include groups like '_special'
+                    # (e.g. empty_beam references) inside measurements_*.
+                    continue
                 meas_data = {f"{key}": dataset.attrs[key] for key in dataset.attrs}
                 meas_data["measurement_data"] = dataset[...]
                 meas_data["meas_name"] = ds_name
@@ -106,6 +113,8 @@ def h5_to_df(file_path):
                     # Process calibrations
                     for ds_name in calibration_group:
                         dataset = calibration_group[ds_name]
+                        if not isinstance(dataset, h5py.Dataset):
+                            continue
                         cal_data = {
                             f"calib_{key}": dataset.attrs[key] for key in dataset.attrs
                         }
@@ -126,6 +135,9 @@ def h5_to_df(file_path):
 
                             for ds_name in measurements_group:
                                 dataset = measurements_group[ds_name]
+                                if not isinstance(dataset, h5py.Dataset):
+                                    # Skip service sub-groups (e.g. _special/empty_beam).
+                                    continue
                                 meas_data = {
                                     f"{key}": dataset.attrs[key]
                                     for key in dataset.attrs

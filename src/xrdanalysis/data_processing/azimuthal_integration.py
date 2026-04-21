@@ -274,7 +274,7 @@ def perform_azimuthal_integration(
             sigma = result[2] if len(result) > 2 else None
         else:
             radial, intensity = result.radial, result.intensity
-            sigma = getattr(result, 'sigma', None)
+            sigma = getattr(result, "sigma", None)
         return (radial, intensity, sigma, ai_cached.dist)
     elif mode == "2D":
         result = ai_cached.integrate2d(
@@ -329,7 +329,7 @@ def perform_azimuthal_integration(
             error_model=error_model,
         )
         # Extract sigma if available
-        sigma = getattr(result, 'sigma', None)
+        sigma = getattr(result, "sigma", None)
         return (result.radial, result.intensity, sigma, ai_cached.dist)
     elif mode == "rotating_angles":
         results = []

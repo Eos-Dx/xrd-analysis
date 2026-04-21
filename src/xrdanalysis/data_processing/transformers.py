@@ -49,6 +49,18 @@ from xrdanalysis.data_processing.utility_functions import (
 )
 
 
+def _trapz_compat(y, x):
+    if hasattr(np, "trapezoid"):
+        return float(np.trapezoid(y, x))
+    if hasattr(np, "trapz"):
+        return float(np.trapz(y, x))
+    y = np.asarray(y, dtype=float)
+    x = np.asarray(x, dtype=float)
+    if y.size < 2 or x.size < 2:
+        return 0.0
+    return float(np.sum(0.5 * (y[1:] + y[:-1]) * np.diff(x)))
+
+
 @dataclass
 class AzimuthalIntegration(TransformerMixin):
     """
@@ -676,7 +688,7 @@ class ColumnNormalizer(TransformerMixin):
                     return I  # Return unchanged if insufficient points
                 
                 # Calculate integral using trapezoidal rule
-                area = float(np.trapz(I[mask], q[mask]))
+                area = _trapz_compat(I[mask], q[mask])
                 if area == 0 or not np.isfinite(area):
                     return I  # Return unchanged if integral is invalid
                 
@@ -2555,8 +2567,10 @@ class SNRTransformer(TransformerMixin):
     - optionally re-interpolates (q, I) to a common, uniformly spaced q-grid
     - normalizes the intensity by its area (fallback to median scaling)
     - smooths the normalized intensity using Savitzky–Golay (fallback to moving average)
-    - computes residual = I_norm - I_smooth
-    - computes noise_std, snr_linear = var(I_smooth)/var(residual), and snr_db
+    - computes SNR either from residuals (legacy) or from Poisson sigma
+    - residual mode: residual = I_norm - I_smooth, snr_linear = var(I_smooth)/var(residual)
+    - poisson mode: uses radial_profile_sigma from pyFAI, pointwise SNR(q)=I(q)/sigma(q)
+      and aggregates to scalar SNR as RMS(SNR(q))
     - writes a denoised 1D profile to `radial_profile_data_snr` (smoothed in original scale)
     - writes scalar SNR in dB to column `snr`
 
@@ -2582,6 +2596,11 @@ class SNRTransformer(TransformerMixin):
         Column name for residual intensity when saved. Defaults to 'radial_profile_residual'.
     snr_col : str
         Column name to write SNR in dB. Defaults to 'snr'.
+    sigma_column : str
+        Column with pyFAI sigma values. Defaults to 'radial_profile_sigma'.
+    snr_method : str
+        SNR method: 'residual', 'poisson', or 'auto'. 'auto' tries Poisson first,
+        then falls back to residual.
     """
 
     def __init__(
@@ -2596,6 +2615,8 @@ class SNRTransformer(TransformerMixin):
         smoothed_col: str = "radial_profile_data_snr",
         residual_col: str = "radial_profile_residual",
         snr_col: str = "snr",
+        sigma_column: str = "radial_profile_sigma",
+        snr_method: str = "residual",
     ) -> None:
         self.x_column = x_column
         self.y_column = y_column
@@ -2607,6 +2628,10 @@ class SNRTransformer(TransformerMixin):
         self.smoothed_col = smoothed_col
         self.residual_col = residual_col
         self.snr_col = snr_col
+        self.sigma_column = sigma_column
+        self.snr_method = str(snr_method).strip().lower()
+        if self.snr_method not in {"residual", "poisson", "auto"}:
+            raise ValueError("snr_method must be one of: 'residual', 'poisson', 'auto'.")
 
         # Optional Savitzky–Golay import
         try:
@@ -2636,7 +2661,7 @@ class SNRTransformer(TransformerMixin):
     def _normalize_by_surface(
         self, q: np.ndarray, intensity: np.ndarray, eps: float = 1e-12
     ):
-        area = float(np.trapz(intensity, q))
+        area = _trapz_compat(intensity, q)
         if not np.isfinite(area) or abs(area) < eps:
             med = (
                 float(np.nanmedian(intensity[np.isfinite(intensity)]))
@@ -2680,6 +2705,7 @@ class SNRTransformer(TransformerMixin):
         df["snr_linear"] = np.nan
         df["snr_db"] = np.nan
         df[self.snr_col] = np.nan  # alias for snr in dB as requested
+        df["snr_method_used"] = None
         if self.save_smoothed:
             df[self.smoothed_col] = None
             df[self.residual_col] = None
@@ -2692,6 +2718,17 @@ class SNRTransformer(TransformerMixin):
             if q is None or intensity is None or len(intensity) < 2:
                 continue
 
+            n = min(len(q), len(intensity))
+            if n < 2:
+                continue
+            q = q[:n]
+            intensity = intensity[:n]
+            finite_qi = np.isfinite(q) & np.isfinite(intensity)
+            if int(np.sum(finite_qi)) < 2:
+                continue
+            q = q[finite_qi]
+            intensity = intensity[finite_qi]
+
             # Ensure uniform grid if requested
             if self.enforce_common_q:
                 q_u, intensity_u = self._ensure_uniform_grid(
@@ -2700,28 +2737,70 @@ class SNRTransformer(TransformerMixin):
             else:
                 q_u, intensity_u = q, intensity
 
-            # Normalize for SNR metric
-            intensity_norm, _ = self._normalize_by_surface(q_u, intensity_u)
-
-            # Smooth for SNR (normalized domain)
-            intensity_sm_norm, _ = self._smooth(intensity_norm)
-
-            # Residuals & metrics
-            resid_norm = intensity_norm - intensity_sm_norm
-            if resid_norm.size > 1:
-                noise_std = float(np.nanstd(resid_norm, ddof=1))
-                sig_pow = float(np.nanvar(intensity_sm_norm, ddof=1))
-                noi_pow = float(np.nanvar(resid_norm, ddof=1))
-                if np.isfinite(sig_pow) and np.isfinite(noi_pow) and noi_pow > 0:
-                    snr_lin = sig_pow / noi_pow
-                    snr_db = 10.0 * float(np.log10(snr_lin))
-                else:
-                    snr_lin, snr_db = np.nan, np.nan
-            else:
-                noise_std, snr_lin, snr_db = np.nan, np.nan, np.nan
-
-            # Also produce a smoothed version in the original intensity scale
+            # Prepare a smoothed profile for output/compatibility
             intensity_sm_u, _ = self._smooth(intensity_u)
+
+            # Poisson SNR mode from pyFAI sigma
+            sigma_raw = row.get(self.sigma_column, None)
+            sigma_ok = sigma_raw is not None
+            method_used = "residual"
+
+            if sigma_ok:
+                sigma = np.asarray(sigma_raw, float)
+                if sigma.ndim == 0:
+                    sigma = np.asarray([float(sigma)], dtype=float)
+                ns = min(len(sigma), len(q), len(intensity))
+                if ns >= 2:
+                    sigma = sigma[:ns]
+                    q_s = q[:ns]
+                    i_s = intensity[:ns]
+                    finite_all = np.isfinite(q_s) & np.isfinite(i_s) & np.isfinite(sigma)
+                    sigma = sigma[finite_all]
+                    q_s = q_s[finite_all]
+                    i_s = i_s[finite_all]
+                    sigma_ok = int(np.sum(sigma > 0)) >= 2 and len(sigma) >= 2
+                else:
+                    sigma_ok = False
+
+            use_poisson = self.snr_method in {"poisson", "auto"} and sigma_ok
+
+            if use_poisson:
+                if self.enforce_common_q:
+                    sigma_u = np.interp(q_u, q_s, sigma)
+                else:
+                    sigma_u = sigma[: len(intensity_u)]
+
+                valid = np.isfinite(intensity_u) & np.isfinite(sigma_u) & (sigma_u > 0)
+                if int(np.sum(valid)) >= 2:
+                    snr_q = np.abs(intensity_u[valid]) / (sigma_u[valid] + 1e-12)
+                    snr_lin = float(np.sqrt(np.mean(np.square(snr_q))))
+                    snr_db = float(20.0 * np.log10(snr_lin + 1e-12))
+                    noise_std = float(np.sqrt(np.mean(np.square(sigma_u[valid]))))
+                    method_used = "poisson"
+                else:
+                    noise_std, snr_lin, snr_db = np.nan, np.nan, np.nan
+                    method_used = "poisson_invalid_sigma"
+            elif self.snr_method == "poisson":
+                noise_std, snr_lin, snr_db = np.nan, np.nan, np.nan
+                method_used = "poisson_missing_sigma"
+            else:
+                # Residual SNR mode (legacy behavior)
+                intensity_norm, _ = self._normalize_by_surface(q_u, intensity_u)
+                intensity_sm_norm, _ = self._smooth(intensity_norm)
+                resid_norm = intensity_norm - intensity_sm_norm
+                if resid_norm.size > 1:
+                    noise_std = float(np.nanstd(resid_norm, ddof=1))
+                    sig_pow = float(np.nanvar(intensity_sm_norm, ddof=1))
+                    noi_pow = float(np.nanvar(resid_norm, ddof=1))
+                    if np.isfinite(sig_pow) and np.isfinite(noi_pow) and noi_pow > 0:
+                        snr_lin = sig_pow / noi_pow
+                        snr_db = 10.0 * float(np.log10(snr_lin))
+                    else:
+                        snr_lin, snr_db = np.nan, np.nan
+                else:
+                    noise_std, snr_lin, snr_db = np.nan, np.nan, np.nan
+                method_used = "residual"
+
             # Map smoothed uniform-grid curve back to original q sampling if needed
             if self.enforce_common_q:
                 intensity_sm_out = np.interp(q, q_u, intensity_sm_u)
@@ -2739,6 +2818,7 @@ class SNRTransformer(TransformerMixin):
             df.at[i, "snr_linear"] = snr_lin
             df.at[i, "snr_db"] = snr_db
             df.at[i, self.snr_col] = snr_db  # requested alias
+            df.at[i, "snr_method_used"] = method_used
 
             if self.save_smoothed:
                 df.at[i, self.smoothed_col] = intensity_sm_out
