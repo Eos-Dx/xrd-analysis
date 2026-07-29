@@ -7,165 +7,40 @@ DataFrame transformers for use in xrd-analysis pipelines.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from scipy.optimize import nnls
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import NMF
-from sklearn.isotonic import IsotonicRegression
 
-
-ArrayLike = Union[np.ndarray, Sequence[float], Sequence[Sequence[float]]]
-
-
-def _as_1d_float(arr: ArrayLike, name: str) -> np.ndarray:
-    out = np.asarray(arr, dtype=float)
-    if out.ndim != 1:
-        raise ValueError(f"{name} must be a 1D array, got shape {out.shape}.")
-    return out
-
-
-def _as_2d_float(arr: ArrayLike, name: str) -> np.ndarray:
-    out = np.asarray(arr, dtype=float)
-    if out.ndim != 2:
-        raise ValueError(f"{name} must be a 2D array, got shape {out.shape}.")
-    return out
-
-
-def _normalize_nonneg_vector(nonneg: Union[bool, Sequence[bool]], n_cols: int) -> np.ndarray:
-    if isinstance(nonneg, (bool, np.bool_)):
-        return np.full(n_cols, bool(nonneg), dtype=bool)
-    vec = np.asarray(nonneg, dtype=bool)
-    if vec.ndim != 1 or vec.size != n_cols:
-        raise ValueError(
-            f"nonneg_s must have length {n_cols}; got shape {vec.shape}."
-        )
-    return vec
-
-
-def _normalize_bool_vector(flag: Union[bool, Sequence[bool]], n_cols: int) -> np.ndarray:
-    if isinstance(flag, (bool, np.bool_)):
-        return np.full(n_cols, bool(flag), dtype=bool)
-    vec = np.asarray(flag, dtype=bool)
-    if vec.ndim != 1 or vec.size != n_cols:
-        raise ValueError(f"Boolean vector must have length {n_cols}, got {vec.shape}.")
-    return vec
-
-
-def _mask_to_bool(mask: Optional[ArrayLike], n: int) -> np.ndarray:
-    if mask is None:
-        return np.ones(n, dtype=bool)
-    m = np.asarray(mask)
-    if m.ndim != 1 or m.size != n:
-        raise ValueError(f"Mask must have length {n}; got shape {m.shape}.")
-    if m.dtype == bool:
-        return m.copy()
-    if np.issubdtype(m.dtype, np.floating):
-        return ~np.isnan(m)
-    return m.astype(bool)
+from ._spectrokinetic_math import as_1d_float as _as_1d_float
+from ._spectrokinetic_math import as_2d_float as _as_2d_float
+from ._spectrokinetic_math import compute_lof as _compute_lof
+from ._spectrokinetic_math import convolve_spectrum as _convolve_spectrum
+from ._spectrokinetic_math import enforce_unimodal as _enforce_unimodal
+from ._spectrokinetic_math import mask_to_bool as _mask_to_bool
+from ._spectrokinetic_math import normalize_bool_vector as _normalize_bool_vector
+from ._spectrokinetic_math import (
+    optimize_broadening_single as _optimize_broadening_single,
+)
+from ._spectrokinetic_math import (
+    reconstruct_with_broadening as _reconstruct_with_broadening,
+)
+from ._spectrokinetic_math import solve_c as _solve_c
+from ._spectrokinetic_math import solve_c_coupled as _solve_c_coupled
+from ._spectrokinetic_math import solve_s as _solve_s
+from ._spectrokinetic_math import solve_s_coupled as _solve_s_coupled
 
 
 def compute_lof(model: np.ndarray, data: np.ndarray) -> float:
     """Compute lack-of-fit percentage, matching SK-Ana convention."""
-    model = _as_2d_float(model, "model")
-    data = _as_2d_float(data, "data")
-    denom = float(np.sum(data**2))
-    if denom <= 0:
-        return 100.0
-    return float(100.0 * np.sqrt(np.sum((data - model) ** 2) / denom))
+    return _compute_lof(model, data)
 
 
 def convolve_spectrum(spectrum: np.ndarray, sigma: float) -> np.ndarray:
     """Apply Gaussian convolution to a 1D spectrum."""
-    spectrum = _as_1d_float(spectrum, "spectrum")
-    if not np.isfinite(sigma) or sigma <= 0:
-        return spectrum.copy()
-
-    kernel_size = max(3, int(np.ceil(3 * sigma)))
-    x = np.arange(-kernel_size, kernel_size + 1, dtype=float)
-    kernel = np.exp(-(x**2) / (2 * sigma**2))
-    kernel_sum = float(kernel.sum())
-    if kernel_sum <= 0:
-        return spectrum.copy()
-    kernel /= kernel_sum
-
-    padded = np.pad(spectrum, (kernel_size, kernel_size), mode="edge")
-    conv = np.convolve(padded, kernel, mode="same")
-    return conv[kernel_size : kernel_size + spectrum.size]
-
-
-def _safe_lstsq(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    try:
-        sol, *_ = np.linalg.lstsq(a, b, rcond=None)
-    except np.linalg.LinAlgError:
-        sol = np.zeros(a.shape[1], dtype=float)
-    return np.asarray(sol, dtype=float)
-
-
-def _safe_solve(a: np.ndarray, b: np.ndarray, nonneg: bool) -> np.ndarray:
-    if nonneg:
-        try:
-            sol, _ = nnls(a, b)
-        except Exception:
-            sol = np.zeros(a.shape[1], dtype=float)
-    else:
-        sol = _safe_lstsq(a, b)
-    return np.asarray(sol, dtype=float)
-
-
-def _moving_average(y: np.ndarray, span: float) -> np.ndarray:
-    if span <= 0:
-        return y.copy()
-    n = y.size
-    if n <= 2:
-        return y.copy()
-    w = max(3, int(round(span * n)))
-    if w % 2 == 0:
-        w += 1
-    if w > n:
-        w = n if n % 2 == 1 else n - 1
-    if w <= 1:
-        return y.copy()
-    pad = w // 2
-    y_pad = np.pad(y, (pad, pad), mode="reflect")
-    kernel = np.ones(w, dtype=float) / float(w)
-    return np.convolve(y_pad, kernel, mode="valid")
-
-
-def enforce_unimodal(y: np.ndarray) -> np.ndarray:
-    """Project a vector onto a unimodal shape via isotonic segments."""
-    y = _as_1d_float(y, "y")
-    if y.size <= 2:
-        return y.copy()
-
-    mode_idx = int(np.nanargmax(y))
-    left_x = np.arange(mode_idx + 1, dtype=float)
-    right_x = np.arange(y.size - mode_idx, dtype=float)
-
-    iso_inc = IsotonicRegression(increasing=True, out_of_bounds="clip")
-    left = iso_inc.fit_transform(left_x, y[: mode_idx + 1])
-
-    # Decreasing constraint on right by fitting increasing on reversed sequence.
-    right_rev = iso_inc.fit_transform(right_x, y[mode_idx:][::-1])
-    right = right_rev[::-1]
-
-    out = y.copy()
-    out[: mode_idx + 1] = left
-    out[mode_idx:] = right
-    out[mode_idx] = 0.5 * (left[-1] + right[0])
-    return out
-
-
-def _normalize_column(col: np.ndarray, sum_norm: bool, norm_mode: str) -> np.ndarray:
-    if sum_norm or norm_mode == "l1":
-        denom = float(np.sum(np.abs(col)))
-    else:
-        denom = float(np.max(np.abs(col)))
-    if denom <= 0:
-        return col
-    return col / denom
+    return _convolve_spectrum(spectrum, sigma)
 
 
 def optimize_broadening_single(
@@ -177,82 +52,9 @@ def optimize_broadening_single(
     broadening_vec: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """Three-stage grid refinement for broadening sigmas."""
-    data_row = _as_1d_float(data_row, "data_row")
-    c_row = _as_1d_float(c_row, "c_row")
-    s = _as_2d_float(s, "s")
-    g_init = _as_1d_float(g_init, "g_init")
-
-    n_components = s.shape[1]
-    if c_row.size != n_components:
-        raise ValueError("c_row length must match number of components.")
-    if g_init.size != n_components:
-        raise ValueError("g_init length must match number of components.")
-
-    sigma_min = 0.0
-    if sigma_max is None:
-        sigma_max = 0.10 * s.shape[0]
-    sigma_max = float(max(sigma_max, 1e-12))
-
-    if broadening_vec is None:
-        broadening_vec = np.ones(n_components, dtype=bool)
-    else:
-        broadening_vec = _normalize_bool_vector(broadening_vec, n_components)
-
-    def eval_error(g_vec: np.ndarray) -> float:
-        recon = np.zeros_like(data_row, dtype=float)
-        for j in range(n_components):
-            recon += c_row[j] * convolve_spectrum(s[:, j], float(g_vec[j]))
-        return float(np.sum((data_row - recon) ** 2))
-
-    g_opt = g_init.copy()
-
-    for k in range(n_components):
-        if not broadening_vec[k]:
-            continue
-
-        best_sigma = float(g_opt[k])
-        best_error = np.inf
-
-        grid_coarse = np.linspace(sigma_min, sigma_max, num=10)
-        for sigma_test in grid_coarse:
-            g_tmp = g_opt.copy()
-            g_tmp[k] = sigma_test
-            err = eval_error(g_tmp)
-            if err < best_error:
-                best_error = err
-                best_sigma = float(sigma_test)
-
-        range_medium = (sigma_max - sigma_min) * 0.1
-        grid_medium = np.linspace(
-            max(sigma_min, best_sigma - range_medium),
-            min(sigma_max, best_sigma + range_medium),
-            num=10,
-        )
-        for sigma_test in grid_medium:
-            g_tmp = g_opt.copy()
-            g_tmp[k] = sigma_test
-            err = eval_error(g_tmp)
-            if err < best_error:
-                best_error = err
-                best_sigma = float(sigma_test)
-
-        range_fine = (sigma_max - sigma_min) * 0.02
-        grid_fine = np.linspace(
-            max(sigma_min, best_sigma - range_fine),
-            min(sigma_max, best_sigma + range_fine),
-            num=10,
-        )
-        for sigma_test in grid_fine:
-            g_tmp = g_opt.copy()
-            g_tmp[k] = sigma_test
-            err = eval_error(g_tmp)
-            if err < best_error:
-                best_error = err
-                best_sigma = float(sigma_test)
-
-        g_opt[k] = best_sigma
-
-    return g_opt
+    return _optimize_broadening_single(
+        data_row, c_row, s, g_init, sigma_max, broadening_vec
+    )
 
 
 def solve_C(
@@ -266,44 +68,7 @@ def solve_C(
     g: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """Solve for C given S and data, row-wise."""
-    s = _as_2d_float(s, "s")
-    data = _as_2d_float(data, "data")
-    c = _as_2d_float(c, "c")
-
-    if data.shape[0] != c.shape[0]:
-        raise ValueError("C row count must match data row count.")
-    if s.shape[1] != c.shape[1]:
-        raise ValueError("S component count must match C columns.")
-    if data.shape[1] != s.shape[0]:
-        raise ValueError("Data wavelength dimension must match S rows.")
-
-    c_out = c.copy()
-    use_broadening = g is not None and np.asarray(g).shape == c.shape
-    if use_broadening:
-        g = _as_2d_float(g, "g")
-
-    for i in range(data.shape[0]):
-        s_work = s.copy()
-        if use_broadening:
-            for k in range(s.shape[1]):
-                s_work[:, k] = convolve_spectrum(s[:, k], float(g[i, k]))
-
-        b = data[i, :]
-        if close_c and w_close_c != 0:
-            s_aug = np.vstack([s_work, np.full((1, s_work.shape[1]), w_close_c)])
-            b_aug = np.concatenate([b, np.array([w_close_c], dtype=float)])
-        else:
-            s_aug = s_work
-            b_aug = b
-
-        c_out[i, :] = _safe_solve(s_aug, b_aug, nonneg=nonneg_c)
-
-    if null_c is not None:
-        null_c = _as_2d_float(null_c, "null_c")
-        if null_c.shape == c_out.shape:
-            c_out = c_out * null_c
-
-    return c_out
+    return _solve_c(s, data, c, nonneg_c, null_c, close_c, w_close_c, g)
 
 
 def solve_S(
@@ -323,104 +88,22 @@ def solve_S(
     g: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """Solve for S given C and data, column-wise."""
-    c = _as_2d_float(c, "c")
-    data = _as_2d_float(data, "data")
-    s = _as_2d_float(s, "s")
-    _ = _as_1d_float(x_s, "x_s")
-
-    if data.shape[0] != c.shape[0]:
-        raise ValueError("C row count must match data rows.")
-    if s.shape[1] != c.shape[1]:
-        raise ValueError("S components must match C columns.")
-    if data.shape[1] != s.shape[0]:
-        raise ValueError("Data wavelength dimension must match S rows.")
-
-    c_work = c.copy()
-    data_work = data.copy()
-    s_work = s.copy()
-    nonneg_vec = _normalize_nonneg_vector(nonneg_s, c_work.shape[1])
-
-    c0 = None
-    if s0 is not None:
-        s0 = _as_2d_float(s0, "s0")
-        if s0.shape[0] != s.shape[0]:
-            raise ValueError("s0 must have same wavelength length as S.")
-        n_s0 = s0.shape[1]
-
-        if hard_s0:
-            if c_work.shape[1] == n_s0:
-                return s0.copy()
-
-            c0 = c_work[:, :n_s0]
-            c_work = c_work[:, n_s0:]
-            s_work = s_work[:, n_s0:]
-            nonneg_vec = nonneg_vec[n_s0:]
-
-            contrib = c0 @ s0.T
-            data_work = data_work - contrib
-            data_work[~np.isfinite(data_work)] = 0.0
-        else:
-            c_aug = np.vstack([c_work, np.zeros((n_s0, c_work.shape[1]))])
-            for i in range(n_s0):
-                c_aug[c_work.shape[0] + i, i] = w_hard_s0
-            data_aug = np.vstack([data_work, w_hard_s0 * s0.T])
-            c_work = c_aug
-            data_work = data_aug
-
-    all_same = bool(np.all(nonneg_vec == nonneg_vec[0]))
-    use_broadening = g is not None and np.asarray(g).shape[0] == c_work.shape[0]
-
-    if all_same:
-        for j in range(data_work.shape[1]):
-            if use_broadening:
-                # Keep SK-Ana behavior path for broadening-enabled S updates.
-                a = c_work
-                b = data_work[:, j]
-            else:
-                a = c_work
-                b = data_work[:, j]
-            s_work[j, :] = _safe_solve(a, b, nonneg=bool(nonneg_vec[0]))
-    else:
-        idx_pos = np.where(nonneg_vec)[0]
-        idx_free = np.where(~nonneg_vec)[0]
-        for j in range(data_work.shape[1]):
-            sol = np.zeros(c_work.shape[1], dtype=float)
-
-            if idx_free.size > 0:
-                a_free = c_work[:, idx_free]
-                sol[idx_free] = _safe_lstsq(a_free, data_work[:, j])
-                resid = data_work[:, j] - a_free @ sol[idx_free]
-            else:
-                resid = data_work[:, j]
-
-            if idx_pos.size > 0:
-                a_pos = c_work[:, idx_pos]
-                sol[idx_pos] = _safe_solve(a_pos, resid, nonneg=True)
-
-            s_work[j, :] = sol
-
-    if uni_s:
-        for i in range(s_work.shape[1]):
-            s_work[:, i] = enforce_unimodal(s_work[:, i])
-
-    if smooth and smooth > 0:
-        for i in range(s_work.shape[1]):
-            y = _moving_average(s_work[:, i], float(smooth))
-            if nonneg_vec[i]:
-                y = np.clip(y, 0.0, None)
-            s_work[:, i] = y
-
-    if norm_s:
-        for i in range(s_work.shape[1]):
-            s_work[:, i] = _normalize_column(
-                s_work[:, i], sum_norm=bool(sum_s), norm_mode=norm_mode
-            )
-
-    if s0 is not None and hard_s0:
-        s_work = np.hstack([s0, s_work])
-        _ = c0  # kept for parity with R flow
-
-    return s_work
+    return _solve_s(
+        c,
+        data,
+        s,
+        x_s,
+        nonneg_s,
+        uni_s,
+        s0,
+        norm_s,
+        smooth,
+        sum_s,
+        hard_s0,
+        w_hard_s0,
+        norm_mode,
+        g,
+    )
 
 
 def solve_C_coupled(
@@ -434,32 +117,7 @@ def solve_C_coupled(
     n_fixed: int = 0,
 ) -> np.ndarray:
     """Solve for C then enforce correction/fixed pairwise coupling."""
-    c_out = solve_C(
-        s=s,
-        data=data,
-        c=c,
-        nonneg_c=nonneg_c,
-        null_c=null_c,
-        close_c=close_c,
-        w_close_c=w_close_c,
-        g=None,
-    )
-
-    if n_fixed > 0:
-        for i in range(n_fixed):
-            corr_idx = n_fixed + i
-            if corr_idx >= c_out.shape[1]:
-                break
-            c_fix = c_out[:, i]
-            c_corr = c_out[:, corr_idx]
-            norm_sq = float(np.sum(c_fix**2))
-            if norm_sq <= 1e-12:
-                c_out[:, corr_idx] = 0.0
-            else:
-                alpha = float(np.sum(c_corr * c_fix) / norm_sq)
-                c_out[:, corr_idx] = alpha * c_fix
-
-    return c_out
+    return _solve_c_coupled(s, data, c, nonneg_c, null_c, close_c, w_close_c, n_fixed)
 
 
 def solve_S_coupled(
@@ -480,101 +138,28 @@ def solve_S_coupled(
     norm_mode: str = "intensity",
 ) -> np.ndarray:
     """Solve for S with correction-spectra orthogonality/coupling constraints."""
-    s_out = solve_S(
-        c=c,
-        data=data,
-        s=s,
-        x_s=x_s,
-        nonneg_s=nonneg_s,
-        uni_s=uni_s,
-        s0=s0,
-        norm_s=False,
-        smooth=0.0,
-        sum_s=sum_s,
-        hard_s0=hard_s0,
-        w_hard_s0=w_hard_s0,
-        norm_mode=norm_mode,
-        g=None,
+    return _solve_s_coupled(
+        c,
+        data,
+        s,
+        x_s,
+        nonneg_s,
+        uni_s,
+        s0,
+        norm_s,
+        smooth,
+        sum_s,
+        hard_s0,
+        w_hard_s0,
+        n_fixed,
+        lambda_corr,
+        norm_mode,
     )
 
-    nonneg_vec = _normalize_nonneg_vector(nonneg_s, s_out.shape[1])
 
-    if n_fixed > 0:
-        for i in range(n_fixed):
-            corr_idx = n_fixed + i
-            if corr_idx >= s_out.shape[1]:
-                break
-
-            s_fix = s_out[:, i]
-            s_corr = s_out[:, corr_idx]
-
-            norm_sq = float(np.sum(s_fix**2))
-            if norm_sq > 1e-12:
-                proj = float(np.sum(s_corr * s_fix) / norm_sq)
-                s_corr = s_corr - proj * s_fix
-
-            s_corr = s_corr - float(np.mean(s_corr))
-
-            if lambda_corr > 0:
-                penalty = 1.0 / (1.0 + lambda_corr * np.sqrt(float(np.sum(s_corr**2))))
-                s_corr = s_corr * penalty
-
-            s_out[:, corr_idx] = s_corr
-
-    if smooth and smooth > 0:
-        for i in range(s_out.shape[1]):
-            if n_fixed > 0 and n_fixed <= i < (2 * n_fixed):
-                continue
-            sm = _moving_average(s_out[:, i], float(smooth))
-            if nonneg_vec[i]:
-                sm = np.clip(sm, 0.0, None)
-            s_out[:, i] = sm
-
-    if norm_s:
-        if n_fixed > 0:
-            # Normalize fixed spectra.
-            for i in range(min(n_fixed, s_out.shape[1])):
-                s_out[:, i] = _normalize_column(
-                    s_out[:, i], sum_norm=bool(sum_s), norm_mode=norm_mode
-                )
-
-            # Keep correction spectra as-is; normalize free spectra.
-            start_free = 2 * n_fixed
-            if s_out.shape[1] > start_free:
-                for i in range(start_free, s_out.shape[1]):
-                    s_out[:, i] = _normalize_column(
-                        s_out[:, i], sum_norm=bool(sum_s), norm_mode=norm_mode
-                    )
-        else:
-            for i in range(s_out.shape[1]):
-                s_out[:, i] = _normalize_column(
-                    s_out[:, i], sum_norm=bool(sum_s), norm_mode=norm_mode
-                )
-
-    return s_out
-
-
-def _reconstruct_with_broadening(
-    c: np.ndarray,
-    s: np.ndarray,
-    g: Optional[np.ndarray],
-    broadening_vec: np.ndarray,
-) -> np.ndarray:
-    c = _as_2d_float(c, "c")
-    s = _as_2d_float(s, "s")
-    model = np.zeros((c.shape[0], s.shape[0]), dtype=float)
-
-    if g is None or not np.any(broadening_vec):
-        return c @ s.T
-
-    g = _as_2d_float(g, "g")
-    for i in range(c.shape[0]):
-        s_broad = s.copy()
-        for k in range(s.shape[1]):
-            if broadening_vec[k]:
-                s_broad[:, k] = convolve_spectrum(s[:, k], float(g[i, k]))
-        model[i, :] = c[i, :] @ s_broad.T
-    return model
+def enforce_unimodal(y: np.ndarray) -> np.ndarray:
+    """Project a vector onto a unimodal shape via isotonic segments."""
+    return _enforce_unimodal(y)
 
 
 @dataclass
@@ -662,7 +247,9 @@ def run_als_iteration(
         else:
             g = _as_2d_float(g, "g")
             if g.shape != c.shape:
-                raise ValueError("G must have same shape as C when broadening is enabled.")
+                raise ValueError(
+                    "G must have same shape as C when broadening is enabled."
+                )
 
     model = _reconstruct_with_broadening(c, s, g, broadening_vec)
     resid = psi - model
@@ -675,7 +262,9 @@ def run_als_iteration(
     iter_idx = 0
     min_steps = 3 if broadening_enabled else 2
 
-    while iter_idx < config.maxiter and (iter_idx < min_steps or abs(rd) > config.thresh):
+    while iter_idx < config.maxiter and (
+        iter_idx < min_steps or abs(rd) > config.thresh
+    ):
         iter_idx += 1
 
         if config.correction_spectra and n_fixed > 0:
@@ -847,7 +436,9 @@ class SpectroSVDTransformer(TransformerMixin, BaseEstimator):
         self.is_fitted_ = True
         return self
 
-    def _extract_masked_matrix(self, row: pd.Series) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _extract_masked_matrix(
+        self, row: pd.Series
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         mat = _as_2d_float(row[self.matrix_col], self.matrix_col)
         delay = _as_1d_float(row[self.delay_col], self.delay_col)
         wav = _as_1d_float(row[self.wavelength_col], self.wavelength_col)
@@ -859,13 +450,19 @@ class SpectroSVDTransformer(TransformerMixin, BaseEstimator):
             )
 
         dmask = _mask_to_bool(
-            row[self.delay_mask_col] if self.delay_mask_col and self.delay_mask_col in row else None,
+            (
+                row[self.delay_mask_col]
+                if self.delay_mask_col and self.delay_mask_col in row
+                else None
+            ),
             delay.size,
         )
         wmask = _mask_to_bool(
-            row[self.wavelength_mask_col]
-            if self.wavelength_mask_col and self.wavelength_mask_col in row
-            else None,
+            (
+                row[self.wavelength_mask_col]
+                if self.wavelength_mask_col and self.wavelength_mask_col in row
+                else None
+            ),
             wav.size,
         )
 
@@ -921,7 +518,9 @@ class SpectroSVDTransformer(TransformerMixin, BaseEstimator):
                 sd_curve.append(float(np.std(resid)))
 
             rec_rank = self._recommended_rank(svals)
-            rank_for_model = int(self.model_rank) if self.model_rank is not None else rec_rank
+            rank_for_model = (
+                int(self.model_rank) if self.model_rank is not None else rec_rank
+            )
             rank_for_model = max(1, min(rank_for_model, n_rank))
 
             model_rank = np.zeros_like(mat)
@@ -1037,7 +636,9 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
         self.is_fitted_ = True
         return self
 
-    def _extract_masked_matrix(self, row: pd.Series) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _extract_masked_matrix(
+        self, row: pd.Series
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         mat = _as_2d_float(row[self.matrix_col], self.matrix_col)
         delay = _as_1d_float(row[self.delay_col], self.delay_col)
         wav = _as_1d_float(row[self.wavelength_col], self.wavelength_col)
@@ -1049,19 +650,27 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
             )
 
         dmask = _mask_to_bool(
-            row[self.delay_mask_col] if self.delay_mask_col and self.delay_mask_col in row else None,
+            (
+                row[self.delay_mask_col]
+                if self.delay_mask_col and self.delay_mask_col in row
+                else None
+            ),
             delay.size,
         )
         wmask = _mask_to_bool(
-            row[self.wavelength_mask_col]
-            if self.wavelength_mask_col and self.wavelength_mask_col in row
-            else None,
+            (
+                row[self.wavelength_mask_col]
+                if self.wavelength_mask_col and self.wavelength_mask_col in row
+                else None
+            ),
             wav.size,
         )
 
         return mat[np.ix_(dmask, wmask)], delay[dmask], wav[wmask]
 
-    def _extract_presence_mask(self, row: pd.Series, n_delay: int, n_components: int) -> Optional[np.ndarray]:
+    def _extract_presence_mask(
+        self, row: pd.Series, n_delay: int, n_components: int
+    ) -> Optional[np.ndarray]:
         if self.presence_mask_col is None or self.presence_mask_col not in row:
             return None
         mask = row[self.presence_mask_col]
@@ -1080,14 +689,18 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
             )
         return arr
 
-    def _extract_fixed_spectra(self, row: pd.Series, wav: np.ndarray) -> Optional[np.ndarray]:
+    def _extract_fixed_spectra(
+        self, row: pd.Series, wav: np.ndarray
+    ) -> Optional[np.ndarray]:
         s0 = None
         src_wav = None
 
         if self.fixed_spectra is not None:
             s0 = np.asarray(self.fixed_spectra, dtype=float)
             if self.fixed_wavelength_axis is not None:
-                src_wav = _as_1d_float(self.fixed_wavelength_axis, "fixed_wavelength_axis")
+                src_wav = _as_1d_float(
+                    self.fixed_wavelength_axis, "fixed_wavelength_axis"
+                )
         elif self.fixed_spectra_col is not None and self.fixed_spectra_col in row:
             value = row[self.fixed_spectra_col]
             if isinstance(value, dict):
@@ -1120,7 +733,9 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
                 "fixed_wavelength_axis (or per-row wavelength) is required for interpolation."
             )
         if src_wav.size != s0.shape[0]:
-            raise ValueError("fixed_wavelength_axis length must match fixed spectra rows.")
+            raise ValueError(
+                "fixed_wavelength_axis length must match fixed spectra rows."
+            )
 
         s0_interp = np.zeros((wav.size, s0.shape[1]), dtype=float)
         for j in range(s0.shape[1]):
@@ -1170,11 +785,17 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
         if method == "restart":
             ref = self._last_result
             if ref is None:
-                raise ValueError("init_method='restart' requires restart_result or previous run.")
+                raise ValueError(
+                    "init_method='restart' requires restart_result or previous run."
+                )
             if ref.c.shape[0] != mat.shape[0] or ref.s.shape[0] != mat.shape[1]:
-                raise ValueError("restart_result shape is incompatible with current matrix.")
+                raise ValueError(
+                    "restart_result shape is incompatible with current matrix."
+                )
             if ref.c.shape[1] < n_start or ref.s.shape[1] < n_start:
-                raise ValueError("restart_result has fewer components than requested n_start.")
+                raise ValueError(
+                    "restart_result has fewer components than requested n_start."
+                )
             return ref.c[:, :n_start].copy(), ref.s[:, :n_start].copy()
 
         raise ValueError(f"Unsupported init_method '{self.init_method}'.")
@@ -1205,7 +826,8 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
             random_state=self.random_state,
         )
 
-    def _run_single(self,
+    def _run_single(
+        self,
         mat: np.ndarray,
         delay: np.ndarray,
         wav: np.ndarray,
@@ -1218,7 +840,9 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
 
         n_start = self.n_start
         if n_start is None:
-            n_start = 2 if self.init_method.lower() == "seq" and n_target > 1 else n_target
+            n_start = (
+                2 if self.init_method.lower() == "seq" and n_target > 1 else n_target
+            )
         n_start = int(max(1, min(n_start, n_target)))
 
         s0 = self._extract_fixed_spectra(row, wav)
@@ -1265,7 +889,9 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
                     )
                 cfg.broadening = bvec[:n]
 
-            null_c = self._extract_presence_mask(row, n_delay=mat.shape[0], n_components=n)
+            null_c = self._extract_presence_mask(
+                row, n_delay=mat.shape[0], n_components=n
+            )
 
             result = run_als_iteration(
                 c=c_cur[:, :n],
@@ -1325,7 +951,9 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
             mats = []
             for _, mat, delay, wav, _ in prepared:
                 if delay.size != base_delay.size or not np.allclose(delay, base_delay):
-                    raise ValueError("group_strategy='mean' requires identical delay axes.")
+                    raise ValueError(
+                        "group_strategy='mean' requires identical delay axes."
+                    )
                 mats.append(self._align_group_to_wavelength(mat, wav, base_wav))
             mean_mat = np.mean(np.stack(mats, axis=0), axis=0)
             ref_row = prepared[0][4]
@@ -1343,7 +971,8 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
                     "als_converged": result.converged,
                     "als_G": result.g,
                     "als_broadening_enabled": bool(
-                        result.broadening_vec is not None and np.any(result.broadening_vec)
+                        result.broadening_vec is not None
+                        and np.any(result.broadening_vec)
                     ),
                     "als_meta": {
                         "decomposition_mode": "group",
@@ -1515,7 +1144,9 @@ class MCRALSTransformer(TransformerMixin, BaseEstimator):
             )
 
         if self.group_col is None or self.group_col not in out.columns:
-            raise ValueError("group_col must be provided and present when decomposition_mode='group'.")
+            raise ValueError(
+                "group_col must be provided and present when decomposition_mode='group'."
+            )
 
         for _g, gdf in out.groupby(self.group_col, sort=False):
             mapping = self._run_group(gdf)

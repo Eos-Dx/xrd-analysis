@@ -16,7 +16,10 @@ TEMPORARY_EXEMPTIONS = {
     "data_processing/transformers.py": 2_634,
     "data_processing/pipeline.py": 1_560,
     "data_processing/utility_functions.py": 1_302,
-    "data_processing/spectrokinetic_transformers.py": 1_543,
+    # Extracted numerical kernels reduced this module to 1,174 lines. Keep the
+    # exact ceiling as temporary debt until a follow-up extraction reaches the
+    # 1,000-line default budget.
+    "data_processing/spectrokinetic_transformers.py": 1_174,
 }
 
 

@@ -92,6 +92,16 @@ implementations are currently split into:
 * ``_goodness.py`` for goodness scoring and filtering;
 * ``_pipeline_diagnostics.py`` for non-fatal train/test split summaries;
 * ``_evaluation_utils.py`` for ROC and threshold calculations.
+* ``_spectrokinetic_math.py`` for private SVD/MCR-ALS numerical kernels.
+
+``spectrokinetic_transformers.py`` retains the canonical public transformer
+classes, ALS configuration/result types, ``run_als_iteration``, and
+signature-preserving numerical helper wrappers. The package and
+``transformers`` facades retain their class identity re-exports so historical
+imports and ``joblib`` artifacts keep resolving. Its SK-Ana-inspired fixture
+data and frozen small matrices are deterministic regression contracts. The
+optional parity fixture is absent, and its generator is not a
+provenance-backed external SK-Ana reference.
 
 ``utility_functions.py`` retains signature-preserving wrappers for evaluation
 functions. It also temporarily re-exports the historical scikit-learn metric

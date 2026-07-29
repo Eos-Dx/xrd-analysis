@@ -7,6 +7,38 @@ Overview
 This page documents the SK-Ana-inspired spectrokinetic transformers added for
 matrix-per-row decomposition workflows.
 
+Compatibility and extraction boundary
+-------------------------------------
+
+``xrdanalysis.data_processing.spectrokinetic_transformers`` is the canonical
+public module. It retains ``SpectroSVDTransformer``, ``MCRALSTransformer``,
+``ALSConfig``, ``ALSResult``, ``run_als_iteration``, and the public numerical
+helper call signatures. Pure numerical implementation lives in the private
+``_spectrokinetic_math`` module behind canonical wrappers.
+
+The following class import paths remain supported:
+
+* canonical: ``xrdanalysis.data_processing.spectrokinetic_transformers``;
+* package facade: ``xrdanalysis.data_processing``;
+* legacy facade: ``xrdanalysis.data_processing.transformers``.
+
+The two facades are identity re-exports, not replacement classes. This keeps
+existing scikit-learn pipelines and ``joblib`` artifacts resolvable at their
+canonical class module paths. Do not move either transformer class without an
+explicit serialized-artifact migration and compatibility window.
+
+Test gate and reference status
+------------------------------
+
+Private extraction must preserve the canonical import surface, helper
+signatures, transformer qualified class names, ``joblib`` round trips, and the
+focused SVD, ALS, coupled-constraint, unimodality, and broadening tests. The
+existing Keele fixture data and frozen small matrices are deterministic
+regression contracts. The optional parity fixture is absent, and its generator
+is not a provenance-backed external SK-Ana reference. The suite therefore
+protects the current implementation contract; it does not claim independent
+SK-Ana numerical parity.
+
 Classes
 ------------------------------------
 
