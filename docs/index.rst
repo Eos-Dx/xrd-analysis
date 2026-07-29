@@ -11,6 +11,7 @@ Welcome to MATUR's documentation!
    :caption: Contents:
 
    sop
+   refactoring
    xrdanalysis.data_processing
    spectrokinetic_transformers
 

@@ -15,6 +15,11 @@ from scipy.optimize import curve_fit
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import Normalizer, StandardScaler
 
+from xrdanalysis.data_processing._snr_math import (
+    ensure_uniform_grid,
+    normalize_by_surface,
+    smooth_signal,
+)
 from xrdanalysis.data_processing.azimuthal_integration import (
     calculate_deviation,
     calculate_deviation_cake,
@@ -682,30 +687,30 @@ class ColumnNormalizer(TransformerMixin):
         :rtype: pd.DataFrame
         """
         X_copy = X.copy()
-        
+
         if self.norm == "integral":
             # Integral normalization
             def normalize_by_integral(row):
                 q = np.asarray(row[self.q_column], dtype=float)
                 I = np.asarray(row[self.column], dtype=float)
-                
+
                 q_lo = float(min(self.q_min, self.q_max))
                 q_hi = float(max(self.q_min, self.q_max))
-                
+
                 # Create mask for q-range
                 mask = (q >= q_lo) & (q <= q_hi)
                 if mask.sum() < 2:
                     return I  # Return unchanged if insufficient points
-                
+
                 # Calculate integral using trapezoidal rule
                 area = _trapz_compat(I[mask], q[mask])
                 if area == 0 or not np.isfinite(area):
                     return I  # Return unchanged if integral is invalid
-                
+
                 return I / area
-            
+
             X_copy[self.column] = X_copy.apply(normalize_by_integral, axis=1)
-        
+
         elif self.mode == "1D":
             X_copy[self.column] = X_copy[self.column].apply(
                 lambda arr: self.normalizer.transform([arr])[0]
@@ -2658,54 +2663,15 @@ class SNRTransformer(TransformerMixin):
     def _ensure_uniform_grid(
         self, q: np.ndarray, intensity: np.ndarray, n_points: int | None
     ):
-        q = np.asarray(q, float)
-        intensity = np.asarray(intensity, float)
-        if n_points is None:
-            n_points = len(intensity)
-        if n_points <= 1:
-            return q, intensity
-        q_uniform = np.linspace(np.nanmin(q), np.nanmax(q), int(n_points))
-        intensity_uniform = np.interp(q_uniform, q, intensity)
-        return q_uniform, intensity_uniform
+        return ensure_uniform_grid(q, intensity, n_points)
 
     def _normalize_by_surface(
         self, q: np.ndarray, intensity: np.ndarray, eps: float = 1e-12
     ):
-        area = _trapz_compat(intensity, q)
-        if not np.isfinite(area) or abs(area) < eps:
-            med = (
-                float(np.nanmedian(intensity[np.isfinite(intensity)]))
-                if np.isfinite(intensity).any()
-                else np.nan
-            )
-            scale = med if (np.isfinite(med) and med != 0.0) else 1.0
-            return intensity / scale, {"norm": "median", "scale": scale, "area": area}
-        return intensity / area, {"norm": "area", "scale": area, "area": area}
+        return normalize_by_surface(q, intensity, _trapz_compat, eps)
 
     def _smooth(self, y: np.ndarray):
-        y = np.asarray(y, float)
-        n = len(y)
-        if n <= 4:
-            return y.copy(), {"method": "identity", "win": None, "poly": None}
-        w = max(5, int(round(self.window_frac * n)))
-        if w % 2 == 0:
-            w += 1
-        if w >= n:
-            w = max(5, n - 1 if (n - 1) % 2 else n - 2)
-        poly = min(self.polyorder, w - 1)
-
-        if self._savgol is not None and w > poly and w <= n:
-            try:
-                y_sm = self._savgol(y, window_length=w, polyorder=poly, mode="interp")
-                return y_sm, {"method": "savgol", "win": w, "poly": poly}
-            except Exception:
-                pass
-        # Fallback: centered moving average with reflect padding
-        pad = w // 2
-        xp = np.pad(y, (pad, pad), mode="reflect")
-        kern = np.ones(w, dtype=float) / float(w)
-        y_sm = np.convolve(xp, kern, mode="valid")
-        return y_sm, {"method": "movavg", "win": w, "poly": None}
+        return smooth_signal(y, self.window_frac, self.polyorder, self._savgol)
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         df = X.copy()

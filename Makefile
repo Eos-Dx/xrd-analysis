@@ -1,4 +1,4 @@
-.PHONY: clean data lint requirements sync_data_to_s3 sync_data_from_s3
+.PHONY: clean data lint requirements sync_data_to_s3 sync_data_from_s3 check-python-file-size
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -37,6 +37,10 @@ clean:
 ## Lint using flake8
 lint:
 	flake8 src
+
+## Check analysis Python file-size budget
+check-python-file-size:
+	$(PYTHON_INTERPRETER) scripts/check_python_file_size.py
 
 ## Upload Data to S3
 sync_data_to_s3:

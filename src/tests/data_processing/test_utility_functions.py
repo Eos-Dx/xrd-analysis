@@ -73,7 +73,7 @@ def test_is_all_none():
 # Test for is_nan_pair
 def test_is_nan_pair():
     """Tests to check is nan pair"""
-    assert is_nan_pair((np.NaN, np.NaN)) is True
+    assert is_nan_pair((np.nan, np.nan)) is True
     assert is_nan_pair((np.nan, 1)) is False
     assert is_nan_pair((1, np.nan)) is False
     assert is_nan_pair((1, 1)) is False

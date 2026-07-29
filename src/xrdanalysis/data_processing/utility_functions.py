@@ -540,7 +540,7 @@ def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
     beam. Defaults to 3.0 times the average value of the input data.
     :type threshold: float, optional
     :returns: The coordinates of the center of the beam in the input data. \
-    If no center is found, returns (np.NaN, np.NaN).
+    If no center is found, returns (np.nan, np.nan).
     :rtype: tuple
     """
     average_value = np.nanmean(data)
@@ -569,7 +569,7 @@ def get_center(data: np.ndarray, threshold=3.0) -> Tuple[float]:
         center = max_region.centroid
         center = (center[0], center[1])
     else:
-        center = (np.NaN, np.NaN)
+        center = (np.nan, np.nan)
 
     return center
 

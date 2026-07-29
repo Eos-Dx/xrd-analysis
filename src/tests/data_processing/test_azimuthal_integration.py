@@ -1,6 +1,7 @@
 """Tests for azimuthal integration.py"""
 
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -12,6 +13,7 @@ except ImportError:
     from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 
 from xrdanalysis.data_processing.azimuthal_integration import (
+    _adjust_poni_text_for_thickness,
     initialize_azimuthal_integrator_df,
     initialize_azimuthal_integrator_poni,
     perform_azimuthal_integration,
@@ -92,12 +94,13 @@ class TestAzimuthalIntegration(unittest.TestCase):
             }
         )
 
-        radial, intensity, dist = perform_azimuthal_integration(row)
+        radial, intensity, sigma, dist = perform_azimuthal_integration(row)
 
         mock_initialize_ai_df.assert_called_once()
         mock_ai.integrate1d.assert_called_once()
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
+        assert sigma is None
         np.testing.assert_array_equal(dist, np.array([0.1, 0.1, 0.1]))
 
     @patch(
@@ -125,7 +128,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
             }
         )
 
-        radial, intensity, dist = perform_azimuthal_integration(
+        radial, intensity, sigma, dist = perform_azimuthal_integration(
             row, calibration_mode="poni", poni_dir="/path/to/poni"
         )
 
@@ -133,6 +136,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
         mock_ai.integrate1d.assert_called_once()
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
+        assert sigma is None
         np.testing.assert_array_equal(dist, np.array([125, 126, 127]))
 
     @patch(
@@ -178,6 +182,56 @@ class TestAzimuthalIntegration(unittest.TestCase):
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
         assert sigma is None
         assert dist == 0.493
+        mock_ai.integrate1d.assert_called_once_with(
+            row["measurement_data"],
+            256,
+            radial_range=(0, 5),
+            azimuth_range=None,
+            mask=None,
+            error_model=None,
+        )
+
+    @patch(
+        (
+            "xrdanalysis.data_processing."
+            "azimuthal_integration.initialize_azimuthal_integrator_df"
+        )
+    )
+    def test_azimuthal_integration_preserves_result_object_shapes_and_error_model(
+        self, mock_initialize_ai_df
+    ):
+        """Preserve the four-value 1D contract for modern pyFAI results."""
+        mock_ai = mock_initialize_ai_df.return_value
+        mock_ai.dist = 0.1
+        mock_ai.integrate1d.return_value = SimpleNamespace(
+            radial=np.array([0.1, 0.2, 0.3]),
+            intensity=np.array([10.0, 20.0, 30.0]),
+            sigma=np.array([1.0, 2.0, 3.0]),
+        )
+        row = pd.Series(
+            {
+                "measurement_data": np.ones((3, 3)),
+                "center": (1, 1),
+                "wavelength": 1.54,
+                "calculated_distance": 0.1,
+                "pixel_size": 100,
+            }
+        )
+
+        result = perform_azimuthal_integration(row, error_model="poisson")
+
+        assert len(result) == 4
+        radial, intensity, sigma, distance = result
+        assert radial.shape == intensity.shape == sigma.shape == (3,)
+        assert distance == 0.1
+        mock_ai.integrate1d.assert_called_once_with(
+            row["measurement_data"],
+            256,
+            radial_range=None,
+            azimuth_range=None,
+            mask=None,
+            error_model="poisson",
+        )
 
     @patch(
         (
@@ -248,7 +302,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
 
         mask = np.random.randint(0, 2, (10, 10))
 
-        radial, intensity, dist = perform_azimuthal_integration(row, mask=mask)
+        radial, intensity, sigma, dist = perform_azimuthal_integration(row, mask=mask)
 
         mock_initialize_ai_df.assert_called_once()
         mock_ai.integrate1d.assert_called_once_with(
@@ -257,9 +311,11 @@ class TestAzimuthalIntegration(unittest.TestCase):
             radial_range=(0, 5),
             azimuth_range=(-180, 180),
             mask=mask,
+            error_model=None,
         )
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
+        assert sigma is None
         np.testing.assert_array_equal(dist, np.array([0.1, 0.1, 0.1]))
 
     @patch(
@@ -289,7 +345,7 @@ class TestAzimuthalIntegration(unittest.TestCase):
             }
         )
 
-        radial, intensity, dist = perform_azimuthal_integration(row)
+        radial, intensity, sigma, dist = perform_azimuthal_integration(row)
 
         mock_initialize_ai_df.assert_called_once()
         mock_ai.integrate1d.assert_called_once_with(
@@ -298,7 +354,22 @@ class TestAzimuthalIntegration(unittest.TestCase):
             radial_range=None,
             azimuth_range=None,
             mask=None,
+            error_model=None,
         )
         np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
         np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
+        assert sigma is None
         np.testing.assert_array_equal(dist, np.array([0.1, 0.1, 0.1]))
+
+
+def test_thickness_adjustment_uses_reference_and_fallback_distance():
+    """Keep reference-thickness geometry correction stable without PONI distance."""
+    poni_text, adjusted_distance = _adjust_poni_text_for_thickness(
+        "Poni1: 0.1\n",
+        sample_thickness_mm=25.0,
+        reference_thickness_mm=11.0,
+        fallback_distance_mm=500.0,
+    )
+
+    assert poni_text == "Poni1: 0.1\n"
+    assert adjusted_distance == 0.493
