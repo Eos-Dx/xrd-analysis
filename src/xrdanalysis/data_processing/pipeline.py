@@ -17,15 +17,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 
+from xrdanalysis.data_processing import FaultyPixelDetector, MeasurementTypeClassifier
+from xrdanalysis.data_processing._pipeline_diagnostics import emit_split_summary
+from xrdanalysis.data_processing.detector_joining import join_detectors
 from xrdanalysis.data_processing.utility_functions import (
     calculate_optimal_threshold,
     generate_roc_based_metrics,
 )
-from xrdanalysis.data_processing import (
-    FaultyPixelDetector,
-    MeasurementTypeClassifier,
-)
-from xrdanalysis.data_processing.detector_joining import join_detectors
 
 
 class MLPipeline:
@@ -577,116 +575,16 @@ class MLPipeline:
             X_test = X
             y_test = y
 
-        # Print split summary (pre-preprocessing) if requested
         if split and print_split_summary:
-            try:
-                n_total = len(X)
-                n_test = len(X_test)
-                n_train = len(X_train)
-                test_ratio = (n_test / n_total) if n_total else 0.0
-                test_size = split_args.get("test_size", None)
-                target_test = (
-                    int(round(float(test_size) * n_total))
-                    if isinstance(test_size, (int, float))
-                    else None
-                )
-                print("Split summary:")
-                if target_test is not None:
-                    print(
-                        f"Rows: total={n_total}, target_test={target_test}, test={n_test}, train={n_train}, test_ratio={test_ratio:.3f}"
-                    )
-                else:
-                    print(
-                        f"Rows: total={n_total}, test={n_test}, train={n_train}, test_ratio={test_ratio:.3f}"
-                    )
-
-                group_col = split_args.get("group_col", None)
-                if group_col is not None and group_col in X.columns:
-                    g_total = X[group_col].nunique()
-                    g_test = X_test[group_col].nunique()
-                    g_train = X_train[group_col].nunique()
-                    print(f"Groups: total={g_total}, test={g_test}, train={g_train}")
-
-                stratify_cols = split_args.get("stratify_cols", None)
-                if stratify_cols is not None:
-                    if isinstance(stratify_cols, (str, bytes)):
-                        strat_cols = [stratify_cols]
-                    else:
-                        strat_cols = list(stratify_cols)
-                    if all(c in X.columns for c in strat_cols):
-                        # Build combined bins for readability
-                        def _bins(df_):
-                            return (
-                                df_[strat_cols]
-                                .apply(
-                                    lambda r: tuple(r[c] for c in strat_cols), axis=1
-                                )
-                                .value_counts()
-                                .to_dict()
-                            )
-
-                        print(f"Test bin counts: {_bins(X_test)}")
-                        print(f"Train bin counts: {_bins(X_train)}")
-
-                # Additional label/weight stats
-                try:
-                    # Label distributions
-                    print(
-                        "Label distribution (train):",
-                        pd.Series(y_train).value_counts().to_dict(),
-                    )
-                    print(
-                        "Label distribution (test): ",
-                        pd.Series(y_test).value_counts().to_dict(),
-                    )
-                    print(
-                        "Label proportion (train):",
-                        pd.Series(y_train)
-                        .value_counts(normalize=True)
-                        .round(3)
-                        .to_dict(),
-                    )
-                    print(
-                        "Label proportion (test): ",
-                        pd.Series(y_test)
-                        .value_counts(normalize=True)
-                        .round(3)
-                        .to_dict(),
-                    )
-                    # Weight stats per label if provided
-                    if (
-                        sample_weight_col is not None
-                        and sample_weight_col in X_train.columns
-                    ):
-                        df_tr = X_train[[sample_weight_col]].copy()
-                        df_tr["__y__"] = pd.Series(y_train).values
-                        gtr = df_tr.groupby("__y__")[sample_weight_col]
-                        print("Weight stats by label (train): sum/mean/std")
-                        print(
-                            gtr.agg(["sum", "mean", "std"])
-                            .round(5)
-                            .rename_axis("label")
-                            .to_string()
-                        )
-                    if (
-                        sample_weight_col is not None
-                        and sample_weight_col in X_test.columns
-                    ):
-                        df_te = X_test[[sample_weight_col]].copy()
-                        df_te["__y__"] = pd.Series(y_test).values
-                        gte = df_te.groupby("__y__")[sample_weight_col]
-                        print("Weight stats by label (test): sum/mean/std")
-                        print(
-                            gte.agg(["sum", "mean", "std"])
-                            .round(5)
-                            .rename_axis("label")
-                            .to_string()
-                        )
-                except Exception:
-                    pass
-            except Exception:
-                # Never fail training due to debug printing
-                pass
+            emit_split_summary(
+                X,
+                X_train,
+                X_test,
+                y_train,
+                y_test,
+                split_args,
+                sample_weight_col,
+            )
 
         # Extract sample weights if specified
         sample_weight_train = None
@@ -1502,115 +1400,16 @@ class MLPipelineMulti(MLPipeline):
         else:
             X_train, X_test, y_train, y_test = X, X, y, y
 
-        # Print split summary (pre-preprocessing) if requested
         if split and print_split_summary:
-            try:
-                n_total = len(X)
-                n_test = len(X_test)
-                n_train = len(X_train)
-                test_ratio = (n_test / n_total) if n_total else 0.0
-                test_size = split_args.get("test_size", None)
-                target_test = (
-                    int(round(float(test_size) * n_total))
-                    if isinstance(test_size, (int, float))
-                    else None
-                )
-                print("Split summary:")
-                if target_test is not None:
-                    print(
-                        f"Rows: total={n_total}, target_test={target_test}, test={n_test}, train={n_train}, test_ratio={test_ratio:.3f}"
-                    )
-                else:
-                    print(
-                        f"Rows: total={n_total}, test={n_test}, train={n_train}, test_ratio={test_ratio:.3f}"
-                    )
-
-                group_col = split_args.get("group_col", None)
-                if group_col is not None and group_col in X.columns:
-                    g_total = X[group_col].nunique()
-                    g_test = X_test[group_col].nunique()
-                    g_train = X_train[group_col].nunique()
-                    print(f"Groups: total={g_total}, test={g_test}, train={g_train}")
-
-                stratify_cols = split_args.get("stratify_cols", None)
-                if stratify_cols is not None:
-                    if isinstance(stratify_cols, (str, bytes)):
-                        strat_cols = [stratify_cols]
-                    else:
-                        strat_cols = list(stratify_cols)
-                    if all(c in X.columns for c in strat_cols):
-
-                        def _bins(df_):
-                            return (
-                                df_[strat_cols]
-                                .apply(
-                                    lambda r: tuple(r[c] for c in strat_cols), axis=1
-                                )
-                                .value_counts()
-                                .to_dict()
-                            )
-
-                        print(f"Test bin counts: {_bins(X_test)}")
-                        print(f"Train bin counts: {_bins(X_train)}")
-
-                # Additional label/weight stats
-                try:
-                    # Label distributions
-                    print(
-                        "Label distribution (train):",
-                        pd.Series(y_train).value_counts().to_dict(),
-                    )
-                    print(
-                        "Label distribution (test): ",
-                        pd.Series(y_test).value_counts().to_dict(),
-                    )
-                    print(
-                        "Label proportion (train):",
-                        pd.Series(y_train)
-                        .value_counts(normalize=True)
-                        .round(3)
-                        .to_dict(),
-                    )
-                    print(
-                        "Label proportion (test): ",
-                        pd.Series(y_test)
-                        .value_counts(normalize=True)
-                        .round(3)
-                        .to_dict(),
-                    )
-                    # Weight stats per label if provided
-                    if (
-                        sample_weight_col is not None
-                        and sample_weight_col in X_train.columns
-                    ):
-                        df_tr = X_train[[sample_weight_col]].copy()
-                        df_tr["__y__"] = pd.Series(y_train).values
-                        gtr = df_tr.groupby("__y__")[sample_weight_col]
-                        print("Weight stats by label (train): sum/mean/std")
-                        print(
-                            gtr.agg(["sum", "mean", "std"])
-                            .round(5)
-                            .rename_axis("label")
-                            .to_string()
-                        )
-                    if (
-                        sample_weight_col is not None
-                        and sample_weight_col in X_test.columns
-                    ):
-                        df_te = X_test[[sample_weight_col]].copy()
-                        df_te["__y__"] = pd.Series(y_test).values
-                        gte = df_te.groupby("__y__")[sample_weight_col]
-                        print("Weight stats by label (test): sum/mean/std")
-                        print(
-                            gte.agg(["sum", "mean", "std"])
-                            .round(5)
-                            .rename_axis("label")
-                            .to_string()
-                        )
-                except Exception:
-                    pass
-            except Exception:
-                pass
+            emit_split_summary(
+                X,
+                X_train,
+                X_test,
+                y_train,
+                y_test,
+                split_args,
+                sample_weight_col,
+            )
 
         # Extract sample weights if specified
         sample_weight_train = None
