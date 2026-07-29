@@ -10,12 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = ROOT / "src" / "xrdanalysis"
 DEFAULT_MAX_LINES = 1_000
 
-# These modules pre-date the guardrail.  Their ceilings prevent further growth
-# while allowing their behavior-preserving extraction to happen incrementally.
-TEMPORARY_EXEMPTIONS = {
-    "data_processing/transformers.py": 2_634,
-    "data_processing/utility_functions.py": 1_302,
-}
+# Keep empty unless a documented, independently tested removal stage is active.
+TEMPORARY_EXEMPTIONS = {}
 
 
 def line_count(path: Path) -> int:

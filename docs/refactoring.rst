@@ -76,11 +76,10 @@ Python file-size budget
 -----------------------
 
 Run ``python scripts/check_python_file_size.py`` or ``make check-python-file-size``.
-The analysis package defaults to a 1,000 physical-line maximum per Python file.
-Two pre-existing modules have temporary, explicit ceilings in
-``scripts/check_python_file_size.py``. They may not grow; each extraction should
-reduce them until the default budget applies. Add an exemption only with a
-documented removal stage and a dedicated test gate.
+All Python files in the analysis package are within the 1,000 physical-line
+maximum. ``scripts/check_python_file_size.py`` has zero temporary exemptions.
+Do not add an exemption without a documented removal stage and a dedicated test
+gate.
 
 Current private extraction boundaries
 -------------------------------------
@@ -96,9 +95,35 @@ implementations are currently split into:
 * ``_pipeline_export.py`` for fitted pipeline serialization and CSV exports;
 * ``_pipeline_validation.py`` for binary and multiclass validation support;
 * ``_evaluation_utils.py`` for ROC and threshold calculations;
+* ``_utility_hdf.py`` for HDF5 table loading;
+* ``_utility_statistics.py`` for grouped profile statistics and plotting;
+* ``_utility_angular.py`` for angular-range and weighted-integration helpers;
+* ``_utility_image.py`` for image and PONI geometry helpers;
 * ``_spectrokinetic_math.py`` for private SVD/MCR-ALS numerical kernels;
 * ``_spectrokinetic_mcr_support.py`` for stateless matrix, mask, fixed-spectra,
   initialization, and group-wavelength preparation.
+
+``utility_functions.py`` remains the canonical compatibility facade for all
+historical utility import paths. Its public wrappers preserve call signatures,
+module-qualified names, public monkeypatch seams, and the historical
+``from xrdanalysis.data_processing.utility_functions import *`` metric names
+(``RocCurveDisplay``, ``auc``, ``f1_score``, ``precision_score``, and
+``roc_curve``). Private utility modules are implementation details and must not
+become required consumer imports.
+
+Transformer implementation support is divided into five private modules:
+
+* ``_transformer_dataframe.py`` for dataframe-oriented transformer support;
+* ``_transformer_goodness.py`` for goodness transformation and filtering;
+* ``_transformer_profile.py`` for profile and range transformation support;
+* ``_transformer_signal.py`` for signal and Fourier transformation support;
+* ``_transformer_soft_labels.py`` for soft-label and weighted-sample support.
+
+``_transformer_compat.py`` centralizes compatibility dispatch used by canonical
+wrappers. ``transformers.py`` remains the only canonical module for historical
+transformer imports and class identity. It must preserve public signatures,
+direct imports, public monkeypatch seams, sklearn/joblib deserialization, and
+the spectrokinetic re-exports. No private transformer module is a public API.
 
 ``spectrokinetic_transformers.py`` retains the canonical public transformer
 classes, ALS configuration/result types, ``run_als_iteration``, and
@@ -110,10 +135,16 @@ paths. Its SK-Ana-inspired fixture data and frozen small matrices are
 deterministic regression contracts. The optional parity fixture is absent, and
 its generator is not a provenance-backed external SK-Ana reference.
 
-``utility_functions.py`` retains signature-preserving wrappers for evaluation
-functions. It also temporarily re-exports the historical scikit-learn metric
-names used by wildcard-import notebooks. Remove those compatibility exports
-only after consumer migration and an explicit deprecation period.
+Untouched compatibility boundaries
+----------------------------------
+
+``AzimuthalIntegration``, ``DeviationTransformer``, ``ColumnNormalizer``,
+``DetectorJoiner``, and ``SNRTransformer`` remain canonical public classes in
+``transformers.py``. Their direct imports, behavior, class identity, and saved
+``joblib`` artifacts are outside these extraction changes. ``FaultyPixelDetector``
+remains deferred as stated above. ``XRD-preprocessing`` remains an external,
+read-only parity reference: this repository does not move, edit, or refactor
+it as part of utility or transformer work.
 
 Pipeline contracts
 ------------------
