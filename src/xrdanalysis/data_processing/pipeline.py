@@ -5,7 +5,6 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from joblib import dump
 from sklearn.metrics import (
     RocCurveDisplay,
     accuracy_score,
@@ -21,6 +20,7 @@ from xrdanalysis.data_processing import (
     FaultyPixelDetector,
     MeasurementTypeClassifier,
     _pipeline_experimentation,
+    _pipeline_export,
 )
 from xrdanalysis.data_processing._pipeline_diagnostics import emit_split_summary
 from xrdanalysis.data_processing.detector_joining import join_detectors
@@ -701,42 +701,9 @@ class MLPipeline:
         :return: The full pipeline.
         :rtype: Pipeline
         """
-        if not self.trained_estimator:
-            raise RuntimeError("Estimator has not been fitted yet.")
-
-        if wrangle and preprocess:
-            full_pipeline = Pipeline(
-                steps=[
-                    *self.data_wrangling_steps,
-                    *self.trained_preprocessor.steps,
-                    *self.trained_estimator.steps,
-                ]
-            )
-        elif wrangle:
-            full_pipeline = Pipeline(
-                steps=[
-                    *self.data_wrangling_steps,
-                    *self.trained_estimator.steps,
-                ]
-            )
-        elif preprocess:
-            full_pipeline = Pipeline(
-                steps=[
-                    *self.trained_preprocessor.steps,
-                    *self.trained_estimator.steps,
-                ]
-            )
-        else:
-            full_pipeline = self.trained_estimator
-
-        # Only set optimal_threshold if it exists (binary classification)
-        if hasattr(self, "optimal_threshold"):
-            full_pipeline.optimal_threshold = self.optimal_threshold
-
-        if save_path:
-            dump(full_pipeline, save_path)
-
-        return full_pipeline
+        return _pipeline_export.export_binary_pipeline(
+            self, wrangle, preprocess, save_path
+        )
 
     def export_predictions(self, data, save_path, wrangle=False, preprocess=True):
         """
@@ -752,39 +719,9 @@ class MLPipeline:
         :param preprocess: Whether to apply preprocessing steps to the data.
         :type preprocess: bool
         """
-        if not self.trained_estimator:
-            raise RuntimeError("Estimator has not been fitted yet.")
-
-        model = self.export_pipeline(wrangle, preprocess)
-        clf = model.steps[-1][1]
-        classes = getattr(clf, "classes_", None)
-
-        proba = self.predict_proba(data, wrangle, preprocess)  # shape (n, n_classes)
-
-        # Detect multiclass vs binary
-        multiclass = proba.ndim == 2 and proba.shape[1] > 2
-
-        if multiclass:
-            # Export full probability matrix for multiclass
-            df_pred = pd.DataFrame(
-                proba, index=data.index, columns=[f"p_{c}" for c in classes]
-            )
-            # Also include a column with the 3-vector as a list
-            df_pred["cancer_status_soft"] = df_pred[
-                [f"p_{c}" for c in classes]
-            ].values.tolist()
-        else:
-            # Binary case: use threshold-based predictions
-            y_score = proba[:, 1] if proba.ndim == 2 else proba
-            threshold = getattr(
-                model, "optimal_threshold", 0.5
-            )  # Default to 0.5 if not set
-            y_pred = y_score >= threshold
-            df_pred = pd.DataFrame(
-                data=y_pred, index=data.index, columns=["cancer_diagnosis"]
-            )
-
-        df_pred.to_csv(save_path)
+        return _pipeline_export.export_binary_predictions(
+            self, data, save_path, wrangle, preprocess
+        )
 
     def validate_dataset(
         self,
@@ -837,12 +774,7 @@ class MLPipeline:
             y_true = self.infer_y(data, y_column, y_value)
         else:
             y_true = y_data
-        features = (
-            data.drop(columns=[y_column])
-            if y_column is not None and y_column in data.columns
-            else data
-        )
-        y_score = self.predict_proba(features, wrangle, preprocess)
+        y_score = self.predict_proba(data, wrangle, preprocess)
         return self.validate(
             y_true,
             y_score,
@@ -1243,66 +1175,14 @@ class MLPipelineMulti(MLPipeline):
 
     def export_pipeline(self, wrangle=False, preprocess=True, save_path=None):
         """Export full pipeline (no threshold stored for multiclass)."""
-        if not self.trained_estimator:
-            raise RuntimeError("Estimator has not been fitted yet.")
-
-        if wrangle and preprocess:
-            full_pipeline = Pipeline(
-                steps=[
-                    *self.data_wrangling_steps,
-                    *self.trained_preprocessor.steps,
-                    *self.trained_estimator.steps,
-                ]
-            )
-        elif wrangle:
-            full_pipeline = Pipeline(
-                steps=[
-                    *self.data_wrangling_steps,
-                    *self.trained_estimator.steps,
-                ]
-            )
-        elif preprocess:
-            full_pipeline = Pipeline(
-                steps=[
-                    *self.trained_preprocessor.steps,
-                    *self.trained_estimator.steps,
-                ]
-            )
-        else:
-            full_pipeline = self.trained_estimator
-
-        if save_path:
-            dump(full_pipeline, save_path)
-        return full_pipeline
+        return _pipeline_export.export_multiclass_pipeline(
+            self, wrangle, preprocess, save_path
+        )
 
     def export_predictions(self, data, save_path, wrangle=False, preprocess=True):
-        if not self.trained_estimator:
-            raise RuntimeError("Estimator has not been fitted yet.")
-
-        model = self.export_pipeline(wrangle, preprocess)
-        y_pred = self.predict(data, wrangle=wrangle, preprocess=preprocess)
-        try:
-            y_proba = self.predict_proba(data, wrangle=wrangle, preprocess=preprocess)
-            df_out = pd.DataFrame(index=data.index)
-            df_out["prediction"] = y_pred
-            try:
-                final_step = (
-                    model.steps[-1][1]
-                    if isinstance(model, Pipeline)
-                    else self.trained_estimator.steps[-1][1]
-                )
-                classes = getattr(final_step, "classes_", None)
-                if classes is not None and y_proba.ndim == 2:
-                    for i, cls in enumerate(classes):
-                        df_out[f"proba_{cls}"] = y_proba[:, i]
-                else:
-                    df_out["proba"] = y_proba
-            except Exception:
-                df_out["proba"] = y_proba
-        except Exception:
-            df_out = pd.DataFrame({"prediction": y_pred}, index=data.index)
-
-        df_out.to_csv(save_path)
+        return _pipeline_export.export_multiclass_predictions(
+            self, data, save_path, wrangle, preprocess
+        )
 
     def validate_dataset(
         self,
@@ -1323,13 +1203,8 @@ class MLPipelineMulti(MLPipeline):
             y_true = self.infer_y(data, y_column, y_value)
         else:
             y_true = y_data
-        features = (
-            data.drop(columns=[y_column])
-            if y_column is not None and y_column in data.columns
-            else data
-        )
-        y_proba = self.predict_proba(features, wrangle=wrangle, preprocess=preprocess)
-        y_pred = self.predict(features, wrangle=wrangle, preprocess=preprocess)
+        y_proba = self.predict_proba(data, wrangle=wrangle, preprocess=preprocess)
+        y_pred = self.predict(data, wrangle=wrangle, preprocess=preprocess)
         return self.validate_multiclass(
             y_true=y_true,
             y_proba=y_proba,

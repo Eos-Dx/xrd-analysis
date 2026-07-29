@@ -6,7 +6,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.linear_model import LogisticRegression
 
 from xrdanalysis.data_processing.pipeline import MLPipeline, MLPipelineMulti
@@ -39,6 +39,32 @@ class _ColumnRecordingClassifier(ClassifierMixin, BaseEstimator):
 
 class _ScoreClassifier(_ColumnRecordingClassifier):
     """Classifier with fixed score output for threshold export checks."""
+
+
+class _DerivedFeatureClassifier(_ColumnRecordingClassifier):
+    """Recording classifier whose score comes from the wrangled feature."""
+
+    @staticmethod
+    def _scores(x):
+        return np.asarray(x["derived_signal"], dtype=float)
+
+
+class _MetadataAwareFeatureBuilder(BaseEstimator, TransformerMixin):
+    """Build a feature only while target and weight metadata remain available."""
+
+    def fit(self, x, y=None):
+        return self
+
+    def transform(self, x):
+        assert {"target", "weight"} <= set(x.columns)
+        return pd.DataFrame(
+            {
+                "derived_signal": x["signal"],
+                "target": x["target"],
+                "weight": x["weight"],
+            },
+            index=x.index,
+        )
 
 
 def _inferred_target_frame() -> pd.DataFrame:
@@ -130,6 +156,45 @@ def test_validate_dataset_uses_target_for_y_but_not_prediction_features(
 
     fitted = pipeline.trained_estimator.steps[-1][1]
     assert fitted.proba_columns_[-1] == ("signal",)
+
+
+@pytest.mark.parametrize("pipeline_type", [MLPipeline, MLPipelineMulti])
+def test_validate_dataset_wrangling_keeps_metadata_until_feature_filtering(
+    pipeline_type,
+):
+    """Validation must wrangle raw metadata before prediction drops it."""
+    frame = _weighted_target_frame()
+    original = frame.copy(deep=True)
+    pipeline = pipeline_type(
+        data_wrangling_steps=[("derive", _MetadataAwareFeatureBuilder())],
+        estimator=("classifier", _DerivedFeatureClassifier()),
+    )
+    train_kwargs = {
+        "X": frame,
+        "y_column": "target",
+        "wrangle": True,
+        "split": False,
+        "preprocess": False,
+        "print_flag": False,
+        "sample_weight_col": "weight",
+    }
+    if pipeline_type is MLPipelineMulti:
+        train_kwargs["metrics"] = ["accuracy"]
+    pipeline.train(**train_kwargs)
+
+    pipeline.validate_dataset(
+        frame,
+        y_column="target",
+        wrangle=True,
+        preprocess=False,
+        metrics=["accuracy"],
+    )
+
+    fitted = pipeline.trained_estimator.steps[-1][1]
+    assert fitted.proba_columns_[-1] == ("derived_signal",)
+    if pipeline_type is MLPipelineMulti:
+        assert fitted.predict_columns_[-1] == ("derived_signal",)
+    pd.testing.assert_frame_equal(frame, original)
 
 
 def test_constrained_binary_threshold_is_persisted_and_exported_consistently(
