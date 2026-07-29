@@ -15,6 +15,10 @@ from scipy.optimize import curve_fit
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import Normalizer, StandardScaler
 
+from xrdanalysis.data_processing._goodness import (
+    filter_goodness_dataframe,
+    transform_goodness_dataframe,
+)
 from xrdanalysis.data_processing._snr_math import (
     calculate_snr_metrics,
     ensure_uniform_grid,
@@ -1410,85 +1414,15 @@ class GoodnessTransformer(TransformerMixin):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        X = df.copy()
-
-        # Auto-detect the best column to use if the specified one doesn't exist
-        if self.column not in X.columns:
-            if "polar_data" in X.columns:
-                actual_column = "polar_data"
-                print(
-                    f"Warning: Column '{self.column}' not found. Using 'polar_data' instead."
-                )
-            elif "radial_profile_data" in X.columns:
-                actual_column = "radial_profile_data"
-                print(
-                    f"Warning: Column '{self.column}' not found. Using 'radial_profile_data' instead."
-                )
-            else:
-                raise KeyError(
-                    f"Neither '{self.column}', 'polar_data', nor 'radial_profile_data' found in DataFrame columns"
-                )
-        else:
-            actual_column = self.column
-
-        dev_matrices = [] if self.save_dev else None
-
-        def compute_hf_score(arr: np.ndarray) -> float:
-            Z_full = np.array(arr)
-            if Z_full.ndim != 2:
-                raise ValueError(f"Column '{actual_column}' must contain 2D arrays.")
-
-            # Skip low-q bins
-            Z = Z_full[:, self.skip_bins :]
-            n_az, n_q = Z.shape
-
-            # Compute percent-deviation per q-bin (exclude zeros and NaNs)
-            Z_norm = np.full_like(Z, np.nan, dtype=float)
-            for j in range(n_q):
-                col = Z[:, j]
-                valid = (~np.isnan(col)) & (col != 0)
-                if np.any(valid):
-                    mean_val = col[valid].mean()
-                    if mean_val != 0:
-                        Z_norm[valid, j] = (col[valid] - mean_val) / mean_val * 100.0
-
-            # Prepare array for FFT: replace NaNs with 0 and remove global mean
-            Z_fft_input = np.nan_to_num(Z_norm, nan=0.0)
-            Z_fft_input = Z_fft_input - Z_fft_input.mean()
-
-            # 2D FFT power spectrum
-            F = np.fft.fft2(Z_fft_input)
-            P = np.abs(F) ** 2
-            P_shifted = np.fft.fftshift(P)
-
-            # Frequency grid and high-frequency mask
-            fy = np.fft.fftfreq(n_az)
-            fx = np.fft.fftfreq(n_q)
-            fy_shifted = np.fft.fftshift(fy)
-            fx_shifted = np.fft.fftshift(fx)
-            FX, FY = np.meshgrid(fx_shifted, fy_shifted)
-            freq_mag = np.sqrt(FX**2 + FY**2)
-            high_freq_mask = freq_mag > self.hf_cutoff_fraction
-
-            P_high = P_shifted[high_freq_mask].sum()
-            P_total = P_shifted.sum()
-
-            if self.save_dev:
-                dev_matrix_full = np.full_like(Z_full, np.nan, dtype=float)
-                dev_matrix_full[:, self.skip_bins :] = Z_norm
-                dev_matrices.append(dev_matrix_full)
-
-            if P_total <= 0:
-                return 0.0
-
-            return float(P_high / P_total * 100.0)
-
-        X[self.output_col] = X[actual_column].apply(compute_hf_score)
-
-        if self.save_dev:
-            X[self.diff_col] = dev_matrices
-
-        return X
+        return transform_goodness_dataframe(
+            df,
+            column=self.column,
+            skip_bins=self.skip_bins,
+            hf_cutoff_fraction=self.hf_cutoff_fraction,
+            output_col=self.output_col,
+            save_dev=self.save_dev,
+            diff_col=self.diff_col,
+        )
 
 
 class GoodnessFilter(TransformerMixin):
@@ -1551,61 +1485,15 @@ class GoodnessFilter(TransformerMixin):
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """Filter DataFrame based on goodness thresholds and comparison rules."""
-        X = df.copy()
-
-        # Check required columns exist
-        if self.goodness_column not in X.columns:
-            raise KeyError(
-                f"Goodness column '{self.goodness_column}' not found in DataFrame"
-            )
-        if self.type_column not in X.columns:
-            raise KeyError(f"Type column '{self.type_column}' not found in DataFrame")
-
-        initial_count = len(X)
-
-        # Create comparison function based on rule
-        def compare_values(goodness_score, threshold):
-            if self.rule == ">":
-                return goodness_score > threshold
-            elif self.rule == ">=":
-                return goodness_score >= threshold
-            elif self.rule == "<":
-                return goodness_score < threshold
-            elif self.rule == "<=":
-                return goodness_score <= threshold
-
-        # Create filter mask based on measurement type and goodness threshold
-        def meets_criteria(row):
-            measurement_type = row[self.type_column]
-            goodness_score = row[self.goodness_column]
-
-            # Get threshold for this measurement type
-            threshold = self.thresholds.get(measurement_type, self.default_threshold)
-
-            return compare_values(goodness_score, threshold)
-
-        # Apply filter
-        mask = X.apply(meets_criteria, axis=1)
-        X_filtered = X[mask]
-
-        if self.verbose:
-            final_count = len(X_filtered)
-            removed_count = initial_count - final_count
-            print(
-                f"GoodnessFilter: {initial_count} -> {final_count} rows ({removed_count} removed, rule: '{self.rule}')"
-            )
-
-            # Show breakdown by type
-            unique_types = X[self.type_column].unique()
-            for mtype in unique_types:
-                original = len(X[X[self.type_column] == mtype])
-                filtered = len(X_filtered[X_filtered[self.type_column] == mtype])
-                threshold = self.thresholds.get(mtype, self.default_threshold)
-                print(
-                    f"  {mtype}: {original} -> {filtered} rows (goodness {self.rule} {threshold})"
-                )
-
-        return X_filtered
+        return filter_goodness_dataframe(
+            df,
+            goodness_column=self.goodness_column,
+            type_column=self.type_column,
+            thresholds=self.thresholds,
+            rule=self.rule,
+            default_threshold=self.default_threshold,
+            verbose=self.verbose,
+        )
 
 
 class DataPreparation(TransformerMixin):
