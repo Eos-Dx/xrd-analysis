@@ -16,6 +16,7 @@ from xrdanalysis.data_processing.azimuthal_integration import (
     _adjust_poni_text_for_thickness,
     initialize_azimuthal_integrator_df,
     initialize_azimuthal_integrator_poni,
+    initialize_azimuthal_integrator_poni_text,
     perform_azimuthal_integration,
 )
 
@@ -194,6 +195,49 @@ class TestAzimuthalIntegration(unittest.TestCase):
     @patch(
         (
             "xrdanalysis.data_processing."
+            "azimuthal_integration.initialize_azimuthal_integrator_poni_text"
+        )
+    )
+    def test_azimuthal_integration_thickness_fallback_loads_adjusted_distance(
+        self, mock_initialize_ai_poni_text
+    ):
+        """Inject fallback geometry into the PONI text sent to pyFAI."""
+        mock_ai = mock_initialize_ai_poni_text.return_value
+        mock_ai.dist = 0.493
+        mock_ai.poni1 = 0.1
+        mock_ai.poni2 = 0.2
+        mock_ai.detector.pixel1 = 0.001
+        mock_ai.detector.pixel2 = 0.001
+        mock_ai.integrate1d.return_value = (
+            np.array([1, 2, 3]),
+            np.array([4, 5, 6]),
+        )
+        row = pd.Series(
+            {
+                "measurement_data": np.ones((3, 3)),
+                "ponifile": "Poni1: 0.1\nPoni2: 0.2\n",
+                "thickness": 25.0,
+            }
+        )
+
+        radial, intensity, sigma, distance = perform_azimuthal_integration(
+            row,
+            calibration_mode="poni",
+            thickness_adjustment=True,
+            thickness_adjustment_distance=500.0,
+            thickness_reference_mm=11.0,
+        )
+
+        poni_text = mock_initialize_ai_poni_text.call_args.args[0]
+        assert poni_text.startswith("Distance: 0.493000\n")
+        np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
+        np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
+        assert sigma is None
+        assert distance == mock_ai.dist
+
+    @patch(
+        (
+            "xrdanalysis.data_processing."
             "azimuthal_integration.initialize_azimuthal_integrator_df"
         )
     )
@@ -362,8 +406,8 @@ class TestAzimuthalIntegration(unittest.TestCase):
         np.testing.assert_array_equal(dist, np.array([0.1, 0.1, 0.1]))
 
 
-def test_thickness_adjustment_uses_reference_and_fallback_distance():
-    """Keep reference-thickness geometry correction stable without PONI distance."""
+def test_thickness_adjustment_injects_fallback_distance():
+    """A missing distance receives a corrected PONI value for pyFAI."""
     poni_text, adjusted_distance = _adjust_poni_text_for_thickness(
         "Poni1: 0.1\n",
         sample_thickness_mm=25.0,
@@ -371,5 +415,32 @@ def test_thickness_adjustment_uses_reference_and_fallback_distance():
         fallback_distance_mm=500.0,
     )
 
-    assert poni_text == "Poni1: 0.1\n"
+    assert poni_text == "Distance: 0.493000\nPoni1: 0.1\n"
     assert adjusted_distance == 0.493
+
+
+def test_thickness_adjustment_without_distance_or_fallback_preserves_poni_text():
+    """A missing fallback remains explicitly non-adjustable."""
+    poni_text, adjusted_distance = _adjust_poni_text_for_thickness(
+        "Poni1: 0.1\n",
+        sample_thickness_mm=25.0,
+    )
+
+    assert poni_text == "Poni1: 0.1\n"
+    assert adjusted_distance is None
+
+
+def test_minimal_poni_with_injected_fallback_loads_adjusted_distance():
+    """Verify current pyFAI reads fallback geometry from the generated text."""
+    minimal_poni = """Detector: Detector\nPixelSize1: 0.0001\nPixelSize2: 0.0001\nPoni1: 0.01\nPoni2: 0.01\nRot1: 0\nRot2: 0\nRot3: 0\nWavelength: 1e-10\n"""
+    adjusted_poni, adjusted_distance = _adjust_poni_text_for_thickness(
+        minimal_poni,
+        sample_thickness_mm=25.0,
+        reference_thickness_mm=11.0,
+        fallback_distance_mm=500.0,
+    )
+
+    integrator = initialize_azimuthal_integrator_poni_text(adjusted_poni)
+
+    assert adjusted_distance == 0.493
+    assert np.isclose(integrator.dist, adjusted_distance)

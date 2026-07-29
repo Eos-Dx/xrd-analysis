@@ -118,6 +118,7 @@ def _adjust_poni_text_for_thickness(
     reference_thickness_mm=0.0,
     fallback_distance_mm=None,
 ):
+    """Apply the thickness correction, injecting fallback geometry when needed."""
     base_distance_m, value_start, end_of_line_index = _read_poni_distance(poni_text)
     if base_distance_m is None:
         if fallback_distance_mm is None:
@@ -130,7 +131,9 @@ def _adjust_poni_text_for_thickness(
     )
 
     if value_start is None or end_of_line_index is None:
-        return poni_text, adjusted_distance
+        # A fallback has no existing PONI line to replace, so insert one for
+        # pyFAI to load the corrected detector geometry.
+        return f"Distance: {adjusted_distance:.6f}\n{poni_text}", adjusted_distance
 
     new_ponifile_text = (
         poni_text[:value_start]
