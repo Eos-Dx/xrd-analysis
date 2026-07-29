@@ -77,7 +77,7 @@ Python file-size budget
 
 Run ``python scripts/check_python_file_size.py`` or ``make check-python-file-size``.
 The analysis package defaults to a 1,000 physical-line maximum per Python file.
-Four pre-existing modules have temporary, explicit ceilings in
+Three pre-existing modules have temporary, explicit ceilings in
 ``scripts/check_python_file_size.py``. They may not grow; each extraction should
 reduce them until the default budget applies. Add an exemption only with a
 documented removal stage and a dedicated test gate.
@@ -91,17 +91,20 @@ implementations are currently split into:
 * ``_snr_math.py`` for SNR numerical kernels;
 * ``_goodness.py`` for goodness scoring and filtering;
 * ``_pipeline_diagnostics.py`` for non-fatal train/test split summaries;
-* ``_evaluation_utils.py`` for ROC and threshold calculations.
-* ``_spectrokinetic_math.py`` for private SVD/MCR-ALS numerical kernels.
+* ``_evaluation_utils.py`` for ROC and threshold calculations;
+* ``_spectrokinetic_math.py`` for private SVD/MCR-ALS numerical kernels;
+* ``_spectrokinetic_mcr_support.py`` for stateless matrix, mask, fixed-spectra,
+  initialization, and group-wavelength preparation.
 
 ``spectrokinetic_transformers.py`` retains the canonical public transformer
 classes, ALS configuration/result types, ``run_als_iteration``, and
-signature-preserving numerical helper wrappers. The package and
-``transformers`` facades retain their class identity re-exports so historical
-imports and ``joblib`` artifacts keep resolving. Its SK-Ana-inspired fixture
-data and frozen small matrices are deterministic regression contracts. The
-optional parity fixture is absent, and its generator is not a
-provenance-backed external SK-Ana reference.
+signature-preserving numerical helper wrappers, plus ALS orchestration and
+payload/metadata assembly. The package and ``transformers`` facades retain
+their class identity re-exports so historical imports and ``joblib`` artifacts
+keep resolving. The private support modules must not become public import
+paths. Its SK-Ana-inspired fixture data and frozen small matrices are
+deterministic regression contracts. The optional parity fixture is absent, and
+its generator is not a provenance-backed external SK-Ana reference.
 
 ``utility_functions.py`` retains signature-preserving wrappers for evaluation
 functions. It also temporarily re-exports the historical scikit-learn metric

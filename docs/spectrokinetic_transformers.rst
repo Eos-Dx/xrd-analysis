@@ -15,6 +15,9 @@ public module. It retains ``SpectroSVDTransformer``, ``MCRALSTransformer``,
 ``ALSConfig``, ``ALSResult``, ``run_als_iteration``, and the public numerical
 helper call signatures. Pure numerical implementation lives in the private
 ``_spectrokinetic_math`` module behind canonical wrappers.
+``_spectrokinetic_mcr_support`` is a second private boundary for stateless
+matrix/axis/mask preparation, fixed spectra, initialization, and group
+wavelength alignment. Neither private module is a public import path.
 
 The following class import paths remain supported:
 
@@ -26,6 +29,11 @@ The two facades are identity re-exports, not replacement classes. This keeps
 existing scikit-learn pipelines and ``joblib`` artifacts resolvable at their
 canonical class module paths. Do not move either transformer class without an
 explicit serialized-artifact migration and compatibility window.
+
+The canonical module also retains ALS orchestration and DataFrame payload and
+metadata assembly. Private support functions must not acquire ownership of
+public classes, their serialized identities, or public numerical helper
+signatures.
 
 Test gate and reference status
 ------------------------------
