@@ -17,7 +17,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 
-from xrdanalysis.data_processing import FaultyPixelDetector, MeasurementTypeClassifier
+from xrdanalysis.data_processing import (
+    FaultyPixelDetector,
+    MeasurementTypeClassifier,
+    _pipeline_experimentation,
+)
 from xrdanalysis.data_processing._pipeline_diagnostics import emit_split_summary
 from xrdanalysis.data_processing.detector_joining import join_detectors
 from xrdanalysis.data_processing.utility_functions import (
@@ -150,9 +154,7 @@ class MLPipeline:
                         data_wrangled = _transformer.fit_transform(data_wrangled)
                         continue
                     except TypeError:
-                        data_wrangled = _transformer.fit_transform(
-                            data_wrangled, None
-                        )
+                        data_wrangled = _transformer.fit_transform(data_wrangled, None)
                         continue
 
                 if hasattr(_transformer, "fit"):
@@ -164,9 +166,9 @@ class MLPipeline:
             stats = {}
             for step_name, transformer in self.data_wrangling_steps:
                 # Try to get stats from transformer
-                if hasattr(transformer, 'stats_'):
+                if hasattr(transformer, "stats_"):
                     stats[step_name] = transformer.stats_
-                elif hasattr(transformer, 'get_stats'):
+                elif hasattr(transformer, "get_stats"):
                     try:
                         stats[step_name] = transformer.get_stats()
                     except Exception:
@@ -431,7 +433,7 @@ class MLPipeline:
                 results["accuracy"] = accuracy_score(y_true, y_pred)
 
             if "roc_auc" in metrics:
-                (sensitivity, specificity, precision, ba_accuracy, threshold) = (
+                sensitivity, specificity, precision, ba_accuracy, threshold = (
                     generate_roc_based_metrics(
                         y_true,
                         y_score_bin,
@@ -919,201 +921,32 @@ class MLPipeline:
         -------
         dict with keys: best_params, best_value, best_results, study
         """
-        try:
-            import optuna  # type: ignore
-        except Exception as e:
-            raise ImportError(
-                "Optuna is required for tuning. Please install it with `pip install optuna`."
-            ) from e
-
-        # Fetch the underlying estimator object (last step)
-        if not self.estimator or len(self.estimator) == 0:
-            raise RuntimeError("Estimator is not set in the pipeline.")
-        est_name, est_obj = self.estimator[-1]
-
-        # Helper: default search space for LightGBM
-        def default_lgbm_space(trial):
-            params = {}
-            # Ranges chosen conservatively; adjust as needed
-            params["n_estimators"] = trial.suggest_int("n_estimators", 100, 600)
-            params["learning_rate"] = trial.suggest_float(
-                "learning_rate", 1e-3, 3e-1, log=True
-            )
-            params["max_depth"] = trial.suggest_int("max_depth", 3, 12)
-            # num_leaves constrained by max_depth if > 0
-            max_depth = params["max_depth"]
-            num_leaves_hi = min(
-                512, (1 << max_depth) if max_depth and max_depth > 0 else 512
-            )
-            params["num_leaves"] = trial.suggest_int("num_leaves", 16, num_leaves_hi)
-            params["min_child_samples"] = trial.suggest_int("min_child_samples", 5, 50)
-            params["min_split_gain"] = trial.suggest_float("min_split_gain", 0.0, 0.3)
-            params["subsample"] = trial.suggest_float("subsample", 0.6, 1.0)
-            params["colsample_bytree"] = trial.suggest_float(
-                "colsample_bytree", 0.6, 1.0
-            )
-            params["reg_alpha"] = trial.suggest_float("reg_alpha", 0.0, 2.0)
-            params["reg_lambda"] = trial.suggest_float("reg_lambda", 0.0, 2.0)
-            return params
-
-        # Pick space
-        def sample_params(trial):
-            if param_space is not None:
-                return param_space(trial)
-            # Heuristic: if LightGBM present, use defaults; else generic small space via set_params
-            try:
-                from lightgbm import LGBMClassifier  # type: ignore
-
-                if isinstance(est_obj, LGBMClassifier):
-                    return default_lgbm_space(trial)
-            except Exception:
-                pass
-            # Generic fallbacks (common sklearn tree-like params)
-            params = {
-                "max_depth": trial.suggest_int("max_depth", 3, 12),
-                "min_samples_split": trial.suggest_int("min_samples_split", 2, 20),
-                "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 20),
-            }
-            if hasattr(est_obj, "n_estimators"):
-                params["n_estimators"] = trial.suggest_int("n_estimators", 100, 600)
-            if hasattr(est_obj, "learning_rate"):
-                params["learning_rate"] = trial.suggest_float(
-                    "learning_rate", 1e-3, 3e-1, log=True
-                )
-            return params
-
-        # Base immutable params we keep if not overwritten
-        base_params = getattr(est_obj, "get_params", lambda **k: {})(deep=False)
-
-        def _threshold_penalty(thr, rng):
-            if rng is None or thr is None:
-                return 0.0
-            lower, upper = rng
-            try:
-                thr = float(thr)
-            except Exception:
-                return 0.0
-            if lower <= thr <= upper:
-                return 0.0
-            if thr < lower:
-                return lower - thr
-            return thr - upper
-
-        def objective(trial):
-            # Sample and apply params on the SAME estimator instance
-            params = sample_params(trial)
-
-            # Allow controlling estimator and splitter random states by name
-            split_args_trial = dict(split_args)
-            rs_split = params.pop("random_state_split", None)
-            if rs_split is not None:
-                split_args_trial["random_state"] = rs_split
-            rs_est = params.pop("random_state_est", None)
-            if rs_est is not None:
-                params["random_state"] = rs_est
-
-            # Preserve important base params unless explicitly overridden
-            for keep_key in ["random_state", "class_weight", "verbose"]:
-                if keep_key in base_params and keep_key not in params:
-                    params[keep_key] = base_params[keep_key]
-
-            # Apply and train
-            if hasattr(est_obj, "set_params"):
-                est_obj.set_params(**params)
-            else:
-                # Last resort: replace the tuple step with updated object
-                self.estimator[-1] = (est_name, est_obj)
-
-            # Train once per trial; silence extra prints
-            results = self.train(
-                X,
-                y_column,
-                y_value=y_value,
-                y_data=y_data,
-                wrangle=wrangle,
-                split=split,
-                preprocess=preprocess,
-                print_flag=False,
-                show_flag=False,
-                print_split_summary=False,
-                **split_args_trial,
-            )
-
-            # Pull metrics (percentages 0..100)
-            roc_auc = results.get("roc_auc")
-            sensitivity = results.get("sensitivity")
-            specificity = results.get("specificity")
-
-            # Convert to fractions in [0,1]
-            try:
-                roc_f = float(roc_auc) / 100.0 if roc_auc is not None else 0.0
-                sen_f = float(sensitivity) / 100.0 if sensitivity is not None else 0.0
-                spe_f = float(specificity) / 100.0 if specificity is not None else 0.0
-            except Exception:
-                roc_f, sen_f, spe_f = 0.0, 0.0, 0.0
-
-            # Optimal threshold stored by validate()
-            thr = getattr(self, "optimal_threshold", None)
-            pen = _threshold_penalty(thr, threshold_range)
-
-            loss = (3.0 - roc_f - spe_f - sen_f) + float(penalty_weight) * float(pen)
-            return float(loss)
-
-        study = optuna.create_study(
-            direction=direction, sampler=sampler, pruner=pruner, study_name=study_name
-        )
-        study.optimize(objective, n_trials=n_trials, timeout=timeout)
-
-        # Apply best params and refit the final model (still same estimator instance)
-        best_params = study.best_trial.params
-        # Preserve base params as before
-        for keep_key in ["random_state", "class_weight", "verbose"]:
-            if keep_key in base_params and keep_key not in best_params:
-                best_params[keep_key] = base_params[keep_key]
-        if hasattr(est_obj, "set_params"):
-            est_obj.set_params(**best_params)
-        # Retrain with best params and requested flags
-        best_results = self.train(
+        return _pipeline_experimentation.tune_estimator_optuna(
+            self,
             X,
             y_column,
-            y_value=y_value,
-            y_data=y_data,
+            y_value,
+            y_data,
             wrangle=wrangle,
             split=split,
             preprocess=preprocess,
-            print_flag=print_flag,
+            n_trials=n_trials,
+            timeout=timeout,
+            direction=direction,
+            param_space=param_space,
+            study_name=study_name,
+            sampler=sampler,
+            pruner=pruner,
             show_flag=show_flag,
-            print_split_summary=False,
+            print_flag=print_flag,
+            threshold_range=threshold_range,
+            penalty_weight=penalty_weight,
+            variability_n_runs=variability_n_runs,
+            variability_seed=variability_seed,
+            variability_vary_split=variability_vary_split,
+            variability_vary_estimator=variability_vary_estimator,
             **split_args,
         )
-
-        variability = None
-        if int(variability_n_runs) > 0:
-            try:
-                variability = self.evaluate_variability(
-                    X,
-                    y_column,
-                    y_value=y_value,
-                    y_data=y_data,
-                    wrangle=wrangle,
-                    split=split,
-                    preprocess=preprocess,
-                    n_runs=int(variability_n_runs),
-                    seed=int(variability_seed),
-                    vary_split=bool(variability_vary_split),
-                    vary_estimator=bool(variability_vary_estimator),
-                    **split_args,
-                )
-            except Exception:
-                variability = None
-
-        return {
-            "best_params": best_params,
-            "best_value": study.best_value,
-            "best_results": best_results,
-            "variability": variability,
-            "study": study,
-        }
 
     def evaluate_variability(
         self,
@@ -1172,110 +1005,23 @@ class MLPipeline:
             - 'roc_auc_values', 'sensitivity_values', 'specificity_values', 'threshold_values'
             - 'roc_auc', 'sensitivity', 'specificity', 'threshold' (each a dict with 'mean', 'std')
         """
-        # Get current estimator and base params
-        if not self.estimator or len(self.estimator) == 0:
-            raise RuntimeError("Estimator is not set in the pipeline.")
-        est_name, est_obj = self.estimator[-1]
-        try:
-            base_params = est_obj.get_params(deep=False)
-        except Exception:
-            base_params = {}
-
-        base_split_rs = split_args.get("random_state", None)
-        base_est_rs = base_params.get("random_state", None)
-
-        roc_list = []
-        sen_list = []
-        spe_list = []
-        thr_list = []
-
-        for i in range(int(n_runs)):
-            # Prepare per-run seeds
-            run_split_rs = base_split_rs
-            if vary_split:
-                if run_split_rs is None:
-                    run_split_rs = seed + i
-                else:
-                    run_split_rs = int(run_split_rs) + i
-
-            run_est_rs = base_est_rs
-            if vary_estimator:
-                if run_est_rs is None:
-                    run_est_rs = seed + 1000 + i
-                else:
-                    run_est_rs = int(run_est_rs) + i
-
-            # Apply estimator random_state if supported
-            try:
-                if run_est_rs is not None and hasattr(est_obj, "set_params"):
-                    est_obj.set_params(random_state=run_est_rs)
-            except Exception:
-                pass
-
-            # Prepare split args per run
-            split_args_trial = dict(split_args)
-            if run_split_rs is not None:
-                split_args_trial["random_state"] = run_split_rs
-
-            # Train silently for metric extraction
-            try:
-                results = self.train(
-                    X,
-                    y_column,
-                    y_value=y_value,
-                    y_data=y_data,
-                    wrangle=wrangle,
-                    split=split,
-                    preprocess=preprocess,
-                    print_flag=False,
-                    show_flag=False,
-                    print_split_summary=False,
-                    **split_args_trial,
-                )
-            except Exception:
-                # If any failure during a run, skip this trial
-                continue
-
-            roc_auc = results.get("roc_auc")
-            sensitivity = results.get("sensitivity")
-            specificity = results.get("specificity")
-            threshold = results.get(
-                "threshold", getattr(self, "optimal_threshold", None)
-            )
-
-            # Append if present
-            if roc_auc is not None:
-                roc_list.append(float(roc_auc))
-            if sensitivity is not None:
-                sen_list.append(float(sensitivity))
-            if specificity is not None:
-                spe_list.append(float(specificity))
-            if threshold is not None:
-                try:
-                    thr_list.append(float(threshold))
-                except Exception:
-                    pass
-
-        def _stats(vals):
-            if len(vals) == 0:
-                return {"mean": None, "std": None}
-            arr = np.array(vals, dtype=float)
-            return {
-                "mean": float(arr.mean()),
-                "std": float(arr.std(ddof=1)) if len(arr) > 1 else 0.0,
-            }
-
-        return {
-            "runs": len(roc_list),
-            "roc_auc_values": roc_list,
-            "sensitivity_values": sen_list,
-            "specificity_values": spe_list,
-            "threshold_values": thr_list,
-            "roc_auc": _stats(roc_list),
-            "sensitivity": _stats(sen_list),
-            "specificity": _stats(spe_list),
-            "threshold": _stats(thr_list),
-        }
+        return _pipeline_experimentation.evaluate_variability(
+            self,
+            X,
+            y_column,
+            y_value,
+            y_data,
+            wrangle=wrangle,
+            split=split,
+            preprocess=preprocess,
+            n_runs=n_runs,
+            seed=seed,
+            vary_split=vary_split,
+            vary_estimator=vary_estimator,
+            show_flag=show_flag,
+            print_flag=print_flag,
+            **split_args,
+        )
 
 
 class MLPipelineMulti(MLPipeline):
@@ -1564,9 +1310,7 @@ class MLPipelineMulti(MLPipeline):
             if y_column is not None and y_column in data.columns
             else data
         )
-        y_proba = self.predict_proba(
-            features, wrangle=wrangle, preprocess=preprocess
-        )
+        y_proba = self.predict_proba(features, wrangle=wrangle, preprocess=preprocess)
         y_pred = self.predict(features, wrangle=wrangle, preprocess=preprocess)
         return self.validate_multiclass(
             y_true=y_true,
