@@ -15,7 +15,6 @@ import matplotlib
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.exceptions import UndefinedMetricWarning
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -91,27 +90,25 @@ def test_calculate_optimal_threshold_prints_legacy_threshold(capsys):
 
 def test_generate_roc_based_metrics_and_text_are_deterministic_without_plotting():
     """Freeze scalar metrics and text formatting used by evaluation notebooks."""
-    with pytest.warns(UndefinedMetricWarning):
-        values = generate_roc_based_metrics(Y_TRUE, Y_SCORE, show_flag=False)
+    values = generate_roc_based_metrics(Y_TRUE, Y_SCORE, show_flag=False)
 
-    assert values == pytest.approx((50.0, 100.0, 0.0, 75.0, 0.8))
-    with pytest.warns(UndefinedMetricWarning):
-        text = metrics(
-            np.array([0.0, 0.5, 0.5, 1.0, 1.0]),
-            np.array([0.0, 0.0, 0.5, 0.5, 1.0]),
-            np.array([np.inf, 0.8, 0.4, 0.35, 0.1]),
-            Y_SCORE,
-            Y_TRUE,
-            roc_auc=0.75,
-        )
+    assert values == pytest.approx((50.0, 100.0, 100.0, 75.0, 0.8))
+    text = metrics(
+        np.array([0.0, 0.5, 0.5, 1.0, 1.0]),
+        np.array([0.0, 0.0, 0.5, 0.5, 1.0]),
+        np.array([np.inf, 0.8, 0.4, 0.35, 0.1]),
+        Y_SCORE,
+        Y_TRUE,
+        roc_auc=0.75,
+    )
     assert text == (
         "\n"
         "           ROC surface : 75.0%\n"
         "           Optimal threshold: 80.0%\n"
         "           Sensitivity: 50.0%\n"
         "           Specificity: 100.0%\n"
-        "           PV: 0.0%\n"
-        "           F1-score: 0.0%\n"
+        "           PV: 100.0%\n"
+        "           F1-score: 66.7%\n"
         "           "
     )
 
@@ -121,11 +118,10 @@ def test_generate_roc_based_metrics_configures_legacy_plot(monkeypatch):
     shown = []
     monkeypatch.setattr(utility.plt, "show", lambda: shown.append(True))
 
-    with pytest.warns(UndefinedMetricWarning):
-        values = generate_roc_based_metrics(Y_TRUE, Y_SCORE, show_flag=True)
+    values = generate_roc_based_metrics(Y_TRUE, Y_SCORE, show_flag=True)
 
     figure = plt.gcf()
-    assert values == pytest.approx((50.0, 100.0, 0.0, 75.0, 0.8))
+    assert values == pytest.approx((50.0, 100.0, 100.0, 75.0, 0.8))
     assert shown == [True]
     np.testing.assert_allclose(figure.get_size_inches(), [4.0, 4.0])
     assert figure.dpi == 150

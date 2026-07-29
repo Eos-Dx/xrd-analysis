@@ -14,7 +14,6 @@ from sklearn.model_selection import train_test_split
 
 from xrdanalysis.data_processing.pipeline import MLPipeline, MLPipelineMulti
 
-
 _EMPTY = inspect.Parameter.empty
 _POSITIONAL = inspect.Parameter.POSITIONAL_OR_KEYWORD
 _KEYWORD_ONLY = inspect.Parameter.KEYWORD_ONLY
@@ -434,7 +433,7 @@ def test_binary_and_multiclass_csv_exports_preserve_schema_index_and_scores(tmp_
     ]
     expected_binary = (
         binary_scores
-        > binary.export_pipeline(wrangle=True, preprocess=True).optimal_threshold
+        >= binary.export_pipeline(wrangle=True, preprocess=True).optimal_threshold
     )
     assert list(binary_csv.columns) == ["cancer_diagnosis"]
     np.testing.assert_array_equal(

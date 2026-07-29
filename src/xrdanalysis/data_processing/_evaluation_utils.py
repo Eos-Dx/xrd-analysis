@@ -77,7 +77,7 @@ def viz_roc(fig, axes, model_name, predictor, text_on=True, legend_on=True):
         # Compute optimal sensitivity, specificity, and precision
         optimal_sensitivity = tpr[optimal_idx]
         optimal_specificity = 1 - fpr[optimal_idx]
-        y_pred = y_score > optimal_threshold
+        y_pred = y_score >= optimal_threshold
         optimal_precision = precision_score(y_true, y_pred)
         f1 = f1_score(y_true, y_pred)
 
@@ -141,7 +141,7 @@ def metrics(tpr, fpr, thresholds, y_score, y_true, roc_auc):
     optimal_threshold = thresholds[optimal_idx]
     optimal_sensitivity = tpr[optimal_idx]
     optimal_specificity = 1 - fpr[optimal_idx]
-    y_pred = y_score > optimal_threshold
+    y_pred = y_score >= optimal_threshold
     optimal_precision = precision_score(y_true, y_pred)
     f1 = f1_score(y_true, y_pred)
 
@@ -309,7 +309,7 @@ def generate_roc_based_metrics(
     # Compute optimal sensitivity, specificity, and precision
     optimal_sensitivity = round(tpr[optimal_idx] * 100, 1)
     optimal_specificity = round((1 - fpr[optimal_idx]) * 100, 1)
-    y_pred = y_score > optimal_threshold
+    y_pred = y_score >= optimal_threshold
     optimal_precision = round(precision_score(y_true, y_pred) * 100, 1)
 
     # Calculate balanced accuracy
@@ -354,21 +354,18 @@ def calculate_optimal_threshold(
     """
     fpr, tpr, thresholds = roc_curve(y_true, y_score)
 
-    # Filter the thresholds based on minimum sensitivity or specificity
+    # ROC thresholds use score >= threshold. Apply every requested constraint
+    # to the same candidate set so persisted decisions honor reported metrics.
+    threshold_mask = np.ones(thresholds.shape, dtype=bool)
     if min_sensitivity is not None:
-        tpr_threshold_mask = tpr >= min_sensitivity
-        fpr, tpr, thresholds = (
-            fpr[tpr_threshold_mask],
-            tpr[tpr_threshold_mask],
-            thresholds[tpr_threshold_mask],
-        )
-    elif min_specificity is not None:
-        tnr_threshold_mask = (1 - fpr) >= min_specificity
-        fpr, tpr, thresholds = (
-            fpr[tnr_threshold_mask],
-            tpr[tnr_threshold_mask],
-            thresholds[tnr_threshold_mask],
-        )
+        threshold_mask &= tpr >= min_sensitivity
+    if min_specificity is not None:
+        threshold_mask &= (1 - fpr) >= min_specificity
+    fpr, tpr, thresholds = (
+        fpr[threshold_mask],
+        tpr[threshold_mask],
+        thresholds[threshold_mask],
+    )
 
     # Find the optimal index and threshold
     optimal_idx = np.argmax(tpr - fpr)

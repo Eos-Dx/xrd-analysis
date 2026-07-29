@@ -68,6 +68,8 @@ class MLPipeline:
         self.trained_preprocessor = None
         self.trained_estimator = None
         self.feature_names_ = None
+        self.target_column_ = None
+        self.sample_weight_col_ = None
 
     def add_data_wrangling_step(self, name, transformer, position=None):
         """
@@ -320,6 +322,12 @@ class MLPipeline:
         X = X.copy()
         if wrangle:
             X = self.wrangle(X)
+        for column in (
+            getattr(self, "target_column_", None),
+            getattr(self, "sample_weight_col_", None),
+        ):
+            if column is not None and column in X.columns:
+                X = X.drop(columns=[column])
         if preprocess:
             if not self.trained_preprocessor:
                 raise RuntimeError("Preprocessing has not been fitted yet.")
@@ -354,6 +362,12 @@ class MLPipeline:
         X = X.copy()
         if wrangle:
             X = self.wrangle(X)
+        for column in (
+            getattr(self, "target_column_", None),
+            getattr(self, "sample_weight_col_", None),
+        ):
+            if column is not None and column in X.columns:
+                X = X.drop(columns=[column])
         if preprocess:
             if not self.trained_preprocessor:
                 raise RuntimeError("Preprocessing has not been fitted yet.")
@@ -427,7 +441,7 @@ class MLPipeline:
                 min_specificity=min_specificity,
                 print_flag=print_flag,
             )
-            y_pred = y_score_bin > self.optimal_threshold
+            y_pred = y_score_bin >= self.optimal_threshold
 
             if "accuracy" in metrics:
                 results["accuracy"] = accuracy_score(y_true, y_pred)
@@ -563,6 +577,8 @@ class MLPipeline:
         :type split_args: dict
         """
         X = X.copy()
+        self.target_column_ = y_column
+        self.sample_weight_col_ = sample_weight_col
         # Wrangle the data
         if wrangle:
             X = self.wrangle(X)
@@ -763,7 +779,7 @@ class MLPipeline:
             threshold = getattr(
                 model, "optimal_threshold", 0.5
             )  # Default to 0.5 if not set
-            y_pred = y_score > threshold
+            y_pred = y_score >= threshold
             df_pred = pd.DataFrame(
                 data=y_pred, index=data.index, columns=["cancer_diagnosis"]
             )
@@ -1144,6 +1160,8 @@ class MLPipelineMulti(MLPipeline):
         **split_args,
     ):
         X = X.copy()
+        self.target_column_ = y_column
+        self.sample_weight_col_ = sample_weight_col
         if wrangle:
             X = self.wrangle(X)
 

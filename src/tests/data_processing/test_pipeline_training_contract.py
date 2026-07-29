@@ -15,9 +15,10 @@ from xrdanalysis.data_processing.pipeline import MLPipeline, MLPipelineMulti
 class _ColumnRecordingClassifier(ClassifierMixin, BaseEstimator):
     """Minimal classifier that records the columns given to prediction."""
 
-    def fit(self, x, y):
+    def fit(self, x, y, sample_weight=None):
         self.classes_ = np.array([0, 1])
         self.feature_names_in_ = np.asarray(x.columns, dtype=object)
+        self.sample_weight_ = sample_weight
         self.proba_columns_ = []
         self.predict_columns_ = []
         return self
@@ -47,6 +48,12 @@ def _inferred_target_frame() -> pd.DataFrame:
             "target": [0, 0, 0, 1, 1, 1],
         }
     )
+
+
+def _weighted_target_frame() -> pd.DataFrame:
+    frame = _inferred_target_frame()
+    frame["weight"] = [1.0, 0.7, 1.2, 1.5, 0.8, 1.1]
+    return frame
 
 
 def _train_inferred_target(pipeline, frame):
@@ -164,5 +171,100 @@ def test_constrained_binary_threshold_is_persisted_and_exported_consistently(
     assert restored.optimal_threshold == pytest.approx(result["threshold"])
     np.testing.assert_array_equal(
         exported_predictions["cancer_diagnosis"].to_numpy(dtype=bool),
-        features["signal"].to_numpy() > result["threshold"],
+        features["signal"].to_numpy() >= result["threshold"],
     )
+    assert exported_predictions.loc[y == 1, "cancer_diagnosis"].all()
+
+
+def test_binary_threshold_honors_both_constraints_for_actual_decisions():
+    scores = np.array(
+        [
+            0.8,
+            0.8,
+            0.3,
+            0.6,
+            0.8,
+            0.5,
+            0.9,
+            0.3,
+            0.3,
+            0.1,
+            0.6,
+            0.1,
+            0.2,
+            0.6,
+            0.4,
+            0.2,
+            0.5,
+            0.9,
+            0.9,
+            0.1,
+        ]
+    )
+    labels = np.array([1] * 8 + [0] * 12)
+    pipeline = MLPipeline()
+
+    result = pipeline.validate(
+        labels,
+        scores,
+        min_sensitivity=0.5,
+        min_specificity=0.8,
+    )
+    decisions = scores >= result["threshold"]
+    sensitivity = decisions[labels == 1].mean()
+    specificity = (~decisions[labels == 0]).mean()
+
+    assert sensitivity >= 0.5
+    assert specificity >= 0.8
+
+
+@pytest.mark.parametrize("pipeline_type", [MLPipeline, MLPipelineMulti])
+def test_weighted_target_frames_exclude_nonfeatures_without_mutation(
+    pipeline_type,
+    tmp_path,
+):
+    frame = _weighted_target_frame()
+    original = frame.copy(deep=True)
+    estimator = ("classifier", _ColumnRecordingClassifier())
+    pipeline = pipeline_type(estimator=estimator)
+    train_kwargs = {
+        "X": frame,
+        "y_column": "target",
+        "wrangle": False,
+        "split": False,
+        "preprocess": False,
+        "print_flag": False,
+        "sample_weight_col": "weight",
+    }
+    if pipeline_type is MLPipelineMulti:
+        train_kwargs["metrics"] = ["accuracy"]
+
+    pipeline.train(**train_kwargs)
+    fitted = pipeline.trained_estimator.steps[-1][1]
+    assert list(fitted.feature_names_in_) == ["signal"]
+    np.testing.assert_allclose(fitted.sample_weight_, frame["weight"])
+
+    fitted.predict_columns_.clear()
+    fitted.proba_columns_.clear()
+    pipeline.predict(frame, wrangle=False, preprocess=False)
+    pipeline.predict_proba(frame, wrangle=False, preprocess=False)
+    pipeline.validate_dataset(
+        frame,
+        y_column="target",
+        wrangle=False,
+        preprocess=False,
+        metrics=["accuracy"],
+    )
+    assert all(columns == ("signal",) for columns in fitted.predict_columns_)
+    assert all(columns == ("signal",) for columns in fitted.proba_columns_)
+
+    export_path = tmp_path / f"{pipeline_type.__name__}.joblib"
+    pipeline.export_pipeline(
+        wrangle=False,
+        preprocess=False,
+        save_path=export_path,
+    )
+    restored = joblib.load(export_path)
+    restored_classifier = restored.steps[-1][1]
+    assert list(restored_classifier.feature_names_in_) == ["signal"]
+    pd.testing.assert_frame_equal(frame, original)
