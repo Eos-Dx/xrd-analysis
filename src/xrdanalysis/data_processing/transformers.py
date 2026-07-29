@@ -20,10 +20,9 @@ from xrdanalysis.data_processing._goodness import (
     transform_goodness_dataframe,
 )
 from xrdanalysis.data_processing._snr_math import (
-    calculate_snr_metrics,
+    calculate_snr_row,
     ensure_uniform_grid,
     normalize_by_surface,
-    prepare_sigma,
     smooth_signal,
 )
 from xrdanalysis.data_processing.azimuthal_integration import (
@@ -2464,7 +2463,7 @@ class SoftLabelToWeightedSamples(TransformerMixin):
         return out
 
 
-class SNRTransformer(TransformerMixin):
+class SNRTransformer(TransformerMixin, BaseEstimator):
     """
     Compute signal-to-noise metrics from 1D azimuthal integration results.
 
@@ -2506,6 +2505,10 @@ class SNRTransformer(TransformerMixin):
     snr_method : str
         SNR method: 'residual', 'poisson', or 'auto'. 'auto' tries Poisson first,
         then falls back to residual.
+    regrid_poisson : bool
+        If True, calculate Poisson scalar metrics on the historical uniform q-grid.
+        New objects default to native aligned intensity/sigma samples. Restored
+        objects without this attribute retain the historical regridded path.
     """
 
     def __init__(
@@ -2522,6 +2525,7 @@ class SNRTransformer(TransformerMixin):
         snr_col: str = "snr",
         sigma_column: str = "radial_profile_sigma",
         snr_method: str = "residual",
+        regrid_poisson: bool = False,
     ) -> None:
         self.x_column = x_column
         self.y_column = y_column
@@ -2535,8 +2539,11 @@ class SNRTransformer(TransformerMixin):
         self.snr_col = snr_col
         self.sigma_column = sigma_column
         self.snr_method = str(snr_method).strip().lower()
+        self.regrid_poisson = bool(regrid_poisson)
         if self.snr_method not in {"residual", "poisson", "auto"}:
-            raise ValueError("snr_method must be one of: 'residual', 'poisson', 'auto'.")
+            raise ValueError(
+                "snr_method must be one of: 'residual', 'poisson', 'auto'."
+            )
 
         # Optional Savitzky–Golay import
         try:
@@ -2549,6 +2556,16 @@ class SNRTransformer(TransformerMixin):
         _ = X
         _ = y
         return self
+
+    def __sklearn_clone__(self):
+        """Clone normalized constructor state without changing legacy attributes."""
+        return type(self)(**self.get_params(deep=False))
+
+    def __setstate__(self, state):
+        """Backfill native-sampling configuration when loading legacy artifacts."""
+        restored_state = dict(state)
+        restored_state.setdefault("regrid_poisson", True)
+        super().__setstate__(restored_state)
 
     def _ensure_uniform_grid(
         self, q: np.ndarray, intensity: np.ndarray, n_points: int | None
@@ -2579,65 +2596,32 @@ class SNRTransformer(TransformerMixin):
             df[self.residual_col].astype(object)
 
         for i, row in df.iterrows():
-            q = np.asarray(row.get(self.x_column), float)
-            intensity = np.asarray(row.get(self.y_column), float)
-            if q is None or intensity is None or len(intensity) < 2:
-                continue
-
-            n = min(len(q), len(intensity))
-            if n < 2:
-                continue
-            q = q[:n]
-            intensity = intensity[:n]
-            finite_qi = np.isfinite(q) & np.isfinite(intensity)
-            if int(np.sum(finite_qi)) < 2:
-                continue
-            q = q[finite_qi]
-            intensity = intensity[finite_qi]
-
-            # Ensure uniform grid if requested
-            if self.enforce_common_q:
-                q_u, intensity_u = self._ensure_uniform_grid(
-                    q, intensity, self.n_points
-                )
-            else:
-                q_u, intensity_u = q, intensity
-
-            # Prepare a smoothed profile for output/compatibility
-            intensity_sm_u, _ = self._smooth(intensity_u)
-
-            metrics = calculate_snr_metrics(
+            # Older joblib objects predate ``regrid_poisson``.  They must retain
+            # the historical interpolated Poisson calculation after loading.
+            regrid_poisson = bool(getattr(self, "regrid_poisson", True))
+            row_result = calculate_snr_row(
+                q_raw=row.get(self.x_column),
+                intensity_raw=row.get(self.y_column),
+                sigma_raw=row.get(self.sigma_column),
                 snr_method=self.snr_method,
                 enforce_common_q=self.enforce_common_q,
-                q_uniform=q_u,
-                intensity_uniform=intensity_u,
-                prepared_sigma=prepare_sigma(row.get(self.sigma_column), q, intensity),
+                regrid_poisson=regrid_poisson,
+                n_points=self.n_points,
+                uniform_grid=self._ensure_uniform_grid,
                 normalize=self._normalize_by_surface,
                 smooth=self._smooth,
             )
+            if row_result is None:
+                continue
 
-            # Map smoothed uniform-grid curve back to original q sampling if needed
-            if self.enforce_common_q:
-                intensity_sm_out = np.interp(q, q_u, intensity_sm_u)
-            else:
-                intensity_sm_out = intensity_sm_u
-            resid_out = (
-                intensity - intensity_sm_out
-                if intensity_sm_out is not None
-                and len(intensity_sm_out) == len(intensity)
-                else np.full_like(intensity, np.nan)
-            )
-
-            # Assign outputs
-            df.at[i, "noise_std"] = metrics.noise_std
-            df.at[i, "snr_linear"] = metrics.snr_linear
-            df.at[i, "snr_db"] = metrics.snr_db
-            df.at[i, self.snr_col] = metrics.snr_db  # requested alias
-            df.at[i, "snr_method_used"] = metrics.method_used
-
+            df.at[i, "noise_std"] = row_result.metrics.noise_std
+            df.at[i, "snr_linear"] = row_result.metrics.snr_linear
+            df.at[i, "snr_db"] = row_result.metrics.snr_db
+            df.at[i, self.snr_col] = row_result.metrics.snr_db  # requested alias
+            df.at[i, "snr_method_used"] = row_result.metrics.method_used
             if self.save_smoothed:
-                df.at[i, self.smoothed_col] = intensity_sm_out
-                df.at[i, self.residual_col] = resid_out
+                df.at[i, self.smoothed_col] = row_result.smoothed
+                df.at[i, self.residual_col] = row_result.residual
 
         return df
 

@@ -1,8 +1,10 @@
 """Numerical regression coverage for SNRTransformer helper extraction."""
 
+import joblib
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.base import clone
 
 from xrdanalysis.data_processing.transformers import SNRTransformer
 
@@ -84,7 +86,11 @@ def test_poisson_mode_interpolates_to_common_grid_and_uses_sigma_rms():
         }
     )
     transformer = SNRTransformer(
-        snr_method="poisson", enforce_common_q=True, n_points=7, save_smoothed=True
+        snr_method="poisson",
+        enforce_common_q=True,
+        n_points=7,
+        save_smoothed=True,
+        regrid_poisson=True,
     )
 
     result = transformer.transform(frame)
@@ -222,7 +228,9 @@ def test_common_grid_poisson_discards_nonfinite_sigma_samples():
         }
     )
 
-    result = SNRTransformer(snr_method="poisson", n_points=6).transform(frame)
+    result = SNRTransformer(
+        snr_method="poisson", n_points=6, regrid_poisson=True
+    ).transform(frame)
 
     sigma_uniform = np.interp(
         np.linspace(q.min(), q.max(), 6), q[[1, 2, 4, 5]], sigma[[1, 2, 4, 5]]
@@ -230,6 +238,76 @@ def test_common_grid_poisson_discards_nonfinite_sigma_samples():
     expected_linear = np.sqrt(np.mean((intensity / sigma_uniform) ** 2))
     assert result.at[0, "snr_method_used"] == "poisson"
     assert result.at[0, "snr_linear"] == pytest.approx(expected_linear)
+
+
+def test_new_poisson_defaults_to_native_samples_independent_of_q_grid():
+    q = np.array([np.nan, 4.0, 1.1, 0.3, np.inf])
+    intensity = np.array([4.0, 5.0, 8.0, 10.0, 14.0])
+    sigma = np.array([1.0, 2.0, 2.0, 4.0, 7.0])
+    frame = pd.DataFrame(
+        {
+            "q_range": [q],
+            "radial_profile_data": [intensity],
+            "radial_profile_sigma": [sigma],
+        }
+    )
+
+    result = SNRTransformer(snr_method="poisson").transform(frame).iloc[0]
+
+    expected_linear = np.sqrt(np.mean((intensity / sigma) ** 2))
+    assert result["snr_method_used"] == "poisson"
+    assert result["snr_linear"] == pytest.approx(expected_linear)
+    assert result["snr_db"] == pytest.approx(20.0 * np.log10(expected_linear))
+    assert result["noise_std"] == pytest.approx(np.sqrt(np.mean(sigma**2)))
+
+
+def test_regrid_poisson_opt_in_and_legacy_instance_keep_interpolated_metrics(
+    tmp_path,
+):
+    q = np.array([0.0, 0.3, 1.1, 2.0, 4.0])
+    intensity = np.array([4.0, 5.0, 8.0, 10.0, 14.0])
+    sigma = np.array([1.0, 2.0, 2.0, 4.0, 7.0])
+    frame = pd.DataFrame(
+        {
+            "q_range": [q],
+            "radial_profile_data": [intensity],
+            "radial_profile_sigma": [sigma],
+        }
+    )
+    expected_q = np.linspace(q.min(), q.max(), len(q))
+    expected_intensity = np.interp(expected_q, q, intensity)
+    expected_sigma = np.interp(expected_q, q, sigma)
+    expected_linear = np.sqrt(np.mean((expected_intensity / expected_sigma) ** 2))
+
+    regridded = SNRTransformer(snr_method="poisson", regrid_poisson=True)
+    regridded_result = regridded.transform(frame).iloc[0]
+    assert regridded_result["snr_linear"] == pytest.approx(expected_linear)
+
+    # A pickle created before ``regrid_poisson`` has no attribute. It must load
+    # onto the legacy interpolation path instead of silently changing metrics.
+    del regridded.regrid_poisson
+    artifact_path = tmp_path / "legacy_snr_transformer.joblib"
+    joblib.dump(regridded, artifact_path)
+    restored = joblib.load(artifact_path)
+    assert restored.regrid_poisson is True
+    assert clone(restored).regrid_poisson is True
+    assert restored.transform(frame).iloc[0]["snr_linear"] == pytest.approx(
+        expected_linear
+    )
+
+
+def test_snr_transformer_supports_sklearn_clone_and_current_joblib(tmp_path):
+    transformer = SNRTransformer(
+        snr_method="poisson", regrid_poisson=False, save_smoothed=False
+    )
+    cloned = clone(transformer)
+    assert cloned.get_params() == transformer.get_params()
+
+    artifact_path = tmp_path / "current_snr_transformer.joblib"
+    joblib.dump(transformer, artifact_path)
+    restored = joblib.load(artifact_path)
+    assert restored.regrid_poisson is False
+    assert type(restored) is SNRTransformer
 
 
 def test_constant_residual_profile_keeps_machine_precision_behavior():

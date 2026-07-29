@@ -57,6 +57,9 @@ sphinx = "7.3.7"
 addopts = [
   "--import-mode=importlib",
 ]
+markers = [
+  "cross_repo: opt-in parity checks requiring XRD_PREPROCESSING_ROOT",
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
