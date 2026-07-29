@@ -9,6 +9,33 @@ owner of analysis and azimuthal-integration code. The first stages do not move,
 edit, or reorganize
 ``XRD-preprocessing``. It is an external, read-only parity reference only.
 
+Cross-repository SNR reference
+------------------------------
+
+``XRD-preprocessing`` is a read-only local reference for the common Poisson
+SNR scalar contract. Normal ``xrd-analysis`` CI must neither import it nor
+require a sibling checkout. A maintainer may opt in locally with
+``XRD_PREPROCESSING_ROOT=/absolute/path/to/XRD-preprocessing`` and
+``pytest -m cross_repo``. These checks compare only valid, aligned intensity
+and sigma profiles and only the Poisson scalar metrics
+``noise_std``, ``snr_linear``, ``snr_db``, and the ``poisson`` method label.
+
+Parity is compatibility evidence, not authority to edit ``XRD-preprocessing``
+from this repository. ``xrd-analysis`` intentionally retains residual and
+``auto`` SNR modes, the legacy ``snr`` alias, smoothed/residual output arrays,
+and tolerant batch handling; they are outside the cross-repository contract.
+In Poisson mode, new SNR transformer objects default to native aligned
+calculation.
+``regrid_poisson=True`` is the explicit legacy opt-in, and restored old
+pickles preserve their historical regridded Poisson scalar calculation.
+
+Deferred FaultyPixel work
+-------------------------
+
+``FaultyPixelDetector`` refactoring is explicitly deferred. Current stages
+must not move, split, or change its public imports, serialized behavior, or
+pipeline behavior.
+
 Difra compatibility
 -------------------
 
