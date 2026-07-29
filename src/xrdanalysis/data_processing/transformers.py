@@ -16,8 +16,10 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import Normalizer, StandardScaler
 
 from xrdanalysis.data_processing._snr_math import (
+    calculate_snr_metrics,
     ensure_uniform_grid,
     normalize_by_surface,
+    prepare_sigma,
     smooth_signal,
 )
 from xrdanalysis.data_processing.azimuthal_integration import (
@@ -2716,66 +2718,15 @@ class SNRTransformer(TransformerMixin):
             # Prepare a smoothed profile for output/compatibility
             intensity_sm_u, _ = self._smooth(intensity_u)
 
-            # Poisson SNR mode from pyFAI sigma
-            sigma_raw = row.get(self.sigma_column, None)
-            sigma_ok = sigma_raw is not None
-            method_used = "residual"
-
-            if sigma_ok:
-                sigma = np.asarray(sigma_raw, float)
-                if sigma.ndim == 0:
-                    sigma = np.asarray([float(sigma)], dtype=float)
-                ns = min(len(sigma), len(q), len(intensity))
-                if ns >= 2:
-                    sigma = sigma[:ns]
-                    q_s = q[:ns]
-                    i_s = intensity[:ns]
-                    finite_all = np.isfinite(q_s) & np.isfinite(i_s) & np.isfinite(sigma)
-                    sigma = sigma[finite_all]
-                    q_s = q_s[finite_all]
-                    i_s = i_s[finite_all]
-                    sigma_ok = int(np.sum(sigma > 0)) >= 2 and len(sigma) >= 2
-                else:
-                    sigma_ok = False
-
-            use_poisson = self.snr_method in {"poisson", "auto"} and sigma_ok
-
-            if use_poisson:
-                if self.enforce_common_q:
-                    sigma_u = np.interp(q_u, q_s, sigma)
-                else:
-                    sigma_u = sigma[: len(intensity_u)]
-
-                valid = np.isfinite(intensity_u) & np.isfinite(sigma_u) & (sigma_u > 0)
-                if int(np.sum(valid)) >= 2:
-                    snr_q = np.abs(intensity_u[valid]) / (sigma_u[valid] + 1e-12)
-                    snr_lin = float(np.sqrt(np.mean(np.square(snr_q))))
-                    snr_db = float(20.0 * np.log10(snr_lin + 1e-12))
-                    noise_std = float(np.sqrt(np.mean(np.square(sigma_u[valid]))))
-                    method_used = "poisson"
-                else:
-                    noise_std, snr_lin, snr_db = np.nan, np.nan, np.nan
-                    method_used = "poisson_invalid_sigma"
-            elif self.snr_method == "poisson":
-                noise_std, snr_lin, snr_db = np.nan, np.nan, np.nan
-                method_used = "poisson_missing_sigma"
-            else:
-                # Residual SNR mode (legacy behavior)
-                intensity_norm, _ = self._normalize_by_surface(q_u, intensity_u)
-                intensity_sm_norm, _ = self._smooth(intensity_norm)
-                resid_norm = intensity_norm - intensity_sm_norm
-                if resid_norm.size > 1:
-                    noise_std = float(np.nanstd(resid_norm, ddof=1))
-                    sig_pow = float(np.nanvar(intensity_sm_norm, ddof=1))
-                    noi_pow = float(np.nanvar(resid_norm, ddof=1))
-                    if np.isfinite(sig_pow) and np.isfinite(noi_pow) and noi_pow > 0:
-                        snr_lin = sig_pow / noi_pow
-                        snr_db = 10.0 * float(np.log10(snr_lin))
-                    else:
-                        snr_lin, snr_db = np.nan, np.nan
-                else:
-                    noise_std, snr_lin, snr_db = np.nan, np.nan, np.nan
-                method_used = "residual"
+            metrics = calculate_snr_metrics(
+                snr_method=self.snr_method,
+                enforce_common_q=self.enforce_common_q,
+                q_uniform=q_u,
+                intensity_uniform=intensity_u,
+                prepared_sigma=prepare_sigma(row.get(self.sigma_column), q, intensity),
+                normalize=self._normalize_by_surface,
+                smooth=self._smooth,
+            )
 
             # Map smoothed uniform-grid curve back to original q sampling if needed
             if self.enforce_common_q:
@@ -2790,11 +2741,11 @@ class SNRTransformer(TransformerMixin):
             )
 
             # Assign outputs
-            df.at[i, "noise_std"] = noise_std
-            df.at[i, "snr_linear"] = snr_lin
-            df.at[i, "snr_db"] = snr_db
-            df.at[i, self.snr_col] = snr_db  # requested alias
-            df.at[i, "snr_method_used"] = method_used
+            df.at[i, "noise_std"] = metrics.noise_std
+            df.at[i, "snr_linear"] = metrics.snr_linear
+            df.at[i, "snr_db"] = metrics.snr_db
+            df.at[i, self.snr_col] = metrics.snr_db  # requested alias
+            df.at[i, "snr_method_used"] = metrics.method_used
 
             if self.save_smoothed:
                 df.at[i, self.smoothed_col] = intensity_sm_out
