@@ -419,7 +419,11 @@ class MLPipeline:
 
             # Existing binary metrics and thresholding
             _, _, _, self.optimal_threshold = calculate_optimal_threshold(
-                y_true, y_score_bin, print_flag=print_flag
+                y_true,
+                y_score_bin,
+                min_sensitivity=min_sensitivity,
+                min_specificity=min_specificity,
+                print_flag=print_flag,
             )
             y_pred = y_score_bin > self.optimal_threshold
 
@@ -565,6 +569,8 @@ class MLPipeline:
             y = self.infer_y(X, y_column, y_value)
         else:
             y = y_data
+        if y_column is not None and y_column in X.columns:
+            X = X.drop(columns=[y_column])
 
         if split:
             # Split the data (with optional arguments for custom splits)
@@ -813,7 +819,12 @@ class MLPipeline:
             y_true = self.infer_y(data, y_column, y_value)
         else:
             y_true = y_data
-        y_score = self.predict_proba(data, wrangle, preprocess)
+        features = (
+            data.drop(columns=[y_column])
+            if y_column is not None and y_column in data.columns
+            else data
+        )
+        y_score = self.predict_proba(features, wrangle, preprocess)
         return self.validate(
             y_true,
             y_score,
@@ -1394,6 +1405,8 @@ class MLPipelineMulti(MLPipeline):
             y = self.infer_y(X, y_column, y_value)
         else:
             y = y_data
+        if y_column is not None and y_column in X.columns:
+            X = X.drop(columns=[y_column])
 
         if split:
             X_train, X_test, y_train, y_test = self.splitter(X, y, **split_args)
@@ -1546,8 +1559,15 @@ class MLPipelineMulti(MLPipeline):
             y_true = self.infer_y(data, y_column, y_value)
         else:
             y_true = y_data
-        y_proba = self.predict_proba(data, wrangle=wrangle, preprocess=preprocess)
-        y_pred = self.predict(data, wrangle=wrangle, preprocess=preprocess)
+        features = (
+            data.drop(columns=[y_column])
+            if y_column is not None and y_column in data.columns
+            else data
+        )
+        y_proba = self.predict_proba(
+            features, wrangle=wrangle, preprocess=preprocess
+        )
+        y_pred = self.predict(features, wrangle=wrangle, preprocess=preprocess)
         return self.validate_multiclass(
             y_true=y_true,
             y_proba=y_proba,
