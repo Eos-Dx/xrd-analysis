@@ -342,58 +342,30 @@ Steps include:
 Validation
 ####################
 
-The `validate` function evaluates the trained model's performance on a test dataset using specified evaluation metrics. Key steps include:
+``MLPipeline.validate`` accepts probability scores. A one-dimensional score or
+two-column probability matrix follows the binary contract. It computes and
+stores ``optimal_threshold`` with both ``min_sensitivity`` and
+``min_specificity`` constraints applied together. Predictions at the boundary
+are positive: ``score >= optimal_threshold``. Requested ``"accuracy"`` and
+``"roc_auc"`` results include ROC-derived sensitivity, specificity, precision,
+balanced accuracy, and threshold information.
 
-1. **Calculating accuracy**: If the `"accuracy"` metric is selected, the accuracy score is computed using `accuracy_score`.
-2. **Generating ROC curve and calculating AUC**: For the `"roc_auc"` metric, the function generates a ROC curve and calculates the area under the curve (AUC) using `generate_roc_curve` and `roc_auc_score`.
-3. **Calculating precision**: If the `"precision"` metric is chosen, the precision score is computed using `precision_score`.
+For score matrices with more than two columns, ``MLPipeline.validate`` uses the
+fitted estimator's ``classes_`` order for argmax predictions and per-class ROC
+calculations. It returns macro and micro ROC AUC plus per-class AUC when
+``"roc_auc"`` is requested.
 
-The results for the chosen metrics are returned in a dictionary.
+``MLPipelineMulti.validate_multiclass`` accepts true labels, probabilities, and
+predicted labels explicitly. Its default metrics are accuracy and macro ROC
+AUC. Probability columns are aligned with estimator ``classes_`` order before
+encoding true labels. Requested macro or weighted AUC values are ``None`` when
+their ROC calculation cannot be evaluated; plotting failures remain non-fatal.
 
-.. code-block:: python
-
-    def validate(
-        self,
-        y_true,
-        y_pred,
-        y_score,
-        metrics=["accuracy", "roc_auc"],
-        show_flag=False,
-        print_flag=False,
-    ):
-        """
-        Validates the trained estimator on test data using specified metrics.
-
-        :param y_true: The true target values.
-        :type y_true: Series
-        :param y_pred: The predicted target values.
-        :type y_pred: Series
-        :param y_score: The predicted probabilities for the positive class.
-        :type y_score: ndarray
-        :param metrics: The metrics to compute. \
-        Defaults to ["accuracy", "roc_auc"].
-        :type metrics: list
-        :param show_flag: Whether to display the ROC curve. Defaults to False.
-        :type show_flag: bool
-        :param print_flag: Whether to print the validation results. \
-        Defaults to False.
-        :type print_flag: bool
-        """
-        # Calculate and return the desired metrics
-        results = {}
-        if "accuracy" in metrics:
-            results["accuracy"] = accuracy_score(y_true, y_pred)
-
-        if "roc_auc" in metrics:
-            if show_flag:
-                generate_roc_curve(y_true, y_score)
-            results["roc_auc"] = roc_auc_score(y_true, y_score)
-
-        if "precision" in metrics:
-            results["precision"] = precision_score(y_true, y_pred)
-
-        if print_flag:
-            print(results)
+``validate_dataset`` first obtains targets from ``y_data`` or ``infer_y`` and
+then uses the public prediction and validation methods. Training records the
+target and optional sample-weight column; prediction removes those tracked
+columns from estimator features when present. Sample weights are used for
+fitting only.
 
 
 ############################################
@@ -404,105 +376,22 @@ Export
 Exporting Pipeline
 --------------------
 
-The `export_pipeline` function allows users to export the fitted pipeline, either including the wrangling steps or just the trained parts (preprocessing + estimator). The pipeline can be serialized and saved to a file for later use.
-
-Steps include:
-
-1. Ensuring the pipeline has been fitted.
-2. Wrangling the input data if needed.
-3. Serializing the full pipeline (or parts of it) using Python’s `pickle` module.
-
-.. code-block:: python
-
-    def export_pipeline(self, wrangle=False, preprocess=True, save_path=None):
-        """
-        Exports the full pipeline including wrangling, preprocessing, and
-        estimator steps.
-
-        :param wrangle: Whether to include wrangling steps in the \
-        exported pipeline.
-        :type wrangle: bool
-        :param preprocess: Whether to include preprocessing steps in the \
-        exported pipeline.
-        :type preprocess: bool
-        :param save_path: The file path to save the exported pipeline. \
-        Defaults to None.
-        :type save_path: str, optional
-        :return: The full pipeline.
-        :rtype: Pipeline
-        """
-        if not self.trained_estimator:
-            raise RuntimeError("Estimator has not been fitted yet.")
-
-        if wrangle and preprocess:
-            full_pipeline = Pipeline(
-                steps=[
-                    *self.data_wrangling_steps,
-                    *self.trained_preprocessor.steps,
-                    *self.trained_estimator.steps,
-                ]
-            )
-        elif wrangle:
-            full_pipeline = Pipeline(
-                steps=[
-                    *self.data_wrangling_steps,
-                    *self.trained_estimator.steps,
-                ]
-            )
-        elif preprocess:
-            full_pipeline = Pipeline(
-                steps=[
-                    *self.trained_preprocessor.steps,
-                    *self.trained_estimator.steps,
-                ]
-            )
-        else:
-            full_pipeline = self.trained_estimator
-
-        full_pipeline.optimal_threshold = self.optimal_threshold
-
-        if save_path:
-            dump(full_pipeline, save_path)
-
-        return full_pipeline
+``export_pipeline(wrangle=False, preprocess=True, save_path=None)`` requires a
+fitted estimator. It composes exactly the selected stages in this order:
+wrangling, fitted preprocessing, estimator. ``save_path`` serializes that
+pipeline with ``joblib``. A binary ``MLPipeline`` attaches
+``optimal_threshold`` only when the attribute exists. ``MLPipelineMulti`` never
+adds a binary threshold.
 
 ---------------------------------------
 Exporting Predictions
 ---------------------------------------
 
-The `export_predictions` function exports the model's predictions for a given dataset to a CSV file. The process involves:
-
-1. **Ensuring the pipeline has been trained**: It first checks whether the pipeline has been fitted, raising an error if it has not.
-2. **Optionally wrangling the input data**: If `wrangle=True`, the data wrangling steps are applied before prediction.
-3. **Generating predictions**: The function computes the probability scores for the input data using the pipeline's `predict_proba` method, then applies a threshold to convert these scores into binary predictions (e.g., `cancer_diagnosis`).
-4. **Exporting to CSV**: The predictions are saved as a CSV file at the specified `save_path`.
-
-.. code-block:: python
-
-    def export_predictions(
-        self, data, save_path, wrangle=False, preprocess=True
-    ):
-        """
-        Exports predictions for the given dataset to a CSV file.
-
-        :param data: The dataset to predict on.
-        :type data: DataFrame
-        :param save_path: The file path to save the predictions.
-        :type save_path: str
-        :param wrangle: Whether to apply wrangling steps to the data.
-        :type wrangle: bool
-        :param preprocess: Whether to apply preprocessing steps to the data.
-        :type preprocess: bool
-        """
-        if not self.trained_estimator:
-            raise RuntimeError("Estimator has not been fitted yet.")
-
-        model = self.export_pipeline(wrangle, preprocess)
-
-        y_score = model.predict_proba(data)[:, 1]
-        y_pred = y_score > model.optimal_threshold
-        df_saxs_pred = pd.DataFrame(
-            data=y_pred, index=data.index, columns=["cancer_diagnosis"]
-        )
-
-        df_saxs_pred.to_csv(save_path)
+``export_predictions(data, save_path, wrangle=False, preprocess=True)``
+preserves the input index in its CSV output. Binary output has one
+``cancer_diagnosis`` column calculated as ``score >= optimal_threshold``
+(default threshold ``0.5`` when absent). For a multiclass score matrix,
+``MLPipeline`` writes ``p_<class>`` probability columns in estimator class
+order and a ``cancer_status_soft`` vector column. ``MLPipelineMulti`` writes a
+``prediction`` column and ``proba_<class>`` columns in estimator class order;
+if probabilities cannot be exported, it writes predictions only.

@@ -2,27 +2,21 @@ from __future__ import annotations
 
 from typing import Optional
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-from sklearn.metrics import (
-    RocCurveDisplay,
-    accuracy_score,
-    auc,
-    roc_auc_score,
-    roc_curve,
-)
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import LabelEncoder
 
 from xrdanalysis.data_processing import (
     FaultyPixelDetector,
     MeasurementTypeClassifier,
     _pipeline_experimentation,
     _pipeline_export,
+    _pipeline_validation,
 )
 from xrdanalysis.data_processing._pipeline_diagnostics import emit_split_summary
+
+# Retain historical validation dependency aliases during the compatibility window.
+from xrdanalysis.data_processing._pipeline_validation import *  # noqa: F401,F403
 from xrdanalysis.data_processing.detector_joining import join_detectors
 from xrdanalysis.data_processing.utility_functions import (
     calculate_optimal_threshold,
@@ -394,130 +388,19 @@ class MLPipeline:
         min_sensitivity=None,
         min_specificity=None,
     ):
-        """
-        Validate the performance of the trained estimator on test data.
-        Supports both binary and multiclass classification.
-
-        :param y_true: The true target values.
-        :type y_true: pandas.Series
-        :param y_score: Predicted probabilities. For binary: (n,) or (n, 2).
-                       For multiclass: (n, n_classes).
-        :type y_score: numpy.ndarray
-        :param metrics: Metrics to compute, e.g., ["accuracy", "roc_auc"].
-        :type metrics: list
-        :param show_flag: If True, displays the ROC curve(s). Defaults to False.
-        :type show_flag: bool
-        :param print_flag: If True, prints the validation results. \
-        Defaults to False.
-        :type print_flag: bool
-        :param min_sensitivity: Minimum sensitivity threshold. \
-        Defaults to None.
-        :type min_sensitivity: float, optional
-        :param min_specificity: Minimum specificity threshold. \
-        Defaults to None.
-        :type min_specificity: float, optional
-        :return: A dictionary containing the computed metric results.
-        :rtype: dict
-        """
-        results = {}
-
-        # Detect multiclass vs binary by y_score shape
-        y_score = np.asarray(y_score)
-        multiclass = y_score.ndim == 2 and y_score.shape[1] > 2
-
-        if not multiclass:
-            # Existing binary path expects y_score shape (n,)
-            # If (n,2), convert to positive-class scores:
-            if y_score.ndim == 2 and y_score.shape[1] == 2:
-                y_score_bin = y_score[:, 1]
-            else:
-                y_score_bin = y_score
-
-            # Existing binary metrics and thresholding
-            _, _, _, self.optimal_threshold = calculate_optimal_threshold(
-                y_true,
-                y_score_bin,
-                min_sensitivity=min_sensitivity,
-                min_specificity=min_specificity,
-                print_flag=print_flag,
-            )
-            y_pred = y_score_bin >= self.optimal_threshold
-
-            if "accuracy" in metrics:
-                results["accuracy"] = accuracy_score(y_true, y_pred)
-
-            if "roc_auc" in metrics:
-                sensitivity, specificity, precision, ba_accuracy, threshold = (
-                    generate_roc_based_metrics(
-                        y_true,
-                        y_score_bin,
-                        show_flag,
-                        min_sensitivity=min_sensitivity,
-                        min_specificity=min_specificity,
-                    )
-                )
-                results["roc_auc"] = round(roc_auc_score(y_true, y_score_bin) * 100, 1)
-                results["sensitivity"] = sensitivity
-                results["specificity"] = specificity
-                results["precision"] = precision
-                results["ba_accuracy"] = ba_accuracy
-                results["threshold"] = threshold
-
-            if print_flag:
-                print(results)
-            return results
-
-        # Multiclass path (one-vs-rest ROC, macro/micro AUC)
-        # Ensure class order matches y_score columns
-        clf = self.trained_estimator.steps[-1][1]
-        classes = np.asarray(getattr(clf, "classes_", np.unique(y_true)))
-
-        # Accuracy via argmax
-        if "accuracy" in metrics:
-            y_pred_idx = np.argmax(y_score, axis=1)
-            y_pred = classes[y_pred_idx]
-            results["accuracy"] = accuracy_score(y_true, y_pred)
-
-        if "roc_auc" in metrics:
-            # Macro/micro averaged AUC
-            results["roc_auc_macro"] = round(
-                roc_auc_score(
-                    y_true, y_score, multi_class="ovr", average="macro", labels=classes
-                )
-                * 100,
-                1,
-            )
-            results["roc_auc_micro"] = round(
-                roc_auc_score(
-                    y_true, y_score, multi_class="ovr", average="micro", labels=classes
-                )
-                * 100,
-                1,
-            )
-
-            # Per-class AUC and optional plots
-            per_class_auc = {}
-            for i, c in enumerate(classes):
-                # One-vs-rest for class c
-                y_true_bin = (np.asarray(y_true) == c).astype(int)
-                per_class_auc[str(c)] = round(
-                    roc_auc_score(y_true_bin, y_score[:, i]) * 100, 1
-                )
-
-                if show_flag:
-                    RocCurveDisplay.from_predictions(
-                        y_true_bin, y_score[:, i], name=f"{c} vs rest"
-                    )
-
-            if show_flag:
-                plt.title("Multiclass ROC (one-vs-rest)")
-                plt.show()
-
-            results["per_class_auc"] = per_class_auc
-
-        if print_flag:
-            print(results)
-        return results
+        """Validate binary or multiclass probability scores."""
+        return _pipeline_validation.validate(
+            self,
+            y_true,
+            y_score,
+            metrics,
+            show_flag,
+            print_flag,
+            min_sensitivity,
+            min_specificity,
+            calculate_optimal_threshold=calculate_optimal_threshold,
+            generate_roc_based_metrics=generate_roc_based_metrics,
+        )
 
     def train(
         self,
@@ -737,52 +620,20 @@ class MLPipeline:
         min_sensitivity=None,
         min_specificity=None,
     ):
-        """
-        Validate the trained estimator on a dataset using specified metrics.
-
-        :param data: The dataset for validation.
-        :type data: pandas.DataFrame
-        :param y_column: Name of the target variable column. Defaults to None.
-        :type y_column: str, optional
-        :param y_value: Target variable value to filter on. Defaults to None.
-        :type y_value: object, optional
-        :param y_data: Predefined target values. Defaults to None.
-        :type y_data: pandas.Series, optional
-        :param wrangle: If True, apply data wrangling steps. Defaults to False.
-        :type wrangle: bool
-        :param preprocess: If True, apply preprocessing steps. \
-        Defaults to False.
-        :type preprocess: bool
-        :param metrics: Metrics to compute, e.g., ["accuracy", "roc_auc"].
-        :type metrics: list
-        :param show_flag: If True, displays the ROC curve. Defaults to False.
-        :type show_flag: bool
-        :param print_flag: If True, prints the validation results. \
-        Defaults to False.
-        :type print_flag: bool
-        :param min_sensitivity: Minimum sensitivity threshold. \
-        Defaults to None.
-        :type min_sensitivity: float, optional
-        :param min_specificity: Minimum specificity threshold. \
-        Defaults to None.
-        :type min_specificity: float, optional
-        :return: A dictionary containing the computed metric results.
-        :rtype: dict
-        """
-        # Calculate and return the desired metrics
-        if y_data is None:
-            y_true = self.infer_y(data, y_column, y_value)
-        else:
-            y_true = y_data
-        y_score = self.predict_proba(data, wrangle, preprocess)
-        return self.validate(
-            y_true,
-            y_score,
+        """Validate a dataset through public prediction and validation seams."""
+        return _pipeline_validation.validate_dataset(
+            self,
+            data,
+            y_column,
+            y_value,
+            y_data,
+            wrangle,
+            preprocess,
             metrics,
             show_flag,
             print_flag,
-            min_sensitivity=min_sensitivity,
-            min_specificity=min_specificity,
+            min_sensitivity,
+            min_specificity,
         )
 
     def tune_estimator_optuna(
@@ -992,86 +843,18 @@ class MLPipelineMulti(MLPipeline):
         show_flag: bool = False,
         print_flag: bool = False,
     ):
-        if metrics is None:
-            metrics = ["accuracy", "roc_auc_macro"]
-        results = {}
-
-        # Accuracy
-        if "accuracy" in metrics:
-            results["accuracy"] = accuracy_score(y_true, y_pred)
-
-        # Align label encoding to estimator classes_ ordering
-        try:
-            clf = self.trained_estimator.steps[-1][1]
-            classes = getattr(clf, "classes_", None)
-        except Exception:
-            classes = None
-
-        le = LabelEncoder()
-        if classes is not None:
-            le.fit(classes)
-        else:
-            le.fit(pd.unique(y_true))
-            classes = list(le.classes_)
-        y_true_enc = le.transform(y_true)
-
-        # ROC AUC (macro / weighted)
-        try:
-            auc_macro = roc_auc_score(
-                y_true_enc, y_proba, multi_class=multi_class, average="macro"
-            )
-            if "roc_auc_macro" in metrics:
-                results["roc_auc_macro"] = round(auc_macro * 100, 1)
-        except Exception:
-            if "roc_auc_macro" in metrics:
-                results["roc_auc_macro"] = None
-
-        try:
-            auc_weighted = roc_auc_score(
-                y_true_enc, y_proba, multi_class=multi_class, average="weighted"
-            )
-            if "roc_auc_weighted" in metrics:
-                results["roc_auc_weighted"] = round(auc_weighted * 100, 1)
-        except Exception:
-            if "roc_auc_weighted" in metrics:
-                results["roc_auc_weighted"] = None
-
-        # Plot One-vs-Rest ROC curves for each class
-        fig = None
-        if show_flag and classes is not None and y_proba.ndim == 2:
-            try:
-                fig, ax = plt.subplots(figsize=(7, 6))
-                # Ensure y_true is a Series for boolean masking
-                y_true_series = pd.Series(y_true)
-                for i, cls in enumerate(classes):
-                    y_bin = (y_true_series == cls).astype(int)
-                    fpr, tpr, _ = roc_curve(y_bin, y_proba[:, i])
-                    cls_auc = auc(fpr, tpr)
-                    ax.plot(
-                        fpr,
-                        tpr,
-                        label=f"{cls} (AUC={cls_auc:.2f})",
-                        linewidth=2,
-                    )
-                ax.plot([0, 1], [0, 1], "k--", alpha=0.3)
-                ax.set_xlim([0.0, 1.0])
-                ax.set_ylim([0.0, 1.05])
-                ax.set_xlabel("False Positive Rate")
-                ax.set_ylabel("True Positive Rate")
-                ax.set_title("One-vs-Rest ROC Curves")
-                ax.legend(loc="lower right", fontsize="small")
-                ax.grid(True, alpha=0.3)
-                results["roc_fig"] = fig
-                try:
-                    plt.show()
-                except Exception:
-                    pass
-            except Exception:
-                pass
-
-        if print_flag:
-            print(results)
-        return results
+        """Validate multiclass probabilities and predictions."""
+        return _pipeline_validation.validate_multiclass(
+            self,
+            y_true,
+            y_proba,
+            y_pred,
+            metrics,
+            multi_class,
+            average,
+            show_flag,
+            print_flag,
+        )
 
     def train(
         self,
@@ -1199,19 +982,18 @@ class MLPipelineMulti(MLPipeline):
         average: str = "macro",
     ):
         # Calculate metrics on an arbitrary dataset after training
-        if y_data is None:
-            y_true = self.infer_y(data, y_column, y_value)
-        else:
-            y_true = y_data
-        y_proba = self.predict_proba(data, wrangle=wrangle, preprocess=preprocess)
-        y_pred = self.predict(data, wrangle=wrangle, preprocess=preprocess)
-        return self.validate_multiclass(
-            y_true=y_true,
-            y_proba=y_proba,
-            y_pred=y_pred,
-            metrics=metrics,
-            multi_class=multi_class,
-            average=average,
-            show_flag=show_flag,
-            print_flag=print_flag,
+        """Validate a multiclass dataset through public prediction seams."""
+        return _pipeline_validation.validate_multiclass_dataset(
+            self,
+            data,
+            y_column,
+            y_value,
+            y_data,
+            wrangle,
+            preprocess,
+            metrics,
+            show_flag,
+            print_flag,
+            multi_class,
+            average,
         )

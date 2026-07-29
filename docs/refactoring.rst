@@ -77,7 +77,7 @@ Python file-size budget
 
 Run ``python scripts/check_python_file_size.py`` or ``make check-python-file-size``.
 The analysis package defaults to a 1,000 physical-line maximum per Python file.
-Three pre-existing modules have temporary, explicit ceilings in
+Two pre-existing modules have temporary, explicit ceilings in
 ``scripts/check_python_file_size.py``. They may not grow; each extraction should
 reduce them until the default budget applies. Add an exemption only with a
 documented removal stage and a dedicated test gate.
@@ -91,6 +91,10 @@ implementations are currently split into:
 * ``_snr_math.py`` for SNR numerical kernels;
 * ``_goodness.py`` for goodness scoring and filtering;
 * ``_pipeline_diagnostics.py`` for non-fatal train/test split summaries;
+* ``_pipeline_experimentation.py`` for Optuna tuning and repeated-run
+  variability evaluation;
+* ``_pipeline_export.py`` for fitted pipeline serialization and CSV exports;
+* ``_pipeline_validation.py`` for binary and multiclass validation support;
 * ``_evaluation_utils.py`` for ROC and threshold calculations;
 * ``_spectrokinetic_math.py`` for private SVD/MCR-ALS numerical kernels;
 * ``_spectrokinetic_mcr_support.py`` for stateless matrix, mask, fixed-spectra,
@@ -110,3 +114,26 @@ its generator is not a provenance-backed external SK-Ana reference.
 functions. It also temporarily re-exports the historical scikit-learn metric
 names used by wildcard-import notebooks. Remove those compatibility exports
 only after consumer migration and an explicit deprecation period.
+
+Pipeline contracts
+------------------
+
+``pipeline.py`` retains the public ``MLPipeline`` and ``MLPipelineMulti``
+methods, signatures, and serialized class paths. The private pipeline helpers
+must not import these canonical classes. Public wrappers remain the dispatch
+seams for ``predict``, ``predict_proba``, ``validate``, export, and maintained
+test monkeypatches.
+Historical validation dependency aliases imported from ``pipeline.py`` remain
+available during the compatibility window; remove them only through an explicit
+deprecation stage.
+
+Training records the target column and optional sample-weight column. Both are
+excluded from estimator features during prediction when present. Sample weights
+are passed to estimator fitting only; they are never prediction features.
+
+Binary validation finds an optimal threshold subject to both requested minimum
+sensitivity and minimum specificity constraints. A score equal to that
+threshold is positive (``score >= threshold``), consistently in validation and
+binary CSV export. Exported binary pipelines carry ``optimal_threshold`` only
+when it exists. Multiclass exported pipelines do not receive a binary
+threshold. Multiclass probability columns stay in estimator ``classes_`` order.

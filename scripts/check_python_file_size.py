@@ -14,7 +14,6 @@ DEFAULT_MAX_LINES = 1_000
 # while allowing their behavior-preserving extraction to happen incrementally.
 TEMPORARY_EXEMPTIONS = {
     "data_processing/transformers.py": 2_634,
-    "data_processing/pipeline.py": 1_560,
     "data_processing/utility_functions.py": 1_302,
 }
 
