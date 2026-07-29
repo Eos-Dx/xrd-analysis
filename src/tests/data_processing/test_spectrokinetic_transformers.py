@@ -51,10 +51,7 @@ def _build_synthetic_matrix(
 
 def _load_keele_i_vs_q_standard_df() -> pd.DataFrame:
     fixture = (
-        Path(__file__).resolve().parent
-        / "fixtures"
-        / "skana"
-        / "I_vs_q_100samples.dat"
+        Path(__file__).resolve().parent / "fixtures" / "skana" / "I_vs_q_100samples.dat"
     )
     raw = pd.read_csv(fixture, sep=r"\s+")
 
@@ -137,7 +134,9 @@ def test_solve_c_and_s_unconstrained_identity_case():
 
 
 def test_mixed_per_component_nonneg_s_constraints():
-    delay, wav, c_true, _s, _mat = _build_synthetic_matrix(n_delay=40, n_wav=80, n_comp=2)
+    delay, wav, c_true, _s, _mat = _build_synthetic_matrix(
+        n_delay=40, n_wav=80, n_comp=2
+    )
 
     s_target = np.zeros((wav.size, 2), dtype=float)
     s_target[:, 0] = np.exp(-((wav - 450) ** 2) / (2 * 30**2))
@@ -214,7 +213,9 @@ def test_broadening_refinement_improves_reconstruction_error():
 
 
 def test_fixed_spectra_hard_and_soft_constraints():
-    delay, wav, c_true, s_true, mat = _build_synthetic_matrix(n_delay=30, n_wav=70, n_comp=2)
+    delay, wav, c_true, s_true, mat = _build_synthetic_matrix(
+        n_delay=30, n_wav=70, n_comp=2
+    )
     s_init = np.abs(np.random.default_rng(1).normal(size=s_true.shape))
     s0 = s_true[:, [0]]
 
@@ -322,7 +323,9 @@ def test_correction_mode_enforces_coupling_and_orthogonality():
 
 
 def test_mcrals_row_transformer_outputs_columns_and_shapes():
-    delay, wav, _c, _s, mat = _build_synthetic_matrix(n_delay=24, n_wav=48, n_comp=2, noise=0.001)
+    delay, wav, _c, _s, mat = _build_synthetic_matrix(
+        n_delay=24, n_wav=48, n_comp=2, noise=0.001
+    )
 
     df = pd.DataFrame(
         {
@@ -351,8 +354,12 @@ def test_mcrals_row_transformer_outputs_columns_and_shapes():
 
 
 def test_mcrals_group_tile_delay_splits_c_back_to_each_row():
-    delay1, wav, _c1, _s1, mat1 = _build_synthetic_matrix(n_delay=16, n_wav=40, n_comp=2, seed=10)
-    delay2, wav2, _c2, _s2, mat2 = _build_synthetic_matrix(n_delay=12, n_wav=40, n_comp=2, seed=11)
+    delay1, wav, _c1, _s1, mat1 = _build_synthetic_matrix(
+        n_delay=16, n_wav=40, n_comp=2, seed=10
+    )
+    delay2, wav2, _c2, _s2, mat2 = _build_synthetic_matrix(
+        n_delay=12, n_wav=40, n_comp=2, seed=11
+    )
 
     assert np.allclose(wav, wav2)
 
@@ -385,6 +392,132 @@ def test_mcrals_group_tile_delay_splits_c_back_to_each_row():
     assert c0.shape[1] == 2
     assert c1.shape[1] == 2
     assert np.allclose(s0, s1)
+
+
+def test_mcrals_group_mean_reuses_mean_result_for_each_group_member():
+    delay, wav, _c, _s, mat = _build_synthetic_matrix(
+        n_delay=12, n_wav=24, n_comp=2, seed=21
+    )
+    df = pd.DataFrame(
+        {
+            "group_id": ["g1", "g1"],
+            "spectro_matrix": [mat, mat * 1.02],
+            "delay_axis": [delay, delay],
+            "wavelength_axis": [wav, wav],
+        }
+    )
+
+    out = MCRALSTransformer(
+        decomposition_mode="group",
+        group_col="group_id",
+        group_strategy="mean",
+        n_components=2,
+        maxiter=8,
+        thresh=1e-5,
+        random_state=7,
+    ).transform(df)
+
+    first, second = out.iloc[0], out.iloc[1]
+    assert np.allclose(first["als_C"], second["als_C"])
+    assert np.allclose(first["als_S"], second["als_S"])
+    assert np.allclose(first["als_model"], second["als_model"])
+    assert first["als_meta"]["group_strategy"] == "mean"
+    assert first["als_meta"]["group_size"] == 2
+
+
+def test_mcrals_group_wavelength_mismatch_requires_explicit_interpolation():
+    delay, wav, _c, _s, mat = _build_synthetic_matrix(
+        n_delay=10, n_wav=20, n_comp=2, seed=22
+    )
+    shifted_wav = wav + 0.25
+    df = pd.DataFrame(
+        {
+            "group_id": ["g1", "g1"],
+            "spectro_matrix": [mat, mat],
+            "delay_axis": [delay, delay],
+            "wavelength_axis": [wav, shifted_wav],
+        }
+    )
+    base_kwargs = {
+        "decomposition_mode": "group",
+        "group_col": "group_id",
+        "group_strategy": "tile_delay",
+        "n_components": 2,
+        "maxiter": 8,
+        "thresh": 1e-5,
+        "random_state": 8,
+    }
+
+    with pytest.raises(ValueError, match="identical wavelength grids"):
+        MCRALSTransformer(**base_kwargs).transform(df)
+
+    out = MCRALSTransformer(
+        **base_kwargs, allow_group_wavelength_interpolation=True
+    ).transform(df)
+    assert out.iloc[0]["als_S"].shape == (wav.size, 2)
+    assert out.iloc[1]["als_model"].shape == (delay.size, wav.size)
+
+
+def test_mcrals_presence_mask_tiles_vector_and_rejects_wrong_shape():
+    delay, wav, _c, _s, mat = _build_synthetic_matrix(
+        n_delay=10, n_wav=20, n_comp=2, seed=23
+    )
+    df = pd.DataFrame(
+        {
+            "spectro_matrix": [mat],
+            "delay_axis": [delay],
+            "wavelength_axis": [wav],
+            "presence": [np.array([1.0, 0.0])],
+        }
+    )
+    out = MCRALSTransformer(
+        n_components=2,
+        presence_mask_col="presence",
+        maxiter=4,
+        thresh=-1.0,
+        random_state=9,
+    ).transform(df)
+    assert np.allclose(out.iloc[0]["als_C"][:, 1], 0.0)
+
+    bad = df.copy()
+    bad.at[0, "presence"] = [1.0]
+    with pytest.raises(ValueError, match="length 2"):
+        MCRALSTransformer(
+            n_components=2,
+            presence_mask_col="presence",
+            maxiter=4,
+            random_state=9,
+        ).transform(bad)
+
+
+def test_mcrals_fixed_spectra_dict_interpolates_onto_data_wavelengths():
+    delay, wav, _c, _s, mat = _build_synthetic_matrix(
+        n_delay=12, n_wav=24, n_comp=2, seed=24
+    )
+    source_wav = np.linspace(wav.min(), wav.max(), 6)
+    source_profile = np.linspace(0.2, 1.0, source_wav.size)
+    df = pd.DataFrame(
+        {
+            "spectro_matrix": [mat],
+            "delay_axis": [delay],
+            "wavelength_axis": [wav],
+            "fixed": [{"spectra": source_profile, "wavelength": source_wav}],
+        }
+    )
+
+    out = MCRALSTransformer(
+        n_components=2,
+        fixed_spectra_col="fixed",
+        interpolate_fixed=True,
+        hard_s0=True,
+        maxiter=8,
+        thresh=1e-5,
+        random_state=10,
+    ).transform(df)
+
+    expected = np.interp(wav, source_wav, source_profile)
+    assert np.allclose(out.iloc[0]["als_S"][:, 0], expected, atol=1e-12)
+    assert out.iloc[0]["als_meta"]["n_fixed"] == 1
 
 
 @pytest.mark.parametrize("n_components", [2, 3, 4])
@@ -552,14 +685,13 @@ def test_keele_fixed_profiles_restart_initialization(norm_mode: str):
 
 def test_optional_parity_fixture_if_available():
     fixture = (
-        Path(__file__).resolve().parent
-        / "fixtures"
-        / "skana"
-        / "parity_fixture.npz"
+        Path(__file__).resolve().parent / "fixtures" / "skana" / "parity_fixture.npz"
     )
 
     if not fixture.exists():
-        pytest.skip("No SK-Ana parity fixture found. Generate via build_skana_reference_fixture.R")
+        pytest.skip(
+            "No SK-Ana parity fixture found. Generate via build_skana_reference_fixture.R"
+        )
 
     npz = np.load(fixture, allow_pickle=True)
 
