@@ -92,6 +92,54 @@ def initialize_azimuthal_integrator_poni_text(ponifile_text):
             pass  # Ignore any errors in file deletion
 
 
+def _read_poni_distance(poni_text):
+    distance_anchor = "Distance:"
+    p = poni_text.find(distance_anchor)
+    if p == -1:
+        return None, None, None
+
+    value_start = p + len(distance_anchor)
+    while value_start < len(poni_text) and poni_text[value_start] in " \t":
+        value_start += 1
+    end_of_line_index = poni_text.find("\n", value_start)
+    if end_of_line_index == -1:
+        end_of_line_index = len(poni_text)
+
+    try:
+        distance_m = float(poni_text[value_start:end_of_line_index])
+    except Exception:
+        distance_m = None
+    return distance_m, value_start, end_of_line_index
+
+
+def _adjust_poni_text_for_thickness(
+    poni_text,
+    sample_thickness_mm,
+    reference_thickness_mm=0.0,
+    fallback_distance_mm=None,
+):
+    base_distance_m, value_start, end_of_line_index = _read_poni_distance(poni_text)
+    if base_distance_m is None:
+        if fallback_distance_mm is None:
+            return poni_text, None
+        base_distance_m = float(fallback_distance_mm) * 1e-3
+
+    adjusted_distance = (
+        base_distance_m
+        - ((float(sample_thickness_mm) - float(reference_thickness_mm)) / 2) * 1e-3
+    )
+
+    if value_start is None or end_of_line_index is None:
+        return poni_text, adjusted_distance
+
+    new_ponifile_text = (
+        poni_text[:value_start]
+        + f"{adjusted_distance:.6f}"
+        + poni_text[end_of_line_index:]
+    )
+    return new_ponifile_text, adjusted_distance
+
+
 def perform_azimuthal_integration(
     row: pd.Series,
     column: str = "measurement_data",
@@ -103,6 +151,9 @@ def perform_azimuthal_integration(
     max_iter=5,
     thickness_adjustment=False,
     thickness_adjustment_distance=None,
+    thickness_reference_mm=0.0,
+    sample_thickness_column="thickness",
+    sample_thickness_mm=None,
     calc_cake_stats=False,
     angles=None,
     poni_dir: str = None,
@@ -171,6 +222,15 @@ def perform_azimuthal_integration(
     :param error_model: Error model for pyFAI integration. Common values are \
     "poisson" or "azimuthal". If None, pyFAI uses its default. Defaults to None.
     :type error_model: str or None
+    :param thickness_reference_mm: Reference thickness used for the calibration\
+    geometry, in millimeters. Defaults to 0.0 to preserve legacy behavior.
+    :type thickness_reference_mm: float
+    :param sample_thickness_column: Row column containing sample thickness in\
+    millimeters when sample_thickness_mm is not passed. Defaults to "thickness".
+    :type sample_thickness_column: str
+    :param sample_thickness_mm: Explicit sample thickness in millimeters. If\
+    None, sample_thickness_column is read from row.
+    :type sample_thickness_mm: float or None
 
     :returns:
         - **numpy.ndarray**: The array of radial q values (momentum transfer)\
@@ -205,54 +265,37 @@ def perform_azimuthal_integration(
     elif calibration_mode == "poni":
         if poni_dir:
             poni_path = f"{poni_dir}/{int(row['calibration_measurement_id'])}.poni"
-            ai_cached = initialize_azimuthal_integrator_poni(poni_path)
+            if thickness_adjustment:
+                sample_thickness = (
+                    row[sample_thickness_column]
+                    if sample_thickness_mm is None
+                    else sample_thickness_mm
+                )
+                with open(poni_path, encoding="utf-8") as poni_file:
+                    poni_text = poni_file.read()
+                poni_text, adjusted_distance = _adjust_poni_text_for_thickness(
+                    poni_text,
+                    sample_thickness,
+                    reference_thickness_mm=thickness_reference_mm,
+                    fallback_distance_mm=thickness_adjustment_distance,
+                )
+                ai_cached = initialize_azimuthal_integrator_poni_text(poni_text)
+            else:
+                ai_cached = initialize_azimuthal_integrator_poni(poni_path)
         else:
             poni_text = row["ponifile"]
-            # Adjust poni file thickness. Adjusted distance = restored_thickness - t/2
             if thickness_adjustment:
-                # Read base distance from the PONI text (meters), then subtract half thickness (mm->m)
-                distance_anchor = "Distance:"
-                p = poni_text.find(distance_anchor)
-                base_distance_m = None
-                if p != -1:
-                    value_start = p + len(distance_anchor)
-                    # Skip whitespace after the anchor
-                    while (
-                        value_start < len(poni_text) and poni_text[value_start] in " \t"
-                    ):
-                        value_start += 1
-                    end_of_line_index = poni_text.find("\n", value_start)
-                    if end_of_line_index == -1:
-                        end_of_line_index = len(poni_text)
-                    try:
-                        base_distance_m = float(
-                            poni_text[value_start:end_of_line_index]
-                        )
-                    except Exception:
-                        base_distance_m = None
-
-                # Fallback to parameter if parsing failed (backward compatibility)
-                if base_distance_m is None:
-                    base_distance_m = thickness_adjustment_distance * 1e-3
-                    # If "Distance:" anchor wasn't found before, try to set indices to a reasonable default
-                    # so replacement below is skipped when not found.
-                    value_start = None
-                    end_of_line_index = None
-
-                adjusted_distance = base_distance_m - (row["thickness"] / 2) * 1e-3
-
-                # Replace the Distance field with the adjusted value (meters)
-                if (
-                    p != -1
-                    and value_start is not None
-                    and end_of_line_index is not None
-                ):
-                    new_ponifile_text = (
-                        poni_text[:value_start]
-                        + f"{adjusted_distance:.6f}"
-                        + poni_text[end_of_line_index:]
-                    )
-                    poni_text = new_ponifile_text
+                sample_thickness = (
+                    row[sample_thickness_column]
+                    if sample_thickness_mm is None
+                    else sample_thickness_mm
+                )
+                poni_text, adjusted_distance = _adjust_poni_text_for_thickness(
+                    poni_text,
+                    sample_thickness,
+                    reference_thickness_mm=thickness_reference_mm,
+                    fallback_distance_mm=thickness_adjustment_distance,
+                )
             # Initialize the integrator from the (possibly adjusted) poni text
             ai_cached = initialize_azimuthal_integrator_poni_text(poni_text)
 

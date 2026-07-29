@@ -224,6 +224,38 @@ def test_azimuthal_integration_poni_mode(
     assert transformed_df.iloc[0]["calculated_distance"] == 0.1
 
 
+@patch("xrdanalysis.data_processing.transformers.generate_poni")
+@patch(("xrdanalysis.data_processing." "transformers.perform_azimuthal_integration"))
+def test_azimuthal_integration_forwards_thickness_reference(
+    mock_perform_azimuthal_integration, mock_generate_poni, sample_dataframe
+):
+    """Test thickness reference parameters are forwarded to integration."""
+    mock_perform_azimuthal_integration.side_effect = lambda *args, **kwargs: (
+        [1, 2, 3],
+        [4, 5, 6],
+        0.1,
+    )
+    mock_generate_poni.return_value = "test_poni_directory"
+
+    transformer = AzimuthalIntegration(
+        faulty_pixels=[(1, 1), (2, 2)],
+        integration_mode="1D",
+        calibration_mode="poni",
+        thickness_adjustment=True,
+        thickness_reference_mm=11.0,
+        sample_thickness_column="sample_thickness_mm",
+    )
+    df = sample_dataframe.copy()
+    df["sample_thickness_mm"] = 25.0
+
+    transformer.transform(df)
+
+    _, kwargs = mock_perform_azimuthal_integration.call_args
+    assert kwargs["thickness_adjustment"] is True
+    assert kwargs["thickness_reference_mm"] == 11.0
+    assert kwargs["sample_thickness_column"] == "sample_thickness_mm"
+
+
 def test_data_preparation_transformer(sample_dataframe):
     """Data preparation transformer test"""
     transformer = DataPreparation()

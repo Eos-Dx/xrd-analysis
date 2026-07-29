@@ -107,6 +107,12 @@ class AzimuthalIntegration(TransformerMixin):
     :param error_model: Error model for pyFAI integration. Common values are \
     "poisson" or "azimuthal". If None, pyFAI uses its default. Defaults to None.
     :type error_model: str, optional
+    :param thickness_reference_mm: Reference thickness used for calibration\
+    geometry, in millimeters. Use AgBH reference thickness here when needed.
+    :type thickness_reference_mm: float
+    :param sample_thickness_column: Input DataFrame column containing sample\
+    thickness in millimeters. Defaults to "thickness".
+    :type sample_thickness_column: str
     """
 
     max_iter: int = 5
@@ -120,6 +126,8 @@ class AzimuthalIntegration(TransformerMixin):
     transformation_mode: str = "dataframe"
     thickness_adjustment: bool = False
     thickness_adjustment_distance: float = 700
+    thickness_reference_mm: float = 0.0
+    sample_thickness_column: str = "thickness"
     calc_cake_stats: bool = False
     output_column: str = "radial_profile_data"
     q_range_column: str = "q_range"
@@ -189,6 +197,8 @@ class AzimuthalIntegration(TransformerMixin):
                 self.calibration_mode,
                 thickness_adjustment=self.thickness_adjustment,
                 thickness_adjustment_distance=self.thickness_adjustment_distance,
+                thickness_reference_mm=self.thickness_reference_mm,
+                sample_thickness_column=self.sample_thickness_column,
                 thres=self.thres,
                 max_iter=self.max_iter,
                 calc_cake_stats=self.calc_cake_stats,

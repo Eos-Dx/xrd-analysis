@@ -138,6 +138,50 @@ class TestAzimuthalIntegration(unittest.TestCase):
     @patch(
         (
             "xrdanalysis.data_processing."
+            "azimuthal_integration.initialize_azimuthal_integrator_poni_text"
+        )
+    )
+    def test_azimuthal_integration_thickness_reference(
+        self, mock_initialize_ai_poni_text
+    ):
+        """Test thickness correction with reference thickness."""
+        mock_ai = mock_initialize_ai_poni_text.return_value
+        mock_ai.dist = 0.493
+        mock_ai.poni1 = 0.1
+        mock_ai.poni2 = 0.2
+        mock_ai.detector.pixel1 = 0.001
+        mock_ai.detector.pixel2 = 0.001
+        mock_ai.integrate1d.return_value = (
+            np.array([1, 2, 3]),
+            np.array([4, 5, 6]),
+        )
+
+        row = pd.Series(
+            {
+                "measurement_data": np.random.rand(10, 10),
+                "ponifile": "Distance: 0.500000\nPoni1: 0.1\n",
+                "thickness": 25.0,
+                "interpolation_q_range": (0, 5),
+            }
+        )
+
+        radial, intensity, sigma, dist = perform_azimuthal_integration(
+            row,
+            calibration_mode="poni",
+            thickness_adjustment=True,
+            thickness_reference_mm=11.0,
+        )
+
+        adjusted_poni_text = mock_initialize_ai_poni_text.call_args.args[0]
+        assert "Distance: 0.493000" in adjusted_poni_text
+        np.testing.assert_array_equal(radial, np.array([1, 2, 3]))
+        np.testing.assert_array_equal(intensity, np.array([4, 5, 6]))
+        assert sigma is None
+        assert dist == 0.493
+
+    @patch(
+        (
+            "xrdanalysis.data_processing."
             "azimuthal_integration.initialize_azimuthal_integrator_df"
         )
     )
