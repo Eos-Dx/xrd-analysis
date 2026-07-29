@@ -54,3 +54,19 @@ Four pre-existing modules have temporary, explicit ceilings in
 ``scripts/check_python_file_size.py``. They may not grow; each extraction should
 reduce them until the default budget applies. Add an exemption only with a
 documented removal stage and a dedicated test gate.
+
+Current private extraction boundaries
+-------------------------------------
+
+Public classes and functions remain at their historical import paths. Internal
+implementations are currently split into:
+
+* ``_snr_math.py`` for SNR numerical kernels;
+* ``_goodness.py`` for goodness scoring and filtering;
+* ``_pipeline_diagnostics.py`` for non-fatal train/test split summaries;
+* ``_evaluation_utils.py`` for ROC and threshold calculations.
+
+``utility_functions.py`` retains signature-preserving wrappers for evaluation
+functions. It also temporarily re-exports the historical scikit-learn metric
+names used by wildcard-import notebooks. Remove those compatibility exports
+only after consumer migration and an explicit deprecation period.

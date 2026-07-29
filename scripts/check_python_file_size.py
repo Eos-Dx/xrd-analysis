@@ -13,9 +13,9 @@ DEFAULT_MAX_LINES = 1_000
 # These modules pre-date the guardrail.  Their ceilings prevent further growth
 # while allowing their behavior-preserving extraction to happen incrementally.
 TEMPORARY_EXEMPTIONS = {
-    "data_processing/transformers.py": 2_762,
-    "data_processing/pipeline.py": 1_761,
-    "data_processing/utility_functions.py": 1_593,
+    "data_processing/transformers.py": 2_650,
+    "data_processing/pipeline.py": 1_560,
+    "data_processing/utility_functions.py": 1_302,
     "data_processing/spectrokinetic_transformers.py": 1_543,
 }
 
