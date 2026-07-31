@@ -54,111 +54,190 @@ def h5_to_df(file_path):
     :return: A tuple containing two DataFrames: one with calibration data and \
     one with measurement data.
     :rtype: Tuple[pd.DataFrame, pd.DataFrame]
+
+    *Accurate for hdf5 container file structure as of 31 July 2026*
     """
     calibration_data = []
     measurement_data = []
 
+    def clean_attr(v):
+        if isinstance(v, bytes):
+            return v.decode()
+        if isinstance(v, np.generic):
+            return v.item()
+        return v
+
     with h5py.File(file_path, "r") as hdf:
-        # Handle simpler structure
-        if "calibrations" in hdf and "measurements" in hdf:
-            calibration_group = hdf["calibrations"]
-            measurements_group = hdf["measurements"]
+        # experiments
+        for experiment_name in hdf.keys():
 
-            cal_metadata = {
-                f"calib_{key}": calibration_group.attrs[key]
-                for key in calibration_group.attrs
-            }
+            experiment = hdf[experiment_name]
+            # calibrations
+            if "calibrations" in experiment:
 
-            meas_metadata = {
-                f"{key}": measurements_group.attrs[key]
-                for key in measurements_group.attrs
-            }
+                calibration_group = experiment["calibrations"]
 
-            # Process calibrations
-            for ds_name in calibration_group:
-                dataset = calibration_group[ds_name]
-                cal_data = {
-                    f"calib_{key}": dataset.attrs[key] for key in dataset.attrs
+                cal_metadata = {
+                    f"calib_{key}": clean_attr(
+                        calibration_group.attrs[key]
+                    )
+                    for key in calibration_group.attrs
                 }
-                cal_data["measurement_data"] = dataset[...]
-                cal_data["cal_name"] = ds_name
-                cal_data["id"] = (
-                    "root"  # Indicating root level for simple structure
-                )
-                cal_data = {**cal_data, **cal_metadata}
-                calibration_data.append(cal_data)
 
-            # Process measurements
-            for ds_name in measurements_group:
-                dataset = measurements_group[ds_name]
-                meas_data = {
-                    f"{key}": dataset.attrs[key] for key in dataset.attrs
-                }
-                meas_data["measurement_data"] = dataset[...]
-                meas_data["meas_name"] = ds_name
-                meas_data["id"] = "root"  # Indicating root level
-                meas_data = {**meas_data, **meas_metadata, **cal_metadata}
-                measurement_data.append(meas_data)
+                for detector_type in calibration_group.keys():
 
-        # Handle complex structure
-        else:
-            for group_name in hdf:
-                group = hdf[group_name]
-                if "calibrations" in group and any(
-                    key.startswith("measurements_") for key in group
-                ):
-                    calibration_group = group["calibrations"]
+                    detector_group = calibration_group[
+                        detector_type
+                    ]
 
-                    cal_metadata = {
-                        f"calib_{key}": calibration_group.attrs[key]
-                        for key in calibration_group.attrs
+                    detector_type_clean = (
+                        str(detector_type)
+                        .strip()
+                        .upper()
+                    )
+
+                    detector_metadata = {
+                        key: clean_attr(
+                            detector_group.attrs[key]
+                        )
+                        for key in detector_group.attrs
                     }
 
-                    # Process calibrations
-                    for ds_name in calibration_group:
-                        dataset = calibration_group[ds_name]
-                        cal_data = {
-                            f"calib_{key}": dataset.attrs[key]
+                    for ds_name in detector_group.keys():
+
+                        dataset = detector_group[ds_name]
+
+                        dataset_metadata = {
+                            f"calib_{key}": clean_attr(
+                                dataset.attrs[key]
+                            )
                             for key in dataset.attrs
                         }
-                        cal_data["measurement_data"] = dataset[...]
-                        cal_data["cal_name"] = ds_name
-                        cal_data["id"] = group_name  # Use group name as ID
-                        cal_data = {**cal_data, **cal_metadata}
-                        calibration_data.append(cal_data)
 
-                    # Process measurements
-                    for key in group:
-                        if key.startswith("measurements_"):
-                            measurements_group = group[key]
-                            meas_metadata = {
-                                f"{key}": measurements_group.attrs[key]
-                                for key in measurements_group.attrs
+                        cal_data = {
+                            "experiment": experiment_name,
+                            "detector_type": detector_type_clean,
+                            "cal_name": ds_name,
+                            "measurement_data": dataset[...],
+                            # force explicit column
+                            "ponifile": detector_metadata.get(
+                                "ponifile",
+                                np.nan,
+                            ),
+                        }
+
+                        cal_data = {
+                            **cal_data,
+                            **cal_metadata,
+                            **detector_metadata,
+                            **dataset_metadata,
+                        }
+
+                        calibration_data.append(cal_data)
+            # measurements
+            for key in experiment.keys():
+
+                if key.startswith("measurements"):
+
+                    measurements_group = experiment[key]
+
+                    meas_metadata = {
+                        attr_key: clean_attr(
+                            measurements_group.attrs[attr_key]
+                        )
+                        for attr_key in measurements_group.attrs
+                    }
+
+                    for detector_type in measurements_group.keys():
+
+                        detector_group = measurements_group[
+                            detector_type
+                        ]
+
+                        detector_type_clean = (
+                            str(detector_type)
+                            .strip()
+                            .upper()
+                        )
+
+                        detector_metadata = {
+                            attr_key: clean_attr(
+                                detector_group.attrs[attr_key]
+                            )
+                            for attr_key in detector_group.attrs
+                        }
+
+                        for ds_name in detector_group.keys():
+
+                            dataset = detector_group[ds_name]
+
+                            dataset_metadata = {
+                                attr_key: clean_attr(
+                                    dataset.attrs[attr_key]
+                                )
+                                for attr_key in dataset.attrs
                             }
 
-                            for ds_name in measurements_group:
-                                dataset = measurements_group[ds_name]
-                                meas_data = {
-                                    f"{key}": dataset.attrs[key]
-                                    for key in dataset.attrs
-                                }
-                                meas_data["measurement_data"] = dataset[...]
-                                meas_data["meas_name"] = ds_name
-                                meas_data["id"] = (
-                                    group_name  # Indicating root level
-                                )
-                                meas_data = {
-                                    **meas_data,
-                                    **meas_metadata,
-                                    **cal_metadata,
-                                }
-                                measurement_data.append(meas_data)
+                            meas_data = {
+                                "experiment": experiment_name,
+                                "measurement_group": key,
+                                "detector_type": detector_type_clean,
+                                "meas_name": ds_name,
+                                "measurement_data": dataset[...],
+                            }
+
+                            meas_data = {
+                                **meas_data,
+                                **meas_metadata,
+                                **detector_metadata,
+                                **dataset_metadata,
+                            }
+
+                            measurement_data.append(meas_data)
 
     # Convert to DataFrames
     calibration_df = pd.DataFrame(calibration_data)
     measurement_df = pd.DataFrame(measurement_data)
-    measurement_df.rename(columns={"calib_ponifile": "ponifile"}, inplace=True)
-    calibration_df.rename(columns={"calib_ponifile": "ponifile"}, inplace=True)
+
+    # manually set calibration distance
+    for df in [calibration_df, measurement_df]:
+
+        df["calib_distanceInMM"] = np.where(
+            df["experiment"].str.contains(
+                "170mm", case=False, na=False
+            ),
+            170,
+            np.where(
+                df["experiment"].str.contains(
+                    "20mm", case=False, na=False
+                ),
+                20,
+                np.nan,
+            ),
+        )
+
+    # merge ponifile
+    poni_lookup = calibration_df[
+        [
+            "experiment",
+            "detector_type",
+            "ponifile",
+        ]
+    ].drop_duplicates()
+
+    measurement_df.drop(
+        columns=["ponifile"],
+        inplace=True,
+        errors="ignore",
+    )
+
+    measurement_df = measurement_df.merge(
+        poni_lookup,
+        on=["experiment", "detector_type"],
+        how="left",
+    )
+    if "ponifile" not in measurement_df.columns:
+        measurement_df["ponifile"] = np.nan #guarantees it exists
 
     return calibration_df, measurement_df
 
