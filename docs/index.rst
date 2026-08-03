@@ -12,6 +12,7 @@ Welcome to MATUR's documentation!
 
    sop
    refactoring
+   legacy_candidate_audit
    xrdanalysis.data_processing
    spectrokinetic_transformers
 
