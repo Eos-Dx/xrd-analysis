@@ -9,11 +9,18 @@ import time
 import queue
 from unittest.mock import Mock, MagicMock, patch, call
 import sys
-import os
+from pathlib import Path
 
 # Add hardware directory to path
-hardware_path = os.path.join(os.path.dirname(__file__), '..', 'hardware', 'difra', 'hardware')
-sys.path.insert(0, hardware_path)
+hardware_path = Path(__file__).resolve().parents[1] / "hardware"
+sys.path.insert(0, str(hardware_path))
+
+legacy_stage_source = hardware_path / "difra" / "hardware" / "xystages.py"
+if not legacy_stage_source.is_file():
+    pytest.skip(
+        "legacy Marlin stage subsystem is not present in this checkout",
+        allow_module_level=True,
+    )
 
 # Mock serial module before importing xystages
 sys.modules['serial'] = MagicMock()
