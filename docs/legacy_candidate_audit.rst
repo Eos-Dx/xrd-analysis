@@ -63,7 +63,26 @@ Uncertain candidates
 ``d2xc_dev`` is not redundant because commit ``514ff6b3`` is unique. The
 standalone Difra repository has analogous editable-zone-point, continuous
 movement, stage-limit, and telemetry handling, but equivalent behavior has not
-been proven.
+been proven. A focused static comparison found:
+
+* manual point editing is present in a newer, broader implementation supporting
+  pixel and millimetre coordinates, measured-point protection, and allowed-zone
+  validation;
+* stage-controller ``RLock`` protection and Marlin position requests are
+  present, with additional current position-cache handling;
+* manual stage movement is now asynchronous, so the old warning about a
+  synchronous move blocking real-time display is not directly applicable;
+* the unique commit's explicit real-time active-state guard, callback lock,
+  plot-tick recovery, and start/stop exception recovery are not present in the
+  current ``technical/realtime_mixin.py``;
+* its structured continuous-movement logging is not present in the current
+  controller; and
+* current logging installs ``sys.excepthook`` but not the unique commit's
+  ``threading.excepthook`` or persistent ``faulthandler`` crash log.
+
+The unique commit is therefore partially superseded, not safely discardable.
+Any port belongs in standalone Difra with focused real-time, background-thread,
+and hardware-controller tests. It is outside ``xrd-analysis`` refactoring.
 
 ``src/hardware/xystages.py`` is a compatibility shim whose target implementation
 was removed. The only in-repository direct consumer is a legacy hardware test,
