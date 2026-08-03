@@ -144,6 +144,14 @@ and tolerant/strict lookup behavior are compatibility contracts. Private
 profile kernels remain importable from the canonical module for historical
 internal callers, but ``_calibration_profiles.py`` is not a public API.
 
+``fitting_functions.py`` retains all historical public fitting classes,
+constructors, direct base class, attributes, module paths, and serialized
+identities. A private helper centralizes only ordered parameter metadata.
+Numerical formulas, producer parameter slicing, integer-array behavior, the
+legacy skew-amplitude scaling, and Gamma edge behavior remain explicit
+regression contracts; changing them requires a separate scientific decision
+rather than a structural refactor.
+
 Untouched compatibility boundaries
 ----------------------------------
 
