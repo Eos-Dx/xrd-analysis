@@ -6,122 +6,23 @@ Calibration correction utilities:
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
 
-# Reuse average_ignore_zeros from detector_joining to avoid duplication
+from xrdanalysis.data_processing import _calibration_profiles
 from xrdanalysis.data_processing.detector_joining import average_ignore_zeros
 
-# ---------- helpers ----------
-
-
-def _closest_index(q_range, target_q: float) -> int:
-    q = np.asarray(q_range, dtype=float)
-    if q.ndim != 1 or q.size == 0:
-        raise ValueError("q_range must be a 1D non-empty sequence.")
-    return int(np.nanargmin(np.abs(q - float(target_q))))
-
-
-def _per_angle_correction_from_column(
-    polar_data: np.ndarray, col_idx: int
-) -> np.ndarray:
-    """
-    Build per-angle correction:
-      corr[angle] = mean(nonzero(column)) / column_value
-    For zero pixels, corr = 1.0 (no scaling).
-    """
-    P = np.asarray(polar_data, dtype=float)
-    if P.ndim != 2:
-        raise ValueError("polar_data must be 2D (n_angles, n_q).")
-    if not (0 <= col_idx < P.shape[1]):
-        raise IndexError(
-            f"col_idx {col_idx} out of bounds for polar_data with shape {P.shape}."
-        )
-
-    column = P[:, col_idx]
-    nonzero = column != 0
-    avg_val = column[nonzero].mean() if np.any(nonzero) else 1.0
-
-    corr = np.ones_like(column, dtype=float)
-    corr[nonzero] = avg_val / column[nonzero]
-    return corr  # shape: (n_angles,)
-
-
-def _per_angle_correction_from_multi_columns(
-    polar_data: np.ndarray, center_col_idx: int, window_size: int = 2
-) -> np.ndarray:
-    """
-    Build per-angle correction by averaging profiles from multiple Q-columns.
-
-    Takes the center column and +/- window_size columns around it, computes
-    correction profile for each, then averages them for more robust correction.
-
-    Parameters:
-        polar_data: 2D array (n_angles, n_q)
-        center_col_idx: Index of the central Q-column to use
-        window_size: Number of columns to include on each side of center
-
-    Returns:
-        Averaged correction profile (n_angles,)
-    """
-    P = np.asarray(polar_data, dtype=float)
-    if P.ndim != 2:
-        raise ValueError("polar_data must be 2D (n_angles, n_q).")
-    if not (0 <= center_col_idx < P.shape[1]):
-        raise IndexError(
-            f"center_col_idx {center_col_idx} out of bounds for polar_data with shape {P.shape}."
-        )
-
-    n_angles, n_q = P.shape
-
-    # Define the range of columns to use (ensure within bounds)
-    start_col = max(0, center_col_idx - window_size)
-    end_col = min(n_q, center_col_idx + window_size + 1)
-
-    # Collect correction profiles from all columns in the window
-    profiles = []
-    for col_idx in range(start_col, end_col):
-        try:
-            profile = _per_angle_correction_from_column(P, col_idx)
-            profiles.append(profile)
-        except Exception:
-            # Skip problematic columns
-            continue
-
-    if not profiles:
-        # Fallback to all ones if no valid profiles
-        return np.ones(n_angles, dtype=float)
-
-    # Average all valid profiles
-    profiles_array = np.array(profiles)  # shape: (n_profiles, n_angles)
-    averaged_profile = np.mean(profiles_array, axis=0)
-
-    return averaged_profile
-
-
-def _apply_profile_to_polar(polar_data: np.ndarray, profile: np.ndarray) -> np.ndarray:
-    """
-    Multiply polar map by profile. Accepts:
-      - per-angle profile (len == n_angles) -> row-wise scaling
-      - per-q profile (len == n_q)          -> column-wise scaling
-    """
-    P = np.asarray(polar_data, dtype=float)
-    prof = np.asarray(profile, dtype=float)
-    if P.ndim != 2:
-        raise ValueError("polar_data must be 2D (n_angles, n_q).")
-    n_angles, n_q = P.shape
-
-    if prof.shape[0] == n_angles:
-        return (P.T * prof).T
-    elif prof.shape[0] == n_q:
-        return P * prof
-    else:
-        raise ValueError(
-            f"correction_profile length {prof.shape[0]} does not match n_angles ({n_angles}) or n_q ({n_q})."
-        )
-
+# Aliases retain historical private helper access from this module.
+_apply_profile_to_polar = _calibration_profiles._apply_profile_to_polar
+_closest_index = _calibration_profiles._closest_index
+_per_angle_correction_from_column = (
+    _calibration_profiles._per_angle_correction_from_column
+)
+_per_angle_correction_from_multi_columns = (
+    _calibration_profiles._per_angle_correction_from_multi_columns
+)
 
 # ---------- step 1: compute correction_profile for AgBH in df_calib ----------
 

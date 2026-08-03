@@ -99,6 +99,8 @@ implementations are currently split into:
 * ``_utility_statistics.py`` for grouped profile statistics and plotting;
 * ``_utility_angular.py`` for angular-range and weighted-integration helpers;
 * ``_utility_image.py`` for image and PONI geometry helpers;
+* ``_calibration_profiles.py`` for private calibration-profile numerical
+  kernels;
 * ``_spectrokinetic_math.py`` for private SVD/MCR-ALS numerical kernels;
 * ``_spectrokinetic_mcr_support.py`` for stateless matrix, mask, fixed-spectra,
   initialization, and group-wavelength preparation.
@@ -134,6 +136,13 @@ keep resolving. The private support modules must not become public import
 paths. Its SK-Ana-inspired fixture data and frozen small matrices are
 deterministic regression contracts. The optional parity fixture is absent, and
 its generator is not a provenance-backed external SK-Ana reference.
+
+``calibration_corrections.py`` remains the canonical public module for
+``compute_calib_correction_profiles`` and ``correct_with_calib_profiles``.
+Their signatures, package-facade identity, pickle paths, copy/in-place modes,
+and tolerant/strict lookup behavior are compatibility contracts. Private
+profile kernels remain importable from the canonical module for historical
+internal callers, but ``_calibration_profiles.py`` is not a public API.
 
 Untouched compatibility boundaries
 ----------------------------------
