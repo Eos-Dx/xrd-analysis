@@ -4,16 +4,18 @@ Legacy candidate audit
 Audit snapshot
 --------------
 
-This read-only audit was recorded on 2026-08-03 from ``dev_sad``. It covers
-the named Difra, h5grpc, legacy, MCR-ALS, and d2xc candidates plus known local
-consumers. It does not authorize deletion, branch removal, API deprecation, or
+This read-only audit was recorded on 2026-08-03 from ``dev_sad``. It preserves
+historical evidence about named branch candidates and known local consumers.
+The repository owner's active scope is now ``dev_sad`` only. Other local and
+remote branches will not be audited further, ported, merged, cleaned, or
+deleted as part of this work. This audit does not authorize API deprecation or
 changes to ``XRD-preprocessing``.
 
 Branch evidence
 ---------------
 
 Counts below are ``dev_sad``-only / candidate-only commits at the audit
-snapshot.
+snapshot. They are informational only; no branch action is planned.
 
 * ``difra_h5_grpc_legacy``: 32 / 0 locally and 33 / 0 for the remote-tracking
   ref. Both are ancestors of ``dev_sad``. The branch refs contain no unique
@@ -28,8 +30,7 @@ snapshot.
 * ``d2xc_dev`` and ``origin/d2xc_dev``: 181 / 1 and not ancestors of
   ``dev_sad``. Unique commit ``514ff6b3`` adds editable manual points and
   stage stability/logging work under the removed embedded Difra hardware
-  tree. Preserve this branch until that commit is compared semantically with
-  the current standalone Difra repository.
+  tree. This branch is outside active scope and requires no action.
 
 Verified live surfaces
 ----------------------
@@ -93,12 +94,9 @@ code uses ``difra.hardware.xystages``; its upstream-snapshot tests still mention
 ``hardware.xystages``. Removing or repairing the shim is a separate
 compatibility decision, not a verified-safe cleanup in this phase.
 
-Required decisions
-------------------
+Remaining ``dev_sad`` decision
+------------------------------
 
-#. Delete only fully merged local branch refs, or retain them as local archives?
-#. Keep fully merged remote branches as historical archives, or schedule remote
-   cleanup separately?
 #. Remove, repair, or explicitly deprecate the broken legacy
    ``src/hardware/xystages.py`` shim in a separately tested change?
 
