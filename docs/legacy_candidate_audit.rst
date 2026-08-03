@@ -57,8 +57,8 @@ identify historical branches. This evidence is sufficient to classify the
 fully merged local refs as technically redundant, not to remove remote archive
 refs or related compatibility APIs.
 
-Uncertain candidates
---------------------
+Resolved and uncertain candidates
+---------------------------------
 
 ``d2xc_dev`` is not redundant because commit ``514ff6b3`` is unique. The
 standalone Difra repository has analogous editable-zone-point, continuous
@@ -80,9 +80,11 @@ been proven. A focused static comparison found:
 * current logging installs ``sys.excepthook`` but not the unique commit's
   ``threading.excepthook`` or persistent ``faulthandler`` crash log.
 
-The unique commit is therefore partially superseded, not safely discardable.
-Any port belongs in standalone Difra with focused real-time, background-thread,
-and hardware-controller tests. It is outside ``xrd-analysis`` refactoring.
+The repository owner subsequently designated standalone Difra as the only
+authoritative Difra codebase and declared ``d2xc_dev`` not relevant to this
+work. Its unique commit therefore requires no port, recovery, or further audit
+inside ``xrd-analysis``. The branch is historical and out of scope; deleting a
+local or remote ref remains a separate explicit repository-maintenance action.
 
 ``src/hardware/xystages.py`` is a compatibility shim whose target implementation
 was removed. The only in-repository direct consumer is a legacy hardware test,
@@ -97,8 +99,6 @@ Required decisions
 #. Delete only fully merged local branch refs, or retain them as local archives?
 #. Keep fully merged remote branches as historical archives, or schedule remote
    cleanup separately?
-#. Compare and port any missing behavior from ``514ff6b3`` into standalone
-   Difra, or preserve ``d2xc_dev`` only as an archive?
 #. Remove, repair, or explicitly deprecate the broken legacy
    ``src/hardware/xystages.py`` shim in a separately tested change?
 
