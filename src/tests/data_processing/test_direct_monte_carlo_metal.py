@@ -13,6 +13,10 @@ import pytest
 
 from xrdanalysis import direct_monte_carlo_metal as metal_mc
 from xrdanalysis.direct_monte_carlo import NativeDirectMonteCarloPlan
+from xrdanalysis.direct_monte_carlo_geometry_metal import (
+    GeometryAwareMetalMonteCarlo,
+    MetalDetectorGeometry,
+)
 from xrdanalysis.direct_monte_carlo_metal_session import (
     GroupedPersistentMetalMonteCarlo,
     PersistentMetalMonteCarlo,
@@ -376,3 +380,321 @@ def test_grouped_session_preserves_order_across_distinct_plans(
         assert grouped.group_count == 2
         actual = grouped.run((1.0,), 50, seed=31)
     np.testing.assert_array_equal(actual[0], expected)
+
+
+def _geometry_case():
+    pytest.importorskip("pyFAI")
+    from pyFAI.detectors import Detector
+
+    try:
+        from pyFAI.integrator.azimuthal import AzimuthalIntegrator
+    except ImportError:
+        from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+
+    detector = Detector(1e-4, 1e-4, max_shape=(32, 32), orientation=3)
+    integrator = AzimuthalIntegrator(detector=detector)
+    integrator.setFit2D(100.0, 16.0, 16.0, wavelength=1.54)
+    row, column = np.indices((32, 32), dtype=float)
+    image = 100.0 + 0.25 * row + 0.5 * column + 20.0 * np.exp(
+        -((row - 18.0) ** 2 + (column - 11.0) ** 2) / 20.0
+    )
+    mask = np.zeros_like(image, dtype=np.int8)
+    mask[:2, :] = 1
+    mask[:, -2:] = 1
+    result = integrator.integrate1d(
+        image,
+        32,
+        mask=mask,
+        error_model="poisson",
+        method=("bbox", "csr", "cython"),
+        unit="q_nm^-1",
+        correctSolidAngle=True,
+    )
+    q_grid = np.asarray(result.radial, dtype=float)
+    band = (float(q_grid[12]), float(q_grid[18]))
+    from xrdanalysis.direct_monte_carlo import prepare_native_plan
+
+    native = prepare_native_plan(
+        integrator,
+        image.shape,
+        normalization_denominators=result.sum_normalization,
+        q_grid=q_grid,
+        q_normalization_band=band,
+    )
+    static_plan = metal_mc.prepare_metal_plan(native)
+    geometry = MetalDetectorGeometry.from_pyfai(integrator)
+    return integrator, image, mask, q_grid, band, static_plan, geometry
+
+
+def _normalized_profile(result, band: tuple[float, float]) -> np.ndarray:
+    q_grid = np.asarray(result.radial, dtype=float)
+    profile = np.asarray(result.intensity, dtype=float)
+    lower = int(np.argmin(np.abs(q_grid - band[0])))
+    upper = int(np.argmin(np.abs(q_grid - band[1])))
+    return profile / np.median(profile[lower : upper + 1])
+
+
+def test_geometry_contract_rejects_nonzero_poni_rotation():
+    with pytest.raises(ValueError, match="exactly zero PONI rotations"):
+        MetalDetectorGeometry(
+            distance_m=0.1,
+            poni1_m=0.001,
+            poni2_m=0.001,
+            pixel1_m=1e-4,
+            pixel2_m=1e-4,
+            wavelength_m=1.54e-10,
+            rot1_rad=1e-12,
+        )
+
+
+def test_geometry_contract_rejects_nonuniform_q_grid_before_metal_loading(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(
+        metal_mc,
+        "_load_metal_library",
+        lambda: pytest.fail("Metal library must not load"),
+    )
+    image = np.ones((1, 4, 4), dtype=float)
+    geometry = MetalDetectorGeometry(
+        distance_m=0.1,
+        poni1_m=0.001,
+        poni2_m=0.001,
+        pixel1_m=1e-4,
+        pixel2_m=1e-4,
+        wavelength_m=1.54e-10,
+    )
+    with pytest.raises(ValueError, match="uniform q_grid"):
+        GeometryAwareMetalMonteCarlo(
+            image,
+            None,
+            [geometry],
+            [1.0, 2.0, 4.0],
+            (1.0, 2.0),
+        )
+
+
+def test_geometry_contract_allows_masked_nonfinite_pixels(
+    metal_library: Path,
+):
+    assert metal_library.is_file()
+    _, image, mask, q_grid, band, _, geometry = _geometry_case()
+    image = image.copy()
+    image[0, 0] = np.nan
+    image[0, 1] = np.inf
+    mask = mask.copy()
+    mask[0, :2] = 1
+    with GeometryAwareMetalMonteCarlo(
+        image,
+        mask,
+        [geometry],
+        q_grid,
+        band,
+    ) as session:
+        actual = session.integrate()
+    assert np.isfinite(actual).all()
+
+
+def test_geometry_contract_rejects_unmasked_nonfinite_pixels(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(
+        metal_mc,
+        "_load_metal_library",
+        lambda: pytest.fail("Metal library must not load"),
+    )
+    image = np.ones((4, 4), dtype=float)
+    image[2, 2] = np.nan
+    geometry = MetalDetectorGeometry(
+        distance_m=0.1,
+        poni1_m=0.001,
+        poni2_m=0.001,
+        pixel1_m=1e-4,
+        pixel2_m=1e-4,
+        wavelength_m=1.54e-10,
+    )
+    with pytest.raises(ValueError, match="unmasked detector pixels"):
+        GeometryAwareMetalMonteCarlo(
+            image,
+            None,
+            [geometry],
+            [1.0, 2.0, 3.0],
+            (1.0, 2.0),
+        )
+
+
+def test_geometry_zero_perturbation_matches_static_bbox_metal(
+    metal_library: Path,
+):
+    assert metal_library.is_file()
+    _, image, mask, q_grid, band, static_plan, geometry = _geometry_case()
+    expected = metal_mc.integrate_detector_frames_metal(static_plan, image)[0]
+    expected_random = static_plan.run(
+        image,
+        (0.5, 1.0),
+        7,
+        seed=37,
+        profile_batch_size=2,
+    )
+    with GeometryAwareMetalMonteCarlo(
+        image,
+        mask,
+        [geometry],
+        q_grid,
+        band,
+        scale_capacity=2,
+        draw_capacity=7,
+        profile_batch_size=2,
+    ) as session:
+        actual = session.integrate()[0, 0]
+        actual_random = session.run((0.5, 1.0), 7, seed=37)
+    np.testing.assert_allclose(actual, expected, rtol=3e-4, atol=3e-4)
+    np.testing.assert_allclose(
+        actual_random,
+        expected_random,
+        rtol=5e-4,
+        atol=5e-4,
+    )
+
+
+def test_geometry_random_perturbations_match_direct_pyfai_oracle(
+    metal_library: Path,
+):
+    assert metal_library.is_file()
+    integrator, image, mask, q_grid, band, _, geometry = _geometry_case()
+    draws = 5
+    rng = np.random.default_rng(91)
+    distance = geometry.distance_m + rng.uniform(-0.003, 0.003, size=(draws, 1))
+    poni1 = geometry.poni1_m + rng.uniform(-3e-4, 3e-4, size=(draws, 1))
+    poni2 = geometry.poni2_m + rng.uniform(-3e-4, 3e-4, size=(draws, 1))
+    with GeometryAwareMetalMonteCarlo(
+        image,
+        mask,
+        [geometry],
+        q_grid,
+        band,
+        draw_capacity=3,
+        profile_batch_size=2,
+    ) as session:
+        actual = session.integrate(
+            draws,
+            effective_distance_m=distance,
+            poni1_m=poni1,
+            poni2_m=poni2,
+            draw_chunk_size=2,
+        )[:, 0]
+
+    from pyFAI.detectors import Detector
+
+    try:
+        from pyFAI.integrator.azimuthal import AzimuthalIntegrator
+    except ImportError:
+        from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+
+    q_delta = float(np.mean(np.diff(q_grid)))
+    radial_range = (
+        float(q_grid[0] - 0.5 * q_delta),
+        float(q_grid[-1] + 0.5 * q_delta),
+    )
+    expected = []
+    for draw in range(draws):
+        detector = Detector(
+            geometry.pixel1_m,
+            geometry.pixel2_m,
+            max_shape=image.shape,
+            orientation=geometry.orientation,
+        )
+        oracle = AzimuthalIntegrator(
+            dist=float(distance[draw, 0]),
+            poni1=float(poni1[draw, 0]),
+            poni2=float(poni2[draw, 0]),
+            rot1=0.0,
+            rot2=0.0,
+            rot3=0.0,
+            detector=detector,
+            wavelength=integrator.wavelength,
+        )
+        result = oracle.integrate1d(
+            image,
+            q_grid.size,
+            radial_range=radial_range,
+            mask=mask,
+            error_model="poisson",
+            method=("bbox", "csr", "cython"),
+            unit="q_nm^-1",
+            correctSolidAngle=True,
+        )
+        expected.append(_normalized_profile(result, band))
+    np.testing.assert_allclose(
+        actual,
+        np.asarray(expected),
+        rtol=5e-4,
+        atol=5e-4,
+    )
+
+
+def test_geometry_rng_is_invariant_to_chunking_and_draw_offset(
+    metal_library: Path,
+):
+    assert metal_library.is_file()
+    _, image, mask, q_grid, band, _, geometry = _geometry_case()
+    draws = 9
+    rng = np.random.default_rng(117)
+    distance = geometry.distance_m + rng.uniform(-0.001, 0.001, size=(draws, 1))
+    poni1 = geometry.poni1_m + rng.uniform(-1e-4, 1e-4, size=(draws, 1))
+    poni2 = geometry.poni2_m + rng.uniform(-1e-4, 1e-4, size=(draws, 1))
+    with GeometryAwareMetalMonteCarlo(
+        image,
+        mask,
+        [geometry],
+        q_grid,
+        band,
+        scale_capacity=2,
+        draw_capacity=9,
+        profile_batch_size=3,
+    ) as session:
+        expected = session.run(
+            (0.5, 1.0),
+            draws,
+            effective_distance_m=distance,
+            poni1_m=poni1,
+            poni2_m=poni2,
+            seed=43,
+            draw_offset=13,
+            draw_chunk_size=9,
+        )
+        chunked = session.run(
+            (0.5, 1.0),
+            draws,
+            effective_distance_m=distance,
+            poni1_m=poni1,
+            poni2_m=poni2,
+            seed=43,
+            draw_offset=13,
+            draw_chunk_size=2,
+        )
+        first = session.run(
+            (0.5, 1.0),
+            4,
+            effective_distance_m=distance[:4],
+            poni1_m=poni1[:4],
+            poni2_m=poni2[:4],
+            seed=43,
+            draw_offset=13,
+        )
+        second = session.run(
+            (0.5, 1.0),
+            draws - 4,
+            effective_distance_m=distance[4:],
+            poni1_m=poni1[4:],
+            poni2_m=poni2[4:],
+            seed=43,
+            draw_offset=17,
+        )
+    np.testing.assert_allclose(chunked, expected, rtol=2e-6, atol=2e-6)
+    np.testing.assert_allclose(
+        np.concatenate((first, second), axis=1),
+        expected,
+        rtol=2e-6,
+        atol=2e-6,
+    )

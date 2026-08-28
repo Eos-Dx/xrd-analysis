@@ -22,7 +22,7 @@ from scipy.sparse import csc_matrix
 from xrdanalysis.direct_monte_carlo import NativeDirectMonteCarloPlan
 
 
-_ABI_VERSION = 2
+_ABI_VERSION = 3
 _ERROR_BUFFER_SIZE = 4096
 _LIBRARY_ENV = "XRDANALYSIS_DIRECT_MONTE_CARLO_METAL_LIBRARY"
 _SOURCE_ENV = "XRDANALYSIS_DIRECT_MONTE_CARLO_METAL_SOURCE"
@@ -195,6 +195,7 @@ def _configure_library(library: ctypes.CDLL) -> ctypes.CDLL:
     int32_pointer = ctypes.POINTER(ctypes.c_int32)
     int64_pointer = ctypes.POINTER(ctypes.c_int64)
     uint64_pointer = ctypes.POINTER(ctypes.c_uint64)
+    uint8_pointer = ctypes.POINTER(ctypes.c_uint8)
     error_pointer = ctypes.POINTER(ctypes.c_char)
 
     library.xrdmc_metal_abi_version.argtypes = []
@@ -310,6 +311,64 @@ def _configure_library(library: ctypes.CDLL) -> ctypes.CDLL:
         ctypes.c_size_t,
     ]
     library.xrdmc_metal_integrate.restype = ctypes.c_int
+    library.xrdmc_metal_geometry_session_create.argtypes = [
+        char_pointer,
+        double_pointer,
+        uint8_pointer,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        uint64_pointer,
+        double_pointer,
+        double_pointer,
+        double_pointer,
+        double_pointer,
+        double_pointer,
+        double_pointer,
+        double_pointer,
+        int32_pointer,
+        ctypes.c_size_t,
+        ctypes.c_double,
+        ctypes.c_double,
+        int32_pointer,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.c_int,
+        ctypes.c_size_t,
+        error_pointer,
+        ctypes.c_size_t,
+    ]
+    library.xrdmc_metal_geometry_session_create.restype = ctypes.c_void_p
+    library.xrdmc_metal_geometry_session_destroy.argtypes = [ctypes.c_void_p]
+    library.xrdmc_metal_geometry_session_destroy.restype = None
+    library.xrdmc_metal_geometry_session_run.argtypes = [
+        ctypes.c_void_p,
+        double_pointer,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.c_uint64,
+        double_pointer,
+        double_pointer,
+        double_pointer,
+        ctypes.c_uint64,
+        double_pointer,
+        error_pointer,
+        ctypes.c_size_t,
+    ]
+    library.xrdmc_metal_geometry_session_run.restype = ctypes.c_int
+    library.xrdmc_metal_geometry_session_integrate.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_size_t,
+        ctypes.c_uint64,
+        double_pointer,
+        double_pointer,
+        double_pointer,
+        double_pointer,
+        error_pointer,
+        ctypes.c_size_t,
+    ]
+    library.xrdmc_metal_geometry_session_integrate.restype = ctypes.c_int
     version = int(library.xrdmc_metal_abi_version())
     if version != _ABI_VERSION:
         raise MetalBackendUnavailableError(
