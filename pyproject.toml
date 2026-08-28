@@ -8,6 +8,13 @@ packages = [
   { include = "xrdanalysis", from = "src" },
   { include = "hardware", from = "src" }
 ]
+include = [
+  { path = "src/xrdanalysis/_native/*.cpp", format = ["sdist", "wheel"] },
+  { path = "src/xrdanalysis/_native/*.cu", format = ["sdist", "wheel"] },
+  { path = "src/xrdanalysis/_native/*.metal", format = ["sdist", "wheel"] },
+  { path = "src/xrdanalysis/_native/*.mm", format = ["sdist", "wheel"] },
+  { path = "src/xrdanalysis/_native/README.md", format = ["sdist", "wheel"] }
+]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"

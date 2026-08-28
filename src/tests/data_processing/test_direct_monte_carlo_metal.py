@@ -1,0 +1,378 @@
+"""Contracts for the native Apple Metal direct Monte Carlo backend."""
+
+from __future__ import annotations
+
+import os
+import platform
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from xrdanalysis import direct_monte_carlo_metal as metal_mc
+from xrdanalysis.direct_monte_carlo import NativeDirectMonteCarloPlan
+from xrdanalysis.direct_monte_carlo_metal_session import (
+    GroupedPersistentMetalMonteCarlo,
+    PersistentMetalMonteCarlo,
+    metal_plan_fingerprint,
+)
+
+
+@pytest.fixture(scope="session")
+def metal_library(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Build one Metal bridge and verify runtime shader compilation."""
+    if platform.system() != "Darwin":
+        pytest.skip("native Metal backend requires macOS")
+    root = Path(__file__).resolve().parents[3]
+    output = tmp_path_factory.mktemp("direct-mc-metal") / "libxrdmc-metal.dylib"
+    subprocess.run(
+        [
+            sys.executable,
+            str(root / "scripts/build_direct_monte_carlo_metal.py"),
+            "--output",
+            str(output),
+        ],
+        check=True,
+        cwd=root,
+    )
+    os.environ["XRDANALYSIS_DIRECT_MONTE_CARLO_METAL_LIBRARY"] = str(output)
+    metal_mc._load_metal_library.cache_clear()
+    assert metal_mc.metal_backend_available()
+    return output
+
+
+def _native_plan() -> NativeDirectMonteCarloPlan:
+    return NativeDirectMonteCarloPlan(
+        image_shape=(1, 4),
+        csc_indptr=np.array([0, 1, 2, 3, 4]),
+        csc_indices=np.array([0, 0, 1, 1]),
+        csc_weights=np.ones(4),
+        normalization_denominators=np.array([2.0, 2.0]),
+        q_grid=np.array([1.0, 2.0]),
+        q_normalization_band=(1.0, 1.0),
+    )
+
+
+def _plan() -> metal_mc.NativeMetalMonteCarloPlan:
+    return metal_mc.prepare_metal_plan(_native_plan())
+
+
+def _image() -> np.ndarray:
+    return np.array([[100.0, 120.0, 80.0, 90.0]])
+
+
+def test_plan_conversion_preserves_bin_major_contract():
+    plan = _plan()
+    np.testing.assert_array_equal(plan.csr_indptr, np.array([0, 2, 4]))
+    np.testing.assert_array_equal(plan.csr_indices, np.array([0, 1, 2, 3]))
+    np.testing.assert_array_equal(plan.csr_weights, np.ones(4))
+
+
+def test_invalid_request_is_rejected_before_library_loading(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(
+        metal_mc,
+        "_load_metal_library",
+        lambda: pytest.fail("Metal library must not load"),
+    )
+    with pytest.raises(ValueError, match="draws must be a positive integer"):
+        metal_mc.direct_detector_monte_carlo_metal(
+            _plan(),
+            _image(),
+            (1.0,),
+            0,
+        )
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"scales": ()}, "scales must be a non-empty"),
+        ({"scales": (0.0,)}, "scales must be finite and positive"),
+        ({"seed": -1}, "seed must be an unsigned"),
+        ({"device": -1}, "device must be a non-negative"),
+        ({"profile_batch_size": 0}, "profile_batch_size must be a positive"),
+    ],
+)
+def test_validation_precedes_metal_loading(
+    monkeypatch: pytest.MonkeyPatch,
+    kwargs: dict[str, object],
+    message: str,
+):
+    monkeypatch.setattr(
+        metal_mc,
+        "_load_metal_library",
+        lambda: pytest.fail("Metal library must not load"),
+    )
+    parameters = {
+        "scales": (1.0,),
+        "seed": 0,
+        "device": 0,
+        "profile_batch_size": 4096,
+    }
+    parameters.update(kwargs)
+    with pytest.raises(ValueError, match=message):
+        metal_mc.direct_detector_monte_carlo_metal(
+            _plan(),
+            _image(),
+            parameters.pop("scales"),
+            10,
+            **parameters,
+        )
+
+
+def test_large_implicit_host_output_is_rejected_before_library_loading(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(
+        metal_mc,
+        "_load_metal_library",
+        lambda: pytest.fail("Metal library must not load"),
+    )
+    with pytest.raises(ValueError, match="process patient-sized batches"):
+        metal_mc.direct_detector_monte_carlo_metal(
+            _plan(),
+            _image(),
+            (1.0,),
+            70_000_000,
+        )
+
+
+def test_metal_device_and_deterministic_integration(metal_library: Path):
+    assert metal_library.is_file()
+    assert metal_mc.metal_device_count() >= 1
+    actual = metal_mc.integrate_detector_frames_metal(_plan(), _image())
+    expected = np.array([[1.0, (80.0 + 90.0) / (100.0 + 120.0)]])
+    np.testing.assert_allclose(actual, expected, rtol=3e-7, atol=3e-7)
+
+
+def test_metal_random_stream_is_batch_invariant(metal_library: Path):
+    plan = _plan()
+    first = plan.run(
+        _image(),
+        (0.5, 1.0),
+        100,
+        seed=29,
+        profile_batch_size=7,
+    )
+    second = plan.run(
+        _image(),
+        (0.5, 1.0),
+        100,
+        seed=29,
+        profile_batch_size=64,
+    )
+    assert first.shape == (2, 100, 1, 2)
+    np.testing.assert_array_equal(first, second)
+    np.testing.assert_allclose(first[..., 0], 1.0, rtol=0.0, atol=1e-7)
+
+
+def test_metal_centered_poisson_matches_reference_statistics(metal_library: Path):
+    draws = 20_000
+    actual = _plan().run(
+        _image(),
+        (1.0,),
+        draws,
+        seed=41,
+    )[0, :, 0, 1]
+    rng = np.random.default_rng(73)
+    sampled = rng.poisson(_image(), size=(draws, 1, 4)).reshape(draws, 4)
+    expected = sampled[:, 2:].sum(axis=1) / sampled[:, :2].sum(axis=1)
+    standard_error = np.sqrt(
+        np.var(actual, ddof=1) / draws + np.var(expected, ddof=1) / draws
+    )
+    assert abs(np.mean(actual) - np.mean(expected)) <= 5.0 * standard_error
+    assert 0.90 <= np.var(actual, ddof=1) / np.var(expected, ddof=1) <= 1.10
+
+
+def test_metal_integration_matches_warmed_pyfai_plan(metal_library: Path):
+    pytest.importorskip("pyFAI")
+    from pyFAI.detectors import Detector
+
+    try:
+        from pyFAI.integrator.azimuthal import AzimuthalIntegrator
+    except ImportError:
+        from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+
+    detector = Detector(1e-4, 1e-4)
+    integrator = AzimuthalIntegrator(detector=detector)
+    integrator.setFit2D(100.0, 16.0, 16.0, wavelength=1.54)
+    image = np.arange(32 * 32, dtype=float).reshape(32, 32) + 100.0
+    result = integrator.integrate1d(
+        image,
+        32,
+        error_model="poisson",
+        method=("bbox", "csr", "cython"),
+        unit="q_nm^-1",
+        correctSolidAngle=True,
+    )
+    q_grid = np.asarray(result.radial, dtype=float)
+    band = (float(q_grid[12]), float(q_grid[18]))
+    from xrdanalysis.direct_monte_carlo import prepare_native_plan
+
+    native = prepare_native_plan(
+        integrator,
+        image.shape,
+        normalization_denominators=result.sum_normalization,
+        q_grid=q_grid,
+        q_normalization_band=band,
+    )
+    actual = metal_mc.integrate_detector_frames_metal(
+        metal_mc.prepare_metal_plan(native),
+        image,
+    )[0]
+    expected = np.asarray(result.intensity, dtype=float)
+    selected = (q_grid >= band[0]) & (q_grid <= band[1])
+    expected /= np.median(expected[selected])
+    np.testing.assert_allclose(actual, expected, rtol=2e-6, atol=2e-6)
+
+
+def test_persistent_session_matches_one_shot_and_reuses_random_stream(
+    metal_library: Path,
+):
+    plan = _plan()
+    images = np.array(
+        [
+            [[100.0, 120.0, 80.0, 90.0]],
+            [[95.0, 125.0, 85.0, 88.0]],
+        ]
+    )
+    measurement_seeds = (11, 22)
+    expected = metal_mc.direct_detector_monte_carlo_metal(
+        plan,
+        images,
+        (0.5, 1.0),
+        100,
+        seed=29,
+        measurement_seeds=measurement_seeds,
+        profile_batch_size=7,
+    )
+    with PersistentMetalMonteCarlo(
+        plan,
+        images,
+        measurement_seeds=measurement_seeds,
+        profile_batch_size=7,
+    ) as session:
+        first = session.run((0.5, 1.0), 100, seed=29)
+        second = session.run((0.5, 1.0), 100, seed=29)
+        integrated = session.integrate()
+        assert not session.closed
+    np.testing.assert_array_equal(first, expected)
+    np.testing.assert_array_equal(second, expected)
+    np.testing.assert_allclose(
+        integrated,
+        np.array([[1.0, 170.0 / 220.0], [1.0, 173.0 / 220.0]]),
+        rtol=3e-7,
+        atol=3e-7,
+    )
+    assert session.closed
+    with pytest.raises(RuntimeError, match="session is closed"):
+        session.run((1.0,), 1)
+
+
+def test_persistent_session_enforces_scale_capacity(metal_library: Path):
+    with PersistentMetalMonteCarlo(
+        _plan(),
+        _image(),
+        scale_capacity=1,
+    ) as session:
+        with pytest.raises(ValueError, match="scale_capacity"):
+            session.run((0.5, 1.0), 10)
+
+
+def test_persistent_session_preserves_memmap_output(
+    metal_library: Path,
+    tmp_path: Path,
+):
+    output = np.memmap(
+        tmp_path / "profiles.mmap",
+        mode="w+",
+        dtype=np.float64,
+        shape=(1, 10, 1, 2),
+    )
+    with PersistentMetalMonteCarlo(_plan(), _image()) as session:
+        returned = session.run((1.0,), 10, seed=37, output=output)
+    assert returned is output
+    output.flush()
+    assert np.isfinite(output).all()
+
+
+def test_grouped_session_combines_identical_plans_without_stream_changes(
+    metal_library: Path,
+):
+    plan = _plan()
+    images = [
+        np.array([[100.0, 120.0, 80.0, 90.0]]),
+        np.array([[95.0, 125.0, 85.0, 88.0]]),
+    ]
+    seeds = (11, 22)
+    expected = metal_mc.direct_detector_monte_carlo_metal(
+        plan,
+        np.stack(images),
+        (0.5, 1.0),
+        100,
+        seed=29,
+        measurement_seeds=seeds,
+        profile_batch_size=7,
+    )
+    with GroupedPersistentMetalMonteCarlo(
+        [plan, plan],
+        images,
+        measurement_seeds=seeds,
+        profile_batch_size=7,
+    ) as grouped:
+        assert grouped.group_count == 1
+        actual = grouped.run((0.5, 1.0), 100, seed=29)
+    np.testing.assert_array_equal(actual, expected)
+
+
+def test_grouped_session_preserves_order_across_distinct_plans(
+    metal_library: Path,
+):
+    first_plan = _plan()
+    second_native = _native_plan()
+    second_native = NativeDirectMonteCarloPlan(
+        image_shape=second_native.image_shape,
+        csc_indptr=second_native.csc_indptr,
+        csc_indices=second_native.csc_indices,
+        csc_weights=np.array([1.0, 1.0, 0.5, 1.5]),
+        normalization_denominators=second_native.normalization_denominators,
+        q_grid=second_native.q_grid,
+        q_normalization_band=second_native.q_normalization_band,
+    )
+    second_plan = metal_mc.prepare_metal_plan(second_native)
+    assert metal_plan_fingerprint(first_plan) != metal_plan_fingerprint(second_plan)
+    images = [_image(), np.array([[95.0, 125.0, 85.0, 88.0]])]
+    seeds = (11, 22)
+    expected = np.stack(
+        [
+            metal_mc.direct_detector_monte_carlo_metal(
+                plan,
+                image,
+                (1.0,),
+                50,
+                seed=31,
+                measurement_seeds=(measurement_seed,),
+                profile_batch_size=9,
+            )[0, :, 0]
+            for plan, image, measurement_seed in zip(
+                (first_plan, second_plan),
+                images,
+                seeds,
+                strict=True,
+            )
+        ],
+        axis=1,
+    )
+    with GroupedPersistentMetalMonteCarlo(
+        [first_plan, second_plan],
+        images,
+        measurement_seeds=seeds,
+        profile_batch_size=9,
+    ) as grouped:
+        assert grouped.group_count == 2
+        actual = grouped.run((1.0,), 50, seed=31)
+    np.testing.assert_array_equal(actual[0], expected)

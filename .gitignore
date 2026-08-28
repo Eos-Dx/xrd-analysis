@@ -135,6 +135,11 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Optional local native direct-Monte-Carlo builds
+src/xrdanalysis/_native/*.dylib
+src/xrdanalysis/_native/*.so
+src/xrdanalysis/_native/*.dll
+
 /data
 .idea/
 
