@@ -557,6 +557,51 @@ def test_geometry_zero_perturbation_matches_static_bbox_metal(
     )
 
 
+def test_geometry_centered_poisson_matches_static_metal_statistics(
+    metal_library: Path,
+):
+    assert metal_library.is_file()
+    _, image, mask, q_grid, band, static_plan, geometry = _geometry_case()
+    draws = 20_000
+    expected = static_plan.run(
+        image,
+        (1.0,),
+        draws,
+        seed=71,
+        profile_batch_size=16,
+    )[0, :, 0]
+    with GeometryAwareMetalMonteCarlo(
+        image,
+        mask,
+        [geometry],
+        q_grid,
+        band,
+        scale_capacity=1,
+        draw_capacity=32,
+        profile_batch_size=16,
+    ) as session:
+        actual = session.run(
+            (1.0,),
+            draws,
+            seed=71,
+            draw_chunk_size=32,
+        )[0, :, 0]
+
+    expected_scalar = np.mean(expected, axis=1)
+    actual_scalar = np.mean(actual, axis=1)
+    standard_error = np.sqrt(
+        np.var(actual_scalar, ddof=1) / draws
+        + np.var(expected_scalar, ddof=1) / draws
+    )
+    assert abs(np.mean(actual_scalar) - np.mean(expected_scalar)) <= (
+        5.0 * standard_error
+    )
+    variance_ratio = np.var(actual_scalar, ddof=1) / np.var(
+        expected_scalar, ddof=1
+    )
+    assert 0.90 <= variance_ratio <= 1.10
+
+
 def test_geometry_random_perturbations_match_direct_pyfai_oracle(
     metal_library: Path,
 ):
