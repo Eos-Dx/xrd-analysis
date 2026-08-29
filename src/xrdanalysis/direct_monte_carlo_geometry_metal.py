@@ -544,6 +544,110 @@ class GeometryAwareMetalMonteCarlo:
             result[:, start:stop] = chunk
         return result
 
+    def run_nested(
+        self,
+        scales: Sequence[float],
+        geometry_draws: int,
+        photon_replicates: int,
+        *,
+        effective_distance_m: np.ndarray | None = None,
+        poni1_m: np.ndarray | None = None,
+        poni2_m: np.ndarray | None = None,
+        seed: int = 0,
+        geometry_draw_offset: int = 0,
+        photon_draw_offset: int = 0,
+        geometry_chunk_size: int | None = None,
+        output: np.ndarray | None = None,
+    ) -> np.ndarray:
+        """Reuse each geometry realization across photon replicates.
+
+        Output shape is ``(scale, geometry, photon, measurement, q)``. Geometry
+        draws are independent; photon replicates are conditionally independent
+        given one geometry draw.
+        """
+        geometry_count = _positive_integer(geometry_draws, "geometry_draws")
+        replicate_count = _positive_integer(
+            photon_replicates,
+            "photon_replicates",
+        )
+        validated_seed = _validate_seed(seed)
+        geometry_offset = self._draw_offset(geometry_draw_offset, geometry_count)
+        total_photon_draws = geometry_count * replicate_count
+        photon_offset = self._draw_offset(photon_draw_offset, total_photon_draws)
+        noise_scales = _validate_scales(scales, self.maximum_image_value)
+        if noise_scales.size > self.scale_capacity:
+            raise ValueError("scales exceed geometry session scale_capacity")
+        profiles_per_geometry = int(noise_scales.size) * replicate_count
+        if profiles_per_geometry > self.profile_batch_size:
+            raise ValueError(
+                "scale count * photon_replicates exceeds profile_batch_size"
+            )
+        distances, draw_poni1, draw_poni2 = self._draw_geometry(
+            geometry_count,
+            effective_distance_m,
+            poni1_m,
+            poni2_m,
+        )
+        chunk_size = min(
+            self.draw_capacity,
+            geometry_count,
+            _positive_integer(
+                self.draw_capacity
+                if geometry_chunk_size is None
+                else geometry_chunk_size,
+                "geometry_chunk_size",
+            ),
+        )
+        result = _prepare_output(
+            (
+                int(noise_scales.size),
+                geometry_count,
+                replicate_count,
+                self.measurements,
+                self.bins,
+            ),
+            output,
+        )
+        for start in range(0, geometry_count, chunk_size):
+            stop = min(start + chunk_size, geometry_count)
+            chunk_draws = stop - start
+            chunk = np.empty(
+                (
+                    int(noise_scales.size),
+                    chunk_draws,
+                    replicate_count,
+                    self.measurements,
+                    self.bins,
+                ),
+                dtype=np.float64,
+                order="C",
+            )
+            error_buffer = ctypes.create_string_buffer(_ERROR_BUFFER_SIZE)
+            status = self._library.xrdmc_metal_geometry_session_run_nested(
+                self._open_handle(),
+                _double_pointer(noise_scales),
+                ctypes.c_size_t(noise_scales.size),
+                ctypes.c_size_t(chunk_draws),
+                ctypes.c_size_t(replicate_count),
+                ctypes.c_uint64(geometry_offset + start),
+                ctypes.c_uint64(photon_offset + start * replicate_count),
+                _double_pointer(distances[start:stop]),
+                _double_pointer(draw_poni1[start:stop]),
+                _double_pointer(draw_poni2[start:stop]),
+                ctypes.c_uint64(validated_seed),
+                _double_pointer(chunk),
+                error_buffer,
+                ctypes.c_size_t(len(error_buffer)),
+            )
+            if status != 0:
+                detail = error_buffer.value.decode("utf-8", errors="replace")
+                raise MetalBackendError(
+                    "nested geometry-aware Metal execution failed with status "
+                    f"{status}: {detail or 'no error detail'}"
+                )
+            result[:, start:stop] = chunk
+        return result
+
 
 __all__ = [
     "GeometryAwareMetalMonteCarlo",

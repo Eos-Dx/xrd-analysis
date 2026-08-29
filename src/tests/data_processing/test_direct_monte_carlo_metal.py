@@ -743,3 +743,74 @@ def test_geometry_rng_is_invariant_to_chunking_and_draw_offset(
         rtol=2e-6,
         atol=2e-6,
     )
+
+
+def test_nested_geometry_reuses_geometry_without_changing_photon_stream(
+    metal_library: Path,
+):
+    assert metal_library.is_file()
+    _, image, mask, q_grid, band, _, geometry = _geometry_case()
+    geometry_draws = 3
+    photon_replicates = 4
+    rng = np.random.default_rng(219)
+    distance = geometry.distance_m + rng.uniform(
+        -0.001,
+        0.001,
+        size=(geometry_draws, 1),
+    )
+    poni1 = geometry.poni1_m + rng.uniform(
+        -1e-4,
+        1e-4,
+        size=(geometry_draws, 1),
+    )
+    poni2 = geometry.poni2_m + rng.uniform(
+        -1e-4,
+        1e-4,
+        size=(geometry_draws, 1),
+    )
+    repeated_distance = np.repeat(distance, photon_replicates, axis=0)
+    repeated_poni1 = np.repeat(poni1, photon_replicates, axis=0)
+    repeated_poni2 = np.repeat(poni2, photon_replicates, axis=0)
+    with GeometryAwareMetalMonteCarlo(
+        image,
+        mask,
+        [geometry],
+        q_grid,
+        band,
+        scale_capacity=2,
+        draw_capacity=12,
+        profile_batch_size=16,
+    ) as session:
+        expected = session.run(
+            (0.5, 1.0),
+            geometry_draws * photon_replicates,
+            effective_distance_m=repeated_distance,
+            poni1_m=repeated_poni1,
+            poni2_m=repeated_poni2,
+            seed=83,
+            draw_offset=17,
+        ).reshape(2, geometry_draws, photon_replicates, 1, q_grid.size)
+        actual = session.run_nested(
+            (0.5, 1.0),
+            geometry_draws,
+            photon_replicates,
+            effective_distance_m=distance,
+            poni1_m=poni1,
+            poni2_m=poni2,
+            seed=83,
+            photon_draw_offset=17,
+        )
+        chunked = session.run_nested(
+            (0.5, 1.0),
+            geometry_draws,
+            photon_replicates,
+            effective_distance_m=distance,
+            poni1_m=poni1,
+            poni2_m=poni2,
+            seed=83,
+            photon_draw_offset=17,
+            geometry_chunk_size=1,
+        )
+    assert actual.shape == (2, geometry_draws, photon_replicates, 1, q_grid.size)
+    np.testing.assert_allclose(actual, expected, rtol=2e-6, atol=2e-6)
+    np.testing.assert_allclose(chunked, actual, rtol=2e-6, atol=2e-6)

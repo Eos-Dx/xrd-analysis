@@ -279,6 +279,29 @@ At the measured 5,000-draw rate, integration alone projects to approximately
 measurements per patient and five noise scales. These projections exclude
 preprocessing, model scoring, checkpoint I/O, and contention from other jobs.
 
+Nested geometry and photon sampling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``GeometryAwareMetalMonteCarlo.run_nested`` reuses each detector-geometry
+realization across a fixed number of conditionally independent photon
+replicates. The fused shader computes q coordinates and bbox pixel splitting
+once per ``(geometry draw, measurement, pixel)`` and then samples each photon
+replicate without recomputing geometry. Output has shape
+``(scale, geometry, photon, measurement, q)``.
+
+This design does not turn photon replicates into independent geometry draws.
+Callers must report both counts and assess convergence against the number of
+independent geometry realizations. For example, ``1,000 x 5`` produces 5,000
+joint predictions but only 1,000 independent geometry draws. Component
+interpretation follows the total-variance decomposition
+``E_G[Var(p | G)] + Var_G[E(p | G)]``.
+
+On one six-measurement Human-1 patient, 50 geometry draws with five photon
+replicates required 0.90 s versus 7.32 s for the equivalent flattened
+250-draw geometry execution, an 8.1x speedup. The paired normalized-profile
+difference was ``6.6e-6`` at p99 and ``1.72e-5`` maximum. These are local
+engineering benchmark values, not model-performance results.
+
 Run the macOS validation contract with:
 
 .. code-block:: bash
@@ -306,5 +329,9 @@ API
    :show-inheritance:
 
 .. automodule:: xrdanalysis.direct_monte_carlo_metal_session
+   :members:
+   :show-inheritance:
+
+.. automodule:: xrdanalysis.direct_monte_carlo_geometry_metal
    :members:
    :show-inheritance:

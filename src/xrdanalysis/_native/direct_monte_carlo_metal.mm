@@ -21,7 +21,7 @@
 
 namespace {
 
-constexpr int kAbiVersion = 3;
+constexpr int kAbiVersion = 4;
 constexpr double kMaximumExactFloatPoissonRate = 16777216.0;
 
 struct KernelParams {
@@ -43,6 +43,9 @@ struct PipelineBundle {
     __strong id<MTLComputePipelineState> geometry_clear_pipeline;
     __strong id<MTLComputePipelineState> geometry_accumulate_pipeline;
     __strong id<MTLComputePipelineState> geometry_normalize_pipeline;
+    __strong id<MTLComputePipelineState> nested_geometry_clear_pipeline;
+    __strong id<MTLComputePipelineState> nested_geometry_accumulate_pipeline;
+    __strong id<MTLComputePipelineState> nested_geometry_normalize_pipeline;
 };
 
 struct PersistentMetalSession {
@@ -99,8 +102,34 @@ struct GeometryKernelParams {
     std::uint32_t reserved;
 };
 
+struct NestedGeometryKernelParams {
+    std::uint64_t measurements;
+    std::uint64_t pixels;
+    std::uint64_t rows;
+    std::uint64_t columns;
+    std::uint64_t scale_count;
+    std::uint64_t geometry_draws;
+    std::uint64_t photon_replicates;
+    std::uint64_t bins;
+    std::uint64_t normalization_count;
+    std::uint64_t geometry_profile_offset;
+    std::uint64_t batch_geometry_profiles;
+    std::uint64_t batch_output_profiles;
+    std::uint64_t geometry_draw_offset;
+    std::uint64_t photon_draw_offset;
+    std::uint64_t base_seed;
+    float q_min;
+    float q_delta;
+    std::uint32_t reserved0;
+    std::uint32_t reserved1;
+};
+
 static_assert(sizeof(DetectorGeometry) == 32, "DetectorGeometry ABI mismatch");
 static_assert(sizeof(GeometryKernelParams) == 112, "GeometryKernelParams ABI mismatch");
+static_assert(
+    sizeof(NestedGeometryKernelParams) == 136,
+    "NestedGeometryKernelParams ABI mismatch"
+);
 
 struct GeometryAwareMetalSession {
     std::shared_ptr<PipelineBundle> pipelines;
@@ -242,10 +271,18 @@ std::shared_ptr<PipelineBundle> load_pipelines(const char* source_path, int devi
         [library newFunctionWithName:@"xrdmc_metal_geometry_accumulate_kernel"];
     id<MTLFunction> geometry_normalize_function =
         [library newFunctionWithName:@"xrdmc_metal_geometry_normalize_kernel"];
+    id<MTLFunction> nested_geometry_clear_function =
+        [library newFunctionWithName:@"xrdmc_metal_nested_geometry_clear_kernel"];
+    id<MTLFunction> nested_geometry_accumulate_function =
+        [library newFunctionWithName:@"xrdmc_metal_nested_geometry_accumulate_kernel"];
+    id<MTLFunction> nested_geometry_normalize_function =
+        [library newFunctionWithName:@"xrdmc_metal_nested_geometry_normalize_kernel"];
     if (
         run_function == nil || integrate_function == nil ||
         geometry_clear_function == nil || geometry_accumulate_function == nil ||
-        geometry_normalize_function == nil
+        geometry_normalize_function == nil || nested_geometry_clear_function == nil ||
+        nested_geometry_accumulate_function == nil ||
+        nested_geometry_normalize_function == nil
     ) {
         throw std::runtime_error("required Metal kernel function is missing");
     }
@@ -287,6 +324,36 @@ std::shared_ptr<PipelineBundle> load_pipelines(const char* source_path, int devi
             "Metal geometry normalize-pipeline creation failed: " + ns_error(error)
         );
     }
+    error = nil;
+    id<MTLComputePipelineState> nested_geometry_clear_pipeline =
+        [device newComputePipelineStateWithFunction:nested_geometry_clear_function error:&error];
+    if (nested_geometry_clear_pipeline == nil) {
+        throw std::runtime_error(
+            "Metal nested-geometry clear-pipeline creation failed: " + ns_error(error)
+        );
+    }
+    error = nil;
+    id<MTLComputePipelineState> nested_geometry_accumulate_pipeline =
+        [device
+            newComputePipelineStateWithFunction:nested_geometry_accumulate_function
+            error:&error];
+    if (nested_geometry_accumulate_pipeline == nil) {
+        throw std::runtime_error(
+            "Metal nested-geometry accumulate-pipeline creation failed: " +
+            ns_error(error)
+        );
+    }
+    error = nil;
+    id<MTLComputePipelineState> nested_geometry_normalize_pipeline =
+        [device
+            newComputePipelineStateWithFunction:nested_geometry_normalize_function
+            error:&error];
+    if (nested_geometry_normalize_pipeline == nil) {
+        throw std::runtime_error(
+            "Metal nested-geometry normalize-pipeline creation failed: " +
+            ns_error(error)
+        );
+    }
 
     auto result = std::make_shared<PipelineBundle>();
     result->device = device;
@@ -295,6 +362,9 @@ std::shared_ptr<PipelineBundle> load_pipelines(const char* source_path, int devi
     result->geometry_clear_pipeline = geometry_clear_pipeline;
     result->geometry_accumulate_pipeline = geometry_accumulate_pipeline;
     result->geometry_normalize_pipeline = geometry_normalize_pipeline;
+    result->nested_geometry_clear_pipeline = nested_geometry_clear_pipeline;
+    result->nested_geometry_accumulate_pipeline = nested_geometry_accumulate_pipeline;
+    result->nested_geometry_normalize_pipeline = nested_geometry_normalize_pipeline;
     g_pipeline_cache.emplace(key, result);
     return result;
 }
@@ -1477,6 +1547,258 @@ void execute_geometry_session(
     }
 }
 
+void execute_nested_geometry_session(
+    GeometryAwareMetalSession& session,
+    const double* scales,
+    std::size_t scale_count,
+    std::size_t geometry_draws,
+    std::size_t photon_replicates,
+    std::uint64_t geometry_draw_offset,
+    std::uint64_t photon_draw_offset,
+    const double* effective_distance,
+    const double* poni1,
+    const double* poni2,
+    std::uint64_t base_seed,
+    double* output
+) {
+    if (output == nullptr) {
+        throw std::invalid_argument("nested geometry output pointer is null");
+    }
+    if (geometry_draws == 0 || geometry_draws > session.draw_capacity) {
+        throw std::invalid_argument("geometry draw count exceeds session capacity");
+    }
+    if (photon_replicates == 0) {
+        throw std::invalid_argument("photon replicate count must be positive");
+    }
+    if (scale_count == 0 || scale_count > session.scale_capacity) {
+        throw std::invalid_argument("noise scale count exceeds geometry session capacity");
+    }
+    const std::size_t profiles_per_geometry = checked_product(
+        scale_count,
+        photon_replicates,
+        "nested profiles per geometry"
+    );
+    if (profiles_per_geometry > session.profile_batch_size) {
+        throw std::invalid_argument(
+            "scale_count * photon_replicates exceeds profile_batch_size"
+        );
+    }
+    const std::size_t geometry_count = checked_product(
+        geometry_draws,
+        session.measurements,
+        "nested draw geometry"
+    );
+    const std::vector<float> float_distances = prepare_draw_geometry(
+        effective_distance, geometry_count, "effective distances", true
+    );
+    const std::vector<float> float_poni1 =
+        prepare_draw_geometry(poni1, geometry_count, "draw Poni1", false);
+    const std::vector<float> float_poni2 =
+        prepare_draw_geometry(poni2, geometry_count, "draw Poni2", false);
+    std::memcpy(
+        session.distance_buffer.contents,
+        float_distances.data(),
+        checked_bytes(geometry_count, sizeof(float), "effective distances")
+    );
+    std::memcpy(
+        session.poni1_buffer.contents,
+        float_poni1.data(),
+        checked_bytes(geometry_count, sizeof(float), "draw Poni1")
+    );
+    std::memcpy(
+        session.poni2_buffer.contents,
+        float_poni2.data(),
+        checked_bytes(geometry_count, sizeof(float), "draw Poni2")
+    );
+    const std::vector<float> float_scales =
+        prepare_noise_scales(scales, scale_count, session.maximum_positive);
+    std::memcpy(
+        session.scale_buffer.contents,
+        float_scales.data(),
+        checked_bytes(scale_count, sizeof(float), "geometry noise scales")
+    );
+
+    const std::size_t geometry_batch_capacity =
+        session.profile_batch_size / profiles_per_geometry;
+    std::size_t geometry_profile_offset = 0;
+    while (geometry_profile_offset < geometry_count) {
+        const std::size_t batch_geometry_profiles = std::min(
+            geometry_batch_capacity,
+            geometry_count - geometry_profile_offset
+        );
+        const std::size_t batch_output_profiles = checked_product(
+            batch_geometry_profiles,
+            profiles_per_geometry,
+            "nested batch profiles"
+        );
+        const std::size_t batch_values = checked_product(
+            batch_output_profiles,
+            session.bins,
+            "nested batch values"
+        );
+        NestedGeometryKernelParams params{
+            static_cast<std::uint64_t>(session.measurements),
+            static_cast<std::uint64_t>(session.pixels),
+            static_cast<std::uint64_t>(session.rows),
+            static_cast<std::uint64_t>(session.columns),
+            static_cast<std::uint64_t>(scale_count),
+            static_cast<std::uint64_t>(geometry_draws),
+            static_cast<std::uint64_t>(photon_replicates),
+            static_cast<std::uint64_t>(session.bins),
+            static_cast<std::uint64_t>(session.normalization_count),
+            static_cast<std::uint64_t>(geometry_profile_offset),
+            static_cast<std::uint64_t>(batch_geometry_profiles),
+            static_cast<std::uint64_t>(batch_output_profiles),
+            geometry_draw_offset,
+            photon_draw_offset,
+            base_seed,
+            session.q_min,
+            session.q_delta,
+            0U,
+            0U,
+        };
+
+        id<MTLCommandBuffer> command = [session.queue commandBuffer];
+        if (command == nil) {
+            throw std::runtime_error("failed to create nested-geometry command buffer");
+        }
+        id<MTLComputeCommandEncoder> clear_encoder = [command computeCommandEncoder];
+        if (clear_encoder == nil) {
+            throw std::runtime_error("failed to create nested-geometry clear encoder");
+        }
+        [clear_encoder
+            setComputePipelineState:session.pipelines->nested_geometry_clear_pipeline];
+        [clear_encoder setBuffer:session.signal_buffer offset:0 atIndex:0];
+        [clear_encoder setBuffer:session.denominator_buffer offset:0 atIndex:1];
+        [clear_encoder setBuffer:session.status_buffer offset:0 atIndex:2];
+        [clear_encoder setBytes:&params length:sizeof(params) atIndex:3];
+        const NSUInteger clear_width = std::min<NSUInteger>(
+            256,
+            session.pipelines->nested_geometry_clear_pipeline
+                .maxTotalThreadsPerThreadgroup
+        );
+        [clear_encoder
+            dispatchThreads:MTLSizeMake(batch_values, 1, 1)
+            threadsPerThreadgroup:MTLSizeMake(clear_width, 1, 1)];
+        [clear_encoder endEncoding];
+
+        id<MTLComputeCommandEncoder> accumulate_encoder =
+            [command computeCommandEncoder];
+        if (accumulate_encoder == nil) {
+            throw std::runtime_error(
+                "failed to create nested-geometry accumulate encoder"
+            );
+        }
+        [accumulate_encoder
+            setComputePipelineState:
+                session.pipelines->nested_geometry_accumulate_pipeline];
+        [accumulate_encoder setBuffer:session.image_buffer offset:0 atIndex:0];
+        [accumulate_encoder setBuffer:session.mask_buffer offset:0 atIndex:1];
+        [accumulate_encoder setBuffer:session.seed_buffer offset:0 atIndex:2];
+        [accumulate_encoder setBuffer:session.scale_buffer offset:0 atIndex:3];
+        [accumulate_encoder setBuffer:session.geometry_buffer offset:0 atIndex:4];
+        [accumulate_encoder setBuffer:session.distance_buffer offset:0 atIndex:5];
+        [accumulate_encoder setBuffer:session.poni1_buffer offset:0 atIndex:6];
+        [accumulate_encoder setBuffer:session.poni2_buffer offset:0 atIndex:7];
+        [accumulate_encoder setBuffer:session.signal_buffer offset:0 atIndex:8];
+        [accumulate_encoder setBuffer:session.denominator_buffer offset:0 atIndex:9];
+        [accumulate_encoder setBuffer:session.status_buffer offset:0 atIndex:10];
+        [accumulate_encoder setBytes:&params length:sizeof(params) atIndex:11];
+        const NSUInteger accumulate_width = std::min<NSUInteger>(
+            256,
+            session.pipelines->nested_geometry_accumulate_pipeline
+                .maxTotalThreadsPerThreadgroup
+        );
+        [accumulate_encoder
+            dispatchThreads:MTLSizeMake(
+                checked_product(
+                    batch_geometry_profiles,
+                    session.pixels,
+                    "nested geometry dispatch"
+                ),
+                1,
+                1
+            )
+            threadsPerThreadgroup:MTLSizeMake(accumulate_width, 1, 1)];
+        [accumulate_encoder endEncoding];
+
+        id<MTLComputeCommandEncoder> normalize_encoder =
+            [command computeCommandEncoder];
+        if (normalize_encoder == nil) {
+            throw std::runtime_error(
+                "failed to create nested-geometry normalize encoder"
+            );
+        }
+        [normalize_encoder
+            setComputePipelineState:
+                session.pipelines->nested_geometry_normalize_pipeline];
+        [normalize_encoder setBuffer:session.signal_buffer offset:0 atIndex:0];
+        [normalize_encoder setBuffer:session.denominator_buffer offset:0 atIndex:1];
+        [normalize_encoder setBuffer:session.normalization_buffer offset:0 atIndex:2];
+        [normalize_encoder setBuffer:session.output_buffer offset:0 atIndex:3];
+        [normalize_encoder setBuffer:session.status_buffer offset:0 atIndex:4];
+        [normalize_encoder setBytes:&params length:sizeof(params) atIndex:5];
+        [normalize_encoder
+            setThreadgroupMemoryLength:session.bins * sizeof(float)
+            atIndex:0];
+        [normalize_encoder
+            setThreadgroupMemoryLength:session.normalization_count * sizeof(float)
+            atIndex:1];
+        [normalize_encoder
+            dispatchThreadgroups:MTLSizeMake(batch_output_profiles, 1, 1)
+            threadsPerThreadgroup:MTLSizeMake(session.bins, 1, 1)];
+        [normalize_encoder endEncoding];
+        wait_for_command(command);
+
+        const auto* statuses =
+            static_cast<const std::int32_t*>(session.status_buffer.contents);
+        for (std::size_t local_profile = 0;
+             local_profile < batch_output_profiles;
+             ++local_profile) {
+            if (statuses[local_profile] != 0) {
+                throw std::runtime_error(
+                    profile_failure(statuses[local_profile], local_profile)
+                );
+            }
+        }
+        const auto* float_output =
+            static_cast<const float*>(session.output_buffer.contents);
+        for (std::size_t scale = 0; scale < scale_count; ++scale) {
+            for (std::size_t local_geometry = 0;
+                 local_geometry < batch_geometry_profiles;
+                 ++local_geometry) {
+                const std::size_t global_geometry =
+                    geometry_profile_offset + local_geometry;
+                const std::size_t geometry_draw =
+                    global_geometry / session.measurements;
+                const std::size_t measurement =
+                    global_geometry % session.measurements;
+                for (std::size_t replicate = 0;
+                     replicate < photon_replicates;
+                     ++replicate) {
+                    const std::size_t local_profile =
+                        (scale * batch_geometry_profiles + local_geometry) *
+                            photon_replicates +
+                        replicate;
+                    const std::size_t output_profile =
+                        ((scale * geometry_draws + geometry_draw) *
+                             photon_replicates +
+                         replicate) *
+                            session.measurements +
+                        measurement;
+                    const std::size_t local_base = local_profile * session.bins;
+                    const std::size_t output_base = output_profile * session.bins;
+                    for (std::size_t bin = 0; bin < session.bins; ++bin) {
+                        output[output_base + bin] =
+                            static_cast<double>(float_output[local_base + bin]);
+                    }
+                }
+            }
+        }
+        geometry_profile_offset += batch_geometry_profiles;
+    }
+}
+
 }  // namespace
 
 extern "C" {
@@ -1853,6 +2175,57 @@ XRDMC_METAL_EXPORT int xrdmc_metal_geometry_session_run(
                 error_buffer,
                 error_buffer_size,
                 "unknown geometry-aware Metal exception"
+            );
+            return 2;
+        }
+    }
+}
+
+XRDMC_METAL_EXPORT int xrdmc_metal_geometry_session_run_nested(
+    void* session,
+    const double* scales,
+    std::size_t scale_count,
+    std::size_t geometry_draws,
+    std::size_t photon_replicates,
+    std::uint64_t geometry_draw_offset,
+    std::uint64_t photon_draw_offset,
+    const double* effective_distance,
+    const double* poni1,
+    const double* poni2,
+    std::uint64_t base_seed,
+    double* output,
+    char* error_buffer,
+    std::size_t error_buffer_size
+) noexcept {
+    @autoreleasepool {
+        try {
+            write_error(error_buffer, error_buffer_size, "");
+            if (session == nullptr) {
+                throw std::invalid_argument("geometry-aware Metal session is null");
+            }
+            execute_nested_geometry_session(
+                *static_cast<GeometryAwareMetalSession*>(session),
+                scales,
+                scale_count,
+                geometry_draws,
+                photon_replicates,
+                geometry_draw_offset,
+                photon_draw_offset,
+                effective_distance,
+                poni1,
+                poni2,
+                base_seed,
+                output
+            );
+            return 0;
+        } catch (const std::exception& error) {
+            write_error(error_buffer, error_buffer_size, error.what());
+            return 1;
+        } catch (...) {
+            write_error(
+                error_buffer,
+                error_buffer_size,
+                "unknown nested geometry-aware Metal exception"
             );
             return 2;
         }

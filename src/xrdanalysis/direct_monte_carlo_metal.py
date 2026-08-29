@@ -22,7 +22,7 @@ from scipy.sparse import csc_matrix
 from xrdanalysis.direct_monte_carlo import NativeDirectMonteCarloPlan
 
 
-_ABI_VERSION = 3
+_ABI_VERSION = 4
 _ERROR_BUFFER_SIZE = 4096
 _LIBRARY_ENV = "XRDANALYSIS_DIRECT_MONTE_CARLO_METAL_LIBRARY"
 _SOURCE_ENV = "XRDANALYSIS_DIRECT_MONTE_CARLO_METAL_SOURCE"
@@ -357,6 +357,23 @@ def _configure_library(library: ctypes.CDLL) -> ctypes.CDLL:
         ctypes.c_size_t,
     ]
     library.xrdmc_metal_geometry_session_run.restype = ctypes.c_int
+    library.xrdmc_metal_geometry_session_run_nested.argtypes = [
+        ctypes.c_void_p,
+        double_pointer,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.c_uint64,
+        ctypes.c_uint64,
+        double_pointer,
+        double_pointer,
+        double_pointer,
+        ctypes.c_uint64,
+        double_pointer,
+        error_pointer,
+        ctypes.c_size_t,
+    ]
+    library.xrdmc_metal_geometry_session_run_nested.restype = ctypes.c_int
     library.xrdmc_metal_geometry_session_integrate.argtypes = [
         ctypes.c_void_p,
         ctypes.c_size_t,

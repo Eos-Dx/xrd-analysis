@@ -678,3 +678,251 @@ kernel void xrdmc_metal_geometry_normalize_kernel(
         }
     }
 }
+
+struct NestedGeometryKernelParams {
+    ulong measurements;
+    ulong pixels;
+    ulong rows;
+    ulong columns;
+    ulong scale_count;
+    ulong geometry_draws;
+    ulong photon_replicates;
+    ulong bins;
+    ulong normalization_count;
+    ulong geometry_profile_offset;
+    ulong batch_geometry_profiles;
+    ulong batch_output_profiles;
+    ulong geometry_draw_offset;
+    ulong photon_draw_offset;
+    ulong base_seed;
+    float q_min;
+    float q_delta;
+    uint reserved0;
+    uint reserved1;
+};
+
+kernel void xrdmc_metal_nested_geometry_clear_kernel(
+    device atomic_uint* signal [[buffer(0)]],
+    device atomic_uint* denominator [[buffer(1)]],
+    device atomic_int* status [[buffer(2)]],
+    constant NestedGeometryKernelParams& params [[buffer(3)]],
+    uint index [[thread_position_in_grid]]
+) {
+    const ulong values = params.batch_output_profiles * params.bins;
+    if (index < values) {
+        atomic_store_explicit(signal + index, 0U, memory_order_relaxed);
+        atomic_store_explicit(denominator + index, 0U, memory_order_relaxed);
+    }
+    if (index < params.batch_output_profiles) {
+        atomic_store_explicit(status + index, 0, memory_order_relaxed);
+    }
+}
+
+kernel void xrdmc_metal_nested_geometry_accumulate_kernel(
+    device const float* images [[buffer(0)]],
+    device const uchar* masks [[buffer(1)]],
+    device const ulong* measurement_seeds [[buffer(2)]],
+    device const float* scales [[buffer(3)]],
+    device const DetectorGeometry* nominal_geometry [[buffer(4)]],
+    device const float* effective_distance [[buffer(5)]],
+    device const float* poni1 [[buffer(6)]],
+    device const float* poni2 [[buffer(7)]],
+    device atomic_uint* signal [[buffer(8)]],
+    device atomic_uint* denominator [[buffer(9)]],
+    device atomic_int* status [[buffer(10)]],
+    constant NestedGeometryKernelParams& params [[buffer(11)]],
+    uint index [[thread_position_in_grid]]
+) {
+    const ulong wide_index = static_cast<ulong>(index);
+    const ulong local_geometry_profile = wide_index / params.pixels;
+    if (local_geometry_profile >= params.batch_geometry_profiles) {
+        return;
+    }
+    const ulong pixel = wide_index - local_geometry_profile * params.pixels;
+    const ulong global_geometry_profile =
+        params.geometry_profile_offset + local_geometry_profile;
+    const ulong measurement = global_geometry_profile % params.measurements;
+    const ulong geometry_draw = global_geometry_profile / params.measurements;
+    const ulong image_index = measurement * params.pixels + pixel;
+    if (masks[image_index] != 0U) {
+        return;
+    }
+
+    DetectorGeometry geometry = nominal_geometry[measurement];
+    const ulong geometry_index = geometry_draw * params.measurements + measurement;
+    geometry.distance = effective_distance[geometry_index];
+    geometry.poni1 = poni1[geometry_index];
+    geometry.poni2 = poni2[geometry_index];
+    if (
+        !isfinite(geometry.distance) || geometry.distance <= 0.0f ||
+        !isfinite(geometry.poni1) || !isfinite(geometry.poni2)
+    ) {
+        for (ulong scale_index = 0UL; scale_index < params.scale_count; ++scale_index) {
+            for (ulong replicate = 0UL; replicate < params.photon_replicates; ++replicate) {
+                const ulong local_output_profile =
+                    (scale_index * params.batch_geometry_profiles +
+                     local_geometry_profile) * params.photon_replicates + replicate;
+                atomic_fetch_max_explicit(
+                    status + local_output_profile,
+                    kStatusInvalidGeometry,
+                    memory_order_relaxed
+                );
+            }
+        }
+        return;
+    }
+
+    const ulong image_row = pixel / params.columns;
+    const ulong image_column = pixel - image_row * params.columns;
+    float detector_row = static_cast<float>(image_row);
+    float detector_column = static_cast<float>(image_column);
+    if (geometry.orientation == 1U) {
+        detector_row = static_cast<float>(params.rows - image_row - 1UL);
+        detector_column = static_cast<float>(params.columns - image_column - 1UL);
+    } else if (geometry.orientation == 2U) {
+        detector_row = static_cast<float>(params.rows - image_row - 1UL);
+    } else if (geometry.orientation == 4U) {
+        detector_column = static_cast<float>(params.columns - image_column - 1UL);
+    }
+    const float detector_center1 = (detector_row + 0.5f) * geometry.pixel1;
+    const float detector_center2 = (detector_column + 0.5f) * geometry.pixel2;
+    const float center1 = detector_center1 - geometry.poni1;
+    const float center2 = detector_center2 - geometry.poni2;
+    const float q_center = geometry_q(
+        center1,
+        center2,
+        geometry.distance,
+        geometry.wavelength
+    );
+    const float half1 = 0.5f * geometry.pixel1;
+    const float half2 = 0.5f * geometry.pixel2;
+    float q_half_width = 0.0f;
+    q_half_width = max(q_half_width, abs(geometry_q(
+        center1 - half1, center2 - half2, geometry.distance, geometry.wavelength
+    ) - q_center));
+    q_half_width = max(q_half_width, abs(geometry_q(
+        center1 + half1, center2 - half2, geometry.distance, geometry.wavelength
+    ) - q_center));
+    q_half_width = max(q_half_width, abs(geometry_q(
+        center1 + half1, center2 + half2, geometry.distance, geometry.wavelength
+    ) - q_center));
+    q_half_width = max(q_half_width, abs(geometry_q(
+        center1 - half1, center2 + half2, geometry.distance, geometry.wavelength
+    ) - q_center));
+    const float radius_squared = center1 * center1 + center2 * center2;
+    const float distance_squared = geometry.distance * geometry.distance;
+    const float cosine = geometry.distance / sqrt(distance_squared + radius_squared);
+    const float solid_angle = cosine * cosine * cosine;
+    if (!isfinite(q_center) || !isfinite(q_half_width) || !isfinite(solid_angle)) {
+        return;
+    }
+
+    const float nominal_value = images[image_index];
+    for (ulong scale_index = 0UL; scale_index < params.scale_count; ++scale_index) {
+        const float scale = scales[scale_index];
+        for (ulong replicate = 0UL; replicate < params.photon_replicates; ++replicate) {
+            bool poisson_valid = true;
+            const ulong photon_draw = params.photon_draw_offset +
+                geometry_draw * params.photon_replicates + replicate;
+            const float value = centered_poisson_sample(
+                nominal_value,
+                scale * scale,
+                params.base_seed,
+                measurement_seeds[measurement],
+                scale_index,
+                photon_draw,
+                pixel,
+                poisson_valid
+            );
+            const ulong local_output_profile =
+                (scale_index * params.batch_geometry_profiles +
+                 local_geometry_profile) * params.photon_replicates + replicate;
+            if (!poisson_valid) {
+                atomic_fetch_max_explicit(
+                    status + local_output_profile,
+                    kStatusPoissonFailure,
+                    memory_order_relaxed
+                );
+                continue;
+            }
+            accumulate_bbox_pixel(
+                signal,
+                denominator,
+                local_output_profile,
+                params.bins,
+                params.q_min,
+                params.q_delta,
+                q_center,
+                q_half_width,
+                value,
+                solid_angle
+            );
+        }
+    }
+}
+
+kernel void xrdmc_metal_nested_geometry_normalize_kernel(
+    device const float* signal [[buffer(0)]],
+    device const float* denominator [[buffer(1)]],
+    device const int* normalization_indices [[buffer(2)]],
+    device float* output [[buffer(3)]],
+    device atomic_int* status [[buffer(4)]],
+    constant NestedGeometryKernelParams& params [[buffer(5)]],
+    threadgroup float* profile_values [[threadgroup(0)]],
+    threadgroup float* normalization_values [[threadgroup(1)]],
+    uint bin [[thread_position_in_threadgroup]],
+    uint local_profile [[threadgroup_position_in_grid]]
+) {
+    if (local_profile >= params.batch_output_profiles) {
+        return;
+    }
+    if (static_cast<ulong>(bin) < params.bins) {
+        const ulong index = static_cast<ulong>(local_profile) * params.bins + bin;
+        const float norm = denominator[index];
+        if (!isfinite(norm) || norm <= 0.0f) {
+            profile_values[bin] = 0.0f;
+        } else {
+            const float integrated = signal[index] / norm;
+            profile_values[bin] = integrated;
+            if (!isfinite(integrated)) {
+                set_status(status, local_profile, kStatusNonFiniteProfile);
+            }
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (bin == 0U) {
+        for (ulong index = 0UL; index < params.normalization_count; ++index) {
+            normalization_values[index] =
+                profile_values[static_cast<uint>(normalization_indices[index])];
+        }
+        for (ulong index = 1UL; index < params.normalization_count; ++index) {
+            const float value = normalization_values[index];
+            ulong position = index;
+            while (position > 0UL && normalization_values[position - 1UL] > value) {
+                normalization_values[position] = normalization_values[position - 1UL];
+                position -= 1UL;
+            }
+            normalization_values[position] = value;
+        }
+        const ulong middle = params.normalization_count / 2UL;
+        float median = normalization_values[middle];
+        if ((params.normalization_count & 1UL) == 0UL) {
+            median = 0.5f * (normalization_values[middle - 1UL] + median);
+        }
+        if (!isfinite(median) || median <= 1.0e-12f) {
+            set_status(status, local_profile, kStatusInvalidNormalization);
+            normalization_values[0] = 1.0f;
+        } else {
+            normalization_values[0] = median;
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (static_cast<ulong>(bin) < params.bins) {
+        const ulong index = static_cast<ulong>(local_profile) * params.bins + bin;
+        const float normalized = profile_values[bin] / normalization_values[0];
+        output[index] = normalized;
+        if (!isfinite(normalized)) {
+            set_status(status, local_profile, kStatusNonFiniteProfile);
+        }
+    }
+}
