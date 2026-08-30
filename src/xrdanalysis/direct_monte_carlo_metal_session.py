@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes
 from hashlib import sha256
 from threading import Lock
+from dataclasses import dataclass
 from typing import Sequence
 from weakref import finalize
 
@@ -377,8 +378,82 @@ class GroupedPersistentMetalMonteCarlo:
         return self._session.integrate()
 
 
+@dataclass(frozen=True)
+class PreparedGeometryMetalResult:
+    """Photon draws evaluated with one immutable set of pyFAI CSR plans."""
+
+    profiles: np.ndarray
+    deterministic_profiles: np.ndarray | None
+    unique_plan_count: int
+
+
+class PreparedGeometryMetalMonteCarlo:
+    """Run photon Monte Carlo with geometry plans prepared outside Metal.
+
+    The caller owns geometry construction. In particular, pyFAI may rebuild a
+    bbox/CSR plan for every perturbed geometry. Metal only samples detector
+    counts and applies those immutable weights.
+    """
+
+    def __init__(
+        self,
+        images: Sequence[np.ndarray],
+        *,
+        measurement_seeds: Sequence[int] | None = None,
+        device: int = 0,
+        profile_batch_size: int = 4096,
+    ) -> None:
+        if not images:
+            raise ValueError("images must be non-empty")
+        detector_images = [np.asarray(image, dtype=np.float64) for image in images]
+        reference_shape = detector_images[0].shape
+        if not reference_shape or any(image.shape != reference_shape for image in detector_images):
+            raise ValueError("all images must have the same non-empty shape")
+        if any(not np.isfinite(image).all() for image in detector_images):
+            raise ValueError("images must contain only finite values")
+        self._images = tuple(detector_images)
+        self._measurement_seeds = measurement_seeds
+        self._device = device
+        self._profile_batch_size = profile_batch_size
+
+    @property
+    def measurements(self) -> int:
+        return len(self._images)
+
+    def run_geometry(
+        self,
+        plans: Sequence[NativeMetalMonteCarloPlan],
+        photon_replicates: int,
+        *,
+        seed: int,
+        include_deterministic: bool = False,
+    ) -> PreparedGeometryMetalResult:
+        """Evaluate photon replicates for one externally prepared geometry."""
+        if len(plans) != self.measurements:
+            raise ValueError("plans must contain one plan per measurement")
+        replicate_count = _positive_integer(photon_replicates, "photon_replicates")
+        with GroupedPersistentMetalMonteCarlo(
+            plans,
+            self._images,
+            measurement_seeds=self._measurement_seeds,
+            device=self._device,
+            scale_capacity=1,
+            profile_batch_size=self._profile_batch_size,
+        ) as session:
+            profiles = session.run((1.0,), replicate_count, seed=seed)[0]
+            deterministic = session.integrate() if include_deterministic else None
+            unique_plan_count = session.group_count
+        return PreparedGeometryMetalResult(
+            profiles=profiles,
+            deterministic_profiles=deterministic,
+            unique_plan_count=unique_plan_count,
+        )
+
+
 __all__ = [
     "GroupedPersistentMetalMonteCarlo",
+    "PreparedGeometryMetalMonteCarlo",
+    "PreparedGeometryMetalResult",
     "PersistentMetalMonteCarlo",
     "metal_plan_fingerprint",
 ]

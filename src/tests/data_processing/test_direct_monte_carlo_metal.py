@@ -19,6 +19,7 @@ from xrdanalysis.direct_monte_carlo_geometry_metal import (
 )
 from xrdanalysis.direct_monte_carlo_metal_session import (
     GroupedPersistentMetalMonteCarlo,
+    PreparedGeometryMetalMonteCarlo,
     PersistentMetalMonteCarlo,
     metal_plan_fingerprint,
 )
@@ -380,6 +381,57 @@ def test_grouped_session_preserves_order_across_distinct_plans(
         assert grouped.group_count == 2
         actual = grouped.run((1.0,), 50, seed=31)
     np.testing.assert_array_equal(actual[0], expected)
+
+
+def test_prepared_geometry_executor_uses_external_plans_and_stable_seed(
+    metal_library: Path,
+):
+    first_plan = _plan()
+    second_native = _native_plan()
+    second_plan = metal_mc.prepare_metal_plan(
+        NativeDirectMonteCarloPlan(
+            image_shape=second_native.image_shape,
+            csc_indptr=second_native.csc_indptr,
+            csc_indices=second_native.csc_indices,
+            csc_weights=np.array([1.0, 1.0, 0.5, 1.5]),
+            normalization_denominators=second_native.normalization_denominators,
+            q_grid=second_native.q_grid,
+            q_normalization_band=second_native.q_normalization_band,
+        )
+    )
+    images = [_image(), np.array([[95.0, 125.0, 85.0, 88.0]])]
+    executor = PreparedGeometryMetalMonteCarlo(
+        images,
+        measurement_seeds=(11, 22),
+        profile_batch_size=3,
+    )
+
+    first = executor.run_geometry(
+        (first_plan, second_plan),
+        7,
+        seed=31,
+        include_deterministic=True,
+    )
+    repeated = executor.run_geometry(
+        (first_plan, second_plan),
+        7,
+        seed=31,
+        include_deterministic=True,
+    )
+    changed_seed = executor.run_geometry(
+        (first_plan, second_plan),
+        7,
+        seed=32,
+    )
+
+    assert first.profiles.shape == (7, 2, 2)
+    assert first.unique_plan_count == 2
+    np.testing.assert_array_equal(first.profiles, repeated.profiles)
+    np.testing.assert_array_equal(
+        first.deterministic_profiles,
+        repeated.deterministic_profiles,
+    )
+    assert not np.array_equal(first.profiles, changed_seed.profiles)
 
 
 def _geometry_case():
