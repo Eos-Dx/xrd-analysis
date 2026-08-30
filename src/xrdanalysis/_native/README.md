@@ -137,7 +137,7 @@ The packaged `direct_monte_carlo_metal.metal` source is compiled at runtime
 through `newLibraryWithSource` and cached in-process, so the standalone `metal`
 CLI compiler is not required.
 
-The library exports ABI version 4 through `xrdmc_metal_abi_version`, reports
+The library exports ABI version 5 through `xrdmc_metal_abi_version`, reports
 device availability through `xrdmc_metal_device_count`, and exposes
 `xrdmc_metal_run`, `xrdmc_metal_integrate`, and persistent-session functions.
 `xrdmc_metal_session_create` retains one shared plan. The multi-plan variant
@@ -145,15 +145,24 @@ deduplicates exact plans, concatenates distinct CSR arrays, and stores a
 measurement-to-plan mapping on the GPU. Session run and integration calls reuse
 the command queue, images, seeds, plans, and bounded output/status buffers.
 
+`FrameMaskedPreparedGeometryMetalMonteCarlo` shares one unmasked pyFAI
+bbox/CSR geometry plan across measurement frames with different binary masks.
+The caller supplies the per-pixel pyFAI normalization correction, for example
+`integrator.solidAngleArray(image_shape)` when `correctSolidAngle=True`. The
+session recomputes every measurement/bin denominator from the common LUT,
+pixel correction, and frame-local `uint8` mask. The Metal kernels skip masked
+pixels before deterministic accumulation or Poisson sampling. This preserves
+the counter-based photon stream while avoiding one warmed pyFAI plan per mask.
+
 For geometry-uncertainty experiments, geometry remains a pyFAI responsibility.
 Rebuild and warm the exact bbox/CSR engine after each PONI, detector-distance,
-or mask perturbation, convert that engine with `prepare_native_plan` and
-`prepare_metal_plan`, then pass one plan per measurement to
-`PreparedGeometryMetalMonteCarlo.run_geometry`. Metal does not recalculate q,
-PONI, pixel splitting, or mask membership. It only generates centered-Poisson
-detector realizations and applies the immutable pyFAI weights. Use a distinct
-deterministic seed per geometry draw so checkpoint boundaries do not duplicate
-photon streams.
+detector, wavelength, radial-range, or bin-count perturbation. Convert the
+unmasked engine with `prepare_native_plan` and `prepare_metal_plan`, then use
+`FrameMaskedPreparedGeometryMetalMonteCarlo` for all measurement frames that
+share that exact geometry. A static CSR plan cannot be reused after a center or
+distance change because q-bin membership and bbox pixel-splitting weights have
+changed. Use a distinct deterministic seed per geometry draw so checkpoint
+boundaries do not duplicate photon streams.
 
 All creation functions receive the packaged `.metal` source path as their first
 argument. Host images, plan weights, denominators, scales, and output use

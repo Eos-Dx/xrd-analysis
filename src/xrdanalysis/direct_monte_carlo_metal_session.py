@@ -52,6 +52,96 @@ def metal_plan_fingerprint(plan: NativeMetalMonteCarloPlan) -> str:
     return digest.hexdigest()
 
 
+def _validate_frame_masked_inputs(
+    plan: NativeMetalMonteCarloPlan,
+    images: Sequence[np.ndarray],
+    masks: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    detector_images = np.asarray(images, dtype=np.float64)
+    if detector_images.shape == plan.image_shape:
+        detector_images = detector_images[np.newaxis, ...]
+    expected_ndim = len(plan.image_shape) + 1
+    if (
+        detector_images.ndim != expected_ndim
+        or detector_images.shape[1:] != plan.image_shape
+        or detector_images.shape[0] == 0
+    ):
+        raise ValueError(
+            f"images must have shape {plan.image_shape} or "
+            f"(measurements, {', '.join(str(value) for value in plan.image_shape)})"
+        )
+
+    frame_masks = np.asarray(masks)
+    if frame_masks.shape == plan.image_shape and detector_images.shape[0] == 1:
+        frame_masks = frame_masks[np.newaxis, ...]
+    if frame_masks.shape != detector_images.shape:
+        raise ValueError("masks must contain one frame-local mask per image")
+    if frame_masks.dtype not in (np.dtype(np.uint8), np.dtype(np.bool_)):
+        raise ValueError("masks must use uint8 or bool dtype")
+    if np.any((frame_masks != 0) & (frame_masks != 1)):
+        raise ValueError("masks must contain only binary values 0 and 1")
+    frame_masks = np.ascontiguousarray(frame_masks, dtype=np.uint8)
+
+    nonfinite = ~np.isfinite(detector_images)
+    if np.any(nonfinite & (frame_masks == 0)):
+        raise ValueError("unmasked detector pixels must contain only finite values")
+    detector_images = np.array(detector_images, dtype=np.float64, order="C", copy=True)
+    detector_images[frame_masks != 0] = 0.0
+    detector_images = _validate_images(plan, detector_images)
+    return detector_images, frame_masks
+
+
+def _frame_masked_denominators(
+    plan: NativeMetalMonteCarloPlan,
+    masks: np.ndarray,
+    pixel_normalization: np.ndarray | None,
+) -> np.ndarray:
+    normalization = (
+        np.ones(plan.image_shape, dtype=np.float64)
+        if pixel_normalization is None
+        else np.asarray(pixel_normalization, dtype=np.float64)
+    )
+    if normalization.shape != plan.image_shape:
+        raise ValueError("pixel_normalization must match plan.image_shape")
+    if not np.all(np.isfinite(normalization)) or np.any(normalization <= 0.0):
+        raise ValueError("pixel_normalization must be finite and positive")
+
+    flat_normalization = normalization.ravel()
+    flat_masks = masks.reshape(masks.shape[0], plan.pixels)
+    unmasked = np.empty(plan.bins, dtype=np.float64)
+    denominators = np.empty((masks.shape[0], plan.bins), dtype=np.float64)
+    for bin_index in range(plan.bins):
+        start = int(plan.csr_indptr[bin_index])
+        stop = int(plan.csr_indptr[bin_index + 1])
+        pixels = plan.csr_indices[start:stop]
+        weighted_normalization = (
+            plan.csr_weights[start:stop] * flat_normalization[pixels]
+        )
+        unmasked[bin_index] = np.sum(weighted_normalization, dtype=np.float64)
+        denominators[:, bin_index] = np.sum(
+            np.where(flat_masks[:, pixels] == 0, weighted_normalization, 0.0),
+            axis=1,
+            dtype=np.float64,
+        )
+
+    if not np.allclose(
+        unmasked,
+        plan.normalization_denominators,
+        rtol=1e-6,
+        atol=1e-8,
+    ):
+        maximum_error = float(
+            np.max(np.abs(unmasked - plan.normalization_denominators))
+        )
+        raise ValueError(
+            "pixel_normalization does not reproduce the unmasked pyFAI "
+            f"normalization denominators (maximum absolute error {maximum_error:.6g})"
+        )
+    if not np.all(np.isfinite(denominators)) or np.any(denominators <= 0.0):
+        raise ValueError("frame-local mask leaves an empty integration bin")
+    return np.ascontiguousarray(denominators, dtype=np.float64)
+
+
 class PersistentMetalMonteCarlo:
     """Own one immutable integration plan and its reusable GPU buffers."""
 
@@ -378,6 +468,131 @@ class GroupedPersistentMetalMonteCarlo:
         return self._session.integrate()
 
 
+class FrameMaskedPreparedGeometryMetalMonteCarlo:
+    """Share one exact pyFAI geometry LUT across frame-local detector masks.
+
+    The plan must be warmed without a mask. ``pixel_normalization`` is the
+    per-pixel normalization factor passed through the corresponding pyFAI
+    correction path, for example ``integrator.solidAngleArray(image_shape)``
+    when ``correctSolidAngle=True``. Each mask receives an independently
+    recomputed denominator from the shared LUT weights.
+
+    A plan is valid for one exact geometry only. Any center, distance, detector,
+    wavelength, radial-range, or bin-count change requires a new pyFAI plan.
+    """
+
+    def __init__(
+        self,
+        plan: NativeMetalMonteCarloPlan,
+        images: Sequence[np.ndarray],
+        masks: np.ndarray,
+        *,
+        pixel_normalization: np.ndarray | None = None,
+        measurement_seeds: Sequence[int] | None = None,
+        device: int = 0,
+        scale_capacity: int = 8,
+        profile_batch_size: int = 4096,
+    ) -> None:
+        if not isinstance(plan, NativeMetalMonteCarloPlan):
+            raise TypeError("plan must be a NativeMetalMonteCarloPlan")
+        detector_images, frame_masks = _validate_frame_masked_inputs(
+            plan,
+            images,
+            masks,
+        )
+        denominators = _frame_masked_denominators(
+            plan,
+            frame_masks,
+            pixel_normalization,
+        )
+        if isinstance(device, bool) or int(device) != device or device < 0:
+            raise ValueError("device must be a non-negative integer")
+        scale_limit = _positive_integer(scale_capacity, "scale_capacity")
+        batch_size = _positive_integer(profile_batch_size, "profile_batch_size")
+        measurements = int(detector_images.shape[0])
+        stable_seeds = _measurement_seeds(measurements, measurement_seeds)
+        normalization_indices = _normalization_indices(plan)
+        error_buffer = ctypes.create_string_buffer(_ERROR_BUFFER_SIZE)
+        library = _load_metal_library()
+        handle = library.xrdmc_metal_frame_masked_session_create(
+            str(_metal_source_path()).encode(),
+            _double_pointer(detector_images),
+            frame_masks.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)),
+            ctypes.c_size_t(measurements),
+            ctypes.c_size_t(plan.pixels),
+            stable_seeds.ctypes.data_as(ctypes.POINTER(ctypes.c_uint64)),
+            plan.csr_indptr.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)),
+            plan.csr_indices.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
+            _double_pointer(plan.csr_weights),
+            ctypes.c_size_t(plan.csr_weights.size),
+            _double_pointer(denominators),
+            ctypes.c_size_t(plan.bins),
+            normalization_indices.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
+            ctypes.c_size_t(normalization_indices.size),
+            ctypes.c_int(device),
+            ctypes.c_size_t(scale_limit),
+            ctypes.c_size_t(batch_size),
+            error_buffer,
+            ctypes.c_size_t(len(error_buffer)),
+        )
+        if not handle:
+            detail = error_buffer.value.decode("utf-8", errors="replace")
+            raise MetalBackendError(
+                "frame-masked prepared-geometry Metal session creation failed: "
+                f"{detail or 'no error detail'}"
+            )
+
+        session = PersistentMetalMonteCarlo.__new__(PersistentMetalMonteCarlo)
+        fingerprint = sha256()
+        fingerprint.update(metal_plan_fingerprint(plan).encode("ascii"))
+        fingerprint.update(frame_masks.tobytes(order="C"))
+        fingerprint.update(denominators.tobytes(order="C"))
+        session._attach_native_session(
+            library,
+            int(handle),
+            maximum_pixel=float(np.max(detector_images)),
+            measurements=measurements,
+            bins=plan.bins,
+            scale_capacity=scale_limit,
+            profile_batch_size=batch_size,
+            plan_fingerprint=fingerprint.hexdigest(),
+        )
+        denominators.setflags(write=False)
+        self._session = session
+        self.normalization_denominators = denominators
+        self.measurements = measurements
+        self.bins = plan.bins
+        self.scale_capacity = scale_limit
+
+    @property
+    def closed(self) -> bool:
+        return self._session.closed
+
+    def close(self) -> None:
+        self._session.close()
+
+    def __enter__(self) -> FrameMaskedPreparedGeometryMetalMonteCarlo:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+    def run(
+        self,
+        scales: Sequence[float],
+        draws: int,
+        *,
+        seed: int = 0,
+        output: np.ndarray | None = None,
+    ) -> np.ndarray:
+        """Run centered-Poisson draws with frame-local masks."""
+        return self._session.run(scales, draws, seed=seed, output=output)
+
+    def integrate(self) -> np.ndarray:
+        """Integrate all frames deterministically with frame-local masks."""
+        return self._session.integrate()
+
+
 @dataclass(frozen=True)
 class PreparedGeometryMetalResult:
     """Photon draws evaluated with one immutable set of pyFAI CSR plans."""
@@ -451,6 +666,7 @@ class PreparedGeometryMetalMonteCarlo:
 
 
 __all__ = [
+    "FrameMaskedPreparedGeometryMetalMonteCarlo",
     "GroupedPersistentMetalMonteCarlo",
     "PreparedGeometryMetalMonteCarlo",
     "PreparedGeometryMetalResult",

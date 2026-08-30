@@ -18,6 +18,7 @@ from xrdanalysis.direct_monte_carlo_geometry_metal import (
     MetalDetectorGeometry,
 )
 from xrdanalysis.direct_monte_carlo_metal_session import (
+    FrameMaskedPreparedGeometryMetalMonteCarlo,
     GroupedPersistentMetalMonteCarlo,
     PreparedGeometryMetalMonteCarlo,
     PersistentMetalMonteCarlo,
@@ -476,6 +477,245 @@ def _geometry_case():
     static_plan = metal_mc.prepare_metal_plan(native)
     geometry = MetalDetectorGeometry.from_pyfai(integrator)
     return integrator, image, mask, q_grid, band, static_plan, geometry
+
+
+def _frame_masked_prepared_geometry_case():
+    pytest.importorskip("pyFAI")
+    from pyFAI.detectors import Detector
+
+    try:
+        from pyFAI.integrator.azimuthal import AzimuthalIntegrator
+    except ImportError:
+        from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+
+    def make_integrator():
+        detector = Detector(1e-4, 1e-4, max_shape=(32, 32), orientation=3)
+        integrator = AzimuthalIntegrator(detector=detector)
+        integrator.setFit2D(100.0, 16.0, 16.0, wavelength=1.54)
+        return integrator
+
+    row, column = np.indices((32, 32), dtype=float)
+    first_image = 100.0 + 0.25 * row + 0.5 * column + 20.0 * np.exp(
+        -((row - 18.0) ** 2 + (column - 11.0) ** 2) / 20.0
+    )
+    images = np.stack((first_image, first_image * 1.03 + 2.0))
+    masks = np.zeros(images.shape, dtype=np.uint8)
+    masks[0, :2, :] = 1
+    masks[0, :, -2:] = 1
+    masks[1, 5:8, 4:12] = 1
+    masks[1, 20:23, 20:28] = 1
+
+    unmasked_integrator = make_integrator()
+    unmasked_result = unmasked_integrator.integrate1d(
+        first_image,
+        32,
+        error_model="poisson",
+        method=("bbox", "csr", "cython"),
+        unit="q_nm^-1",
+        correctSolidAngle=True,
+    )
+    q_grid = np.asarray(unmasked_result.radial, dtype=float)
+    band = (float(q_grid[12]), float(q_grid[18]))
+    from xrdanalysis.direct_monte_carlo import prepare_native_plan
+
+    plan = metal_mc.prepare_metal_plan(
+        prepare_native_plan(
+            unmasked_integrator,
+            first_image.shape,
+            normalization_denominators=unmasked_result.sum_normalization,
+            q_grid=q_grid,
+            q_normalization_band=band,
+        )
+    )
+    pixel_normalization = unmasked_integrator.solidAngleArray(first_image.shape)
+    return (
+        make_integrator,
+        images,
+        masks,
+        q_grid,
+        band,
+        plan,
+        pixel_normalization,
+    )
+
+
+def _masked_pyfai_plan(integrator, image, mask, band):
+    result = integrator.integrate1d(
+        image,
+        32,
+        mask=mask,
+        error_model="poisson",
+        method=("bbox", "csr", "cython"),
+        unit="q_nm^-1",
+        correctSolidAngle=True,
+    )
+    from xrdanalysis.direct_monte_carlo import prepare_native_plan
+
+    plan = metal_mc.prepare_metal_plan(
+        prepare_native_plan(
+            integrator,
+            image.shape,
+            normalization_denominators=result.sum_normalization,
+            q_grid=result.radial,
+            q_normalization_band=(
+                float(result.radial[12]),
+                float(result.radial[18]),
+            ),
+        )
+    )
+    return result, plan
+
+
+def test_frame_masked_prepared_geometry_matches_pyfai_bbox_deterministically(
+    metal_library: Path,
+):
+    assert metal_library.is_file()
+    (
+        make_integrator,
+        images,
+        masks,
+        _,
+        band,
+        plan,
+        pixel_normalization,
+    ) = _frame_masked_prepared_geometry_case()
+    expected_profiles = []
+    expected_denominators = []
+    for image, mask in zip(images, masks, strict=True):
+        result, _ = _masked_pyfai_plan(make_integrator(), image, mask, band)
+        expected_profiles.append(_normalized_profile(result, band))
+        expected_denominators.append(result.sum_normalization)
+
+    with FrameMaskedPreparedGeometryMetalMonteCarlo(
+        plan,
+        images,
+        masks,
+        pixel_normalization=pixel_normalization,
+        measurement_seeds=(11, 22),
+        profile_batch_size=3,
+    ) as session:
+        actual = session.integrate()
+        actual_denominators = session.normalization_denominators
+
+    np.testing.assert_allclose(
+        actual,
+        np.asarray(expected_profiles),
+        rtol=1e-6,
+        atol=1e-6,
+    )
+    np.testing.assert_allclose(
+        actual_denominators,
+        np.asarray(expected_denominators),
+        rtol=1e-7,
+        atol=1e-6,
+    )
+
+
+def test_frame_masked_prepared_geometry_preserves_photon_draw_stream(
+    metal_library: Path,
+):
+    assert metal_library.is_file()
+    (
+        make_integrator,
+        images,
+        masks,
+        _,
+        band,
+        plan,
+        pixel_normalization,
+    ) = _frame_masked_prepared_geometry_case()
+    measurement_seeds = (11, 22)
+    with FrameMaskedPreparedGeometryMetalMonteCarlo(
+        plan,
+        images,
+        masks,
+        pixel_normalization=pixel_normalization,
+        measurement_seeds=measurement_seeds,
+        scale_capacity=2,
+        profile_batch_size=3,
+    ) as session:
+        actual = session.run((0.5, 1.0), 17, seed=31)
+
+    expected_measurements = []
+    for image, mask, measurement_seed in zip(
+        images,
+        masks,
+        measurement_seeds,
+        strict=True,
+    ):
+        _, masked_plan = _masked_pyfai_plan(
+            make_integrator(),
+            image,
+            mask,
+            band,
+        )
+        expected_measurements.append(
+            metal_mc.direct_detector_monte_carlo_metal(
+                masked_plan,
+                image,
+                (0.5, 1.0),
+                17,
+                seed=31,
+                measurement_seeds=(measurement_seed,),
+                profile_batch_size=3,
+            )[:, :, 0]
+        )
+    expected = np.stack(expected_measurements, axis=2)
+    np.testing.assert_allclose(actual, expected, rtol=2e-7, atol=2e-7)
+
+
+def test_frame_masked_prepared_geometry_rejects_wrong_correction_before_metal(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    (
+        _,
+        images,
+        masks,
+        _,
+        _,
+        plan,
+        _,
+    ) = _frame_masked_prepared_geometry_case()
+    monkeypatch.setattr(
+        metal_mc,
+        "_load_metal_library",
+        lambda: pytest.fail("Metal library must not load"),
+    )
+    with pytest.raises(ValueError, match="does not reproduce the unmasked pyFAI"):
+        FrameMaskedPreparedGeometryMetalMonteCarlo(
+            plan,
+            images,
+            masks,
+            pixel_normalization=np.full(plan.image_shape, 2.0),
+        )
+
+
+def test_frame_masked_prepared_geometry_allows_masked_nonfinite_pixels(
+    metal_library: Path,
+):
+    assert metal_library.is_file()
+    (
+        _,
+        images,
+        masks,
+        _,
+        _,
+        plan,
+        pixel_normalization,
+    ) = _frame_masked_prepared_geometry_case()
+    images = images.copy()
+    images[0, 0, 0] = np.nan
+    images[0, 0, 1] = np.inf
+    masks = masks.copy()
+    masks[0, 0, :2] = 1
+    with FrameMaskedPreparedGeometryMetalMonteCarlo(
+        plan,
+        images,
+        masks,
+        pixel_normalization=pixel_normalization,
+    ) as session:
+        actual = session.integrate()
+    assert np.isfinite(actual).all()
 
 
 def _normalized_profile(result, band: tuple[float, float]) -> np.ndarray:

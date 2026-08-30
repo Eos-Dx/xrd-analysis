@@ -314,6 +314,113 @@ kernel void xrdmc_metal_integrate_kernel(
     );
 }
 
+kernel void xrdmc_metal_frame_masked_run_kernel(
+    device const float* images [[buffer(0)]],
+    device const ulong* measurement_seeds [[buffer(1)]],
+    device const float* scales [[buffer(2)]],
+    device const long* csr_indptr [[buffer(3)]],
+    device const int* csr_indices [[buffer(4)]],
+    device const float* csr_weights [[buffer(5)]],
+    device const float* denominators [[buffer(6)]],
+    device const int* normalization_indices [[buffer(7)]],
+    device float* output [[buffer(8)]],
+    device atomic_int* status [[buffer(9)]],
+    constant KernelParams& params [[buffer(10)]],
+    device const int* measurement_plan_indices [[buffer(11)]],
+    device const uchar* masks [[buffer(12)]],
+    threadgroup float* profile_values [[threadgroup(0)]],
+    threadgroup float* normalization_values [[threadgroup(1)]],
+    uint bin [[thread_position_in_threadgroup]],
+    uint local_profile [[threadgroup_position_in_grid]]
+) {
+    const ulong global_profile = params.profile_offset + local_profile;
+    const ulong measurement = global_profile % params.measurements;
+    const ulong plan = static_cast<ulong>(measurement_plan_indices[measurement]);
+    const ulong indptr_base = plan * (params.bins + 1UL);
+    const ulong draw = (global_profile / params.measurements) % params.draws;
+    const ulong scale_index = global_profile / (params.measurements * params.draws);
+    const float scale_squared = scales[scale_index] * scales[scale_index];
+    if (static_cast<ulong>(bin) < params.bins) {
+        float sum = 0.0f;
+        bool poisson_valid = true;
+        for (
+            long offset = csr_indptr[indptr_base + bin];
+            offset < csr_indptr[indptr_base + bin + 1U];
+            ++offset
+        ) {
+            const ulong pixel = static_cast<ulong>(csr_indices[offset]);
+            if (masks[measurement * params.pixels + pixel] != 0U) {
+                continue;
+            }
+            const float sampled = centered_poisson_sample(
+                images[measurement * params.pixels + pixel], scale_squared,
+                params.base_seed, measurement_seeds[measurement], scale_index, draw,
+                pixel, poisson_valid
+            );
+            if (!poisson_valid) {
+                set_status(status, local_profile, kStatusPoissonFailure);
+            }
+            sum += csr_weights[offset] * sampled;
+        }
+        const float integrated =
+            sum / denominators[measurement * params.bins + bin];
+        profile_values[bin] = integrated;
+        if (!isfinite(integrated)) {
+            set_status(status, local_profile, kStatusNonFiniteProfile);
+        }
+    }
+    normalize_profile(
+        output, status, params, normalization_indices, profile_values,
+        normalization_values, bin, local_profile
+    );
+}
+
+kernel void xrdmc_metal_frame_masked_integrate_kernel(
+    device const float* images [[buffer(0)]],
+    device const long* csr_indptr [[buffer(1)]],
+    device const int* csr_indices [[buffer(2)]],
+    device const float* csr_weights [[buffer(3)]],
+    device const float* denominators [[buffer(4)]],
+    device const int* normalization_indices [[buffer(5)]],
+    device float* output [[buffer(6)]],
+    device atomic_int* status [[buffer(7)]],
+    constant KernelParams& params [[buffer(8)]],
+    device const int* measurement_plan_indices [[buffer(9)]],
+    device const uchar* masks [[buffer(10)]],
+    threadgroup float* profile_values [[threadgroup(0)]],
+    threadgroup float* normalization_values [[threadgroup(1)]],
+    uint bin [[thread_position_in_threadgroup]],
+    uint local_profile [[threadgroup_position_in_grid]]
+) {
+    const ulong measurement = params.profile_offset + local_profile;
+    const ulong plan = static_cast<ulong>(measurement_plan_indices[measurement]);
+    const ulong indptr_base = plan * (params.bins + 1UL);
+    if (static_cast<ulong>(bin) < params.bins) {
+        float sum = 0.0f;
+        for (
+            long offset = csr_indptr[indptr_base + bin];
+            offset < csr_indptr[indptr_base + bin + 1U];
+            ++offset
+        ) {
+            const ulong pixel = static_cast<ulong>(csr_indices[offset]);
+            if (masks[measurement * params.pixels + pixel] != 0U) {
+                continue;
+            }
+            sum += csr_weights[offset] * images[measurement * params.pixels + pixel];
+        }
+        const float integrated =
+            sum / denominators[measurement * params.bins + bin];
+        profile_values[bin] = integrated;
+        if (!isfinite(integrated)) {
+            set_status(status, local_profile, kStatusNonFiniteProfile);
+        }
+    }
+    normalize_profile(
+        output, status, params, normalization_indices, profile_values,
+        normalization_values, bin, local_profile
+    );
+}
+
 constant float kFourPi = 12.56637061435917295385f;
 constant float kInverseMetresToInverseNanometres = 1.0e-9f;
 constant int kStatusInvalidGeometry = 4;

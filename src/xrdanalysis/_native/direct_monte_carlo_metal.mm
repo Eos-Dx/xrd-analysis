@@ -21,7 +21,7 @@
 
 namespace {
 
-constexpr int kAbiVersion = 4;
+constexpr int kAbiVersion = 5;
 constexpr double kMaximumExactFloatPoissonRate = 16777216.0;
 
 struct KernelParams {
@@ -40,6 +40,8 @@ struct PipelineBundle {
     __strong id<MTLDevice> device;
     __strong id<MTLComputePipelineState> run_pipeline;
     __strong id<MTLComputePipelineState> integrate_pipeline;
+    __strong id<MTLComputePipelineState> frame_masked_run_pipeline;
+    __strong id<MTLComputePipelineState> frame_masked_integrate_pipeline;
     __strong id<MTLComputePipelineState> geometry_clear_pipeline;
     __strong id<MTLComputePipelineState> geometry_accumulate_pipeline;
     __strong id<MTLComputePipelineState> geometry_normalize_pipeline;
@@ -52,6 +54,7 @@ struct PersistentMetalSession {
     std::shared_ptr<PipelineBundle> pipelines;
     __strong id<MTLCommandQueue> queue;
     __strong id<MTLBuffer> image_buffer;
+    __strong id<MTLBuffer> mask_buffer;
     __strong id<MTLBuffer> seed_buffer;
     __strong id<MTLBuffer> scale_buffer;
     __strong id<MTLBuffer> indptr_buffer;
@@ -70,6 +73,7 @@ struct PersistentMetalSession {
     std::size_t scale_capacity;
     std::size_t profile_batch_size;
     float maximum_positive;
+    bool frame_masked;
 };
 
 struct DetectorGeometry {
@@ -265,6 +269,10 @@ std::shared_ptr<PipelineBundle> load_pipelines(const char* source_path, int devi
     id<MTLFunction> run_function = [library newFunctionWithName:@"xrdmc_metal_run_kernel"];
     id<MTLFunction> integrate_function =
         [library newFunctionWithName:@"xrdmc_metal_integrate_kernel"];
+    id<MTLFunction> frame_masked_run_function =
+        [library newFunctionWithName:@"xrdmc_metal_frame_masked_run_kernel"];
+    id<MTLFunction> frame_masked_integrate_function =
+        [library newFunctionWithName:@"xrdmc_metal_frame_masked_integrate_kernel"];
     id<MTLFunction> geometry_clear_function =
         [library newFunctionWithName:@"xrdmc_metal_geometry_clear_kernel"];
     id<MTLFunction> geometry_accumulate_function =
@@ -279,6 +287,7 @@ std::shared_ptr<PipelineBundle> load_pipelines(const char* source_path, int devi
         [library newFunctionWithName:@"xrdmc_metal_nested_geometry_normalize_kernel"];
     if (
         run_function == nil || integrate_function == nil ||
+        frame_masked_run_function == nil || frame_masked_integrate_function == nil ||
         geometry_clear_function == nil || geometry_accumulate_function == nil ||
         geometry_normalize_function == nil || nested_geometry_clear_function == nil ||
         nested_geometry_accumulate_function == nil ||
@@ -298,6 +307,25 @@ std::shared_ptr<PipelineBundle> load_pipelines(const char* source_path, int devi
     if (integrate_pipeline == nil) {
         throw std::runtime_error(
             "Metal integrate-pipeline creation failed: " + ns_error(error)
+        );
+    }
+    error = nil;
+    id<MTLComputePipelineState> frame_masked_run_pipeline =
+        [device newComputePipelineStateWithFunction:frame_masked_run_function error:&error];
+    if (frame_masked_run_pipeline == nil) {
+        throw std::runtime_error(
+            "Metal frame-masked run-pipeline creation failed: " + ns_error(error)
+        );
+    }
+    error = nil;
+    id<MTLComputePipelineState> frame_masked_integrate_pipeline =
+        [device
+            newComputePipelineStateWithFunction:frame_masked_integrate_function
+            error:&error];
+    if (frame_masked_integrate_pipeline == nil) {
+        throw std::runtime_error(
+            "Metal frame-masked integrate-pipeline creation failed: " +
+            ns_error(error)
         );
     }
     error = nil;
@@ -359,6 +387,8 @@ std::shared_ptr<PipelineBundle> load_pipelines(const char* source_path, int devi
     result->device = device;
     result->run_pipeline = run_pipeline;
     result->integrate_pipeline = integrate_pipeline;
+    result->frame_masked_run_pipeline = frame_masked_run_pipeline;
+    result->frame_masked_integrate_pipeline = frame_masked_integrate_pipeline;
     result->geometry_clear_pipeline = geometry_clear_pipeline;
     result->geometry_accumulate_pipeline = geometry_accumulate_pipeline;
     result->geometry_normalize_pipeline = geometry_normalize_pipeline;
@@ -425,6 +455,7 @@ void validate_common(
     const double* denominators,
     std::size_t bins,
     std::size_t plan_count,
+    std::size_t denominator_rows,
     const std::int32_t* measurement_plan_indices,
     const std::int32_t* normalization_indices,
     std::size_t normalization_count,
@@ -437,6 +468,7 @@ void validate_common(
         throw std::invalid_argument("null input pointer");
     }
     if (measurements == 0 || pixels == 0 || bins == 0 || plan_count == 0 ||
+        denominator_rows == 0 ||
         normalization_count == 0 || profile_batch_size == 0) {
         throw std::invalid_argument("dimensions and profile batch size must be positive");
     }
@@ -484,7 +516,7 @@ void validate_common(
         }
     }
     const std::size_t denominator_count =
-        checked_product(plan_count, bins, "normalization denominators");
+        checked_product(denominator_rows, bins, "normalization denominators");
     for (std::size_t index = 0; index < denominator_count; ++index) {
         if (!std::isfinite(denominators[index]) || denominators[index] <= 0.0 ||
             !std::isfinite(static_cast<float>(denominators[index]))) {
@@ -632,7 +664,7 @@ void run_metal(
     const std::vector<std::int32_t> measurement_plan_indices(measurements, 0);
     validate_common(
         images, measurements, pixels, csr_indptr, csr_indices, csr_weights,
-        nonzero_count, denominators, bins, 1, measurement_plan_indices.data(),
+        nonzero_count, denominators, bins, 1, 1, measurement_plan_indices.data(),
         normalization_indices,
         normalization_count, profile_batch_size
     );
@@ -832,31 +864,50 @@ std::unique_ptr<PersistentMetalSession> create_persistent_session(
     const double* denominators,
     std::size_t bins,
     std::size_t plan_count,
+    std::size_t denominator_rows,
     const std::int32_t* measurement_plan_indices,
     const std::int32_t* normalization_indices,
     std::size_t normalization_count,
     int device_index,
     std::size_t scale_capacity,
-    std::size_t profile_batch_size
+    std::size_t profile_batch_size,
+    const std::uint8_t* masks,
+    bool frame_masked
 ) {
     if (measurement_seeds == nullptr || scale_capacity == 0) {
         throw std::invalid_argument("measurement seeds and scale capacity must be present");
     }
     validate_common(
         images, measurements, pixels, csr_indptr, csr_indices, csr_weights,
-        nonzero_count, denominators, bins, plan_count, measurement_plan_indices,
+        nonzero_count, denominators, bins, plan_count, denominator_rows,
+        measurement_plan_indices,
         normalization_indices,
         normalization_count, profile_batch_size
     );
 
     const std::size_t image_count = checked_product(measurements, pixels, "images");
+    if (frame_masked) {
+        if (masks == nullptr || denominator_rows != measurements || plan_count != 1) {
+            throw std::invalid_argument(
+                "frame-masked session requires one plan, one mask and denominator row "
+                "per measurement"
+            );
+        }
+        for (std::size_t index = 0; index < image_count; ++index) {
+            if (masks[index] > 1U) {
+                throw std::invalid_argument("frame masks must contain only 0 and 1");
+            }
+        }
+    } else if (denominator_rows != plan_count) {
+        throw std::invalid_argument("plan denominator rows must match plan count");
+    }
     std::vector<float> float_images = to_float_vector(images, image_count, "images");
     std::vector<float> float_weights =
         to_float_vector(csr_weights, nonzero_count, "CSR weights");
     std::vector<float> float_denominators =
         to_float_vector(
             denominators,
-            checked_product(plan_count, bins, "normalization denominators"),
+            checked_product(denominator_rows, bins, "normalization denominators"),
             "normalization denominators"
         );
     float maximum_positive = 0.0f;
@@ -891,6 +942,13 @@ std::unique_ptr<PersistentMetalSession> create_persistent_session(
         pipelines->device, float_images.data(),
         checked_bytes(image_count, sizeof(float), "images"), "image"
     );
+    if (frame_masked) {
+        session->mask_buffer = make_buffer(
+            pipelines->device, masks,
+            checked_bytes(image_count, sizeof(std::uint8_t), "frame masks"),
+            "frame mask"
+        );
+    }
     session->seed_buffer = make_buffer(
         pipelines->device, measurement_seeds,
         checked_bytes(measurements, sizeof(std::uint64_t), "measurement seeds"),
@@ -919,7 +977,7 @@ std::unique_ptr<PersistentMetalSession> create_persistent_session(
     session->denominator_buffer = make_buffer(
         pipelines->device, float_denominators.data(),
         checked_bytes(
-            checked_product(plan_count, bins, "denominators"),
+            checked_product(denominator_rows, bins, "denominators"),
             sizeof(float), "denominators"
         ),
         "denominator"
@@ -951,6 +1009,7 @@ std::unique_ptr<PersistentMetalSession> create_persistent_session(
     session->scale_capacity = scale_capacity;
     session->profile_batch_size = profile_batch_size;
     session->maximum_positive = maximum_positive;
+    session->frame_masked = frame_masked;
     return session;
 }
 
@@ -1006,7 +1065,10 @@ void execute_persistent_session(
         }
 
         if (sample_poisson) {
-            [encoder setComputePipelineState:session.pipelines->run_pipeline];
+            [encoder setComputePipelineState:
+                session.frame_masked
+                    ? session.pipelines->frame_masked_run_pipeline
+                    : session.pipelines->run_pipeline];
             [encoder setBuffer:session.image_buffer offset:0 atIndex:0];
             [encoder setBuffer:session.seed_buffer offset:0 atIndex:1];
             [encoder setBuffer:session.scale_buffer offset:0 atIndex:2];
@@ -1019,8 +1081,14 @@ void execute_persistent_session(
             [encoder setBuffer:session.status_buffer offset:0 atIndex:9];
             [encoder setBytes:&params length:sizeof(params) atIndex:10];
             [encoder setBuffer:session.measurement_plan_buffer offset:0 atIndex:11];
+            if (session.frame_masked) {
+                [encoder setBuffer:session.mask_buffer offset:0 atIndex:12];
+            }
         } else {
-            [encoder setComputePipelineState:session.pipelines->integrate_pipeline];
+            [encoder setComputePipelineState:
+                session.frame_masked
+                    ? session.pipelines->frame_masked_integrate_pipeline
+                    : session.pipelines->integrate_pipeline];
             [encoder setBuffer:session.image_buffer offset:0 atIndex:0];
             [encoder setBuffer:session.indptr_buffer offset:0 atIndex:1];
             [encoder setBuffer:session.index_buffer offset:0 atIndex:2];
@@ -1031,6 +1099,9 @@ void execute_persistent_session(
             [encoder setBuffer:session.status_buffer offset:0 atIndex:7];
             [encoder setBytes:&params length:sizeof(params) atIndex:8];
             [encoder setBuffer:session.measurement_plan_buffer offset:0 atIndex:9];
+            if (session.frame_masked) {
+                [encoder setBuffer:session.mask_buffer offset:0 atIndex:10];
+            }
         }
         [encoder setThreadgroupMemoryLength:session.bins * sizeof(float) atIndex:0];
         [encoder
@@ -1852,9 +1923,9 @@ XRDMC_METAL_EXPORT void* xrdmc_metal_session_create(
             return create_persistent_session(
                 metal_source_path, images, measurements, pixels, measurement_seeds,
                 csr_indptr, csr_indices, csr_weights, nonzero_count, denominators,
-                bins, 1, measurement_plan_indices.data(), normalization_indices,
+                bins, 1, 1, measurement_plan_indices.data(), normalization_indices,
                 normalization_count, device_index,
-                scale_capacity, profile_batch_size
+                scale_capacity, profile_batch_size, nullptr, false
             ).release();
         } catch (const std::exception& error) {
             write_error(error_buffer, error_buffer_size, error.what());
@@ -1894,14 +1965,61 @@ XRDMC_METAL_EXPORT void* xrdmc_metal_multi_session_create(
             return create_persistent_session(
                 metal_source_path, images, measurements, pixels, measurement_seeds,
                 csr_indptr, csr_indices, csr_weights, nonzero_count, denominators,
-                bins, plan_count, measurement_plan_indices, normalization_indices,
-                normalization_count, device_index, scale_capacity, profile_batch_size
+                bins, plan_count, plan_count, measurement_plan_indices,
+                normalization_indices, normalization_count, device_index,
+                scale_capacity, profile_batch_size, nullptr, false
             ).release();
         } catch (const std::exception& error) {
             write_error(error_buffer, error_buffer_size, error.what());
             return nullptr;
         } catch (...) {
             write_error(error_buffer, error_buffer_size, "unknown native Metal exception");
+            return nullptr;
+        }
+    }
+}
+
+XRDMC_METAL_EXPORT void* xrdmc_metal_frame_masked_session_create(
+    const char* metal_source_path,
+    const double* images,
+    const std::uint8_t* masks,
+    std::size_t measurements,
+    std::size_t pixels,
+    const std::uint64_t* measurement_seeds,
+    const std::int64_t* csr_indptr,
+    const std::int32_t* csr_indices,
+    const double* csr_weights,
+    std::size_t nonzero_count,
+    const double* denominators,
+    std::size_t bins,
+    const std::int32_t* normalization_indices,
+    std::size_t normalization_count,
+    int device_index,
+    std::size_t scale_capacity,
+    std::size_t profile_batch_size,
+    char* error_buffer,
+    std::size_t error_buffer_size
+) noexcept {
+    @autoreleasepool {
+        try {
+            write_error(error_buffer, error_buffer_size, "");
+            const std::vector<std::int32_t> measurement_plan_indices(measurements, 0);
+            return create_persistent_session(
+                metal_source_path, images, measurements, pixels, measurement_seeds,
+                csr_indptr, csr_indices, csr_weights, nonzero_count, denominators,
+                bins, 1, measurements, measurement_plan_indices.data(),
+                normalization_indices, normalization_count, device_index,
+                scale_capacity, profile_batch_size, masks, true
+            ).release();
+        } catch (const std::exception& error) {
+            write_error(error_buffer, error_buffer_size, error.what());
+            return nullptr;
+        } catch (...) {
+            write_error(
+                error_buffer,
+                error_buffer_size,
+                "unknown frame-masked Metal exception"
+            );
             return nullptr;
         }
     }

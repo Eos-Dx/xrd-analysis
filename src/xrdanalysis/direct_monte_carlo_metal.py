@@ -22,7 +22,7 @@ from scipy.sparse import csc_matrix
 from xrdanalysis.direct_monte_carlo import NativeDirectMonteCarloPlan
 
 
-_ABI_VERSION = 4
+_ABI_VERSION = 5
 _ERROR_BUFFER_SIZE = 4096
 _LIBRARY_ENV = "XRDANALYSIS_DIRECT_MONTE_CARLO_METAL_LIBRARY"
 _SOURCE_ENV = "XRDANALYSIS_DIRECT_MONTE_CARLO_METAL_SOURCE"
@@ -246,6 +246,28 @@ def _configure_library(library: ctypes.CDLL) -> ctypes.CDLL:
         ctypes.c_size_t,
     ]
     library.xrdmc_metal_multi_session_create.restype = ctypes.c_void_p
+    library.xrdmc_metal_frame_masked_session_create.argtypes = [
+        char_pointer,
+        double_pointer,
+        uint8_pointer,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        uint64_pointer,
+        int64_pointer,
+        int32_pointer,
+        double_pointer,
+        ctypes.c_size_t,
+        double_pointer,
+        ctypes.c_size_t,
+        int32_pointer,
+        ctypes.c_size_t,
+        ctypes.c_int,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        error_pointer,
+        ctypes.c_size_t,
+    ]
+    library.xrdmc_metal_frame_masked_session_create.restype = ctypes.c_void_p
     library.xrdmc_metal_session_destroy.argtypes = [ctypes.c_void_p]
     library.xrdmc_metal_session_destroy.restype = None
     library.xrdmc_metal_session_run.argtypes = [
